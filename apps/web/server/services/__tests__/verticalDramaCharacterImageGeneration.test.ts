@@ -201,7 +201,8 @@ describe("generateCharacterVisualPrompts", () => {
     expect(result.portraitPrompt).toBe(
       "A portrait of Alice, tall with dark hair, wearing a trench coat",
     );
-    expect(result.negativePrompt).toBe("blurry, low quality");
+    expect(result.negativePrompt).toContain("blurry, low quality");
+    expect(result.negativePrompt).toContain("no other people");
     expect(result.creditsUsed).toBe(4);
     expect(result.model).toBe("gpt-4o-mini");
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
@@ -321,6 +322,105 @@ describe("generateCharacterVisualPrompts", () => {
     expect(userMessage).toContain("เด็กหญิงวัยสิบขวบ");
     expect(userMessage).toMatch(/exceptionally attractive/i);
     expect(userMessage).toMatch(/never change or imply/i);
+  });
+
+  it("injects the MANDATORY solo-portrait rule into the LLM user prompt", async () => {
+    // Regression test for the "single mother sacrificing for her child"
+    // evidence — a portrait prompt must never add a second person to the
+    // frame just because the backstory mentions one.
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams());
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/exactly ONE person/i);
+    expect(userMessage).toMatch(/solo portrait/i);
+    expect(userMessage).toMatch(/no other people/i);
+    expect(userMessage).toMatch(/no children/i);
+    expect(userMessage).toMatch(/backstory.*mood|mood.*backstory/is);
+  });
+
+  it("instructs the solo-portrait negative terms to be appended to every negative_prompt", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams());
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/no other people, no second person, no children/i);
+  });
+
+  it("defensively appends the solo-portrait negative terms to the result even when the LLM omits them", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(result.negativePrompt).toContain("blurry, low quality");
+    expect(result.negativePrompt).toContain("no other people");
+    expect(result.negativePrompt).toContain("no children");
+  });
+
+  it("injects full cinematic-language guidance (lens, color grade, grain, lighting, bokeh background)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams());
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/85mm|portrait lens/i);
+    expect(userMessage).toMatch(/color grade/i);
+    expect(userMessage).toMatch(/film grain|texture/i);
+    expect(userMessage).toMatch(/key light/i);
+    expect(userMessage).toMatch(/out of focus|bokeh/i);
+  });
+
+  it("injects the default target-audience region descriptor when provided", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ targetAudienceRegion: "east_asian" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/East Asian \(Chinese\/Korean\/Japanese\)/i);
+    expect(userMessage).toMatch(/always takes precedence/i);
+  });
+
+  it("defaults to the Thai/Southeast Asian region descriptor when targetAudienceRegion is omitted", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ targetAudienceRegion: undefined }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/Thai\/Southeast Asian/i);
+  });
+
+  it("the region instruction never overrides an explicit ethnicity/nationality already in the character's description", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(
+      baseParams({
+        targetAudienceRegion: "western",
+        description: "Description: a Japanese exchange student living in Bangkok",
+      }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    // Both the character's own description and the precedence rule must be
+    // present — the description text itself is untouched/unfiltered, and the
+    // region instruction explicitly defers to it.
+    expect(userMessage).toContain("Japanese exchange student");
+    expect(userMessage).toMatch(/description does not already/i);
+    expect(userMessage).toMatch(/always takes precedence/i);
   });
 
   it("falls back to the first character when character_id does not match characterKey", async () => {

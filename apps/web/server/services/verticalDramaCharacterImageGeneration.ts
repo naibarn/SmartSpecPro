@@ -30,6 +30,10 @@ import {
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import {
+  buildTargetAudienceRegionInstruction,
+  type VerticalDramaTargetAudienceRegion,
+} from "@shared/verticalDramaSeries/targetAudienceRegion";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -209,6 +213,49 @@ export function getRoleTierAppearanceDirective(role: string | null | undefined):
 }
 
 /* -------------------------------------------------------------------------- */
+/* Solo-portrait rule — MANDATORY (2026-07-06 quality fix).                   */
+/*                                                                            */
+/* Live evidence: a generated นางเอก portrait came out with a CHILD in frame  */
+/* because the visual-bible prompt narrated "single mother sacrificing for   */
+/* her child" straight from the character's backstory. Portrait/turnaround/  */
+/* sheet prompts are IDENTITY REFERENCES — they must contain exactly ONE     */
+/* person, no matter what the backstory mentions. The backstory may still    */
+/* shape mood/expression, it must never add people to the frame.            */
+/* -------------------------------------------------------------------------- */
+
+/** Appended to every visual-bible user prompt (all three generation paths —
+ *  portrait/turnaround/full-body/expression/outfit sheet share this one LLM
+ *  call, so one instruction here covers all of them). */
+export const VD_SOLO_PORTRAIT_INSTRUCTION =
+  "MANDATORY solo-portrait rule: every generated prompt (primary_portrait_prompt, " +
+  "turnaround_prompt, full_body_prompt, expression_sheet_prompt, outfit_sheet_prompt) is an " +
+  "IDENTITY REFERENCE and must depict EXACTLY ONE person — solo portrait, exactly one person " +
+  "in frame, no other people, no children, no second person, no hands of others, no crowd, no " +
+  "background figures. If the character's backstory or personality mentions other people " +
+  "(e.g. a child, a spouse, a rival), use that ONLY to inform this one character's mood, " +
+  "expression, or emotional state — NEVER render, imply, or add another person, body part of " +
+  "another person, or silhouette of another person into the frame.";
+
+/** Appended to the negative_prompt field for every generated prompt. */
+export const VD_SOLO_PORTRAIT_NEGATIVE_TERMS =
+  "no other people, no second person, no children, no extra person, no crowd, " +
+  "no background figures, no hands of others";
+
+/**
+ * Concise cinematic-language guidance (portrait lens spec, color grade, film
+ * grain/texture, key/rim lighting, out-of-focus storytelling background) —
+ * kept short enough to fit the shared 3500-char image-prompt cap alongside
+ * everything else already injected into this same LLM call.
+ */
+export const VD_CINEMATIC_LANGUAGE_INSTRUCTION =
+  "Render every portrait/turnaround/sheet prompt with full cinematic language: a portrait " +
+  "lens look (e.g. 85mm f/1.8, shallow depth of field), a cinematic color grade matching the " +
+  "series' tone/genre, subtle film grain and skin texture (not overly smooth/plastic), " +
+  "professional key light with a soft rim/edge light for separation, and a background that " +
+  "hints at story/location but stays clearly out of focus (bokeh) so it never competes with " +
+  "the subject.";
+
+/* -------------------------------------------------------------------------- */
 /* User-prompt construction — matches schemas/input.schema.json's shape       */
 /* (`story_context` is a STRING per that schema, not an object).              */
 /* -------------------------------------------------------------------------- */
@@ -242,6 +289,16 @@ export interface GenerateCharacterVisualPromptsParams {
   role: string | null;
   description?: string | null;
   storyContext?: StoryContextFields;
+  /**
+   * Series-level default region/ethnicity look (see
+   * `@shared/verticalDramaSeries/targetAudienceRegion.ts`). Optional —
+   * omitted/undefined normalizes to the shared default ("thai") inside
+   * `buildTargetAudienceRegionInstruction`. A character's own `description`
+   * (when it states an explicit ethnicity/nationality) always takes
+   * precedence over this default — the injected instruction says so
+   * explicitly.
+   */
+  targetAudienceRegion?: VerticalDramaTargetAudienceRegion;
 }
 
 function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
@@ -277,6 +334,10 @@ function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
             "character must reflect it.",
         ]
       : []),
+    VD_SOLO_PORTRAIT_INSTRUCTION,
+    `Also append these solo-portrait negative terms to every generated negative_prompt: "${VD_SOLO_PORTRAIT_NEGATIVE_TERMS}".`,
+    VD_CINEMATIC_LANGUAGE_INSTRUCTION,
+    buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
     "Return ONLY the JSON object described in your instructions — no markdown fences, no commentary.",
     VD_COMPACT_JSON_INSTRUCTION,
   ].join("\n\n");
@@ -399,9 +460,18 @@ export async function generateCharacterVisualPrompts(
     matched.outfit_sheet_prompt ??
     `${matched.primary_portrait_prompt}, wearing their signature outfit, full body`;
 
+  // Defensive merge (belt-and-suspenders alongside the system/user-prompt
+  // instructions above): guarantee the solo-portrait negative terms are
+  // present even if the LLM response omits them, for every one of the three
+  // generation paths (portrait/turnaround/sheet) that read this single
+  // `negative_prompt` field.
+  const negativePrompt = [matched.negative_prompt, VD_SOLO_PORTRAIT_NEGATIVE_TERMS]
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(", ");
+
   return {
     portraitPrompt: matched.primary_portrait_prompt,
-    negativePrompt: matched.negative_prompt,
+    negativePrompt,
     turnaroundPrompt,
     fullBodyPrompt,
     expressionSheetPrompt,

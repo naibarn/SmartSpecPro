@@ -77,6 +77,10 @@ import type {
 } from "@shared/verticalDramaSeries";
 import { VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT } from "@shared/verticalDramaSeries";
 import {
+  buildTargetAudienceRegionInstruction,
+  readTargetAudienceRegionFromBible,
+} from "@shared/verticalDramaSeries/targetAudienceRegion";
+import {
   verticalDramaEpisodePipeline,
   VerticalDramaEpisodePipeline,
   VERTICAL_DRAMA_PIPELINE_STAGES,
@@ -203,6 +207,36 @@ async function loadOwnedEpisode(owner: EpisodeRunOwner) {
   if (!row)
     throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
   return row;
+}
+
+/**
+ * Series-level target-audience region default (2026-07-06 character-prompt
+ * quality upgrade) — read `bible.targetAudienceRegion` for a caller-owned
+ * series. Used by every person-generating mutation in this router (angle
+ * grid, image repair) so the rendered person defaults to the series'
+ * configured region/ethnicity look unless the shot/character's own
+ * description overrides it. Returns the normalized default ("thai") when the
+ * series/bible/field is missing — never throws.
+ */
+async function loadSeriesTargetAudienceRegion(
+  tenantId: string,
+  userId: number,
+  seriesId: number
+) {
+  const [row] = await db
+    .select({ bible: verticalDramaSeries.bible })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, seriesId),
+        eq(verticalDramaSeries.tenantId, tenantId),
+        eq(verticalDramaSeries.userId, userId)
+      )
+    )
+    .limit(1);
+  return readTargetAudienceRegionFromBible(
+    (row?.bible as Record<string, unknown> | null) ?? null
+  );
 }
 
 /**
@@ -2590,6 +2624,12 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
+      // Series-level target-audience region — continuity-only note (the
+      // region is already baked into `frame.imagePrompt` by the start-frame
+      // planner; this is just a reminder so the 9-panel grid never drifts
+      // the region/ethnicity across panels).
+      const gridRegion = await loadSeriesTargetAudienceRegion(tenantId, userId, seriesId);
+
       // Storyboard-complete plan Phase 6.3: the previous prompt listed each
       // angle by NAME ("wide establishing shot", "close-up (pan)", etc.)
       // inside the same sentence the image model renders — several image
@@ -2607,6 +2647,7 @@ export const verticalDramaEpisodesRouter = router({
         "Render this EXACT same scene, subject, wardrobe, lighting, and moment as a single image containing a 3x3 grid of 9 panels — 3 rows, 3 columns, each panel a full 9:16 vertical frame with a thin visible divider between panels.",
         "Each of the 9 panels must show the SAME moment from a DIFFERENT camera angle/framing (for example: wide establishing shot, medium shot, close-up, over-the-shoulder, low angle, high angle, dutch angle, extreme close-up, three-quarter profile) — vary ONLY the camera position/framing per panel, purely through the photographed composition itself.",
         "Keep character identity, wardrobe, and lighting perfectly consistent across all 9 panels — only the camera position/framing changes.",
+        `Continuity note (region/ethnicity): ${buildTargetAudienceRegionInstruction(gridRegion)}`,
         "ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: do not render any captions, labels, titles, shot-type names, camera-angle names, panel numbers, watermarks, logos, subtitles, or any other typography or lettering in any panel or in the grid dividers. The grid must contain photographic content ONLY — no on-image text of any kind, in any language, anywhere in the frame.",
       ].join(" ");
       // Final-prompt QC (hard length cap) — enforced on the FINAL grid
@@ -2859,9 +2900,16 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
       });
 
+      // Series-level target-audience region — preservation directive so an
+      // image-to-image repair never drifts the character's region/ethnicity
+      // away from the series' configured default (the character's own
+      // description, already baked into the reference image, still wins).
+      const repairRegion = await loadSeriesTargetAudienceRegion(tenantId, userId, seriesId);
+
       const repairPrompt = [
         input.instruction.trim(),
         "Keep the same character identity, wardrobe (unless the instruction explicitly changes it), pose, composition, and framing as the reference image — apply ONLY the requested change.",
+        `Preservation directive (region/ethnicity): ${buildTargetAudienceRegionInstruction(repairRegion)}`,
       ].join(" ");
 
       // Final-prompt QC (hard length cap) — enforced on the final repair

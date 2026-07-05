@@ -43,6 +43,7 @@ import {
   type VerticalDramaPromptLanguage,
   type VerticalDramaDialogueLanguage,
 } from "@shared/verticalDramaSeries";
+import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import {
   verticalDramaSeriesMemoryService,
   type VerticalDramaSeriesMemoryService,
@@ -1284,6 +1285,25 @@ export class VerticalDramaEpisodePipeline {
       episode.startFramePlan as { selectedImageModelId?: string } | null
     )?.selectedImageModelId;
 
+    // Series-level target-audience region default (2026-07-06 quality
+    // upgrade) — read the series' `bible.targetAudienceRegion` so every
+    // rendered start-frame person defaults to the series' configured
+    // region/ethnicity look unless a character's own description overrides it.
+    const [seriesRow] = await db
+      .select({ bible: verticalDramaSeries.bible })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId)
+        )
+      )
+      .limit(1);
+    const targetAudienceRegion = readTargetAudienceRegionFromBible(
+      (seriesRow?.bible as Record<string, unknown> | null) ?? null
+    );
+
     return generateStartFrameRenderPlan({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -1292,6 +1312,7 @@ export class VerticalDramaEpisodePipeline {
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       durationSeconds: episode.targetDurationSeconds ?? 60,
       selectedImageModelId: existingSelectedImageModelId,
+      targetAudienceRegion,
       storyboardShots: shots.map(s => {
         // The real `storyboard_shotgrid` LLM output uses snake_case fields
         // (`shot_number`, `visual_description`, `camera` object, `characters`

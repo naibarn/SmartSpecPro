@@ -34,6 +34,13 @@ import {
   type VerticalDramaSeriesStatus,
 } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import { VerticalDramaDeleteSeriesDialog } from "@/components/verticalDramaSeries/VerticalDramaDeleteSeriesDialog";
+import {
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS,
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN,
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH,
+  normalizeTargetAudienceRegion,
+  type VerticalDramaTargetAudienceRegion,
+} from "@shared/verticalDramaSeries/targetAudienceRegion";
 
 const STATUS_OPTIONS: VerticalDramaSeriesStatus[] = [
   "draft",
@@ -95,6 +102,12 @@ export function VerticalDramaSettingsTab({
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+  const bibleRegion = normalizeTargetAudienceRegion(
+    (bible as { targetAudienceRegion?: unknown } | null | undefined)?.targetAudienceRegion,
+  );
+  const [regionInput, setRegionInput] =
+    useState<VerticalDramaTargetAudienceRegion>(bibleRegion);
+
   // Keep local form state in sync when the parent series data changes
   // (e.g. after a refetch triggered elsewhere).
   useEffect(() => {
@@ -103,6 +116,10 @@ export function VerticalDramaSettingsTab({
   useEffect(() => {
     setStatusInput((status as VerticalDramaSeriesStatus) ?? "draft");
   }, [status]);
+  useEffect(() => {
+    setRegionInput(bibleRegion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bibleRegion]);
 
   const utils = trpc.useUtils();
   const updateMutation = trpc.verticalDramaSeries.updateSeries.useMutation({
@@ -116,7 +133,19 @@ export function VerticalDramaSettingsTab({
     },
   });
 
+  const regionMutation = trpc.verticalDramaSeries.setSeriesTargetAudienceRegion.useMutation({
+    onSuccess: () => {
+      toast.success(lang === "th" ? "บันทึกกลุ่มผู้ชมเป้าหมายแล้ว" : "Target audience region saved");
+      void utils.verticalDramaSeries.get.invalidate();
+      onSaved?.();
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(err?.message || (lang === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save settings"));
+    },
+  });
+
   const dirty = titleInput !== title || statusInput !== status;
+  const regionDirty = regionInput !== bibleRegion;
 
   const b = (bible ?? {}) as SeriesOriginBible;
   const notSet = lang === "th" ? "ไม่ได้ระบุ" : "Not set";
@@ -205,6 +234,58 @@ export function VerticalDramaSettingsTab({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {lang === "th" ? "กลุ่มผู้ชมเป้าหมาย (ภูมิภาค)" : "Target audience (region)"}
+            </Label>
+            <Select
+              value={regionInput}
+              onValueChange={(v) => setRegionInput(v as VerticalDramaTargetAudienceRegion)}
+              disabled={readOnly || regionMutation.isPending}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>
+                    {lang === "th"
+                      ? VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH[opt]
+                      : VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN[opt]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {lang === "th"
+                ? "ใช้เป็นค่าเริ่มต้นสำหรับรูปลักษณ์/เชื้อชาติของภาพตัวละครทุกภาพ — คำอธิบายตัวละครที่ระบุเชื้อชาติ/สัญชาติไว้แล้วจะมีผลเหนือกว่าค่านี้เสมอ"
+                : "Used as the default look/ethnicity for every character image — a character's own description (when it states an ethnicity/nationality) always takes precedence over this default."}
+            </p>
+            {!readOnly && (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  regionMutation.mutate({ seriesId, targetAudienceRegion: regionInput })
+                }
+                disabled={regionMutation.isPending || !regionDirty}
+                className="w-fit gap-2"
+              >
+                {regionMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="h-4 w-4" aria-hidden="true" />
+                )}
+                {regionMutation.isPending
+                  ? lang === "th"
+                    ? "กำลังบันทึก…"
+                    : "Saving…"
+                  : lang === "th"
+                    ? "บันทึกกลุ่มผู้ชมเป้าหมาย"
+                    : "Save target audience"}
+              </Button>
+            )}
           </div>
 
           {!readOnly && (

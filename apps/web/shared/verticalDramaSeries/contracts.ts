@@ -104,6 +104,16 @@ export type VerticalDramaSeriesBible = {
   relationshipMap: VerticalDramaRelationship[];
   recurringProps: VerticalDramaProp[];
   continuityRules: string[];
+  /**
+   * Additive (2026-07-06 character-prompt quality upgrade) — the series'
+   * default target-audience region/ethnicity look, injected as a DEFAULT
+   * into every AI-generated person/character prompt. See
+   * `./targetAudienceRegion.ts` for the value set, English descriptor map,
+   * and the precedence rule (an explicit character `description` always
+   * wins). Optional — absent/unknown values normalize to `"thai"` via
+   * `normalizeTargetAudienceRegion`.
+   */
+  targetAudienceRegion?: import("./targetAudienceRegion").VerticalDramaTargetAudienceRegion;
 };
 
 /* -------------------------------------------------------------------------- */

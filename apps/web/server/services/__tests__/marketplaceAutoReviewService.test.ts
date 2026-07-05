@@ -3482,7 +3482,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(noTextPrompt).toContain("exactly 3 equal-height rows");
     expect(noTextPrompt).toContain("no collage/masonry layout");
     expect(noTextPrompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
-    expect(noTextPrompt).toContain("clean narrow gutters between panels");
+    expect(noTextPrompt).toContain(
+      "clean narrow solid black gutter lines"
+    );
     expect(noTextPrompt).toContain("Never split one panel into two cells");
     expect(noTextPrompt).toContain("measurement overlays");
     expect(noTextPrompt).toContain(
@@ -3497,7 +3499,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(allowTextPrompt).toContain("Short Thai overlay text is allowed");
     expect(allowTextPrompt).toContain("exactly 3 equal-width columns");
     expect(allowTextPrompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
-    expect(allowTextPrompt).toContain("clean narrow gutters between panels");
+    expect(allowTextPrompt).toContain(
+      "clean narrow solid black gutter lines"
+    );
     expect(allowTextPrompt).toContain("no collage/masonry layout");
     expect(allowTextPrompt).toContain("Never include video seconds");
     expect(allowTextPrompt).toContain(
@@ -3730,7 +3734,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prepared.prompt).toContain("one single 9:16 image");
     expect(prepared.prompt).toContain("strict 3x3 grid");
     expect(prepared.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
-    expect(prepared.prompt).toContain("clean narrow gutters between panels");
+    expect(prepared.prompt).toContain(
+      "clean narrow solid black gutter lines"
+    );
     expect(prepared.prompt).toContain("storyboard_guide:");
     expect(prepared.prompt).toContain("voiceover_script:");
     expect(prepared.prompt).toContain("product_detail:");
@@ -4659,7 +4665,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(prepared.prompt.length).toBeLessThanOrEqual(4900);
     expect(prepared.prompt.match(/VISUAL:/g)).toHaveLength(9);
     expect(prepared.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
-    expect(prepared.prompt).toContain("clean narrow gutters between panels");
+    expect(prepared.prompt).toContain(
+      "clean narrow solid black gutter lines"
+    );
     expect(prepared.prompt).not.toContain("PROMPT PREFLIGHT REPAIR PATCH");
   });
 
@@ -6550,7 +6558,9 @@ describe("marketplace auto review audio/video planning", () => {
     expect(restored.prompt).toContain("EXACTLY 9 PANELS / 9 CELLS ONLY");
     expect(restored.prompt).toContain("exactly 3 equal-width columns");
     expect(restored.prompt).toContain("exactly 3 equal-height rows");
-    expect(restored.prompt).toContain("clean narrow gutters between panels");
+    expect(restored.prompt).toContain(
+      "clean narrow solid black gutter lines"
+    );
     expect(restored.prompt).toContain("Never split one panel into two cells");
   });
 
@@ -8640,6 +8650,40 @@ describe("marketplace auto review audio/video planning", () => {
     // hardcoded module defaults so old runs keep their existing behavior.
     expect(legacyPolicy.maxRepairAttemptsPerUnit).toBe(3);
     expect(legacyPolicy.visionQaModel).toBe("gpt-4o-mini");
+  });
+
+  it("honors a user-selected visionQaModelOverride over the quality-mode default", () => {
+    const overriddenPolicy = buildMarketplaceAutoReviewQualityModePolicyForTest(
+      {
+        qualityMode: "premium_strict_qa",
+        visionQaModelOverride: "gemini-3-flash",
+      } as any
+    );
+    const defaultPolicy = buildMarketplaceAutoReviewQualityModePolicyForTest({
+      qualityMode: "premium_strict_qa",
+    } as any);
+
+    expect(overriddenPolicy.visionQaModel).toBe("gemini-3-flash");
+    expect(overriddenPolicy.visionQaModelSource).toBe("user_override");
+    expect(defaultPolicy.visionQaModel).toBe("gpt-4o");
+    expect(defaultPolicy.visionQaModelSource).toBe("quality_mode");
+  });
+
+  it("resolves visionQaModelOverride in effectiveQualityModePolicy even when the stored policy predates the override", () => {
+    const staleStoredPolicy = buildMarketplaceAutoReviewQualityModePolicyForTest(
+      { qualityMode: "premium_strict_qa" } as any
+    );
+    const metadataWithLateOverride = {
+      qualityModePolicy: staleStoredPolicy,
+      visionQaModelOverride: "gemini-3-flash",
+    } as any;
+
+    const resolved = effectiveQualityModePolicyForTest(
+      metadataWithLateOverride
+    );
+
+    expect(resolved.visionQaModel).toBe("gemini-3-flash");
+    expect(staleStoredPolicy.visionQaModel).toBe("gpt-4o");
   });
 
   it("links final QA artifact manifests into publishable package and Library metadata", () => {

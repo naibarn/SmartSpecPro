@@ -152,6 +152,21 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaShotVideoPrompt: vi.fn(),
 }));
 
+// `verticalDramaEpisodes.ts` imports `ensurePromptWithinLimit` from
+// `verticalDramaPromptQc.ts`, which itself imports `verticalDramaStoryBible.ts`
+// -> `enabledLlmModels.ts` -> `llmProviders.ts` (which needs `adminProcedure`,
+// not exported by this file's `../../_core/trpc` mock above). Mock the QC
+// module directly (pass-through: returns the prompt unchanged) so that
+// unrelated import chain never loads.
+vi.mock("../../services/verticalDramaPromptQc", () => ({
+  ensurePromptWithinLimit: vi.fn(async ({ prompt }: { prompt: string }) => ({
+    prompt,
+    refined: false,
+    creditsUsed: 0,
+    truncated: false,
+  })),
+}));
+
 import {
   assertModelSelectable,
   resolveEpisodeImageModelId,

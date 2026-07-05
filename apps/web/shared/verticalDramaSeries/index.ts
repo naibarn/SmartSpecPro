@@ -15,3 +15,5 @@ export * from "./providerRouting";
 export * from "./assembly";
 export * from "./storyboardHandoff";
 export * from "./artifacts";
+export * from "./targetAudienceRegion";
+export * from "./genrePresetCategories";

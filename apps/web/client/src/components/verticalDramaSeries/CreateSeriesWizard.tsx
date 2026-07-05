@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { genrePresetCategoryLabel } from "@shared/verticalDramaSeries";
 import { pickCopy, verticalDramaCopy, wizardSteps } from "./verticalDramaCopy";
 
 interface WizardState {
@@ -99,11 +100,15 @@ export function CreateSeriesWizard({
   const filteredPresets = useMemo(() => {
     const q = presetSearch.trim().toLowerCase();
     return presets.filter((p) => {
-      const matchesQuery = !q || p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+      const matchesQuery =
+        !q ||
+        p.title.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        genrePresetCategoryLabel(p.category, lang).toLowerCase().includes(q);
       const matchesCategory = presetCategory === "all" || p.category === presetCategory;
       return matchesQuery && matchesCategory;
     });
-  }, [presets, presetSearch, presetCategory]);
+  }, [presets, presetSearch, presetCategory, lang]);
 
   const productsQuery = trpc.marketplaceCapture.listProducts.useQuery(
     { query: productSearch || undefined, limit: 20 },
@@ -444,7 +449,7 @@ function WizardStep({
                 <SelectItem value="all">{th ? "ทุกหมวดหมู่" : "All categories"}</SelectItem>
                 {presetCategories.map((category) => (
                   <SelectItem key={category} value={category}>
-                    {category}
+                    {genrePresetCategoryLabel(category, lang)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -478,6 +483,9 @@ function WizardStep({
                         </Badge>
                       )}
                     </div>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground/80">
+                      {genrePresetCategoryLabel(preset.category, lang)}
+                    </p>
                     <p className="mt-0.5 line-clamp-2 text-muted-foreground">{preset.logline}</p>
                   </button>
                 ))}

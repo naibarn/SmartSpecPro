@@ -49,6 +49,11 @@ import ModelSelectorDialog, {
 import { MediaPromptPreview } from "@/components/chat/MediaPromptPreview";
 import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
 import type { VerticalDramaCharacterAsset } from "@shared/verticalDramaSeries/characterAssets";
+import {
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN,
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH,
+  normalizeTargetAudienceRegion,
+} from "@shared/verticalDramaSeries/targetAudienceRegion";
 
 /**
  * Best-effort character description for display — mirrors the server-side
@@ -243,6 +248,16 @@ export function VerticalDramaCharacterStockPanel({
   const seriesBible =
     (seriesQuery.data?.series as { bible?: Record<string, unknown> | null } | undefined)
       ?.bible ?? null;
+  /** Chip shown in this panel's header so users always know what
+   *  region/ethnicity default is currently applied to generated character
+   *  images (series settings tab is where it's changed). */
+  const targetAudienceRegion = normalizeTargetAudienceRegion(
+    seriesBible?.targetAudienceRegion,
+  );
+  const targetAudienceRegionLabel =
+    lang === "th"
+      ? VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH[targetAudienceRegion]
+      : VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN[targetAudienceRegion];
 
   const invalidate = () =>
     utils.verticalDramaCharacters.listCharacters.invalidate({ seriesId });
@@ -768,6 +783,19 @@ export function VerticalDramaCharacterStockPanel({
       aria-label={t(lang, "สต็อกตัวละคร", "Character stock")}
       className={cn("flex flex-col gap-4", className)}
     >
+      {/* Target-audience-region chip (2026-07-06 quality upgrade) — always
+          visible so users know which region/ethnicity default is currently
+          applied to every generated character image. Changed from the
+          Series Settings tab. */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-muted-foreground">
+          {t(lang, "ตัวละครในซีรีย์", "Series characters")}
+        </span>
+        <Badge variant="outline" className="gap-1 text-xs font-normal">
+          {t(lang, "กลุ่มผู้ชมเป้าหมาย", "Target audience")}: {targetAudienceRegionLabel}
+        </Badge>
+      </div>
+
       {/* Top-level 2-column layout (fix-round-4): the reference/import panel
           must start at the SAME vertical level as the character card grid,
           not below it — so the split is at the outermost level, not just

@@ -27,6 +27,7 @@ import {
   Search,
 } from "lucide-react";
 
+import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -243,6 +244,7 @@ export function VerticalDramaShell({
                 {pickCopy(lang, verticalDramaCopy.menuTitle)}
               </span>
             </div>
+            <LocaleToggle className="shrink-0" />
             <Button
               type="button"
               size="sm"

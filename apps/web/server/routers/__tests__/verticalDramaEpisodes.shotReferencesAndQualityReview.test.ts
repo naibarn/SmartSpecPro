@@ -200,6 +200,21 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaShotVideoPrompt: vi.fn(),
 }));
 
+// `verticalDramaEpisodes.ts` imports `ensurePromptWithinLimit` from
+// `verticalDramaPromptQc.ts`, which itself imports `verticalDramaStoryBible.ts`
+// -> `enabledLlmModels.ts` -> `llmProviders.ts` (which needs `adminProcedure`,
+// not exported by this file's `../../_core/trpc` mock above). Mock the QC
+// module directly (pass-through: returns the prompt unchanged) so that
+// unrelated import chain never loads.
+vi.mock("../../services/verticalDramaPromptQc", () => ({
+  ensurePromptWithinLimit: vi.fn(async ({ prompt }: { prompt: string }) => ({
+    prompt,
+    refined: false,
+    creditsUsed: 0,
+    truncated: false,
+  })),
+}));
+
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 import { mediaGenerationService } from "../../services/mediaGenerationService";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../../services/creditService";
@@ -870,7 +885,8 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
   it("generateStartFrameAngleVariations forwards idempotencyKey through to deductCredits", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
     mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
 
     await router.generateStartFrameAngleVariations({
@@ -922,7 +938,8 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
     mockCalculateCreditCost.mockReturnValueOnce(0);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])) // pricing lookup — zero-cost model
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
     mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
 
     const result = await router.generateStartFrameAngleVariations({
@@ -1158,7 +1175,8 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
   it("instructs no text/captions/labels/watermarks anywhere in the image, both in the prompt and the negative prompt", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
     mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
 
     await router.generateStartFrameAngleVariations({
@@ -1190,7 +1208,8 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
       .mockReturnValueOnce(
         selectChain([episodeRowWithStartFramePlan({ negativePrompt: undefined })]),
       )
-      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }]));
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }]))
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
     mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
 
     await router.generateStartFrameAngleVariations({
@@ -1315,7 +1334,8 @@ describe("repairShotImage (Phase 6.5)", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
     mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "repair-task-1" });
 
     const result = await router.repairShotImage({
@@ -1348,7 +1368,8 @@ describe("repairShotImage (Phase 6.5)", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
     mediaGenerationService.generateImageAsync = vi.fn().mockRejectedValue(new Error("submit failed"));
 
     await expect(

@@ -35,6 +35,10 @@ import {
 } from "../../drizzle/schema";
 import type { VerticalDramaStartFramePlan } from "@shared/verticalDramaSeries";
 import {
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS,
+  type VerticalDramaTargetAudienceRegion,
+} from "@shared/verticalDramaSeries/targetAudienceRegion";
+import {
   generateStoryBible,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -717,6 +721,52 @@ export const verticalDramaSeriesRouter = router({
       const [row] = await db
         .update(verticalDramaSeries)
         .set(updates)
+        .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+        .returning();
+
+      return { series: { ...row, id: String(row.id) } };
+    }),
+
+  /**
+   * Free (no paid generation) setting: the series' default target-audience
+   * region/ethnicity look, injected as a DEFAULT into every AI-generated
+   * person/character prompt (portraits, turnarounds, character sheets, start
+   * frames, angle-grid variations, image repairs) — see
+   * `@shared/verticalDramaSeries/targetAudienceRegion.ts` for the value set
+   * and the precedence rule (an explicit character `description` always
+   * wins over this default).
+   *
+   * Stored inside the EXISTING `bible` jsonb column (additive-only field,
+   * no migration) via a read-modify-write so this mutation never clobbers
+   * any other `bible` field a wizard/story-bible call already populated —
+   * unlike `updateSeries`, which replaces `bible` wholesale when the caller
+   * supplies it.
+   */
+  setSeriesTargetAudienceRegion: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        targetAudienceRegion: z.enum(VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      const existing = await loadOwnedSeries(tenantId, userId, seriesId);
+      const existingBible = (existing.bible as Record<string, unknown> | null) ?? {};
+      const nextBible: Record<string, unknown> = {
+        ...existingBible,
+        targetAudienceRegion: input.targetAudienceRegion satisfies VerticalDramaTargetAudienceRegion,
+      };
+
+      const [row] = await db
+        .update(verticalDramaSeries)
+        .set({ bible: nextBible, updatedAt: new Date() })
         .where(seriesOwnershipWhere(tenantId, userId, seriesId))
         .returning();
 

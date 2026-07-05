@@ -63,6 +63,7 @@ describe("hyperframesAutoPlanService", () => {
         shotCount: 7,
         platformPresetId: "tiktok_reels_shorts_9_16",
         renderEngine: "existing_ffmpeg_timeline",
+        visionQaModel: "gemini-3-flash",
       },
     });
 
@@ -73,6 +74,7 @@ describe("hyperframesAutoPlanService", () => {
       videoModel: "kling3/generate-kling-3-video",
       shotCount: 7,
       renderEngine: "hyperframes_composition",
+      visionQaModel: "gemini-3-flash",
     });
     expect(customizedPlan.defaults.platformPreset.presetId).toBe(
       "tiktok_reels_shorts_9_16"
@@ -83,6 +85,7 @@ describe("hyperframesAutoPlanService", () => {
       "imageModel",
       "videoModel",
       "qualityMode",
+      "visionQaModel",
       "platformPreset",
     ]);
     expect(customizedPlan.creditEstimate?.workerComplexityMultiplier).toBe(1.21);
@@ -92,6 +95,30 @@ describe("hyperframesAutoPlanService", () => {
     expect(customizedPlan.creditEstimate?.estimatedCredits).toBeGreaterThan(
       basePlan.creditEstimate?.estimatedCredits ?? 0
     );
+  });
+
+  it("defaults visionQaModel to null (auto by quality mode) when no override is provided", () => {
+    const plan = buildHyperframesAutoPlanFromState({
+      auth: { userId: 1, tenantId: "tenant_1" },
+      productId: "product_1",
+      productBundle: {
+        product: {
+          title: "Product",
+          selectedImageUrls: ["https://cdn.example.com/product.png"],
+        },
+      },
+      accessInput: {
+        flags: {
+          enabled: true,
+          tenantAllowed: true,
+          workerEnabled: true,
+        },
+      },
+      now: new Date("2026-06-04T00:00:00.000Z"),
+    });
+
+    expect(plan.defaults.visionQaModel).toBeNull();
+    expect(plan.overrideDiff.fields).not.toContain("visionQaModel");
   });
 
   it("blocks missing product anchor without hiding Standard Order", () => {

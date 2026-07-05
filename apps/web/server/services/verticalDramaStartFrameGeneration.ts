@@ -32,6 +32,10 @@ import {
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import {
+  buildTargetAudienceRegionInstruction,
+  type VerticalDramaTargetAudienceRegion,
+} from "@shared/verticalDramaSeries/targetAudienceRegion";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -228,6 +232,15 @@ export interface GenerateStartFrameRenderPlanParams {
     characterIds: string[];
     durationSeconds: number;
   }>;
+  /**
+   * Series-level default region/ethnicity look for every rendered person
+   * (see `@shared/verticalDramaSeries/targetAudienceRegion.ts`). Optional —
+   * omitted/undefined normalizes to the shared default ("thai"). Each
+   * character's own visual-bible `description` (already baked into the
+   * character reference images these start frames attach) always takes
+   * precedence over this series-level default.
+   */
+  targetAudienceRegion?: VerticalDramaTargetAudienceRegion;
 }
 
 function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
@@ -247,6 +260,7 @@ function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
       ? `Preferred image model: ${params.selectedImageModelId}`
       : null,
     `Storyboard shots (build exactly one start-frame render request per shot, 9 total):\n${shotLines}`,
+    buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)

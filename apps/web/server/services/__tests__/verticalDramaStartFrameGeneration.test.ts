@@ -186,6 +186,29 @@ describe("generateStartFrameRenderPlan", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
+  it("injects the default target-audience region descriptor into the LLM user prompt when provided", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStartFrameRenderPlan(baseParams({ targetAudienceRegion: "middle_eastern" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/Middle Eastern\/Arab/i);
+    expect(userMessage).toMatch(/always takes precedence/i);
+  });
+
+  it("defaults to the Thai/Southeast Asian region descriptor when targetAudienceRegion is omitted", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStartFrameRenderPlan(baseParams({ targetAudienceRegion: undefined }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/Thai\/Southeast Asian/i);
+  });
+
   it("throws RateLimitExceededError before checking credits or calling the LLM", async () => {
     mockIsAllowed.mockReturnValue(false);
     mockGetResetTime.mockReturnValue(15_000);
