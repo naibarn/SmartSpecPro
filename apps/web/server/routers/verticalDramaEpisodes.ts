@@ -28,7 +28,11 @@ import {
 } from "../../drizzle/schema";
 import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
-import { getModelsByTypeAsync, resolveVerticalDramaCapabilities } from "../services/modelRegistry";
+import {
+  getModelsByTypeAsync,
+  resolveVerticalDramaCapabilities,
+  deriveModelResolutionOptions,
+} from "../services/modelRegistry";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
 import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
 import { resolveMediaTransport } from "../services/mediaTransportResolver";
@@ -56,6 +60,7 @@ import {
   formatVideoClipRequest,
   type VerticalDramaClipDialogueLine,
 } from "../services/verticalDramaVideoPromptFormatter";
+import { generateVerticalDramaShotVideoPrompt } from "../services/verticalDramaVideoMotionPromptGeneration";
 import { VERTICAL_DRAMA_MEMORY_KINDS } from "@shared/verticalDramaSeries";
 import type {
   VerticalDramaMemoryKind,
@@ -63,6 +68,7 @@ import type {
   VerticalDramaSubShotPolicy,
   VerticalDramaStartFramePlan,
   VerticalDramaMotionPromptPack,
+  VerticalDramaShotgrid,
 } from "@shared/verticalDramaSeries";
 import { VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT } from "@shared/verticalDramaSeries";
 import {
@@ -677,6 +683,32 @@ export async function assertModelSelectable(
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: `Model "${modelId}" is currently disabled and cannot be selected`,
+    });
+  }
+}
+
+/**
+ * Validate a caller-supplied `resolution` against a model's derived
+ * `resolutionOptions` (storyboard-complete plan Phase 6.2b). If the model has
+ * NO resolution/size options at all (`deriveModelResolutionOptions` returns
+ * `undefined`), the requested value is silently ignored by the caller (not
+ * validated here) since there's nothing to validate against — a model with no
+ * resolution axis doesn't reject an unrelated `resolution` string, it simply
+ * never receives one downstream. Returns `undefined` when no validation is
+ * possible/needed so callers can tell "not applicable" apart from "valid".
+ */
+function assertResolutionOption(
+  pricingModel: { creditCost: number; configJson?: Record<string, any> | null },
+  resolution: string | undefined,
+): void {
+  if (!resolution) return;
+  const options = deriveModelResolutionOptions(pricingModel);
+  if (!options || options.length === 0) return;
+  const match = options.find((o) => o.value === resolution);
+  if (!match) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Invalid resolution "${resolution}" — supported values: ${options.map(o => o.value).join(", ")}`,
     });
   }
 }
@@ -2167,6 +2199,12 @@ export const verticalDramaEpisodesRouter = router({
         // MCP-transport (e.g. `higgsfield/*`, `magnific-mcp/*`) — see
         // `resolveVdMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        // Optional output resolution/size (storyboard-complete plan Phase
+        // 6.2b) — e.g. "1K"/"2K"/"4K" or "720p"/"1080p"/"4K" depending on the
+        // resolved model's `resolutionOptions` (`mediaModels.list`). Ignored
+        // if the model has no resolution axis; validated against the
+        // model's derived options otherwise.
+        resolution: z.string().trim().max(32).optional(),
         idempotencyKey,
       })
     )
@@ -2223,7 +2261,15 @@ export const verticalDramaEpisodesRouter = router({
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
-      const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
+      // Validate + recompute cost when the model has a resolution-tiered
+      // matrix (storyboard-complete plan Phase 6.2b) — `calculateCreditCost`
+      // ignores `resolution` entirely for flat-priced models, so this is
+      // always safe to pass through.
+      assertResolutionOption(pricingModel, input.resolution);
+      const imageCreditCost = calculateCreditCost(pricingModel, {
+        numImages: 1,
+        ...(input.resolution ? { resolution: input.resolution } : {}),
+      });
       // Zero-cost models (e.g. Higgsfield/Magnific MCP — billed via MCP
       // subscription, not credits) must skip the reserve/refund cycle
       // entirely: `deductCredits`/`refundCredits` throw on amount <= 0 by
@@ -2284,6 +2330,7 @@ export const verticalDramaEpisodesRouter = router({
             model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
+            ...(input.resolution ? { resolution: input.resolution } : {}),
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
             // Series provenance tag (project-scoped media panel filter) —
             // persisted verbatim into the media task's `parameters.extra_params`
@@ -2347,6 +2394,9 @@ export const verticalDramaEpisodesRouter = router({
         // Required only when the episode's selected image model is
         // MCP-transport — see `resolveVdMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        // Optional output resolution/size (storyboard-complete plan Phase
+        // 6.2b) — same convention as `generateStartFrameImage`.
+        resolution: z.string().trim().max(32).optional(),
         idempotencyKey,
       })
     )
@@ -2402,7 +2452,11 @@ export const verticalDramaEpisodesRouter = router({
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
-      const gridCreditCost = calculateCreditCost(pricingModel, { numImages: 2 });
+      assertResolutionOption(pricingModel, input.resolution);
+      const gridCreditCost = calculateCreditCost(pricingModel, {
+        numImages: 2,
+        ...(input.resolution ? { resolution: input.resolution } : {}),
+      });
       // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
       // entirely — see the matching comment in `generateStartFrameImage`.
       const shouldChargeGridCredits = gridCreditCost > 0;
@@ -2434,13 +2488,31 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
+      // Storyboard-complete plan Phase 6.3: the previous prompt listed each
+      // angle by NAME ("wide establishing shot", "close-up (pan)", etc.)
+      // inside the same sentence the image model renders — several image
+      // models interpret that as an instruction to actually PRINT that label
+      // as on-image text/caption per panel, producing burned-in text that
+      // makes the grid unusable as a Veo start frame (start frames must be
+      // pure photographic content, no overlay text). Fix: keep the angle
+      // DIVERSITY instruction (still lists example angles so the model still
+      // varies framing) but make the "no text anywhere in the image" rule
+      // extremely explicit and repeated, and mirror it into the negative
+      // prompt too so it's enforced on both sides of the request.
       const gridPrompt = [
         frame.imagePrompt,
         "",
         "Render this EXACT same scene, subject, wardrobe, lighting, and moment as a single image containing a 3x3 grid of 9 panels — 3 rows, 3 columns, each panel a full 9:16 vertical frame with a thin visible divider between panels.",
-        "Each of the 9 panels must show the SAME moment from a DIFFERENT camera angle/framing — for example: wide establishing shot, medium shot, close-up, over-the-shoulder, low angle, high angle, dutch angle, extreme close-up, three-quarter profile.",
+        "Each of the 9 panels must show the SAME moment from a DIFFERENT camera angle/framing (for example: wide establishing shot, medium shot, close-up, over-the-shoulder, low angle, high angle, dutch angle, extreme close-up, three-quarter profile) — vary ONLY the camera position/framing per panel, purely through the photographed composition itself.",
         "Keep character identity, wardrobe, and lighting perfectly consistent across all 9 panels — only the camera position/framing changes.",
+        "ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: do not render any captions, labels, titles, shot-type names, camera-angle names, panel numbers, watermarks, logos, subtitles, or any other typography or lettering in any panel or in the grid dividers. The grid must contain photographic content ONLY — no on-image text of any kind, in any language, anywhere in the frame.",
       ].join(" ");
+      const gridNegativePrompt = [
+        frame.negativePrompt,
+        "text, caption, captions, label, labels, title, titles, watermark, watermarks, logo, subtitle, subtitles, typography, lettering, writing, words, on-screen text, panel numbers, shot names, camera angle names",
+      ]
+        .filter((part): part is string => Boolean(part?.trim()))
+        .join(", ");
 
       // MCP-transport models — see the matching comment in `generateStartFrameImage`.
       const transportMetadata = await resolveVdMcpTransportMetadata({
@@ -2458,10 +2530,11 @@ export const verticalDramaEpisodesRouter = router({
         const task = await mediaGenerationService.generateImageAsync(
           {
             prompt: gridPrompt,
-            negativePrompt: frame.negativePrompt,
+            negativePrompt: gridNegativePrompt || undefined,
             model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
+            ...(input.resolution ? { resolution: input.resolution } : {}),
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
             // Series provenance tag — see generateStartFrameImage's comment.
             extraParams: { __vd_series_id: String(seriesId), __vd_episode_id: String(episodeId) },
@@ -2501,6 +2574,224 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Image-to-image repair for one shot's CURRENT approved start-frame image
+   * (storyboard-complete plan Phase 6.5) — "fix the existing image" (change
+   * wardrobe/background/etc.) rather than regenerating the whole shot from
+   * scratch. Loads the shot's `approvedMediaAssetId`, resolves its URL,
+   * submits it as the sole `referenceImageUrls` entry alongside an edit
+   * instruction + a preservation directive, through the exact same async
+   * submit + credit reserve/reconcile path every other Vertical Drama
+   * generation mutation uses (`generateImageAsync`, never a new path — see
+   * Section 4B). Returns only `{taskId, modelId, creditCost}`; the CLIENT is
+   * responsible for showing the result next to the original and calling the
+   * existing `setApprovedStartFrameAsset` to actually swap it in — this
+   * mutation never auto-replaces the approved asset itself.
+   */
+  repairShotImage: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        instruction: z.string().trim().min(1).max(2000),
+        idempotencyKey,
+        // Required only when the episode's selected image model is
+        // MCP-transport — see `resolveVdMcpTransportMetadata`.
+        mcpConnectionId: z.string().max(64).optional(),
+        // Optional output resolution/size (storyboard-complete plan Phase
+        // 6.2b) — same convention as `generateStartFrameImage`.
+        resolution: z.string().trim().max(32).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for image generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frame = plan?.frames?.find(f => f.shotNumber === input.shotNumber);
+      if (!plan || !frame) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `No start-frame plan for shot ${input.shotNumber} yet — generate the start-frame plan first`,
+        });
+      }
+      if (!frame.approvedMediaAssetId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Shot ${input.shotNumber} has no approved image yet — generate and approve a start frame before repairing it`,
+        });
+      }
+
+      const currentAssetId = Number(frame.approvedMediaAssetId);
+      const urlsByAssetId = await resolveMediaAssetUrlsByIds(tenantId, userId, [currentAssetId]);
+      const currentUrl = urlsByAssetId.get(currentAssetId);
+      if (!currentUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Shot ${input.shotNumber}'s approved image could not be resolved (deleted or inaccessible) — set a new approved image first`,
+        });
+      }
+
+      // Resolution order (spec Phase 1.2): episode-level selection →
+      // `DEFAULT_MODELS` — same resolver every other image mutation uses.
+      const resolvedImageModelId = await resolveEpisodeImageModelId(plan);
+
+      const [pricingRow] = await db
+        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
+        .limit(1);
+      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+
+      // Require the resolved model to actually accept an image input
+      // (`maxReferenceImages >= 1`, e.g. img2img/i2i) OR be an MCP-transport
+      // model whose provider supports image input — otherwise the "repair"
+      // request would silently be treated as pure text-to-image and ignore
+      // the current image entirely, which is worse than failing loudly.
+      const capabilities = resolveVerticalDramaCapabilities(resolvedImageModelId, {
+        type: "image",
+        configJson: pricingModel.configJson ?? undefined,
+      });
+      const modelSupportsImageInput = (capabilities.maxReferenceImages ?? 0) >= 1;
+      const mcpRoute = resolveMcpRouteFromModelId(resolvedImageModelId);
+      const modelTransport = resolveMediaModelTransportConfig({
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+      });
+      const isMcpImageCapable =
+        (modelTransport.transport === "mcp" || Boolean(mcpRoute.providerKey)) &&
+        Boolean(input.mcpConnectionId);
+      if (!modelSupportsImageInput && !isMcpImageCapable) {
+        const imageModels = await getModelsByTypeAsync("image");
+        const capableModelNames = imageModels
+          .filter((m) => {
+            const caps = resolveVerticalDramaCapabilities(m.id, {
+              type: "image",
+              configJson: m.configJson ?? undefined,
+            });
+            return (caps.maxReferenceImages ?? 0) >= 1 && m.isEnabled !== false;
+          })
+          .map((m) => m.name);
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            capableModelNames.length > 0
+              ? `The episode's selected image model ("${resolvedImageModelId}") does not accept an image input for repair. Switch the episode's image model to one of: ${capableModelNames.join(", ")}.`
+              : `The episode's selected image model ("${resolvedImageModelId}") does not accept an image input for repair, and no other image model in the catalog currently supports image input either.`,
+        });
+      }
+
+      assertResolutionOption(pricingModel, input.resolution);
+      const imageCreditCost = calculateCreditCost(pricingModel, {
+        numImages: 1,
+        ...(input.resolution ? { resolution: input.resolution } : {}),
+      });
+      // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
+      // entirely — see the matching comment in `generateStartFrameImage`.
+      const shouldChargeImageCredits = imageCreditCost > 0;
+      if (shouldChargeImageCredits) {
+        const hasCredits = await hasEnoughCredits(userId, imageCreditCost);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for image repair. Required: ${imageCreditCost}`,
+          });
+        }
+
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: imageCreditCost,
+          description: `Vertical Drama — image repair (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
+          sourceType: "media_image",
+          idempotencyKey: input.idempotencyKey,
+          metadata: {
+            feature: "vertical_drama_series",
+            seriesId,
+            episodeId,
+            shotNumber: input.shotNumber,
+            type: "reservation",
+            creditCost: imageCreditCost,
+            modelId: resolvedImageModelId,
+          },
+        });
+      }
+
+      // MCP-transport models — see the matching comment in `generateStartFrameImage`.
+      const transportMetadata = await resolveVdMcpTransportMetadata({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        idempotencyKey: input.idempotencyKey,
+      });
+
+      const repairPrompt = [
+        input.instruction.trim(),
+        "Keep the same character identity, wardrobe (unless the instruction explicitly changes it), pose, composition, and framing as the reference image — apply ONLY the requested change.",
+      ].join(" ");
+
+      const userToken = getStartFrameMediaUserToken(ctx);
+      try {
+        const task = await mediaGenerationService.generateImageAsync(
+          {
+            prompt: repairPrompt,
+            model: resolvedImageModelId,
+            numImages: 1,
+            aspectRatio: "9:16",
+            referenceImageUrls: [currentUrl],
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+            // Series provenance tag — see generateStartFrameImage's comment.
+            extraParams: { __vd_series_id: String(seriesId), __vd_episode_id: String(episodeId) },
+            publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
+            auditContext: {
+              userId,
+              traceId: crypto.randomUUID(),
+              source: "trpc.verticalDramaEpisodes.repairShotImage",
+              stage: "submission",
+            },
+          },
+          userToken
+        );
+        return { taskId: task.id, modelId: resolvedImageModelId, creditCost: imageCreditCost };
+      } catch (err) {
+        if (shouldChargeImageCredits) {
+          await refundCredits({
+            userId,
+            amount: imageCreditCost,
+            description: `Refund: image repair failed to submit (episode #${episodeId}, shot ${input.shotNumber})`,
+            sourceType: "media_image",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Image repair generation failed to submit",
+        });
+      }
+    }),
+
+  /**
    * Submit a single video clip's render via the episode-selected video model
    * — the paid render for ONE `motionPromptPack.clips[]` entry. Async submit
    * only (Section 4B hard constraint): returns a `taskId` immediately; the
@@ -2534,6 +2825,10 @@ export const verticalDramaEpisodesRouter = router({
         // Required only when the episode's selected video model is
         // MCP-transport — see `resolveVdMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        // Optional output resolution (storyboard-complete plan Phase
+        // 6.2b) — e.g. "720p"/"1080p"/"4K" per Veo's tiers. Same convention
+        // as `generateStartFrameImage`.
+        resolution: z.string().trim().max(32).optional(),
         idempotencyKey,
       }),
     )
@@ -2650,7 +2945,16 @@ export const verticalDramaEpisodesRouter = router({
         .from(mediaModels)
         .where(eq(mediaModels.modelId, model.id))
         .limit(1);
-      const videoCreditCost = pricingRow?.creditCost ?? model.creditCost ?? 10;
+      const videoPricingModel = pricingRow ?? { creditCost: model.creditCost ?? 10, configJson: model.configJson ?? null };
+      // Validate + recompute cost when the model has a resolution-tiered
+      // matrix (storyboard-complete plan Phase 6.2b, e.g. Veo 3.1's
+      // 720p/1080p/4K tiers) — previously this always used the model's flat
+      // `creditCost` regardless of resolution, silently under/over-charging
+      // relative to the tier actually requested downstream.
+      assertResolutionOption(videoPricingModel, input.resolution);
+      const videoCreditCost = calculateCreditCost(videoPricingModel, {
+        ...(input.resolution ? { resolution: input.resolution } : {}),
+      });
       // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
       // entirely — see the matching comment in `generateStartFrameImage`.
       const shouldChargeVideoCredits = videoCreditCost > 0;
@@ -2704,6 +3008,7 @@ export const verticalDramaEpisodesRouter = router({
             model: model.id,
             duration: clip.durationSeconds,
             aspectRatio: "9:16",
+            ...(input.resolution ? { resolution: input.resolution } : {}),
             ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
             extraParams: {
               generate_audio: formatted.generateAudio,
@@ -2753,6 +3058,191 @@ export const verticalDramaEpisodesRouter = router({
           message: err instanceof Error ? err.message : "Video clip generation failed to submit",
         });
       }
+    }),
+
+  /**
+   * Generate ONE shot's image-grounded video-clip prompt (Phase 6, §6.6b) via
+   * `generateVerticalDramaShotVideoPrompt` — analyzes the shot's current
+   * approved start-frame image (or its generating `imagePrompt` as a textual
+   * proxy when no vision-capable model is available) plus the storyboard
+   * shot's description/camera/emotion and any matching dialogue lines, then
+   * persists the resulting prompt + dialogue onto the matching
+   * `motionPromptPack.clips[]` entry (creating a minimal clip/pack when
+   * neither exists yet, mirroring `setEpisodeModelSelection`'s
+   * create-minimal-pack convention).
+   *
+   * Free-standing from `generateVideoMotionPromptPack` (the whole-pack LLM
+   * planning call) — this targets a single shot and is meant to be re-run
+   * per-shot without regenerating the entire pack.
+   */
+  generateShotVideoPrompt: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frame = plan?.frames?.find((f) => f.shotNumber === input.shotNumber);
+      const approvedMediaAssetId = frame?.approvedMediaAssetId
+        ? Number(frame.approvedMediaAssetId)
+        : undefined;
+      if (!approvedMediaAssetId || !Number.isInteger(approvedMediaAssetId) || approvedMediaAssetId <= 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "ต้องมีภาพหลักของช็อตก่อน",
+        });
+      }
+      const urlsByAssetId = await resolveMediaAssetUrlsByIds(tenantId, userId, [approvedMediaAssetId]);
+      const imageUrl = urlsByAssetId.get(approvedMediaAssetId);
+      if (!imageUrl) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "ต้องมีภาพหลักของช็อตก่อน",
+        });
+      }
+
+      // Shot context: description/camera/emotion from the storyboard shot.
+      const storyboard = row.storyboard as VerticalDramaShotgrid | null;
+      const storyboardShot = storyboard?.shots?.find((s) => s.shotNumber === input.shotNumber);
+
+      // Dialogue lines matching this shot (or a clip already sourced from it)
+      // from the raw `dialogueAudioPlan` skill output (snake_case
+      // `dialogue_lines[]` — same shape `syncDialogueOntoMotionPromptClips`
+      // reads in `verticalDramaVideoMotionPromptGeneration.ts`).
+      const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const matchingClip = pack?.clips?.find((c) =>
+        c.sourceShotNumbers?.includes(input.shotNumber),
+      );
+      const dialogueAudioPlan = row.dialogueAudioPlan as
+        | { dialogue_lines?: Array<Record<string, unknown>> }
+        | null;
+      const rawDialogueLines = Array.isArray(dialogueAudioPlan?.dialogue_lines)
+        ? (dialogueAudioPlan!.dialogue_lines as Array<Record<string, unknown>>)
+        : [];
+      const dialogueLines = rawDialogueLines
+        .filter((line) => {
+          const shotNumber = line.shot_number;
+          const clipNumber = line.clip_number;
+          if (typeof shotNumber === "number" && shotNumber === input.shotNumber) return true;
+          if (
+            matchingClip &&
+            typeof clipNumber === "number" &&
+            clipNumber === matchingClip.clipNumber
+          )
+            return true;
+          return false;
+        })
+        .map((line) => ({
+          characterKey:
+            typeof line.speaker_character_id === "string" ? line.speaker_character_id : undefined,
+          lineTh: typeof line.dialogue_line === "string" ? line.dialogue_line : "",
+          emotion: typeof line.emotion === "string" ? line.emotion : undefined,
+          delivery: line.delivery as
+            | { tone?: string; pace?: string; pauses?: string; texture?: string }
+            | undefined,
+          subtext: typeof line.subtext === "string" ? line.subtext : undefined,
+        }))
+        .filter((l) => l.lineTh.trim().length > 0);
+
+      // Resolve the episode-selected video model (Phase 1.2 resolution order).
+      const selectedVideoModel = await resolveEpisodeVideoModel(pack);
+
+      const result = await generateVerticalDramaShotVideoPrompt({
+        userId,
+        tenantId,
+        seriesId,
+        episodeId,
+        shotNumber: input.shotNumber,
+        imageUrl,
+        imagePrompt: frame?.imagePrompt,
+        shotContext: {
+          description: storyboardShot?.description,
+          camera: storyboardShot?.cameraSetup,
+          emotion: undefined,
+          dialogueLines: dialogueLines.length ? dialogueLines : undefined,
+        },
+        selectedVideoModelId: selectedVideoModel.id,
+        selectedVideoModel,
+        locale: "th",
+        idempotencyKey: input.idempotencyKey,
+      });
+
+      // Persist onto the matching clip — create a minimal clip entry if the
+      // pack exists but has no matching clip, or a minimal pack if the pack
+      // itself is entirely absent (mirrors `setEpisodeModelSelection`'s
+      // create-minimal-pack convention so the user's selected video model
+      // stays intact).
+      let updatedPack: VerticalDramaMotionPromptPack;
+      if (pack) {
+        const existingIndex = pack.clips.findIndex((c) =>
+          c.sourceShotNumbers?.includes(input.shotNumber),
+        );
+        const updatedClips = pack.clips.slice();
+        if (existingIndex === -1) {
+          updatedClips.push({
+            clipNumber: input.shotNumber,
+            sourceShotNumbers: [input.shotNumber],
+            prompt: result.prompt,
+            negativeMotionPrompt: result.negativeMotionPrompt,
+            durationSeconds: storyboardShot?.durationSeconds ?? 8,
+            dialogue: result.dialogue,
+          });
+        } else {
+          updatedClips[existingIndex] = {
+            ...updatedClips[existingIndex],
+            prompt: result.prompt,
+            negativeMotionPrompt: result.negativeMotionPrompt,
+            dialogue: result.dialogue,
+          };
+        }
+        updatedPack = { ...pack, clips: updatedClips };
+      } else {
+        updatedPack = {
+          selectedVideoModelId: selectedVideoModel.id,
+          durationProfileId: row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+          motionMode: "first_frame_to_video",
+          clips: [
+            {
+              clipNumber: input.shotNumber,
+              sourceShotNumbers: [input.shotNumber],
+              prompt: result.prompt,
+              negativeMotionPrompt: result.negativeMotionPrompt,
+              durationSeconds: storyboardShot?.durationSeconds ?? 8,
+              dialogue: result.dialogue,
+            },
+          ],
+          warnings: [],
+        };
+      }
+
+      await db
+        .update(verticalDramaEpisodes)
+        .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId),
+          ),
+        );
+
+      return {
+        prompt: result.prompt,
+        dialogue: result.dialogue,
+        creditsUsed: result.creditsUsed,
+        usedVision: result.usedVision,
+      };
     }),
 
   /* ------------------------------------------------------------------------ */

@@ -33,6 +33,7 @@ import {
   Sparkles,
   Trash2,
   Users,
+  Wand2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,10 @@ export type VerticalDramaCapableModel = MediaModel & {
   maxReferenceImages?: number;
   nativeAudioDialogue?: boolean;
   verticalDramaReady?: boolean;
+  /** Dynamic selectable output resolutions/sizes for this model (Phase 6.2),
+   *  mirroring `mediaModels.list`'s `resolutionOptions` — `undefined`/empty
+   *  means the model has no resolution signal, so no dropdown is shown. */
+  resolutionOptions?: Array<{ value: string; label: string; creditCost?: number }>;
 };
 
 /** A single shot's reference-image strip entry (Phase 2.5) — mirrors
@@ -288,6 +293,16 @@ interface VerticalDramaStoryboardPanelProps {
   mcpConnectionId?: string | null;
   onSelectMcpConnection?: (connectionId: string | null) => void;
 
+  /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ----
+   *  Shown only when the currently-selected image/video model has
+   *  `resolutionOptions` — persisted by the caller per series+model
+   *  (localStorage) and passed into every generate call for that media
+   *  type. */
+  selectedImageResolution?: string;
+  selectedVideoResolution?: string;
+  onSelectImageResolution?: (resolution: string) => void;
+  onSelectVideoResolution?: (resolution: string) => void;
+
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   /** `listShotReferences` result, keyed by shot number (Phase 2/D contract). */
   shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
@@ -354,6 +369,41 @@ interface VerticalDramaStoryboardPanelProps {
   /** Copies a suggested fix so the user can paste it into the repair dialog. */
   onCopySuggestedFix?: (suggestedFix: string) => void;
 
+  /* ---- Phase 6.5 — image-to-image repair dialog ---- */
+  /** Submits `repairShotImage` for a shot that already has an approved
+   *  image — async submit only; the caller polls and resolves the result
+   *  URL, then calls back into `onRepairImageResult` (success) or leaves the
+   *  dialog to show the error via `repairImageError`. */
+  onSubmitRepairImage?: (shotNumber: number, instruction: string) => void;
+  /** Non-null while a `repairShotImage` submit+poll is in flight for this shot. */
+  repairImageSubmittingForShot?: number | null;
+  /** The resolved BEFORE/AFTER pair once the repair task completes, keyed by
+   *  shot number — cleared once the user picks "use new" or "keep old". */
+  repairImageResultByShot?: Record<number, { beforeUrl: string; afterUrl: string }>;
+  /** Readable error message for the most recent repair attempt on this shot
+   *  (e.g. the PRECONDITION_FAILED "model doesn't support this" message). */
+  repairImageErrorByShot?: Record<number, string>;
+  /** User confirmed "ใช้ภาพใหม่" — caller resolves the AFTER url to a media
+   *  asset and calls `setApprovedStartFrameAsset`. */
+  onAcceptRepairImage?: (shotNumber: number) => void;
+  /** User confirmed "เก็บภาพเดิม" — caller just clears local repair state;
+   *  the generated image remains in history, untouched. */
+  onDiscardRepairImage?: (shotNumber: number) => void;
+  /** Opens/closes the repair dialog for a shot (caller owns which shot is open). */
+  repairImageDialogForShot?: number | null;
+  onOpenRepairImageDialog?: (shotNumber: number) => void;
+  onCloseRepairImageDialog?: () => void;
+
+  /* ---- Phase 6.6 — per-shot video prompt generation ---- */
+  /** Submits `generateShotVideoPrompt` for one shot (synchronous LLM call,
+   *  no polling) — disabled when the shot has no approved image yet. */
+  onGenerateShotVideoPrompt?: (shotNumber: number) => void;
+  generatingShotVideoPromptForShot?: ReadonlySet<number>;
+  /** True once the most recent `generateShotVideoPrompt` response for this
+   *  shot reported `usedVision: true` — shown as a small note next to the
+   *  video prompt box. */
+  usedVisionByShot?: Record<number, boolean>;
+
   className?: string;
 }
 
@@ -396,6 +446,10 @@ export function VerticalDramaStoryboardPanel({
   modelsLoading = false,
   mcpConnectionId = null,
   onSelectMcpConnection,
+  selectedImageResolution = "",
+  selectedVideoResolution = "",
+  onSelectImageResolution,
+  onSelectVideoResolution,
   shotReferencesByShot = {},
   onAddShotReference,
   onRemoveShotReference,
@@ -414,6 +468,18 @@ export function VerticalDramaStoryboardPanel({
   onRunQualityReview,
   runningQualityReview = false,
   onCopySuggestedFix,
+  onSubmitRepairImage,
+  repairImageSubmittingForShot = null,
+  repairImageResultByShot = {},
+  repairImageErrorByShot = {},
+  onAcceptRepairImage,
+  onDiscardRepairImage,
+  repairImageDialogForShot = null,
+  onOpenRepairImageDialog,
+  onCloseRepairImageDialog,
+  onGenerateShotVideoPrompt,
+  generatingShotVideoPromptForShot = EMPTY_SHOT_NUMBER_SET,
+  usedVisionByShot = {},
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
@@ -462,6 +528,22 @@ export function VerticalDramaStoryboardPanel({
     Record<number, Array<{ dataUrl: string; originalIndex: number }>>
   >({});
   const [splittingShot, setSplittingShot] = useState<number | null>(null);
+  /** Shots with a `splitImage()` call currently in flight (2026-07-05 fix —
+   *  "3x3 grid completed but the picker never appeared, buttons stuck
+   *  spinning"). Guarding re-entrancy with ONLY the `splittingShot`/
+   *  `angleCandidatesByShot` React state (as both effects below used to do)
+   *  is unsafe: `angleVariationGridUrlByShot` can change reference across
+   *  renders (e.g. right after the page's `persistAngleGrid` effect writes
+   *  the grid onto `startFramePlan` and the resulting refetch re-renders
+   *  this panel) BEFORE the `setSplittingShot(shotNumber)` state update from
+   *  the first call has committed — so the effect can re-run and read a
+   *  stale `splittingShot === null` closure, firing a SECOND concurrent
+   *  `splitImage()` for the same shot. Whichever call's promise resolves
+   *  last silently overwrites `angleCandidatesByShot`, and if that second
+   *  (redundant) call fails, the picker flips to the "split failed" state
+   *  even though the first call already had valid tiles — a plain `Set`
+   *  ref is synchronous (no commit-timing race) so it closes this window. */
+  const splitInFlightShotsRef = useRef<Set<number>>(new Set());
   /** Shot numbers already hydrated (or attempted) from a persisted
    *  `angleGrid` on mount/reload — prevents re-splitting on every render and
    *  prevents a freshly-dismissed-all shot (which clears `angleGrid` server
@@ -499,6 +581,12 @@ export function VerticalDramaStoryboardPanel({
   >(null);
   const [referenceDragOverShot, setReferenceDragOverShot] = useState<number | null>(null);
   const [qualityIssuesExpanded, setQualityIssuesExpanded] = useState(false);
+  /** Repair-image dialog (Phase 6.5) instruction draft, keyed by shot so
+   *  switching shots (closing one dialog, opening another) never leaks the
+   *  previous shot's typed text. */
+  const [repairImageInstructionByShot, setRepairImageInstructionByShot] = useState<
+    Record<number, string>
+  >({});
 
   // Split a completed multi-angle grid image into 9 candidates client-side
   // (reuses the same `imageGridSplitter` tool the character-reference
@@ -506,7 +594,9 @@ export function VerticalDramaStoryboardPanel({
   useEffect(() => {
     for (const [shotKey, gridUrl] of Object.entries(angleVariationGridUrlByShot)) {
       const shotNumber = Number(shotKey);
-      if (angleCandidatesByShot[shotNumber] || splittingShot === shotNumber) continue;
+      if (angleCandidatesByShot[shotNumber]) continue;
+      if (splitInFlightShotsRef.current.has(shotNumber)) continue;
+      splitInFlightShotsRef.current.add(shotNumber);
       setSplittingShot(shotNumber);
       splitImage(gridUrl, 3, 3, "image/jpeg", 0.92)
         .then(results => {
@@ -518,7 +608,10 @@ export function VerticalDramaStoryboardPanel({
         .catch(() => {
           setAngleCandidatesByShot(prev => ({ ...prev, [shotNumber]: [] }));
         })
-        .finally(() => setSplittingShot(null));
+        .finally(() => {
+          splitInFlightShotsRef.current.delete(shotNumber);
+          setSplittingShot(current => (current === shotNumber ? null : current));
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [angleVariationGridUrlByShot]);
@@ -538,9 +631,11 @@ export function VerticalDramaStoryboardPanel({
       const angleGrid = frame.angleGrid;
       if (!angleGrid?.imageUrl) continue;
       if (hydratedAngleGridShotsRef.current.has(shotNumber)) continue;
-      if (angleCandidatesByShot[shotNumber] || splittingShot === shotNumber) continue;
+      if (angleCandidatesByShot[shotNumber]) continue;
       if (angleVariationGridUrlByShot[shotNumber]) continue; // live-generation effect owns this one
+      if (splitInFlightShotsRef.current.has(shotNumber)) continue;
       hydratedAngleGridShotsRef.current.add(shotNumber);
+      splitInFlightShotsRef.current.add(shotNumber);
       const dismissed = new Set(angleGrid.dismissedIndexes ?? []);
       setSplittingShot(shotNumber);
       splitImage(angleGrid.imageUrl, 3, 3, "image/jpeg", 0.92)
@@ -558,7 +653,10 @@ export function VerticalDramaStoryboardPanel({
           // retry line in the picker's place instead (see render below).
           setAngleGridHydrationErrorShots(prev => new Set(prev).add(shotNumber));
         })
-        .finally(() => setSplittingShot(null));
+        .finally(() => {
+          splitInFlightShotsRef.current.delete(shotNumber);
+          setSplittingShot(current => (current === shotNumber ? null : current));
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startFramePlan?.frames]);
@@ -777,6 +875,34 @@ export function VerticalDramaStoryboardPanel({
                 onClick={() => setIsVideoModelDialogOpen(true)}
                 locale={locale}
                 testId="vd-storyboard-select-video-model"
+              />
+            ) : null}
+
+            {/* Resolution selectors (storyboard-complete plan Phase 6.2) —
+                one compact dropdown per media type, shown only when the
+                currently-selected model actually has `resolutionOptions`
+                (dynamic, read from the model's real catalog metadata — never
+                a hardcoded list). */}
+            {onSelectImageResolution && selectedImageModel?.resolutionOptions?.length ? (
+              <ResolutionSelect
+                label={t2.resolutionLabel}
+                autoLabel={t2.resolutionAuto}
+                options={selectedImageModel.resolutionOptions}
+                value={selectedImageResolution}
+                onChange={onSelectImageResolution}
+                creditSuffix={t2.capabilityCreditCost}
+                testId="vd-storyboard-select-image-resolution"
+              />
+            ) : null}
+            {onSelectVideoResolution && selectedVideoModel?.resolutionOptions?.length ? (
+              <ResolutionSelect
+                label={t2.resolutionLabel}
+                autoLabel={t2.resolutionAuto}
+                options={selectedVideoModel.resolutionOptions}
+                value={selectedVideoResolution}
+                onChange={onSelectVideoResolution}
+                creditSuffix={t2.capabilityCreditCost}
+                testId="vd-storyboard-select-video-resolution"
               />
             ) : null}
           </div>
@@ -1045,7 +1171,7 @@ export function VerticalDramaStoryboardPanel({
                 >
                   {generatingVideoPromptPack
                     ? t2.generatingVideoPromptPack
-                    : t2.generateVideoPromptPack}
+                    : t2.generateVideoPromptPackWholeEpisode}
                 </Button>
               </div>
             </div>
@@ -1066,7 +1192,7 @@ export function VerticalDramaStoryboardPanel({
               )}
               {generatingVideoPromptPack
                 ? t2.generatingVideoPromptPack
-                : t2.generateVideoPromptPack}
+                : t2.generateVideoPromptPackWholeEpisode}
             </Button>
           )}
         </div>
@@ -1144,6 +1270,22 @@ export function VerticalDramaStoryboardPanel({
                     data-testid={`vd-storyboard-change-image-${shotNumber}`}
                   >
                     {t(locale, "เปลี่ยนภาพ", "Change image")}
+                  </Button>
+                ) : null}
+                {/* Image-to-image repair (Phase 6.5) — only shown once this
+                    shot has an approved, resolvable image (nothing to repair
+                    otherwise). */}
+                {onOpenRepairImageDialog && asset?.url ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-1 text-xs"
+                    onClick={() => onOpenRepairImageDialog(shotNumber)}
+                    data-testid={`vd-storyboard-repair-image-${shotNumber}`}
+                  >
+                    <Wand2 aria-hidden="true" className="h-3 w-3" />
+                    {t2.repairImage}
                   </Button>
                 ) : null}
                 {onGeneratePromptAndImage ? (
@@ -1494,6 +1636,48 @@ export function VerticalDramaStoryboardPanel({
                   testIdPrefix={`vd-storyboard-video-prompt-${shotNumber}`}
                 />
 
+                {/* Per-shot video prompt generation (Phase 6.6) — the LLM
+                    analyzes the shot's ACTUAL approved image (image-grounded,
+                    not just character/description text), so this is disabled
+                    until an approved image exists. Repeatable: changing the
+                    image and clicking again regenerates the prompt from the
+                    new image. */}
+                {onGenerateShotVideoPrompt ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="w-fit gap-1.5 text-xs"
+                      onClick={() => onGenerateShotVideoPrompt(shotNumber)}
+                      disabled={
+                        !asset?.url || generatingShotVideoPromptForShot.has(shotNumber)
+                      }
+                      title={!asset?.url ? t2.generateShotVideoPromptNeedsImage : undefined}
+                      data-testid={`vd-storyboard-generate-shot-video-prompt-${shotNumber}`}
+                    >
+                      {generatingShotVideoPromptForShot.has(shotNumber) ? (
+                        <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles aria-hidden="true" className="h-3 w-3" />
+                      )}
+                      {generatingShotVideoPromptForShot.has(shotNumber)
+                        ? t2.generatingShotVideoPrompt
+                        : t2.generateShotVideoPrompt}
+                    </Button>
+                    {!asset?.url ? (
+                      <span className="text-[10px] text-muted-foreground">
+                        {t2.generateShotVideoPromptNeedsImage}
+                      </span>
+                    ) : usedVisionByShot[shotNumber] ? (
+                      <Badge variant="outline" className="gap-1 px-1.5 py-0 text-[9px]">
+                        <Sparkles aria-hidden="true" className="h-2.5 w-2.5" />
+                        {t2.usedVisionNote}
+                      </Badge>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {/* Dialogue box (Phase 3.4) — surfaces `clip.dialogue[]`,
                     synced automatically from `dialogueAudioPlan` onto the
                     motion prompt pack when it's generated. */}
@@ -1839,6 +2023,46 @@ export function VerticalDramaStoryboardPanel({
                   )}
                 </div>
               ) : null}
+
+              {/* Image-to-image repair dialog (Phase 6.5) */}
+              {repairImageDialogForShot === shotNumber ? (
+                <RepairImageDialog
+                  locale={locale}
+                  t={t2}
+                  shotNumber={shotNumber}
+                  beforeUrl={asset?.url}
+                  instruction={repairImageInstructionByShot[shotNumber] ?? ""}
+                  onInstructionChange={value =>
+                    setRepairImageInstructionByShot(prev => ({ ...prev, [shotNumber]: value }))
+                  }
+                  submitting={repairImageSubmittingForShot === shotNumber}
+                  result={repairImageResultByShot[shotNumber]}
+                  error={repairImageErrorByShot[shotNumber]}
+                  onSubmit={() =>
+                    onSubmitRepairImage?.(
+                      shotNumber,
+                      (repairImageInstructionByShot[shotNumber] ?? "").trim()
+                    )
+                  }
+                  onAccept={() => {
+                    onAcceptRepairImage?.(shotNumber);
+                    setRepairImageInstructionByShot(prev => {
+                      const next = { ...prev };
+                      delete next[shotNumber];
+                      return next;
+                    });
+                  }}
+                  onDiscard={() => {
+                    onDiscardRepairImage?.(shotNumber);
+                    setRepairImageInstructionByShot(prev => {
+                      const next = { ...prev };
+                      delete next[shotNumber];
+                      return next;
+                    });
+                  }}
+                  onClose={() => onCloseRepairImageDialog?.()}
+                />
+              ) : null}
             </div>
           );
         })}
@@ -2003,6 +2227,49 @@ function ModelPickerButton({
         </span>
       ) : null}
     </button>
+  );
+}
+
+/** Compact resolution/size dropdown (Phase 6.2) — options come straight from
+ *  the selected model's `resolutionOptions` (dynamic per-model, from
+ *  `mediaModels.list`), so a model with no such metadata never renders this
+ *  at all (checked by the caller before mounting). An empty `value` means
+ *  "use the model's default" (no `resolution` sent to the generate call). */
+function ResolutionSelect({
+  label,
+  autoLabel,
+  options,
+  value,
+  onChange,
+  creditSuffix,
+  testId,
+}: {
+  label: string;
+  autoLabel: string;
+  options: Array<{ value: string; label: string; creditCost?: number }>;
+  value: string;
+  onChange: (value: string) => void;
+  creditSuffix: string;
+  testId: string;
+}) {
+  return (
+    <label className="flex flex-col items-start gap-1 rounded-md border border-border bg-background px-3 py-2 text-left">
+      <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      <select
+        className="bg-transparent text-xs font-medium outline-none"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        data-testid={testId}
+      >
+        <option value="">{autoLabel}</option>
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+            {opt.creditCost != null ? ` — ${vdCopyWithCount(creditSuffix, opt.creditCost)}` : ""}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -2504,6 +2771,171 @@ function ClipDialogueBox({
           </Button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** Image-to-image repair dialog (Phase 6.5) — shows the current approved
+ *  image + an instruction textarea + cost display, submits `repairShotImage`
+ *  (async submit + poll, owned by the caller), then shows a BEFORE/AFTER
+ *  comparison once the result resolves, with explicit "use new" / "keep old"
+ *  actions. Follows the same fixed-overlay `role="alertdialog"` pattern the
+ *  panel's other confirm dialogs use (no new Dialog primitive introduced). */
+function RepairImageDialog({
+  locale,
+  t: t2,
+  shotNumber,
+  beforeUrl,
+  instruction,
+  onInstructionChange,
+  submitting,
+  result,
+  error,
+  onSubmit,
+  onAccept,
+  onDiscard,
+  onClose,
+}: {
+  locale: Lang;
+  t: ReturnType<typeof vdCopy>;
+  shotNumber: number;
+  beforeUrl?: string;
+  instruction: string;
+  onInstructionChange: (value: string) => void;
+  submitting: boolean;
+  result?: { beforeUrl: string; afterUrl: string };
+  error?: string;
+  onSubmit: () => void;
+  onAccept: () => void;
+  onDiscard: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label={t2.repairImageDialogTitle}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-lg"
+        onClick={e => e.stopPropagation()}
+        data-testid={`vd-storyboard-repair-image-dialog-${shotNumber}`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <Wand2 aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {t2.repairImageDialogTitle}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0"
+            onClick={onClose}
+            aria-label={t(locale, "ปิด", "Close")}
+          >
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        {result ? (
+          <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {t2.repairImageBefore}
+                </span>
+                <div className="aspect-[9/16] w-full overflow-hidden rounded-md border border-border bg-muted">
+                  <img src={result.beforeUrl} alt={t2.repairImageBefore} className="h-full w-full object-cover" />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  {t2.repairImageAfter}
+                </span>
+                <div className="aspect-[9/16] w-full overflow-hidden rounded-md border border-primary/50 bg-muted">
+                  <img src={result.afterUrl} alt={t2.repairImageAfter} className="h-full w-full object-cover" />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onDiscard}
+                data-testid={`vd-storyboard-repair-image-keep-old-${shotNumber}`}
+              >
+                {t2.repairImageKeepOld}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={onAccept}
+                data-testid={`vd-storyboard-repair-image-use-new-${shotNumber}`}
+              >
+                <Check aria-hidden="true" className="h-3 w-3" />
+                {t2.repairImageUseNew}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {beforeUrl ? (
+              <div className="mx-auto aspect-[9/16] w-32 overflow-hidden rounded-md border border-border bg-muted">
+                <img src={beforeUrl} alt={t2.repairImageBefore} className="h-full w-full object-cover" />
+              </div>
+            ) : null}
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium">{t2.repairImageInstructionLabel}</span>
+              <Textarea
+                value={instruction}
+                onChange={e => onInstructionChange(e.target.value)}
+                rows={3}
+                placeholder={t2.repairImageInstructionPlaceholder}
+                className="text-xs"
+                autoFocus
+                disabled={submitting}
+                data-testid={`vd-storyboard-repair-image-textarea-${shotNumber}`}
+              />
+            </label>
+            {error ? (
+              <p className="flex items-start gap-1.5 text-xs text-destructive">
+                <AlertTriangle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{error}</span>
+              </p>
+            ) : null}
+            {submitting ? (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                {t2.repairImageWorking}
+              </p>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={onClose} disabled={submitting}>
+                {t(locale, "ยกเลิก", "Cancel")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1"
+                onClick={onSubmit}
+                disabled={submitting || instruction.trim().length === 0}
+                data-testid={`vd-storyboard-repair-image-submit-${shotNumber}`}
+              >
+                {submitting ? (
+                  <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Wand2 aria-hidden="true" className="h-3 w-3" />
+                )}
+                {submitting ? t2.repairImageSubmitting : t2.repairImageSubmit}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

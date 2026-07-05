@@ -117,6 +117,44 @@ function storeSeriesModelDefault(
   window.localStorage.setItem(vdModelStorageKey(seriesId, kind), modelId);
 }
 
+/** Per-series, per-model last-picked resolution/size (storyboard-complete
+ *  plan Phase 6.2) — keyed by BOTH series and model id so switching models
+ *  never applies a stale resolution value the new model doesn't even offer
+ *  (the panel only renders the dropdown when the model's own
+ *  `resolutionOptions` contains the persisted value; an unmatched value
+ *  simply falls back to "" — the model's default — via `selectedImageModel`/
+ *  `selectedVideoModel` lookups in the panel itself). */
+function vdResolutionStorageKey(
+  seriesId: string,
+  kind: "image" | "video",
+  modelId: string
+): string {
+  return `smartspec_vd_series_${seriesId}_${kind}_resolution_${modelId}`;
+}
+
+function readStoredResolution(
+  seriesId: string,
+  kind: "image" | "video",
+  modelId: string
+): string {
+  if (typeof window === "undefined" || !seriesId || !modelId) return "";
+  return window.localStorage.getItem(vdResolutionStorageKey(seriesId, kind, modelId)) || "";
+}
+
+function storeResolution(
+  seriesId: string,
+  kind: "image" | "video",
+  modelId: string,
+  resolution: string
+): void {
+  if (typeof window === "undefined" || !seriesId || !modelId) return;
+  if (resolution) {
+    window.localStorage.setItem(vdResolutionStorageKey(seriesId, kind, modelId), resolution);
+  } else {
+    window.localStorage.removeItem(vdResolutionStorageKey(seriesId, kind, modelId));
+  }
+}
+
 /** Last-picked MCP connection id (Higgsfield/Magnific etc. — creditCost 0
  *  MCP-transport models). A single global key (not per-series) — this is
  *  the same intent as Media Studio's own in-memory MCP connection choice,
@@ -909,6 +947,33 @@ function EpisodeWorkspaceShell({
     });
   };
 
+  /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ----
+   *  Persisted per series+model (not per-episode/server-side) — purely a
+   *  client-side generation-time input, same convention as the MCP
+   *  connection id below. Re-read on every render (not `useState`) so
+   *  switching models immediately reflects that model's own last-picked
+   *  resolution instead of carrying over the previous model's value. */
+  const [imageResolutionTick, setImageResolutionTick] = useState(0);
+  const [videoResolutionTick, setVideoResolutionTick] = useState(0);
+  const selectedImageResolution = useMemo(
+    () => readStoredResolution(seriesId, "image", selectedImageModelId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [seriesId, selectedImageModelId, imageResolutionTick]
+  );
+  const selectedVideoResolution = useMemo(
+    () => readStoredResolution(seriesId, "video", selectedVideoModelId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [seriesId, selectedVideoModelId, videoResolutionTick]
+  );
+  const handleSelectImageResolution = (resolution: string) => {
+    storeResolution(seriesId, "image", selectedImageModelId, resolution);
+    setImageResolutionTick(v => v + 1);
+  };
+  const handleSelectVideoResolution = (resolution: string) => {
+    storeResolution(seriesId, "video", selectedVideoModelId, resolution);
+    setVideoResolutionTick(v => v + 1);
+  };
+
   // MCP connection selection (Phase — MCP-transport model wiring). A single
   // connection id, shared across the image/video pickers here (mirrors
   // Media Studio's own single-connection assumption) — persisted so a
@@ -1310,6 +1375,7 @@ function EpisodeWorkspaceShell({
           shotNumber,
           idempotencyKey: crypto.randomUUID(),
           mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+          resolution: selectedImageResolution || undefined,
         });
       } else {
         generateStartFrameImageMutation.mutate({
@@ -1318,6 +1384,7 @@ function EpisodeWorkspaceShell({
           shotNumber,
           idempotencyKey: crypto.randomUUID(),
           mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+          resolution: selectedImageResolution || undefined,
         });
       }
     } catch (err) {
@@ -1538,6 +1605,248 @@ function EpisodeWorkspaceShell({
       },
       onError: err => toast.error(err.message),
     });
+
+  /* ---- Phase 6.5 — image-to-image repair dialog (`repairShotImage`) ----
+   *  Async submit + poll like every other real generation here: submit ->
+   *  `taskId` -> poll `media.getTask` -> the result URL is shown as the
+   *  dialog's AFTER image WITHOUT auto-replacing the shot's approved image;
+   *  the user explicitly picks "ใช้ภาพใหม่" (resolve + setApprovedStartFrameAsset)
+   *  or "เก็บภาพเดิม" (discard — the generated image stays in Media History,
+   *  untouched). */
+  const [repairImageDialogForShot, setRepairImageDialogForShot] = useState<
+    number | null
+  >(null);
+  const [repairImageSubmittingForShot, setRepairImageSubmittingForShot] =
+    useState<number | null>(null);
+  const [repairImageResultByShot, setRepairImageResultByShot] = useState<
+    Record<number, { beforeUrl: string; afterUrl: string }>
+  >({});
+  const [repairImageErrorByShot, setRepairImageErrorByShot] = useState<
+    Record<number, string>
+  >({});
+  /** Guards against the poll loop and a subsequent "accept" resolving the
+   *  same shot's state out of order if the user closes/reopens the dialog
+   *  quickly (recent race lesson — always clear loading flags in `finally`
+   *  AND guard re-entrancy with a ref, not just React state). */
+  const repairImagePollInFlightRef = useRef<Set<number>>(new Set());
+
+  const repairShotImageMutation =
+    trpc.verticalDramaEpisodes.repairShotImage.useMutation({
+      onError: (err, variables) => {
+        setRepairImageSubmittingForShot(current =>
+          current === variables.shotNumber ? null : current
+        );
+        setRepairImageErrorByShot(prev => ({
+          ...prev,
+          [variables.shotNumber]:
+            err.data?.code === "PRECONDITION_FAILED"
+              ? err.message
+              : lang === "th"
+                ? "สร้างภาพที่แก้ไม่สำเร็จ"
+                : "Failed to generate the fixed image.",
+        }));
+      },
+    });
+
+  async function pollRepairImageTask(
+    taskId: string,
+    shotNumber: number,
+    beforeUrl: string
+  ) {
+    if (repairImagePollInFlightRef.current.has(shotNumber)) return;
+    repairImagePollInFlightRef.current.add(shotNumber);
+    try {
+      for (let attempt = 0; attempt < 120; attempt++) {
+        const task = await utils.media.getTask.fetch({ taskId });
+        const status = (task as { status?: string } | null)?.status;
+        if (status === "completed") {
+          const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
+          if (!resultUrl) {
+            setRepairImageErrorByShot(prev => ({
+              ...prev,
+              [shotNumber]:
+                lang === "th"
+                  ? "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์"
+                  : "Generation completed but no result URL.",
+            }));
+            return;
+          }
+          setRepairImageResultByShot(prev => ({
+            ...prev,
+            [shotNumber]: { beforeUrl, afterUrl: resultUrl },
+          }));
+          return;
+        }
+        if (status === "failed") {
+          const errorMessage = (task as { errorMessage?: string } | null)?.errorMessage;
+          setRepairImageErrorByShot(prev => ({
+            ...prev,
+            [shotNumber]:
+              lang === "th"
+                ? `สร้างภาพที่แก้ไม่สำเร็จ${errorMessage ? `: ${errorMessage}` : ""}`
+                : `Failed to generate the fixed image${errorMessage ? `: ${errorMessage}` : ""}`,
+          }));
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      setRepairImageErrorByShot(prev => ({
+        ...prev,
+        [shotNumber]:
+          lang === "th"
+            ? "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง"
+            : "Generation is taking too long — check back later.",
+      }));
+    } finally {
+      repairImagePollInFlightRef.current.delete(shotNumber);
+      setRepairImageSubmittingForShot(current =>
+        current === shotNumber ? null : current
+      );
+    }
+  }
+
+  function handleSubmitRepairImage(shotNumber: number, instruction: string) {
+    if (!instruction.trim()) return;
+    if (!requireMcpConnectionOrToast("image")) return;
+    const plan = episodeDetailQuery.data?.startFramePlan;
+    const frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
+    const assetId = frame?.approvedMediaAssetId;
+    const beforeUrl = assetId
+      ? (episodeDetailQuery.data?.assetUrls as VerticalDramaAssetUrlMap | undefined)?.[assetId]
+          ?.url
+      : undefined;
+    if (!beforeUrl) {
+      setRepairImageErrorByShot(prev => ({
+        ...prev,
+        [shotNumber]: lang === "th" ? "ต้องมีภาพหลักของช็อตก่อน" : "This shot needs an approved image first.",
+      }));
+      return;
+    }
+    setRepairImageSubmittingForShot(shotNumber);
+    setRepairImageErrorByShot(prev => {
+      if (!(shotNumber in prev)) return prev;
+      const next = { ...prev };
+      delete next[shotNumber];
+      return next;
+    });
+    repairShotImageMutation.mutate(
+      {
+        seriesId,
+        episodeId,
+        shotNumber,
+        instruction,
+        idempotencyKey: crypto.randomUUID(),
+        mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+        resolution: selectedImageResolution || undefined,
+      },
+      {
+        onSuccess: data => {
+          void pollRepairImageTask(data.taskId, shotNumber, beforeUrl);
+        },
+      }
+    );
+  }
+
+  async function handleAcceptRepairImage(shotNumber: number) {
+    const result = repairImageResultByShot[shotNumber];
+    if (!result) return;
+    try {
+      const resolved = await resolveMediaAssetForImportMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: result.afterUrl,
+        mimeType: "image/png",
+      });
+      await setApprovedStartFrameAssetMutation.mutateAsync({
+        seriesId,
+        episodeId,
+        shotNumber,
+        mediaAssetId: resolved.mediaAssetId,
+      });
+      toast.success(
+        lang === "th" ? "เปลี่ยนเป็นภาพใหม่แล้ว" : "Replaced with the new image."
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : lang === "th"
+            ? "เปลี่ยนภาพไม่สำเร็จ"
+            : "Failed to apply the new image"
+      );
+      return;
+    } finally {
+      setRepairImageResultByShot(prev => {
+        const next = { ...prev };
+        delete next[shotNumber];
+        return next;
+      });
+      setRepairImageDialogForShot(null);
+    }
+  }
+
+  function handleDiscardRepairImage(shotNumber: number) {
+    setRepairImageResultByShot(prev => {
+      const next = { ...prev };
+      delete next[shotNumber];
+      return next;
+    });
+    setRepairImageDialogForShot(null);
+    toast.success(
+      lang === "th"
+        ? "เก็บภาพเดิมไว้ — ภาพใหม่ยังอยู่ในประวัติ"
+        : "Kept the original image — the new one stays in history."
+    );
+  }
+
+  function handleCloseRepairImageDialog() {
+    setRepairImageDialogForShot(null);
+  }
+
+  /* ---- Phase 6.6 — per-shot video prompt generation (`generateShotVideoPrompt`) ----
+   *  Synchronous LLM call (no polling) — the LLM analyzes the shot's actual
+   *  approved image. Refetches `getEpisodeDetail` on success so the video
+   *  prompt box + dialogue lines reflect the server-persisted result. */
+  const [generatingShotVideoPromptForShot, setGeneratingShotVideoPromptForShot] =
+    useState<Set<number>>(new Set());
+  const [usedVisionByShot, setUsedVisionByShot] = useState<Record<number, boolean>>(
+    {}
+  );
+
+  const generateShotVideoPromptMutation =
+    trpc.verticalDramaEpisodes.generateShotVideoPrompt.useMutation({
+      onError: (err, variables) => {
+        if (err.data?.code === "PRECONDITION_FAILED") {
+          toast.error(
+            lang === "th"
+              ? "ต้องมีภาพหลักของช็อตก่อน"
+              : "This shot needs an approved image first."
+          );
+          return;
+        }
+        toast.error(err.message);
+      },
+      onSettled: (_data, _err, variables) => {
+        setGeneratingShotVideoPromptForShot(prev => {
+          const next = new Set(prev);
+          next.delete(variables.shotNumber);
+          return next;
+        });
+      },
+    });
+
+  function handleGenerateShotVideoPrompt(shotNumber: number) {
+    setGeneratingShotVideoPromptForShot(prev => new Set(prev).add(shotNumber));
+    generateShotVideoPromptMutation.mutate(
+      { seriesId, episodeId, shotNumber, idempotencyKey: crypto.randomUUID() },
+      {
+        onSuccess: data => {
+          setUsedVisionByShot(prev => ({ ...prev, [shotNumber]: data.usedVision }));
+          void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        },
+      }
+    );
+  }
 
   // `storyboardReviewId` is cast defensively: the `getEpisodeDetail` procedure
   // is gaining this field from a parallel backend change (contract: string |
@@ -1796,6 +2105,7 @@ function EpisodeWorkspaceShell({
               shotNumber,
               idempotencyKey: crypto.randomUUID(),
               mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+              resolution: selectedImageResolution || undefined,
             });
           },
           generatingStartFrameImageForShot: pollingStartFrameShots,
@@ -1813,6 +2123,7 @@ function EpisodeWorkspaceShell({
                 shotNumber,
                 idempotencyKey: crypto.randomUUID(),
                 mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+                resolution: selectedImageResolution || undefined,
               });
             });
           },
@@ -1831,6 +2142,7 @@ function EpisodeWorkspaceShell({
               shotNumber,
               idempotencyKey: crypto.randomUUID(),
               mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+              resolution: selectedImageResolution || undefined,
             });
           },
           generatingAngleVariationsForShot:
@@ -1851,6 +2163,10 @@ function EpisodeWorkspaceShell({
           modelsLoading: imageModelsQuery.isLoading || videoModelsQuery.isLoading,
           mcpConnectionId,
           onSelectMcpConnection: handleSelectMcpConnection,
+          selectedImageResolution,
+          selectedVideoResolution,
+          onSelectImageResolution: handleSelectImageResolution,
+          onSelectVideoResolution: handleSelectVideoResolution,
           shotReferencesByShot,
           onAddShotReference: handleAddShotReference,
           onRemoveShotReference: handleRemoveShotReference,
@@ -1865,6 +2181,7 @@ function EpisodeWorkspaceShell({
               clipNumber,
               idempotencyKey: crypto.randomUUID(),
               mcpConnectionId: videoModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+              resolution: selectedVideoResolution || undefined,
             });
           },
           generatingVideoClipForClip: pollingVideoClips,
@@ -1883,6 +2200,18 @@ function EpisodeWorkspaceShell({
             }),
           runningQualityReview: runQualityReviewMutation.isPending,
           onCopySuggestedFix: handleCopySuggestedFix,
+          onSubmitRepairImage: handleSubmitRepairImage,
+          repairImageSubmittingForShot,
+          repairImageResultByShot,
+          repairImageErrorByShot,
+          onAcceptRepairImage: handleAcceptRepairImage,
+          onDiscardRepairImage: handleDiscardRepairImage,
+          repairImageDialogForShot,
+          onOpenRepairImageDialog: setRepairImageDialogForShot,
+          onCloseRepairImageDialog: handleCloseRepairImageDialog,
+          onGenerateShotVideoPrompt: handleGenerateShotVideoPrompt,
+          generatingShotVideoPromptForShot,
+          usedVisionByShot,
         }}
         scriptSummary={(() => {
           const script = episodeDetailQuery.data?.script as

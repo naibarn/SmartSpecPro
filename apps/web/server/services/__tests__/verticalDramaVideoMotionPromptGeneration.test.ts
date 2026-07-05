@@ -235,6 +235,75 @@ describe("generateVideoMotionPromptPack", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
+  // Phase 6, §6.6a root-cause regression: the LLM must never be allowed to
+  // emit the SAME `prompt` text for two or more clips — this used to pass
+  // schema validation silently (nothing in the schema forbade it). Duplicate
+  // prompts are now treated as a schema-validation failure so the existing
+  // one-shot retry (`executeJsonPlanningCallWithRetry`) automatically re-runs
+  // the call instead of a duplicate pack persisting to the episode.
+  it("treats an all-identical-prompt response as a schema validation failure and retries once", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const duplicateOutput = {
+      video_plan_summary: { video_model: "kling-2.0" },
+      video_clip_requests: Array.from({ length: 4 }, (_, i) => ({
+        ...validClipRequest(i + 1),
+        prompt: "Same motion prompt for every clip",
+      })),
+      plain_text_video_plan: "Full plan text",
+    };
+    mockExecute
+      .mockResolvedValueOnce(successResponse(duplicateOutput))
+      .mockResolvedValueOnce(successResponse(validOutput(4)));
+
+    const result = await generateVideoMotionPromptPack(baseParams());
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(result.pack.clips.map(c => c.prompt)).toEqual([
+      "Motion prompt for clip 1",
+      "Motion prompt for clip 2",
+      "Motion prompt for clip 3",
+      "Motion prompt for clip 4",
+    ]);
+  });
+
+  it("throws VdSchemaValidationError (does not silently persist a duplicate-prompt pack) when the retry is ALSO all-identical prompts", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const duplicateOutput = {
+      video_plan_summary: { video_model: "kling-2.0" },
+      video_clip_requests: Array.from({ length: 3 }, (_, i) => ({
+        ...validClipRequest(i + 1),
+        prompt: "Identical prompt text",
+      })),
+      plain_text_video_plan: "Full plan text",
+    };
+    mockExecute.mockResolvedValue(successResponse(duplicateOutput));
+
+    await expect(generateVideoMotionPromptPack(baseParams())).rejects.toThrow(
+      VdSchemaValidationError,
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("allows two clips to share dialogue-adjacent wording as long as the full prompt text differs", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const output = {
+      video_plan_summary: { video_model: "kling-2.0" },
+      video_clip_requests: [
+        { ...validClipRequest(1), prompt: "Clip 1: camera pushes in slowly on the reveal." },
+        { ...validClipRequest(2), prompt: "Clip 2: camera holds steady on the reveal." },
+      ],
+      plain_text_video_plan: "Full plan text",
+    };
+    mockExecute.mockResolvedValueOnce(successResponse(output));
+
+    const result = await generateVideoMotionPromptPack(baseParams());
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(result.pack.clips).toHaveLength(2);
+  });
+
   it("retries once with a higher token ceiling when the first response is truncated JSON, and succeeds on the retry", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute

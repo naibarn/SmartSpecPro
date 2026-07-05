@@ -149,6 +149,12 @@ export interface VerticalDramaStoryboardPanelData {
   mcpConnectionId?: string | null;
   onSelectMcpConnection?: (connectionId: string | null) => void;
 
+  /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ---- */
+  selectedImageResolution?: string;
+  selectedVideoResolution?: string;
+  onSelectImageResolution?: (resolution: string) => void;
+  onSelectVideoResolution?: (resolution: string) => void;
+
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
   onAddShotReference?: (
@@ -185,6 +191,22 @@ export interface VerticalDramaStoryboardPanelData {
   onRunQualityReview?: () => void;
   runningQualityReview?: boolean;
   onCopySuggestedFix?: (suggestedFix: string) => void;
+
+  /* ---- Phase 6.5 — image-to-image repair dialog ---- */
+  onSubmitRepairImage?: (shotNumber: number, instruction: string) => void;
+  repairImageSubmittingForShot?: number | null;
+  repairImageResultByShot?: Record<number, { beforeUrl: string; afterUrl: string }>;
+  repairImageErrorByShot?: Record<number, string>;
+  onAcceptRepairImage?: (shotNumber: number) => void;
+  onDiscardRepairImage?: (shotNumber: number) => void;
+  repairImageDialogForShot?: number | null;
+  onOpenRepairImageDialog?: (shotNumber: number) => void;
+  onCloseRepairImageDialog?: () => void;
+
+  /* ---- Phase 6.6 — per-shot video prompt generation ---- */
+  onGenerateShotVideoPrompt?: (shotNumber: number) => void;
+  generatingShotVideoPromptForShot?: ReadonlySet<number>;
+  usedVisionByShot?: Record<number, boolean>;
 }
 
 /** Minimal per-stage state the workspace needs to render progress + CTA. */
@@ -594,6 +616,10 @@ export function VerticalDramaEpisodeWorkspace({
           modelsLoading={storyboardPanel?.modelsLoading}
           mcpConnectionId={storyboardPanel?.mcpConnectionId}
           onSelectMcpConnection={storyboardPanel?.onSelectMcpConnection}
+          selectedImageResolution={storyboardPanel?.selectedImageResolution}
+          selectedVideoResolution={storyboardPanel?.selectedVideoResolution}
+          onSelectImageResolution={storyboardPanel?.onSelectImageResolution}
+          onSelectVideoResolution={storyboardPanel?.onSelectVideoResolution}
           shotReferencesByShot={storyboardPanel?.shotReferencesByShot}
           onAddShotReference={storyboardPanel?.onAddShotReference}
           onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
@@ -612,6 +638,18 @@ export function VerticalDramaEpisodeWorkspace({
           onRunQualityReview={storyboardPanel?.onRunQualityReview}
           runningQualityReview={storyboardPanel?.runningQualityReview}
           onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
+          onSubmitRepairImage={storyboardPanel?.onSubmitRepairImage}
+          repairImageSubmittingForShot={storyboardPanel?.repairImageSubmittingForShot}
+          repairImageResultByShot={storyboardPanel?.repairImageResultByShot}
+          repairImageErrorByShot={storyboardPanel?.repairImageErrorByShot}
+          onAcceptRepairImage={storyboardPanel?.onAcceptRepairImage}
+          onDiscardRepairImage={storyboardPanel?.onDiscardRepairImage}
+          repairImageDialogForShot={storyboardPanel?.repairImageDialogForShot}
+          onOpenRepairImageDialog={storyboardPanel?.onOpenRepairImageDialog}
+          onCloseRepairImageDialog={storyboardPanel?.onCloseRepairImageDialog}
+          onGenerateShotVideoPrompt={storyboardPanel?.onGenerateShotVideoPrompt}
+          generatingShotVideoPromptForShot={storyboardPanel?.generatingShotVideoPromptForShot}
+          usedVisionByShot={storyboardPanel?.usedVisionByShot}
         />
       ) : !completed && current && SETUP_STAGES.has(current.stage) ? (
         <section className="rounded-lg border bg-card p-4" aria-label={t.generateEpisode}>

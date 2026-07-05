@@ -21,7 +21,11 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } = vi.hoisted(() => ({
+const {
+  mockGetModelsByTypeAsync,
+  mockResolveVerticalDramaCapabilities,
+  mockDeriveModelResolutionOptions,
+} = vi.hoisted(() => ({
   mockGetModelsByTypeAsync: vi.fn(),
   mockResolveVerticalDramaCapabilities: vi.fn(() => ({
     supportsStartFrame: true,
@@ -29,11 +33,17 @@ const { mockGetModelsByTypeAsync, mockResolveVerticalDramaCapabilities } = vi.ho
     nativeAudioDialogue: true,
     verticalDramaReady: true,
   })),
+  // Default: no resolution options (undefined) — most fixtures in this file
+  // don't set configJson.inputFields/supportedResolutions, so
+  // `assertResolutionOption` is a no-op unless a test explicitly overrides
+  // this mock (storyboard-complete plan Phase 6.2).
+  mockDeriveModelResolutionOptions: vi.fn(() => undefined),
 }));
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
   resolveVerticalDramaCapabilities: mockResolveVerticalDramaCapabilities,
+  deriveModelResolutionOptions: mockDeriveModelResolutionOptions,
 }));
 
 const { mockDb } = vi.hoisted(() => ({
@@ -184,6 +194,10 @@ vi.mock("../../services/verticalDramaVideoPromptFormatter", () => ({
     maxReferenceImages: 3,
     supportsStartFrame: true,
   })),
+}));
+
+vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
+  generateVerticalDramaShotVideoPrompt: vi.fn(),
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
@@ -761,6 +775,11 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       { id: "higgsfield/nano_banana_2", type: "video", isEnabled: true, creditCost: 0, aliases: [], configJson: {} },
     ]);
     mockShotReferencesService.listForShot.mockResolvedValue([]);
+    // `generateVideoClip` now prices via `calculateCreditCost` (storyboard-
+    // complete plan Phase 6.2b — resolution-tiered pricing), same convention
+    // as the image mutations; override the global mock's default 10 for
+    // this one call so the zero-cost model still prices to 0.
+    mockCalculateCreditCost.mockReturnValueOnce(0);
     mockDb.select
       .mockReturnValueOnce(
         selectChain([episodeRowWithPack({ /* keep default clip shape */ })]),
@@ -787,6 +806,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       verticalDramaReady: true,
     });
     mockShotReferencesService.listForShot.mockResolvedValue([]);
+    // See the matching comment in the previous test — override the default
+    // mocked 10 so this zero-cost model still prices to 0.
+    mockCalculateCreditCost.mockReturnValueOnce(0);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
@@ -996,6 +1018,368 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockResolveMediaTransport).not.toHaveBeenCalled();
+    expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe("resolution validation + pricing (Phase 6.2)", () => {
+  function episodeRowWithStartFramePlan(frameOverrides: Record<string, unknown> = {}) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a prompt",
+            negativePrompt: undefined,
+            requiredCharacterRefs: [],
+            ...frameOverrides,
+          },
+        ],
+      },
+    };
+  }
+
+  beforeEach(() => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+  });
+
+  it("generateStartFrameImage passes a valid resolution through to generateImageAsync and calculateCreditCost", async () => {
+    mockDeriveModelResolutionOptions.mockReturnValueOnce([
+      { value: "720p", label: "720p", creditCost: 150 },
+      { value: "1080p", label: "1080p", creditCost: 300 },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 150, configJson: { pricingFormula: "matrix" } }])); // pricing lookup
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, resolution: "1080p" },
+    });
+
+    expect(mockCalculateCreditCost).toHaveBeenCalledWith(
+      expect.objectContaining({ creditCost: 150 }),
+      expect.objectContaining({ resolution: "1080p" }),
+    );
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ resolution: "1080p" }),
+      expect.any(String),
+    );
+  });
+
+  it("generateStartFrameImage rejects an invalid resolution with BAD_REQUEST when the model has known resolutionOptions", async () => {
+    mockDeriveModelResolutionOptions.mockReturnValueOnce([
+      { value: "720p", label: "720p" },
+      { value: "1080p", label: "1080p" },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 150, configJson: {} }])); // pricing lookup
+
+    await expect(
+      router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, resolution: "8K" },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("generateStartFrameImage ignores a supplied resolution (no validation error) when the model has no resolution options at all", async () => {
+    mockDeriveModelResolutionOptions.mockReturnValueOnce(undefined);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
+
+    const result = await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, resolution: "anything" },
+    });
+
+    expect(result.taskId).toBe("task-1");
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ resolution: "anything" }),
+      expect.any(String),
+    );
+  });
+
+  it("generateStartFrameAngleVariations rejects an invalid resolution with BAD_REQUEST", async () => {
+    mockDeriveModelResolutionOptions.mockReturnValueOnce([{ value: "720p", label: "720p" }]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+
+    await expect(
+      router.generateStartFrameAngleVariations({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, resolution: "invalid" },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () => {
+  function episodeRowWithStartFramePlan(frameOverrides: Record<string, unknown> = {}) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a prompt",
+            negativePrompt: "blurry",
+            requiredCharacterRefs: [],
+            ...frameOverrides,
+          },
+        ],
+      },
+    };
+  }
+
+  beforeEach(() => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockDeriveModelResolutionOptions.mockReturnValue(undefined);
+  });
+
+  it("instructs no text/captions/labels/watermarks anywhere in the image, both in the prompt and the negative prompt", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
+    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+
+    await router.generateStartFrameAngleVariations({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    const call = (mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>).mock.calls[0][0];
+
+    // Prompt must explicitly forbid on-image text and must NOT phrase angle
+    // names as something to render as a label (still lists example angle
+    // names for diversity, but the "no text" instruction must be present and
+    // unambiguous).
+    expect(call.prompt).toMatch(/no text/i);
+    expect(call.prompt).toMatch(/caption/i);
+    expect(call.prompt).toMatch(/watermark/i);
+    expect(call.prompt).toMatch(/3x3 grid of 9 panels/i);
+
+    // Negative prompt must also enforce it (defense in depth), while still
+    // preserving the shot's own negativePrompt.
+    expect(call.negativePrompt).toMatch(/blurry/);
+    expect(call.negativePrompt).toMatch(/text/i);
+    expect(call.negativePrompt).toMatch(/caption/i);
+    expect(call.negativePrompt).toMatch(/watermark/i);
+  });
+
+  it("still includes negative-prompt no-text terms even when the shot has no negativePrompt of its own", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithStartFramePlan({ negativePrompt: undefined })]),
+      )
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }]));
+    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+
+    await router.generateStartFrameAngleVariations({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    const call = (mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.negativePrompt).toMatch(/text/i);
+  });
+});
+
+describe("repairShotImage (Phase 6.5)", () => {
+  function episodeRowWithApprovedAsset(frameOverrides: Record<string, unknown> = {}) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a prompt",
+            requiredCharacterRefs: [],
+            approvedMediaAssetId: "900",
+            ...frameOverrides,
+          },
+        ],
+      },
+    };
+  }
+
+  beforeEach(() => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockDeriveModelResolutionOptions.mockReturnValue(undefined);
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: false,
+      verticalDramaReady: true,
+    });
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "google-nano-banana-pro", type: "image", isEnabled: true, name: "Google Nano Banana Pro", aliases: [], configJson: {} },
+    ]);
+  });
+
+  it("throws PRECONDITION_FAILED when the shot has no startFramePlan yet", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([{ id: 100, tenantId: "tenant-1", userId: 42, seriesId: 10, startFramePlan: null }]));
+
+    await expect(
+      router.repairShotImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("throws PRECONDITION_FAILED when the shot has no approvedMediaAssetId yet", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([episodeRowWithApprovedAsset({ approvedMediaAssetId: undefined })]),
+    );
+
+    await expect(
+      router.repairShotImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("throws PRECONDITION_FAILED when the approved asset URL cannot be resolved (deleted/inaccessible)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // resolveMediaAssetUrlsByIds — no matching row
+
+    await expect(
+      router.repairShotImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("throws PRECONDITION_FAILED listing capable models when the resolved model does not accept image input", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: false,
+      maxReferenceImages: 0,
+      nativeAudioDialogue: false,
+      verticalDramaReady: false,
+    });
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "z-image", type: "image", isEnabled: true, name: "Z-Image (no i2i)", aliases: [], configJson: {} },
+      { id: "google-nano-banana-pro", type: "image", isEnabled: true, name: "Google Nano Banana Pro", aliases: [], configJson: {} },
+    ]);
+    // First call (guard check on the resolved model) -> not capable.
+    // Second call (building the capable-models list) -> nano banana pro IS capable.
+    mockResolveVerticalDramaCapabilities
+      .mockReturnValueOnce({ supportsStartFrame: false, maxReferenceImages: 0, nativeAudioDialogue: false, verticalDramaReady: false })
+      .mockReturnValueOnce({ supportsStartFrame: false, maxReferenceImages: 0, nativeAudioDialogue: false, verticalDramaReady: false })
+      .mockReturnValueOnce({ supportsStartFrame: true, maxReferenceImages: 3, nativeAudioDialogue: false, verticalDramaReady: true });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+
+    await expect(
+      router.repairShotImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
+      }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining("Google Nano Banana Pro"),
+    });
+    expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
+  });
+
+  it("submits an image-to-image edit with the current image as the sole reference, a preservation directive, and reserves credits", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
+    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "repair-task-1" });
+
+    const result = await router.repairShotImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        instruction: "change the jacket to red",
+        idempotencyKey: "repair-key-1",
+      },
+    });
+
+    expect(result).toEqual({ taskId: "repair-task-1", modelId: "google-nano-banana-pro", creditCost: 10 });
+    expect(mockDeductCredits).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: "repair-key-1", amount: 10 }),
+    );
+    expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: ["https://cdn/900.png"],
+        prompt: expect.stringContaining("change the jacket to red"),
+      }),
+      expect.any(String),
+    );
+    const call = (mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(call.prompt).toMatch(/same character identity/i);
+  });
+
+  it("refunds credits when generation submission fails", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
+    mediaGenerationService.generateImageAsync = vi.fn().mockRejectedValue(new Error("submit failed"));
+
+    await expect(
+      router.repairShotImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
+      }),
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+
+    expect(mockRefundCredits).toHaveBeenCalled();
+  });
+
+  it("rejects an invalid resolution with BAD_REQUEST before submitting", async () => {
+    mockDeriveModelResolutionOptions.mockReturnValueOnce([{ value: "1K", label: "1K" }]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+
+    await expect(
+      router.repairShotImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          instruction: "change the jacket to red",
+          resolution: "4K",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
   });
 });

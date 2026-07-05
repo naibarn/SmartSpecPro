@@ -244,6 +244,18 @@ sortOrder, createdAt
 - [x] Bugfix ภาพตัวละครไม่ตรง description — root cause: `extractCharacterDescription` (verticalDramaCharacters.ts:186) ไม่เคยอ่าน `data.description` (field ที่เก็บอายุ/เพศ/ลักษณะ) → LLM แต่งตัวตนผู้ใหญ่เอง; แก้ที่ helper เดียวครอบทั้ง 4 เส้น (preview/portrait/turnaround/sheet) ให้ description ขึ้นต้น prompt; หลักฐานจาก audit log trace + DB; tests 11 ใหม่ + regression 287 เขียว
 - [x] Deploy รอบสี่: typecheck 0, build+restart, domain/episode 200
 
+## Phase 6 — Feedback รอบ 3 (2026-07-05 ดึก) — 6 ข้อ ต้องครบทุกข้อ
+
+> ✅ Phase 6 เสร็จครบทั้ง 6 ข้อ 2026-07-06 — reviewer ตรวจ end-to-end แล้ว APPROVE (330 tests เขียว, typecheck 0, ไม่มี finding HIGH/MEDIUM); deploy + push แล้ว
+- [x] **6.1 ผล 3x3 ไม่แสดงหลังสร้างเสร็จ** — ภาพ grid เสร็จ (อยู่ใน history) แต่ picker 9 เฟรมไม่โผล่ + ปุ่มค้าง "กำลังทำงาน/กำลังสร้าง"; ต้อง: แสดง 9 เฟรมทันทีที่เสร็จ, เลือก 1 เป็นภาพหลักได้, ลบรายเฟรมได้ (debug poll → state flow)
+- [x] **6.2 เลือกความละเอียดต่อ model (dynamic)** — 1k/2k/4k ตามที่ model นั้นรองรับ (อ่านจาก configJson/sizes ที่มีในระบบแล้ว); UI dropdown แสดงเฉพาะตัวเลือกของ model ที่เลือก; ส่งผ่านเข้า generation request
+- [x] **6.3 ภาพ 3x3 ห้ามมีตัวอักษร** — prompt 3x3 ปัจจุบันทำให้เกิด label (WIDE ESTABLISHING SHOT ฯลฯ) ในภาพ → ใช้เป็น start frame ของ veo ไม่ได้; แก้ prompt builder + negative prompt (no text/labels/captions/watermark)
+- [x] **6.4 เตือน "ใช้ภาพอ้างอิงได้สูงสุด 0 ภาพ" ผิด** — capability resolve ได้ 0 ทั้งที่ควรใส่ได้ปกติ; หา root cause (model จาก DB ไม่มี metadata → default 0?) และแก้: limit 0 ที่ไม่ explicit = ไม่จำกัด/ค่า default สมเหตุผล ไม่บล็อกผู้ใช้
+- [x] **6.5 ซ่อมภาพแบบ image-to-image** — ปุ่มแก้ไขภาพเดิม: แนบภาพหลักปัจจุบัน + คำสั่งแก้ (เปลี่ยนเสื้อผ้า/ฉากหลัง) → generate ใหม่ผ่าน model ที่รองรับ reference; แสดง preview เทียบก่อนยืนยันใช้แทน
+- [x] **6.6 พรอมต์วิดีโอซ้ำกันทุกช็อต + ต้อง image-grounded** — (a) หา root cause ที่ motion pack สร้าง prompt เดียวกันทุกช็อต, (b) ออกแบบใหม่: สร้างพรอมต์วิดีโอรายช็อตโดย**แนบภาพหลักของช็อตให้ LLM วิเคราะห์** เน้น movement/อารมณ์/บรรยากาศ ไม่บรรยายลักษณะบุคคล (มีรูปแนบแล้ว), (c) ช็อตที่ยังไม่มีภาพ = ยังสร้างพรอมต์วิดีโอไม่ได้ (disable + อธิบาย), (d) ปุ่ม "สร้างพรอมต์วิดีโอ" รายช็อต กดซ้ำได้เมื่อเปลี่ยนภาพ, แก้ prompt ได้ แล้ว generate video รายช็อต
+
+Execution: Wave A = client bugfix (6.1+investigate 6.4) ∥ backend (6.2/6.3/6.4/6.5) ∥ motion-prompt service+skill (6.6a,b) → Wave B = router wiring 6.6 + frontend (6.2 UI, 6.5 dialog, 6.6 ปุ่มรายช็อต) → Completeness review ทวนครบ 6 ข้อ → deploy
+
 **หมายเหตุคงค้าง (นอกขอบเขตงานนี้):**
 - Drizzle snapshot chain เสีย (ก่อนงานนี้) — flag เป็น task แยกแล้ว (re-baseline)
 - Full-repo vitest มี failure เดิมที่ไม่เกี่ยว (agencyStream db mock / JWT_SECRET env ใน worker tests) — มีอยู่ก่อนงานนี้ ยืนยันแล้วว่าไม่มีไฟล์ vertical drama ใน failures

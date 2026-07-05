@@ -148,6 +148,10 @@ vi.mock("../../services/verticalDramaVideoPromptFormatter", () => ({
   })),
 }));
 
+vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
+  generateVerticalDramaShotVideoPrompt: vi.fn(),
+}));
+
 import {
   assertModelSelectable,
   resolveEpisodeImageModelId,

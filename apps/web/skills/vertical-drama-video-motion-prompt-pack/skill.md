@@ -49,6 +49,20 @@ is a FAILED clip. Concretely:
    the acting direction show the power shift landing — e.g. one character's
    composure visibly cracking as the other's steadies.
 
+## Every clip's prompt must be unique — MANDATORY
+
+`video_clip_requests[].prompt` MUST be a DIFFERENT string for every clip in the
+array, even when consecutive clips share a character, location, or a dialogue
+line that spans multiple shots (a spoken line continuing across shots is
+common and expected — copying the SAME motion-prompt text onto more than one
+clip is NOT). Each clip's prompt must describe that clip's own distinct
+camera movement, blocking change, and performance beat, derived from its own
+`source_shot_numbers`' visual description, so no two clips ever end up
+readable as duplicates of each other. Never reuse a previous clip's `prompt`
+string verbatim as a shortcut, even when you are unsure what changed between
+shots — invent the smallest plausible motion/performance delta instead of
+repeating text.
+
 ## Provider request variants
 
 `provider_request` MAY include additional named variant keys alongside

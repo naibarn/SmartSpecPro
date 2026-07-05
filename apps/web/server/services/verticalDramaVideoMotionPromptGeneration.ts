@@ -32,9 +32,15 @@ import { parseSkillFile } from "@smartspec/skills";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
+import { executeWithFallback } from "./llmRouter";
+import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import { selectBestLlmModel } from "./intelligentModelSelector";
+import { resolveVerticalDramaCapabilities, type ModelDefinition } from "./modelRegistry";
+import { detectProviderFamily } from "./verticalDramaProviderRouting";
 import {
   resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
+  extractJson,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
@@ -123,7 +129,7 @@ const videoClipRequestSchema = z
   })
   .passthrough();
 
-export const videoMotionPromptPackOutputSchema = z
+const videoMotionPromptPackOutputBaseSchema = z
   .object({
     contract_version: z.literal(1).optional(),
     video_plan_summary: z.object({}).passthrough(),
@@ -135,7 +141,42 @@ export const videoMotionPromptPackOutputSchema = z
   })
   .passthrough();
 
-export type VideoMotionPromptPackOutput = z.infer<typeof videoMotionPromptPackOutputSchema>;
+/**
+ * Root-cause hardening (Phase 6, §6.6a): when the LLM ever produces the SAME
+ * `prompt` string for two or more `video_clip_requests[]` entries — a failure
+ * mode the schema itself never forbade — treat that response the same as a
+ * schema-validation failure (`.superRefine` -> zod issue), so
+ * `executeJsonPlanningCallWithRetry`'s existing one-shot same-model retry (see
+ * that function's doc comment in `verticalDramaStoryBible.ts`) automatically
+ * re-runs the call instead of a duplicate-prompt pack silently persisting to
+ * `episode.motionPromptPack`. Trailing/leading whitespace is trimmed before
+ * comparing so cosmetic formatting differences don't mask a real duplicate.
+ * Investigation note: this codebase's actual persisted data + the one real
+ * `video_motion_prompt_pack` LLM call so far (see Part A of the
+ * Phase-6-§6.6 task) both already produce distinct per-clip prompts — this
+ * check is a regression guard against the failure mode recurring, not
+ * evidence it is currently happening.
+ */
+export const videoMotionPromptPackOutputSchema = videoMotionPromptPackOutputBaseSchema.superRefine(
+  (value, ctx) => {
+    const seen = new Map<string, number>();
+    value.video_clip_requests.forEach((clip, index) => {
+      const key = clip.prompt.trim();
+      const firstIndex = seen.get(key);
+      if (firstIndex !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["video_clip_requests", index, "prompt"],
+          message: `video_clip_requests[${index}].prompt is identical to video_clip_requests[${firstIndex}].prompt (clip_number ${clip.clip_number}) — every clip must have a distinct motion prompt`,
+        });
+      } else {
+        seen.set(key, index);
+      }
+    });
+  },
+);
+
+export type VideoMotionPromptPackOutput = z.infer<typeof videoMotionPromptPackOutputBaseSchema>;
 
 /**
  * Typed projection matching `VerticalDramaMotionPromptPack` from
@@ -484,4 +525,350 @@ export async function generateVideoMotionPromptPack(
   );
 
   return { pack, raw: validatedData, creditsUsed, model };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Per-shot, image-grounded video prompt generation (Phase 6, §6.6b)          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Vision-support investigation (Phase 6, §6.6b task instructions, part 1):
+ *
+ * `executeWithFallback` (`llmRouter.ts`) and the shared `Message` type
+ * (`server/_core/llm.ts`) already support multimodal input — `Message.content`
+ * accepts `ImageContent` (`{ type: "image_url", image_url: { url, detail? } }`)
+ * alongside plain text, and the "Responses" API-style providers get this
+ * normalized into `input_image` parts (`llmRouter.ts` lines ~34, ~341-348).
+ * A REAL precedent already sends an image this way straight through
+ * `executeWithFallback`:
+ * `productReferenceStoryboardSkillRunner.ts`'s `buildVisionMessages()` builds
+ * a `user` message whose `content` is `[{ type: "text", text }, ...referenceImages
+ * .map(url => ({ type: "image_url", image_url: { url, detail: "high" } }))]`
+ * and passes it directly to `executeWithFallback({ model, messages, ... })` —
+ * no separate "vision endpoint", it is the same chat-completions call this
+ * module already makes for the motion-prompt-pack.
+ *
+ * There is, however, no per-call enforcement that the RESOLVED model actually
+ * has vision support — `resolveStoryBibleModel()` (used everywhere else in
+ * this file) only requires `supportsStructuredOutputs`. `intelligentModel
+ * Selector.ts`'s `CapabilityRequirements`/`selectBestLlmModel` DOES expose a
+ * `supportsVision` flag, so `resolveShotVideoPromptModel` below explicitly
+ * requires it (falling back to `resolveStoryBibleModel()`'s non-vision
+ * default only when no enabled model declares vision support, per the task's
+ * "closest viable alternative" instruction) — and in EITHER case, the
+ * shot's `imagePrompt` text is always folded into the user message too, so a
+ * non-vision model still gets a rich textual description of what the start
+ * frame contains, never just a bare image the model cannot see.
+ */
+
+const SHOT_VIDEO_PROMPT_SKILL_FOLDER_PATH = path.join(
+  "skills",
+  "vertical-drama-shot-video-prompt",
+);
+
+let cachedShotVideoPromptSystemPrompt: string | null = null;
+
+/**
+ * Read the `vertical-drama-shot-video-prompt` skill's markdown body verbatim
+ * — same resolution strategy as `loadSkillSystemPrompt()` above, kept as a
+ * separate cache/function because this is a distinct, focused skill (see
+ * this module's doc comment on why a new skill instead of overloading the
+ * pack-level one).
+ */
+function loadShotVideoPromptSystemPrompt(): string {
+  if (cachedShotVideoPromptSystemPrompt) return cachedShotVideoPromptSystemPrompt;
+
+  for (const dir of resolveSkillDirCandidates(SHOT_VIDEO_PROMPT_SKILL_FOLDER_PATH)) {
+    const manifestPath = resolveSkillManifestPath(dir);
+    if (manifestPath && fs.existsSync(manifestPath)) {
+      const raw = fs.readFileSync(manifestPath, "utf-8");
+      const { content } = parseSkillFile(raw);
+      if (content && content.trim().length > 0) {
+        cachedShotVideoPromptSystemPrompt = content;
+        return cachedShotVideoPromptSystemPrompt;
+      }
+    }
+  }
+
+  throw new Error(
+    `Could not locate skill.md for "vertical-drama-shot-video-prompt" under any known skills directory`,
+  );
+}
+
+/** Resolve a vision-capable model when one is enabled; falls back to the non-vision default (see the vision-support doc comment above). */
+async function resolveShotVideoPromptModel(): Promise<{ model: string; hasVision: boolean }> {
+  try {
+    const rows = await loadEnabledLlmModelRows();
+    if (rows.length > 0) {
+      const visionModel = selectBestLlmModel(
+        { supportsVision: true, supportsStructuredOutputs: true },
+        rows,
+      );
+      if (visionModel) return { model: visionModel, hasVision: true };
+    }
+  } catch {
+    // Fall through to the non-vision default below.
+  }
+  const fallbackModel = await resolveStoryBibleModel();
+  return { model: fallbackModel, hasVision: false };
+}
+
+const shotVideoPromptOutputSchema = z
+  .object({
+    prompt: z.string().min(1),
+    negative_motion_prompt: z.string().optional().default(""),
+    dialogue: z
+      .array(
+        z.object({
+          characterKey: z.string().optional(),
+          lineTh: z.string().min(1),
+          emotion: z.string().optional(),
+          delivery: z
+            .object({
+              tone: z.string().optional(),
+              pace: z.string().optional(),
+              pauses: z.string().optional(),
+              texture: z.string().optional(),
+            })
+            .optional(),
+          subtext: z.string().optional(),
+        }),
+      )
+      .optional()
+      .default([]),
+  })
+  .passthrough();
+
+export type ShotVideoPromptOutput = z.infer<typeof shotVideoPromptOutputSchema>;
+
+export interface GenerateVerticalDramaShotVideoPromptParams {
+  userId: number;
+  tenantId?: string;
+  seriesId: number;
+  episodeId: number;
+  shotNumber: number;
+  /** Publicly-fetchable URL of the shot's current approved main image (the start frame this clip continues from). */
+  imageUrl: string;
+  /** The prompt that generated `imageUrl` — always folded in as a textual proxy, see this module's vision doc comment. */
+  imagePrompt?: string;
+  shotContext: {
+    description?: string;
+    camera?: string;
+    emotion?: string;
+    /** Dialogue line(s) spoken during this shot, in delivery order, when the shot has dialogue. */
+    dialogueLines?: Array<{
+      characterKey?: string;
+      lineTh: string;
+      emotion?: string;
+      delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+      subtext?: string;
+    }>;
+  };
+  selectedVideoModelId: string;
+  /** The resolved video model row, so the native-audio/dialogue decision below matches `verticalDramaVideoPromptFormatter.ts`'s capability logic exactly. */
+  selectedVideoModel: Pick<ModelDefinition, "type" | "aspectRatios" | "configJson" | "provider" | "aliases"> & {
+    id?: string;
+  };
+  locale: "th" | "en";
+  idempotencyKey?: string;
+}
+
+export interface GenerateVerticalDramaShotVideoPromptResult {
+  prompt: string;
+  negativeMotionPrompt?: string;
+  dialogue?: Array<{
+    characterKey?: string;
+    lineTh: string;
+    emotion?: string;
+    delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+    subtext?: string;
+  }>;
+  creditsUsed: number;
+  model: string;
+  /** True when the resolved model actually received the image (vision path); false when only the textual `imagePrompt` proxy was used. */
+  usedVision: boolean;
+}
+
+function buildShotVideoPromptUserPrompt(
+  params: GenerateVerticalDramaShotVideoPromptParams,
+  nativeAudioDialogue: boolean,
+): string {
+  const { shotContext } = params;
+  const dialogueLines = shotContext.dialogueLines ?? [];
+  const dialogueBlock = dialogueLines.length
+    ? dialogueLines
+        .map((l, i) => {
+          const parts = [`${i + 1}. ${l.characterKey ?? "character"}: "${l.lineTh}"`];
+          if (l.emotion) parts.push(`emotion: ${l.emotion}`);
+          if (l.delivery?.tone) parts.push(`tone: ${l.delivery.tone}`);
+          if (l.delivery?.pace) parts.push(`pace: ${l.delivery.pace}`);
+          if (l.delivery?.pauses) parts.push(`pauses: ${l.delivery.pauses}`);
+          if (l.delivery?.texture) parts.push(`voice texture: ${l.delivery.texture}`);
+          if (l.subtext) parts.push(`subtext: ${l.subtext}`);
+          return parts.join(" | ");
+        })
+        .join("\n")
+    : "(no dialogue in this shot — silent/ambient clip)";
+
+  return [
+    `Shot number: ${params.shotNumber}`,
+    shotContext.description ? `Shot description: ${shotContext.description}` : null,
+    shotContext.camera ? `Camera setup: ${shotContext.camera}` : null,
+    shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
+    params.imagePrompt
+      ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
+      : null,
+    `Dialogue for this shot:\n${dialogueBlock}`,
+    nativeAudioDialogue
+      ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — when dialogue is present, embed the Thai line(s) VERBATIM in the prompt with matching mouth/lip movement and delivery direction, and return them again in the "dialogue" array.`
+      : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — when dialogue is present, describe mouth movement + acting direction only (no literal transcript in the prompt), and return the resolved lines in the "dialogue" array so the caller can route them to text-to-speech.`,
+    `Locale: ${params.locale}`,
+    VD_COMPACT_JSON_INSTRUCTION,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Generate ONE shot's image-grounded video-clip prompt (Phase 6, §6.6b) —
+ * analyzes the shot's current approved main image (or, absent real vision
+ * support, its generating `imagePrompt` as a textual proxy — see this
+ * module's vision-support doc comment) and produces a MOVEMENT/emotion/
+ * atmosphere/camera-continuation prompt. Deliberately never describes
+ * character appearance — the attached image (or its prompt proxy) already
+ * carries identity, so re-describing it would waste prompt budget and risks
+ * contradicting the actual image. Credit-gated + idempotency-keyed exactly
+ * like every other Vertical Drama paid LLM call in this file; the router
+ * mutation (out of scope here — see the Phase 6 §6.6 mutation spec) is
+ * responsible for resolving `shotNumber` -> `imageUrl` via
+ * `approvedMediaAssetId` and rejecting with `PRECONDITION_FAILED` when no
+ * image exists yet.
+ */
+export async function generateVerticalDramaShotVideoPrompt(
+  params: GenerateVerticalDramaShotVideoPromptParams,
+): Promise<GenerateVerticalDramaShotVideoPromptResult> {
+  const rateLimitKey = `user:${params.userId}`;
+  if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+    throw new RateLimitExceededError(mediaGenerationLimiter.getResetTime(rateLimitKey));
+  }
+
+  const hasCredits = await hasEnoughCredits(params.userId, 1);
+  if (!hasCredits) {
+    throw new InsufficientCreditsError();
+  }
+
+  const { model, hasVision } = await resolveShotVideoPromptModel();
+  const systemPrompt = loadShotVideoPromptSystemPrompt();
+
+  const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
+    type: params.selectedVideoModel.type,
+    aspectRatios: params.selectedVideoModel.aspectRatios,
+    configJson: params.selectedVideoModel.configJson,
+  });
+  const nativeAudioDialogue = capabilities.nativeAudioDialogue === true;
+  // Kept for parity with `verticalDramaVideoPromptFormatter.ts`'s own family
+  // detection (not otherwise used here — the formatter is the single place
+  // that builds the final provider-submitted prompt/payload; this function
+  // only produces the base motion prompt + dialogue for it to format).
+  void detectProviderFamily;
+
+  const userPromptText = buildShotVideoPromptUserPrompt(params, nativeAudioDialogue);
+
+  const userContent = hasVision
+    ? [
+        { type: "text" as const, text: userPromptText },
+        {
+          type: "image_url" as const,
+          image_url: { url: params.imageUrl, detail: "high" as const },
+        },
+      ]
+    : userPromptText;
+
+  const attempt = async (content: typeof userContent, maxTokens: number) => {
+    const result = await executeWithFallback({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content },
+      ],
+      stream: false,
+      userId: params.userId,
+      maxTokens,
+      temperature: 0.7,
+    });
+
+    if (result.type !== "success") {
+      throw new Error(
+        result.type === "error"
+          ? `LLM request failed: ${result.error}`
+          : "LLM request did not reach a successful provider response",
+      );
+    }
+
+    const responseContent = result.response.choices?.[0]?.message?.content ?? "";
+    const parsed = extractJson(responseContent);
+    const validation = shotVideoPromptOutputSchema.safeParse(parsed);
+    if (!validation.success) {
+      throw new VdSchemaValidationError(
+        "Shot video prompt response failed schema validation",
+        validation.error,
+      );
+    }
+    return { data: validation.data, response: result.response };
+  };
+
+  let outcome: Awaited<ReturnType<typeof attempt>>;
+  try {
+    outcome = await attempt(userContent, 2000);
+  } catch (firstError) {
+    if (!(firstError instanceof VdSchemaValidationError)) throw firstError;
+    const retryText = `${userPromptText}\n\nYour previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text).`;
+    const retryContent = hasVision
+      ? [
+          { type: "text" as const, text: retryText },
+          {
+            type: "image_url" as const,
+            image_url: { url: params.imageUrl, detail: "high" as const },
+          },
+        ]
+      : retryText;
+    outcome = await attempt(retryContent, 4000);
+  }
+
+  const { data, response } = outcome;
+  const usage = response.usage;
+  const creditsUsed = calculateCreditsForLLM(
+    usage?.prompt_tokens ?? 0,
+    usage?.completion_tokens ?? 0,
+    model,
+  );
+
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    description: `Vertical Drama — generate shot video prompt (episode #${params.episodeId}, shot #${params.shotNumber})`,
+    sourceType: "skill",
+    idempotencyKey: params.idempotencyKey,
+    metadata: {
+      model,
+      llmModel: model,
+      feature: "vertical_drama_series",
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      shotNumber: params.shotNumber,
+      usedVision: hasVision,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+    },
+  });
+
+  return {
+    prompt: data.prompt,
+    negativeMotionPrompt: data.negative_motion_prompt || undefined,
+    dialogue: data.dialogue,
+    creditsUsed,
+    model,
+    usedVision: hasVision,
+  };
 }

@@ -289,6 +289,37 @@ export const VD_COPY = {
     qualityNoIssues: "No issues flagged.",
     copySuggestedFix: "Copy suggestion",
     copiedSuggestedFix: "Copied — paste it into Repair.",
+
+    /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ---- */
+    resolutionLabel: "Resolution",
+    resolutionAuto: "Default",
+
+    /* ---- Repair image (image-to-image) dialog (Phase 6.5) ---- */
+    repairImage: "Fix image (AI)",
+    repairImageDialogTitle: "Fix this image with AI",
+    repairImageInstructionLabel: "What do you want to change in this image?",
+    repairImageInstructionPlaceholder: "e.g. change the outfit, change the background",
+    repairImageSubmit: "Generate fix",
+    repairImageSubmitting: "Submitting…",
+    repairImageWorking: "Generating the fixed image…",
+    repairImageBefore: "Before",
+    repairImageAfter: "After",
+    repairImageUseNew: "Use the new image",
+    repairImageKeepOld: "Keep the original",
+    repairImageApplied: "Replaced with the new image.",
+    repairImageDiscarded: "Kept the original image — the new one stays in history.",
+    repairImageUnsupportedModel: "This model does not support image-to-image editing.",
+    repairImageUnsupportedModelWithList: "This model does not support image-to-image editing. Models that support it: {n}",
+    repairImageFailed: "Failed to generate the fixed image.",
+    repairImageNeedsApprovedImage: "This shot needs an approved image before it can be fixed.",
+
+    /* ---- Per-shot video prompt generation (Phase 6.6) ---- */
+    generateShotVideoPrompt: "Generate video prompt (AI)",
+    generatingShotVideoPrompt: "Analyzing image…",
+    generateShotVideoPromptNeedsImage: "This shot needs an approved image first.",
+    generateShotVideoPromptFailed: "Failed to generate the video prompt.",
+    usedVisionNote: "Analyzed from the actual image",
+    generateVideoPromptPackWholeEpisode: "Generate video prompts for the whole episode",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
@@ -436,6 +467,37 @@ export const VD_COPY = {
     qualityNoIssues: "ไม่พบจุดที่ต้องแก้",
     copySuggestedFix: "คัดลอกคำแนะนำ",
     copiedSuggestedFix: "คัดลอกแล้ว — นำไปวางในหน้าซ่อม",
+
+    /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ---- */
+    resolutionLabel: "ความละเอียด",
+    resolutionAuto: "ค่าเริ่มต้น",
+
+    /* ---- Repair image (image-to-image) dialog (Phase 6.5) ---- */
+    repairImage: "แก้ไขภาพ (AI)",
+    repairImageDialogTitle: "แก้ไขภาพนี้ด้วย AI",
+    repairImageInstructionLabel: "อยากแก้อะไรในภาพนี้",
+    repairImageInstructionPlaceholder: "เช่น เปลี่ยนเสื้อผ้า, เปลี่ยนฉากหลัง",
+    repairImageSubmit: "สร้างภาพที่แก้แล้ว",
+    repairImageSubmitting: "กำลังส่ง…",
+    repairImageWorking: "กำลังสร้างภาพที่แก้แล้ว…",
+    repairImageBefore: "ก่อน",
+    repairImageAfter: "หลัง",
+    repairImageUseNew: "ใช้ภาพใหม่",
+    repairImageKeepOld: "เก็บภาพเดิม",
+    repairImageApplied: "เปลี่ยนเป็นภาพใหม่แล้ว",
+    repairImageDiscarded: "เก็บภาพเดิมไว้ — ภาพใหม่ยังอยู่ในประวัติ",
+    repairImageUnsupportedModel: "โมเดลนี้ไม่รองรับการแก้ไขภาพแบบ image-to-image",
+    repairImageUnsupportedModelWithList: "โมเดลนี้ไม่รองรับการแก้ไขภาพ โมเดลที่รองรับ: {n}",
+    repairImageFailed: "สร้างภาพที่แก้ไม่สำเร็จ",
+    repairImageNeedsApprovedImage: "ช็อตนี้ต้องมีภาพที่อนุมัติแล้วก่อนจึงจะแก้ไขได้",
+
+    /* ---- Per-shot video prompt generation (Phase 6.6) ---- */
+    generateShotVideoPrompt: "สร้างพรอมต์วิดีโอ (AI)",
+    generatingShotVideoPrompt: "กำลังวิเคราะห์ภาพ…",
+    generateShotVideoPromptNeedsImage: "ต้องมีภาพหลักของช็อตก่อน",
+    generateShotVideoPromptFailed: "สร้างพรอมต์วิดีโอไม่สำเร็จ",
+    usedVisionNote: "วิเคราะห์จากภาพจริง",
+    generateVideoPromptPackWholeEpisode: "สร้างพรอมต์วิดีโอทั้งตอน",
   },
 } as const;
 

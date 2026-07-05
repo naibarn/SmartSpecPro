@@ -11,7 +11,7 @@ import { eq, asc, desc, and, ilike, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { clearModelCache } from "../services/modelRegistry";
 import { getStaticFallbackModels, getStaticModelById } from "../services/modelRegistry";
-import { resolveVerticalDramaCapabilities } from "../services/modelRegistry";
+import { resolveVerticalDramaCapabilities, deriveModelResolutionOptions } from "../services/modelRegistry";
 import { clearSkillRegistryCache } from "../services/skillRegistry";
 import { decrypt } from "../services/crypto";
 import {
@@ -1144,10 +1144,21 @@ export const mediaModelsRouter = router({
             aspectRatios: model.aspectRatios ?? undefined,
             configJson: mergedConfigJson ?? undefined,
           });
+          // Normalized dynamic resolution/size options (storyboard-complete
+          // plan Phase 6.2) — derived from configJson.inputFields /
+          // supportedResolutions / the `sizes` column, with per-option
+          // credit cost when pricing is resolution-tiered. `undefined` when
+          // the model has no resolution/size signal at all.
+          const resolutionOptions = deriveModelResolutionOptions({
+            creditCost: model.creditCost,
+            sizes: model.sizes ?? undefined,
+            configJson: mergedConfigJson ?? undefined,
+          });
           return {
             ...model,
             configJson: mergedConfigJson,
             ...capabilities,
+            resolutionOptions,
           };
         });
 

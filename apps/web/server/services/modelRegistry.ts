@@ -10,6 +10,7 @@
 import { db } from "../db";
 import { mediaModels } from "../../drizzle/schema";
 import { eq, asc } from "drizzle-orm";
+import { calculateCreditCost } from "./pricingCalculator";
 import {
   buildElevenLabsModelSeeds,
   buildMagnificModelSeeds,
@@ -302,12 +303,28 @@ export function deriveVerticalDramaCapabilities(model: {
       Array.isArray(f?.options) &&
       f.options.some((o: any) => o?.value === "FIRST_AND_LAST_FRAMES_2_VIDEO"),
   );
-  const maxReferenceImages = Number(cfg.maxReferenceImages ?? 0) || 0;
+  // Distinguish "no signal at all" (unknown — must NOT be treated as a hard
+  // 0-image limit by callers) from an EXPLICIT 0 in configJson (storyboard
+  // plan Phase 6.4 — a model without `maxReferenceImages` metadata used to
+  // resolve to `0`, and the client's reference-strip badge then displayed
+  // "สูงสุด 0 ภาพ" as if 0 references were ever allowed, hard-blocking valid
+  // uploads on models that never opted into this metadata at all). Only a
+  // configJson value that is actually present and coerces to a finite number
+  // stays as that number (including a real `0`); everything else resolves to
+  // `undefined` so the client's existing "undefined = unlimited/no badge"
+  // handling takes over instead of a false "0 max" warning.
+  const rawMaxReferenceImages = cfg.maxReferenceImages;
+  const maxReferenceImages =
+    rawMaxReferenceImages === undefined || rawMaxReferenceImages === null
+      ? undefined
+      : Number.isFinite(Number(rawMaxReferenceImages))
+        ? Number(rawMaxReferenceImages)
+        : undefined;
   const generateType = String(cfg.generateType ?? "").toLowerCase();
   const supportsStartFrame =
     cfg.apiPayloadFormat === "veo" ||
     hasFirstLastFrameOption ||
-    maxReferenceImages > 0 ||
+    (maxReferenceImages ?? 0) > 0 ||
     generateType.includes("image-to-video");
   const nativeAudioDialogue = cfg.hasAudio === true || cfg.nativeAudio === true;
   const supports9x16 = (model.aspectRatios ?? []).includes("9:16");
@@ -1178,6 +1195,112 @@ export function resolveVerticalDramaCapabilities(
     };
   }
   return deriveVerticalDramaCapabilities(model);
+}
+
+/** One selectable resolution/size option surfaced to the client, with the
+ *  credit cost that option resolves to (when the model's pricing is
+ *  resolution-tiered) so the UI can show a price per option before the user
+ *  picks one. */
+export interface ModelResolutionOption {
+  value: string;
+  label: string;
+  creditCost?: number;
+}
+
+/**
+ * Derive a normalized `resolutionOptions` list for a model from whatever
+ * signal its `configJson`/`sizes` column already carries (storyboard-complete
+ * plan Phase 6.2) — every media model already has SOME representation of its
+ * selectable output sizes, but in 3 different shapes depending on how/when it
+ * was added to the catalog:
+ *
+ *  1. `configJson.inputFields` containing a `select`-type field whose `key`
+ *     is `"resolution"` or `"size"` (or an alias like `"quality"` for the
+ *     rare model that names it that way) — the richest source, since each
+ *     option already carries a display `label` (e.g. Veo 3.1's
+ *     `VEO_31_INPUT_FIELDS`, HappyHorse/Gemini Omni's resolution selects).
+ *     This is checked FIRST because it's the most explicit/curated source.
+ *  2. `configJson.supportedResolutions` — a plain string array some configs
+ *     set alongside (or instead of) `inputFields` (e.g. `buildVeo31Config`,
+ *     `buildHappyHorseConfig`). Used when no `inputFields` resolution/size
+ *     select exists.
+ *  3. The DB/static `sizes` column (e.g. `google-nano-banana-pro`'s
+ *     `["1024x1024", "1024x1792", "1792x1024"]`, `flux-2.0`'s same shape,
+ *     `google-banana-2-lite`'s `["1K"]`) — the fallback for image models that
+ *     predate `configJson.inputFields` entirely.
+ *
+ * If a resolution-tiered pricing config is present (`pricingFormula ===
+ * "matrix"` with a single pricing field keyed `resolution`/`size`, e.g. Veo
+ * 3.1's 720p/1080p/4K tiers), each option's `creditCost` is computed via
+ * `calculateCreditCost` with that single value selected — giving the client
+ * an exact per-option price without re-implementing the pricing matrix logic.
+ * Models with flat/non-resolution pricing simply omit `creditCost` per option
+ * (the model's base `creditCost` still applies uniformly).
+ *
+ * Returns `undefined` (never an empty array) when the model has no
+ * resolution/size signal at all, so the client can treat "no dropdown" and
+ * "empty dropdown" as the same state.
+ */
+export function deriveModelResolutionOptions(
+  model: {
+    creditCost: number;
+    sizes?: string[] | null;
+    configJson?: Record<string, any> | null;
+  },
+): ModelResolutionOption[] | undefined {
+  const cfg = model.configJson ?? {};
+  const inputFields = Array.isArray(cfg.inputFields) ? cfg.inputFields : [];
+  const RESOLUTION_FIELD_KEYS = new Set(["resolution", "size", "quality"]);
+
+  const resolutionField = inputFields.find(
+    (f: any) =>
+      f &&
+      typeof f.key === "string" &&
+      RESOLUTION_FIELD_KEYS.has(f.key) &&
+      Array.isArray(f.options) &&
+      f.options.length > 0,
+  );
+
+  let rawOptions: Array<{ value: string; label?: string }> | undefined;
+  if (resolutionField) {
+    rawOptions = resolutionField.options
+      .filter((o: any) => o && typeof o.value === "string" && o.value.length > 0)
+      .map((o: any) => ({ value: o.value, label: typeof o.label === "string" ? o.label : o.value }));
+  } else if (Array.isArray(cfg.supportedResolutions) && cfg.supportedResolutions.length > 0) {
+    rawOptions = cfg.supportedResolutions
+      .filter((v: unknown): v is string => typeof v === "string" && v.length > 0)
+      .map((v: string) => ({ value: v, label: v }));
+  } else if (Array.isArray(model.sizes) && model.sizes.length > 0) {
+    rawOptions = model.sizes
+      .filter((v): v is string => typeof v === "string" && v.length > 0)
+      .map((v) => ({ value: v, label: v }));
+  }
+
+  if (!rawOptions || rawOptions.length === 0) return undefined;
+
+  // De-duplicate by value (keep first) — some configs list the same value
+  // via both an inputFields option AND supportedResolutions.
+  const seen = new Set<string>();
+  const deduped = rawOptions.filter((o) => {
+    if (seen.has(o.value)) return false;
+    seen.add(o.value);
+    return true;
+  });
+
+  const hasMatrixResolutionPricing =
+    cfg.pricingFormula === "matrix" &&
+    cfg.pricingTiers &&
+    typeof cfg.pricingTiers === "object" &&
+    (resolutionField ? RESOLUTION_FIELD_KEYS.has(resolutionField.key) : true);
+
+  return deduped.map((o) => {
+    if (!hasMatrixResolutionPricing) return { value: o.value, label: o.label ?? o.value };
+    const creditCost = calculateCreditCost(
+      { creditCost: model.creditCost, configJson: cfg },
+      { resolution: o.value },
+    );
+    return { value: o.value, label: o.label ?? o.value, creditCost };
+  });
 }
 
 /**

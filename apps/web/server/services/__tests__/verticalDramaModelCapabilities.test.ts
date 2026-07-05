@@ -173,6 +173,54 @@ describe("deriveVerticalDramaCapabilities", () => {
     expect(caps.supportsStartFrame).toBe(false);
     expect(caps.verticalDramaReady).toBe(false);
   });
+
+  describe("maxReferenceImages: undefined (unknown) vs explicit 0 (Phase 6.4)", () => {
+    it("resolves maxReferenceImages to undefined — not 0 — when configJson has no maxReferenceImages signal at all", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "video",
+        aspectRatios: ["9:16"],
+        configJson: {},
+      });
+      expect(caps.maxReferenceImages).toBeUndefined();
+    });
+
+    it("resolves maxReferenceImages to undefined when configJson is entirely absent", () => {
+      const caps = deriveVerticalDramaCapabilities({ type: "video" });
+      expect(caps.maxReferenceImages).toBeUndefined();
+    });
+
+    it("keeps an EXPLICIT configJson.maxReferenceImages: 0 as a real 0 (not coerced to undefined)", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "video",
+        aspectRatios: ["9:16"],
+        configJson: { maxReferenceImages: 0, apiPayloadFormat: "veo" },
+      });
+      expect(caps.maxReferenceImages).toBe(0);
+    });
+
+    it("keeps a positive explicit configJson.maxReferenceImages", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "video",
+        aspectRatios: ["9:16"],
+        configJson: { maxReferenceImages: 5 },
+      });
+      expect(caps.maxReferenceImages).toBe(5);
+    });
+
+    it("treats a non-numeric configJson.maxReferenceImages as unknown (undefined), not 0", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "video",
+        aspectRatios: ["9:16"],
+        configJson: { maxReferenceImages: "not-a-number" },
+      });
+      expect(caps.maxReferenceImages).toBeUndefined();
+    });
+
+    it("image models never set maxReferenceImages (only verticalDramaReady applies)", () => {
+      const caps = deriveVerticalDramaCapabilities({ type: "image", aspectRatios: ["9:16"] });
+      expect(caps.maxReferenceImages).toBeUndefined();
+    });
+  });
 });
 
 describe("resolveVerticalDramaCapabilities", () => {

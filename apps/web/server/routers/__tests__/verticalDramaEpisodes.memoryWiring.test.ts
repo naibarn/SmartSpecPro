@@ -136,6 +136,10 @@ vi.mock("../../services/verticalDramaVideoPromptFormatter", () => ({
   formatVideoClipRequest: vi.fn(),
 }));
 
+vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
+  generateVerticalDramaShotVideoPrompt: vi.fn(),
+}));
+
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
