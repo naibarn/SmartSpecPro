@@ -539,6 +539,7 @@ export const isMcpProviderAuthErrorForTest = isMcpProviderAuthError;
 export const sanitizeMcpConnectionErrorMessageForTest = sanitizeMcpConnectionErrorMessage;
 export const higgsfieldMediaRolesForReferenceImagesForTest =
   rolesForReferenceImageUrls;
+export const withCompletedProviderResultForTest = withCompletedProviderResult;
 
 function findProviderStatus(value: unknown, visited = new Set<unknown>()): string | null {
   if (!value || typeof value !== "object" || visited.has(value)) return null;
@@ -628,6 +629,18 @@ async function withCompletedProviderResult(task: MediaTask, providerStatusResult
   return {
     ...task,
     status: "completed",
+    // Normalize the top-level `resultUrl` here too, not just inside
+    // `resultData` — this is the field every poller (character portrait,
+    // storyboard start-frame, angle-variations, repair) reads directly as
+    // `task.resultUrl`. Without this, the in-memory fast path in
+    // `getMcpMediaTask` (which returns this object as-is once status is no
+    // longer "processing"/"pending", bypassing `rowToMediaTask`'s own
+    // `readFirstMcpMediaUrl(resultData)` derivation used by `listTasks`)
+    // would report `status: "completed"` with no `resultUrl`, even though
+    // the History tab — which always re-derives from `resultData` via
+    // `rowToMediaTask` — shows the image correctly. Keeping both call paths
+    // aligned on the same normalized field prevents that split-brain state.
+    ...(resultUrl ? { resultUrl } : {}),
     resultData,
     completedAt: task.completedAt ?? new Date().toISOString(),
   };

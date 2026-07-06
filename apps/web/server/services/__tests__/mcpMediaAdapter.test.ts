@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MediaTask } from "../mediaGenerationService";
 import {
   buildMcpToolArguments,
@@ -7,6 +7,7 @@ import {
   isMcpProviderAuthErrorForTest,
   parseMcpJsonResponse,
   sanitizeMcpConnectionErrorMessageForTest,
+  withCompletedProviderResultForTest,
 } from "../mcpMediaAdapter";
 
 describe("mcpMediaAdapter", () => {
@@ -260,5 +261,91 @@ data: {"jsonrpc":"2.0","result":{"ok":true}}
       contentType: "image/png",
       byteSize: 3,
     });
+  });
+
+  /**
+   * Regression test for the character-portrait / start-frame / angle-variation
+   * / repair-image pollers all showing "generation succeeded but no result
+   * URL found" even though the exact same completed task renders fine in the
+   * Media History tab (`media.listTasks` -> `listMcpMediaTasks` ->
+   * `rowToMediaTask`, which derives the top-level `resultUrl` fresh from
+   * `resultData` on every DB read). Root cause: `withCompletedProviderResult`
+   * (called by `refreshMcpMediaTaskStatus`) only set `resultUrl` inside the
+   * nested `resultData` object, never at the top level of the returned
+   * `MediaTask`. `getMcpMediaTask`'s in-memory fast path returns that object
+   * directly once `status` is no longer "processing"/"pending" — bypassing
+   * `rowToMediaTask` entirely — so every poller reading `task.resultUrl`
+   * (the same top-level field the client always reads) saw `undefined` on a
+   * `status: "completed"` task, while a fresh `listTasks` DB read of the
+   * identical row showed the image correctly.
+   */
+  it("normalizes a completed MCP task's top-level resultUrl to match rowToMediaTask's derivation", async () => {
+    // `withCompletedProviderResult` has no dependency-injection seam for
+    // storage/fetch (by design — it's an internal step of
+    // `refreshMcpMediaTaskStatus`, not meant to be called with test doubles
+    // in production), so this exercises the real `storagePut` local-storage
+    // fallback (no DATABASE_URL/S3 configured in this test env) with a
+    // throwaway taskId, then removes the file it writes.
+    const providerOutputUrl = "https://d8j0ntlcm91z4.cloudfront.net/generated/output-0.png";
+    const fetchMock = vi.fn(async () => new Response(Buffer.from([1, 2, 3]), {
+      headers: { "content-type": "image/png" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const task: MediaTask = {
+      id: "mcp_test_task_regression_resulturl",
+      taskId: "provider_job_1",
+      userId: "1",
+      mediaType: "image",
+      status: "processing",
+      model: "higgsfield/nano_banana_pro",
+      prompt: "A character portrait",
+      parameters: {
+        transportMetadata: {
+          tenantId: "tenant-ZCSKEM9s",
+          actorUserId: 1,
+          providerKey: "higgsfield",
+        },
+      },
+      resultData: {},
+      creditsUsed: 0,
+      createdAt: new Date("2026-07-06T09:28:34.596Z").toISOString(),
+      startedAt: new Date("2026-07-06T09:28:34.596Z").toISOString(),
+    };
+
+    // Real completed Higgsfield `job_status` responses report status +
+    // output URLs together in one nested object — the exact shape
+    // `collectProviderUrls`/`normalizeProviderStatus` scan.
+    const providerStatusResult = {
+      status: "completed",
+      output: { imageUrl: providerOutputUrl },
+    };
+
+    try {
+      const result = await withCompletedProviderResultForTest(task, providerStatusResult);
+
+      expect(result.status).toBe("completed");
+      expect(typeof result.resultData?.resultUrl).toBe("string");
+      expect(result.resultData?.resultUrl).toBeTruthy();
+      // The bug: `result.resultUrl` (top-level) used to be `undefined` even
+      // though `result.resultData.resultUrl` (nested) was set correctly —
+      // the History tab (which always re-derives resultUrl from resultData
+      // via rowToMediaTask on every DB read) showed the image fine, while
+      // every poller reading task.resultUrl directly did not. The two must
+      // now match.
+      expect(result.resultUrl).toBe(result.resultData?.resultUrl);
+      expect(result.resultData?.imageUrl).toBe(result.resultData?.resultUrl);
+    } finally {
+      vi.unstubAllGlobals();
+      const { getUploadsDir } = await import("../../storage");
+      const fs = await import("fs");
+      const path = await import("path");
+      const dir = path.join(getUploadsDir(), "mcp-media", "tenant-ZCSKEM9s", "1", task.id);
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 });
