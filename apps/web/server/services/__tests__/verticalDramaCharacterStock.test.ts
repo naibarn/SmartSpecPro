@@ -1,16 +1,46 @@
-import { describe, it, expect } from "vitest";
-import {
-  buildCharacterAssetManifest,
-  deriveCharacterAssetState,
-  characterAssetRowToContract,
-  characterRefChangeStaleTargets,
-} from "../verticalDramaCharacterStock";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   canTransitionCharacterAssetState,
   transitionCharacterAssetState,
   isCharacterAssetUsable,
   type VerticalDramaCharacterAsset,
 } from "@shared/verticalDramaSeries";
+
+// ---------------------------------------------------------------------------
+// DB mock — supports the exact chain shapes `linkAsset` exercises:
+//   select().from().where().limit()   (existing-row lookup + media-asset check)
+//   insert().values().returning()     (new-row insert)
+//   update().set().where().returning() (idempotent-update branch)
+// ---------------------------------------------------------------------------
+const mockLimit = vi.fn();
+const mockWhereSelect = vi.fn(() => ({ limit: mockLimit }));
+const mockFrom = vi.fn(() => ({ where: mockWhereSelect }));
+const mockSelect = vi.fn(() => ({ from: mockFrom }));
+
+const mockInsertReturning = vi.fn();
+const mockInsertValues = vi.fn(() => ({ returning: mockInsertReturning }));
+const mockInsert = vi.fn(() => ({ values: mockInsertValues }));
+
+const mockUpdateReturning = vi.fn();
+const mockUpdateWhere = vi.fn(() => ({ returning: mockUpdateReturning }));
+const mockUpdateSet = vi.fn(() => ({ where: mockUpdateWhere }));
+const mockUpdate = vi.fn(() => ({ set: mockUpdateSet }));
+
+vi.mock("../../db", () => ({
+  db: {
+    select: (...args: unknown[]) => mockSelect(...args),
+    insert: (...args: unknown[]) => mockInsert(...args),
+    update: (...args: unknown[]) => mockUpdate(...args),
+  },
+}));
+
+import {
+  buildCharacterAssetManifest,
+  deriveCharacterAssetState,
+  characterAssetRowToContract,
+  characterRefChangeStaleTargets,
+  VerticalDramaCharacterStockService,
+} from "../verticalDramaCharacterStock";
 
 function asset(over: Partial<VerticalDramaCharacterAsset>): VerticalDramaCharacterAsset {
   return {
@@ -117,5 +147,149 @@ describe("characterRefChangeStaleTargets", () => {
     expect(pipelineStages).toContain("storyboard_shotgrid");
     expect(pipelineStages).toContain("render_or_import_start_frames");
     expect(pipelineStages).toContain("video_motion_prompt_pack");
+  });
+});
+
+describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repro 2026-07-06)", () => {
+  const owner = { tenantId: "t1", userId: 42, seriesId: 10 };
+  const baseParams = {
+    ...owner,
+    characterId: 5,
+    mediaAssetId: 100,
+    assetType: "character_reference",
+    source: "imported" as const,
+  };
+  const mediaAssetRow = { id: 100, tenantId: "t1", userId: 42, status: "completed" };
+
+  beforeEach(() => {
+    mockSelect.mockClear();
+    mockFrom.mockClear();
+    mockWhereSelect.mockClear();
+    mockLimit.mockClear();
+    mockInsert.mockClear();
+    mockInsertValues.mockClear();
+    mockInsertReturning.mockClear();
+    mockUpdate.mockClear();
+    mockUpdateSet.mockClear();
+    mockUpdateWhere.mockClear();
+    mockUpdateReturning.mockClear();
+  });
+
+  it("inserts a new row when no existing (characterId, mediaAssetId) link exists", async () => {
+    // 1st select() call = media-asset attachability check, 2nd = existing-link lookup.
+    mockLimit
+      .mockResolvedValueOnce([mediaAssetRow])
+      .mockResolvedValueOnce([]); // no existing link
+    mockInsertReturning.mockResolvedValueOnce([
+      {
+        id: 1,
+        tenantId: "t1",
+        userId: 42,
+        seriesId: 10,
+        characterId: 5,
+        mediaAssetId: 100,
+        assetType: "character_reference",
+        role: "primary_portrait",
+        approved: true,
+        containsHumanFace: null,
+        qcStatus: "pending",
+        checksumSha256: null,
+        metadata: { state: "approved", source: "imported" },
+        createdAt: new Date("2026-07-06T00:00:00.000Z"),
+        updatedAt: new Date("2026-07-06T00:00:00.000Z"),
+      },
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    const result = await service.linkAsset({ ...baseParams, role: "primary_portrait" });
+
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(result.assetLinkId).toBe("1");
+    expect(result.role).toBe("primary_portrait");
+    expect(result.state).toBe("approved");
+  });
+
+  it("UPDATEs the existing row instead of inserting a duplicate on a second link of the same (characterId, mediaAssetId)", async () => {
+    const existingRow = {
+      id: 7,
+      tenantId: "t1",
+      userId: 42,
+      seriesId: 10,
+      characterId: 5,
+      mediaAssetId: 100,
+      assetType: "character_reference",
+      role: null,
+      approved: true,
+      containsHumanFace: null,
+      qcStatus: "pending",
+      checksumSha256: null,
+      metadata: { state: "approved", source: "imported" },
+      createdAt: new Date("2026-07-05T00:00:00.000Z"),
+      updatedAt: new Date("2026-07-05T00:00:00.000Z"),
+    };
+    mockLimit
+      .mockResolvedValueOnce([mediaAssetRow]) // attachability check
+      .mockResolvedValueOnce([existingRow]); // existing link found
+    mockUpdateReturning.mockResolvedValueOnce([
+      {
+        ...existingRow,
+        role: "primary_portrait",
+        updatedAt: new Date("2026-07-06T00:00:00.000Z"),
+      },
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    const result = await service.linkAsset({ ...baseParams, role: "primary_portrait" });
+
+    // No duplicate row inserted — the existing (characterId, mediaAssetId)
+    // link is updated in place (this is the exact drag-onto-card repro: the
+    // panel previously showed a second "primary_p..." tile for the same
+    // already-linked image).
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdateWhere).toHaveBeenCalled();
+    expect(result.assetLinkId).toBe("7");
+    expect(result.role).toBe("primary_portrait");
+    expect(result.state).toBe("approved");
+  });
+
+  it("does not attempt idempotent lookup when characterId or mediaAssetId is absent (browse-only / product-reference rows)", async () => {
+    mockInsertReturning.mockResolvedValueOnce([
+      {
+        id: 2,
+        tenantId: "t1",
+        userId: 42,
+        seriesId: 10,
+        characterId: null,
+        mediaAssetId: null,
+        assetType: "character_reference",
+        role: null,
+        approved: true,
+        containsHumanFace: null,
+        qcStatus: "pending",
+        checksumSha256: null,
+        metadata: { state: "approved", source: "imported" },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    await service.linkAsset({
+      tenantId: "t1",
+      userId: 42,
+      seriesId: 10,
+      characterId: null,
+      mediaAssetId: null,
+      assetType: "character_reference",
+      source: "imported",
+    });
+
+    // No media-asset attachability check (mediaAssetId null) and no
+    // existing-link lookup (both characterId and mediaAssetId are null) —
+    // only the insert path runs.
+    expect(mockSelect).not.toHaveBeenCalled();
+    expect(mockInsert).toHaveBeenCalledTimes(1);
   });
 });

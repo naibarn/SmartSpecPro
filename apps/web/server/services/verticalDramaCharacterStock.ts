@@ -315,11 +315,66 @@ export class VerticalDramaCharacterStockService {
    * corrections, and assets can still cycle back through `stale` ->
    * `approved` later (e.g. after the character's identity anchors change),
    * so the approve action itself is kept in the state machine and UI.
+   *
+   * IDEMPOTENT on `(seriesId, characterId, mediaAssetId)` (bug repro
+   * 2026-07-06, series 4 คุณหญิงเบญจวรรณ): re-linking the same media asset to
+   * the same character — e.g. dragging a reference tile the panel already
+   * shows onto the character card to "set as portrait" — previously always
+   * INSERTed a new row, so the panel ended up showing two tiles for the same
+   * image under different `role`/state (one "approved", one
+   * "primary_portrait"). There is no DB unique constraint for this (avoided a
+   * migration per the incident plan); this query-first-then-branch guard is
+   * the service-level substitute: an existing link for the same
+   * (seriesId, characterId, mediaAssetId) tuple is UPDATEd in place (new
+   * role/source/state/metadata applied on top of it) instead of inserting a
+   * sibling row. `characterId`/`mediaAssetId` both null (or either null) never
+   * match an existing row via `and(eq(...))`'s null semantics, so this only
+   * dedupes real character+asset pairs — never collapses distinct "browse
+   * only" or product-reference rows that happen to share nulls.
    */
   async linkAsset(params: LinkCharacterAssetParams): Promise<VerticalDramaCharacterAsset> {
     if (params.mediaAssetId != null) {
       await this.assertMediaAssetAttachable(params, params.mediaAssetId);
     }
+
+    if (params.characterId != null && params.mediaAssetId != null) {
+      const [existing] = await db
+        .select()
+        .from(verticalDramaCharacterAssets)
+        .where(
+          and(
+            eq(verticalDramaCharacterAssets.tenantId, params.tenantId),
+            eq(verticalDramaCharacterAssets.userId, params.userId),
+            eq(verticalDramaCharacterAssets.seriesId, params.seriesId),
+            eq(verticalDramaCharacterAssets.characterId, params.characterId),
+            eq(verticalDramaCharacterAssets.mediaAssetId, params.mediaAssetId),
+          ),
+        )
+        .limit(1);
+      if (existing) {
+        const meta: Record<string, unknown> = {
+          ...((existing.metadata as Record<string, unknown> | null) ?? {}),
+          ...(params.metadata ?? {}),
+          state: "approved" satisfies VerticalDramaCharacterAssetState,
+          source: params.source,
+        };
+        const [updated] = await db
+          .update(verticalDramaCharacterAssets)
+          .set({
+            assetType: params.assetType,
+            role: params.role ?? existing.role,
+            approved: true,
+            containsHumanFace: params.containsHumanFace ?? existing.containsHumanFace,
+            checksumSha256: params.checksumSha256 ?? existing.checksumSha256,
+            metadata: meta,
+            updatedAt: new Date(),
+          })
+          .where(eq(verticalDramaCharacterAssets.id, existing.id))
+          .returning();
+        return characterAssetRowToContract(updated as VerticalDramaCharacterAssetRow);
+      }
+    }
+
     const [row] = await db
       .insert(verticalDramaCharacterAssets)
       .values({

@@ -109,6 +109,46 @@ export function guessImageMimeTypeFromUrl(url: string): string {
   }
 }
 
+/**
+ * Defensive UI-level dedupe for the "ภาพตัวละครนี้" (this character's images)
+ * list (bug repro 2026-07-06, series 4 คุณหญิงเบญจวรรณ): dragging a reference
+ * tile the panel already showed onto the character card used to create a
+ * SECOND link row for the same underlying image (see
+ * `verticalDramaCharacterStock.ts`'s `linkAsset` doc comment for the
+ * service-level idempotency fix) — old, already-linked data may still carry
+ * true duplicates the service-level fix cannot retroactively collapse without
+ * a migration. Groups by `(mediaAssetId, role)` — NOT by `mediaAssetId` alone,
+ * since a single image legitimately carries more than one role for the same
+ * character (e.g. the same render tagged both `primary_portrait` and
+ * `character_sheet_full`) and collapsing those would hide a real, distinct
+ * list entry. Within a group, keeps the most recently updated row, preferring
+ * an `approved` one on an exact tie.
+ */
+export function dedupeCharacterAssetsForDisplay(
+  assets: VerticalDramaCharacterAsset[]
+): VerticalDramaCharacterAsset[] {
+  const byGroup = new Map<string, VerticalDramaCharacterAsset>();
+  const order: string[] = [];
+  for (const a of assets) {
+    const groupKey = `${a.mediaAssetId ?? `asset:${a.assetLinkId}`}::${a.role ?? ""}`;
+    const existing = byGroup.get(groupKey);
+    if (!existing) {
+      byGroup.set(groupKey, a);
+      order.push(groupKey);
+      continue;
+    }
+    const existingTime = new Date(existing.updatedAt).getTime();
+    const nextTime = new Date(a.updatedAt).getTime();
+    if (
+      nextTime > existingTime ||
+      (nextTime === existingTime && a.state === "approved" && existing.state !== "approved")
+    ) {
+      byGroup.set(groupKey, a);
+    }
+  }
+  return order.map(key => byGroup.get(key)!);
+}
+
 function extractCharacterDescriptionForDisplay(
   data: Record<string, unknown> | null | undefined
 ): string | undefined {
@@ -832,8 +872,10 @@ export function VerticalDramaCharacterStockPanel({
    *  the condition that previously gated mounting `VerticalDramaCharacterReferencePanel`
    *  at all (`!readOnly`), just now also driving the 3-column grid shape. */
   const showReferencePanelColumn = Boolean(selectedCharacter) && !readOnly;
-  const selectedAssets = assets.filter(
-    a => effectiveSelectedId != null && a.characterId === effectiveSelectedId
+  const selectedAssets = dedupeCharacterAssetsForDisplay(
+    assets.filter(
+      a => effectiveSelectedId != null && a.characterId === effectiveSelectedId
+    )
   );
   // Deliberately does NOT include the per-character generate/poll flags
   // (`generateImageMutation.isPending` etc., `pollingCharacters`) — those
@@ -2169,6 +2211,17 @@ export function VerticalDramaCharacterStockPanel({
                       characterId: selectedCharacter.characterId,
                       mediaAssetId,
                       assetType: "character_reference",
+                      // `role` must be "primary_portrait" — same as
+                      // `assignDroppedReference`'s drag-onto-card path below.
+                      // Upload/drop through this panel targets a specific
+                      // character, so — same as dragging onto the card — it
+                      // must set/replace that character's portrait, not just
+                      // add an untagged row to "ภาพตัวละครนี้" that never
+                      // surfaces on the card (bug repro 2026-07-06, series 4
+                      // คุณหญิงเบญจวรรณ: uploading via the "อัปโหลดภาพ" button
+                      // linked the asset but never updated the card image
+                      // because `role` was left null here).
+                      role: "primary_portrait",
                       source: "imported",
                     })
                   }
