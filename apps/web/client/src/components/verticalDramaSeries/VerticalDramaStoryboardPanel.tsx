@@ -2537,7 +2537,7 @@ export function VerticalDramaStoryboardPanel({
                           )}
                         </Button>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 pt-0.5">
+                      <div className="grid grid-cols-3 gap-2 pt-0.5 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-9">
                         {(angleCandidatesByShot[shotNumber] ?? []).map(({ dataUrl, originalIndex }, idx) => {
                           const isSelected =
                             selectedAngleCandidateIndexesByShot[shotNumber]?.has(idx) ?? false;
@@ -2545,7 +2545,7 @@ export function VerticalDramaStoryboardPanel({
                             <div
                               key={originalIndex}
                               className={cn(
-                                "group relative mx-auto aspect-[9/16] w-full max-w-[6.5rem] overflow-hidden rounded-md border shadow-sm transition-shadow",
+                                "group relative mx-auto aspect-[9/16] w-full max-w-[6rem] overflow-hidden rounded-md border shadow-sm transition-shadow",
                                 isSelected
                                   ? "border-primary ring-2 ring-primary ring-offset-1 ring-offset-background"
                                   : "border-border hover:shadow-md hover:ring-2 hover:ring-primary/40"
