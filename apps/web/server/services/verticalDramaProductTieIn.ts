@@ -500,11 +500,58 @@ const PLACEMENT_STYLE_DIRECTIVE: Record<VerticalDramaShotProductPlacement["place
     "the character is naturally using the product in this exact moment, integrated into the action",
 };
 
+/* -------------------------------------------------------------------------- */
+/* Product lock (hard visual-identity guard for tie-in generation)            */
+/*                                                                            */
+/* Whenever a product reference image is attached to a generation call, the   */
+/* product's real-world appearance must never be reinterpreted/redesigned by  */
+/* the model. This is applied at every point a product reference image is    */
+/* used: the pipeline's tie-in image-prompt directive, the start-frame        */
+/* image/angle-variation generation calls (negative prompt), shot image      */
+/* repair (preservation directive) when the shot is a tie-in shot, and the    */
+/* per-shot video prompt (product must stay visually unchanged while moving). */
+/* -------------------------------------------------------------------------- */
+
 /**
- * Append a concise, natural in-scene product-presence direction to a shot's
- * image prompt (spec: no ad-poster look, natural placement only). Caller is
- * responsible for enforcing the final prompt length cap (`VD_IMAGE_PROMPT_MAX`
- * via `ensurePromptWithinLimit`) — this only appends, never truncates.
+ * Concise, cap-aware hard-lock instruction appended immediately after the
+ * natural in-scene placement directive (BEFORE any other decorative prompt
+ * detail) so it survives `ensurePromptWithinLimit`'s tail truncation fallback
+ * if the final prompt still exceeds the cap after LLM refinement.
+ */
+export const VD_PRODUCT_LOCK_INSTRUCTION =
+  "PRODUCT LOCK (MANDATORY): the product shown in the reference image(s) must appear EXACTLY as-is — identical shape, proportions, physical size relative to the scene, colors, materials, logo, and label text. Do NOT redesign, restyle, recolor, resize, add or remove parts, or invent variants of the product.";
+
+/** Negative-prompt terms enforcing the product lock on the generation side. */
+export const VD_PRODUCT_LOCK_NEGATIVE_TERMS = [
+  "altered product design",
+  "wrong product color",
+  "distorted logo",
+  "modified packaging",
+  "redesigned product",
+] as const;
+
+/** Comma-joined negative-prompt fragment built from `VD_PRODUCT_LOCK_NEGATIVE_TERMS`. */
+export const VD_PRODUCT_LOCK_NEGATIVE_PROMPT_FRAGMENT = VD_PRODUCT_LOCK_NEGATIVE_TERMS.join(", ");
+
+/**
+ * Video-side variant of the product lock — the product must remain visually
+ * unchanged (no redesign/recolor/resize/logo drift) across the clip's motion,
+ * distinct from the image-side wording since video prompts describe change
+ * over time rather than a single frame.
+ */
+export const VD_PRODUCT_LOCK_VIDEO_INSTRUCTION =
+  "PRODUCT LOCK (MANDATORY): the product must remain visually unchanged while in motion — same shape, proportions, size relative to the scene, colors, materials, logo, and label text as the reference image, for the entire clip. Never let the product warp, morph, recolor, resize, or drift its logo/label during the motion.";
+
+/**
+ * Append a concise, natural in-scene product-presence direction PLUS the hard
+ * product-lock instruction to a shot's image prompt (spec: no ad-poster look,
+ * natural placement only; product visuals must never be reinterpreted). The
+ * lock is appended immediately after the placement directive — i.e. before
+ * any other decorative prompt detail added later in the pipeline — so it is
+ * the LEAST likely part of the final prompt to be cut if a downstream QC
+ * pass has to hard-truncate at the character cap. Caller is responsible for
+ * enforcing the final prompt length cap (`VD_IMAGE_PROMPT_MAX` via
+ * `ensurePromptWithinLimit`) — this only appends, never truncates.
  */
 export function appendProductPresenceDirective(
   imagePrompt: string,
@@ -513,7 +560,98 @@ export function appendProductPresenceDirective(
 ): string {
   const name = productName?.trim() || "the tied-in product";
   const directive = `Product placement (natural, not an advertisement): ${name} must be visibly present in this shot — ${PLACEMENT_STYLE_DIRECTIVE[placement.placementStyle]}. Render it as an ordinary object in the world of the scene, photorealistic and consistent with the attached product reference image, never as packaging art, a poster, or on-image text/branding overlay.`;
-  return [imagePrompt.trim(), directive].filter(Boolean).join(" ");
+  return [imagePrompt.trim(), directive, VD_PRODUCT_LOCK_INSTRUCTION].filter(Boolean).join(" ");
+}
+
+/**
+ * Merge the product-lock negative-prompt terms into an existing negative
+ * prompt string — only when product reference image(s) are actually attached
+ * to this generation call (`hasProductReferences`). No-op (returns the
+ * original negative prompt unchanged, including `undefined`) when there are
+ * no product references, so shots without a tie-in are never affected.
+ */
+export function mergeProductLockNegativePrompt(
+  negativePrompt: string | undefined,
+  hasProductReferences: boolean,
+): string | undefined {
+  if (!hasProductReferences) return negativePrompt;
+  const existing = negativePrompt?.trim();
+  return existing
+    ? `${existing}, ${VD_PRODUCT_LOCK_NEGATIVE_PROMPT_FRAGMENT}`
+    : VD_PRODUCT_LOCK_NEGATIVE_PROMPT_FRAGMENT;
+}
+
+/** Max number of product reference images resolved for a tie-in (before the character-ref merge/trim step). */
+export const VD_PRODUCT_REFERENCE_IMAGE_CAP = 3 as const;
+
+/**
+ * Resolve the effective set of product reference image URLs for a tie-in
+ * config: Marketplace Capture's selected/best product images (when a capture
+ * is linked) plus the series' own `productImageUrl` (when also set), deduped
+ * and capped at `VD_PRODUCT_REFERENCE_IMAGE_CAP`. Pure — the caller is
+ * responsible for actually fetching `captureSelectedImageUrls` (e.g. via the
+ * Marketplace Capture storytelling-handoff read path) and passing them in;
+ * this function never throws and degrades gracefully:
+ *   - capture linked but it has no images -> falls back to `productImageUrl`
+ *     alone (or `[]` if that is also absent);
+ *   - no capture and no `productImageUrl` -> `[]`.
+ * Capture images are listed first (curated/best evidence), then
+ * `productImageUrl` (manual override), matching the general "most authoritative
+ * source first" convention already used by `mergeAndTrimReferenceImageUrls`.
+ */
+export function resolveProductReferenceImageUrls(input: {
+  productImageUrl?: string;
+  captureSelectedImageUrls?: string[];
+}): string[] {
+  const captureUrls = (input.captureSelectedImageUrls ?? []).filter(
+    (u): u is string => typeof u === "string" && u.trim().length > 0,
+  );
+  const manualUrl = input.productImageUrl?.trim();
+  const combined = manualUrl ? [...captureUrls, manualUrl] : captureUrls;
+  const deduped = combined.filter((u, i, arr) => arr.indexOf(u) === i);
+  return deduped.slice(0, VD_PRODUCT_REFERENCE_IMAGE_CAP);
+}
+
+/**
+ * Read-only, tenant/user-scoped fetch of a Marketplace Capture's
+ * selected/best product image URLs, for use as tie-in product reference
+ * images. Reuses the exact same read path the `marketplaceCapture.
+ * getStorytellingHandoff` tRPC procedure already exposes to the frontend
+ * (`listMarketplaceInsightsByCapture` -> synced `storytelling_handoff`
+ * insight if one exists, else `buildBasicStorytellingHandoffFromCapture`'s
+ * on-the-fly basic handoff) so both surfaces stay consistent. Never throws:
+ * a missing/inaccessible/cross-tenant capture, or a capture with no
+ * selectable images, simply resolves to `[]` (graceful skip — the caller
+ * falls back to `productImageUrl` alone via `resolveProductReferenceImageUrls`).
+ */
+export async function resolveMarketplaceCaptureProductImageUrls(
+  marketplaceCaptureId: string | undefined,
+  auth: { userId: number; tenantId?: string },
+): Promise<string[]> {
+  if (!marketplaceCaptureId?.trim()) return [];
+  try {
+    const {
+      listMarketplaceInsightsByCapture,
+      buildBasicStorytellingHandoffFromCapture,
+    } = await import("./marketplaceInsightService");
+    const insights = await listMarketplaceInsightsByCapture(marketplaceCaptureId, auth);
+    const syncedHandoff = insights.find(
+      (insight: { insightType?: string }) => insight.insightType === "storytelling_handoff",
+    );
+    const handoff =
+      (syncedHandoff?.payloadJson as { selectedImages?: Array<{ url?: string }> } | undefined) ??
+      (await buildBasicStorytellingHandoffFromCapture(marketplaceCaptureId, auth));
+    const selectedImages = Array.isArray((handoff as { selectedImages?: unknown })?.selectedImages)
+      ? ((handoff as { selectedImages: Array<{ url?: string }> }).selectedImages)
+      : [];
+    return selectedImages
+      .map((img) => (typeof img?.url === "string" ? img.url.trim() : ""))
+      .filter((url): url is string => url.length > 0);
+  } catch {
+    // Capture missing / inaccessible / cross-tenant / any read error — graceful
+    // skip, never crash tie-in image resolution over a bad capture link.
+    return [];
+  }
 }
 
 /**

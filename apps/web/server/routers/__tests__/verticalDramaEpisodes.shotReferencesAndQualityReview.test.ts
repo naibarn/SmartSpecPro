@@ -454,7 +454,9 @@ describe("runEpisodeQualityReview", () => {
   });
 
   it("runs the review, persists it via the run/artifact ledger tables, and returns the scorecard", async () => {
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow()]));
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
     mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
       review: { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] },
       creditsUsed: 3,
@@ -479,7 +481,9 @@ describe("runEpisodeQualityReview", () => {
   });
 
   it("maps InsufficientCreditsError to FORBIDDEN", async () => {
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow()]));
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
     mockRunVerticalDramaEpisodeQualityReview.mockRejectedValue(
       new MockInsufficientCreditsError("not enough credits"),
     );
@@ -490,7 +494,9 @@ describe("runEpisodeQualityReview", () => {
   });
 
   it("maps RateLimitExceededError to TOO_MANY_REQUESTS", async () => {
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow()]));
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
     mockRunVerticalDramaEpisodeQualityReview.mockRejectedValue(
       new MockRateLimitExceededError("slow down"),
     );
@@ -501,7 +507,9 @@ describe("runEpisodeQualityReview", () => {
   });
 
   it("forwards idempotencyKey through to runVerticalDramaEpisodeQualityReview (T2)", async () => {
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow()]));
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
     mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
       review: { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] },
       creditsUsed: 3,

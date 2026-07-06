@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   planTieIn,
   screenClaims,
@@ -14,6 +14,12 @@ import {
   findPlacementForShot,
   appendProductPresenceDirective,
   mergeAndTrimReferenceImageUrls,
+  resolveProductReferenceImageUrls,
+  resolveMarketplaceCaptureProductImageUrls,
+  mergeProductLockNegativePrompt,
+  VD_PRODUCT_LOCK_INSTRUCTION,
+  VD_PRODUCT_LOCK_VIDEO_INSTRUCTION,
+  VD_PRODUCT_LOCK_NEGATIVE_TERMS,
   type PlanTieInInput,
 } from "../verticalDramaProductTieIn";
 import type { VerticalDramaProductTieInConfig } from "@shared/verticalDramaSeries";
@@ -283,5 +289,196 @@ describe("mergeAndTrimReferenceImageUrls", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(["a"], ["b"], 0);
     expect(urls).toEqual(["a", "b"]);
     expect(trimmedCount).toBe(0);
+  });
+});
+
+describe("appendProductPresenceDirective — product lock", () => {
+  it("appends VD_PRODUCT_LOCK_INSTRUCTION immediately after the placement directive", () => {
+    const result = appendProductPresenceDirective("A woman sits at a cafe table.", "GlowCream", {
+      shotNumbers: [1],
+      storyFunction: "daily_use",
+      placementStyle: "hero_prop",
+    });
+    expect(result).toContain(VD_PRODUCT_LOCK_INSTRUCTION);
+    // The lock must come after the placement directive but the caller may
+    // still append more decorative detail after this function returns — the
+    // lock itself must never be the tail-most part of THIS function's output
+    // relative to the placement sentence (i.e. it's early, not appended last
+    // by some later, unrelated step).
+    const placementIndex = result.indexOf("Product placement (natural, not an advertisement)");
+    const lockIndex = result.indexOf(VD_PRODUCT_LOCK_INSTRUCTION);
+    expect(placementIndex).toBeGreaterThanOrEqual(0);
+    expect(lockIndex).toBeGreaterThan(placementIndex);
+  });
+});
+
+describe("mergeProductLockNegativePrompt", () => {
+  it("is a no-op when there are no product references", () => {
+    expect(mergeProductLockNegativePrompt("blurry, low quality", false)).toBe("blurry, low quality");
+    expect(mergeProductLockNegativePrompt(undefined, false)).toBeUndefined();
+  });
+
+  it("appends every lock negative term when product references are attached", () => {
+    const merged = mergeProductLockNegativePrompt("blurry, low quality", true);
+    expect(merged).toContain("blurry, low quality");
+    for (const term of VD_PRODUCT_LOCK_NEGATIVE_TERMS) {
+      expect(merged).toContain(term);
+    }
+  });
+
+  it("returns just the lock terms when there was no existing negative prompt", () => {
+    const merged = mergeProductLockNegativePrompt(undefined, true);
+    for (const term of VD_PRODUCT_LOCK_NEGATIVE_TERMS) {
+      expect(merged).toContain(term);
+    }
+  });
+
+  it("treats a blank/whitespace-only existing negative prompt the same as absent", () => {
+    const merged = mergeProductLockNegativePrompt("   ", true);
+    expect(merged?.startsWith(" ")).toBe(false);
+    for (const term of VD_PRODUCT_LOCK_NEGATIVE_TERMS) {
+      expect(merged).toContain(term);
+    }
+  });
+});
+
+describe("VD_PRODUCT_LOCK_VIDEO_INSTRUCTION", () => {
+  it("is present and mentions the product remaining unchanged in motion", () => {
+    expect(VD_PRODUCT_LOCK_VIDEO_INSTRUCTION.toLowerCase()).toContain("remain visually unchanged");
+    expect(VD_PRODUCT_LOCK_VIDEO_INSTRUCTION.toLowerCase()).toContain("motion");
+  });
+});
+
+describe("resolveProductReferenceImageUrls", () => {
+  it("returns [] when neither a capture nor a manual productImageUrl is set", () => {
+    expect(resolveProductReferenceImageUrls({})).toEqual([]);
+  });
+
+  it("url-only: falls back to productImageUrl alone when there are no capture images", () => {
+    const urls = resolveProductReferenceImageUrls({
+      productImageUrl: "https://cdn.example.test/manual-product.png",
+    });
+    expect(urls).toEqual(["https://cdn.example.test/manual-product.png"]);
+  });
+
+  it("capture-only: uses the capture's selected images when no manual productImageUrl is set", () => {
+    const urls = resolveProductReferenceImageUrls({
+      captureSelectedImageUrls: ["https://cdn.example.test/hero.png", "https://cdn.example.test/detail.png"],
+    });
+    expect(urls).toEqual(["https://cdn.example.test/hero.png", "https://cdn.example.test/detail.png"]);
+  });
+
+  it("both: merges capture images first, then the manual productImageUrl, deduped", () => {
+    const urls = resolveProductReferenceImageUrls({
+      productImageUrl: "https://cdn.example.test/hero.png", // duplicate of a capture image
+      captureSelectedImageUrls: [
+        "https://cdn.example.test/hero.png",
+        "https://cdn.example.test/detail.png",
+      ],
+    });
+    expect(urls).toEqual([
+      "https://cdn.example.test/hero.png",
+      "https://cdn.example.test/detail.png",
+    ]);
+  });
+
+  it("caps the resolved set at VD_PRODUCT_REFERENCE_IMAGE_CAP (3) before the character-ref merge step", () => {
+    const urls = resolveProductReferenceImageUrls({
+      productImageUrl: "https://cdn.example.test/manual.png",
+      captureSelectedImageUrls: [
+        "https://cdn.example.test/1.png",
+        "https://cdn.example.test/2.png",
+        "https://cdn.example.test/3.png",
+        "https://cdn.example.test/4.png",
+      ],
+    });
+    expect(urls).toHaveLength(3);
+    expect(urls).toEqual([
+      "https://cdn.example.test/1.png",
+      "https://cdn.example.test/2.png",
+      "https://cdn.example.test/3.png",
+    ]);
+  });
+
+  it("ignores blank/non-string entries in captureSelectedImageUrls", () => {
+    const urls = resolveProductReferenceImageUrls({
+      captureSelectedImageUrls: ["", "   ", "https://cdn.example.test/ok.png"],
+    });
+    expect(urls).toEqual(["https://cdn.example.test/ok.png"]);
+  });
+});
+
+describe("resolveMarketplaceCaptureProductImageUrls", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.doUnmock("../marketplaceInsightService");
+  });
+
+  it("returns [] immediately when no marketplaceCaptureId is given", async () => {
+    const urls = await resolveMarketplaceCaptureProductImageUrls(undefined, { userId: 1 });
+    expect(urls).toEqual([]);
+  });
+
+  it("resolves images from a synced storytelling_handoff insight when one exists", async () => {
+    vi.doMock("../marketplaceInsightService", () => ({
+      listMarketplaceInsightsByCapture: vi.fn().mockResolvedValue([
+        {
+          insightType: "storytelling_handoff",
+          payloadJson: {
+            selectedImages: [
+              { url: "https://cdn.example.test/synced-1.png" },
+              { url: "https://cdn.example.test/synced-2.png" },
+            ],
+          },
+        },
+      ]),
+      buildBasicStorytellingHandoffFromCapture: vi.fn(),
+    }));
+    const { resolveMarketplaceCaptureProductImageUrls: resolveWithMock } = await import(
+      "../verticalDramaProductTieIn"
+    );
+    const urls = await resolveWithMock("capture-1", { userId: 1, tenantId: "tenant-a" });
+    expect(urls).toEqual([
+      "https://cdn.example.test/synced-1.png",
+      "https://cdn.example.test/synced-2.png",
+    ]);
+  });
+
+  it("falls back to the basic on-the-fly handoff when no synced insight exists", async () => {
+    vi.doMock("../marketplaceInsightService", () => ({
+      listMarketplaceInsightsByCapture: vi.fn().mockResolvedValue([]),
+      buildBasicStorytellingHandoffFromCapture: vi.fn().mockResolvedValue({
+        selectedImages: [{ url: "https://cdn.example.test/basic-1.png" }],
+      }),
+    }));
+    const { resolveMarketplaceCaptureProductImageUrls: resolveWithMock } = await import(
+      "../verticalDramaProductTieIn"
+    );
+    const urls = await resolveWithMock("capture-2", { userId: 1 });
+    expect(urls).toEqual(["https://cdn.example.test/basic-1.png"]);
+  });
+
+  it("gracefully returns [] when the capture read throws (missing / cross-tenant / inaccessible)", async () => {
+    vi.doMock("../marketplaceInsightService", () => ({
+      listMarketplaceInsightsByCapture: vi.fn().mockRejectedValue(new Error("capture_not_found")),
+      buildBasicStorytellingHandoffFromCapture: vi.fn(),
+    }));
+    const { resolveMarketplaceCaptureProductImageUrls: resolveWithMock } = await import(
+      "../verticalDramaProductTieIn"
+    );
+    const urls = await resolveWithMock("capture-cross-tenant", { userId: 1, tenantId: "tenant-a" });
+    expect(urls).toEqual([]);
+  });
+
+  it("gracefully returns [] when the capture/insight has no selectable images", async () => {
+    vi.doMock("../marketplaceInsightService", () => ({
+      listMarketplaceInsightsByCapture: vi.fn().mockResolvedValue([]),
+      buildBasicStorytellingHandoffFromCapture: vi.fn().mockResolvedValue({ selectedImages: [] }),
+    }));
+    const { resolveMarketplaceCaptureProductImageUrls: resolveWithMock } = await import(
+      "../verticalDramaProductTieIn"
+    );
+    const urls = await resolveWithMock("capture-empty", { userId: 1 });
+    expect(urls).toEqual([]);
   });
 });

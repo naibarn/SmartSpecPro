@@ -284,7 +284,8 @@ describe("generateShotVideoPrompt", () => {
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])); // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup (no tie-in placement -> no productTieIn select)
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -383,7 +384,8 @@ describe("generateShotVideoPrompt", () => {
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]));
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -419,7 +421,8 @@ describe("generateShotVideoPrompt", () => {
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]));
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -450,7 +453,8 @@ describe("generateShotVideoPrompt", () => {
     const episodeRow = baseEpisodeRow({ motionPromptPack: null });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]));
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
     mockDb.update.mockReturnValueOnce({
       set: vi.fn(() => updateChain([episodeRow])),
     });

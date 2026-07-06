@@ -48,11 +48,13 @@ import {
 import type {
   VerticalDramaPromptLanguage,
   VerticalDramaDialogueLanguage,
+  VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import {
   VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
 } from "@shared/verticalDramaSeries";
+import { VD_PRODUCT_LOCK_VIDEO_INSTRUCTION } from "./verticalDramaProductTieIn";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -727,7 +729,7 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
   selectedVideoModel: Pick<ModelDefinition, "type" | "aspectRatios" | "configJson" | "provider" | "aliases"> & {
     id?: string;
   };
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   /**
    * The language the video-clip PROMPT TEXT ITSELF must be written in
    * (episode-level language plan) — defaults to `"en"` when the caller has
@@ -797,7 +799,7 @@ function buildShotVideoPromptUserPrompt(
       : null,
     `Dialogue for this shot (source lines, already in ${dialogueLanguageName}):\n${dialogueBlock}`,
     shotContext.productContext
-      ? `PRODUCT TIE-IN (MANDATORY for this shot): "${shotContext.productContext.productName ?? "the tied-in product"}" is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in a dialogue line or acting beat for this clip — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion.`
+      ? `PRODUCT TIE-IN (MANDATORY for this shot): "${shotContext.productContext.productName ?? "the tied-in product"}" is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in a dialogue line or acting beat for this clip — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. ${VD_PRODUCT_LOCK_VIDEO_INSTRUCTION}`
       : null,
     `PROMPT LANGUAGE (MANDATORY): write the "prompt" and "negative_motion_prompt" fields entirely in ${promptLanguageName} — every word of the motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
     `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video. When dialogue is present, the "dialogue[].lineTh" field must contain the line verbatim in ${dialogueLanguageName} (translate/adapt naturally into ${dialogueLanguageName} if the source line above is in a different language — never leave it in the wrong language).`,

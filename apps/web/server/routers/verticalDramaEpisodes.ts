@@ -65,6 +65,8 @@ import {
   extractShotProductPlacements,
   findPlacementForShot,
   mergeAndTrimReferenceImageUrls,
+  mergeProductLockNegativePrompt,
+  VD_PRODUCT_LOCK_INSTRUCTION,
 } from "../services/verticalDramaProductTieIn";
 import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
 import {
@@ -80,7 +82,10 @@ import type {
   VerticalDramaMotionPromptPack,
   VerticalDramaShotgrid,
 } from "@shared/verticalDramaSeries";
-import { VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT } from "@shared/verticalDramaSeries";
+import {
+  VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT,
+  normalizeVerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries";
 import {
   buildTargetAudienceRegionInstruction,
   readTargetAudienceRegionFromBible,
@@ -1036,7 +1041,7 @@ export const verticalDramaEpisodesRouter = router({
             tenantId,
             seriesId,
             title: seriesRow.title,
-            locale: (seriesRow.locale as "th" | "en") ?? "th",
+            locale: normalizeVerticalDramaSeriesLocale(seriesRow.locale),
             genre: seriesRow.genre,
             tone: seriesRow.tone,
             bible,
@@ -2493,7 +2498,14 @@ export const verticalDramaEpisodesRouter = router({
         const task = await mediaGenerationService.generateImageAsync(
           {
             prompt: imagePromptQc.prompt,
-            negativePrompt: frame.negativePrompt,
+            // Product lock (spec follow-up to tie-in): whenever a product
+            // reference image is attached to this call, the negative prompt
+            // must also guard against the model reinterpreting/redesigning
+            // the product — see `verticalDramaProductTieIn.ts`'s doc comment.
+            negativePrompt: mergeProductLockNegativePrompt(
+              frame.negativePrompt,
+              productRefUrls.length > 0,
+            ),
             model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
@@ -2715,8 +2727,11 @@ export const verticalDramaEpisodesRouter = router({
           : undefined,
         label: `multi-angle grid prompt (episode #${episodeId}, shot ${input.shotNumber})`,
       });
+      // Product lock (spec follow-up to tie-in) — same negative-prompt guard
+      // as `generateStartFrameImage`, applied only when this shot actually
+      // has product reference image(s) attached to the grid call.
       const gridNegativePrompt = [
-        frame.negativePrompt,
+        mergeProductLockNegativePrompt(frame.negativePrompt, productRefUrls.length > 0),
         "text, caption, captions, label, labels, title, titles, watermark, watermarks, logo, subtitle, subtitles, typography, lettering, writing, words, on-screen text, panel numbers, shot names, camera angle names",
       ]
         .filter((part): part is string => Boolean(part?.trim()))
@@ -2963,11 +2978,20 @@ export const verticalDramaEpisodesRouter = router({
       // description, already baked into the reference image, still wins).
       const repairRegion = await loadSeriesTargetAudienceRegion(tenantId, userId, seriesId);
 
+      // Product lock (spec follow-up to tie-in) — this shot's tie-in product
+      // reference(s), if any, must never be redesigned by the repair edit
+      // either (e.g. an instruction like "change the lighting" must not also
+      // let the model reinterpret the product sitting in frame).
+      const repairIsTieInShot = Boolean(frame.productReferenceAssetIds?.length);
+
       const repairPrompt = [
         input.instruction.trim(),
         "Keep the same character identity, wardrobe (unless the instruction explicitly changes it), pose, composition, and framing as the reference image — apply ONLY the requested change.",
         `Preservation directive (region/ethnicity): ${buildTargetAudienceRegionInstruction(repairRegion)}`,
-      ].join(" ");
+        repairIsTieInShot ? VD_PRODUCT_LOCK_INSTRUCTION : null,
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join(" ");
 
       // Final-prompt QC (hard length cap) — enforced on the final repair
       // prompt (`instruction` is already Zod-capped at 2000 chars, but the
@@ -2990,6 +3014,7 @@ export const verticalDramaEpisodesRouter = router({
         const task = await mediaGenerationService.generateImageAsync(
           {
             prompt: repairPromptQc.prompt,
+            negativePrompt: mergeProductLockNegativePrompt(undefined, repairIsTieInShot),
             model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
@@ -3448,6 +3473,18 @@ export const verticalDramaEpisodesRouter = router({
       // Resolve the episode-selected video model (Phase 1.2 resolution order).
       const selectedVideoModel = await resolveEpisodeVideoModel(pack);
 
+      const [localeSeriesRow] = await db
+        .select({ locale: verticalDramaSeries.locale })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId),
+          ),
+        )
+        .limit(1);
+
       const result = await generateVerticalDramaShotVideoPrompt({
         userId,
         tenantId,
@@ -3471,7 +3508,7 @@ export const verticalDramaEpisodesRouter = router({
         },
         selectedVideoModelId: selectedVideoModel.id,
         selectedVideoModel,
-        locale: "th",
+        locale: normalizeVerticalDramaSeriesLocale(localeSeriesRow?.locale),
         promptLanguage: pack?.promptLanguage,
         dialogueLanguage: pack?.dialogueLanguage,
         idempotencyKey: input.idempotencyKey,
@@ -3762,6 +3799,18 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
+      const [qualityReviewSeriesRow] = await db
+        .select({ locale: verticalDramaSeries.locale })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId),
+          ),
+        )
+        .limit(1);
+
       let outcome: {
         review: EpisodeQualityReviewOutput;
         creditsUsed: number;
@@ -3774,7 +3823,7 @@ export const verticalDramaEpisodesRouter = router({
           seriesId,
           episodeId,
           episodeTitle: row.title ?? `Episode ${row.episodeNumber}`,
-          locale: "th",
+          locale: normalizeVerticalDramaSeriesLocale(qualityReviewSeriesRow?.locale),
           script,
           storyboard,
           dialoguePlan,

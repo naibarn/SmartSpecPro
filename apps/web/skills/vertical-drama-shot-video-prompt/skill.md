@@ -120,6 +120,16 @@ The caller tells you two independent language settings for this shot:
    downstream quality-control pass will refine/compress any prompt that is
    still over the limit, but a well-written prompt should not rely on that
    fallback.
+8. **Product lock — MANDATORY when the caller gives you a PRODUCT TIE-IN
+   directive for this shot:** the tied-in product must remain visually
+   unchanged while in motion — same shape, proportions, physical size
+   relative to the scene, colors, materials, logo, and label text as the
+   product's reference image, for the entire clip. Never describe the
+   product morphing, recoloring, resizing, or its logo/label drifting during
+   the motion; only describe how the CHARACTER interacts with it. Include
+   "altered product design, wrong product color, distorted logo, modified
+   packaging, redesigned product" among the artifacts `negative_motion_prompt`
+   guards against for this shot.
 
 This skill does not auto-trigger. It is invoked once per shot by the Vertical
 Drama episode's shot-level "generate video prompt" action.

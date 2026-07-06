@@ -42,6 +42,7 @@ import {
   type VerticalDramaSubShotPolicy,
   type VerticalDramaPromptLanguage,
   type VerticalDramaDialogueLanguage,
+  normalizeVerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import {
@@ -89,6 +90,8 @@ import {
   extractShotProductPlacements,
   findPlacementForShot,
   appendProductPresenceDirective,
+  resolveProductReferenceImageUrls,
+  resolveMarketplaceCaptureProductImageUrls,
 } from "./verticalDramaProductTieIn";
 
 /* -------------------------------------------------------------------------- */
@@ -992,7 +995,7 @@ export class VerticalDramaEpisodePipeline {
       episodeId: owner.episodeId,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       episodeNumber: episode.episodeNumber,
-      locale: (seriesRow?.locale as "th" | "en") ?? "th",
+      locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
       productTieIn,
       storySource: {
@@ -1076,7 +1079,7 @@ export class VerticalDramaEpisodePipeline {
       seriesId: owner.seriesId,
       episodeId: owner.episodeId,
       episodeNumber: episode.episodeNumber,
-      locale: (seriesRow?.locale as "th" | "en") ?? "th",
+      locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       script: (episode.script as Record<string, unknown> | null) ?? {},
       storyboard: episode.storyboard as Record<string, unknown> | null,
       dialoguePlan: episode.dialogueAudioPlan as Record<
@@ -1246,7 +1249,7 @@ export class VerticalDramaEpisodePipeline {
       episodeId: owner.episodeId,
       episodeTitle: episode.title ?? `Episode ${episode.episodeNumber}`,
       episodeNumber: episode.episodeNumber,
-      locale: (seriesRow?.locale as "th" | "en") ?? "th",
+      locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
       storySource: {
         logline:
@@ -1817,7 +1820,22 @@ export class VerticalDramaEpisodePipeline {
             typeof rawProductTieIn?.productImageUrl === "string" && rawProductTieIn.productImageUrl
               ? rawProductTieIn.productImageUrl
               : undefined;
-          const productRefUrls = productImageUrl ? [productImageUrl] : [];
+          const marketplaceCaptureId =
+            typeof rawProductTieIn?.marketplaceCaptureId === "string" && rawProductTieIn.marketplaceCaptureId
+              ? rawProductTieIn.marketplaceCaptureId
+              : undefined;
+          // Marketplace Capture's selected/best product images (read-only,
+          // tenant/user-scoped) — graceful no-op ([]) when the capture is
+          // missing, inaccessible, or has no images; falls back to the
+          // series' own `productImageUrl` via `resolveProductReferenceImageUrls`.
+          const captureSelectedImageUrls = await resolveMarketplaceCaptureProductImageUrls(
+            marketplaceCaptureId,
+            { userId: owner.userId, tenantId: owner.tenantId },
+          );
+          const productRefUrls = resolveProductReferenceImageUrls({
+            productImageUrl,
+            captureSelectedImageUrls,
+          });
 
           framesWithTieIn = generated.plan.frames.map((frame) => {
             const placement = findPlacementForShot(placements, frame.shotNumber);
