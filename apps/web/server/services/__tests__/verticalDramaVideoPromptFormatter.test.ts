@@ -132,16 +132,16 @@ describe("formatVideoClipRequest — Veo 3.1 (native audio)", () => {
   });
 });
 
-describe("formatVideoClipRequest — Grok Imagine 1.5 (no native audio)", () => {
+describe("formatVideoClipRequest — Grok Imagine 1.5 (native audio — xAI synchronized speech, user-confirmed 2026-07-06)", () => {
   const grokModel = {
     id: "grok-imagine-video-1-5-preview",
     type: "video" as const,
     provider: "kie.ai",
     aliases: ["grok imagine 1.5", "grok imagine video 1.5"],
-    configJson: { maxReferenceImages: 1, hasAudio: false },
+    configJson: { maxReferenceImages: 1, hasAudio: true },
   };
 
-  it("never embeds the literal transcript, uses mouth-movement/acting direction only, and flags ttsFallback", () => {
+  it("embeds the Thai dialogue verbatim with generateAudio and no ttsFallback", () => {
     const result = formatVideoClipRequest({
       clip: clip(),
       dialogueLines: [dialogueLine()],
@@ -150,19 +150,16 @@ describe("formatVideoClipRequest — Grok Imagine 1.5 (no native audio)", () => 
     });
 
     expect(result.providerFamily).toBe("grok");
-    expect(result.nativeAudioDialogue).toBe(false);
-    expect(result.generateAudio).toBe(false);
-    expect(result.ttsFallback).toBe(true);
-    expect(result.ttsLines).toHaveLength(1);
-    expect(result.ttsLines[0].lineTh).toBe("เราไม่ได้จบกันแค่นี้หรอกนะ");
-    // No literal transcript embedded in the prompt.
-    expect(result.prompt).not.toContain("เราไม่ได้จบกันแค่นี้หรอกนะ");
-    expect(result.prompt).toContain("mouth moves naturally");
-    expect(result.prompt).toContain("spoken in Thai");
+    expect(result.nativeAudioDialogue).toBe(true);
+    expect(result.generateAudio).toBe(true);
+    expect(result.ttsFallback).toBe(false);
+    // Literal transcript IS embedded for native-audio models.
+    expect(result.prompt).toContain("เราไม่ได้จบกันแค่นี้หรอกนะ");
+    expect(result.prompt).toContain("in natural spoken Thai, exactly:");
     expect(result.maxReferenceImages).toBe(1);
   });
 
-  it("states 'spoken in English' when dialogueLanguage is 'en' (still no literal transcript)", () => {
+  it("states 'spoken in English' when dialogueLanguage is 'en'", () => {
     const result = formatVideoClipRequest({
       clip: clip(),
       dialogueLines: [dialogueLine()],
@@ -170,8 +167,7 @@ describe("formatVideoClipRequest — Grok Imagine 1.5 (no native audio)", () => 
       model: grokModel,
       dialogueLanguage: "en",
     });
-    expect(result.prompt).toContain("spoken in English");
-    expect(result.prompt).not.toContain("เราไม่ได้จบกันแค่นี้หรอกนะ");
+    expect(result.prompt).toContain("in natural spoken English, exactly:");
   });
 });
 

@@ -521,6 +521,122 @@ function resolveShotProductReferenceUrls(productReferenceAssetIds: string[] | un
   );
 }
 
+type ShotDialogueLine = {
+  characterKey?: string;
+  lineTh: string;
+  emotion?: string;
+  delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+  subtext?: string;
+};
+
+/**
+ * Resolve the dialogue line(s) for ONE shot's per-shot video prompt
+ * (`generateShotVideoPrompt`) — a fallback chain, tried in order, since a
+ * real Thai/whatever-locale dialogue line for this shot can live in any of
+ * three places depending on which pipeline stages the episode has actually
+ * run (2026-07-06 fix: previously this sourced `dialogueAudioPlan` ONLY,
+ * so every episode that skipped that stage — which in practice is ALL of
+ * them today, see the bug report — silently produced a "no dialogue"
+ * instruction downstream even though the script already has real dialogue
+ * for every scene):
+ *
+ * 1. `matchingClip.dialogue` — already-synced/persisted dialogue on the
+ *    motion-pack clip (e.g. from a previous `syncDialogueOntoMotionPromptClips`
+ *    run, or a prior manual edit). Most authoritative: someone already
+ *    resolved this shot's line and it should not be overwritten by a
+ *    lower-fidelity source.
+ * 2. `dialogueAudioPlan.dialogue_lines[]` — the dedicated dialogue-planning
+ *    stage's output, matched by `shot_number` or the matching clip's
+ *    `clip_number` (pre-existing logic, unchanged).
+ * 3. `script.scene_dialogue_summary[].dialogue_lines[]` — the script stage's
+ *    per-scene dialogue (always populated once the script exists, well
+ *    before dialogue-planning or storyboard runs). There is no persisted
+ *    shot→scene index, so the shot is mapped onto the scene list
+ *    proportionally by its position among the episode's shots (best-effort;
+ *    good enough to recover real Thai dialogue instead of silence).
+ *
+ * Returns `[]` (never throws) when none of the three sources has anything
+ * usable for this shot — the caller/skill then decides whether to write a
+ * short line itself (only when the shot's description implies speech).
+ */
+export function resolveShotDialogueLines(params: {
+  shotNumber: number;
+  matchingClip?: { dialogue?: ShotDialogueLine[]; clipNumber: number };
+  dialogueAudioPlan: { dialogue_lines?: Array<Record<string, unknown>> } | null;
+  script: Record<string, unknown> | null;
+  storyboardShotCount: number | undefined;
+}): ShotDialogueLine[] {
+  const { shotNumber, matchingClip, dialogueAudioPlan, script, storyboardShotCount } = params;
+
+  // 1. Already-synced clip dialogue — most authoritative.
+  if (matchingClip?.dialogue && matchingClip.dialogue.length > 0) {
+    return matchingClip.dialogue.filter((l) => l.lineTh?.trim().length > 0);
+  }
+
+  // 2. `dialogueAudioPlan.dialogue_lines[]` (pre-existing logic, unchanged).
+  const rawDialogueLines = Array.isArray(dialogueAudioPlan?.dialogue_lines)
+    ? (dialogueAudioPlan!.dialogue_lines as Array<Record<string, unknown>>)
+    : [];
+  const planLines = rawDialogueLines
+    .filter((line) => {
+      const lineShotNumber = line.shot_number;
+      const clipNumber = line.clip_number;
+      if (typeof lineShotNumber === "number" && lineShotNumber === shotNumber) return true;
+      if (
+        matchingClip &&
+        typeof clipNumber === "number" &&
+        clipNumber === matchingClip.clipNumber
+      )
+        return true;
+      return false;
+    })
+    .map((line) => ({
+      characterKey:
+        typeof line.speaker_character_id === "string" ? line.speaker_character_id : undefined,
+      lineTh: typeof line.dialogue_line === "string" ? line.dialogue_line : "",
+      emotion: typeof line.emotion === "string" ? line.emotion : undefined,
+      delivery: line.delivery as
+        | { tone?: string; pace?: string; pauses?: string; texture?: string }
+        | undefined,
+      subtext: typeof line.subtext === "string" ? line.subtext : undefined,
+    }))
+    .filter((l) => l.lineTh.trim().length > 0);
+  if (planLines.length > 0) return planLines;
+
+  // 3. Script's `scene_dialogue_summary[].dialogue_lines[]` — proportional
+  // shot→scene mapping (no persisted index exists).
+  const sceneDialogueSummary = Array.isArray(script?.scene_dialogue_summary)
+    ? (script!.scene_dialogue_summary as Array<Record<string, unknown>>)
+    : [];
+  if (sceneDialogueSummary.length === 0) return [];
+
+  const shotCount = storyboardShotCount && storyboardShotCount > 0 ? storyboardShotCount : 9;
+  const sceneIndex = Math.min(
+    sceneDialogueSummary.length - 1,
+    Math.floor(((shotNumber - 1) / shotCount) * sceneDialogueSummary.length),
+  );
+  const scene = sceneDialogueSummary[sceneIndex];
+  const rawLines = Array.isArray(scene?.dialogue_lines)
+    ? (scene!.dialogue_lines as unknown[])
+    : [];
+
+  return rawLines
+    .map((raw): ShotDialogueLine | null => {
+      if (typeof raw !== "string" || !raw.trim()) return null;
+      // Script lines are freeform strings like `หนูนา: "ยายทวดจัน…"` —
+      // split on the first colon to recover a speaker label when present.
+      const colonIndex = raw.indexOf(":");
+      if (colonIndex > 0 && colonIndex < 40) {
+        return {
+          characterKey: raw.slice(0, colonIndex).trim(),
+          lineTh: raw.slice(colonIndex + 1).trim().replace(/^[""]|[""]$/g, ""),
+        };
+      }
+      return { lineTh: raw.trim() };
+    })
+    .filter((l): l is ShotDialogueLine => l !== null && l.lineTh.length > 0);
+}
+
 /**
  * Resolve the effective image model for a start-frame generation call:
  * episode-level `startFramePlan.selectedImageModelId` (Phase 1.2 resolution
@@ -3496,44 +3612,24 @@ export const verticalDramaEpisodesRouter = router({
           typeof rawProductTieIn?.productCategory === "string" ? rawProductTieIn.productCategory : undefined;
       }
 
-      // Dialogue lines matching this shot (or a clip already sourced from it)
-      // from the raw `dialogueAudioPlan` skill output (snake_case
-      // `dialogue_lines[]` — same shape `syncDialogueOntoMotionPromptClips`
-      // reads in `verticalDramaVideoMotionPromptGeneration.ts`).
+      // Dialogue lines matching this shot — fallback chain (2026-07-06 fix:
+      // dialogue was silently dropped whenever the `dialogue_audio_plan`
+      // pipeline stage was never run, even though the script already has
+      // dialogue for every scene — see `resolveShotDialogueLines`'s doc
+      // comment for the full chain order).
       const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
       const matchingClip = pack?.clips?.find((c) =>
         c.sourceShotNumbers?.includes(input.shotNumber),
       );
-      const dialogueAudioPlan = row.dialogueAudioPlan as
-        | { dialogue_lines?: Array<Record<string, unknown>> }
-        | null;
-      const rawDialogueLines = Array.isArray(dialogueAudioPlan?.dialogue_lines)
-        ? (dialogueAudioPlan!.dialogue_lines as Array<Record<string, unknown>>)
-        : [];
-      const dialogueLines = rawDialogueLines
-        .filter((line) => {
-          const shotNumber = line.shot_number;
-          const clipNumber = line.clip_number;
-          if (typeof shotNumber === "number" && shotNumber === input.shotNumber) return true;
-          if (
-            matchingClip &&
-            typeof clipNumber === "number" &&
-            clipNumber === matchingClip.clipNumber
-          )
-            return true;
-          return false;
-        })
-        .map((line) => ({
-          characterKey:
-            typeof line.speaker_character_id === "string" ? line.speaker_character_id : undefined,
-          lineTh: typeof line.dialogue_line === "string" ? line.dialogue_line : "",
-          emotion: typeof line.emotion === "string" ? line.emotion : undefined,
-          delivery: line.delivery as
-            | { tone?: string; pace?: string; pauses?: string; texture?: string }
-            | undefined,
-          subtext: typeof line.subtext === "string" ? line.subtext : undefined,
-        }))
-        .filter((l) => l.lineTh.trim().length > 0);
+      const dialogueLines = resolveShotDialogueLines({
+        shotNumber: input.shotNumber,
+        matchingClip,
+        dialogueAudioPlan: row.dialogueAudioPlan as
+          | { dialogue_lines?: Array<Record<string, unknown>> }
+          | null,
+        script: row.script as Record<string, unknown> | null,
+        storyboardShotCount: storyboard?.shots?.length,
+      });
 
       // Resolve the episode-selected video model (Phase 1.2 resolution order).
       const selectedVideoModel = await resolveEpisodeVideoModel(pack);

@@ -292,6 +292,91 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     expect(textPart.text).toContain("NO native lip-sync");
   });
 
+  it("ttsFallback branch returns the model-authored dialogue line (result.dialogue) so the caller persists it onto the clip + routes it to TTS, with speaking-direction (no literal transcript) in the prompt", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 9,
+      nativeAudioDialogue: false,
+      verticalDramaReady: true,
+    });
+    mockExecute.mockResolvedValue(
+      successResponse({
+        prompt: "The girl speaks a short line, lips syncing naturally, no transcript embedded.",
+        dialogue: [{ lineTh: "แม่ครับ ผมกลับมาแล้ว" }],
+      }),
+    );
+
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        shotContext: {
+          description: "desc",
+          camera: "cam",
+          emotion: "urgent",
+          dialogueLines: [{ lineTh: "แม่ครับ ผมกลับมาแล้ว" }],
+        },
+      }),
+    );
+
+    // The dialogue line must survive into the result so the router persists
+    // it onto `clip.dialogue` (บทพูด box + "เสียงแยก TTS" badge) — never
+    // dropped just because this model has no native audio.
+    expect(result.dialogue).toEqual([{ lineTh: "แม่ครับ ผมกลับมาแล้ว" }]);
+    expect(result.prompt).not.toContain("แม่ครับ ผมกลับมาแล้ว");
+    expect(result.prompt.toLowerCase()).toMatch(/speak|lip/);
+  });
+
+  it("instructs the model to write its own short line (in the resolved speech language) only when the shot implies speech and no source dialogue was supplied — never defaults to silence", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({
+        prompt: "She turns and answers softly.",
+        dialogue: [{ lineTh: "เดี๋ยวนี้เลยนะ" }],
+      }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        shotContext: {
+          description: "She turns to answer him, mouth opening to speak",
+          camera: "cam",
+          emotion: "urgent",
+          dialogueLines: [],
+        },
+      }),
+    );
+
+    const call = mockExecute.mock.calls[0][0];
+    const userMessage = call.messages[1];
+    const textPart = (userMessage.content as any[]).find(p => p.type === "text");
+    expect(textPart.text).toContain("NO-SOURCE-DIALOGUE");
+    expect(textPart.text).toContain("WRITE one short, natural line yourself");
+    expect(textPart.text).not.toContain("silent/ambient clip");
+  });
+
+  it("does NOT instruct the model to invent dialogue when dialogueLines is non-empty (no-source-dialogue clause omitted)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Camera holds.", dialogue: [{ lineTh: "แม่ครับ" }] }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        shotContext: {
+          description: "desc",
+          camera: "cam",
+          emotion: "urgent",
+          dialogueLines: [{ lineTh: "แม่ครับ" }],
+        },
+      }),
+    );
+
+    const call = mockExecute.mock.calls[0][0];
+    const userMessage = call.messages[1];
+    const textPart = (userMessage.content as any[]).find(p => p.type === "text");
+    expect(textPart.text).not.toContain("NO-SOURCE-DIALOGUE");
+  });
+
   it("defaults to English prompt language + Thai speech language when the caller supplies neither (episode-level language plan)", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(

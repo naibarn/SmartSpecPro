@@ -98,7 +98,9 @@ describe("Phase 0.3 — new video models (verified callable)", () => {
     expect(model.isEnabled).toBe(true);
     expect(model.supportsStartFrame).toBe(true);
     expect(model.maxReferenceImages).toBe(1);
-    expect(model.nativeAudioDialogue).toBe(false);
+    // Grok Imagine v1.x generates native in-video audio incl. speech
+    // (xAI synchronized audio, user-confirmed 2026-07-06).
+    expect(model.nativeAudioDialogue).toBe(true);
     expect(model.verticalDramaReady).toBe(true);
     expect(model.aspectRatios).toContain("9:16");
     expect(model.aliases).toContain("grok imagine 1.5");

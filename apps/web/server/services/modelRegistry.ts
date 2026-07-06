@@ -746,8 +746,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     // "market" `/api/v1/jobs/createTask` dispatch (same code path as
     // `gemini-omni-video`/HappyHorse below) already supports via
     // `image_urls`. No dedicated first/last-frame bridge mode is documented
-    // for this model (single start-frame reference only) and it has no
-    // native in-video dialogue/audio channel — TTS-only for Vertical Drama.
+    // for this model (single start-frame reference only). Grok Imagine v1.x
+    // generates native in-video audio including speech (xAI added
+    // synchronized audio in late 2025; user-confirmed 2026-07-06), so
+    // dialogue is embedded verbatim for Vertical Drama.
     id: "grok-imagine-video-1-5-preview",
     type: "video",
     name: "Grok Imagine Video 1.5",
@@ -772,7 +774,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
       apiPayloadFormat: "market",
       kieModelId: "grok-imagine-video-1-5-preview",
       generateType: "image-to-video",
-      hasAudio: false,
+      hasAudio: true,
       maxDuration: 15,
       maxPromptLength: 5000,
       maxReferenceImages: 1,
@@ -816,7 +818,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     },
     supportsStartFrame: true,
     maxReferenceImages: 1,
-    nativeAudioDialogue: false,
+    nativeAudioDialogue: true,
     verticalDramaReady: true,
   },
   {
