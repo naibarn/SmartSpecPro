@@ -1757,6 +1757,116 @@ export function VerticalDramaStoryboardPanel({
                     }
                   />
                 ) : null}
+
+                {/* Completed video-clip player (relocated 2026-07-06 — moved
+                    from the right column to sit directly under this shot's
+                    start-frame/reference column, so image + video for a shot
+                    live in one place). Only the RESULT display moved here;
+                    the "Generate video (paid)" button and the trimmed-
+                    reference notice stay in the right column next to the
+                    video prompt, since they belong with the prompt editor. */}
+                {clip?.videoTask?.videoUrl ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="relative w-full overflow-hidden rounded-md border border-border bg-black">
+                      <video
+                        src={clip.videoTask.videoUrl}
+                        poster={asset?.url || asset?.thumbnailUrl || undefined}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="aspect-[9/16] w-full bg-black"
+                        data-testid={`vd-storyboard-video-player-${clip.clipNumber}`}
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {clip.durationSeconds ? (
+                        <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                          {clip.durationSeconds}
+                          {t2.videoClipDurationLabel}
+                        </Badge>
+                      ) : null}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 gap-1 px-1.5 text-[10px]"
+                        onClick={() => setFullScreenVideoClip(clip.clipNumber)}
+                        data-testid={`vd-storyboard-video-open-full-${clip.clipNumber}`}
+                      >
+                        <Expand aria-hidden="true" className="h-3 w-3" />
+                        {t2.videoClipOpenFull}
+                      </Button>
+                    </div>
+                    {confirmingRegenerateVideoForClip === clip.clipNumber ? (
+                      <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
+                        <p className="font-medium">
+                          {t(locale, "ใช้ AI จริง มีค่าใช้จ่าย", "Uses real AI, spends credits.")}
+                        </p>
+                        <div className="mt-1.5 flex gap-1.5">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[11px]"
+                            onClick={() => setConfirmingRegenerateVideoForClip(null)}
+                            disabled={generatingVideoClipForClip.has(clip.clipNumber)}
+                          >
+                            {t(locale, "ยกเลิก", "Cancel")}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-6 px-2 text-[11px]"
+                            onClick={() => {
+                              setConfirmingRegenerateVideoForClip(null);
+                              onGenerateVideoClip?.(clip.clipNumber);
+                            }}
+                            disabled={generatingVideoClipForClip.has(clip.clipNumber)}
+                            data-testid={`vd-confirm-regenerate-video-${clip.clipNumber}`}
+                          >
+                            {generatingVideoClipForClip.has(clip.clipNumber) ? (
+                              <>
+                                <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                                {t2.videoClipGenerating}
+                              </>
+                            ) : (
+                              t(locale, "ยืนยัน", "Confirm")
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-fit gap-1.5 text-xs"
+                        onClick={() => setConfirmingRegenerateVideoForClip(clip.clipNumber)}
+                        disabled={
+                          !clip.prompt?.trim() ||
+                          generatingVideoClipForClip.has(clip.clipNumber)
+                        }
+                        data-testid={`vd-storyboard-regenerate-video-${clip.clipNumber}`}
+                      >
+                        {generatingVideoClipForClip.has(clip.clipNumber) ? (
+                          <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles aria-hidden="true" className="h-3 w-3" />
+                        )}
+                        {t2.videoClipRegenerate}
+                      </Button>
+                    )}
+                  </div>
+                ) : onGenerateVideoClip && clip && generatingVideoClipForClip.has(clip.clipNumber) ? (
+                  <div className="relative w-full overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
+                    <div className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
+                      <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" />
+                      <span className="px-1 text-center text-[11px]">
+                        {t2.videoClipGenerating}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="flex flex-1 flex-col gap-2">
@@ -2093,105 +2203,13 @@ export function VerticalDramaStoryboardPanel({
 
                 {/* Video clip generation (`generateVideoClip`) — async
                     submit + poll, same convention as start-frame image
-                    generation. Once `clip.videoTask.videoUrl` is persisted
-                    (2026-07-06 fix — completed renders used to vanish after
-                    only a transient toast), show the compact 9:16 player
-                    instead of just the generate button. */}
+                    generation. The RESULT display (player, duration badge,
+                    full-screen, regenerate) lives in the left column next to
+                    the start frame (relocated 2026-07-06); this button only
+                    submits a new render when none exists yet. */}
                 {clip && onGenerateVideoClip ? (
                   <div className="mt-1 flex flex-col gap-1.5">
-                    {clip.videoTask?.videoUrl ? (
-                      <div className="flex flex-col gap-1.5">
-                        <div className="relative w-32 overflow-hidden rounded-md border border-border bg-black">
-                          <video
-                            src={clip.videoTask.videoUrl}
-                            poster={asset?.url || asset?.thumbnailUrl || undefined}
-                            controls
-                            playsInline
-                            preload="metadata"
-                            className="aspect-[9/16] w-full bg-black"
-                            data-testid={`vd-storyboard-video-player-${clip.clipNumber}`}
-                          />
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1">
-                          {clip.durationSeconds ? (
-                            <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
-                              {clip.durationSeconds}
-                              {t2.videoClipDurationLabel}
-                            </Badge>
-                          ) : null}
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-6 gap-1 px-1.5 text-[10px]"
-                            onClick={() => setFullScreenVideoClip(clip.clipNumber)}
-                            data-testid={`vd-storyboard-video-open-full-${clip.clipNumber}`}
-                          >
-                            <Expand aria-hidden="true" className="h-3 w-3" />
-                            {t2.videoClipOpenFull}
-                          </Button>
-                        </div>
-                        {confirmingRegenerateVideoForClip === clip.clipNumber ? (
-                          <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
-                            <p className="font-medium">
-                              {t(locale, "ใช้ AI จริง มีค่าใช้จ่าย", "Uses real AI, spends credits.")}
-                            </p>
-                            <div className="mt-1.5 flex gap-1.5">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-6 px-2 text-[11px]"
-                                onClick={() => setConfirmingRegenerateVideoForClip(null)}
-                                disabled={generatingVideoClipForClip.has(clip.clipNumber)}
-                              >
-                                {t(locale, "ยกเลิก", "Cancel")}
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="h-6 px-2 text-[11px]"
-                                onClick={() => {
-                                  setConfirmingRegenerateVideoForClip(null);
-                                  onGenerateVideoClip(clip.clipNumber);
-                                }}
-                                disabled={generatingVideoClipForClip.has(clip.clipNumber)}
-                                data-testid={`vd-confirm-regenerate-video-${clip.clipNumber}`}
-                              >
-                                {generatingVideoClipForClip.has(clip.clipNumber) ? (
-                                  <>
-                                    <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
-                                    {t2.videoClipGenerating}
-                                  </>
-                                ) : (
-                                  t(locale, "ยืนยัน", "Confirm")
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="w-fit gap-1.5 text-xs"
-                            onClick={() => setConfirmingRegenerateVideoForClip(clip.clipNumber)}
-                            disabled={
-                              !clip.prompt?.trim() ||
-                              generatingVideoClipForClip.has(clip.clipNumber)
-                            }
-                            data-testid={`vd-storyboard-regenerate-video-${clip.clipNumber}`}
-                          >
-                            {generatingVideoClipForClip.has(clip.clipNumber) ? (
-                              <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Sparkles aria-hidden="true" className="h-3 w-3" />
-                            )}
-                            {t2.videoClipRegenerate}
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
+                    {!clip.videoTask?.videoUrl ? (
                       <Button
                         type="button"
                         size="sm"
@@ -2213,7 +2231,7 @@ export function VerticalDramaStoryboardPanel({
                           ? t2.videoClipGenerating
                           : t(locale, "สร้างวิดีโอ (มีค่าใช้จ่าย)", "Generate video (paid)")}
                       </Button>
-                    )}
+                    ) : null}
                     {(trimmedReferenceCountByClip[clip.clipNumber] ?? 0) > 0 ? (
                       <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
                         <AlertTriangle aria-hidden="true" className="h-3 w-3 shrink-0" />
