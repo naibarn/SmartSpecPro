@@ -34,7 +34,10 @@ import {
   buildTargetAudienceRegionInstruction,
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
-import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
+import {
+  VD_CHARACTER_LOCK_INSTRUCTION,
+  VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT,
+} from "@shared/verticalDramaSeries/characterLock";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -136,9 +139,12 @@ export type CharacterVisualBibleCharacter = z.infer<typeof characterVisualBibleC
 /* -------------------------------------------------------------------------- */
 
 export type CharacterRoleTier =
+  | "child"
   | "lead_female"
   | "lead_male"
   | "lead"
+  | "villain_female"
+  | "villain_male"
   | "villain"
   | "support"
   | "other";
@@ -165,6 +171,20 @@ const LEAD_GENERIC_KEYWORDS = [
   "protagonist",
   "lead role",
 ];
+/** Gendered villain keywords, checked before the generic villain fallback —
+ *  same precedence convention as the gendered lead keywords above. */
+const VILLAIN_FEMALE_KEYWORDS = [
+  "ตัวร้ายหญิง",
+  "นางร้าย",
+  "female antagonist",
+  "female villain",
+];
+const VILLAIN_MALE_KEYWORDS = [
+  "ตัวร้ายชาย",
+  "วายร้ายชาย",
+  "male antagonist",
+  "male villain",
+];
 const VILLAIN_KEYWORDS = [
   "ตัวร้าย",
   "วายร้าย",
@@ -181,32 +201,209 @@ const SUPPORT_KEYWORDS = [
   "background",
 ];
 
+/** Thai + English child-role keywords. Checked against BOTH the role string
+ *  and the character's description (age is more often stated in the
+ *  description than the role field) — see `resolveCharacterRoleTier`. */
+const CHILD_KEYWORDS = [
+  "เด็กชาย",
+  "เด็กหญิง",
+  "เด็ก",
+  "child",
+  "kid",
+];
+/** Gendered child-description keywords, used only to pick a gender-aware
+ *  pronoun/wording hint for the child directive — detection of the child
+ *  tier itself never depends on gender. */
+const CHILD_MALE_KEYWORDS = ["เด็กชาย", "boy"];
+const CHILD_FEMALE_KEYWORDS = ["เด็กหญิง", "girl"];
+
+/** A role/description string mentions a child-with-age pattern like
+ *  "boy, age 8" or "girl age 9" — used by `CHILD_KEYWORDS` age-adjacent
+ *  matching alongside the explicit Thai/English child nouns above. */
+const CHILD_AGE_ADJACENT_PATTERN = /\b(boy|girl)\b[^.]{0,20}\b\d{1,2}\b/i;
+
+/* -------------------------------------------------------------------------- */
+/* Age extraction — child-safety detection (2026-07 archetype extension).     */
+/* -------------------------------------------------------------------------- */
+
+/** Thai digit → Arabic digit map, for descriptions that spell ages with Thai
+ *  numerals (๐-๙) instead of Arabic ones. */
+const THAI_DIGIT_MAP: Record<string, string> = {
+  "๐": "0",
+  "๑": "1",
+  "๒": "2",
+  "๓": "3",
+  "๔": "4",
+  "๕": "5",
+  "๖": "6",
+  "๗": "7",
+  "๘": "8",
+  "๙": "9",
+};
+
+/** Thai number-words 1-19 (the range that matters for child-age detection —
+ *  no vertical-drama character description spells out a two-digit compound
+ *  above "สิบเก้า" (19) in prose; ages 20+ are always adults anyway so a
+ *  missed higher compound word never causes a false negative for the child
+ *  tier). Longest-key-first iteration avoids "สิบ" (10) matching inside
+ *  "สิบสอง" (12) before the more specific compound is tried. */
+const THAI_NUMBER_WORDS: Record<string, number> = {
+  "สิบเก้า": 19,
+  "สิบแปด": 18,
+  "สิบเจ็ด": 17,
+  "สิบหก": 16,
+  "สิบห้า": 15,
+  "สิบสี่": 14,
+  "สิบสาม": 13,
+  "สิบสอง": 12,
+  "สิบเอ็ด": 11,
+  "สิบ": 10,
+  "เก้า": 9,
+  "แปด": 8,
+  "เจ็ด": 7,
+  "หก": 6,
+  "ห้า": 5,
+  "สี่": 4,
+  "สาม": 3,
+  "สอง": 2,
+  "หนึ่ง": 1,
+};
+
+function normalizeThaiDigits(text: string): string {
+  return text.replace(/[๐-๙]/g, (d) => THAI_DIGIT_MAP[d] ?? d);
+}
+
+/**
+ * Extract the youngest plausible age (in years) mentioned in a free-text
+ * role/description string, or `undefined` if no age is found. Understands:
+ *  - Arabic numerals: "12 ปี", "อายุ 12", "12-year-old", "age 12", "12 years old"
+ *  - Thai numerals (๐-๙): normalized to Arabic before matching
+ *  - Thai number-words: "สิบสองปี" (twelve years), "อายุสิบขวบ" (age ten)
+ *
+ * Deliberately conservative/best-effort — this only needs to reliably catch
+ * ages under ~15 for the child-safety tier (see `resolveCharacterRoleTier`);
+ * it is not a general-purpose NLP age parser. Returns the smallest match when
+ * multiple age-like numbers appear (favors the safer/younger interpretation).
+ */
+export function extractAgeFromDescription(text: string | null | undefined): number | undefined {
+  if (!text) return undefined;
+  const normalized = normalizeThaiDigits(text);
+  const candidates: number[] = [];
+
+  // Arabic-numeral patterns: "12 ปี", "อายุ 12", "12-year-old", "age 12", "12 years old", "12 ขวบ".
+  // NOTE: no trailing `\b` after a Thai-script suffix (ปี/ขวบ) — `\b` relies on
+  // JS regex's ASCII-only `\w` definition, which does not treat Thai
+  // characters as word characters, so "\b" directly after Thai script does
+  // not reliably assert a boundary the way it does after Latin letters.
+  const arabicPatterns = [
+    /(\d{1,2})\s*(?:ปี|ขวบ)/g,
+    /อายุ\s*(\d{1,2})(?!\d)/g,
+    /\b(\d{1,2})[\s-]*year(?:s)?[\s-]*old\b/gi,
+    /\bage[d]?\s*[:\-]?\s*(\d{1,2})\b/gi,
+  ];
+  for (const pattern of arabicPatterns) {
+    for (const match of normalized.matchAll(pattern)) {
+      const value = Number(match[1]);
+      if (Number.isFinite(value) && value >= 0 && value <= 99) candidates.push(value);
+    }
+  }
+
+  // Thai number-words: "สิบสองปี" (twelve years), "อายุสิบขวบ" (age ten). Built
+  // as a SINGLE alternation (longest keys first, per THAI_NUMBER_WORDS'
+  // declaration order) so the regex engine's leftmost-longest-alternative
+  // behavior picks "สิบสอง" over the shorter "สอง" substring it contains,
+  // rather than each word being tested independently (which would let both
+  // match and the wrong/smaller number win via `Math.min`).
+  const numberWordKeys = Object.keys(THAI_NUMBER_WORDS);
+  const numberWordPattern = new RegExp(`(${numberWordKeys.join("|")})\\s*(?:ปี|ขวบ)`, "g");
+  for (const match of normalized.matchAll(numberWordPattern)) {
+    const value = THAI_NUMBER_WORDS[match[1]];
+    if (value !== undefined) candidates.push(value);
+  }
+
+  if (candidates.length === 0) return undefined;
+  return Math.min(...candidates);
+}
+
+/** Age (in years, exclusive upper bound) at/above which a character is no
+ *  longer routed to the child-safety tier purely on age grounds. */
+const CHILD_AGE_THRESHOLD = 15;
+
+/**
+ * True when `text` (role and/or description, already lower-cased by the
+ * caller) contains an explicit child-role keyword (เด็ก, เด็กชาย, เด็กหญิง,
+ * child, kid) or a "boy/girl + nearby number" pattern.
+ */
+function containsChildKeyword(normalizedText: string): boolean {
+  if (CHILD_KEYWORDS.some((kw) => normalizedText.includes(kw))) return true;
+  return CHILD_AGE_ADJACENT_PATTERN.test(normalizedText);
+}
+
+/**
+ * Detect a gender hint for a child character from description/role text —
+ * used only to word the child directive naturally (e.g. "boy"/"girl"), never
+ * to decide whether the child tier applies at all.
+ */
+export function detectChildGenderHint(text: string | null | undefined): "male" | "female" | undefined {
+  if (!text) return undefined;
+  const normalized = text.toLowerCase();
+  if (CHILD_FEMALE_KEYWORDS.some((kw) => normalized.includes(kw))) return "female";
+  if (CHILD_MALE_KEYWORDS.some((kw) => normalized.includes(kw))) return "male";
+  return undefined;
+}
+
 /**
  * Map a free-text role string (Thai or English, whatever ops/writers typed
- * into `verticalDramaCharacters.role`) to a coarse tier that drives how much
- * "star quality" the portrait-prompt directive demands. Keyword-based,
- * case-insensitive, whitespace-tolerant — matches on substrings so
- * "พระเอกวัยรุ่น" or "Male Lead (age 20s)" both resolve correctly.
+ * into `verticalDramaCharacters.role`) — plus, optionally, the character's
+ * free-text `description` — to a coarse tier that drives how much "star
+ * quality"/archetype styling the portrait-prompt directive demands.
+ * Keyword-based, case-insensitive, whitespace-tolerant — matches on
+ * substrings so "พระเอกวัยรุ่น" or "Male Lead (age 20s)" both resolve
+ * correctly.
+ *
+ * Tier precedence (highest first): **`child`** — detected from either an
+ * explicit child keyword (เด็ก/เด็กชาย/เด็กหญิง/child/kid, in role OR
+ * description) or a description-stated age under `CHILD_AGE_THRESHOLD` (15) —
+ * ALWAYS wins, even over an explicit ตัวเอก/นางเอก/พระเอก role label, because a
+ * character being a story's lead never overrides age-appropriate depiction.
+ * After that: `lead_female` / `lead_male` → `lead` → `villain_female` /
+ * `villain_male` → `villain` → `support` → `other`.
  *
  * Lead roles are split into `lead_female` (นางเอก / heroine / female lead) and
  * `lead_male` (พระเอก / male lead) so each gets its own modern
  * vertical-drama archetype directive instead of a single unisex "idol" look.
  * Gender-ambiguous lead phrasing (คู่หลัก, ตัวเอก, protagonist, "lead role")
- * falls back to the neutral `lead` tier.
+ * falls back to the neutral `lead` tier. Villains follow the same
+ * gendered/neutral pattern (`villain_female` / `villain_male` / `villain`).
  *
  * Exported + unit-tested directly (see
  * `__tests__/verticalDramaCharacterImageGeneration.test.ts`).
  */
-export function resolveCharacterRoleTier(role: string | null | undefined): CharacterRoleTier {
-  if (!role) return "other";
-  const normalized = role.trim().toLowerCase();
-  if (!normalized) return "other";
+export function resolveCharacterRoleTier(
+  role: string | null | undefined,
+  description?: string | null,
+): CharacterRoleTier {
+  const normalizedRole = (role ?? "").trim().toLowerCase();
+  const normalizedDescription = (description ?? "").trim().toLowerCase();
+  const combined = `${normalizedRole} ${normalizedDescription}`.trim();
 
-  if (LEAD_FEMALE_KEYWORDS.some((kw) => normalized.includes(kw))) return "lead_female";
-  if (LEAD_MALE_KEYWORDS.some((kw) => normalized.includes(kw))) return "lead_male";
-  if (LEAD_GENERIC_KEYWORDS.some((kw) => normalized.includes(kw))) return "lead";
-  if (VILLAIN_KEYWORDS.some((kw) => normalized.includes(kw))) return "villain";
-  if (SUPPORT_KEYWORDS.some((kw) => normalized.includes(kw))) return "support";
+  // Child-safety tier — highest precedence, checked first, wins even over an
+  // explicit lead/villain role label.
+  if (combined) {
+    if (containsChildKeyword(combined)) return "child";
+    const age = extractAgeFromDescription(combined);
+    if (age !== undefined && age < CHILD_AGE_THRESHOLD) return "child";
+  }
+
+  if (!normalizedRole) return "other";
+
+  if (LEAD_FEMALE_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "lead_female";
+  if (LEAD_MALE_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "lead_male";
+  if (LEAD_GENERIC_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "lead";
+  if (VILLAIN_FEMALE_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "villain_female";
+  if (VILLAIN_MALE_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "villain_male";
+  if (VILLAIN_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "villain";
+  if (SUPPORT_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "support";
   return "other";
 }
 
@@ -224,6 +421,14 @@ export function resolveCharacterRoleTier(role: string | null | undefined): Chara
  * wording below says so explicitly so the LLM does not "age up" a minor.
  */
 const ROLE_TIER_DIRECTIVES: Record<CharacterRoleTier, string | undefined> = {
+  child: (
+    "Age-appropriate and memorable child character: expressive eyes, curious gaze, natural " +
+    "childlike charm, brave but vulnerable expression, clever observant personality, simple " +
+    "modest everyday outfit, natural hairstyle; realistic skin. This character MUST be depicted " +
+    "strictly age-appropriately — no adult styling, no glamour, no romantic framing — " +
+    "REGARDLESS of any 'lead'/'ตัวเอก'/'นางเอก'/'พระเอก' role label; the described child age " +
+    "always wins and is never changed or aged up."
+  ),
   lead_female: (
     "Modern vertical-drama heroine (นางเอก): emotionally magnetic, natural beauty with strong " +
     "screen presence, expressive eyes capable of tears, vulnerable yet determined expression, " +
@@ -246,6 +451,18 @@ const ROLE_TIER_DIRECTIVES: Record<CharacterRoleTier, string | undefined> = {
     "age and identity already given in the character's description — never change or imply an " +
     "older/younger age than described."
   ),
+  villain_female: (
+    "Modern vertical-drama female antagonist (ตัวร้ายหญิง/นางร้าย): beautiful and sharp-featured, " +
+    "elegant high-status aura, refined features, confident gaze, subtle half-smile, emotionally " +
+    "controlled expression, hidden agenda, quiet calculation, polished high-society rival " +
+    "energy, elegant tension; realistic skin."
+  ),
+  villain_male: (
+    "Modern vertical-drama male antagonist (ตัวร้ายชาย): dangerously attractive, sharp predatory " +
+    "gaze, calm but threatening presence, faint manipulative smile, elegant menace, quiet " +
+    "intimidation, luxury villain energy, dark tailored suit, controlled dominant posture; " +
+    "realistic skin."
+  ),
   villain: (
     "Striking antagonist: strikingly attractive but with a sharp, cold, dangerous aura " +
     "(elegant menace, not cartoonish evil) — magnetic and photogenic, not merely attractive-neutral."
@@ -255,29 +472,47 @@ const ROLE_TIER_DIRECTIVES: Record<CharacterRoleTier, string | undefined> = {
 };
 
 /** Negative-prompt terms to merge in for tiers that need to actively steer
- *  the image model away from the "fashion model / corporate portrait" look
- *  that plain adjectives like "attractive"/"magnetic" tend to invite.
- *  Support/other tiers have no special negatives (`undefined`). */
+ *  the image model away from the wrong look — a "fashion model / corporate
+ *  portrait" look for star-quality tiers, a "cartoon villain" look for
+ *  antagonist tiers, or (for `child`) any adult/glamour styling at all. The
+ *  neutral `villain` fallback and support/other tiers have no special
+ *  negatives (`undefined`). */
 const ROLE_TIER_NEGATIVE_TERMS: Record<CharacterRoleTier, string | undefined> = {
+  child: VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT,
   lead_female: "fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty face",
   lead_male: "model photoshoot, corporate portrait, influencer smile, boyband look, generic handsome face",
   lead: "fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty/handsome face",
+  villain_female:
+    "exaggerated evil face, fantasy villain styling, overly seductive styling, revealing outfit, " +
+    "beauty pageant pose, generic influencer look, plastic skin",
+  villain_male:
+    "cartoon villain, exaggerated anger, fantasy costume, generic handsome model, corporate portrait, " +
+    "plastic skin",
   villain: undefined,
   support: undefined,
   other: undefined,
 };
 
-/** Returns the directive string for a role, or `undefined` when the tier has
- *  no special directive (support/other) — callers should omit the field. */
-export function getRoleTierAppearanceDirective(role: string | null | undefined): string | undefined {
-  const tier = resolveCharacterRoleTier(role);
+/** Returns the directive string for a role (and optional description, used
+ *  for child-safety/gender-aware tier detection — see
+ *  `resolveCharacterRoleTier`), or `undefined` when the tier has no special
+ *  directive (support/other) — callers should omit the field. */
+export function getRoleTierAppearanceDirective(
+  role: string | null | undefined,
+  description?: string | null,
+): string | undefined {
+  const tier = resolveCharacterRoleTier(role, description);
   return ROLE_TIER_DIRECTIVES[tier];
 }
 
-/** Returns the tier-specific negative-prompt terms to merge for a role, or
- *  `undefined` when the tier has no special negatives (support/other/villain). */
-export function getRoleTierNegativeTerms(role: string | null | undefined): string | undefined {
-  const tier = resolveCharacterRoleTier(role);
+/** Returns the tier-specific negative-prompt terms to merge for a role (and
+ *  optional description), or `undefined` when the tier has no special
+ *  negatives (support/other/neutral-villain). */
+export function getRoleTierNegativeTerms(
+  role: string | null | undefined,
+  description?: string | null,
+): string | undefined {
+  const tier = resolveCharacterRoleTier(role, description);
   return ROLE_TIER_NEGATIVE_TERMS[tier];
 }
 
@@ -371,8 +606,8 @@ export interface GenerateCharacterVisualPromptsParams {
 }
 
 function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
-  const appearanceDirective = getRoleTierAppearanceDirective(params.role);
-  const tierNegativeTerms = getRoleTierNegativeTerms(params.role);
+  const appearanceDirective = getRoleTierAppearanceDirective(params.role, params.description);
+  const tierNegativeTerms = getRoleTierNegativeTerms(params.role, params.description);
   const inputPayload = {
     characters: [
       {
@@ -550,7 +785,7 @@ export async function generateCharacterVisualPrompts(
   // that read this single `negative_prompt` field.
   const negativePrompt = [
     matched.negative_prompt,
-    getRoleTierNegativeTerms(params.role),
+    getRoleTierNegativeTerms(params.role, params.description),
     VD_SOLO_PORTRAIT_NEGATIVE_TERMS,
   ]
     .filter((part): part is string => Boolean(part && part.trim()))

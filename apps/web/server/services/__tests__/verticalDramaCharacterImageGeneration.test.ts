@@ -41,6 +41,8 @@ import {
   resolveCharacterRoleTier,
   getRoleTierAppearanceDirective,
   getRoleTierNegativeTerms,
+  extractAgeFromDescription,
+  detectChildGenderHint,
 } from "../verticalDramaCharacterImageGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
@@ -169,6 +171,141 @@ describe("resolveCharacterRoleTier", () => {
     expect(resolveCharacterRoleTier("  MALE LEAD  ")).toBe("lead_male");
     expect(resolveCharacterRoleTier("VILLAIN")).toBe("villain");
   });
+
+  it.each([
+    ["ตัวร้ายหญิง", "villain_female"],
+    ["นางร้าย", "villain_female"],
+    ["Female Antagonist", "villain_female"],
+    ["female villain", "villain_female"],
+  ])("maps %s to villain_female", (role, expected) => {
+    expect(resolveCharacterRoleTier(role)).toBe(expected);
+  });
+
+  it.each([
+    ["ตัวร้ายชาย", "villain_male"],
+    ["วายร้ายชาย", "villain_male"],
+    ["Male Antagonist", "villain_male"],
+    ["male villain", "villain_male"],
+  ])("maps %s to villain_male", (role, expected) => {
+    expect(resolveCharacterRoleTier(role)).toBe(expected);
+  });
+
+  it("falls back to the neutral villain tier when gender is unclear", () => {
+    expect(resolveCharacterRoleTier("ตัวร้าย")).toBe("villain");
+    expect(resolveCharacterRoleTier("antagonist")).toBe("villain");
+  });
+
+  describe("child tier — highest precedence", () => {
+    it("detects a child from explicit Thai child-role keywords in the role field", () => {
+      expect(resolveCharacterRoleTier("เด็กชาย")).toBe("child");
+      expect(resolveCharacterRoleTier("เด็กหญิง")).toBe("child");
+      expect(resolveCharacterRoleTier("เด็ก")).toBe("child");
+    });
+
+    it("detects a child from English child-role keywords", () => {
+      expect(resolveCharacterRoleTier("child")).toBe("child");
+      expect(resolveCharacterRoleTier("kid")).toBe("child");
+    });
+
+    it("detects a child from a stated age under 15 in the description (Arabic numerals)", () => {
+      expect(resolveCharacterRoleTier("supporting", "12 ปี, a curious kid")).toBe("child");
+      expect(resolveCharacterRoleTier(null, "อายุ 8, lives with grandmother")).toBe("child");
+      expect(resolveCharacterRoleTier(null, "a 9-year-old girl")).toBe("child");
+      expect(resolveCharacterRoleTier(null, "age 10, loves to draw")).toBe("child");
+    });
+
+    it("detects a child from a stated age spelled with Thai numerals (๐-๙)", () => {
+      expect(resolveCharacterRoleTier(null, "อายุ ๑๒ ปี")).toBe("child");
+    });
+
+    it("detects a child from a stated age spelled with Thai number-words", () => {
+      expect(resolveCharacterRoleTier(null, "เด็กชายวัยสิบสองปีที่ฉลาดเกินวัย".replace("เด็กชาย", ""))).toBe(
+        "child",
+      );
+      expect(resolveCharacterRoleTier(null, "อายุสิบขวบ")).toBe("child");
+      expect(resolveCharacterRoleTier(null, "วัยเก้าปี")).toBe("child");
+    });
+
+    it("does NOT detect a child when age is 15 or older", () => {
+      expect(resolveCharacterRoleTier("นางเอก", "15 ปี, a determined teenager")).not.toBe("child");
+      expect(resolveCharacterRoleTier(null, "อายุ 20 ปี")).not.toBe("child");
+    });
+
+    it("child tier OVERRIDES an explicit lead/villain role label — highest precedence", () => {
+      expect(resolveCharacterRoleTier("นางเอก", "เด็กหญิงวัยสิบขวบที่เป็นตัวเอกของเรื่อง")).toBe("child");
+      expect(resolveCharacterRoleTier("พระเอก", "a 12-year-old boy")).toBe("child");
+      expect(resolveCharacterRoleTier("ตัวร้าย", "เด็กชายวัยเก้าขวบ")).toBe("child");
+    });
+
+    it("falls through to normal tier resolution when no child keyword/age is present", () => {
+      expect(resolveCharacterRoleTier("นางเอก", "late-20s single mother")).toBe("lead_female");
+      expect(resolveCharacterRoleTier("ตัวร้าย", "early-40s corporate raider")).toBe("villain");
+    });
+
+    it("handles an absent description gracefully (no age false-positive)", () => {
+      expect(resolveCharacterRoleTier("นางเอก")).toBe("lead_female");
+      expect(resolveCharacterRoleTier("นางเอก", null)).toBe("lead_female");
+      expect(resolveCharacterRoleTier("นางเอก", undefined)).toBe("lead_female");
+    });
+  });
+});
+
+describe("extractAgeFromDescription", () => {
+  it("extracts an age from Arabic-numeral Thai patterns", () => {
+    expect(extractAgeFromDescription("12 ปี")).toBe(12);
+    expect(extractAgeFromDescription("อายุ 8 ขวบ")).toBe(8);
+    expect(extractAgeFromDescription("เด็กหญิงอายุ 10")).toBe(10);
+  });
+
+  it("extracts an age from English patterns", () => {
+    expect(extractAgeFromDescription("a 9-year-old girl")).toBe(9);
+    expect(extractAgeFromDescription("age 10, loves to draw")).toBe(10);
+    expect(extractAgeFromDescription("aged: 7")).toBe(7);
+    expect(extractAgeFromDescription("12 years old")).toBe(12);
+  });
+
+  it("extracts an age from Thai numerals (๐-๙)", () => {
+    expect(extractAgeFromDescription("อายุ ๑๒ ปี")).toBe(12);
+    expect(extractAgeFromDescription("๙ ขวบ")).toBe(9);
+  });
+
+  it("extracts an age from Thai number-words", () => {
+    expect(extractAgeFromDescription("อายุสิบขวบ")).toBe(10);
+    expect(extractAgeFromDescription("วัยเก้าปี")).toBe(9);
+    expect(extractAgeFromDescription("สิบสองปี")).toBe(12);
+    expect(extractAgeFromDescription("สิบเอ็ดขวบ")).toBe(11);
+  });
+
+  it("returns undefined when no age is present", () => {
+    expect(extractAgeFromDescription("a brave detective")).toBeUndefined();
+    expect(extractAgeFromDescription("")).toBeUndefined();
+    expect(extractAgeFromDescription(null)).toBeUndefined();
+    expect(extractAgeFromDescription(undefined)).toBeUndefined();
+  });
+
+  it("returns the smallest age when multiple numbers appear (favors the safer/younger read)", () => {
+    // "12 ปี" and an unrelated "8 คน" (8 people) style number should not
+    // confuse detection — but if two AGE-shaped numbers both match, prefer
+    // the smaller (safer) one.
+    expect(extractAgeFromDescription("อายุ 12 ปี พี่ชายอายุ 8 ปี")).toBe(8);
+  });
+});
+
+describe("detectChildGenderHint", () => {
+  it("detects male from เด็กชาย/boy", () => {
+    expect(detectChildGenderHint("เด็กชายวัยเก้าขวบ")).toBe("male");
+    expect(detectChildGenderHint("a 9-year-old boy")).toBe("male");
+  });
+
+  it("detects female from เด็กหญิง/girl", () => {
+    expect(detectChildGenderHint("เด็กหญิงวัยสิบขวบ")).toBe("female");
+    expect(detectChildGenderHint("a 10-year-old girl")).toBe("female");
+  });
+
+  it("returns undefined when no gender hint is present", () => {
+    expect(detectChildGenderHint("เด็กวัยสิบขวบ")).toBeUndefined();
+    expect(detectChildGenderHint(null)).toBeUndefined();
+  });
 });
 
 describe("getRoleTierAppearanceDirective", () => {
@@ -213,6 +350,38 @@ describe("getRoleTierAppearanceDirective", () => {
     expect(getRoleTierAppearanceDirective("narrator")).toBeUndefined();
     expect(getRoleTierAppearanceDirective(null)).toBeUndefined();
   });
+
+  it("returns the female-antagonist archetype directive for villain_female roles (ตัวร้ายหญิง/นางร้าย)", () => {
+    const directive = getRoleTierAppearanceDirective("นางร้าย");
+    expect(directive).toBeDefined();
+    expect(directive).toMatch(/beautiful and sharp-featured/i);
+    expect(directive).toMatch(/elegant high-status aura/i);
+    expect(directive).toMatch(/hidden agenda/i);
+    expect(directive).toMatch(/high-society rival/i);
+  });
+
+  it("returns the male-antagonist archetype directive for villain_male roles (ตัวร้ายชาย)", () => {
+    const directive = getRoleTierAppearanceDirective("ตัวร้ายชาย");
+    expect(directive).toBeDefined();
+    expect(directive).toMatch(/dangerously attractive/i);
+    expect(directive).toMatch(/sharp predatory gaze/i);
+    expect(directive).toMatch(/luxury villain energy/i);
+  });
+
+  it("returns the child-safety directive and OVERRIDES the lead directive for a child described in a lead role", () => {
+    const directive = getRoleTierAppearanceDirective("นางเอก", "เด็กหญิงวัยสิบขวบ");
+    expect(directive).toBeDefined();
+    expect(directive).toMatch(/age-appropriate and memorable child character/i);
+    expect(directive).toMatch(/depicted strictly age-appropriately/i);
+    expect(directive).not.toMatch(/emotionally magnetic/i);
+  });
+
+  it("returns the child-safety directive for an explicit child role keyword with no lead label", () => {
+    const directive = getRoleTierAppearanceDirective("เด็กชาย");
+    expect(directive).toBeDefined();
+    expect(directive).toMatch(/curious gaze/i);
+    expect(directive).toMatch(/simple modest everyday outfit/i);
+  });
 });
 
 describe("getRoleTierNegativeTerms", () => {
@@ -236,11 +405,40 @@ describe("getRoleTierNegativeTerms", () => {
     expect(negatives).toMatch(/generic handsome face/i);
   });
 
-  it("returns undefined for villain/support/other tiers", () => {
+  it("returns undefined for the neutral villain/support/other tiers", () => {
     expect(getRoleTierNegativeTerms("ตัวร้าย")).toBeUndefined();
     expect(getRoleTierNegativeTerms("ตัวประกอบ")).toBeUndefined();
     expect(getRoleTierNegativeTerms("narrator")).toBeUndefined();
     expect(getRoleTierNegativeTerms(null)).toBeUndefined();
+  });
+
+  it("returns the female-antagonist negative terms for villain_female roles (นางร้าย)", () => {
+    const negatives = getRoleTierNegativeTerms("นางร้าย");
+    expect(negatives).toBeDefined();
+    expect(negatives).toMatch(/exaggerated evil face/i);
+    expect(negatives).toMatch(/overly seductive styling/i);
+    expect(negatives).toMatch(/revealing outfit/i);
+    expect(negatives).toMatch(/generic influencer look/i);
+  });
+
+  it("returns the male-antagonist negative terms for villain_male roles (ตัวร้ายชาย)", () => {
+    const negatives = getRoleTierNegativeTerms("ตัวร้ายชาย");
+    expect(negatives).toBeDefined();
+    expect(negatives).toMatch(/cartoon villain/i);
+    expect(negatives).toMatch(/exaggerated anger/i);
+    expect(negatives).toMatch(/fantasy costume/i);
+  });
+
+  it("returns the strict child-safety negative terms, overriding the lead negatives, when a child age is described", () => {
+    const negatives = getRoleTierNegativeTerms("นางเอก", "เด็กหญิงวัยสิบขวบ");
+    expect(negatives).toBeDefined();
+    expect(negatives).toMatch(/adult beauty styling/i);
+    expect(negatives).toMatch(/glamorous makeup/i);
+    expect(negatives).toMatch(/seductive pose/i);
+    expect(negatives).toMatch(/revealing outfit/i);
+    expect(negatives).toMatch(/mature expression/i);
+    expect(negatives).toMatch(/romantic tension/i);
+    expect(negatives).not.toMatch(/fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty face/i);
   });
 });
 
@@ -362,6 +560,59 @@ describe("generateCharacterVisualPrompts", () => {
     expect(userMessage).not.toMatch(/cold-ceo energy/i);
   });
 
+  it("injects the modern female-antagonist directive into the LLM user prompt for นางร้าย", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ role: "นางร้าย" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/beautiful and sharp-featured/i);
+    expect(userMessage).toMatch(/hidden agenda/i);
+    expect(userMessage).toMatch(/exaggerated evil face, fantasy villain styling, overly seductive styling, revealing outfit, beauty pageant pose, generic influencer look, plastic skin/i);
+  });
+
+  it("injects the modern male-antagonist directive into the LLM user prompt for ตัวร้ายชาย", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(baseParams({ role: "ตัวร้ายชาย" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/dangerously attractive/i);
+    expect(userMessage).toMatch(/luxury villain energy/i);
+    expect(userMessage).toMatch(/cartoon villain, exaggerated anger, fantasy costume, generic handsome model, corporate portrait, plastic skin/i);
+  });
+
+  it("injects the child-safety directive and negatives, overriding any lead directive, when the description states a child age", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateCharacterVisualPrompts(
+      baseParams({ role: "พระเอก", description: "a 9-year-old boy who is the story's protagonist" }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/age-appropriate and memorable child character/i);
+    expect(userMessage).toMatch(/adult beauty styling, glamorous makeup, seductive pose, revealing outfit, mature expression, romantic tension, fashion model look, plastic skin/i);
+    expect(userMessage).not.toMatch(/cold-ceo energy/i);
+  });
+
+  it("defensively includes the child-safety negative terms in the final result even when the LLM omits them", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ role: "นางเอก", description: "เด็กหญิงวัยสิบขวบ" }),
+    );
+
+    expect(result.negativePrompt).toContain("adult beauty styling");
+    expect(result.negativePrompt).toContain("plastic skin");
+  });
+
   it("does NOT inject any glamour directive for ตัวประกอบ (support)", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));
@@ -375,10 +626,12 @@ describe("generateCharacterVisualPrompts", () => {
     expect(userMessage).not.toMatch(/strikingly attractive/i);
   });
 
-  it("preserves an explicit child age in description alongside the lead appearance directive", async () => {
-    // A lead character described as a child must keep that age constraint —
-    // the directive text explicitly forbids overriding age, and the
-    // description text (which carries the age) must still reach the prompt.
+  it("child-safety tier overrides an explicit lead role label when the description states a child age", async () => {
+    // A character labeled นางเอก (lead) but described as a 10-year-old child
+    // must resolve to the `child` tier, not the lead tier — child detection
+    // has the highest precedence and always wins, per the child-safety
+    // archetype extension. The description text (which carries the age) must
+    // still reach the prompt verbatim.
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));
 
@@ -392,8 +645,9 @@ describe("generateCharacterVisualPrompts", () => {
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).toContain("เด็กหญิงวัยสิบขวบ");
-    expect(userMessage).toMatch(/emotionally magnetic/i);
-    expect(userMessage).toMatch(/never change or imply/i);
+    expect(userMessage).toMatch(/age-appropriate and memorable child character/i);
+    expect(userMessage).toMatch(/depicted strictly age-appropriately/i);
+    expect(userMessage).not.toMatch(/emotionally magnetic/i);
   });
 
   it("injects the MANDATORY solo-portrait rule into the LLM user prompt", async () => {

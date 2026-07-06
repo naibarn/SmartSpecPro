@@ -59,6 +59,30 @@ export const VD_CHARACTER_LOCK_NEGATIVE_TERMS = [
 /** Comma-joined negative-prompt fragment built from `VD_CHARACTER_LOCK_NEGATIVE_TERMS`. */
 export const VD_CHARACTER_LOCK_NEGATIVE_PROMPT_FRAGMENT = VD_CHARACTER_LOCK_NEGATIVE_TERMS.join(", ");
 
+/**
+ * Age-safety negative-prompt terms for the `child` character-role tier (see
+ * `verticalDramaCharacterImageGeneration.ts`'s `ROLE_TIER_NEGATIVE_TERMS`).
+ * Exported here (rather than only living in that module) so the soften
+ * ladder below can recognize and PROTECT these specific terms — child-safety
+ * negatives must survive every soften level, unlike ordinary identity-lock
+ * wording, which is allowed to relax under provider content-policy pressure.
+ * Kept as the single source of truth; the image-generation module imports
+ * this constant instead of redeclaring the term list.
+ */
+export const VD_CHILD_SAFETY_NEGATIVE_TERMS = [
+  "adult beauty styling",
+  "glamorous makeup",
+  "seductive pose",
+  "revealing outfit",
+  "mature expression",
+  "romantic tension",
+  "fashion model look",
+  "plastic skin",
+] as const;
+
+/** Comma-joined negative-prompt fragment built from `VD_CHILD_SAFETY_NEGATIVE_TERMS`. */
+export const VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT = VD_CHILD_SAFETY_NEGATIVE_TERMS.join(", ");
+
 /* -------------------------------------------------------------------------- */
 /* Soften ladder (rule-based, no LLM cost, no model switching)                */
 /* -------------------------------------------------------------------------- */
@@ -132,10 +156,25 @@ function applyLevel2(prompt: string): string {
 }
 
 /**
+ * True when `prompt` contains the age-appropriateness safety instruction the
+ * `child` role tier injects (see `ROLE_TIER_DIRECTIVES.child` in
+ * `verticalDramaCharacterImageGeneration.ts`). Matched by a stable, distinctive
+ * substring of that directive rather than the whole string, so the guard
+ * still fires even if the directive's surrounding wording is later edited.
+ */
+const CHILD_SAFETY_DIRECTIVE_MARKER = /depicted\s+strictly\s+age-appropriately/i;
+
+/**
  * Apply the rule-based soften ladder to an outgoing prompt string. Pure,
  * deterministic, no I/O — safe to call on both the main prompt and the
  * negative prompt. `level` is clamped to `[0, VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL]`;
  * `0` is a no-op (returns the input unchanged).
+ *
+ * Child-safety guard: if `prompt` contains the `child` role tier's
+ * age-appropriateness directive (see `CHILD_SAFETY_DIRECTIVE_MARKER`), the
+ * soften ladder is skipped entirely and the prompt is returned unchanged —
+ * child-safety wording must never be softened or corrupted by the generic
+ * identity-lock relaxation rules below.
  */
 export function softenCharacterLockPrompt(
   prompt: string,
@@ -143,11 +182,23 @@ export function softenCharacterLockPrompt(
 ): string {
   const clamped = Math.max(0, Math.min(VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL, Math.trunc(level)));
   if (clamped <= 0) return prompt;
+  if (CHILD_SAFETY_DIRECTIVE_MARKER.test(prompt)) return prompt;
   if (clamped === 1) return applyLevel1(prompt);
   return applyLevel2(prompt);
 }
 
-/** Same ladder, for the negative-prompt string (level 2 drops the character-lock negative terms entirely — a shorter negative prompt is less likely to itself trip a policy classifier). */
+/**
+ * Same ladder, for the negative-prompt string (level 2 drops the
+ * character-lock negative terms entirely — a shorter negative prompt is less
+ * likely to itself trip a policy classifier).
+ *
+ * Child-safety guard: every term in `VD_CHILD_SAFETY_NEGATIVE_TERMS` is
+ * preserved verbatim through every soften level — these terms are extracted
+ * before softening/stripping runs and re-appended afterward, so they can
+ * never be weakened, reworded, or dropped by the generic ladder (e.g. level
+ * 2's bare "skin"/"complexion" strip, which would otherwise corrupt
+ * "plastic skin" into "plastic").
+ */
 export function softenCharacterLockNegativePrompt(
   negativePrompt: string | undefined,
   level: number,
@@ -155,17 +206,27 @@ export function softenCharacterLockNegativePrompt(
   if (!negativePrompt) return negativePrompt;
   const clamped = Math.max(0, Math.min(VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL, Math.trunc(level)));
   if (clamped <= 0) return negativePrompt;
+
+  const childSafetyTermsLower = new Set(VD_CHILD_SAFETY_NEGATIVE_TERMS.map((t) => t.toLowerCase()));
+  const parts = negativePrompt.split(",").map((part) => part.trim());
+  const preserved = parts.filter((part) => childSafetyTermsLower.has(part.toLowerCase()));
+  const rest = parts.filter((part) => !childSafetyTermsLower.has(part.toLowerCase())).join(", ");
+
+  let softenedRest: string;
   if (clamped === 2) {
     // Strip the character-lock negative terms specifically; keep any other
     // negative-prompt content (e.g. product-lock terms) intact.
     const terms = VD_CHARACTER_LOCK_NEGATIVE_TERMS.map((t) => t.toLowerCase());
-    return negativePrompt
+    softenedRest = rest
       .split(",")
       .map((part) => part.trim())
       .filter((part) => part.length > 0 && !terms.includes(part.toLowerCase()))
       .join(", ");
+  } else {
+    softenedRest = applyLevel1(rest);
   }
-  return applyLevel1(negativePrompt);
+
+  return [softenedRest, ...preserved].filter((part) => part && part.trim().length > 0).join(", ");
 }
 
 /* -------------------------------------------------------------------------- */

@@ -3,6 +3,8 @@ import {
   VD_CHARACTER_LOCK_INSTRUCTION,
   VD_CHARACTER_LOCK_NEGATIVE_TERMS,
   VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
+  VD_CHILD_SAFETY_NEGATIVE_TERMS,
+  VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT,
   softenCharacterLockPrompt,
   softenCharacterLockNegativePrompt,
   isCharacterLockPolicyFailure,
@@ -75,6 +77,48 @@ describe("softenCharacterLockPrompt — soften ladder", () => {
   it("clamps a negative level to 0 (no-op)", () => {
     const prompt = "exactly identical";
     expect(softenCharacterLockPrompt(prompt, -1)).toBe(prompt);
+  });
+});
+
+describe("child-safety negatives survive the soften ladder — policy-risk mitigation", () => {
+  it("softenCharacterLockPrompt is a no-op when the prompt contains the child-safety directive marker, at any level", () => {
+    const childPrompt =
+      `${VD_CHARACTER_LOCK_INSTRUCTION} This character MUST be depicted strictly ` +
+      "age-appropriately — no adult styling, no glamour, no romantic framing.";
+    expect(softenCharacterLockPrompt(childPrompt, 1)).toBe(childPrompt);
+    expect(softenCharacterLockPrompt(childPrompt, 2)).toBe(childPrompt);
+  });
+
+  it("softenCharacterLockNegativePrompt preserves every VD_CHILD_SAFETY_NEGATIVE_TERMS term verbatim at level 1", () => {
+    const negative = `${VD_CHARACTER_LOCK_NEGATIVE_TERMS.join(", ")}, ${VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT}`;
+    const result = softenCharacterLockNegativePrompt(negative, 1)!;
+    for (const term of VD_CHILD_SAFETY_NEGATIVE_TERMS) {
+      expect(result).toContain(term);
+    }
+  });
+
+  it("softenCharacterLockNegativePrompt preserves every VD_CHILD_SAFETY_NEGATIVE_TERMS term verbatim at level 2 (the level that would otherwise corrupt 'plastic skin' -> 'plastic')", () => {
+    const negative = `${VD_CHARACTER_LOCK_NEGATIVE_TERMS.join(", ")}, ${VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT}`;
+    const result = softenCharacterLockNegativePrompt(negative, 2)!;
+    for (const term of VD_CHILD_SAFETY_NEGATIVE_TERMS) {
+      expect(result).toContain(term);
+    }
+    // Specifically guard the exact corruption this test suite exists to prevent.
+    expect(result).toContain("plastic skin");
+    expect(result).not.toMatch(/\bplastic\b(?!\s+skin)/);
+    // The ordinary character-lock negative terms are still stripped at level 2.
+    for (const term of VD_CHARACTER_LOCK_NEGATIVE_TERMS) {
+      expect(result).not.toContain(term);
+    }
+  });
+
+  it("still softens non-child-safety terms normally when child-safety terms are absent", () => {
+    const negative = `${VD_CHARACTER_LOCK_NEGATIVE_TERMS.join(", ")}, altered product design`;
+    const result = softenCharacterLockNegativePrompt(negative, 2)!;
+    expect(result).toContain("altered product design");
+    for (const term of VD_CHARACTER_LOCK_NEGATIVE_TERMS) {
+      expect(result).not.toContain(term);
+    }
   });
 });
 
