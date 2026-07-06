@@ -102,7 +102,19 @@ const characterVisualBibleCharacterSchema = z
     full_body_prompt: z.string().min(1).optional(),
     expression_sheet_prompt: z.string().min(1).optional(),
     outfit_sheet_prompt: z.string().min(1).optional(),
-    attachment_package: z.array(z.record(z.string(), z.unknown())).min(1),
+    // Optional — same rationale as the sibling prompt fields above: nothing
+    // in `generateCharacterVisualPrompts` reads `attachment_package` (it is
+    // pass-through-only bookkeeping data for the storyboard handoff), yet it
+    // was required (`.min(1)`, no `.optional()`). Under the heavier prompt
+    // added across the star-quality/solo-portrait/cinematic-language/
+    // region/character-lock instructions, the LLM (openai/gpt-5.4-nano)
+    // reliably omits this array on both the first attempt and the retry
+    // (5/5 repro runs failed schema validation, 2/5 specifically for a
+    // missing/empty `attachment_package`), taking down the whole call for a
+    // field the caller never consumes. Making it optional (like its unused
+    // siblings) removes that failure mode without loosening validation of
+    // any field actually used downstream.
+    attachment_package: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
   })
   .passthrough();
 
