@@ -289,6 +289,21 @@ export function formatVideoClipRequest(
   let generateAudio = false;
   let ttsFallback = false;
 
+  // Start-frame grounding instruction (video MCP submission fix): without an
+  // explicit textual anchor, some providers (e.g. Higgsfield) treat an
+  // attached image as a loose style/character reference rather than the
+  // literal first frame to continue motion from — this line makes the intent
+  // unambiguous. Only added when this clip actually has an approved start
+  // frame AND the model claims to support one; a model with
+  // `supportsStartFrame: false` gets no grounding line since no image will be
+  // attached for it to refer to. Prepended (not appended) so it survives the
+  // router's `VD_VIDEO_PROMPT_MAX` (2000 char) truncation-from-the-end QC
+  // step in `ensurePromptWithinLimit` even on long clip prompts.
+  if (clip.startFrameAssetId && capabilities.supportsStartFrame) {
+    finalPrompt =
+      `Use the attached first image as the exact start frame and visual source of truth — continue motion from it; keep faces, wardrobe, set and composition identical. ${finalPrompt}`.trim();
+  }
+
   if (dialogueLines.length > 0) {
     if (nativeAudioDialogue) {
       const clause = buildNativeDialogueClause(dialogueLines, dialogueLanguageName);

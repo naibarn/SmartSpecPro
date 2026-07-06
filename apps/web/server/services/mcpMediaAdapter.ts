@@ -540,6 +540,7 @@ export const sanitizeMcpConnectionErrorMessageForTest = sanitizeMcpConnectionErr
 export const higgsfieldMediaRolesForReferenceImagesForTest =
   rolesForReferenceImageUrls;
 export const withCompletedProviderResultForTest = withCompletedProviderResult;
+export const prepareMcpToolArgumentsForTest = prepareMcpToolArguments;
 
 function findProviderStatus(value: unknown, visited = new Set<unknown>()): string | null {
   if (!value || typeof value !== "object" || visited.has(value)) return null;
@@ -832,8 +833,20 @@ async function prepareMcpToolArguments(params: {
 
   if (
     params.metadata.providerKey === "higgsfield" &&
-    params.metadata.assetType === "image" &&
-    params.metadata.toolName === "generate_image"
+    (
+      (params.metadata.assetType === "image" && params.metadata.toolName === "generate_image") ||
+      // Video path (Vertical Drama fix — see `mcpMediaAdapter.test.ts`): this
+      // branch used to be image-only, so `generate_video` requests silently
+      // fell through to `return params.toolArguments` unchanged below,
+      // dropping every reference/start-frame image even though the caller
+      // (`generateVideoClip`) had already resolved and passed them as
+      // `referenceImageUrls` — confirmed via `mcp_media_tasks.parameters
+      // .referenceImageCount: 0` in production. The model's own configJson
+      // (`generateType: "image-to-video"`, `supportsReferenceImages: true`)
+      // confirms Higgsfield's video tool DOES accept `medias`, same as its
+      // image tool.
+      (params.metadata.assetType === "video" && params.metadata.toolName === "generate_video")
+    )
   ) {
     const importUrls = referenceImageUrls.slice(0, 20);
     const importedMedias = await importHiggsfieldReferenceImages({

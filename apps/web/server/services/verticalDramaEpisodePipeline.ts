@@ -71,6 +71,7 @@ import {
 import {
   generateVideoMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
+  syncStartFramesOntoMotionPromptClips,
   InsufficientCreditsError as MotionPromptInsufficientCreditsError,
   VdSchemaValidationError as MotionPromptVdSchemaValidationError,
   type VideoMotionPromptPackProjection,
@@ -1971,6 +1972,17 @@ export class VerticalDramaEpisodePipeline {
         generated.pack = syncDialogueOntoMotionPromptClips(
           generated.pack,
           episode.dialogueAudioPlan
+        );
+        // Video MCP submission fix: fill each clip's `startFrameAssetId` from
+        // the episode's own approved start-frame render (ground truth — the
+        // user-approved image in the storyboard panel) when the LLM's own
+        // `start_frame_reference.asset_id` free-text claim was empty. See
+        // `syncStartFramesOntoMotionPromptClips`'s doc comment for why this
+        // was previously silently dropping the start frame from every video
+        // MCP submission (e.g. Higgsfield `referenceImageCount: 0`).
+        generated.pack = syncStartFramesOntoMotionPromptClips(
+          generated.pack,
+          episode.startFramePlan
         );
         // Final-prompt QC (hard length cap) — BEFORE this pack is persisted
         // or used to render a paid video clip. Zero-cost no-op for clips

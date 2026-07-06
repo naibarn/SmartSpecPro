@@ -50,6 +50,7 @@ import {
   generateVideoMotionPromptPack,
   projectMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
+  syncStartFramesOntoMotionPromptClips,
   RateLimitExceededError,
   type VideoMotionPromptPackProjection,
 } from "../verticalDramaVideoMotionPromptGeneration";
@@ -516,5 +517,72 @@ describe("syncDialogueOntoMotionPromptClips", () => {
       dialogue_lines: [{ clip_number: 1, speaker_character_id: "char_aria", dialogue_line: "   " }],
     });
     expect(result.clips[0].dialogue).toBeUndefined();
+  });
+});
+
+describe("syncStartFramesOntoMotionPromptClips (video MCP submission fix)", () => {
+  function basePack(clips: VideoMotionPromptPackProjection["clips"]): VideoMotionPromptPackProjection {
+    return {
+      selectedVideoModelId: "higgsfield/grok_video",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips,
+    };
+  }
+
+  it("returns the pack unchanged when startFramePlan is null", () => {
+    const pack = basePack([{ clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8 }]);
+    const result = syncStartFramesOntoMotionPromptClips(pack, null);
+    expect(result).toBe(pack);
+  });
+
+  it("returns the pack unchanged when startFramePlan has no frames", () => {
+    const pack = basePack([{ clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8 }]);
+    const result = syncStartFramesOntoMotionPromptClips(pack, { frames: [] });
+    expect(result).toBe(pack);
+  });
+
+  it("fills a clip's startFrameAssetId from the matching approved start-frame render by primary shot number (regression: LLM never given real asset ids, so this was always empty)", () => {
+    const pack = basePack([
+      { clipNumber: 1, sourceShotNumbers: [1], prompt: "clip 1 prompt", durationSeconds: 8 },
+      { clipNumber: 2, sourceShotNumbers: [2], prompt: "clip 2 prompt", durationSeconds: 8 },
+    ]);
+    const result = syncStartFramesOntoMotionPromptClips(pack, {
+      frames: [
+        { shotNumber: 1, approvedMediaAssetId: "60" },
+        { shotNumber: 2, approvedMediaAssetId: "61" },
+      ],
+    });
+    expect(result.clips[0].startFrameAssetId).toBe("60");
+    expect(result.clips[1].startFrameAssetId).toBe("61");
+  });
+
+  it("never overwrites a clip's existing startFrameAssetId (upstream LLM already carried one)", () => {
+    const pack = basePack([
+      { clipNumber: 1, sourceShotNumbers: [1], prompt: "p", durationSeconds: 8, startFrameAssetId: "existing-frame" },
+    ]);
+    const result = syncStartFramesOntoMotionPromptClips(pack, {
+      frames: [{ shotNumber: 1, approvedMediaAssetId: "60" }],
+    });
+    expect(result.clips[0].startFrameAssetId).toBe("existing-frame");
+  });
+
+  it("leaves a clip's startFrameAssetId unset when its primary shot has no approved frame yet", () => {
+    const pack = basePack([{ clipNumber: 1, sourceShotNumbers: [3], prompt: "p", durationSeconds: 8 }]);
+    const result = syncStartFramesOntoMotionPromptClips(pack, {
+      frames: [{ shotNumber: 1, approvedMediaAssetId: "60" }],
+    });
+    expect(result.clips[0].startFrameAssetId).toBeUndefined();
+  });
+
+  it("uses the clip's first sourceShotNumbers entry as the primary shot (matches generateVideoClip's own parentShotNumber ?? sourceShotNumbers[0] convention)", () => {
+    const pack = basePack([{ clipNumber: 1, sourceShotNumbers: [4, 5], prompt: "p", durationSeconds: 8 }]);
+    const result = syncStartFramesOntoMotionPromptClips(pack, {
+      frames: [
+        { shotNumber: 4, approvedMediaAssetId: "70" },
+        { shotNumber: 5, approvedMediaAssetId: "71" },
+      ],
+    });
+    expect(result.clips[0].startFrameAssetId).toBe("70");
   });
 });

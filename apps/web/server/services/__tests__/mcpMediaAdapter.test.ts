@@ -6,6 +6,7 @@ import {
   internalizeMcpProviderUrlsForTest,
   isMcpProviderAuthErrorForTest,
   parseMcpJsonResponse,
+  prepareMcpToolArgumentsForTest,
   sanitizeMcpConnectionErrorMessageForTest,
   withCompletedProviderResultForTest,
 } from "../mcpMediaAdapter";
@@ -171,6 +172,80 @@ describe("mcpMediaAdapter", () => {
           prompt: "A cinematic product clip",
         },
       });
+    }
+  });
+
+  it("imports the start-frame + reference images as Higgsfield `medias` for a video generation request (regression: previously image-only, dropping every image from video submissions)", async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({ jsonrpc: "2.0", result: { mediaId: "media_abc123" } }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const toolArguments = buildMcpToolArguments("video", "A cinematic clip", {
+        providerModelId: "grok_video",
+      }, "higgsfield", "higgsfield.generate_video");
+
+      const prepared = await prepareMcpToolArgumentsForTest({
+        runtime: { mcpUrl: "https://mcp.example/higgsfield", accessToken: "token", tokenType: "bearer" },
+        metadata: {
+          transport: "mcp",
+          originSurface: "media_studio",
+          assetType: "video",
+          providerKey: "higgsfield",
+          toolName: "generate_video",
+          creditPolicy: "provider_credits_tracked",
+        },
+        toolArguments,
+        parameters: {
+          providerModelId: "grok_video",
+          referenceImageUrls: ["https://smartaihub.app/api/storage/files/start-frame.png"],
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(prepared).toMatchObject({
+        params: {
+          model: "grok_video",
+          prompt: "A cinematic clip",
+          medias: [{ value: "media_abc123", role: "image" }],
+        },
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("leaves Higgsfield video arguments unchanged when there are no reference images to import", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const toolArguments = buildMcpToolArguments("video", "A cinematic clip", {
+        providerModelId: "grok_video",
+      }, "higgsfield", "higgsfield.generate_video");
+
+      const prepared = await prepareMcpToolArgumentsForTest({
+        runtime: { mcpUrl: "https://mcp.example/higgsfield", accessToken: "token", tokenType: "bearer" },
+        metadata: {
+          transport: "mcp",
+          originSurface: "media_studio",
+          assetType: "video",
+          providerKey: "higgsfield",
+          toolName: "generate_video",
+          creditPolicy: "provider_credits_tracked",
+        },
+        toolArguments,
+        parameters: { providerModelId: "grok_video" },
+      });
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(prepared).toEqual(toolArguments);
+    } finally {
+      vi.unstubAllGlobals();
     }
   });
 

@@ -77,9 +77,9 @@ describe("formatVideoClipRequest — Veo 3.1 (native audio)", () => {
     expect(result.supportsStartFrame).toBe(true);
   });
 
-  it("leaves the base prompt untouched for a silent clip (no dialogue lines)", () => {
+  it("leaves the base prompt untouched for a silent clip with no start frame (no dialogue lines, no startFrameAssetId)", () => {
     const result = formatVideoClipRequest({
-      clip: clip(),
+      clip: clip({ startFrameAssetId: undefined }),
       dialogueLines: [],
       modelId: veoModel.id,
       model: veoModel,
@@ -241,6 +241,74 @@ describe("formatVideoClipRequest — WaveSpeed Seedance 2.0 (static catalog entr
     expect(result.nativeAudioDialogue).toBe(true);
     expect(result.generateAudio).toBe(true);
     expect(result.ttsFallback).toBe(false);
+    expect(result.prompt).toContain("เราไม่ได้จบกันแค่นี้หรอกนะ");
+  });
+});
+
+describe("formatVideoClipRequest — start-frame grounding instruction (video MCP submission fix)", () => {
+  const veoModel = {
+    id: "veo3/generate-veo-3-video-lite",
+    type: "video" as const,
+    provider: "kie.ai",
+    aliases: ["veo 3.1 lite", "veo3-lite"],
+    configJson: {},
+  };
+  const unknownModel = {
+    id: "some-future-video-model",
+    type: "video" as const,
+    provider: "some_provider",
+    aliases: [],
+    configJson: {},
+  };
+
+  it("prepends the grounding instruction when the clip has a start frame and the model supports one", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ startFrameAssetId: "500" }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt.startsWith(
+      "Use the attached first image as the exact start frame and visual source of truth — continue motion from it; keep faces, wardrobe, set and composition identical.",
+    )).toBe(true);
+    expect(result.prompt).toContain(clip().prompt);
+  });
+
+  it("does not add the grounding instruction when the clip has no start frame", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ startFrameAssetId: undefined }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt).toBe(clip().prompt);
+    expect(result.prompt).not.toContain("exact start frame");
+  });
+
+  it("does not add the grounding instruction when the model does not support a start frame (even if the clip has one)", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ startFrameAssetId: "500" }),
+      dialogueLines: [],
+      modelId: unknownModel.id,
+      model: unknownModel,
+    });
+
+    expect(result.supportsStartFrame).toBe(false);
+    expect(result.prompt).toBe(clip().prompt);
+    expect(result.prompt).not.toContain("exact start frame");
+  });
+
+  it("still respects the model's native-audio dialogue clause after the grounding instruction", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ startFrameAssetId: "500" }),
+      dialogueLines: [dialogueLine()],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt.startsWith("Use the attached first image")).toBe(true);
     expect(result.prompt).toContain("เราไม่ได้จบกันแค่นี้หรอกนะ");
   });
 });

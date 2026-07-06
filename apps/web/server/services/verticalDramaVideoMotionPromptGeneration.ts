@@ -423,6 +423,57 @@ export function syncDialogueOntoMotionPromptClips(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Start-frame sync (video MCP submission fix)                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Map the episode's approved start-frame render (`startFramePlan.frames[]
+ * .approvedMediaAssetId` — ground truth chosen/approved by the user in the
+ * storyboard panel) onto `pack.clips[j].startFrameAssetId` — ONLY for clips
+ * that don't already carry one (the motion-prompt-pack LLM's own
+ * `start_frame_reference.asset_id` free-text claim, when present, is never
+ * overwritten). Without this sync, the LLM has no real asset ids to
+ * reference (it is never given them — see `buildUserPrompt`) and almost
+ * always emits nothing, so `clip.startFrameAssetId` ends up empty and
+ * `generateVideoClip` (in `routers/verticalDramaEpisodes.ts`) resolves zero
+ * `referenceImageUrls`, silently submitting the video MCP task (e.g.
+ * Higgsfield) with no start-frame image at all — confirmed via
+ * `mcp_media_tasks.parameters.referenceImageCount: 0` in production. Matches
+ * `syncDialogueOntoMotionPromptClips`'s "ground truth over free-text LLM
+ * claim" convention above. Pure — no I/O — safe to call unconditionally.
+ */
+export function syncStartFramesOntoMotionPromptClips(
+  pack: VideoMotionPromptPackProjection,
+  startFramePlan: unknown,
+): VideoMotionPromptPackProjection {
+  if (!startFramePlan || typeof startFramePlan !== "object") return pack;
+  const plan = startFramePlan as { frames?: Array<{ shotNumber?: number; approvedMediaAssetId?: string }> };
+  if (!Array.isArray(plan.frames) || plan.frames.length === 0) return pack;
+
+  const approvedAssetIdByShotNumber = new Map<number, string>();
+  for (const frame of plan.frames) {
+    if (typeof frame.shotNumber === "number" && frame.approvedMediaAssetId) {
+      approvedAssetIdByShotNumber.set(frame.shotNumber, frame.approvedMediaAssetId);
+    }
+  }
+  if (approvedAssetIdByShotNumber.size === 0) return pack;
+
+  return {
+    ...pack,
+    clips: pack.clips.map((clip) => {
+      if (clip.startFrameAssetId) return clip;
+      const primaryShotNumber = clip.sourceShotNumbers[0];
+      const approvedAssetId =
+        primaryShotNumber !== undefined
+          ? approvedAssetIdByShotNumber.get(primaryShotNumber)
+          : undefined;
+      if (!approvedAssetId) return clip;
+      return { ...clip, startFrameAssetId: approvedAssetId };
+    }),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Prompt building                                                            */
 /* -------------------------------------------------------------------------- */
 
