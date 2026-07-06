@@ -9,6 +9,11 @@ import {
   canRunPaidGeneration,
   buildTieInProvenance,
   isRegulatedCategory,
+  extractShotProductPlacements,
+  tieInShotNumberSet,
+  findPlacementForShot,
+  appendProductPresenceDirective,
+  mergeAndTrimReferenceImageUrls,
   type PlanTieInInput,
 } from "../verticalDramaProductTieIn";
 import type { VerticalDramaProductTieInConfig } from "@shared/verticalDramaSeries";
@@ -116,5 +121,167 @@ describe("approval gate + provenance", () => {
     const removed = removeTieIn(r.usage);
     expect(removed.enabled).toBe(false);
     expect(removed.approvedByUserId).toBeUndefined();
+  });
+});
+
+describe("extractShotProductPlacements", () => {
+  it("returns [] for the disabled/no-product placeholder", () => {
+    expect(extractShotProductPlacements({ tie_ins: [], note: "no product this episode" })).toEqual([]);
+  });
+
+  it("returns [] for missing/malformed input", () => {
+    expect(extractShotProductPlacements(undefined)).toEqual([]);
+    expect(extractShotProductPlacements(null)).toEqual([]);
+    expect(extractShotProductPlacements({})).toEqual([]);
+    expect(extractShotProductPlacements({ tie_ins: "not-an-array" })).toEqual([]);
+  });
+
+  it("normalizes a well-formed entry", () => {
+    const placements = extractShotProductPlacements({
+      tie_ins: [
+        {
+          shot_numbers: [3, 4],
+          story_function: "daily_use",
+          placement_style: "in-use moment",
+          benefit_talking_point: "keeps her skin hydrated all day",
+        },
+      ],
+    });
+    expect(placements).toEqual([
+      {
+        shotNumbers: [3, 4],
+        storyFunction: "daily_use",
+        placementStyle: "in_use_moment",
+        benefitTalkingPoint: "keeps her skin hydrated all day",
+      },
+    ]);
+  });
+
+  it("accepts a single shot_number field and dedupes/sorts shot numbers", () => {
+    const placements = extractShotProductPlacements({
+      tie_ins: [{ shot_number: 5, story_function: "status_symbol" }],
+    });
+    expect(placements[0].shotNumbers).toEqual([5]);
+
+    const deduped = extractShotProductPlacements({
+      tie_ins: [{ shot_numbers: [4, 2, 4, 2], story_function: "daily_use" }],
+    });
+    expect(deduped[0].shotNumbers).toEqual([2, 4]);
+  });
+
+  it("defaults placement_style to in_use_moment for unrecognized values", () => {
+    const placements = extractShotProductPlacements({
+      tie_ins: [{ shot_numbers: [1], story_function: "daily_use", placement_style: "weird_value" }],
+    });
+    expect(placements[0].placementStyle).toBe("in_use_moment");
+  });
+
+  it("skips entries missing a story_function (spec §13 mandatory field)", () => {
+    const placements = extractShotProductPlacements({
+      tie_ins: [
+        { shot_numbers: [1], story_function: "" },
+        { shot_numbers: [2] },
+        { shot_numbers: [3], story_function: "daily_use" },
+      ],
+    });
+    expect(placements).toHaveLength(1);
+    expect(placements[0].shotNumbers).toEqual([3]);
+  });
+
+  it("skips entries with no valid shot numbers (out of 1-9 range or non-numeric)", () => {
+    const placements = extractShotProductPlacements({
+      tie_ins: [
+        { shot_numbers: [0, 10, "x"], story_function: "daily_use" },
+        { shot_numbers: [7], story_function: "daily_use" },
+      ],
+    });
+    expect(placements).toHaveLength(1);
+    expect(placements[0].shotNumbers).toEqual([7]);
+  });
+
+  it("never throws on malformed entries mixed with valid ones", () => {
+    expect(() =>
+      extractShotProductPlacements({
+        tie_ins: [null, 42, "oops", { shot_numbers: [1], story_function: "daily_use" }],
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe("tieInShotNumberSet / findPlacementForShot", () => {
+  const placements = extractShotProductPlacements({
+    tie_ins: [
+      { shot_numbers: [2, 3], story_function: "daily_use", placement_style: "hero_prop" },
+      { shot_numbers: [7], story_function: "status_symbol", placement_style: "background" },
+    ],
+  });
+
+  it("flattens every placed shot number into a Set", () => {
+    expect(tieInShotNumberSet(placements)).toEqual(new Set([2, 3, 7]));
+  });
+
+  it("finds the placement covering a given shot", () => {
+    expect(findPlacementForShot(placements, 3)?.placementStyle).toBe("hero_prop");
+    expect(findPlacementForShot(placements, 7)?.placementStyle).toBe("background");
+    expect(findPlacementForShot(placements, 5)).toBeUndefined();
+  });
+});
+
+describe("appendProductPresenceDirective", () => {
+  it("appends a natural, non-ad-poster placement direction", () => {
+    const result = appendProductPresenceDirective("A woman sits at a cafe table.", "GlowCream", {
+      shotNumbers: [1],
+      storyFunction: "daily_use",
+      placementStyle: "hero_prop",
+    });
+    expect(result).toContain("A woman sits at a cafe table.");
+    expect(result).toContain("GlowCream");
+    expect(result.toLowerCase()).toContain("hero prop");
+    // The directive explicitly forbids an ad-poster look — the negative
+    // instruction itself legitimately contains these words, so assert the
+    // instruction is present rather than absent.
+    expect(result).toMatch(/never as packaging art, a poster/i);
+  });
+
+  it("falls back to a generic product name when absent", () => {
+    const result = appendProductPresenceDirective("A shot.", undefined, {
+      shotNumbers: [1],
+      storyFunction: "daily_use",
+      placementStyle: "background",
+    });
+    expect(result).toContain("the tied-in product");
+  });
+});
+
+describe("mergeAndTrimReferenceImageUrls", () => {
+  it("merges character refs first, then product refs, deduping", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1", "char-2"],
+      ["product-1"],
+      undefined,
+    );
+    expect(urls).toEqual(["char-1", "char-2", "product-1"]);
+    expect(trimmedCount).toBe(0);
+  });
+
+  it("dedupes overlapping URLs", () => {
+    const { urls } = mergeAndTrimReferenceImageUrls(["a", "b"], ["b", "c"], undefined);
+    expect(urls).toEqual(["a", "b", "c"]);
+  });
+
+  it("trims from the end (product refs) when over maxReferenceImages, prioritizing character refs", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1", "char-2", "char-3"],
+      ["product-1", "product-2"],
+      3,
+    );
+    expect(urls).toEqual(["char-1", "char-2", "char-3"]);
+    expect(trimmedCount).toBe(2);
+  });
+
+  it("passes through unchanged when maxReferenceImages is 0/undefined", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(["a"], ["b"], 0);
+    expect(urls).toEqual(["a", "b"]);
+    expect(trimmedCount).toBe(0);
   });
 });

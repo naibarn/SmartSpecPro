@@ -85,6 +85,11 @@ import {
   type SeriesMemoryPlannerOutput,
 } from "./verticalDramaSeriesMemoryPlanning";
 import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
+import {
+  extractShotProductPlacements,
+  findPlacementForShot,
+  appendProductPresenceDirective,
+} from "./verticalDramaProductTieIn";
 
 /* -------------------------------------------------------------------------- */
 /* Canonical stage sequence + phase grouping (spec §11.5 / §16)               */
@@ -954,6 +959,32 @@ export class VerticalDramaEpisodePipeline {
       item => Number(item.episodeNumber) === episode.episodeNumber
     );
 
+    // Product tie-in policy (spec §13) — the series' loosely-typed
+    // `productTieIn` JSON blob (see `VerticalDramaProductTieInTab.tsx`'s doc
+    // comment for the exact field names it writes: `enabled`, `productName`,
+    // `forbiddenClaims`). Only forwarded to the script builder when enabled;
+    // `productDescription`/`allowedStoryFunctions` are read defensively since
+    // this column predates a strict Zod contract.
+    const rawProductTieIn = (seriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
+    const productTieIn =
+      rawProductTieIn?.enabled === true
+        ? {
+            enabled: true,
+            productName:
+              typeof rawProductTieIn.productName === "string" ? rawProductTieIn.productName : undefined,
+            productDescription:
+              typeof rawProductTieIn.productDescription === "string"
+                ? rawProductTieIn.productDescription
+                : undefined,
+            allowedStoryFunctions: Array.isArray(rawProductTieIn.allowedStoryFunctions)
+              ? (rawProductTieIn.allowedStoryFunctions as string[])
+              : undefined,
+            forbiddenClaims: Array.isArray(rawProductTieIn.forbiddenClaims)
+              ? (rawProductTieIn.forbiddenClaims as string[])
+              : undefined,
+          }
+        : undefined;
+
     return generateEpisodeScript({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -963,6 +994,7 @@ export class VerticalDramaEpisodePipeline {
       episodeNumber: episode.episodeNumber,
       locale: (seriesRow?.locale as "th" | "en") ?? "th",
       durationSeconds: episode.targetDurationSeconds ?? 60,
+      productTieIn,
       storySource: {
         logline:
           typeof matchingBreakdown?.logline === "string"
@@ -1752,14 +1784,63 @@ export class VerticalDramaEpisodePipeline {
     if (stage === "start_frame_render_plan" && paidModeAllowed) {
       try {
         const generated = await this.generateRealStartFramePlan(owner, episode);
+
+        // Product tie-in shot mapping (production-grade end-to-end wiring):
+        // map the script stage's `product_tie_in_plan.tie_ins[]` (already
+        // normalized by `extractShotProductPlacements`) onto the concrete
+        // frames that carry a placement, populating `productReferenceAssetIds`
+        // (the product's own reference image URL(s) — plain URLs, not
+        // `media_assets` ids, since the series' `productTieIn` config stores a
+        // direct `productImageUrl`) and weaving a natural in-scene product
+        // direction into that frame's `imagePrompt`. No-op when tie-in is
+        // disabled or the script produced no placements this episode.
+        const scriptPayload = (episode.script as Record<string, unknown> | null) ?? null;
+        const placements = extractShotProductPlacements(scriptPayload?.product_tie_in_plan);
+        let framesWithTieIn = generated.plan.frames;
+        if (placements.length > 0) {
+          const [tieInSeriesRow] = await db
+            .select({ productTieIn: verticalDramaSeries.productTieIn })
+            .from(verticalDramaSeries)
+            .where(
+              and(
+                eq(verticalDramaSeries.id, owner.seriesId),
+                eq(verticalDramaSeries.tenantId, owner.tenantId),
+                eq(verticalDramaSeries.userId, owner.userId),
+              ),
+            )
+            .limit(1);
+          const rawProductTieIn =
+            (tieInSeriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
+          const productName =
+            typeof rawProductTieIn?.productName === "string" ? rawProductTieIn.productName : undefined;
+          const productImageUrl =
+            typeof rawProductTieIn?.productImageUrl === "string" && rawProductTieIn.productImageUrl
+              ? rawProductTieIn.productImageUrl
+              : undefined;
+          const productRefUrls = productImageUrl ? [productImageUrl] : [];
+
+          framesWithTieIn = generated.plan.frames.map((frame) => {
+            const placement = findPlacementForShot(placements, frame.shotNumber);
+            if (!placement) return frame;
+            return {
+              ...frame,
+              productReferenceAssetIds: productRefUrls.length
+                ? Array.from(new Set([...(frame.productReferenceAssetIds ?? []), ...productRefUrls]))
+                : (frame.productReferenceAssetIds ?? []),
+              imagePrompt: appendProductPresenceDirective(frame.imagePrompt, productName, placement),
+            };
+          });
+        }
+
         // Final-prompt QC (hard length cap) — BEFORE this plan is persisted
         // or used to render a paid image. Zero-cost no-op for prompts
         // already within `VD_IMAGE_PROMPT_MAX` (see
-        // `verticalDramaPromptQc.ts`'s doc comment).
+        // `verticalDramaPromptQc.ts`'s doc comment). Runs AFTER the tie-in
+        // directive is appended so the persisted prompt never exceeds the cap.
         generated.plan = {
           ...generated.plan,
           frames: await Promise.all(
-            generated.plan.frames.map(async (frame) => {
+            framesWithTieIn.map(async (frame) => {
               const qc = await ensurePromptWithinLimit({
                 kind: "image",
                 prompt: frame.imagePrompt,

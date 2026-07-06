@@ -64,6 +64,7 @@ import {
   type VerticalDramaClipDialogueLineView,
   type VerticalDramaMotionPromptPackView,
   type VerticalDramaQualityReviewView,
+  type VerticalDramaShotProductTieInView,
   type VerticalDramaShotReferenceView,
   type VerticalDramaStartFramePlanView,
   type VerticalDramaStoryboardView,
@@ -126,6 +127,8 @@ export interface VerticalDramaStoryboardPanelData {
    *  image, concurrently (redesign, 2026-07-05) — not one-at-a-time. */
   onGenerateAllStartFrameImages?: (shotNumbers: number[]) => void;
   characterPortraits?: VerticalDramaCharacterPortraitMap;
+  /** Product tie-in placement per shot (spec §13) — read-only chip indicator. */
+  productTieInByShot?: Record<number, VerticalDramaShotProductTieInView>;
   onChangeCharacterReference?: (characterId: string) => void;
   onDropCharacterReference?: (characterId: string, url: string) => void;
   onDropStartFrame?: (shotNumber: number, url: string) => void;
@@ -604,6 +607,7 @@ export function VerticalDramaEpisodeWorkspace({
           generatingStartFrameImageForShot={storyboardPanel?.generatingStartFrameImageForShot}
           onGenerateAllStartFrameImages={storyboardPanel?.onGenerateAllStartFrameImages}
           characterPortraits={storyboardPanel?.characterPortraits}
+          productTieInByShot={storyboardPanel?.productTieInByShot}
           onChangeCharacterReference={storyboardPanel?.onChangeCharacterReference}
           onDropCharacterReference={storyboardPanel?.onDropCharacterReference}
           onDropStartFrame={storyboardPanel?.onDropStartFrame}
@@ -1081,6 +1085,7 @@ export function VerticalDramaEpisodeWorkspace({
                       onGenerateReal={storyboardPanel?.onGenerateReal}
                       onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
                       onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
+                      productTieInByShot={storyboardPanel?.productTieInByShot}
                       imageModels={storyboardPanel?.imageModels}
                       videoModels={storyboardPanel?.videoModels}
                       selectedImageModelId={storyboardPanel?.selectedImageModelId}

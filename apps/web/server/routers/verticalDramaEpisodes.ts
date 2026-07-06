@@ -61,6 +61,11 @@ import {
   type VerticalDramaClipDialogueLine,
 } from "../services/verticalDramaVideoPromptFormatter";
 import { generateVerticalDramaShotVideoPrompt } from "../services/verticalDramaVideoMotionPromptGeneration";
+import {
+  extractShotProductPlacements,
+  findPlacementForShot,
+  mergeAndTrimReferenceImageUrls,
+} from "../services/verticalDramaProductTieIn";
 import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
 import {
   VERTICAL_DRAMA_MEMORY_KINDS,
@@ -485,6 +490,22 @@ async function resolveShotCharacterReferenceUrls(
     ),
   );
   return urls.filter((u): u is string => Boolean(u));
+}
+
+/**
+ * Resolve a shot's `productReferenceAssetIds` (product tie-in) to reference
+ * URLs. Unlike character refs, product tie-in assets are stored as plain
+ * URLs directly on the frame (populated by the pipeline's
+ * `start_frame_render_plan` post-processing from the series' `productTieIn`
+ * config — see `verticalDramaEpisodePipeline.ts`), not `media_assets.id`
+ * rows, so no DB lookup is needed — just pass through whatever is already a
+ * plausible URL. Defensive against manually-edited/legacy values.
+ */
+function resolveShotProductReferenceUrls(productReferenceAssetIds: string[] | undefined): string[] {
+  if (!productReferenceAssetIds?.length) return [];
+  return productReferenceAssetIds.filter(
+    (u): u is string => typeof u === "string" && /^https?:\/\//.test(u),
+  );
 }
 
 /**
@@ -2358,12 +2379,17 @@ export const verticalDramaEpisodesRouter = router({
 
       // Identity-lock references — resolve each required character's
       // approved portrait, same lookup `generateRealStoryboard` uses.
-      const referenceImageUrls = await resolveShotCharacterReferenceUrls(
+      const characterRefUrls = await resolveShotCharacterReferenceUrls(
         tenantId,
         userId,
         seriesId,
         frame.requiredCharacterRefs,
       );
+      // Product tie-in reference (spec: the product must physically appear
+      // in the shot, not just be described in text) — appended AFTER
+      // character refs so identity-lock always takes priority when a model's
+      // `maxReferenceImages` forces trimming.
+      const productRefUrls = resolveShotProductReferenceUrls(frame.productReferenceAssetIds);
 
       // Resolution order (spec Phase 1.2): episode-level selection →
       // `DEFAULT_MODELS`. Pricing AND the actual generation call below both
@@ -2378,6 +2404,16 @@ export const verticalDramaEpisodesRouter = router({
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      const imageCapabilities = resolveVerticalDramaCapabilities(resolvedImageModelId, {
+        type: "image",
+        configJson: pricingModel.configJson ?? undefined,
+      });
+      const { urls: referenceImageUrls, trimmedCount: trimmedProductReferenceCount } =
+        mergeAndTrimReferenceImageUrls(
+          characterRefUrls,
+          productRefUrls,
+          imageCapabilities.maxReferenceImages,
+        );
       // Validate + recompute cost when the model has a resolution-tiered
       // matrix (storyboard-complete plan Phase 6.2b) — `calculateCreditCost`
       // ignores `resolution` entirely for flat-priced models, so this is
@@ -2484,7 +2520,12 @@ export const verticalDramaEpisodesRouter = router({
           },
           userToken
         );
-        return { taskId: task.id, modelId: resolvedImageModelId, creditCost: imageCreditCost };
+        return {
+          taskId: task.id,
+          modelId: resolvedImageModelId,
+          creditCost: imageCreditCost,
+          trimmedProductReferenceCount,
+        };
       } catch (err) {
         if (shouldChargeImageCredits) {
           await refundCredits({
@@ -2567,12 +2608,13 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      const referenceImageUrls = await resolveShotCharacterReferenceUrls(
+      const characterRefUrls = await resolveShotCharacterReferenceUrls(
         tenantId,
         userId,
         seriesId,
         frame.requiredCharacterRefs,
       );
+      const productRefUrls = resolveShotProductReferenceUrls(frame.productReferenceAssetIds);
 
       // Resolution order (spec Phase 1.2): episode-level selection →
       // `DEFAULT_MODELS` — same resolver `generateStartFrameImage` uses, so
@@ -2588,6 +2630,16 @@ export const verticalDramaEpisodesRouter = router({
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      const angleImageCapabilities = resolveVerticalDramaCapabilities(resolvedImageModelId, {
+        type: "image",
+        configJson: pricingModel.configJson ?? undefined,
+      });
+      const { urls: referenceImageUrls, trimmedCount: trimmedProductReferenceCount } =
+        mergeAndTrimReferenceImageUrls(
+          characterRefUrls,
+          productRefUrls,
+          angleImageCapabilities.maxReferenceImages,
+        );
       assertResolutionOption(pricingModel, input.resolution);
       const gridCreditCost = calculateCreditCost(pricingModel, {
         numImages: 2,
@@ -2710,7 +2762,12 @@ export const verticalDramaEpisodesRouter = router({
           },
           userToken
         );
-        return { taskId: task.id, modelId: resolvedImageModelId, creditCost: gridCreditCost };
+        return {
+          taskId: task.id,
+          modelId: resolvedImageModelId,
+          creditCost: gridCreditCost,
+          trimmedProductReferenceCount,
+        };
       } catch (err) {
         if (shouldChargeGridCredits) {
           await refundCredits({
@@ -3323,6 +3380,32 @@ export const verticalDramaEpisodesRouter = router({
       const storyboard = row.storyboard as VerticalDramaShotgrid | null;
       const storyboardShot = storyboard?.shots?.find((s) => s.shotNumber === input.shotNumber);
 
+      // Product tie-in context (spec §13) — present only when this shot
+      // carries a placement per the script stage's normalized
+      // `product_tie_in_plan.tie_ins[]`. Drives the mandatory natural
+      // product/benefit mention in `generateVerticalDramaShotVideoPrompt`.
+      const scriptPayload = row.script as Record<string, unknown> | null;
+      const tieInPlacements = extractShotProductPlacements(scriptPayload?.product_tie_in_plan);
+      const tieInPlacement = findPlacementForShot(tieInPlacements, input.shotNumber);
+      let tieInProductName: string | undefined;
+      if (tieInPlacement) {
+        const [tieInSeriesRow] = await db
+          .select({ productTieIn: verticalDramaSeries.productTieIn })
+          .from(verticalDramaSeries)
+          .where(
+            and(
+              eq(verticalDramaSeries.id, seriesId),
+              eq(verticalDramaSeries.tenantId, tenantId),
+              eq(verticalDramaSeries.userId, userId),
+            ),
+          )
+          .limit(1);
+        const rawProductTieIn =
+          (tieInSeriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
+        tieInProductName =
+          typeof rawProductTieIn?.productName === "string" ? rawProductTieIn.productName : undefined;
+      }
+
       // Dialogue lines matching this shot (or a clip already sourced from it)
       // from the raw `dialogueAudioPlan` skill output (snake_case
       // `dialogue_lines[]` — same shape `syncDialogueOntoMotionPromptClips`
@@ -3378,6 +3461,13 @@ export const verticalDramaEpisodesRouter = router({
           camera: storyboardShot?.cameraSetup,
           emotion: undefined,
           dialogueLines: dialogueLines.length ? dialogueLines : undefined,
+          productContext: tieInPlacement
+            ? {
+                productName: tieInProductName,
+                benefitTalkingPoint: tieInPlacement.benefitTalkingPoint,
+                placementStyle: tieInPlacement.placementStyle,
+              }
+            : undefined,
         },
         selectedVideoModelId: selectedVideoModel.id,
         selectedVideoModel,

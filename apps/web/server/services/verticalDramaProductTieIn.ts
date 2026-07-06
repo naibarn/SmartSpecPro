@@ -377,3 +377,166 @@ export function buildTieInProvenance(
     recordedAt: new Date().toISOString(),
   };
 }
+
+/* -------------------------------------------------------------------------- */
+/* Shot-level tie-in mapping (production-grade end-to-end wiring)             */
+/*                                                                            */
+/* The `vertical-drama-script-builder` skill emits a freeform                */
+/* `product_tie_in_plan.tie_ins[]` array (see skill.md / examples) — never    */
+/* strictly typed beyond "an object", so this module treats every field as    */
+/* best-effort/optional and normalizes whatever shape the LLM produced into   */
+/* the strict `VerticalDramaShotProductPlacement[]` the rest of the pipeline  */
+/* (start-frame plan projection, per-shot image/video generation, UI chip)    */
+/* can rely on. Never throws on malformed entries — skips them instead, so a  */
+/* single bad LLM entry never fails the whole stage.                         */
+/* -------------------------------------------------------------------------- */
+
+/** One normalized product placement, mapped onto concrete shot numbers. */
+export interface VerticalDramaShotProductPlacement {
+  shotNumbers: number[];
+  /** Narrative function for this placement (spec §13 — required for compliance). */
+  storyFunction: string;
+  /** How the product appears in the shot — never a hard "ad" look. */
+  placementStyle: "hero_prop" | "background" | "in_use_moment";
+  /** Short benefit talking point the dialogue can naturally reference. */
+  benefitTalkingPoint?: string;
+}
+
+/** Loosely-typed shape of one raw `product_tie_in_plan.tie_ins[]` entry. */
+interface RawTieInPlanEntry {
+  shot_numbers?: unknown;
+  shot_number?: unknown;
+  story_function?: unknown;
+  placement_style?: unknown;
+  benefit_talking_point?: unknown;
+  benefit?: unknown;
+}
+
+const PLACEMENT_STYLES = ["hero_prop", "background", "in_use_moment"] as const;
+
+function normalizePlacementStyle(value: unknown): VerticalDramaShotProductPlacement["placementStyle"] {
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    if ((PLACEMENT_STYLES as readonly string[]).includes(normalized)) {
+      return normalized as VerticalDramaShotProductPlacement["placementStyle"];
+    }
+  }
+  return "in_use_moment";
+}
+
+function normalizeShotNumbers(entry: RawTieInPlanEntry): number[] {
+  const raw = Array.isArray(entry.shot_numbers)
+    ? entry.shot_numbers
+    : entry.shot_number !== undefined
+      ? [entry.shot_number]
+      : [];
+  const nums = raw
+    .map((n) => (typeof n === "number" ? n : Number(n)))
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 9);
+  return Array.from(new Set(nums)).sort((a, b) => a - b);
+}
+
+/**
+ * Extract + normalize the shot-level product placements from the script
+ * stage's raw `product_tie_in_plan` blob (whatever shape the LLM produced).
+ * Returns `[]` when tie-in is disabled, absent, or every entry is malformed
+ * (no shot numbers, e.g. the `{ tie_ins: [], note: "no product this episode" }`
+ * placeholder the skill emits when there's nothing to place).
+ */
+export function extractShotProductPlacements(
+  productTieInPlan: unknown,
+): VerticalDramaShotProductPlacement[] {
+  if (!productTieInPlan || typeof productTieInPlan !== "object") return [];
+  const tieIns = (productTieInPlan as Record<string, unknown>).tie_ins;
+  if (!Array.isArray(tieIns)) return [];
+
+  const placements: VerticalDramaShotProductPlacement[] = [];
+  for (const raw of tieIns) {
+    if (!raw || typeof raw !== "object") continue;
+    const entry = raw as RawTieInPlanEntry;
+    const shotNumbers = normalizeShotNumbers(entry);
+    if (shotNumbers.length === 0) continue;
+    const storyFunction =
+      typeof entry.story_function === "string" && entry.story_function.trim()
+        ? entry.story_function.trim()
+        : "";
+    if (!storyFunction) continue; // spec §13 — story function is mandatory.
+    placements.push({
+      shotNumbers,
+      storyFunction,
+      placementStyle: normalizePlacementStyle(entry.placement_style),
+      benefitTalkingPoint:
+        typeof entry.benefit_talking_point === "string" && entry.benefit_talking_point.trim()
+          ? entry.benefit_talking_point.trim()
+          : typeof entry.benefit === "string" && entry.benefit.trim()
+            ? entry.benefit.trim()
+            : undefined,
+    });
+  }
+  return placements;
+}
+
+/** Flattened set of every shot number carrying a product placement. */
+export function tieInShotNumberSet(placements: VerticalDramaShotProductPlacement[]): Set<number> {
+  const set = new Set<number>();
+  for (const p of placements) for (const n of p.shotNumbers) set.add(n);
+  return set;
+}
+
+/** Look up the placement (if any) covering a given shot number. */
+export function findPlacementForShot(
+  placements: VerticalDramaShotProductPlacement[],
+  shotNumber: number,
+): VerticalDramaShotProductPlacement | undefined {
+  return placements.find((p) => p.shotNumbers.includes(shotNumber));
+}
+
+const PLACEMENT_STYLE_DIRECTIVE: Record<VerticalDramaShotProductPlacement["placementStyle"], string> = {
+  hero_prop:
+    "the product is a hero prop the character is actively holding/handling in frame",
+  background:
+    "the product is naturally visible in the background of the scene (on a shelf, desk, or table), not the focal point",
+  in_use_moment:
+    "the character is naturally using the product in this exact moment, integrated into the action",
+};
+
+/**
+ * Append a concise, natural in-scene product-presence direction to a shot's
+ * image prompt (spec: no ad-poster look, natural placement only). Caller is
+ * responsible for enforcing the final prompt length cap (`VD_IMAGE_PROMPT_MAX`
+ * via `ensurePromptWithinLimit`) — this only appends, never truncates.
+ */
+export function appendProductPresenceDirective(
+  imagePrompt: string,
+  productName: string | undefined,
+  placement: VerticalDramaShotProductPlacement,
+): string {
+  const name = productName?.trim() || "the tied-in product";
+  const directive = `Product placement (natural, not an advertisement): ${name} must be visibly present in this shot — ${PLACEMENT_STYLE_DIRECTIVE[placement.placementStyle]}. Render it as an ordinary object in the world of the scene, photorealistic and consistent with the attached product reference image, never as packaging art, a poster, or on-image text/branding overlay.`;
+  return [imagePrompt.trim(), directive].filter(Boolean).join(" ");
+}
+
+/**
+ * Merge product reference URLs onto a shot's existing reference URL list
+ * (character refs first, product refs appended after) and trim to the
+ * resolved model's `maxReferenceImages`, if any. Returns the merged list plus
+ * how many entries were trimmed off the END (so callers can surface a
+ * "reference images were trimmed" notice, matching the existing convention
+ * used for shot-reference trimming elsewhere in this router).
+ */
+export function mergeAndTrimReferenceImageUrls(
+  characterRefUrls: string[],
+  productRefUrls: string[],
+  maxReferenceImages: number | undefined,
+): { urls: string[]; trimmedCount: number } {
+  const merged = [...characterRefUrls, ...productRefUrls].filter(
+    (u, i, arr) => Boolean(u) && arr.indexOf(u) === i,
+  );
+  if (!maxReferenceImages || maxReferenceImages <= 0 || merged.length <= maxReferenceImages) {
+    return { urls: merged, trimmedCount: 0 };
+  }
+  return {
+    urls: merged.slice(0, maxReferenceImages),
+    trimmedCount: merged.length - maxReferenceImages,
+  };
+}

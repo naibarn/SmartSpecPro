@@ -1009,6 +1009,69 @@ function EpisodeWorkspaceShell({
       onError: err => toast.error(err.message),
     });
 
+  /**
+   * Product tie-in chip data (spec §13, storyboard product-tie-in wiring) —
+   * client-side re-derivation of `verticalDramaProductTieIn.ts`'s
+   * `extractShotProductPlacements` (kept duplicated rather than imported
+   * since that module lives under `server/services/`, not `@shared/`, and
+   * pulling server code into the client bundle is out of scope here). Reads
+   * the same normalized `product_tie_in_plan.tie_ins[]` shape the server
+   * writes onto `episode.script`, joined with the series' `productTieIn`
+   * config for the display name. Read-only — this never triggers generation,
+   * only shows which shots the pipeline already wired the product into.
+   */
+  const productTieInByShot = useMemo(() => {
+    const script = episodeDetailQuery.data?.script as
+      | { product_tie_in_plan?: { tie_ins?: unknown[] } }
+      | null
+      | undefined;
+    const tieIns = script?.product_tie_in_plan?.tie_ins;
+    if (!Array.isArray(tieIns) || tieIns.length === 0) return {};
+
+    const rawProductTieIn = seriesQuery.data?.series?.productTieIn as
+      | { productName?: string }
+      | null
+      | undefined;
+    const productName = rawProductTieIn?.productName;
+
+    const result: Record<
+      number,
+      { productName?: string; placementStyle?: "hero_prop" | "background" | "in_use_moment"; benefitTalkingPoint?: string }
+    > = {};
+    for (const raw of tieIns) {
+      if (!raw || typeof raw !== "object") continue;
+      const entry = raw as Record<string, unknown>;
+      const shotNumbers = Array.isArray(entry.shot_numbers)
+        ? entry.shot_numbers
+        : entry.shot_number !== undefined
+          ? [entry.shot_number]
+          : [];
+      const storyFunction =
+        typeof entry.story_function === "string" ? entry.story_function.trim() : "";
+      if (!storyFunction) continue;
+      const placementStyleRaw =
+        typeof entry.placement_style === "string"
+          ? entry.placement_style.trim().toLowerCase().replace(/[\s-]+/g, "_")
+          : "in_use_moment";
+      const placementStyle: "hero_prop" | "background" | "in_use_moment" =
+        placementStyleRaw === "hero_prop" || placementStyleRaw === "background"
+          ? placementStyleRaw
+          : "in_use_moment";
+      const benefitTalkingPoint =
+        typeof entry.benefit_talking_point === "string"
+          ? entry.benefit_talking_point
+          : typeof entry.benefit === "string"
+            ? entry.benefit
+            : undefined;
+      for (const n of shotNumbers) {
+        const shotNumber = typeof n === "number" ? n : Number(n);
+        if (!Number.isInteger(shotNumber) || shotNumber < 1 || shotNumber > 9) continue;
+        result[shotNumber] = { productName, placementStyle, benefitTalkingPoint };
+      }
+    }
+    return result;
+  }, [episodeDetailQuery.data?.script, seriesQuery.data?.series]);
+
   const handleSelectImageModel = (modelId: string) => {
     storeSeriesModelDefault(seriesId, "image", modelId);
     setEpisodeModelSelectionMutation.mutate({
@@ -2300,6 +2363,7 @@ function EpisodeWorkspaceShell({
           characterPortraits: episodeDetailQuery.data?.characterPortraits as
             | VerticalDramaCharacterPortraitMap
             | undefined,
+          productTieInByShot,
           onChangeCharacterReference: characterId =>
             setImageSwapTarget({ type: "characterPortrait", characterId }),
           onDropCharacterReference: handleDropCharacterReference,

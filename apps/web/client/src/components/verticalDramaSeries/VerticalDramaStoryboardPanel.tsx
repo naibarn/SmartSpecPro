@@ -29,6 +29,7 @@ import {
   ImageOff,
   Loader2,
   Mic,
+  Package,
   Pencil,
   Sparkles,
   Trash2,
@@ -188,6 +189,20 @@ export interface VerticalDramaStartFramePlanView {
   frames?: VerticalDramaStartFramePlanFrame[];
 }
 
+/**
+ * One shot's product tie-in placement (spec §13), keyed by shot number and
+ * passed down by the caller (derived from `episode.script.product_tie_in_plan`
+ * via `extractShotProductPlacements` + the series' `productTieIn.productName`
+ * — see `verticalDramaProductTieIn.ts` on the server). Read-only indicator:
+ * shows which shots carry the product placement, so the user can see at a
+ * glance where the tie-in lives without opening the script/prompt text.
+ */
+export interface VerticalDramaShotProductTieInView {
+  productName?: string;
+  placementStyle?: "hero_prop" | "background" | "in_use_moment";
+  benefitTalkingPoint?: string;
+}
+
 export interface VerticalDramaMotionPromptClipView {
   clipNumber: number;
   sourceShotNumbers?: number[];
@@ -234,6 +249,11 @@ interface VerticalDramaStoryboardPanelProps {
    *  shot card shows exactly the character(s) it needs (never all of them),
    *  as the concrete identity-lock reference the generation call will use. */
   characterPortraits?: VerticalDramaCharacterPortraitMap;
+  /** Product tie-in placement per shot (spec §13), keyed by shot number —
+   *  shows a read-only product chip next to the character chips on shots
+   *  that carry a placement. Absent/empty when tie-in is disabled or no
+   *  placement exists for this episode. */
+  productTieInByShot?: Record<number, VerticalDramaShotProductTieInView>;
   loading?: boolean;
   error?: string | null;
   /** True while the real-generation mutation is in flight. */
@@ -442,6 +462,7 @@ export function VerticalDramaStoryboardPanel({
   motionPromptPack,
   assetUrls = {},
   characterPortraits = {},
+  productTieInByShot = {},
   loading = false,
   error = null,
   generating = false,
@@ -1641,6 +1662,40 @@ export function VerticalDramaStoryboardPanel({
                           </button>
                         );
                       })}
+                    </div>
+                  );
+                })()}
+
+                {(() => {
+                  // Product tie-in chip (spec §13) — read-only indicator so
+                  // the user sees at a glance which shots carry the product
+                  // placement, alongside the character chips above.
+                  const tieIn = productTieInByShot[shotNumber];
+                  if (!tieIn) return null;
+                  return (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Package aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span
+                        className="group flex items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-400/10 py-0.5 pl-2 pr-2 text-xs text-amber-700 dark:text-amber-400"
+                        title={
+                          tieIn.benefitTalkingPoint
+                            ? tieIn.benefitTalkingPoint
+                            : t(locale, "สินค้าผูกเรื่องปรากฏในช็อตนี้", "Product tie-in appears in this shot")
+                        }
+                        data-testid={`vd-storyboard-product-tie-in-chip-${shotNumber}`}
+                      >
+                        {tieIn.productName ??
+                          t(locale, "สินค้าผูกเรื่อง", "Tied-in product")}
+                        {tieIn.placementStyle ? (
+                          <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                            {tieIn.placementStyle === "hero_prop"
+                              ? t(locale, "อุปกรณ์หลัก", "hero prop")
+                              : tieIn.placementStyle === "background"
+                                ? t(locale, "พื้นหลัง", "background")
+                                : t(locale, "กำลังใช้งาน", "in use")}
+                          </Badge>
+                        ) : null}
+                      </span>
                     </div>
                   );
                 })()}

@@ -168,6 +168,25 @@ export interface GenerateEpisodeScriptParams {
    * state, character roster ...") expects.
    */
   memoryBundle?: unknown;
+  /**
+   * Product tie-in policy (spec §13) — when the series has tie-in enabled,
+   * this is rendered into the prompt under the `product_tie_in_policy` key
+   * (matching the skill's `schemas/input.schema.json`) with an EXPLICIT
+   * instruction to emit a structured, shot-numbered placement in
+   * `product_tie_in_plan.tie_ins[]` (previously this key was never sent at
+   * all, so the LLM had no product to weave in and always emitted the empty
+   * `{ tie_ins: [], note: "no product this episode" }` placeholder — see
+   * `verticalDramaProductTieIn.ts`'s `extractShotProductPlacements` for the
+   * normalized shape this output is parsed into downstream). Absent/disabled
+   * tie-in omits the section entirely, unchanged from prior behavior.
+   */
+  productTieIn?: {
+    enabled: boolean;
+    productName?: string;
+    productDescription?: string;
+    allowedStoryFunctions?: string[];
+    forbiddenClaims?: string[];
+  };
 }
 
 function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
@@ -204,6 +223,26 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     ? `memory_state (series long-memory retrieval bundle — canonical facts, recent episode summaries, open/resolved hooks, continuity warnings, product tie-in fatigue; respect it for continuity and do not repeat resolved hooks or fatigued tie-ins):\n${JSON.stringify(params.memoryBundle)}`
     : null;
 
+  // Product tie-in policy (spec §13) — only sent when the series has tie-in
+  // enabled. Requires a STRUCTURED, shot-numbered placement so downstream
+  // stages (start-frame image generation, dialogue) can reliably wire the
+  // product into concrete shots instead of a vague freeform mention.
+  const tieIn = params.productTieIn;
+  const tieInSection = tieIn?.enabled
+    ? [
+        `product_tie_in_policy: ${JSON.stringify({
+          enabled: true,
+          product_name: tieIn.productName,
+          product_description: tieIn.productDescription,
+          allowed_story_functions: tieIn.allowedStoryFunctions,
+          forbidden_claims: tieIn.forbiddenClaims,
+        })}`,
+        `PRODUCT TIE-IN (MANDATORY when enabled): weave "${tieIn.productName ?? "the product"}" naturally into this episode like real TV-drama product placement — it must serve an explicit story function (never unrealistically resolve the main conflict), and must NEVER use any forbidden claim listed above.`,
+        `Populate "product_tie_in_plan.tie_ins" as an array of 1 or more objects, each with EXACTLY these fields: "shot_numbers" (array of integers 1-9, the specific storyboard shots that carry this placement), "story_function" (one of ${JSON.stringify(tieIn.allowedStoryFunctions ?? ["daily_use"])}, required, never empty), "placement_style" (one of "hero_prop", "background", "in_use_moment" — how the product physically appears in the shot), and "benefit_talking_point" (a short, natural benefit the dialogue in that shot can reference — never hard-sell copy, must fit the scene's emotion).`,
+        `If tie-in cannot be placed naturally this episode, return "product_tie_in_plan": { "tie_ins": [], "note": "<reason>" } instead of forcing an unnatural placement.`,
+      ].join("\n")
+    : null;
+
   return [
     `story_title: ${params.episodeTitle}`,
     `story_brief:\n${storyBrief || "(no series bible detail available yet — invent a reasonable brief consistent with the episode title)"}`,
@@ -212,6 +251,7 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     langInstruction,
     `characters:\n${characterLines}`,
     memorySection,
+    tieInSection,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)

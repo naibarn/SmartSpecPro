@@ -708,6 +708,19 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
       delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
       subtext?: string;
     }>;
+    /**
+     * Product tie-in context (spec §13) — present ONLY when this shot is a
+     * tie-in shot per the script stage's `product_tie_in_plan.tie_ins[]`
+     * (see `verticalDramaProductTieIn.ts`'s `extractShotProductPlacements`).
+     * When present, the skill must naturally reference the product/its
+     * benefit in a dialogue line or acting beat for this clip — never a
+     * hard-sell line, must fit the scene's emotion.
+     */
+    productContext?: {
+      productName?: string;
+      benefitTalkingPoint?: string;
+      placementStyle?: "hero_prop" | "background" | "in_use_moment";
+    };
   };
   selectedVideoModelId: string;
   /** The resolved video model row, so the native-audio/dialogue decision below matches `verticalDramaVideoPromptFormatter.ts`'s capability logic exactly. */
@@ -783,6 +796,9 @@ function buildShotVideoPromptUserPrompt(
       ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
       : null,
     `Dialogue for this shot (source lines, already in ${dialogueLanguageName}):\n${dialogueBlock}`,
+    shotContext.productContext
+      ? `PRODUCT TIE-IN (MANDATORY for this shot): "${shotContext.productContext.productName ?? "the tied-in product"}" is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in a dialogue line or acting beat for this clip — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion.`
+      : null,
     `PROMPT LANGUAGE (MANDATORY): write the "prompt" and "negative_motion_prompt" fields entirely in ${promptLanguageName} — every word of the motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
     `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video. When dialogue is present, the "dialogue[].lineTh" field must contain the line verbatim in ${dialogueLanguageName} (translate/adapt naturally into ${dialogueLanguageName} if the source line above is in a different language — never leave it in the wrong language).`,
     nativeAudioDialogue

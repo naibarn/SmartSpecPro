@@ -122,30 +122,36 @@ export function VerticalDramaSettingsTab({
   }, [bibleRegion]);
 
   const utils = trpc.useUtils();
-  const updateMutation = trpc.verticalDramaSeries.updateSeries.useMutation({
-    onSuccess: () => {
-      toast.success(lang === "th" ? "บันทึกการตั้งค่าแล้ว" : "Settings saved");
-      void utils.verticalDramaSeries.get.invalidate();
-      onSaved?.();
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(err?.message || (lang === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save settings"));
-    },
-  });
-
-  const regionMutation = trpc.verticalDramaSeries.setSeriesTargetAudienceRegion.useMutation({
-    onSuccess: () => {
-      toast.success(lang === "th" ? "บันทึกกลุ่มผู้ชมเป้าหมายแล้ว" : "Target audience region saved");
-      void utils.verticalDramaSeries.get.invalidate();
-      onSaved?.();
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(err?.message || (lang === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save settings"));
-    },
-  });
+  const updateMutation = trpc.verticalDramaSeries.updateSeries.useMutation();
+  const regionMutation = trpc.verticalDramaSeries.setSeriesTargetAudienceRegion.useMutation();
 
   const dirty = titleInput !== title || statusInput !== status;
   const regionDirty = regionInput !== bibleRegion;
+  const isSaving = updateMutation.isPending || regionMutation.isPending;
+
+  const handleSave = async () => {
+    try {
+      const mutations: Array<Promise<unknown>> = [
+        updateMutation.mutateAsync({
+          seriesId,
+          title: titleInput.trim() || undefined,
+          status: statusInput,
+        }),
+      ];
+      if (regionDirty) {
+        mutations.push(
+          regionMutation.mutateAsync({ seriesId, targetAudienceRegion: regionInput }),
+        );
+      }
+      await Promise.all(mutations);
+      toast.success(lang === "th" ? "บันทึกการตั้งค่าแล้ว" : "Settings saved");
+      void utils.verticalDramaSeries.get.invalidate();
+      onSaved?.();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : undefined;
+      toast.error(message || (lang === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save settings"));
+    }
+  };
 
   const b = (bible ?? {}) as SeriesOriginBible;
   const notSet = lang === "th" ? "ไม่ได้ระบุ" : "Not set";
@@ -210,7 +216,7 @@ export function VerticalDramaSettingsTab({
               id="series-settings-title"
               value={titleInput}
               onChange={(e) => setTitleInput(e.target.value)}
-              disabled={readOnly || updateMutation.isPending}
+              disabled={readOnly || isSaving}
             />
           </div>
 
@@ -221,7 +227,7 @@ export function VerticalDramaSettingsTab({
             <Select
               value={statusInput}
               onValueChange={(v) => setStatusInput(v as VerticalDramaSeriesStatus)}
-              disabled={readOnly || updateMutation.isPending}
+              disabled={readOnly || isSaving}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -243,7 +249,7 @@ export function VerticalDramaSettingsTab({
             <Select
               value={regionInput}
               onValueChange={(v) => setRegionInput(v as VerticalDramaTargetAudienceRegion)}
-              disabled={readOnly || regionMutation.isPending}
+              disabled={readOnly || isSaving}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -263,49 +269,20 @@ export function VerticalDramaSettingsTab({
                 ? "ใช้เป็นค่าเริ่มต้นสำหรับรูปลักษณ์/เชื้อชาติของภาพตัวละครทุกภาพ — คำอธิบายตัวละครที่ระบุเชื้อชาติ/สัญชาติไว้แล้วจะมีผลเหนือกว่าค่านี้เสมอ"
                 : "Used as the default look/ethnicity for every character image — a character's own description (when it states an ethnicity/nationality) always takes precedence over this default."}
             </p>
-            {!readOnly && (
-              <Button
-                variant="outline"
-                onClick={() =>
-                  regionMutation.mutate({ seriesId, targetAudienceRegion: regionInput })
-                }
-                disabled={regionMutation.isPending || !regionDirty}
-                className="w-fit gap-2"
-              >
-                {regionMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Save className="h-4 w-4" aria-hidden="true" />
-                )}
-                {regionMutation.isPending
-                  ? lang === "th"
-                    ? "กำลังบันทึก…"
-                    : "Saving…"
-                  : lang === "th"
-                    ? "บันทึกกลุ่มผู้ชมเป้าหมาย"
-                    : "Save target audience"}
-              </Button>
-            )}
           </div>
 
           {!readOnly && (
             <Button
-              onClick={() =>
-                updateMutation.mutate({
-                  seriesId,
-                  title: titleInput.trim() || undefined,
-                  status: statusInput,
-                })
-              }
-              disabled={updateMutation.isPending || !dirty || titleInput.trim().length === 0}
+              onClick={() => void handleSave()}
+              disabled={isSaving || (!dirty && !regionDirty) || titleInput.trim().length === 0}
               className="w-fit gap-2"
             >
-              {updateMutation.isPending ? (
+              {isSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 <Save className="h-4 w-4" aria-hidden="true" />
               )}
-              {updateMutation.isPending
+              {isSaving
                 ? lang === "th"
                   ? "กำลังบันทึก…"
                   : "Saving…"
