@@ -52,6 +52,12 @@ import {
 } from "../services/verticalDramaCharacterImageGeneration";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
+import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
+import { resolveMediaTransport } from "../services/mediaTransportResolver";
+import { normalizeMcpProviderModelIdForProvider } from "../services/mcpProviderModelAliases";
+import { resolveMcpRouteFromModelId, defaultMcpArgumentShape } from "../services/mcpModelRouteResolver";
+import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
+import { getModelsByTypeAsync } from "../services/modelRegistry";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                          */
@@ -169,6 +175,109 @@ function createCharacterPortraitMediaToken(userId: number): string {
 
 function getCharacterPortraitUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
   return ctx.userToken || createCharacterPortraitMediaToken(ctx.user.id);
+}
+
+/**
+ * Resolve MCP transport metadata for a character-portrait/turnaround/sheet
+ * generation call when the caller-selected image model is MCP-transport
+ * (e.g. `higgsfield/*`, `magnific-mcp/*` — billed via the user's connected
+ * MCP provider account, not SmartSpec credits). Returns `null` for ordinary
+ * gateway_api models, in which case the caller proceeds exactly as before
+ * (credit reserve + `generateImageAsync` without `transportMetadata`).
+ *
+ * Mirrors `verticalDramaEpisodes.ts`'s private `resolveVdMcpTransportMetadata`
+ * byte-for-byte (that helper isn't exported, and duplicating it here avoids a
+ * cross-router coupling for what is otherwise self-contained logic) — see
+ * that function's doc comment for the full rationale on each step.
+ */
+export async function resolveVdCharacterMcpTransportMetadata(params: {
+  tenantId: string;
+  actorUserId: number;
+  assetType: "image" | "video";
+  modelId: string;
+  configJson: Record<string, unknown> | null;
+  mcpConnectionId?: string;
+  idempotencyKey?: string;
+}): Promise<MediaTaskTransportMetadata | null> {
+  const modelTransport = resolveMediaModelTransportConfig({
+    modelId: params.modelId,
+    configJson: params.configJson,
+  });
+  const modelRoute = resolveMcpRouteFromModelId(params.modelId);
+  const shouldUseMcpTransport = modelTransport.transport === "mcp" || Boolean(modelRoute.providerKey);
+  if (!shouldUseMcpTransport) return null;
+
+  const providerKey = modelTransport.providerKey ?? modelRoute.providerKey;
+  if (!providerKey) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `MCP provider route metadata is missing for model "${params.modelId}". Re-select an MCP media model and try again.`,
+    });
+  }
+  const rawProviderModelId = modelTransport.providerModelId ?? modelRoute.providerModelId;
+  const argumentShape = modelTransport.argumentShape ?? defaultMcpArgumentShape(providerKey, params.assetType);
+  const providerModelId = normalizeMcpProviderModelIdForProvider({
+    providerKey,
+    providerModelId: rawProviderModelId,
+    assetType: params.assetType,
+    argumentShape,
+  }) ?? rawProviderModelId;
+
+  if (!params.mcpConnectionId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `"${params.modelId}" requires a connected MCP provider account. Connect a ${providerKey} MCP account first, then re-select this model.`,
+    });
+  }
+
+  return resolveMediaTransport({
+    tenantId: params.tenantId,
+    actorUserId: params.actorUserId,
+    originSurface: "media_studio",
+    assetType: params.assetType,
+    requestedTransport: "mcp",
+    mcpConnectionId: params.mcpConnectionId,
+    providerKey,
+    providerModelId,
+    model: providerModelId ?? params.modelId,
+    toolName: modelTransport.toolName,
+    argumentShape,
+    idempotencyKey: params.idempotencyKey,
+  });
+}
+
+/**
+ * Resolve the effective image model id for a character generation call:
+ * caller-supplied `selectedImageModelId` (validated + must be enabled),
+ * falling back to `DEFAULT_MODELS.image` when absent — same fail-open-to-
+ * known-good-default convention as `verticalDramaEpisodes.ts`'s
+ * `resolveEpisodeImageModelId`. Unlike the episode router (which resolves
+ * from a persisted plan field), the character tab passes the model
+ * per-request, so this only needs to validate + default, not read a plan.
+ */
+export async function resolveCharacterImageModelId(selectedImageModelId?: string): Promise<string> {
+  const requested = selectedImageModelId?.trim();
+  if (!requested) return DEFAULT_MODELS.image;
+  // Validate the caller-supplied model: must exist, must be an image model,
+  // and must be enabled (same validation `verticalDramaEpisodes.ts`'s
+  // `assertModelSelectable` performs — inlined here, rather than imported
+  // from that router, to keep this router's own module graph/test mocks
+  // self-contained; both call the same underlying `getModelsByTypeAsync`).
+  const models = await getModelsByTypeAsync("image");
+  const model = models.find(m => m.id === requested);
+  if (!model) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Unknown image model "${requested}"`,
+    });
+  }
+  if (model.isEnabled === false) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Model "${requested}" is currently disabled and cannot be selected`,
+    });
+  }
+  return requested;
 }
 
 /**
@@ -763,6 +872,14 @@ export const verticalDramaCharactersRouter = router({
         characterId: z.string().min(1),
         approvedPrompt: z.string().min(1).optional(),
         approvedNegativePrompt: z.string().optional(),
+        // Caller-selected image model (character tab's own model picker) —
+        // validated + must be enabled; falls back to `DEFAULT_MODELS.image`
+        // when absent. See `resolveCharacterImageModelId`.
+        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        // Required only when the selected model is MCP-transport (e.g.
+        // `higgsfield/*`, `magnific-mcp/*`) — see
+        // `resolveVdCharacterMcpTransportMetadata`.
+        mcpConnectionId: z.string().max(64).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -854,22 +971,48 @@ export const verticalDramaCharactersRouter = router({
       }
 
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
-      //    from the prompt-generation LLM call above.
+      //    from the prompt-generation LLM call above. Prices + generates
+      //    against the CALLER-SELECTED model (character tab's own picker),
+      //    falling back to `DEFAULT_MODELS.image` when none was selected —
+      //    previously this always priced + generated with
+      //    `DEFAULT_MODELS.image`, silently ignoring the selected model.
+      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
         .from(mediaModels)
-        .where(eq(mediaModels.modelId, DEFAULT_MODELS.image))
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
 
-      const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
-      if (!hasImageCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Insufficient credits for portrait image render. Required: ${imageCreditCost}`,
-        });
+      // Zero-cost models (e.g. Higgsfield/Magnific MCP — billed via MCP
+      // subscription, not credits) skip the reserve/refund cycle entirely —
+      // same convention as `verticalDramaEpisodes.ts`'s
+      // `generateStartFrameImage` (`deductCredits`/`refundCredits` throw on
+      // amount <= 0 by design; see creditService.ts).
+      const shouldChargeImageCredits = imageCreditCost > 0;
+      if (shouldChargeImageCredits) {
+        const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
+        if (!hasImageCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for portrait image render. Required: ${imageCreditCost}`,
+          });
+        }
       }
+
+      // MCP-transport models (e.g. higgsfield/*, magnific-mcp/*) must be
+      // dispatched through the service's MCP branch, not the default
+      // gateway_api/Python-backend path — see
+      // `resolveVdCharacterMcpTransportMetadata`.
+      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+      });
 
       // 2.5. Identity-lock reference — attach the character's existing
       //      approved portrait (if any) as a `referenceImageUrls` input so
@@ -895,20 +1038,23 @@ export const verticalDramaCharactersRouter = router({
       //    `media.getTask({taskId})`, then finalizes by calling
       //    `resolveMediaAssetForImport` + `linkAsset` (both already-built,
       //    already-tested procedures) — no new "finalize" endpoint needed.
-      await deductCredits({
-        userId,
-        tenantId,
-        amount: imageCreditCost,
-        description: `Vertical Drama — generate character portrait (character #${characterId}, reserved)`,
-        sourceType: "media_image",
-        metadata: {
-          feature: "vertical_drama_character_portrait",
-          seriesId,
-          characterId,
-          type: "reservation",
-          creditCost: imageCreditCost,
-        },
-      });
+      if (shouldChargeImageCredits) {
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: imageCreditCost,
+          description: `Vertical Drama — generate character portrait (character #${characterId}, reserved)`,
+          sourceType: "media_image",
+          metadata: {
+            feature: "vertical_drama_character_portrait",
+            seriesId,
+            characterId,
+            type: "reservation",
+            creditCost: imageCreditCost,
+            modelId: resolvedImageModelId,
+          },
+        });
+      }
 
       const userToken = getCharacterPortraitUserToken(ctx);
       let task;
@@ -917,6 +1063,7 @@ export const verticalDramaCharactersRouter = router({
           {
             prompt: renderPortraitPrompt,
             negativePrompt,
+            model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
             ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
@@ -926,6 +1073,7 @@ export const verticalDramaCharactersRouter = router({
             // read back by `media.listTasks`'s optional `seriesId` filter.
             extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
             publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
               traceId: crypto.randomUUID(),
@@ -936,13 +1084,15 @@ export const verticalDramaCharactersRouter = router({
           userToken,
         );
       } catch (err) {
-        await refundCredits({
-          userId,
-          amount: imageCreditCost,
-          description: `Refund: character portrait render failed to submit (character #${characterId})`,
-          sourceType: "media_image",
-          metadata: { feature: "vertical_drama_character_portrait", seriesId, characterId },
-        });
+        if (shouldChargeImageCredits) {
+          await refundCredits({
+            userId,
+            amount: imageCreditCost,
+            description: `Refund: character portrait render failed to submit (character #${characterId})`,
+            sourceType: "media_image",
+            metadata: { feature: "vertical_drama_character_portrait", seriesId, characterId },
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: err instanceof Error ? err.message : "Character portrait image generation failed to submit",
@@ -987,6 +1137,9 @@ export const verticalDramaCharactersRouter = router({
         characterId: z.string().min(1),
         approvedPrompt: z.string().min(1).optional(),
         approvedNegativePrompt: z.string().optional(),
+        // Caller-selected image model — see `generateCharacterImage`'s same field.
+        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        mcpConnectionId: z.string().max(64).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1079,22 +1232,37 @@ export const verticalDramaCharactersRouter = router({
       }
 
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
-      //    from the prompt-generation LLM call above.
+      //    from the prompt-generation LLM call above. Prices + generates
+      //    against the CALLER-SELECTED model — see generateCharacterImage's
+      //    same comment for the full rationale.
+      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
         .from(mediaModels)
-        .where(eq(mediaModels.modelId, DEFAULT_MODELS.image))
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
 
-      const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
-      if (!hasImageCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Insufficient credits for character sheet turnaround image render. Required: ${imageCreditCost}`,
-        });
+      const shouldChargeImageCredits = imageCreditCost > 0;
+      if (shouldChargeImageCredits) {
+        const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
+        if (!hasImageCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for character sheet turnaround image render. Required: ${imageCreditCost}`,
+          });
+        }
       }
+
+      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+      });
 
       // 2.5. Identity-lock reference — same rationale as generateCharacterImage:
       //      attach the character's existing approved portrait as a
@@ -1114,20 +1282,23 @@ export const verticalDramaCharactersRouter = router({
       //    (see its doc comment for the full rationale). Credits are
       //    RESERVED now; the caller polls `media.getTask({taskId})`, then
       //    finalizes via `resolveMediaAssetForImport` + `linkAsset`.
-      await deductCredits({
-        userId,
-        tenantId,
-        amount: imageCreditCost,
-        description: `Vertical Drama — generate character sheet turnaround (character #${characterId}, reserved)`,
-        sourceType: "media_image",
-        metadata: {
-          feature: "vertical_drama_character_turnaround",
-          seriesId,
-          characterId,
-          type: "reservation",
-          creditCost: imageCreditCost,
-        },
-      });
+      if (shouldChargeImageCredits) {
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: imageCreditCost,
+          description: `Vertical Drama — generate character sheet turnaround (character #${characterId}, reserved)`,
+          sourceType: "media_image",
+          metadata: {
+            feature: "vertical_drama_character_turnaround",
+            seriesId,
+            characterId,
+            type: "reservation",
+            creditCost: imageCreditCost,
+            modelId: resolvedImageModelId,
+          },
+        });
+      }
 
       const userToken = getCharacterPortraitUserToken(ctx);
       let task;
@@ -1136,12 +1307,14 @@ export const verticalDramaCharactersRouter = router({
           {
             prompt: renderTurnaroundPrompt,
             negativePrompt,
+            model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
             ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
             // Series provenance tag — see generateCharacterImage's comment.
             extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
             publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
               traceId: crypto.randomUUID(),
@@ -1152,13 +1325,15 @@ export const verticalDramaCharactersRouter = router({
           userToken,
         );
       } catch (err) {
-        await refundCredits({
-          userId,
-          amount: imageCreditCost,
-          description: `Refund: character sheet turnaround render failed to submit (character #${characterId})`,
-          sourceType: "media_image",
-          metadata: { feature: "vertical_drama_character_turnaround", seriesId, characterId },
-        });
+        if (shouldChargeImageCredits) {
+          await refundCredits({
+            userId,
+            amount: imageCreditCost,
+            description: `Refund: character sheet turnaround render failed to submit (character #${characterId})`,
+            sourceType: "media_image",
+            metadata: { feature: "vertical_drama_character_turnaround", seriesId, characterId },
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: err instanceof Error ? err.message : "Character sheet turnaround image generation failed to submit",
@@ -1202,6 +1377,9 @@ export const verticalDramaCharactersRouter = router({
         /** Language of the STATS TEXT/labels on the sheet — the character's
          *  own name is never translated, always rendered exactly as given. */
         sheetLanguage: z.enum(["en", "th"]).optional().default("en"),
+        // Caller-selected image model — see `generateCharacterImage`'s same field.
+        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        mcpConnectionId: z.string().max(64).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1302,21 +1480,35 @@ export const verticalDramaCharactersRouter = router({
 
       // Multi-panel grid render — priced like the Storyboard page's 3x3
       // multi-angle generation (a single, more complex image call), not a
-      // single portrait.
+      // single portrait. Prices + generates against the CALLER-SELECTED
+      // model — see generateCharacterImage's same comment for rationale.
+      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
         .from(mediaModels)
-        .where(eq(mediaModels.modelId, DEFAULT_MODELS.image))
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
       const sheetCreditCost = calculateCreditCost(pricingModel, { numImages: 2 });
-      const hasCredits = await hasEnoughCredits(userId, sheetCreditCost);
-      if (!hasCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Insufficient credits for character sheet render. Required: ${sheetCreditCost}`,
-        });
+      const shouldChargeSheetCredits = sheetCreditCost > 0;
+      if (shouldChargeSheetCredits) {
+        const hasCredits = await hasEnoughCredits(userId, sheetCreditCost);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for character sheet render. Required: ${sheetCreditCost}`,
+          });
+        }
       }
+
+      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+      });
 
       const referencePortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
         { tenantId, userId, seriesId },
@@ -1352,20 +1544,23 @@ export const verticalDramaCharactersRouter = router({
         ? `${sheetPrompt} Use the attached reference image as this character's exact identity across every panel — match face shape, skin tone, hairstyle precisely; do not alter identity.`
         : sheetPrompt;
 
-      await deductCredits({
-        userId,
-        tenantId,
-        amount: sheetCreditCost,
-        description: `Vertical Drama — generate character sheet (character #${characterId}, reserved)`,
-        sourceType: "media_image",
-        metadata: {
-          feature: "vertical_drama_character_sheet",
-          seriesId,
-          characterId,
-          type: "reservation",
-          creditCost: sheetCreditCost,
-        },
-      });
+      if (shouldChargeSheetCredits) {
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: sheetCreditCost,
+          description: `Vertical Drama — generate character sheet (character #${characterId}, reserved)`,
+          sourceType: "media_image",
+          metadata: {
+            feature: "vertical_drama_character_sheet",
+            seriesId,
+            characterId,
+            type: "reservation",
+            creditCost: sheetCreditCost,
+            modelId: resolvedImageModelId,
+          },
+        });
+      }
 
       const userToken = getCharacterPortraitUserToken(ctx);
       let task;
@@ -1374,12 +1569,14 @@ export const verticalDramaCharactersRouter = router({
           {
             prompt: renderSheetPrompt,
             negativePrompt,
+            model: resolvedImageModelId,
             numImages: 1,
             aspectRatio: "9:16",
             ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
             // Series provenance tag — see generateCharacterImage's comment.
             extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
             publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
               traceId: crypto.randomUUID(),
@@ -1390,13 +1587,15 @@ export const verticalDramaCharactersRouter = router({
           userToken,
         );
       } catch (err) {
-        await refundCredits({
-          userId,
-          amount: sheetCreditCost,
-          description: `Refund: character sheet render failed to submit (character #${characterId})`,
-          sourceType: "media_image",
-          metadata: { feature: "vertical_drama_character_sheet", seriesId, characterId },
-        });
+        if (shouldChargeSheetCredits) {
+          await refundCredits({
+            userId,
+            amount: sheetCreditCost,
+            description: `Refund: character sheet render failed to submit (character #${characterId})`,
+            sourceType: "media_image",
+            metadata: { feature: "vertical_drama_character_sheet", seriesId, characterId },
+          });
+        }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: err instanceof Error ? err.message : "Character sheet image generation failed to submit",

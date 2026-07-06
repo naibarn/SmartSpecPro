@@ -46,8 +46,11 @@ import {
 import ModelSelectorDialog, {
   type MediaModel,
 } from "@/components/media/ModelSelectorDialog";
+import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { MediaPromptPreview } from "@/components/chat/MediaPromptPreview";
 import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
+import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import { splitImage, type SplitResult } from "@/lib/imageGridSplitter";
 import type { VerticalDramaCharacterAsset } from "@shared/verticalDramaSeries/characterAssets";
 import {
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN,
@@ -63,6 +66,50 @@ import {
  */
 const VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY =
   "smartspec_vd_character_image_model";
+
+/** Shared MCP-connection localStorage key — same key
+ *  `VerticalDramaEpisodePage.tsx` reads/writes, so a connection picked on
+ *  either surface carries over automatically. */
+const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
+
+function readStoredMcpConnectionId(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(MCP_CONNECTION_ID_STORAGE_KEY) || null;
+}
+
+function storeMcpConnectionId(connectionId: string | null): void {
+  if (typeof window === "undefined") return;
+  if (connectionId) {
+    window.localStorage.setItem(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
+  } else {
+    window.localStorage.removeItem(MCP_CONNECTION_ID_STORAGE_KEY);
+  }
+}
+
+/** Best-effort mimeType from a resolved media URL's extension — replaces a
+ *  previous hardcoded `"image/png"` that mislabeled every completed task's
+ *  actual format (evidence: kie_ai model completions return `.jpeg`, not
+ *  `.png`). Falls back to `"image/jpeg"` (the most common provider output)
+ *  when the extension is missing/unrecognized — `resolveMediaAssetForImport`
+ *  only uses this to satisfy `validateImage`'s allowlist, not to transcode,
+ *  so an imperfect guess is still far more correct than a fixed wrong value. */
+export function guessImageMimeTypeFromUrl(url: string): string {
+  const match = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(url);
+  const ext = match?.[1]?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    default:
+      return "image/jpeg";
+  }
+}
 
 function extractCharacterDescriptionForDisplay(
   data: Record<string, unknown> | null | undefined
@@ -178,6 +225,43 @@ export function VerticalDramaCharacterStockPanel({
   const [generatedSheetUrls, setGeneratedSheetUrls] = useState<
     Record<string, { imageUrl: string; mediaAssetId: string }>
   >({});
+  /** 3x3-split tiles for the turnaround/full-sheet results (BUG 3 fix) —
+   *  both are multi-panel grid-style images (turnaround = 3-pose row +
+   *  padding; full sheet = portrait+turnaround+expression+outfit panels), so
+   *  reusing the exact `splitImage(url, 3, 3, ...)` call the Storyboard
+   *  panel's own "ตัดภาพ 3x3" flow already ships and live-verifies (see
+   *  `VerticalDramaStoryboardPanel.tsx`) gives the user individually
+   *  viewable/downloadable frames instead of only one flat composite image.
+   *  Keyed by characterId, one map per result kind so both can be split
+   *  independently. */
+  const [turnaroundSplitTiles, setTurnaroundSplitTiles] = useState<
+    Record<string, SplitResult[]>
+  >({});
+  const [sheetSplitTiles, setSheetSplitTiles] = useState<
+    Record<string, SplitResult[]>
+  >({});
+  const [splittingResultKey, setSplittingResultKey] = useState<string | null>(
+    null
+  );
+  const splitGeneratedResultIntoTiles = async (
+    characterId: string,
+    kind: "turnaround" | "sheet",
+    imageUrl: string
+  ) => {
+    const resultKey = `${kind}::${characterId}`;
+    setSplittingResultKey(resultKey);
+    try {
+      const results = await splitImage(imageUrl, 3, 3, "image/jpeg", 0.92);
+      const setTiles = kind === "turnaround" ? setTurnaroundSplitTiles : setSheetSplitTiles;
+      setTiles(prev => ({ ...prev, [characterId]: results }));
+    } catch {
+      toast.error(
+        t(lang, "ตัดภาพไม่สำเร็จ — ตรวจสอบ URL ของภาพ", "Failed to split the image — check the image URL.")
+      );
+    } finally {
+      setSplittingResultKey(current => (current === resultKey ? null : current));
+    }
+  };
   /** Language of the stats text on the full Character Sheet (the character's
    *  own name is never translated). Defaults to English per the confirmed
    *  product decision; toggleable per-generation. */
@@ -224,6 +308,42 @@ export function VerticalDramaCharacterStockPanel({
   };
   const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
   const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModel[];
+  const selectedImageModelRecord = imageModels.find(
+    m => m.modelId === selectedImageModelId
+  );
+  /** Whether the currently-selected image model is MCP-transport (e.g.
+   *  `higgsfield/*`, `magnific-mcp/*`) — mirrors
+   *  `VerticalDramaEpisodePage.tsx`'s own `imageModelUsesMcp` derivation so
+   *  the character tab shows the same MCP-connection picker + guard the
+   *  episode workspace already has. */
+  const imageModelUsesMcp =
+    Boolean(selectedImageModelId) &&
+    resolveMediaModelTransportConfig({
+      provider: selectedImageModelRecord?.provider,
+      modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
+      configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+    }).transport === "mcp";
+  const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(
+    readStoredMcpConnectionId
+  );
+  const handleSelectMcpConnection = (connectionId: string | null) => {
+    setMcpConnectionIdState(connectionId);
+    storeMcpConnectionId(connectionId);
+  };
+  /** Blocks generation client-side with a toast instead of letting the
+   *  server throw BAD_REQUEST — same convention as
+   *  `VerticalDramaEpisodePage.tsx`'s `requireMcpConnectionOrToast`. */
+  const requireMcpConnectionOrToast = (): boolean => {
+    if (!imageModelUsesMcp || mcpConnectionId) return true;
+    toast.error(
+      t(
+        lang,
+        "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลนี้",
+        "Select an MCP connection before using this image model."
+      )
+    );
+    return false;
+  };
 
   /** Click-to-expand fullscreen viewer (reuses `chat/media/ImageLightbox.tsx`,
    *  the codebase's existing lightbox — not a new one) for every reference/
@@ -331,7 +451,7 @@ export function VerticalDramaCharacterStockPanel({
             seriesId,
             source: "url",
             url: resultUrl,
-            mimeType: "image/png",
+            mimeType: guessImageMimeTypeFromUrl(resultUrl),
           });
           await linkMutation.mutateAsync({
             seriesId,
@@ -497,6 +617,7 @@ export function VerticalDramaCharacterStockPanel({
     action: "image" | "turnaround"
   ) => {
     if (!requireModelSelected()) return;
+    if (!requireMcpConnectionOrToast()) return;
     setPendingPreviewTarget({ characterId, action });
     previewCharacterPromptMutation.mutate(
       { seriesId, characterId },
@@ -534,6 +655,8 @@ export function VerticalDramaCharacterStockPanel({
         characterId,
         approvedPrompt: editedPrompt,
         ...(negativePrompt ? { approvedNegativePrompt: negativePrompt } : {}),
+        ...(selectedImageModelId ? { selectedImageModelId } : {}),
+        ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
       });
     } else {
       generateTurnaroundMutation.mutate({
@@ -541,6 +664,8 @@ export function VerticalDramaCharacterStockPanel({
         characterId,
         approvedPrompt: editedPrompt,
         ...(negativePrompt ? { approvedNegativePrompt: negativePrompt } : {}),
+        ...(selectedImageModelId ? { selectedImageModelId } : {}),
+        ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
       });
     }
   };
@@ -1306,13 +1431,17 @@ export function VerticalDramaCharacterStockPanel({
                             mutating ||
                             isSheetGeneratingFor(selectedCharacter.characterId)
                           }
-                          onClick={() =>
+                          onClick={() => {
+                            if (!requireModelSelected()) return;
+                            if (!requireMcpConnectionOrToast()) return;
                             generateSheetMutation.mutate({
                               seriesId,
                               characterId: selectedCharacter.characterId,
                               sheetLanguage,
-                            })
-                          }
+                              ...(selectedImageModelId ? { selectedImageModelId } : {}),
+                              ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+                            });
+                          }}
                           data-testid="vd-generate-full-character-sheet"
                         >
                           {isSheetGeneratingFor(selectedCharacter.characterId) ? (
@@ -1486,6 +1615,59 @@ export function VerticalDramaCharacterStockPanel({
                               <span className="text-[10px]">
                                 {t(lang, "ชีทตัวละคร", "Character sheet")}
                               </span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-6 gap-1 px-2 text-[10px]"
+                                disabled={
+                                  splittingResultKey ===
+                                  `turnaround::${selectedCharacter.characterId}`
+                                }
+                                onClick={() =>
+                                  void splitGeneratedResultIntoTiles(
+                                    selectedCharacter.characterId,
+                                    "turnaround",
+                                    turnaround.imageUrl
+                                  )
+                                }
+                              >
+                                {splittingResultKey ===
+                                `turnaround::${selectedCharacter.characterId}` ? (
+                                  <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Grid3x3 aria-hidden="true" className="h-3 w-3" />
+                                )}
+                                {t(lang, "ตัดภาพ 3x3", "Split 3x3")}
+                              </Button>
+                              {turnaroundSplitTiles[selectedCharacter.characterId] && (
+                                <div className="mt-1 grid grid-cols-3 gap-1">
+                                  {turnaroundSplitTiles[selectedCharacter.characterId].map(tile => (
+                                    <button
+                                      key={tile.index}
+                                      type="button"
+                                      aria-label={t(
+                                        lang,
+                                        `ดูภาพขยายช่องที่ ${tile.index + 1}`,
+                                        `View full-size tile ${tile.index + 1}`
+                                      )}
+                                      onClick={() =>
+                                        setLightboxImage({
+                                          src: tile.dataUrl,
+                                          alt: `Tile ${tile.index + 1}`,
+                                        })
+                                      }
+                                      className="rounded border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                    >
+                                      <img
+                                        src={tile.dataUrl}
+                                        alt=""
+                                        className="h-10 w-10 rounded object-cover"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                           {sheet && (
@@ -1514,6 +1696,58 @@ export function VerticalDramaCharacterStockPanel({
                               <span className="text-[10px]">
                                 {t(lang, "Character Sheet แบบเต็ม", "Full character sheet")}
                               </span>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-6 gap-1 px-2 text-[10px]"
+                                disabled={
+                                  splittingResultKey === `sheet::${selectedCharacter.characterId}`
+                                }
+                                onClick={() =>
+                                  void splitGeneratedResultIntoTiles(
+                                    selectedCharacter.characterId,
+                                    "sheet",
+                                    sheet.imageUrl
+                                  )
+                                }
+                              >
+                                {splittingResultKey ===
+                                `sheet::${selectedCharacter.characterId}` ? (
+                                  <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Grid3x3 aria-hidden="true" className="h-3 w-3" />
+                                )}
+                                {t(lang, "ตัดภาพ 3x3", "Split 3x3")}
+                              </Button>
+                              {sheetSplitTiles[selectedCharacter.characterId] && (
+                                <div className="mt-1 grid grid-cols-3 gap-1">
+                                  {sheetSplitTiles[selectedCharacter.characterId].map(tile => (
+                                    <button
+                                      key={tile.index}
+                                      type="button"
+                                      aria-label={t(
+                                        lang,
+                                        `ดูภาพขยายช่องที่ ${tile.index + 1}`,
+                                        `View full-size tile ${tile.index + 1}`
+                                      )}
+                                      onClick={() =>
+                                        setLightboxImage({
+                                          src: tile.dataUrl,
+                                          alt: `Tile ${tile.index + 1}`,
+                                        })
+                                      }
+                                      className="rounded border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                    >
+                                      <img
+                                        src={tile.dataUrl}
+                                        alt=""
+                                        className="h-10 w-10 rounded object-cover"
+                                      />
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1531,6 +1765,30 @@ export function VerticalDramaCharacterStockPanel({
                   mediaType="image"
                   isLoading={imageModelsQuery.isLoading}
                 />
+
+                {/* MCP-connection picker — shown only when the selected image
+                    model is MCP-transport (e.g. Higgsfield/Magnific), mirroring
+                    `VerticalDramaEpisodePage.tsx`'s own row + guard toast. */}
+                {imageModelUsesMcp && (
+                  <Card>
+                    <CardContent className="py-3">
+                      <McpConnectionPicker
+                        value={mcpConnectionId}
+                        onChange={handleSelectMcpConnection}
+                        assetType="image"
+                        providerKey={
+                          resolveMediaModelTransportConfig({
+                            provider: selectedImageModelRecord?.provider,
+                            modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
+                            configJson: selectedImageModelRecord?.configJson as
+                              | Record<string, unknown>
+                              | undefined,
+                          }).providerKey ?? undefined
+                        }
+                      />
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Reference asset list */}
                 <Card>
