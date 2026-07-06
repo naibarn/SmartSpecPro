@@ -12,6 +12,7 @@
     "dev:no-watch": "NODE_ENV=development node --import tsx server/_core/index.ts",
     "build": "vite build --configLoader runner && npm run build:widget",
     "build:widget": "vite build --configLoader runner --config vite.config.widget.ts",
+    "build:deploy": "bash scripts/build-atomic.sh",
     "start": "NODE_ENV=production NODE_OPTIONS='--max-old-space-size=8192' tsx server/_core/index.ts",
     "check": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit",
     "typecheck": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit",

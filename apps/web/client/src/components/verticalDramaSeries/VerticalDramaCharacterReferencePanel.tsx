@@ -56,7 +56,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
-import { getDraggedImageUrl } from "@/components/media/ImageSourcePicker";
+import {
+  getDraggedImageUrl,
+  readDroppedImageInput,
+  readFileAsDataUrl,
+} from "@/components/media/ImageSourcePicker";
 import type { LibrarySearchResultItem } from "@/lib/libraryUi";
 import type { SplitResult } from "@/lib/imageGridSplitter";
 import {
@@ -366,14 +370,29 @@ export function VerticalDramaCharacterReferencePanel({
     );
   };
 
-  /* ---- Drop zone (accepts drags from Library items, History tiles, cutter tiles) ---- */
+  /* ---- Drop zone (accepts drags from Library items, History tiles, cutter
+   * tiles, AND real OS files dropped straight from the user's computer) ---- */
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
     setIsDragOver(false);
-    const url = readDroppedImageUrl(event);
-    if (!url) {
+    const { input, error } = readDroppedImageInput(event);
+    if (error) {
+      if (error.kind === "unsupported-file-type") {
+        toast.error(t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported"));
+      } else {
+        toast.error(
+          t(
+            lang,
+            `ไฟล์ภาพใหญ่เกินไป (สูงสุด ${Math.round(error.maxBytes / (1024 * 1024))}MB)`,
+            `Image is too large (max ${Math.round(error.maxBytes / (1024 * 1024))}MB)`
+          )
+        );
+      }
+      return;
+    }
+    if (!input) {
       toast.error(
         t(
           lang,
@@ -383,6 +402,13 @@ export function VerticalDramaCharacterReferencePanel({
       );
       return;
     }
+    if (input.kind === "file") {
+      void readFileAsDataUrl(input.file).then(dataUrl =>
+        resolveAndLinkFromDataUrl(dataUrl, input.file.name || `character-reference-${Date.now()}.jpg`)
+      );
+      return;
+    }
+    const url = input.url;
     if (url.startsWith("data:")) {
       void resolveAndLinkFromDataUrl(
         url,
@@ -391,6 +417,31 @@ export function VerticalDramaCharacterReferencePanel({
     } else {
       void resolveAndLink({ source: "url", url, mimeType: "image/jpeg" });
     }
+  };
+
+  /* ---- Explicit upload button (2026-07-06 file-drop upgrade) — a visible
+   * "อัปโหลดภาพ" affordance alongside the drag/drop zone, for users who don't
+   * drag-and-drop. Uses the exact same `resolveAndLinkFromDataUrl` path as a
+   * dropped file, so it uploads + resolves + links (or just browse-only
+   * uploads, when there's no `onLinkMediaAssetId` target) identically. */
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const handleUploadInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error(t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported"));
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error(
+        t(lang, "ไฟล์ภาพใหญ่เกินไป (สูงสุด 15MB)", "Image is too large (max 15MB)")
+      );
+      return;
+    }
+    void readFileAsDataUrl(file).then(dataUrl =>
+      resolveAndLinkFromDataUrl(dataUrl, file.name || `character-reference-${Date.now()}.jpg`)
+    );
   };
 
   return (
@@ -414,20 +465,41 @@ export function VerticalDramaCharacterReferencePanel({
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
             className={cn(
-              "flex items-center justify-center gap-2 rounded-md border-2 border-dashed p-4 text-center text-xs text-muted-foreground transition-colors",
+              "flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-4 text-center text-xs text-muted-foreground transition-colors",
               isDragOver ? "border-purple-400 bg-purple-50/60" : "border-border"
             )}
           >
-            {busy ? (
-              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-            ) : (
-              <UploadCloud aria-hidden="true" className="h-4 w-4" />
-            )}
-            {t(
-              lang,
-              "ลากรูปจาก Library, ประวัติ หรือช่องตัดภาพมาวางที่นี่เพื่อใช้เป็นอ้างอิง",
-              "Drag an image from Library, History, or the grid cutter here to use as a reference"
-            )}
+            <div className="flex items-center gap-2">
+              {busy ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <UploadCloud aria-hidden="true" className="h-4 w-4" />
+              )}
+              {t(
+                lang,
+                "ลากรูปจาก Library, ประวัติ หรือช่องตัดภาพมาวางที่นี่เพื่อใช้เป็นอ้างอิง หรือไฟล์จากเครื่องของคุณ",
+                "Drag an image from Library, History, the grid cutter, or a file from your computer here to use as a reference"
+              )}
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              disabled={busy}
+              onClick={() => uploadInputRef.current?.click()}
+              data-testid="vd-character-reference-upload-button"
+            >
+              <UploadCloud aria-hidden="true" className="h-3.5 w-3.5" />
+              {t(lang, "อัปโหลดภาพ", "Upload image")}
+            </Button>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleUploadInputChange}
+            />
           </div>
         ) : (
           // "Browse only" mode (no swap target picked yet) — this panel's

@@ -62,7 +62,12 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname, "client"),
   publicDir: path.resolve(import.meta.dirname, "client", "public"),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    // SSP_BUILD_OUT_DIR lets scripts/build-atomic.sh redirect the build into a
+    // staging directory for a zero-downtime atomic swap. Unset in normal
+    // `npm run build` usage, which keeps writing straight to dist/public.
+    outDir: process.env.SSP_BUILD_OUT_DIR
+      ? path.resolve(process.env.SSP_BUILD_OUT_DIR)
+      : path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     sourcemap: "hidden",
     // Route-based code splitting is in place. 2000 kB gives headroom for large

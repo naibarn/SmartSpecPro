@@ -237,7 +237,21 @@ export function serveStatic(app: Express) {
       const page = injectPublicSeoSnapshot(template, req.originalUrl, resolveBaseUrl(req));
       res.setHeader("Cache-Control", HTML_CACHE_CONTROL);
       res.status(200).type("html").send(page);
-    } catch (error) {
+    } catch (error: any) {
+      // A missing/unreadable index.html means the build output is momentarily
+      // incomplete (e.g. a non-atomic `npm run build` mid-flight emptied
+      // dist/public). This is a transient deploy condition, not a server
+      // bug — respond 503 with Retry-After instead of letting it fall
+      // through to the generic 500 handler or bubble further. Never let this
+      // become an uncaught exception that could take the process down.
+      if (error?.code === "ENOENT") {
+        console.error(
+          `[serveStatic] index.html missing at ${distPath} — build likely in progress. Responding 503.`
+        );
+        res.setHeader("Retry-After", "5");
+        res.status(503).type("text/plain").send("Service temporarily unavailable: deploy in progress");
+        return;
+      }
       next(error);
     }
   });

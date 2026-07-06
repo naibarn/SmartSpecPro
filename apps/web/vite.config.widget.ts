@@ -18,10 +18,19 @@ import { resolve } from "path";
 
 const configDir = import.meta.dirname;
 
+// SSP_BUILD_OUT_DIR lets scripts/build-atomic.sh redirect the widget build
+// into the same staging directory used for the main app build, so both
+// halves of the output can be swapped into place atomically. Unset in
+// normal `npm run build:widget` usage, which keeps writing straight to
+// dist/public/widget/v1.
+const outDir = process.env.SSP_BUILD_OUT_DIR
+  ? resolve(process.env.SSP_BUILD_OUT_DIR, "widget/v1")
+  : "dist/public/widget/v1";
+
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: "dist/public/widget/v1",
+    outDir,
     emptyOutDir: false,
     target: "es2020",
     cssCodeSplit: false,

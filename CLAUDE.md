@@ -68,8 +68,18 @@ sudo systemctl stop smartspec-web.service          # Stop web
 sudo systemctl restart smartspec-backend.service   # Restart backend
 sudo systemctl restart smartspec-web.service       # Restart web
 
-# After code changes that affect the server
-cd apps/web && npm run build                       # Rebuild frontend assets
+# After code changes that affect the server (ATOMIC — no downtime, USE THIS)
+cd apps/web && npm run build:deploy                # Atomic build: builds to a staging
+                                                    # dir then swaps into dist/ with a
+                                                    # sub-millisecond rename. Frontend-only
+                                                    # changes are live immediately, no
+                                                    # restart needed (static files are read
+                                                    # fresh from disk per-request).
+sudo systemctl restart smartspec-web.service       # Only needed if server/*.ts changed
+
+# After code changes that affect the server (non-atomic fallback — causes a
+# ~50s window where dist/public is empty; only use if build:deploy is broken)
+cd apps/web && npm run build                       # Rebuild frontend assets (in place)
 sudo systemctl restart smartspec-web.service       # Restart to pick up changes
 
 # Logs

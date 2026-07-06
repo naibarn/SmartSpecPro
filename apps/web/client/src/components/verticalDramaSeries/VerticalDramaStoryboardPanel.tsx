@@ -33,6 +33,7 @@ import {
   Pencil,
   Sparkles,
   Trash2,
+  Upload,
   Users,
   Wand2,
   X,
@@ -43,7 +44,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
 import { splitImage } from "@/lib/imageGridSplitter";
-import { getDraggedImageUrl } from "@/components/media/ImageSourcePicker";
+import {
+  readDroppedImageInput,
+  readFileAsDataUrl,
+  DROPPED_IMAGE_FILE_MAX_BYTES,
+} from "@/components/media/ImageSourcePicker";
+import { toast } from "sonner";
 import ModelSelectorDialog, {
   formatMediaProviderDisplayName,
   type MediaModel,
@@ -594,6 +600,42 @@ export function VerticalDramaStoryboardPanel({
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
+
+  /**
+   * Reads a drag-and-drop payload that may be a real OS file (dropped
+   * straight from the user's computer) or the codebase's own unified URL
+   * drag contract, and resolves it to a single URL string every existing
+   * `onDrop*`/`onAdd*` callback below already knows how to handle (a
+   * `data:` URL for a real file — the exact same shape the grid cutter's
+   * tiles already produce and that `handleAddShotReference` /
+   * `handleDropStartFrame` / `handleDropCharacterReference` on the page
+   * already upload via `ai.upload` before resolving+linking). Shows the
+   * unsupported-type / too-large toasts itself so every call site stays a
+   * one-liner. Returns `null` (after toasting, if there was an error) when
+   * nothing usable was dropped.
+   */
+  async function resolveDroppedImageInputToUrl(
+    event: React.DragEvent,
+  ): Promise<string | null> {
+    const { input, error } = readDroppedImageInput(event);
+    if (error) {
+      if (error.kind === "unsupported-file-type") {
+        toast.error(t2.unsupportedImageFileType);
+      } else {
+        toast.error(
+          vdCopyWithCount(
+            t2.imageFileTooLarge,
+            Math.round(error.maxBytes / (1024 * 1024)),
+          ),
+        );
+      }
+      return null;
+    }
+    if (!input) return null;
+    if (input.kind === "url") return input.url;
+    return readFileAsDataUrl(input.file);
+  }
+
   const selectedImageModel = imageModels.find(m => m.modelId === selectedImageModelId);
   const selectedVideoModel = videoModels.find(m => m.modelId === selectedVideoModelId);
   const selectedImageModelTransport = resolveMediaModelTransportConfig({
@@ -629,6 +671,16 @@ export function VerticalDramaStoryboardPanel({
   const [confirmingGenerateAllImages, setConfirmingGenerateAllImages] = useState(false);
   const [lightboxShot, setLightboxShot] = useState<number | null>(null);
   const [lightboxCharacterId, setLightboxCharacterId] = useState<string | null>(null);
+  /** Character id currently resolving a dropped/uploaded file at ANY of this
+   *  panel's character-reference drop targets (review portrait chip or the
+   *  per-shot character chip) — drives the busy spinner overlay while
+   *  `readFileAsDataUrl` + the page's own upload/resolve/link chain runs. */
+  const [droppingCharacterReferenceFor, setDroppingCharacterReferenceFor] =
+    useState<string | null>(null);
+  /** Shot number currently resolving a dropped/uploaded file directly onto
+   *  its start-frame image slot. */
+  const [droppingStartFrameForShot, setDroppingStartFrameForShot] =
+    useState<number | null>(null);
   const [lightboxProductImageUrl, setLightboxProductImageUrl] = useState<string | null>(null);
   /** Shot number currently showing the "เปลี่ยนภาพสินค้า" picker dialog
    *  (2026-07-06 product-reference upgrade) — the draft selection lives
@@ -1153,6 +1205,7 @@ export function VerticalDramaStoryboardPanel({
             >
               <button
                 type="button"
+                disabled={droppingCharacterReferenceFor === portrait.characterId}
                 className="group relative h-20 w-20 overflow-hidden rounded-full border-2 border-border bg-background data-[dragover=true]:ring-2 data-[dragover=true]:ring-primary"
                 onClick={() => {
                   if (portrait.portraitUrl) setLightboxCharacterId(portrait.characterId);
@@ -1163,11 +1216,25 @@ export function VerticalDramaStoryboardPanel({
                 onDrop={e => {
                   if (!onDropCharacterReference) return;
                   e.preventDefault();
-                  const url = getDraggedImageUrl(e.dataTransfer);
-                  if (url) onDropCharacterReference(portrait.characterId, url);
+                  void (async () => {
+                    setDroppingCharacterReferenceFor(portrait.characterId);
+                    try {
+                      const url = await resolveDroppedImageInputToUrl(e);
+                      if (url) onDropCharacterReference(portrait.characterId, url);
+                    } finally {
+                      setDroppingCharacterReferenceFor(current =>
+                        current === portrait.characterId ? null : current
+                      );
+                    }
+                  })();
                 }}
                 title={t(locale, "กดขยายภาพ หรือลากภาพมาวางแทน", "Click to enlarge, or drop an image here to replace")}
               >
+                {droppingCharacterReferenceFor === portrait.characterId ? (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+                    <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-white" />
+                  </div>
+                ) : null}
                 {portrait.portraitUrl ? (
                   <img
                     src={portrait.portraitUrl}
@@ -1400,10 +1467,24 @@ export function VerticalDramaStoryboardPanel({
                   onDrop={e => {
                     if (!onDropStartFrame) return;
                     e.preventDefault();
-                    const url = getDraggedImageUrl(e.dataTransfer);
-                    if (url) onDropStartFrame(shotNumber, url);
+                    void (async () => {
+                      setDroppingStartFrameForShot(shotNumber);
+                      try {
+                        const url = await resolveDroppedImageInputToUrl(e);
+                        if (url) onDropStartFrame(shotNumber, url);
+                      } finally {
+                        setDroppingStartFrameForShot(current =>
+                          current === shotNumber ? null : current
+                        );
+                      }
+                    })();
                   }}
                 >
+                  {droppingStartFrameForShot === shotNumber ? (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+                      <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-white" />
+                    </div>
+                  ) : null}
                   {asset?.thumbnailUrl || asset?.url ? (
                     <>
                       <img
@@ -1703,12 +1784,16 @@ export function VerticalDramaStoryboardPanel({
                           <button
                             key={key}
                             type="button"
-                            className="group flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pl-0.5 pr-2 text-xs hover:bg-muted disabled:cursor-default disabled:opacity-100 data-[dragover=true]:ring-2 data-[dragover=true]:ring-primary"
+                            className="group relative flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pl-0.5 pr-2 text-xs hover:bg-muted disabled:cursor-default disabled:opacity-100 data-[dragover=true]:ring-2 data-[dragover=true]:ring-primary"
                             onClick={() =>
                               portrait?.characterId &&
                               onChangeCharacterReference?.(portrait.characterId)
                             }
-                            disabled={!portrait || !onChangeCharacterReference}
+                            disabled={
+                              !portrait ||
+                              !onChangeCharacterReference ||
+                              droppingCharacterReferenceFor === portrait?.characterId
+                            }
                             title={
                               onChangeCharacterReference
                                 ? t(locale, "เปลี่ยนภาพอ้างอิงตัวละครนี้ (หรือลากภาพมาวางที่นี่)", "Change this character's reference image (or drop an image here)")
@@ -1720,11 +1805,26 @@ export function VerticalDramaStoryboardPanel({
                             onDrop={e => {
                               if (!portrait?.characterId || !onDropCharacterReference) return;
                               e.preventDefault();
-                              const url = getDraggedImageUrl(e.dataTransfer);
-                              if (url) onDropCharacterReference(portrait.characterId, url);
+                              const characterId = portrait.characterId;
+                              void (async () => {
+                                setDroppingCharacterReferenceFor(characterId);
+                                try {
+                                  const url = await resolveDroppedImageInputToUrl(e);
+                                  if (url) onDropCharacterReference(characterId, url);
+                                } finally {
+                                  setDroppingCharacterReferenceFor(current =>
+                                    current === characterId ? null : current
+                                  );
+                                }
+                              })();
                             }}
                             data-testid={`vd-storyboard-character-chip-${shotNumber}-${key}`}
                           >
+                            {droppingCharacterReferenceFor === portrait?.characterId ? (
+                              <span className="absolute inset-0 z-10 flex items-center justify-center rounded-full bg-black/50">
+                                <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin text-white" />
+                              </span>
+                            ) : null}
                             {portrait?.portraitUrl ? (
                               <img
                                 src={portrait.portraitUrl}
@@ -2919,8 +3019,28 @@ function ShotReferenceStrip({
         onDrop={e => {
           e.preventDefault();
           onDragOverChange(false);
-          const url = getDraggedImageUrl(e.dataTransfer);
-          if (url) onAdd({ url, source: "library" });
+          const { input, error } = readDroppedImageInput(e);
+          if (error) {
+            if (error.kind === "unsupported-file-type") {
+              toast.error(t2.unsupportedImageFileType);
+            } else {
+              toast.error(
+                vdCopyWithCount(
+                  t2.imageFileTooLarge,
+                  Math.round(error.maxBytes / (1024 * 1024)),
+                ),
+              );
+            }
+            return;
+          }
+          if (!input) return;
+          if (input.kind === "url") {
+            onAdd({ url: input.url, source: "library" });
+          } else {
+            void readFileAsDataUrl(input.file).then(url =>
+              onAdd({ url, source: "upload" })
+            );
+          }
         }}
         className={cn(
           "flex min-h-[2.75rem] flex-wrap items-center gap-1 rounded-md border border-dashed p-1",
@@ -2968,7 +3088,42 @@ function ShotReferenceStrip({
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-dashed border-border">
             <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
           </div>
-        ) : null}
+        ) : (
+          <label
+            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded border border-dashed border-border text-muted-foreground hover:border-primary hover:text-primary"
+            title={t2.uploadReferenceImage}
+            aria-label={t2.uploadReferenceImage}
+            data-testid={`vd-storyboard-upload-reference-${shotNumber}`}
+          >
+            <Upload aria-hidden="true" className="h-3.5 w-3.5" />
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (!file) return;
+                if (!file.type.startsWith("image/")) {
+                  toast.error(t2.unsupportedImageFileType);
+                  return;
+                }
+                if (file.size > DROPPED_IMAGE_FILE_MAX_BYTES) {
+                  toast.error(
+                    vdCopyWithCount(
+                      t2.imageFileTooLarge,
+                      Math.round(DROPPED_IMAGE_FILE_MAX_BYTES / (1024 * 1024)),
+                    ),
+                  );
+                  return;
+                }
+                void readFileAsDataUrl(file).then(url =>
+                  onAdd({ url, source: "upload" })
+                );
+              }}
+            />
+          </label>
+        )}
       </div>
       {atLimit ? (
         <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">

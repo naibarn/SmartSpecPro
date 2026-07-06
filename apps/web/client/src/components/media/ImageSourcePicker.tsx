@@ -184,6 +184,88 @@ export function getDraggedImageUrl(dataTransfer: DataTransfer): string | null {
   return null;
 }
 
+/** Max size accepted for a raw OS file dropped/uploaded onto an image drop
+ *  target (matches `GEMINI_OMNI_MAX_IMAGE_UPLOAD_BYTES`'s intent server-side
+ *  — this is a fast client-side guard, the server still enforces its own
+ *  limit independently via `ai.upload`). */
+export const DROPPED_IMAGE_FILE_MAX_BYTES = 15 * 1024 * 1024;
+
+export type DroppedImageInput =
+  | { kind: "url"; url: string }
+  | { kind: "file"; file: File };
+
+export type DroppedImageInputError =
+  | { kind: "unsupported-file-type" }
+  | { kind: "file-too-large"; maxBytes: number };
+
+export interface ReadDroppedImageInputResult {
+  input: DroppedImageInput | null;
+  error: DroppedImageInputError | null;
+}
+
+/**
+ * Reads a drag-and-drop payload that may be EITHER a real OS file (dragged
+ * straight from the user's file manager / desktop) OR the codebase's own
+ * unified URL drag contract (Library items, Media History tiles, grid-cutter
+ * tiles — see `getDraggedImageUrl` above).
+ *
+ * `dataTransfer.files` is checked FIRST: when a user drags a real image file
+ * from their computer, `dataTransfer.files` is populated and takes priority
+ * over any URL-shaped text payload also present. Non-image files are
+ * reported via `error: "unsupported-file-type"` rather than silently
+ * falling through to the URL path (a `.txt` or `.pdf` drop should not be
+ * misread as a URL string). Oversized image files are reported via
+ * `error: "file-too-large"` instead of being handed off for upload.
+ *
+ * Callers render their own toast copy (Thai/English) from the returned
+ * `error` — this helper stays presentation-free, matching the existing
+ * `readDroppedImageUrl` convention of returning `null`/structured data and
+ * letting the caller decide the message.
+ */
+export function readDroppedImageInput(
+  event: React.DragEvent,
+): ReadDroppedImageInputResult {
+  const files = event.dataTransfer.files;
+  if (files && files.length > 0) {
+    const file = files[0];
+    if (!file.type.startsWith("image/")) {
+      return { input: null, error: { kind: "unsupported-file-type" } };
+    }
+    if (file.size > DROPPED_IMAGE_FILE_MAX_BYTES) {
+      return {
+        input: null,
+        error: { kind: "file-too-large", maxBytes: DROPPED_IMAGE_FILE_MAX_BYTES },
+      };
+    }
+    return { input: { kind: "file", file }, error: null };
+  }
+
+  const url = getDraggedImageUrl(event.dataTransfer);
+  if (url) {
+    return { input: { kind: "url", url }, error: null };
+  }
+  const raw = (
+    event.dataTransfer.getData("text/uri-list") ||
+    event.dataTransfer.getData("text/plain")
+  ).trim();
+  if (raw.startsWith("data:")) {
+    return { input: { kind: "url", url: raw }, error: null };
+  }
+  return { input: null, error: null };
+}
+
+/** Reads a `File` into a base64 data URL — the same shape `ai.upload`
+ *  expects for `fileBase64` (mirrors the grid cutter's own
+ *  `canvas.toDataURL` output, which already flows through this mutation). */
+export function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function extractMediaHistoryResultUrl(task: MediaHistoryTaskLike): string | null {
   return (
     readFirstMediaUrl(task.resultUrl)

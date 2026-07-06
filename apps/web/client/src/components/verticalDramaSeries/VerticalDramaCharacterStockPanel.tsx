@@ -39,10 +39,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
-import {
-  readDroppedImageUrl,
-  VerticalDramaCharacterReferencePanel,
-} from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
+import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
+import { readDroppedImageInput, readFileAsDataUrl } from "@/components/media/ImageSourcePicker";
 import ModelSelectorDialog, {
   type MediaModel,
 } from "@/components/media/ModelSelectorDialog";
@@ -1023,8 +1021,24 @@ export function VerticalDramaCharacterStockPanel({
                             event.preventDefault();
                             setDragOverCharacterId(null);
                             if (readOnly) return;
-                            const url = readDroppedImageUrl(event);
-                            if (!url) {
+                            const { input, error } = readDroppedImageInput(event);
+                            if (error) {
+                              if (error.kind === "unsupported-file-type") {
+                                toast.error(
+                                  t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported")
+                                );
+                              } else {
+                                toast.error(
+                                  t(
+                                    lang,
+                                    `ไฟล์ภาพใหญ่เกินไป (สูงสุด ${Math.round(error.maxBytes / (1024 * 1024))}MB)`,
+                                    `Image is too large (max ${Math.round(error.maxBytes / (1024 * 1024))}MB)`
+                                  )
+                                );
+                              }
+                              return;
+                            }
+                            if (!input) {
                               toast.error(
                                 t(
                                   lang,
@@ -1034,7 +1048,13 @@ export function VerticalDramaCharacterStockPanel({
                               );
                               return;
                             }
-                            void assignDroppedReference(c.characterId, url);
+                            if (input.kind === "url") {
+                              void assignDroppedReference(c.characterId, input.url);
+                            } else {
+                              void readFileAsDataUrl(input.file).then(dataUrl =>
+                                assignDroppedReference(c.characterId, dataUrl)
+                              );
+                            }
                           }}
                         >
                           <div className="flex items-start gap-2.5">
