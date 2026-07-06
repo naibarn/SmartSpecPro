@@ -40,6 +40,7 @@ import {
   generateCharacterVisualPrompts,
   resolveCharacterRoleTier,
   getRoleTierAppearanceDirective,
+  getRoleTierNegativeTerms,
 } from "../verticalDramaCharacterImageGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
@@ -109,14 +110,31 @@ function successResponse(payload: unknown) {
 
 describe("resolveCharacterRoleTier", () => {
   it.each([
-    ["พระเอก", "lead"],
-    ["นางเอก", "lead"],
+    ["นางเอก", "lead_female"],
+    ["Female Lead", "lead_female"],
+    ["leading lady", "lead_female"],
+    ["heroine", "lead_female"],
+    ["  นางเอกวัยรุ่น  ", "lead_female"],
+  ])("maps %s to lead_female", (role, expected) => {
+    expect(resolveCharacterRoleTier(role)).toBe(expected);
+  });
+
+  it.each([
+    ["พระเอก", "lead_male"],
+    ["Male Lead", "lead_male"],
+    ["leading man", "lead_male"],
+    ["  พระเอกวัยรุ่น  ", "lead_male"],
+  ])("maps %s to lead_male", (role, expected) => {
+    expect(resolveCharacterRoleTier(role)).toBe(expected);
+  });
+
+  it.each([
     ["คู่หลัก", "lead"],
-    ["Male Lead", "lead"],
-    ["female lead", "lead"],
+    ["ตัวหลัก", "lead"],
+    ["ตัวเอก", "lead"],
     ["Protagonist", "lead"],
-    ["  พระเอกวัยรุ่น  ", "lead"],
-  ])("maps %s to lead", (role, expected) => {
+    ["lead role", "lead"],
+  ])("maps %s to lead (gender-neutral)", (role, expected) => {
     expect(resolveCharacterRoleTier(role)).toBe(expected);
   });
 
@@ -148,17 +166,36 @@ describe("resolveCharacterRoleTier", () => {
   });
 
   it("is case-insensitive and whitespace-tolerant", () => {
-    expect(resolveCharacterRoleTier("  MALE LEAD  ")).toBe("lead");
+    expect(resolveCharacterRoleTier("  MALE LEAD  ")).toBe("lead_male");
     expect(resolveCharacterRoleTier("VILLAIN")).toBe("villain");
   });
 });
 
 describe("getRoleTierAppearanceDirective", () => {
-  it("returns a star-quality directive for lead roles", () => {
+  it("returns the modern heroine archetype directive for female lead roles (นางเอก)", () => {
     const directive = getRoleTierAppearanceDirective("นางเอก");
     expect(directive).toBeDefined();
-    expect(directive).toMatch(/exceptionally attractive/i);
+    expect(directive).toMatch(/emotionally magnetic/i);
+    expect(directive).toMatch(/natural beauty/i);
+    expect(directive).toMatch(/expressive eyes capable of tears/i);
+    expect(directive).toMatch(/vulnerable yet determined/i);
     expect(directive).toMatch(/never change or imply/i);
+  });
+
+  it("returns the modern male-lead archetype directive for male lead roles (พระเอก)", () => {
+    const directive = getRoleTierAppearanceDirective("พระเอก");
+    expect(directive).toBeDefined();
+    expect(directive).toMatch(/cold-ceo energy/i);
+    expect(directive).toMatch(/quiet dominance/i);
+    expect(directive).toMatch(/hidden pain/i);
+    expect(directive).toMatch(/never change or imply/i);
+  });
+
+  it("returns a merged neutral directive for gender-ambiguous lead roles", () => {
+    const directive = getRoleTierAppearanceDirective("ตัวเอก");
+    expect(directive).toBeDefined();
+    expect(directive).toMatch(/emotionally magnetic/i);
+    expect(directive).toMatch(/gender-neutral/i);
   });
 
   it("returns an attractive-but-sharp directive for villain roles", () => {
@@ -175,6 +212,35 @@ describe("getRoleTierAppearanceDirective", () => {
   it("returns undefined for 'other'/unrecognized roles", () => {
     expect(getRoleTierAppearanceDirective("narrator")).toBeUndefined();
     expect(getRoleTierAppearanceDirective(null)).toBeUndefined();
+  });
+});
+
+describe("getRoleTierNegativeTerms", () => {
+  it("returns the heroine negative terms for female lead roles (นางเอก)", () => {
+    const negatives = getRoleTierNegativeTerms("นางเอก");
+    expect(negatives).toBeDefined();
+    expect(negatives).toMatch(/fashion model look/i);
+    expect(negatives).toMatch(/corporate portrait/i);
+    expect(negatives).toMatch(/over-glam makeup/i);
+    expect(negatives).toMatch(/plastic skin/i);
+    expect(negatives).toMatch(/generic pretty face/i);
+  });
+
+  it("returns the male-lead negative terms for male lead roles (พระเอก)", () => {
+    const negatives = getRoleTierNegativeTerms("พระเอก");
+    expect(negatives).toBeDefined();
+    expect(negatives).toMatch(/model photoshoot/i);
+    expect(negatives).toMatch(/corporate portrait/i);
+    expect(negatives).toMatch(/influencer smile/i);
+    expect(negatives).toMatch(/boyband look/i);
+    expect(negatives).toMatch(/generic handsome face/i);
+  });
+
+  it("returns undefined for villain/support/other tiers", () => {
+    expect(getRoleTierNegativeTerms("ตัวร้าย")).toBeUndefined();
+    expect(getRoleTierNegativeTerms("ตัวประกอบ")).toBeUndefined();
+    expect(getRoleTierNegativeTerms("narrator")).toBeUndefined();
+    expect(getRoleTierNegativeTerms(null)).toBeUndefined();
   });
 });
 
@@ -254,7 +320,7 @@ describe("generateCharacterVisualPrompts", () => {
     expect(userMessage!.content).not.toContain('"description"');
   });
 
-  it("injects the star-quality lead directive into the LLM user prompt for นางเอก", async () => {
+  it("injects the modern heroine archetype directive into the LLM user prompt for นางเอก", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));
 
@@ -263,11 +329,14 @@ describe("generateCharacterVisualPrompts", () => {
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).toContain('"appearance_directive"');
-    expect(userMessage).toMatch(/exceptionally attractive/i);
+    expect(userMessage).toMatch(/emotionally magnetic/i);
+    expect(userMessage).toMatch(/vulnerable yet determined/i);
     expect(userMessage).toMatch(/MANDATORY appearance directive/);
+    // Tier-specific negatives must also be instructed for merge.
+    expect(userMessage).toMatch(/fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty face/i);
   });
 
-  it("injects the star-quality lead directive into the LLM user prompt for พระเอก", async () => {
+  it("injects the modern male-lead archetype directive into the LLM user prompt for พระเอก", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));
 
@@ -275,7 +344,9 @@ describe("generateCharacterVisualPrompts", () => {
 
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
-    expect(userMessage).toMatch(/exceptionally attractive/i);
+    expect(userMessage).toMatch(/cold-ceo energy/i);
+    expect(userMessage).toMatch(/quiet dominance/i);
+    expect(userMessage).toMatch(/model photoshoot, corporate portrait, influencer smile, boyband look, generic handsome face/i);
   });
 
   it("injects the attractive-but-sharp villain directive into the LLM user prompt for ตัวร้าย", async () => {
@@ -287,7 +358,8 @@ describe("generateCharacterVisualPrompts", () => {
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).toMatch(/strikingly attractive/i);
-    expect(userMessage).not.toMatch(/exceptionally attractive/i);
+    expect(userMessage).not.toMatch(/emotionally magnetic/i);
+    expect(userMessage).not.toMatch(/cold-ceo energy/i);
   });
 
   it("does NOT inject any glamour directive for ตัวประกอบ (support)", async () => {
@@ -299,7 +371,7 @@ describe("generateCharacterVisualPrompts", () => {
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).not.toContain('"appearance_directive"');
-    expect(userMessage).not.toMatch(/exceptionally attractive/i);
+    expect(userMessage).not.toMatch(/emotionally magnetic/i);
     expect(userMessage).not.toMatch(/strikingly attractive/i);
   });
 
@@ -320,7 +392,7 @@ describe("generateCharacterVisualPrompts", () => {
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).toContain("เด็กหญิงวัยสิบขวบ");
-    expect(userMessage).toMatch(/exceptionally attractive/i);
+    expect(userMessage).toMatch(/emotionally magnetic/i);
     expect(userMessage).toMatch(/never change or imply/i);
   });
 

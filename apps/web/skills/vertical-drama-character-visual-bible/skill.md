@@ -16,6 +16,24 @@ tags:
   - character
   - visual-bible
   - reference
+trigger_patterns: []
+priority: 50
+config:
+  media_studio:
+    auto_learning:
+      enabled: false
+      prompt_qa_after_auto_prompt: true
+      image_qa_after_generation: true
+      require_admin_approval: true
+      min_prompt_score_to_pass: 85
+      min_image_fidelity_score_to_pass: 80
+      max_auto_patch_risk: medium
+  orchestration:
+    mode: local
+    endpoint: null
+    skillTargets: []
+    parallel: false
+    fallback: local
 ---
 # Vertical Drama Character Visual Bible
 
@@ -27,37 +45,68 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form 
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
 
-## Lead-role star quality — MANDATORY
+## Lead-role screen presence — MANDATORY
 
-Vertical-drama audiences follow shows for strikingly good-looking leads. An "ordinary"
-face on a lead (พระเอก / นางเอก) kills retention. Every generated prompt
-(`primary_portrait_prompt`, `turnaround_prompt`, `full_body_prompt`,
-`expression_sheet_prompt`, `outfit_sheet_prompt`) MUST reflect the character's role tier:
+Vertical-drama audiences follow shows for leads with strong, believable screen presence —
+not fashion-model or corporate-headshot polish. An "ordinary," over-glammed, or
+influencer-style face on a lead (พระเอก / นางเอก) kills retention just as much as a plain
+one does. Every generated prompt (`primary_portrait_prompt`, `turnaround_prompt`,
+`full_body_prompt`, `expression_sheet_prompt`, `outfit_sheet_prompt`) MUST reflect the
+character's role tier using the **modern vertical-drama archetypes** below — natural
+screen presence over glamour, not idol/corporate perfection:
 
-| Role (Thai / English examples) | Tier | Directive |
+| Role (Thai / English examples) | Tier | Archetype directive |
 |---|---|---|
-| พระเอก, นางเอก, คู่หลัก, male lead, female lead, protagonist | **lead** | Exceptionally attractive, idol/leading-actor-grade features (สวยหรือหล่อระดับดารานำ), photogenic symmetrical face, flawless camera-friendly skin with realistic texture, expressive charismatic eyes, styled hair, premium wardrobe/grooming. |
+| นางเอก, female lead, leading lady, heroine | **lead (female)** | Emotionally magnetic, natural beauty with strong screen presence, expressive eyes capable of tears, vulnerable yet determined expression, soft delicate features, relatable but unforgettable, quiet strength, romantic-drama tension; simple elegant outfit; realistic skin texture. |
+| พระเอก, male lead, leading man | **lead (male)** | Magnetic and intense, cold-CEO energy, sharp realistic facial structure, intense eyes, quiet dominance, protective yet intimidating, emotionally restrained with hidden pain; dark elegant outfit; realistic skin texture. |
+| คู่หลัก, ตัวหลัก, ตัวเอก, protagonist, lead role (gender unclear) | **lead (neutral)** | Emotionally magnetic with strong screen presence, natural realistic features with quiet intensity, expressive eyes, relatable but unforgettable, understated elegant styling; realistic skin texture. |
 | ตัวร้าย, วายร้าย, antagonist | **villain** | Strikingly attractive but sharp/cold/dangerous aura (สวย/หล่อแบบอันตราย) — elegant menace, not cartoonish evil. |
 | ตัวประกอบ, supporting, extra | **support / other** | Natural, believable, well-groomed. Do NOT force glamour or idol-grade features. |
+
+Every lead tier's `negative_prompt` MUST also include its matching negative terms, to
+actively steer away from the wrong look:
+- **Female lead negatives**: fashion model look, corporate portrait, over-glam makeup,
+  plastic skin, generic pretty face.
+- **Male lead negatives**: model photoshoot, corporate portrait, influencer smile,
+  boyband look, generic handsome face.
+- **Neutral lead negatives**: fashion model look, corporate portrait, over-glam makeup,
+  plastic skin, generic pretty/handsome face.
 
 If the caller supplies an `appearance_directive` field on a character's input (or an
 explicit "MANDATORY appearance directive" instruction in the user message), treat it as
 authoritative for that character's tier and apply it to every prompt you generate for
-them.
+them. Likewise, if the caller instructs specific negative terms to append, add them to
+`negative_prompt` verbatim.
 
 **The character's `description` field is always authoritative for age and core identity
-and must NEVER be overridden.** Attractiveness directives apply *within* whatever age/
-identity the description establishes — e.g. a described 12-year-old character stays a
-photogenic, natural-looking child; never age them up into an adult "idol" look.
+and must NEVER be overridden.** Archetype directives apply *within* whatever age/identity
+the description establishes — e.g. a described 12-year-old character stays a natural,
+age-appropriate child; never age them up into an adult lead look.
 
-Good example (lead, description says "late-20s executive"):
-> "cinematic vertical portrait of Aria, late-20s, exceptionally attractive idol-grade
-> features, photogenic symmetrical face, flawless camera-ready skin with visible natural
-> texture, expressive charismatic eyes, glossy styled hair, tailored charcoal blazer, 9:16,
-> soft key light"
+**Region/ethnicity styling is never hardcoded here.** Use whatever region/ethnicity
+descriptor the caller supplies (series-level target-audience-region default, or an
+explicit ethnicity/nationality in the character's own `description`, which always wins) —
+do not assume or hardcode any particular region.
 
-Bad example (lead rendered as plain/ordinary — do NOT do this):
-> "portrait of a woman in a blazer, office background, neutral expression"
+Good example (female lead, description says "late-20s single mother"):
+> "cinematic vertical portrait of Aria, late-20s, emotionally magnetic with natural beauty
+> and strong screen presence, expressive eyes glistening with restrained tears, vulnerable
+> yet determined expression, soft delicate features, realistic skin texture, simple
+> elegant blouse, 9:16, soft key light"
+> negative_prompt: "fashion model look, corporate portrait, over-glam makeup, plastic
+> skin, generic pretty face"
+
+Bad example (female lead rendered as a fashion-model/corporate headshot — do NOT do this):
+> "portrait of a glamorous woman, flawless symmetrical face, studio beauty lighting,
+> idol-grade makeup, premium wardrobe"
+
+Good example (male lead, description says "early-30s CEO"):
+> "cinematic vertical portrait of Krit, early-30s, magnetic and intense with cold-CEO
+> energy, sharp realistic facial structure, intense eyes, quiet dominance, emotionally
+> restrained expression hinting at hidden pain, dark tailored suit, realistic skin
+> texture, 9:16, moody rim light"
+> negative_prompt: "model photoshoot, corporate portrait, influencer smile, boyband look,
+> generic handsome face"
 
 Good example (villain):
 > "portrait of a sharp-featured man, strikingly handsome but cold and calculating gaze,
@@ -68,7 +117,7 @@ Good example (support — no forced glamour):
 > approachable expression, simple apron"
 
 Keep every prompt within the shared image-prompt length budget (≤3500 characters) — add
-the attractiveness language concisely; do not pad with repeated adjectives.
+the archetype language concisely; do not pad with repeated adjectives.
 
 Output skeleton:
 

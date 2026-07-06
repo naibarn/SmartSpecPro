@@ -135,20 +135,33 @@ export type CharacterVisualBibleCharacter = z.infer<typeof characterVisualBibleC
 /* attractive-but-sharp directives, everyone else stays natural.              */
 /* -------------------------------------------------------------------------- */
 
-export type CharacterRoleTier = "lead" | "villain" | "support" | "other";
+export type CharacterRoleTier =
+  | "lead_female"
+  | "lead_male"
+  | "lead"
+  | "villain"
+  | "support"
+  | "other";
 
-/** Keyword lists, lower-cased, Thai + English. Order matters: lead/villain are
- *  checked before support so e.g. "female lead / antagonist" combos resolve
- *  to the more specific tier first. */
-const LEAD_KEYWORDS = [
-  "พระเอก",
+/** Keyword lists, lower-cased, Thai + English. Order matters: the gendered
+ *  lead keywords are checked before the generic lead keywords so e.g.
+ *  "female lead / antagonist" combos resolve to the more specific tier
+ *  first, and gendered leads resolve before the ungendered "lead" fallback. */
+const LEAD_FEMALE_KEYWORDS = [
   "นางเอก",
+  "female lead",
+  "leading lady",
+  "heroine",
+];
+const LEAD_MALE_KEYWORDS = [
+  "พระเอก",
+  "male lead",
+  "leading man",
+];
+const LEAD_GENERIC_KEYWORDS = [
   "คู่หลัก",
   "ตัวหลัก",
-  "male lead",
-  "female lead",
-  "leading man",
-  "leading lady",
+  "ตัวเอก",
   "protagonist",
   "lead role",
 ];
@@ -175,6 +188,12 @@ const SUPPORT_KEYWORDS = [
  * case-insensitive, whitespace-tolerant — matches on substrings so
  * "พระเอกวัยรุ่น" or "Male Lead (age 20s)" both resolve correctly.
  *
+ * Lead roles are split into `lead_female` (นางเอก / heroine / female lead) and
+ * `lead_male` (พระเอก / male lead) so each gets its own modern
+ * vertical-drama archetype directive instead of a single unisex "idol" look.
+ * Gender-ambiguous lead phrasing (คู่หลัก, ตัวเอก, protagonist, "lead role")
+ * falls back to the neutral `lead` tier.
+ *
  * Exported + unit-tested directly (see
  * `__tests__/verticalDramaCharacterImageGeneration.test.ts`).
  */
@@ -183,7 +202,9 @@ export function resolveCharacterRoleTier(role: string | null | undefined): Chara
   const normalized = role.trim().toLowerCase();
   if (!normalized) return "other";
 
-  if (LEAD_KEYWORDS.some((kw) => normalized.includes(kw))) return "lead";
+  if (LEAD_FEMALE_KEYWORDS.some((kw) => normalized.includes(kw))) return "lead_female";
+  if (LEAD_MALE_KEYWORDS.some((kw) => normalized.includes(kw))) return "lead_male";
+  if (LEAD_GENERIC_KEYWORDS.some((kw) => normalized.includes(kw))) return "lead";
   if (VILLAIN_KEYWORDS.some((kw) => normalized.includes(kw))) return "villain";
   if (SUPPORT_KEYWORDS.some((kw) => normalized.includes(kw))) return "support";
   return "other";
@@ -203,12 +224,27 @@ export function resolveCharacterRoleTier(role: string | null | undefined): Chara
  * wording below says so explicitly so the LLM does not "age up" a minor.
  */
 const ROLE_TIER_DIRECTIVES: Record<CharacterRoleTier, string | undefined> = {
+  lead_female: (
+    "Modern vertical-drama heroine (นางเอก): emotionally magnetic, natural beauty with strong " +
+    "screen presence, expressive eyes capable of tears, vulnerable yet determined expression, " +
+    "soft delicate features, relatable but unforgettable, quiet strength, romantic-drama " +
+    "tension; simple elegant outfit; realistic skin texture. Apply this WITHIN the age and " +
+    "identity already given in the character's description — never change or imply an " +
+    "older/younger age than described."
+  ),
+  lead_male: (
+    "Modern vertical-drama male lead (พระเอก): magnetic and intense, cold-CEO energy, sharp " +
+    "realistic facial structure, intense eyes, quiet dominance, protective yet intimidating, " +
+    "emotionally restrained with hidden pain; dark elegant outfit; realistic skin texture. " +
+    "Apply this WITHIN the age and identity already given in the character's description — " +
+    "never change or imply an older/younger age than described."
+  ),
   lead: (
-    "Star-quality lead: exceptionally attractive, idol/leading-actor-grade features, " +
-    "photogenic symmetrical face, flawless camera-ready skin with realistic texture, " +
-    "expressive charismatic eyes, well-styled hair, premium wardrobe and grooming. " +
-    "Apply this attractiveness WITHIN the age and identity already given in the " +
-    "character's description — never change or imply an older/younger age than described."
+    "Modern vertical-drama lead (gender-neutral): emotionally magnetic with strong screen " +
+    "presence, natural realistic features with quiet intensity, expressive eyes, relatable but " +
+    "unforgettable, understated elegant styling; realistic skin texture. Apply this WITHIN the " +
+    "age and identity already given in the character's description — never change or imply an " +
+    "older/younger age than described."
   ),
   villain: (
     "Striking antagonist: strikingly attractive but with a sharp, cold, dangerous aura " +
@@ -218,11 +254,31 @@ const ROLE_TIER_DIRECTIVES: Record<CharacterRoleTier, string | undefined> = {
   other: undefined,
 };
 
+/** Negative-prompt terms to merge in for tiers that need to actively steer
+ *  the image model away from the "fashion model / corporate portrait" look
+ *  that plain adjectives like "attractive"/"magnetic" tend to invite.
+ *  Support/other tiers have no special negatives (`undefined`). */
+const ROLE_TIER_NEGATIVE_TERMS: Record<CharacterRoleTier, string | undefined> = {
+  lead_female: "fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty face",
+  lead_male: "model photoshoot, corporate portrait, influencer smile, boyband look, generic handsome face",
+  lead: "fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty/handsome face",
+  villain: undefined,
+  support: undefined,
+  other: undefined,
+};
+
 /** Returns the directive string for a role, or `undefined` when the tier has
  *  no special directive (support/other) — callers should omit the field. */
 export function getRoleTierAppearanceDirective(role: string | null | undefined): string | undefined {
   const tier = resolveCharacterRoleTier(role);
   return ROLE_TIER_DIRECTIVES[tier];
+}
+
+/** Returns the tier-specific negative-prompt terms to merge for a role, or
+ *  `undefined` when the tier has no special negatives (support/other/villain). */
+export function getRoleTierNegativeTerms(role: string | null | undefined): string | undefined {
+  const tier = resolveCharacterRoleTier(role);
+  return ROLE_TIER_NEGATIVE_TERMS[tier];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -316,6 +372,7 @@ export interface GenerateCharacterVisualPromptsParams {
 
 function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
   const appearanceDirective = getRoleTierAppearanceDirective(params.role);
+  const tierNegativeTerms = getRoleTierNegativeTerms(params.role);
   const inputPayload = {
     characters: [
       {
@@ -345,6 +402,11 @@ function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
             "Weave this into primary_portrait_prompt, turnaround_prompt, full_body_prompt, " +
             "expression_sheet_prompt, and outfit_sheet_prompt — every generated prompt for this " +
             "character must reflect it.",
+        ]
+      : []),
+    ...(tierNegativeTerms
+      ? [
+          `Also append these role-appearance negative terms to every generated negative_prompt: "${tierNegativeTerms}".`,
         ]
       : []),
     VD_SOLO_PORTRAIT_INSTRUCTION,
@@ -481,11 +543,16 @@ export async function generateCharacterVisualPrompts(
     `${matched.primary_portrait_prompt}, wearing their signature outfit, full body`;
 
   // Defensive merge (belt-and-suspenders alongside the system/user-prompt
-  // instructions above): guarantee the solo-portrait negative terms are
-  // present even if the LLM response omits them, for every one of the three
-  // generation paths (portrait/turnaround/sheet) that read this single
-  // `negative_prompt` field.
-  const negativePrompt = [matched.negative_prompt, VD_SOLO_PORTRAIT_NEGATIVE_TERMS]
+  // instructions above): guarantee the solo-portrait negative terms AND the
+  // role-tier appearance negatives (e.g. "fashion model look, corporate
+  // portrait" for leads) are present even if the LLM response omits them,
+  // for every one of the three generation paths (portrait/turnaround/sheet)
+  // that read this single `negative_prompt` field.
+  const negativePrompt = [
+    matched.negative_prompt,
+    getRoleTierNegativeTerms(params.role),
+    VD_SOLO_PORTRAIT_NEGATIVE_TERMS,
+  ]
     .filter((part): part is string => Boolean(part && part.trim()))
     .join(", ");
 
