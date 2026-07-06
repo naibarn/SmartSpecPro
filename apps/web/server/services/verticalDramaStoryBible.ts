@@ -67,12 +67,107 @@ export class InsufficientCreditsError extends Error {
   }
 }
 
+/**
+ * Scans `text` starting at `openIndex` (which must point at `{` or `[`) for
+ * the matching closing brace/bracket, honoring string/escape state so that
+ * `{`/`}`/`[`/`]` characters that appear *inside* JSON string values are
+ * never mistaken for structural tokens. Returns the index of the matching
+ * closer, or -1 if `text` ends before the value is balanced (e.g. a
+ * truncated response).
+ */
+function findBalancedJsonEnd(text: string, openIndex: number): number {
+  const openChar = text[openIndex];
+  const closeChar = openChar === "{" ? "}" : "]";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = openIndex; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === "{" || ch === "[") {
+      depth++;
+    } else if (ch === "}" || ch === "]") {
+      depth--;
+      if (depth === 0) {
+        return i;
+      }
+    }
+  }
+
+  // Ran off the end of the string without closing — but if the very first
+  // token closed at depth 0 already (single scalar-ish edge case) fall back
+  // to indicating failure so the caller's fallback logic can decide.
+  void closeChar;
+  return -1;
+}
+
+/**
+ * Extracts and parses the first balanced JSON value (object or array) found
+ * in `text`, ignoring any trailing content after that value (commentary,
+ * a duplicated second JSON object, stray tokens, etc.). This is the
+ * dominant real-world failure mode for "compact JSON" instructions: the
+ * model emits one complete, valid JSON value and then keeps talking.
+ *
+ * Order of operations:
+ *  1. Strip a markdown code fence if present.
+ *  2. Find the first `{` or `[` and scan forward with a string-aware
+ *     brace/bracket counter (respecting quotes + backslash escapes) to find
+ *     the matching closer. Parse exactly that slice.
+ *  3. If that fails for any reason (no opener found, unbalanced/truncated
+ *     JSON, or the balanced slice itself doesn't parse), fall back to the
+ *     previous "first `{` to last `}`" heuristic so existing error messages
+ *     and behavior are preserved for genuinely malformed/truncated output.
+ */
 export function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = fenced ? fenced[1] : text;
-  const start = candidate.indexOf("{");
-  const end = candidate.lastIndexOf("}");
-  const jsonSlice = start >= 0 && end > start ? candidate.slice(start, end + 1) : candidate;
+
+  const braceStart = candidate.indexOf("{");
+  const bracketStart = candidate.indexOf("[");
+  const start =
+    braceStart >= 0 && (bracketStart < 0 || braceStart < bracketStart)
+      ? braceStart
+      : bracketStart;
+
+  if (start >= 0) {
+    const end = findBalancedJsonEnd(candidate, start);
+    if (end > start) {
+      const balancedSlice = candidate.slice(start, end + 1);
+      try {
+        return JSON.parse(balancedSlice);
+      } catch {
+        // Balanced-scan slice didn't parse (shouldn't normally happen since
+        // the scan is string-aware) — fall through to the legacy heuristic
+        // below rather than failing immediately.
+      }
+    }
+  }
+
+  // Legacy fallback: first `{` to last `}`. Preserved so truncated/malformed
+  // responses still fail with the same informative error as before.
+  const legacyStart = candidate.indexOf("{");
+  const legacyEnd = candidate.lastIndexOf("}");
+  const jsonSlice =
+    legacyStart >= 0 && legacyEnd > legacyStart
+      ? candidate.slice(legacyStart, legacyEnd + 1)
+      : candidate;
   try {
     return JSON.parse(jsonSlice);
   } catch (error) {
@@ -97,7 +192,7 @@ export const VD_COMPACT_JSON_INSTRUCTION =
   "Return ONLY a single JSON object. Do not pretty-print or indent — emit compact JSON (no unnecessary whitespace/newlines) to keep the response as short as possible.";
 
 const VD_RETRY_STRICT_INSTRUCTION =
-  "Your previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text). Do not truncate — if needed, shorten prose fields to fit, but every object/array must be properly closed.";
+  "Your previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text). Do not truncate — if needed, shorten prose fields to fit, but every object/array must be properly closed. Output exactly ONE JSON object and nothing after it.";
 
 /**
  * Shared one-retry wrapper for the `executeWithFallback` -> `extractJson` ->
