@@ -327,6 +327,13 @@ export const VD_COPY = {
     usedVisionNote: "Analyzed from the actual image",
     generateVideoPromptPackWholeEpisode: "Generate video prompts for the whole episode",
 
+    /* ---- Completed video-clip player (2026-07-06 fix — completed video
+       renders were never persisted/shown; only a transient toast) ---- */
+    videoClipGenerating: "Generating video…",
+    videoClipRegenerate: "Regenerate",
+    videoClipOpenFull: "Open full screen",
+    videoClipDurationLabel: "sec",
+
     /* ---- Video-prompt language options (episode-level language plan) ---- */
     promptLanguageLabel: "Prompt language",
     promptLanguageEn: "English (recommended)",
@@ -531,6 +538,13 @@ export const VD_COPY = {
     generateShotVideoPromptFailed: "สร้างพรอมต์วิดีโอไม่สำเร็จ",
     usedVisionNote: "วิเคราะห์จากภาพจริง",
     generateVideoPromptPackWholeEpisode: "สร้างพรอมต์วิดีโอทั้งตอน",
+
+    /* ---- Completed video-clip player (2026-07-06 fix — completed video
+       renders were never persisted/shown; only a transient toast) ---- */
+    videoClipGenerating: "กำลังสร้างวิดีโอ…",
+    videoClipRegenerate: "สร้างใหม่",
+    videoClipOpenFull: "เปิดแบบเต็มจอ",
+    videoClipDurationLabel: "วิ",
 
     /* ---- Video-prompt language options (episode-level language plan) ---- */
     promptLanguageLabel: "ภาษา prompt",

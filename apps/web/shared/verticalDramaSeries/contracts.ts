@@ -725,6 +725,22 @@ export type VerticalDramaMotionPromptPack = {
      * in `@shared/verticalDramaSeries/thaiAdCompliance.ts`.
      */
     requiredDisclosure?: string;
+    /**
+     * Additive (2026-07-06 fix — completed video renders were never
+     * persisted anywhere, only shown as a transient toast) — durable record
+     * of this clip's paid video render, written via the existing free
+     * `updateEpisodeDraft` JSONB-patch flow, same convention as
+     * `startFramePlan.frames[].angleGrid`. `pendingTaskId` is persisted at
+     * submit time (before polling even starts) so a reload/navigation before
+     * the client poll observes completion can resume tracking the task
+     * instead of losing the result forever; it is dropped once `videoUrl` is
+     * persisted on completion.
+     */
+    videoTask?: {
+      pendingTaskId?: string;
+      videoUrl?: string;
+      mediaTaskId?: string;
+    };
   }>;
   warnings: VerticalDramaWarning[];
 };

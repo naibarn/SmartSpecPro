@@ -123,6 +123,33 @@ export function shouldResumeAngleGridPoll(
   return true;
 }
 
+/**
+ * Pure decision logic for the "resume on load" orphaned-video-clip-task fix
+ * (2026-07-06) — exported/unit-testable, same shape/convention as
+ * `shouldResumeAngleGridPoll` above. Given one `motionPromptPack` clip's
+ * `videoTask` (and the set of clip numbers already resumed/in-flight this
+ * session), decides whether `pollVideoClipTask` should be (re)started for
+ * this clip.
+ *
+ * A clip should resume when it has a `pendingTaskId` left over from a submit
+ * that was never observed to complete (page reload/navigation before the
+ * live poll saw `status === "completed"`), it has no `videoUrl` yet (not
+ * already resolved), and this session hasn't already resumed or isn't
+ * currently polling it.
+ */
+export function shouldResumeVideoClipPoll(
+  videoTask: { pendingTaskId?: string; videoUrl?: string } | undefined,
+  clipNumber: number,
+  alreadyResumedClips: ReadonlySet<number>,
+  currentlyPollingClips: ReadonlySet<number>
+): boolean {
+  if (!videoTask?.pendingTaskId) return false;
+  if (videoTask.videoUrl) return false;
+  if (alreadyResumedClips.has(clipNumber)) return false;
+  if (currentlyPollingClips.has(clipNumber)) return false;
+  return true;
+}
+
 /** Per-series last-picked image/video model (Phase 1.3) — used only as the
  *  DEFAULT for a new episode's model selection; an episode with its own
  *  `startFramePlan.selectedImageModelId` / `motionPromptPack.selectedVideoModelId`
@@ -1930,9 +1957,18 @@ function EpisodeWorkspaceShell({
   /* ---- Video clip generation (`generateVideoClip`) — async submit + poll,
    *  same pattern as `pollStartFrameTask`/`pollAngleVariationsTask`. Media
    *  History registers the completed clip automatically (same convention as
-   *  every other real generation in this codebase); no separate "finalize"
-   *  call is needed since a video clip isn't linked to a JSONB field the way
-   *  a start-frame image is. */
+   *  every other real generation in this codebase).
+   *
+   *  2026-07-06 fix (bug: "generation completed server-side but no video
+   *  ever appears in the shot card") — root cause: completion used to be
+   *  surfaced ONLY as a transient toast; nothing persisted the `taskId` or
+   *  the resolved `resultUrl` anywhere, and the storyboard panel had no UI
+   *  slot to render a completed clip video at all. Fixed the same way the
+   *  angle-grid orphaned-task bug was fixed: persist `videoTask.pendingTaskId`
+   *  onto `motionPromptPack.clips[]` at submit time (via the existing free
+   *  `updateEpisodeDraft` JSONB-patch flow), persist `videoTask.videoUrl` on
+   *  completion, and resume polling on load for any clip with a
+   *  `pendingTaskId` but no `videoUrl` yet. */
   const [pollingVideoClips, setPollingVideoClips] = useState<Set<number>>(
     new Set()
   );
@@ -1942,16 +1978,77 @@ function EpisodeWorkspaceShell({
   const [trimmedReferenceCountByClip, setTrimmedReferenceCountByClip] =
     useState<Record<number, number>>({});
 
+  /** Clip numbers with a video-clip task currently being polled (live submit
+   *  OR resumed-on-load) — guards against double-polling the same clip from
+   *  both paths, same ref-guard convention as `angleVariationsPollInFlightRef`. */
+  const videoClipPollInFlightRef = useRef<Set<number>>(new Set());
+  /** Clip numbers whose `pendingTaskId` this session has already picked up
+   *  for resume-polling — prevents re-triggering on every `getEpisodeDetail`
+   *  refetch, same convention as `resumedAngleGridShotsRef`. */
+  const resumedVideoClipsRef = useRef<Set<number>>(new Set());
+
+  /** Persists `videoTask` onto the matching `motionPromptPack.clips[]` entry
+   *  via the existing free `updateEpisodeDraft` JSONB-patch flow — same
+   *  convention as `persistAngleGrid`. `null` clears the field entirely. */
+  function persistVideoTask(
+    clipNumber: number,
+    videoTask:
+      | { pendingTaskId: string }
+      | { videoUrl: string; mediaTaskId?: string }
+      | null
+  ) {
+    const pack = episodeDetailQuery.data?.motionPromptPack;
+    if (!pack) return;
+    const updatedClips = (pack.clips ?? []).map(clip => {
+      if (clip.clipNumber !== clipNumber) return clip;
+      if (videoTask) return { ...clip, videoTask };
+      const { videoTask: _drop, ...rest } = clip as typeof clip & {
+        videoTask?: unknown;
+      };
+      return rest;
+    });
+    updateEpisodeDraftMutation.mutate({
+      seriesId,
+      episodeId,
+      motionPromptPack: { ...pack, clips: updatedClips },
+    });
+  }
+
+  /** Shared completion handler for BOTH the live submit-then-poll path and
+   *  the resume-on-load path — both must converge on the identical
+   *  persisted `videoTask` shape ({ videoUrl, mediaTaskId }, `pendingTaskId`
+   *  dropped). */
+  function resolveCompletedVideoClipTask(
+    clipNumber: number,
+    resultUrl: string,
+    taskId: string
+  ) {
+    persistVideoTask(clipNumber, { videoUrl: resultUrl, mediaTaskId: taskId });
+  }
+
   async function pollVideoClipTask(taskId: string, clipNumber: number) {
+    if (videoClipPollInFlightRef.current.has(clipNumber)) return;
+    videoClipPollInFlightRef.current.add(clipNumber);
     setPollingVideoClips(prev => new Set(prev).add(clipNumber));
     try {
       for (let attempt = 0; attempt < 120; attempt++) {
         const task = await utils.media.getTask.fetch({ taskId });
         const status = (task as { status?: string } | null)?.status;
         if (status === "completed") {
+          const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
+          if (!resultUrl) {
+            toast.error(
+              lang === "th"
+                ? "สร้างวิดีโอสำเร็จแต่ไม่พบ URL ผลลัพธ์"
+                : "Video generation completed but no result URL."
+            );
+            persistVideoTask(clipNumber, null);
+            return;
+          }
           toast.success(
             lang === "th" ? "สร้างวิดีโอคลิปสำเร็จ" : "Video clip generated."
           );
+          resolveCompletedVideoClipTask(clipNumber, resultUrl, taskId);
           return;
         }
         if (status === "failed") {
@@ -1962,6 +2059,7 @@ function EpisodeWorkspaceShell({
               ? `สร้างวิดีโอล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`
               : `Video generation failed${errorMessage ? `: ${errorMessage}` : ""}`
           );
+          persistVideoTask(clipNumber, null);
           return;
         }
         await new Promise(resolve => setTimeout(resolve, 2500));
@@ -1972,6 +2070,7 @@ function EpisodeWorkspaceShell({
           : "Generation is taking too long — check back later."
       );
     } finally {
+      videoClipPollInFlightRef.current.delete(clipNumber);
       setPollingVideoClips(prev => {
         const next = new Set(prev);
         next.delete(clipNumber);
@@ -1991,10 +2090,43 @@ function EpisodeWorkspaceShell({
           ...prev,
           [variables.clipNumber]: data.trimmedReferenceCount,
         }));
+        // Persist the pending task marker BEFORE polling starts — if the
+        // page reloads/navigates away before this poll observes completion,
+        // the resume-on-load effect below can pick the task back up instead
+        // of the result being silently lost forever (2026-07-06 fix).
+        persistVideoTask(variables.clipNumber, { pendingTaskId: data.taskId });
         void pollVideoClipTask(data.taskId, variables.clipNumber);
       },
       onError: err => toast.error(err.message),
     });
+
+  /** RESUME ON LOAD (2026-07-06 fix) — same convention as the angle-grid
+   *  resume effect: runs on every `getEpisodeDetail` load/refetch and
+   *  resumes polling any clip that has a `videoTask.pendingTaskId` but no
+   *  `videoUrl` yet. */
+  useEffect(() => {
+    const clips = episodeDetailQuery.data?.motionPromptPack?.clips ?? [];
+    for (const clip of clips) {
+      const videoTask = clip.videoTask as
+        | { pendingTaskId?: string; videoUrl?: string; mediaTaskId?: string }
+        | undefined;
+      const clipNumber = clip.clipNumber;
+      if (
+        !shouldResumeVideoClipPoll(
+          videoTask,
+          clipNumber,
+          resumedVideoClipsRef.current,
+          videoClipPollInFlightRef.current
+        )
+      ) {
+        continue;
+      }
+      const pendingTaskId = videoTask!.pendingTaskId!;
+      resumedVideoClipsRef.current.add(clipNumber);
+      void pollVideoClipTask(pendingTaskId, clipNumber);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [episodeDetailQuery.data?.motionPromptPack?.clips]);
 
   /* ---- Phase 6.5 — image-to-image repair dialog (`repairShotImage`) ----
    *  Async submit + poll like every other real generation here: submit ->
