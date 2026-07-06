@@ -139,6 +139,7 @@ import {
   recoverAutoTeamMediaPipelinesOnStartup,
   startAutoTeamMediaPipelineSweeper,
 } from "../services/autoTeamMediaCompletionService";
+import { startMcpStaleMediaTaskReconciler } from "../services/mcpMediaAdapter";
 import {
   isProtectedAutoTeamMediaKey,
   normalizeManagedMediaKey,
@@ -1633,6 +1634,16 @@ async function main() {
     startAutoTeamMediaPipelineSweeper();
   } catch (error) {
     console.error("[Startup] Failed to recover auto-team media pipelines:", error);
+  }
+
+  // Reconcile MCP media tasks (Higgsfield/Magnific/etc.) stuck in
+  // processing/pending with no active viewer to trigger an on-demand
+  // refresh — see mcpMediaAdapter.ts reconcileStaleMcpMediaTasks doc
+  // comment (2026-07-07 stuck-task incident).
+  try {
+    startMcpStaleMediaTaskReconciler();
+  } catch (error) {
+    console.error("[Startup] Failed to start MCP stale media task reconciler:", error);
   }
 
   // Initialize trash auto-purge job (daily at 2 AM)

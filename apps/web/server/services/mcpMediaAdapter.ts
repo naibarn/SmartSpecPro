@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   mcpMediaTasks as mcpMediaTasksTable,
@@ -26,6 +26,25 @@ export interface McpMediaGenerationRequest {
 const memoryMcpMediaTasks = new Map<string, MediaTask>();
 const inFlightMcpIdempotency = new Map<string, Promise<MediaTask>>();
 const MCP_OUTPUT_FETCH_TIMEOUT_MS = 60_000;
+/** A "processing"/"pending" MCP task older than this is eligible for the
+ * stale reconciler to trigger a provider status refresh (see
+ * `reconcileStaleMcpMediaTasks`). Kept generous relative to normal
+ * generation times (video jobs typically resolve in minutes) so we only
+ * sweep tasks that are genuinely stuck, not ones merely mid-flight. */
+const MCP_STALE_TASK_THRESHOLD_MS = Math.max(
+  60_000,
+  Number(process.env.MCP_MEDIA_TASK_STALE_THRESHOLD_MS ?? 15 * 60_000),
+);
+/** Hard ceiling: once a task has been "processing"/"pending" for this long
+ * with no resolution (provider unreachable, connection broken, or the
+ * provider silently dropped the job without ever returning a terminal
+ * status), stop waiting and mark it failed so the UI never shows eternal
+ * "กำลังประมวลผล" (2026-07-07 stuck-task incident: a Higgsfield video task
+ * sat in "processing" for 6+ hours after a server restart). */
+const MCP_TASK_HARD_TIMEOUT_MS = Math.max(
+  60 * 60_000,
+  Number(process.env.MCP_MEDIA_TASK_HARD_TIMEOUT_MS ?? 24 * 60 * 60_000),
+);
 const MCP_OUTPUT_MAX_BYTES_BY_TYPE: Record<MediaTask["mediaType"], number> = {
   image: 75 * 1024 * 1024,
   video: 1024 * 1024 * 1024,
@@ -721,6 +740,20 @@ async function getMcpConnectionRuntime(params: { tenantId: string; connectionId?
   };
 }
 
+/**
+ * Distinguishes a definitive provider-side tool error (the MCP server
+ * understood the request and reported the job/tool call itself failed —
+ * e.g. Higgsfield's `job_status` returning `isError: true` with "Something
+ * went wrong. Please try again." for a job it no longer recognizes) from a
+ * transient/network failure (HTTP 5xx, timeout, connection reset). Only the
+ * former is a reliable terminal signal — a request that never reached the
+ * provider or bounced off a proxy must NOT be treated as "job doesn't
+ * exist", or every network blip would wrongly fail real in-progress jobs.
+ */
+class McpToolError extends Error {
+  readonly isToolLevelError = true;
+}
+
 async function callMcpTool(params: {
   mcpUrl: string;
   accessToken: string;
@@ -751,13 +784,13 @@ async function callMcpTool(params: {
   }
   const json = parseMcpJsonResponse(text);
   if (json.error) {
-    throw new Error(`MCP provider tool error: ${json.error.message ?? json.error.code ?? "unknown"}`);
+    throw new McpToolError(`MCP provider tool error: ${json.error.message ?? json.error.code ?? "unknown"}`);
   }
   if (json.result?.isError) {
     const message = Array.isArray(json.result.content)
       ? json.result.content.map((item: any) => item?.text).filter(Boolean).join(" ")
       : "";
-    throw new Error(`MCP provider tool error: ${message || "provider returned isError"}`);
+    throw new McpToolError(`MCP provider tool error: ${message || "provider returned isError"}`);
   }
   return json.result;
 }
@@ -1123,11 +1156,56 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
   const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as MediaTaskTransportMetadata | undefined;
   const tenantId = metadata?.tenantId;
   const providerJobId = metadata?.providerJobId ?? task.taskId;
+
+  const createdAtMs = Date.parse(task.createdAt);
+  if (Number.isFinite(createdAtMs) && Date.now() - createdAtMs > MCP_TASK_HARD_TIMEOUT_MS) {
+    const timedOutTask: MediaTask = {
+      ...task,
+      status: "failed",
+      errorMessage: "หมดเวลารอผลจากผู้ให้บริการ",
+      completedAt: task.completedAt ?? new Date().toISOString(),
+      resultData: {
+        ...(task.resultData ?? {}),
+        providerSummary: {
+          ...(typeof task.resultData?.providerSummary === "object" && task.resultData?.providerSummary ? task.resultData.providerSummary : {}),
+          status: "failed",
+          hardTimeout: true,
+        },
+      },
+    };
+    memoryMcpMediaTasks.set(timedOutTask.id, timedOutTask);
+    await persistMcpMediaTask(timedOutTask);
+    if (metadata && tenantId && metadata.connectionId) {
+      await recordMcpUsageEvent({
+        tenantId,
+        connectionId: metadata.connectionId,
+        ownerUserId: metadata.ownerUserId,
+        actorUserId: metadata.actorUserId,
+        groupId: metadata.sharedGroupId,
+        mediaTaskId: task.id,
+        eventType: "generation_failed",
+        assetType: metadata.assetType,
+        providerKey: metadata.providerKey,
+        status: "failed",
+        redactedSummary: { providerJobId, hardTimeout: true },
+        schemaHash: metadata.schemaHash,
+      });
+    }
+    return timedOutTask;
+  }
+
   if (!metadata || !tenantId || !metadata.connectionId || !providerJobId) return task;
 
   const toolName = providerStatusToolName(metadata);
   let providerStatusResult: unknown = null;
   let lastError: unknown = null;
+  // Every candidate argument shape must be rejected with a *tool-level*
+  // error (the MCP server understood the call and the provider itself
+  // rejected it) for this to count as a definitive "provider doesn't know
+  // this job" signal below. A single network/HTTP failure anywhere in the
+  // loop means we couldn't reliably reach the provider at all, so it must
+  // NOT be treated as terminal.
+  let allAttemptsWereToolLevelErrors = true;
   try {
     const runtime = await getMcpConnectionRuntime({ tenantId, connectionId: metadata.connectionId });
     for (const args of providerStatusArgumentCandidates(metadata, providerJobId)) {
@@ -1137,6 +1215,7 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
         break;
       } catch (error) {
         lastError = error;
+        if (!(error instanceof McpToolError)) allAttemptsWereToolLevelErrors = false;
       }
     }
     if (lastError) throw lastError;
@@ -1149,6 +1228,35 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
       status: "processing",
       error,
     }));
+    if (error instanceof McpToolError && allAttemptsWereToolLevelErrors) {
+      // The provider positively rejected every well-formed status lookup
+      // for this job (e.g. Higgsfield `job_status` returning `isError: true`
+      // for a job it no longer recognizes) — this is a terminal outcome, not
+      // a transient blip. Mark the task failed so it never shows eternal
+      // "processing" in the UI.
+      const nextTask = withFailedProviderResult(task, {
+        providerRejected: true,
+        message: "ไม่พบงานนี้ฝั่งผู้ให้บริการ — กรุณาสั่งสร้างใหม่",
+      });
+      nextTask.errorMessage = "ไม่พบงานนี้ฝั่งผู้ให้บริการ — กรุณาสั่งสร้างใหม่";
+      memoryMcpMediaTasks.set(nextTask.id, nextTask);
+      await persistMcpMediaTask(nextTask);
+      await recordMcpUsageEvent({
+        tenantId,
+        connectionId: metadata.connectionId,
+        ownerUserId: metadata.ownerUserId,
+        actorUserId: metadata.actorUserId,
+        groupId: metadata.sharedGroupId,
+        mediaTaskId: task.id,
+        eventType: "generation_failed",
+        assetType: metadata.assetType,
+        providerKey: metadata.providerKey,
+        status: "failed",
+        redactedSummary: { providerJobId, providerRejected: true },
+        schemaHash: metadata.schemaHash,
+      });
+      return nextTask;
+    }
     return task;
   }
 
@@ -1360,4 +1468,98 @@ function rowToMediaTask(row: McpMediaTask): MediaTask {
     startedAt: row.startedAt?.toISOString(),
     completedAt: row.completedAt?.toISOString(),
   };
+}
+
+const MCP_STALE_RECONCILER_BATCH_SIZE = 25;
+const MCP_STALE_RECONCILER_CONCURRENCY = 4;
+const MCP_STALE_RECONCILER_INTERVAL_MS = Math.max(
+  60_000,
+  Number(process.env.MCP_MEDIA_TASK_RECONCILER_INTERVAL_MS ?? 60 * 60_000),
+);
+
+/**
+ * Sweeps MCP media tasks stuck in "processing"/"pending" for longer than
+ * `MCP_STALE_TASK_THRESHOLD_MS` and forces a provider status refresh for
+ * each one (the same `refreshMcpMediaTaskStatus` path used on-demand by
+ * `getTask`/`listTasks`), so a task never depends on the user happening to
+ * open the media history/detail view for its status to ever update.
+ *
+ * This closes the gap from the 2026-07-07 incident: a video task created
+ * shortly after a server restart sat in "processing" for 6+ hours because
+ * nothing re-polled it in the background — the in-memory task map is lost
+ * on restart, and without an active viewer, no on-demand refresh path was
+ * ever triggered. `refreshMcpMediaTaskStatus` itself falls back to reading
+ * the DB row, so restart survivability was already fine; what was missing
+ * was *something* calling it periodically for tasks nobody is watching.
+ *
+ * Bounded concurrency + per-task error tolerance: a slow/broken provider
+ * call for one task must not block or fail the sweep for the rest.
+ */
+export async function reconcileStaleMcpMediaTasks(): Promise<{ scanned: number; changed: number }> {
+  let scanned = 0;
+  let changed = 0;
+  try {
+    const db = getDb();
+    const staleCutoff = new Date(Date.now() - MCP_STALE_TASK_THRESHOLD_MS);
+    const rows = await db
+      .select()
+      .from(mcpMediaTasksTable)
+      .where(and(
+        inArray(mcpMediaTasksTable.status, ["processing", "pending"]),
+        lt(mcpMediaTasksTable.updatedAt, staleCutoff),
+      ))
+      .orderBy(mcpMediaTasksTable.updatedAt)
+      .limit(MCP_STALE_RECONCILER_BATCH_SIZE);
+
+    for (let i = 0; i < rows.length; i += MCP_STALE_RECONCILER_CONCURRENCY) {
+      const chunk = rows.slice(i, i + MCP_STALE_RECONCILER_CONCURRENCY);
+      const results = await Promise.allSettled(
+        chunk.map((row) => refreshMcpMediaTaskStatus(rowToMediaTask(row))),
+      );
+      for (const [index, result] of results.entries()) {
+        scanned += 1;
+        if (result.status === "fulfilled" && result.value.status !== "processing" && result.value.status !== "pending") {
+          changed += 1;
+        } else if (result.status === "rejected") {
+          console.warn("[mcp-media] stale task reconciler failed for task", {
+            taskId: chunk[index]?.id,
+            error: result.reason instanceof Error ? result.reason.message : result.reason,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.warn("[mcp-media] stale task reconciler sweep failed", {
+      error: error instanceof Error ? error.message : error,
+    });
+  }
+  return { scanned, changed };
+}
+
+let mcpStaleTaskReconcilerTimer: ReturnType<typeof setInterval> | null = null;
+
+export function startMcpStaleMediaTaskReconciler(): void {
+  if (mcpStaleTaskReconcilerTimer) return;
+  mcpStaleTaskReconcilerTimer = setInterval(() => {
+    void reconcileStaleMcpMediaTasks().catch((error) => {
+      console.warn("[mcp-media] stale task reconciler tick failed", {
+        error: error instanceof Error ? error.message : error,
+      });
+    });
+  }, MCP_STALE_RECONCILER_INTERVAL_MS);
+  // Run one pass shortly after startup too, so tasks left stuck across a
+  // restart (the exact 2026-07-07 scenario) don't wait a full interval.
+  setTimeout(() => {
+    void reconcileStaleMcpMediaTasks().catch((error) => {
+      console.warn("[mcp-media] stale task reconciler startup pass failed", {
+        error: error instanceof Error ? error.message : error,
+      });
+    });
+  }, 30_000);
+}
+
+export function stopMcpStaleMediaTaskReconciler(): void {
+  if (!mcpStaleTaskReconcilerTimer) return;
+  clearInterval(mcpStaleTaskReconcilerTimer);
+  mcpStaleTaskReconcilerTimer = null;
 }
