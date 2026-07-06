@@ -333,6 +333,23 @@ export const VD_COPY = {
     videoClipRegenerate: "Regenerate",
     videoClipOpenFull: "Open full screen",
     videoClipDurationLabel: "sec",
+    download: "Download",
+
+    /* ---- Whole-episode compiled video (2026-07-06 download + assembly upgrade) ---- */
+    compiledVideoTitle: "Full-episode video",
+    compiledVideoAssemble: "Assemble full episode video",
+    compiledVideoReassemble: "Re-assemble",
+    compiledVideoReassembleConfirm: "This replaces the current compiled video and cannot be undone.",
+    compiledVideoReadyHint: "{ready}/{total} clips ready",
+    compiledVideoMissingWarning: "Missing clips: {list} — generate those clips first, or assemble with only the completed clips.",
+    compiledVideoAssemblePartial: "Assemble with completed clips only",
+    compiledVideoProcessing: "Assembling the full episode video…",
+    compiledVideoFailed: "Failed to assemble the full episode video.",
+    compiledVideoRetry: "Retry",
+    compiledVideoDurationLabel: "sec",
+    compiledVideoPartialBadge: "Partial ({n} clips)",
+    compiledVideoAssembleFailedToast: "Failed to start assembly.",
+    compiledVideoAssembleStartedToast: "Started assembling the full episode video.",
 
     /* ---- Video-prompt language options (episode-level language plan) ---- */
     promptLanguageLabel: "Prompt language",
@@ -545,6 +562,23 @@ export const VD_COPY = {
     videoClipRegenerate: "สร้างใหม่",
     videoClipOpenFull: "เปิดแบบเต็มจอ",
     videoClipDurationLabel: "วิ",
+    download: "ดาวน์โหลด",
+
+    /* ---- Whole-episode compiled video (2026-07-06 download + assembly upgrade) ---- */
+    compiledVideoTitle: "วิดีโอรวมทั้งตอน",
+    compiledVideoAssemble: "ประกอบวิดีโอทั้งตอน",
+    compiledVideoReassemble: "ประกอบใหม่",
+    compiledVideoReassembleConfirm: "การทำนี้จะแทนที่วิดีโอรวมที่มีอยู่ และย้อนกลับไม่ได้",
+    compiledVideoReadyHint: "พร้อม {ready}/{total} คลิป",
+    compiledVideoMissingWarning: "ยังไม่มีคลิป: {list} — สร้างคลิปเหล่านี้ก่อน หรือประกอบเฉพาะช็อตที่เสร็จแล้ว",
+    compiledVideoAssemblePartial: "ประกอบเฉพาะช็อตที่เสร็จแล้ว",
+    compiledVideoProcessing: "กำลังประกอบวิดีโอทั้งตอน…",
+    compiledVideoFailed: "ประกอบวิดีโอทั้งตอนไม่สำเร็จ",
+    compiledVideoRetry: "ลองใหม่",
+    compiledVideoDurationLabel: "วิ",
+    compiledVideoPartialBadge: "บางส่วน ({n} คลิป)",
+    compiledVideoAssembleFailedToast: "เริ่มการประกอบวิดีโอไม่สำเร็จ",
+    compiledVideoAssembleStartedToast: "เริ่มประกอบวิดีโอทั้งตอนแล้ว",
 
     /* ---- Video-prompt language options (episode-level language plan) ---- */
     promptLanguageLabel: "ภาษา prompt",

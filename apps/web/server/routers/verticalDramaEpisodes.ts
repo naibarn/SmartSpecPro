@@ -111,6 +111,14 @@ import {
   memoryRowToEvent,
 } from "../services/verticalDramaSeriesMemory";
 import {
+  extractClipSourcesFromMotionPromptPack,
+  resolveClipsForAssembly,
+  submitAssemblyJob,
+  compiledVideoFilename,
+  type EpisodeClipSource,
+} from "../services/verticalDramaEpisodeVideoAssembly";
+import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
+import {
   generateNextEpisodesViaLlm,
   InsufficientCreditsError as EpisodeContinuationInsufficientCreditsError,
   VdSchemaValidationError as EpisodeContinuationSchemaValidationError,
@@ -2149,6 +2157,7 @@ export const verticalDramaEpisodesRouter = router({
         storyboardReviewId: row.storyboardReviewId as string | null,
         startFramePlan: row.startFramePlan as VerticalDramaStartFramePlan | null,
         motionPromptPack: row.motionPromptPack as VerticalDramaMotionPromptPack | null,
+        assemblyManifest: row.assemblyManifest as Record<string, unknown> | null,
         qualityReview,
         assetUrls,
         characterPortraits,
@@ -4075,6 +4084,85 @@ export const verticalDramaEpisodesRouter = router({
         .where(eq(verticalDramaEpisodeRuns.id, runRow.id));
 
       return { review: outcome.review, creditsUsed: outcome.creditsUsed };
+    }),
+
+  /**
+   * Compound episode video (2026-07-06 download + assembly upgrade) —
+   * concatenates every completed shot clip (`motionPromptPack.clips[].videoTask.videoUrl`,
+   * in shot/clip order) into ONE mp4 for the whole episode.
+   *
+   * Free (no credits): this is a local, deterministic ffmpeg concat of clips
+   * the user already paid to render — not a new AI generation — matching the
+   * "no billing unless found" instruction: no existing billing convention
+   * covers a mechanical re-encode of already-owned media, so none is charged.
+   *
+   * Async submit -> poll, same convention as `generateVideoClip`/
+   * `generateAngleVariations`: returns a `jobId` immediately; the actual
+   * ffmpeg run happens in the background (not awaited here) and its result is
+   * persisted onto `episode.assemblyManifest.compiledVideo` (via the same
+   * JSONB-patch path as `updateEpisodeDraft`), so a reload recovers the
+   * pending/completed state exactly like `videoTask.pendingTaskId`.
+   *
+   * PRECONDITION_FAILED (with the list of missing shot/clip numbers) when any
+   * clip lacks a completed video, UNLESS `allowPartial` is set, in which case
+   * only the completed clips are concatenated, in order.
+   */
+  assembleEpisodeVideo: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        allowPartial: z.boolean().optional(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const owner = { tenantId, userId, seriesId, episodeId };
+      const row = await loadOwnedEpisode(owner);
+
+      const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const clipSources: EpisodeClipSource[] = extractClipSourcesFromMotionPromptPack(pack);
+      if (clipSources.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No video clips exist for this episode yet — generate the video motion prompt pack and render clips first.",
+        });
+      }
+
+      let resolved: { ordered: EpisodeClipSource[]; missing: { clipNumber: number }[] };
+      try {
+        resolved = resolveClipsForAssembly(clipSources, { allowPartial: input.allowPartial });
+      } catch (err) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: err instanceof Error ? err.message : "Episode video assembly precondition failed",
+        });
+      }
+
+      const runtimeConfig = getCachedAppRuntimeConfig();
+      const internalBaseUrl = runtimeConfig.internalNodeUrl || ctx.publicUrl || "http://localhost:3000";
+      const filename = compiledVideoFilename({
+        seriesId,
+        episodeNumber: row.episodeNumber ?? episodeId,
+      });
+
+      const { jobId } = await submitAssemblyJob({
+        owner,
+        clips: resolved.ordered,
+        internalBaseUrl,
+        filename,
+      });
+
+      return {
+        jobId,
+        shotCount: resolved.ordered.length,
+        missingClipNumbers: resolved.missing.map((m) => m.clipNumber),
+        partial: resolved.missing.length > 0,
+      };
     }),
 });
 

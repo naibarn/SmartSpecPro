@@ -25,6 +25,7 @@ import {
   Check,
   Clapperboard,
   Copy,
+  Download,
   Expand,
   ImageOff,
   Loader2,
@@ -69,6 +70,56 @@ import { vdCopy, vdCopyWithCount, type VdLocale } from "./verticalDramaWorkspace
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 const EMPTY_SHOT_NUMBER_SET: ReadonlySet<number> = new Set();
+
+/** True for absolute http(s) URLs whose origin differs from this page's own
+ *  origin — same-origin `/api/storage/...` paths (and any other relative
+ *  path) never need proxying. Mirrors the private helper of the same name in
+ *  `@/lib/imageGridSplitter.ts` (not exported from there, so duplicated here
+ *  rather than reaching into that module's internals). */
+function isCrossOriginMediaUrl(url: string): boolean {
+  if (!/^https?:\/\//i.test(url)) return false;
+  try {
+    const parsed = new URL(url);
+    const currentOrigin =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : "";
+    return !currentOrigin || parsed.origin !== currentOrigin;
+  } catch {
+    return false;
+  }
+}
+
+/** Downloads a shot image or video-clip URL as a file, same blob-fetch +
+ *  `<a download>` pattern as `ImageLightbox.handleDownload` — same-origin
+ *  `/api/storage/...` URLs are fetched directly; external provider URLs are
+ *  routed through `/api/media/image-proxy` first (works for both images and
+ *  video byte streams — it is a generic pass-through proxy, not image-only
+ *  despite the route name). Falls back to `window.open` if the fetch/blob
+ *  path fails for any reason (e.g. a proxy/CORS edge case). */
+async function downloadStoryboardMediaUrl(
+  url: string,
+  filename: string,
+): Promise<void> {
+  const fetchUrl = isCrossOriginMediaUrl(url)
+    ? `/api/media/image-proxy?url=${encodeURIComponent(url)}`
+    : url;
+  try {
+    const res = await fetch(fetchUrl);
+    if (!res.ok) throw new Error(`download fetch failed (${res.status})`);
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
 /** Mirrors `VD_PRODUCT_REFERENCE_IMAGE_CAP` (`server/services/verticalDramaProductTieIn.ts`)
  *  — duplicated here (not imported) since that module lives under
  *  `server/services/`, not `@shared/`, matching this file's existing
@@ -285,6 +336,10 @@ export type VerticalDramaCharacterPortraitMap = Record<
 
 interface VerticalDramaStoryboardPanelProps {
   locale?: Lang;
+  /** Used only to build download filenames (`series-{seriesId}-ep-{episodeNumber}-...`)
+   *  — not sent to any mutation from this panel. */
+  seriesId?: string;
+  episodeNumber?: number;
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
   motionPromptPack?: VerticalDramaMotionPromptPackView | null;
@@ -518,11 +573,47 @@ interface VerticalDramaStoryboardPanelProps {
    *  video prompt box. */
   usedVisionByShot?: Record<number, boolean>;
 
+  /* ---- Whole-episode compiled video (2026-07-06 download + assembly
+     upgrade) — `verticalDramaEpisodes.assembleEpisodeVideo` concatenates
+     every completed clip into one mp4, shown as a dedicated card at the
+     bottom of the shot list (a whole-episode artifact, not a per-shot one). */
+  /** Current persisted status, read from `episode.assemblyManifest.compiledVideo` —
+   *  `undefined`/absent means "never assembled yet." */
+  compiledVideo?: VerticalDramaCompiledVideoView | null;
+  /** Submits `assembleEpisodeVideo`. `allowPartial` mirrors the mutation's
+   *  own input — omit/false to require every clip complete first. */
+  onAssembleCompiledVideo?: (opts?: { allowPartial?: boolean }) => void;
+  /** True while the submit mutation itself is in flight (distinct from the
+   *  server-side job, which is reflected by `compiledVideo.status`). */
+  assemblingCompiledVideo?: boolean;
+  /** Every clip number 1..N that this episode's motion prompt pack defines,
+   *  used to compute the "{ready}/{total} clips" hint and the missing-clip
+   *  list — independent of `compiledVideo` itself. */
+  totalClipCount?: number;
+  /** Clip numbers that already have a completed `videoTask.videoUrl`. */
+  readyClipNumbers?: number[];
+
   className?: string;
+}
+
+/** Client-facing view of `VerticalDramaCompiledVideoState`
+ *  (`@shared/verticalDramaSeries`) — re-declared locally (not imported) so
+ *  this presentational panel stays decoupled from the shared package import,
+ *  matching every other `*View` type in this file. Field-for-field identical. */
+export interface VerticalDramaCompiledVideoView {
+  pendingJobId?: string;
+  videoUrl?: string;
+  durationSeconds?: number;
+  shotCount?: number;
+  assembledAt?: string;
+  status?: "pending" | "completed" | "failed";
+  error?: string;
 }
 
 export function VerticalDramaStoryboardPanel({
   locale = "th",
+  seriesId,
+  episodeNumber,
   storyboard,
   startFramePlan,
   motionPromptPack,
@@ -605,6 +696,11 @@ export function VerticalDramaStoryboardPanel({
   onGenerateShotVideoPrompt,
   generatingShotVideoPromptForShot = EMPTY_SHOT_NUMBER_SET,
   usedVisionByShot = {},
+  compiledVideo = null,
+  onAssembleCompiledVideo,
+  assemblingCompiledVideo = false,
+  totalClipCount = 0,
+  readyClipNumbers = [],
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
@@ -671,6 +767,13 @@ export function VerticalDramaStoryboardPanel({
     (imageModelUsesMcp ? selectedImageModelTransport.providerKey : undefined) ??
     (videoModelUsesMcp ? selectedVideoModelTransport.providerKey : undefined);
   const [confirming, setConfirming] = useState(false);
+  /** Confirm-gate for "re-assemble" (destructive overwrite of the existing
+   *  compiled video) — mirrors `confirmingRegenerateVideoForClip`'s
+   *  convention. `false` shows the plain button; a distinct "allowPartial"
+   *  variant isn't needed here since re-assembly only fires once a completed
+   *  compiled video already exists (implying every clip was ready last time). */
+  const [confirmingReassembleCompiledVideo, setConfirmingReassembleCompiledVideo] =
+    useState(false);
   const [confirmingStartFramePlan, setConfirmingStartFramePlan] = useState(false);
   const [confirmingVideoPromptPack, setConfirmingVideoPromptPack] = useState(false);
   const [choosingGenerateModeForShot, setChoosingGenerateModeForShot] = useState<number | null>(null);
@@ -1506,6 +1609,25 @@ export function VerticalDramaStoryboardPanel({
                         alt={t(locale, `เฟรมเริ่มต้น ช็อต ${shotNumber}`, `Start frame, shot ${shotNumber}`)}
                         className="h-full w-full object-cover"
                       />
+                      {asset.url ? (
+                        <button
+                          type="button"
+                          className="absolute top-1 right-1 rounded bg-black/50 p-1 hover:bg-black/70"
+                          title={t2.download}
+                          aria-label={t2.download}
+                          onClick={e => {
+                            e.stopPropagation();
+                            const filename =
+                              seriesId != null
+                                ? `series-${seriesId}-ep-${episodeNumber ?? 0}-shot-${shotNumber}.png`
+                                : `shot-${shotNumber}.png`;
+                            void downloadStoryboardMediaUrl(asset.url!, filename);
+                          }}
+                          data-testid={`vd-storyboard-download-image-${shotNumber}`}
+                        >
+                          <Download aria-hidden="true" className="h-3 w-3 text-white" />
+                        </button>
+                      ) : null}
                       <div className="absolute bottom-1 right-1 rounded bg-black/50 p-1">
                         <Expand aria-hidden="true" className="h-3 w-3 text-white" />
                       </div>
@@ -1795,6 +1917,23 @@ export function VerticalDramaStoryboardPanel({
                       >
                         <Expand aria-hidden="true" className="h-3 w-3" />
                         {t2.videoClipOpenFull}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 gap-1 px-1.5 text-[10px]"
+                        onClick={() => {
+                          const filename =
+                            seriesId != null
+                              ? `series-${seriesId}-ep-${episodeNumber ?? 0}-clip-${clip.clipNumber}.mp4`
+                              : `clip-${clip.clipNumber}.mp4`;
+                          void downloadStoryboardMediaUrl(clip.videoTask!.videoUrl!, filename);
+                        }}
+                        data-testid={`vd-storyboard-video-download-${clip.clipNumber}`}
+                      >
+                        <Download aria-hidden="true" className="h-3 w-3" />
+                        {t2.download}
                       </Button>
                     </div>
                     {confirmingRegenerateVideoForClip === clip.clipNumber ? (
@@ -2558,12 +2697,198 @@ export function VerticalDramaStoryboardPanel({
         })}
       </div>
 
+      {/* Whole-episode compiled video (2026-07-06 download + assembly
+          upgrade) — a whole-episode artifact, so it sits BELOW the per-shot
+          list rather than inside any one shot's card. Idle / processing /
+          done / failed states, matching the state-matrix in the task packet. */}
+      {onAssembleCompiledVideo ? (
+        <div
+          className="mt-4 flex flex-col gap-2 rounded-md border border-border bg-muted/30 p-3"
+          data-testid="vd-compiled-video-card"
+        >
+          <p className="text-sm font-medium">{t2.compiledVideoTitle}</p>
+
+          {compiledVideo?.status === "completed" && compiledVideo.videoUrl ? (
+            <div className="flex flex-col gap-2">
+              <div className="w-56 max-w-full overflow-hidden rounded-md border border-border bg-black">
+                <video
+                  src={compiledVideo.videoUrl}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="aspect-[9/16] w-full bg-black"
+                  data-testid="vd-compiled-video-player"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {compiledVideo.durationSeconds ? (
+                  <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                    {compiledVideo.durationSeconds}
+                    {t2.compiledVideoDurationLabel}
+                  </Badge>
+                ) : null}
+                {typeof compiledVideo.shotCount === "number" &&
+                totalClipCount > 0 &&
+                compiledVideo.shotCount < totalClipCount ? (
+                  <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
+                    {vdCopyWithCount(t2.compiledVideoPartialBadge, compiledVideo.shotCount)}
+                  </Badge>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 gap-1 px-1.5 text-[10px]"
+                  onClick={() => {
+                    const filename =
+                      seriesId != null
+                        ? `series-${seriesId}-ep-${episodeNumber ?? 0}-full.mp4`
+                        : "compiled-episode.mp4";
+                    void downloadStoryboardMediaUrl(compiledVideo.videoUrl!, filename);
+                  }}
+                  data-testid="vd-compiled-video-download"
+                >
+                  <Download aria-hidden="true" className="h-3 w-3" />
+                  {t2.download}
+                </Button>
+              </div>
+              {confirmingReassembleCompiledVideo ? (
+                <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
+                  <p className="font-medium">{t2.compiledVideoReassembleConfirm}</p>
+                  <div className="mt-1.5 flex gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-[11px]"
+                      onClick={() => setConfirmingReassembleCompiledVideo(false)}
+                      disabled={assemblingCompiledVideo}
+                    >
+                      {t(locale, "ยกเลิก", "Cancel")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-6 px-2 text-[11px]"
+                      onClick={() => {
+                        setConfirmingReassembleCompiledVideo(false);
+                        onAssembleCompiledVideo();
+                      }}
+                      disabled={assemblingCompiledVideo}
+                      data-testid="vd-compiled-video-confirm-reassemble"
+                    >
+                      {t(locale, "ยืนยัน", "Confirm")}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-fit gap-1 px-1.5 text-[10px] text-muted-foreground"
+                  onClick={() => setConfirmingReassembleCompiledVideo(true)}
+                  disabled={assemblingCompiledVideo}
+                  data-testid="vd-compiled-video-reassemble"
+                >
+                  {t2.compiledVideoReassemble}
+                </Button>
+              )}
+            </div>
+          ) : compiledVideo?.status === "pending" || compiledVideo?.pendingJobId ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              {t2.compiledVideoProcessing}
+            </div>
+          ) : compiledVideo?.status === "failed" ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-destructive">
+                {t2.compiledVideoFailed}
+                {compiledVideo.error ? `: ${compiledVideo.error}` : ""}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="w-fit gap-1.5"
+                onClick={() => onAssembleCompiledVideo()}
+                disabled={assemblingCompiledVideo}
+                data-testid="vd-compiled-video-retry"
+              >
+                {assemblingCompiledVideo ? (
+                  <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                ) : null}
+                {t2.compiledVideoRetry}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-muted-foreground">
+                {t2.compiledVideoReadyHint
+                  .replace("{ready}", String(readyClipNumbers.length))
+                  .replace("{total}", String(totalClipCount))}
+              </p>
+              {(() => {
+                const missing =
+                  totalClipCount > 0
+                    ? Array.from({ length: totalClipCount }, (_, i) => i + 1).filter(
+                        n => !readyClipNumbers.includes(n)
+                      )
+                    : [];
+                if (missing.length === 0) return null;
+                return (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t2.compiledVideoMissingWarning.replace("{list}", missing.join(", "))}
+                  </p>
+                );
+              })()}
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => onAssembleCompiledVideo()}
+                  disabled={
+                    assemblingCompiledVideo || readyClipNumbers.length === 0
+                  }
+                  data-testid="vd-compiled-video-assemble"
+                >
+                  {assemblingCompiledVideo ? (
+                    <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Clapperboard aria-hidden="true" className="h-3.5 w-3.5" />
+                  )}
+                  {t2.compiledVideoAssemble}
+                </Button>
+                {totalClipCount > 0 && readyClipNumbers.length > 0 && readyClipNumbers.length < totalClipCount ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={() => onAssembleCompiledVideo({ allowPartial: true })}
+                    disabled={assemblingCompiledVideo}
+                    data-testid="vd-compiled-video-assemble-partial"
+                  >
+                    {t2.compiledVideoAssemblePartial}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
+
       {lightboxShot != null ? (
         <ImageLightbox
           images={(() => {
             const frame = frameByShot.get(lightboxShot);
             const asset = frame?.approvedMediaAssetId ? assetUrls[frame.approvedMediaAssetId] : undefined;
-            return asset?.url ? [{ src: asset.url, alt: `Shot ${lightboxShot}` }] : [];
+            const filename =
+              seriesId != null
+                ? `series-${seriesId}-ep-${episodeNumber ?? 0}-shot-${lightboxShot}.png`
+                : `shot-${lightboxShot}.png`;
+            return asset?.url ? [{ src: asset.url, alt: filename }] : [];
           })()}
           open={lightboxShot != null}
           onClose={() => setLightboxShot(null)}
@@ -2588,14 +2913,32 @@ export function VerticalDramaStoryboardPanel({
                 role="dialog"
                 aria-modal="true"
               >
-                <button
-                  type="button"
-                  className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
-                  onClick={() => setFullScreenVideoClip(null)}
-                  aria-label={t(locale, "ปิด", "Close")}
-                >
-                  <X aria-hidden="true" className="h-5 w-5" />
-                </button>
+                <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+                    onClick={e => {
+                      e.stopPropagation();
+                      const filename =
+                        seriesId != null
+                          ? `series-${seriesId}-ep-${episodeNumber ?? 0}-clip-${fullScreenVideoClip}.mp4`
+                          : `clip-${fullScreenVideoClip}.mp4`;
+                      void downloadStoryboardMediaUrl(videoUrl, filename);
+                    }}
+                    title={t2.download}
+                    aria-label={t2.download}
+                  >
+                    <Download aria-hidden="true" className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+                    onClick={() => setFullScreenVideoClip(null)}
+                    aria-label={t(locale, "ปิด", "Close")}
+                  >
+                    <X aria-hidden="true" className="h-5 w-5" />
+                  </button>
+                </div>
                 <video
                   src={videoUrl}
                   controls
@@ -2614,7 +2957,15 @@ export function VerticalDramaStoryboardPanel({
         <ImageLightbox
           images={(() => {
             const portrait = reviewCharacters.find(p => p.characterId === lightboxCharacterId);
-            return portrait?.portraitUrl ? [{ src: portrait.portraitUrl, alt: portrait.name }] : [];
+            const namePart = (portrait?.name || lightboxCharacterId || "character")
+              .replace(/[^\w\-]+/g, "-")
+              .replace(/-+/g, "-")
+              .replace(/^-|-$/g, "");
+            const filename =
+              seriesId != null
+                ? `series-${seriesId}-character-${namePart}.png`
+                : `character-${namePart}.png`;
+            return portrait?.portraitUrl ? [{ src: portrait.portraitUrl, alt: filename }] : [];
           })()}
           open={lightboxCharacterId != null}
           onClose={() => setLightboxCharacterId(null)}
@@ -2624,7 +2975,13 @@ export function VerticalDramaStoryboardPanel({
       {lightboxAngleCandidate != null ? (
         <ImageLightbox
           images={(angleCandidatesByShot[lightboxAngleCandidate.shotNumber] ?? []).map(
-            ({ dataUrl, originalIndex }) => ({ src: dataUrl, alt: `Angle ${originalIndex + 1}` })
+            ({ dataUrl, originalIndex }) => {
+              const filename =
+                seriesId != null
+                  ? `series-${seriesId}-ep-${episodeNumber ?? 0}-shot-${lightboxAngleCandidate.shotNumber}-angle-${originalIndex + 1}.png`
+                  : `shot-${lightboxAngleCandidate.shotNumber}-angle-${originalIndex + 1}.png`;
+              return { src: dataUrl, alt: filename };
+            }
           )}
           initialIndex={lightboxAngleCandidate.index}
           open={lightboxAngleCandidate != null}
@@ -2634,7 +2991,15 @@ export function VerticalDramaStoryboardPanel({
 
       {lightboxProductImageUrl != null ? (
         <ImageLightbox
-          images={[{ src: lightboxProductImageUrl, alt: t(locale, "ภาพอ้างอิงสินค้า", "Product reference image") }]}
+          images={[
+            {
+              src: lightboxProductImageUrl,
+              alt:
+                seriesId != null
+                  ? `series-${seriesId}-product-reference.png`
+                  : "product-reference.png",
+            },
+          ]}
           open={lightboxProductImageUrl != null}
           onClose={() => setLightboxProductImageUrl(null)}
         />

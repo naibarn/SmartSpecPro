@@ -135,4 +135,38 @@ export type VerticalDramaAssemblyManifest = {
     fps: 24 | 30 | number;
     container: "mp4";
   };
+  /** Whole-episode compiled-video status (feature 131 "download + compound
+   *  video" upgrade, 2026-07-06) — see `VerticalDramaCompiledVideoState`
+   *  below. Optional/absent for manifests created before this feature, and
+   *  independent of the `clips`/`ffmpegConcatPlan` plan fields above (which
+   *  describe the `assemble_episode_manifest` STAGE's plan-only output, not
+   *  this feature's real ffmpeg concat job). */
+  compiledVideo?: VerticalDramaCompiledVideoState;
+};
+
+/**
+ * Durable status for the whole-episode compiled video (feature 131
+ * "download + compound video" upgrade, 2026-07-06) — persisted onto
+ * `episode.assemblyManifest.compiledVideo` by
+ * `verticalDramaEpisodes.assembleEpisodeVideo` (async submit) and its
+ * background ffmpeg concat job. Mirrors the `videoTask.pendingTaskId`/
+ * `videoUrl` resume convention used elsewhere in this feature. A reload
+ * recovers in-progress/completed/failed state by reading this field back via
+ * `getEpisodeDetail` (or any other read of the episode row that includes
+ * `assemblyManifest`) instead of relying on a transient toast.
+ */
+export type VerticalDramaCompiledVideoState = {
+  /** Set immediately at submit time; cleared once the job reaches a terminal
+   *  state (completed or failed) — a non-empty value with no terminal
+   *  `videoUrl`/`error` means "still processing, resume polling on load." */
+  pendingJobId?: string;
+  /** Same-origin `/api/storage/...` path or absolute provider/storage URL. */
+  videoUrl?: string;
+  durationSeconds?: number;
+  /** Number of clips actually concatenated (may be less than the full shot
+   *  count when the job was submitted with `allowPartial: true`). */
+  shotCount?: number;
+  assembledAt?: string;
+  status?: "pending" | "completed" | "failed";
+  error?: string;
 };

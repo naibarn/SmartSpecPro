@@ -2128,6 +2128,125 @@ function EpisodeWorkspaceShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episodeDetailQuery.data?.motionPromptPack?.clips]);
 
+  /* ---- Whole-episode compiled video (2026-07-06 download + assembly
+   *  upgrade) — `assembleEpisodeVideo` concatenates every completed clip
+   *  into one mp4. Async submit -> the actual ffmpeg job runs server-side
+   *  and its status is persisted onto `episode.assemblyManifest.compiledVideo`
+   *  (`{ pendingJobId?, videoUrl?, durationSeconds?, shotCount?, assembledAt?,
+   *  status, error? }`) — same durable-status convention as
+   *  `videoTask.pendingTaskId`, but polled by refetching `getEpisodeDetail`
+   *  (there is no per-job `media.getTask`-style endpoint for this feature)
+   *  instead of a dedicated task-status endpoint.
+   *
+   *  NOTE: `getEpisodeDetail`'s current response does not yet include
+   *  `assemblyManifest` (only `updateEpisodeDraft`'s input accepts it) — read
+   *  defensively via a loose cast so this degrades to "never resolves past
+   *  pending" instead of crashing until that field is added server-side. */
+  const compiledVideo = (
+    episodeDetailQuery.data as
+      | { assemblyManifest?: { compiledVideo?: Record<string, unknown> } }
+      | undefined
+  )?.assemblyManifest?.compiledVideo as
+    | {
+        pendingJobId?: string;
+        videoUrl?: string;
+        durationSeconds?: number;
+        shotCount?: number;
+        assembledAt?: string;
+        status?: "pending" | "completed" | "failed";
+        error?: string;
+      }
+    | undefined;
+
+  const motionPromptClips = episodeDetailQuery.data?.motionPromptPack?.clips ?? [];
+  const totalClipCount = motionPromptClips.length;
+  const readyClipNumbers = motionPromptClips
+    .filter(c => Boolean((c.videoTask as { videoUrl?: string } | undefined)?.videoUrl))
+    .map(c => c.clipNumber);
+
+  /** Ref-guarded 3-5s poll of `getEpisodeDetail` while a compiled-video job is
+   *  pending — cleared in `finally` so it never leaks an interval, and never
+   *  double-starts across the live-submit path and the resume-on-load path,
+   *  same convention as `videoClipPollInFlightRef`. */
+  const compiledVideoPollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
+  const compiledVideoPollingRef = useRef(false);
+
+  function stopCompiledVideoPoll() {
+    if (compiledVideoPollIntervalRef.current != null) {
+      clearInterval(compiledVideoPollIntervalRef.current);
+      compiledVideoPollIntervalRef.current = null;
+    }
+    compiledVideoPollingRef.current = false;
+  }
+
+  function startCompiledVideoPoll() {
+    if (compiledVideoPollingRef.current) return;
+    compiledVideoPollingRef.current = true;
+    compiledVideoPollIntervalRef.current = setInterval(() => {
+      void episodeDetailQuery.refetch();
+    }, 4000);
+  }
+
+  // Stop the poll once the job reaches a terminal state, wherever that
+  // transition is observed (live submit refetch OR resume-on-load refetch).
+  useEffect(() => {
+    if (compiledVideo?.status === "completed" || compiledVideo?.status === "failed") {
+      stopCompiledVideoPoll();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compiledVideo?.status]);
+
+  // Cleanup on unmount.
+  useEffect(() => {
+    return () => stopCompiledVideoPoll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** RESUME ON LOAD — a `pendingJobId` with no terminal status means the job
+   *  was still running when the page was last closed/reloaded; resume
+   *  polling instead of leaving the card stuck showing nothing. */
+  const resumedCompiledVideoPollRef = useRef(false);
+  useEffect(() => {
+    if (resumedCompiledVideoPollRef.current) return;
+    if (!compiledVideo?.pendingJobId) return;
+    if (compiledVideo.status === "completed" || compiledVideo.status === "failed") return;
+    resumedCompiledVideoPollRef.current = true;
+    startCompiledVideoPoll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compiledVideo?.pendingJobId, compiledVideo?.status]);
+
+  const assembleEpisodeVideoMutation =
+    trpc.verticalDramaEpisodes.assembleEpisodeVideo.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "เริ่มประกอบวิดีโอทั้งตอนแล้ว"
+            : "Started assembling the full episode video."
+        );
+        startCompiledVideoPoll();
+        void episodeDetailQuery.refetch();
+      },
+      onError: err => {
+        toast.error(
+          err.message ||
+            (lang === "th"
+              ? "เริ่มการประกอบวิดีโอไม่สำเร็จ"
+              : "Failed to start assembly.")
+        );
+      },
+    });
+
+  function handleAssembleCompiledVideo(opts?: { allowPartial?: boolean }) {
+    assembleEpisodeVideoMutation.mutate({
+      seriesId,
+      episodeId,
+      allowPartial: opts?.allowPartial,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
   /* ---- Phase 6.5 — image-to-image repair dialog (`repairShotImage`) ----
    *  Async submit + poll like every other real generation here: submit ->
    *  `taskId` -> poll `media.getTask` -> the result URL is shown as the
@@ -2599,6 +2718,8 @@ function EpisodeWorkspaceShell({
             }),
         }}
         storyboardPanel={{
+          seriesId,
+          episodeNumber: episode?.episodeNumber,
           storyboard: episodeDetailQuery.data?.storyboard as
             | VerticalDramaStoryboardView
             | null
@@ -2778,6 +2899,11 @@ function EpisodeWorkspaceShell({
           onGenerateShotVideoPrompt: handleGenerateShotVideoPrompt,
           generatingShotVideoPromptForShot,
           usedVisionByShot,
+          compiledVideo,
+          onAssembleCompiledVideo: handleAssembleCompiledVideo,
+          assemblingCompiledVideo: assembleEpisodeVideoMutation.isPending,
+          totalClipCount,
+          readyClipNumbers,
         }}
         scriptSummary={(() => {
           const script = episodeDetailQuery.data?.script as

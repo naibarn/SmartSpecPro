@@ -63,6 +63,7 @@ import {
   type VerticalDramaCapableModel,
   type VerticalDramaCharacterPortraitMap,
   type VerticalDramaClipDialogueLineView,
+  type VerticalDramaCompiledVideoView,
   type VerticalDramaMotionPromptPackView,
   type VerticalDramaQualityReviewView,
   type VerticalDramaShotProductTieInView,
@@ -96,6 +97,9 @@ export interface VerticalDramaDialogueAudioPanelData {
 
 /** Data needed to render the storyboard_shotgrid stage's dedicated panel. */
 export interface VerticalDramaStoryboardPanelData {
+  /** Used only for download filenames (`series-{seriesId}-ep-{episodeNumber}-...`). */
+  seriesId?: string;
+  episodeNumber?: number;
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
   motionPromptPack?: VerticalDramaMotionPromptPackView | null;
@@ -225,6 +229,13 @@ export interface VerticalDramaStoryboardPanelData {
   onGenerateShotVideoPrompt?: (shotNumber: number) => void;
   generatingShotVideoPromptForShot?: ReadonlySet<number>;
   usedVisionByShot?: Record<number, boolean>;
+
+  /* ---- Whole-episode compiled video (2026-07-06 download + assembly upgrade) ---- */
+  compiledVideo?: VerticalDramaCompiledVideoView | null;
+  onAssembleCompiledVideo?: (opts?: { allowPartial?: boolean }) => void;
+  assemblingCompiledVideo?: boolean;
+  totalClipCount?: number;
+  readyClipNumbers?: number[];
 }
 
 /** Minimal per-stage state the workspace needs to render progress + CTA. */
@@ -597,6 +608,8 @@ export function VerticalDramaEpisodeWorkspace({
       {hasStoryboardShots ? (
         <VerticalDramaStoryboardPanel
           locale={locale}
+          seriesId={storyboardPanel?.seriesId}
+          episodeNumber={storyboardPanel?.episodeNumber}
           storyboard={storyboardPanel?.storyboard}
           startFramePlan={storyboardPanel?.startFramePlan}
           motionPromptPack={storyboardPanel?.motionPromptPack}
@@ -679,6 +692,11 @@ export function VerticalDramaEpisodeWorkspace({
           onGenerateShotVideoPrompt={storyboardPanel?.onGenerateShotVideoPrompt}
           generatingShotVideoPromptForShot={storyboardPanel?.generatingShotVideoPromptForShot}
           usedVisionByShot={storyboardPanel?.usedVisionByShot}
+          compiledVideo={storyboardPanel?.compiledVideo}
+          onAssembleCompiledVideo={storyboardPanel?.onAssembleCompiledVideo}
+          assemblingCompiledVideo={storyboardPanel?.assemblingCompiledVideo}
+          totalClipCount={storyboardPanel?.totalClipCount}
+          readyClipNumbers={storyboardPanel?.readyClipNumbers}
         />
       ) : !completed && current && SETUP_STAGES.has(current.stage) ? (
         <section className="rounded-lg border bg-card p-4" aria-label={t.generateEpisode}>
