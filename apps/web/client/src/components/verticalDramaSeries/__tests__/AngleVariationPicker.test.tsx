@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/imageGridSplitter", () => ({
@@ -147,5 +147,102 @@ describe("VerticalDramaStoryboardPanel — angle-variation (3x3) picker", () => 
     // and if the redundant call fails, flips the picker to "split failed"
     // even though the first call already produced valid candidates.
     expect((splitImage as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+  });
+
+  /** 2026-07-07 regression coverage: "ใช้เป็นภาพเริ่มต้น" used to clear the
+   *  picker synchronously the instant it was clicked, before the (unawaited)
+   *  async `onPickAngleVariationCandidate` swap even resolved — so a failed
+   *  swap left the user with no picker AND no updated start frame. The fixed
+   *  sequence must await the swap and only clear the picker on success,
+   *  keeping it open (with the selection intact) on failure. */
+  describe('"ใช้เป็นภาพเริ่มต้น" pick ordering', () => {
+    async function renderWithNineTiles() {
+      (splitImage as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        Array.from({ length: 9 }, (_, i) => ({
+          dataUrl: `data:image/jpeg;base64,tile${i}`,
+          index: i,
+          row: Math.floor(i / 3),
+          col: i % 3,
+          blob: new Blob(),
+          width: 100,
+          height: 100,
+          sourceWidth: 100,
+          sourceHeight: 100,
+        }))
+      );
+      const onPickAngleVariationCandidate = vi.fn();
+      const { rerender } = render(
+        <VerticalDramaStoryboardPanel
+          {...(baseProps({ onPickAngleVariationCandidate }) as any)}
+        />
+      );
+      await act(async () => {
+        rerender(
+          <VerticalDramaStoryboardPanel
+            {...(baseProps({
+              onPickAngleVariationCandidate,
+              angleVariationGridUrlByShot: { 1: "https://tempfile.aiquickdraw.com/x.jpg" },
+            }) as any)}
+          />
+        );
+      });
+      await waitFor(() => {
+        expect(screen.getByTestId("vd-angle-candidates-dismiss-1")).toBeInTheDocument();
+      });
+      // Select tile 0 so "ใช้เป็นภาพเริ่มต้น" becomes enabled.
+      fireEvent.click(screen.getByTestId("vd-angle-candidate-select-1-0"));
+      return { onPickAngleVariationCandidate };
+    }
+
+    it("keeps the picker open when the async swap rejects", async () => {
+      const { onPickAngleVariationCandidate } = await renderWithNineTiles();
+      let rejectSwap: (err: Error) => void = () => {};
+      onPickAngleVariationCandidate.mockImplementation(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectSwap = reject;
+          })
+      );
+
+      fireEvent.click(screen.getByTestId("vd-angle-candidate-use-as-start-frame-1"));
+      expect(onPickAngleVariationCandidate).toHaveBeenCalledWith(1, "data:image/jpeg;base64,tile0");
+
+      await act(async () => {
+        rejectSwap(new Error("upload failed"));
+        // Let the button's .catch()/.finally() microtasks flush.
+        await Promise.resolve();
+      });
+
+      // Picker must still be present — the failed swap must NOT have
+      // cleared it optimistically.
+      expect(screen.getByTestId("vd-angle-candidates-dismiss-1")).toBeInTheDocument();
+      expect(screen.getByTestId("vd-angle-candidate-use-as-start-frame-1")).toBeInTheDocument();
+    });
+
+    it("clears the picker only after the async swap resolves", async () => {
+      const { onPickAngleVariationCandidate } = await renderWithNineTiles();
+      let resolveSwap: () => void = () => {};
+      onPickAngleVariationCandidate.mockImplementation(
+        () =>
+          new Promise<void>(resolve => {
+            resolveSwap = resolve;
+          })
+      );
+
+      fireEvent.click(screen.getByTestId("vd-angle-candidate-use-as-start-frame-1"));
+
+      // Still open immediately after the click — clearing must wait for the
+      // swap to resolve, not happen synchronously in the click handler.
+      expect(screen.getByTestId("vd-angle-candidates-dismiss-1")).toBeInTheDocument();
+
+      await act(async () => {
+        resolveSwap();
+        await Promise.resolve();
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByTestId("vd-angle-candidates-dismiss-1")).not.toBeInTheDocument();
+      });
+    });
   });
 });

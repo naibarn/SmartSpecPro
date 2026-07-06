@@ -906,6 +906,12 @@ function EpisodeWorkspaceShell({
             ? "เลือกภาพไม่สำเร็จ"
             : "Failed to select image"
       );
+      // 2026-07-07 fix: rethrow so the panel's "ใช้เป็นภาพเริ่มต้น" button
+      // knows the swap failed and keeps the picker open instead of clearing
+      // it optimistically (the picker used to disappear even when the
+      // upload/resolve/set chain above failed, leaving the shot's start
+      // frame unchanged with only this toast as a clue).
+      throw err;
     }
   }
 

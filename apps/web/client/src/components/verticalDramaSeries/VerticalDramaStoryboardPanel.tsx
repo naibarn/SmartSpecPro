@@ -411,8 +411,14 @@ interface VerticalDramaStoryboardPanelProps {
   generatingAngleVariationsForShot?: number | null;
   /** The completed grid image URL to split into 9 candidates client-side, keyed by shot number — cleared once the user picks or dismisses. */
   angleVariationGridUrlByShot?: Record<number, string>;
-  /** User picked one of the 9 split candidates (as a data URL) for this shot. */
-  onPickAngleVariationCandidate?: (shotNumber: number, candidateDataUrl: string) => void;
+  /** User picked one of the 9 split candidates (as a data URL) for this shot.
+   *  Async (upload -> resolve -> setApprovedStartFrameAsset on the caller's
+   *  side) — the picker only clears once this resolves; callers MUST await
+   *  the swap and reject/throw on failure so the picker can stay open. */
+  onPickAngleVariationCandidate?: (
+    shotNumber: number,
+    candidateDataUrl: string
+  ) => void | Promise<void>;
   /** Dismisses (closes) the whole picker for this shot — clears the
    *  persisted `angleGrid` on the frame (free `updateEpisodeDraft` patch) in
    *  addition to the local candidate list, so the picker stays gone after a
@@ -841,6 +847,17 @@ export function VerticalDramaStoryboardPanel({
   const [selectedAngleCandidateIndexesByShot, setSelectedAngleCandidateIndexesByShot] = useState<
     Record<number, Set<number>>
   >({});
+  /** Shots currently awaiting `onPickAngleVariationCandidate` to finish
+   *  (upload -> resolve -> setApprovedStartFrameAsset on the page side).
+   *  2026-07-07 fix: the picker used to close optimistically the instant
+   *  "ใช้เป็นภาพเริ่มต้น" was clicked, before that async chain even started —
+   *  if the chain failed (upload error, resolve error, etc.) the user was
+   *  left with no picker AND no updated start frame, with only an easy-to-
+   *  miss toast as a clue. Now the picker stays open (button shows a
+   *  spinner) until the pick actually resolves, and only clears on success. */
+  const [applyingAngleCandidateForShot, setApplyingAngleCandidateForShot] = useState<
+    ReadonlySet<number>
+  >(EMPTY_SHOT_NUMBER_SET);
   /** Fullscreen preview target for a single angle-candidate tile, via the
    *  same `ImageLightbox` used everywhere else in this panel. */
   const [lightboxAngleCandidate, setLightboxAngleCandidate] = useState<
@@ -2478,7 +2495,8 @@ export function VerticalDramaStoryboardPanel({
                           variant="default"
                           className="h-7 gap-1 px-2.5 text-xs shadow-sm"
                           disabled={
-                            (selectedAngleCandidateIndexesByShot[shotNumber]?.size ?? 0) !== 1
+                            (selectedAngleCandidateIndexesByShot[shotNumber]?.size ?? 0) !== 1 ||
+                            applyingAngleCandidateForShot.has(shotNumber)
                           }
                           onClick={() => {
                             const list = angleCandidatesByShot[shotNumber] ?? [];
@@ -2486,21 +2504,54 @@ export function VerticalDramaStoryboardPanel({
                             const onlyIndex = selected && selected.size === 1 ? [...selected][0] : undefined;
                             const dataUrl = onlyIndex != null ? list[onlyIndex]?.dataUrl : undefined;
                             if (!dataUrl) return;
-                            onPickAngleVariationCandidate?.(shotNumber, dataUrl);
-                            setAngleCandidatesByShot(prev => {
-                              const next = { ...prev };
-                              delete next[shotNumber];
+                            // 2026-07-07 fix: swap FIRST, clear the picker
+                            // only on success — previously the picker was
+                            // cleared synchronously here regardless of
+                            // whether the (unawaited) async swap succeeded,
+                            // so a failed upload/resolve/set left the user
+                            // with no picker AND no updated start frame.
+                            setApplyingAngleCandidateForShot(prev => {
+                              const next = new Set(prev);
+                              next.add(shotNumber);
                               return next;
                             });
-                            setSelectedAngleCandidateIndexesByShot(prev => {
-                              const next = { ...prev };
-                              delete next[shotNumber];
-                              return next;
-                            });
+                            void Promise.resolve(
+                              onPickAngleVariationCandidate?.(shotNumber, dataUrl)
+                            )
+                              .then(() => {
+                                setAngleCandidatesByShot(prev => {
+                                  const next = { ...prev };
+                                  delete next[shotNumber];
+                                  return next;
+                                });
+                                setSelectedAngleCandidateIndexesByShot(prev => {
+                                  const next = { ...prev };
+                                  delete next[shotNumber];
+                                  return next;
+                                });
+                              })
+                              .catch(() => {
+                                // Swap failed — leave the picker + selection
+                                // intact so the user can retry; the caller's
+                                // own catch handler is responsible for
+                                // surfacing an error toast.
+                              })
+                              .finally(() => {
+                                setApplyingAngleCandidateForShot(prev => {
+                                  if (!prev.has(shotNumber)) return prev;
+                                  const next = new Set(prev);
+                                  next.delete(shotNumber);
+                                  return next;
+                                });
+                              });
                           }}
                           data-testid={`vd-angle-candidate-use-as-start-frame-${shotNumber}`}
                         >
-                          <Check aria-hidden="true" className="h-3 w-3" />
+                          {applyingAngleCandidateForShot.has(shotNumber) ? (
+                            <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Check aria-hidden="true" className="h-3 w-3" />
+                          )}
                           {t2.useAsStartFrame}
                         </Button>
                         <Button
@@ -2579,13 +2630,17 @@ export function VerticalDramaStoryboardPanel({
                               {isSelected ? (
                                 <span className="pointer-events-none absolute inset-0 bg-primary/10" />
                               ) : null}
+                              {/* Hit areas widened to the 40px tablet-tap
+                                  minimum (2026-07-07 fix) — the visible
+                                  circle stays small (h-4 w-4) for the dense
+                                  9-tile grid, but the button itself is at
+                                  least 40x40 via padding + negative margins
+                                  so a fingertip on a tablet can actually
+                                  land on it without missing. */}
                               <button
                                 type="button"
                                 className={cn(
-                                  "absolute left-1 top-1 flex h-4 w-4 items-center justify-center rounded-full border",
-                                  isSelected
-                                    ? "border-primary-foreground bg-primary text-primary-foreground"
-                                    : "border-white/70 bg-black/40 text-white/90"
+                                  "absolute -left-1.5 -top-1.5 flex h-10 w-10 items-center justify-center rounded-full"
                                 )}
                                 onClick={() =>
                                   setSelectedAngleCandidateIndexesByShot(prev => {
@@ -2606,11 +2661,20 @@ export function VerticalDramaStoryboardPanel({
                                 aria-pressed={isSelected}
                                 data-testid={`vd-angle-candidate-select-${shotNumber}-${originalIndex}`}
                               >
-                                {isSelected ? <Check aria-hidden="true" className="h-2.5 w-2.5" /> : null}
+                                <span
+                                  className={cn(
+                                    "flex h-4 w-4 items-center justify-center rounded-full border",
+                                    isSelected
+                                      ? "border-primary-foreground bg-primary text-primary-foreground"
+                                      : "border-white/70 bg-black/40 text-white/90"
+                                  )}
+                                >
+                                  {isSelected ? <Check aria-hidden="true" className="h-2.5 w-2.5" /> : null}
+                                </span>
                               </button>
                               <button
                                 type="button"
-                                className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100"
+                                className="absolute -right-1.5 -top-1.5 flex h-10 w-10 items-center justify-center rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                                 onClick={() => {
                                   setAngleCandidatesByShot(prev => {
                                     const list = prev[shotNumber] ?? [];
@@ -2642,7 +2706,9 @@ export function VerticalDramaStoryboardPanel({
                                 )}
                                 data-testid={`vd-angle-candidate-remove-${shotNumber}-${originalIndex}`}
                               >
-                                <X aria-hidden="true" className="h-2.5 w-2.5" />
+                                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white">
+                                  <X aria-hidden="true" className="h-2.5 w-2.5" />
+                                </span>
                               </button>
                             </div>
                           );
