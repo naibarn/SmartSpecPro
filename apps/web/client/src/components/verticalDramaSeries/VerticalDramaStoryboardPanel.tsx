@@ -53,6 +53,8 @@ import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
+  VERTICAL_DRAMA_THAI_ACCENTS,
+  VERTICAL_DRAMA_THAI_ACCENT_LABELS,
   VD_IMAGE_PROMPT_MAX,
   VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
@@ -61,6 +63,13 @@ import { vdCopy, vdCopyWithCount, type VdLocale } from "./verticalDramaWorkspace
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 const EMPTY_SHOT_NUMBER_SET: ReadonlySet<number> = new Set();
+/** Mirrors `VD_PRODUCT_REFERENCE_IMAGE_CAP` (`server/services/verticalDramaProductTieIn.ts`)
+ *  — duplicated here (not imported) since that module lives under
+ *  `server/services/`, not `@shared/`, matching this file's existing
+ *  `productTieInByShot` client-side re-derivation convention. Shown only as a
+ *  UI hint in the product-image picker; the server enforces the actual cap
+ *  when it merges/trims reference images at generation time. */
+const VD_PRODUCT_REFERENCE_IMAGE_CAP = 3;
 
 /** `mediaModels.list`'s vertical-drama capability badges (Phase 0.1/0.4) —
  *  not part of the generic `MediaModel` shape (used by every other model
@@ -201,6 +210,26 @@ export interface VerticalDramaShotProductTieInView {
   productName?: string;
   placementStyle?: "hero_prop" | "background" | "in_use_moment";
   benefitTalkingPoint?: string;
+  /**
+   * Additive (2026-07-06 Thai ad-compliance upgrade) — the category-mandated
+   * disclosure line for this shot's clip, when present (e.g.
+   * "อ่านคำเตือนในฉลากก่อนบริโภค" for อาหารเสริม). Shown in the chip's
+   * tooltip so the disclosure requirement is visible without opening the
+   * clip's full prompt/dialogue.
+   */
+  requiredDisclosure?: string;
+}
+
+/**
+ * One available product reference image the picker can offer (2026-07-06
+ * product-reference upgrade) — mirrors
+ * `VerticalDramaAvailableProductImage` (`server/services/verticalDramaProductTieIn.ts`),
+ * returned by `verticalDramaSeries.listProductImages`.
+ */
+export interface VerticalDramaAvailableProductImageView {
+  url: string;
+  source: "capture" | "direct";
+  label?: string;
 }
 
 export interface VerticalDramaMotionPromptClipView {
@@ -224,6 +253,8 @@ export interface VerticalDramaMotionPromptPackView {
   promptLanguage?: string;
   /** The language the character(s) SPEAK in the video (episode-level language plan) — defaults to "th" when absent. */
   dialogueLanguage?: string;
+  /** Thai regional speech accent — only meaningful when `dialogueLanguage` is "th" (or absent, which defaults to Thai). */
+  thaiAccent?: string;
   motionMode?: string;
   clips?: VerticalDramaMotionPromptClipView[];
 }
@@ -254,6 +285,21 @@ interface VerticalDramaStoryboardPanelProps {
    *  that carry a placement. Absent/empty when tie-in is disabled or no
    *  placement exists for this episode. */
   productTieInByShot?: Record<number, VerticalDramaShotProductTieInView>;
+  /** Every product reference image available to pick from (2026-07-06 product-
+   *  reference upgrade) — the series' full Marketplace Capture image set plus
+   *  its direct product image URL, from `verticalDramaSeries.listProductImages`.
+   *  Passed once for the whole panel (not per-shot); the picker dialog is the
+   *  only place this list is shown. */
+  productImages?: VerticalDramaAvailableProductImageView[];
+  /** True while `listProductImages` is loading — shown inside the picker dialog. */
+  productImagesLoading?: boolean;
+  /** Persist a shot's user-chosen product reference image URL(s) — sets
+   *  `productReferenceAssetIds` (and `productRefsCustomized: true`, even for an
+   *  explicit empty selection) via the free `updateEpisodeDraft` JSONB-patch
+   *  flow. Future generations for that shot use exactly this set, and the
+   *  pipeline's auto-resolution never overwrites it again. */
+  onSaveShotProductReferences?: (shotNumber: number, urls: string[]) => void;
+  savingProductReferencesForShot?: number | null;
   loading?: boolean;
   error?: string | null;
   /** True while the real-generation mutation is in flight. */
@@ -350,6 +396,12 @@ interface VerticalDramaStoryboardPanelProps {
   selectedDialogueLanguage?: string;
   onSelectPromptLanguage?: (language: string) => void;
   onSelectDialogueLanguage?: (language: string) => void;
+  /** Thai regional speech accent — refines `dialogueLanguage` when it is
+   *  (or defaults to) `"th"`. Shown only alongside the dialogue-language
+   *  select, and only while the dialogue language is Thai. Persisted via
+   *  the same `setEpisodeVideoPromptLanguage` mutation as `dialogueLanguage`. */
+  selectedThaiAccent?: string | null;
+  onSelectThaiAccent?: (value: string) => void;
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   /** `listShotReferences` result, keyed by shot number (Phase 2/D contract). */
@@ -463,6 +515,10 @@ export function VerticalDramaStoryboardPanel({
   assetUrls = {},
   characterPortraits = {},
   productTieInByShot = {},
+  productImages = [],
+  productImagesLoading = false,
+  onSaveShotProductReferences,
+  savingProductReferencesForShot = null,
   loading = false,
   error = null,
   generating = false,
@@ -503,6 +559,8 @@ export function VerticalDramaStoryboardPanel({
   selectedDialogueLanguage = "",
   onSelectPromptLanguage,
   onSelectDialogueLanguage,
+  selectedThaiAccent = null,
+  onSelectThaiAccent,
   shotReferencesByShot = {},
   onAddShotReference,
   onRemoveShotReference,
@@ -571,6 +629,12 @@ export function VerticalDramaStoryboardPanel({
   const [confirmingGenerateAllImages, setConfirmingGenerateAllImages] = useState(false);
   const [lightboxShot, setLightboxShot] = useState<number | null>(null);
   const [lightboxCharacterId, setLightboxCharacterId] = useState<string | null>(null);
+  const [lightboxProductImageUrl, setLightboxProductImageUrl] = useState<string | null>(null);
+  /** Shot number currently showing the "เปลี่ยนภาพสินค้า" picker dialog
+   *  (2026-07-06 product-reference upgrade) — the draft selection lives
+   *  locally until the user saves. */
+  const [productImagePickerForShot, setProductImagePickerForShot] = useState<number | null>(null);
+  const [productImagePickerDraft, setProductImagePickerDraft] = useState<string[]>([]);
   /** Each surviving tile's data URL AND its ORIGINAL 0..8 position in the
    *  3x3 grid (row-major, matching `splitImage`'s output order) — the
    *  original index is what gets persisted into `angleGrid.dismissedIndexes`
@@ -989,6 +1053,20 @@ export function VerticalDramaStoryboardPanel({
                   label: VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[code],
                 }))}
                 testId="vd-storyboard-select-dialogue-language"
+              />
+            ) : null}
+            {onSelectDialogueLanguage &&
+            onSelectThaiAccent &&
+            (selectedDialogueLanguage || "th") === "th" ? (
+              <LanguageSelect
+                label={t2.thaiAccentLabel}
+                value={selectedThaiAccent || "standard_central_thai"}
+                onChange={onSelectThaiAccent}
+                options={VERTICAL_DRAMA_THAI_ACCENTS.map(code => ({
+                  value: code,
+                  label: VERTICAL_DRAMA_THAI_ACCENT_LABELS[code][locale as VdLocale],
+                }))}
+                testId="vd-storyboard-select-thai-accent"
               />
             ) : null}
           </div>
@@ -1667,26 +1745,72 @@ export function VerticalDramaStoryboardPanel({
                 })()}
 
                 {(() => {
-                  // Product tie-in chip (spec §13) — read-only indicator so
-                  // the user sees at a glance which shots carry the product
-                  // placement, alongside the character chips above.
+                  // Product tie-in chip (spec §13 + 2026-07-06 product-
+                  // reference upgrade) — now a first-class image chip like
+                  // the character chips above: shows the actual product
+                  // reference thumbnail (first selected ref, falling back to
+                  // the first available image), a lightbox on click, and a
+                  // "เปลี่ยนภาพสินค้า" affordance so the user can choose which
+                  // product image(s) generation actually uses for this shot.
+                  // Shown whenever the shot carries a tie-in placement OR
+                  // already has product reference URLs, so the picker/change
+                  // action stays reachable even if the read-only placement
+                  // metadata is momentarily absent.
                   const tieIn = productTieInByShot[shotNumber];
-                  if (!tieIn) return null;
+                  const shotProductRefUrls = frame?.productReferenceAssetIds ?? [];
+                  if (!tieIn && shotProductRefUrls.length === 0) return null;
+                  const thumbnailUrl = shotProductRefUrls[0] ?? productImages[0]?.url;
+                  const extraCount = Math.max(0, shotProductRefUrls.length - 1);
                   return (
                     <div className="flex flex-wrap items-center gap-2">
                       <Package aria-hidden="true" className="h-3.5 w-3.5 text-muted-foreground" />
                       <span
-                        className="group flex items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-400/10 py-0.5 pl-2 pr-2 text-xs text-amber-700 dark:text-amber-400"
+                        className="group flex items-center gap-1.5 rounded-full border border-amber-400/60 bg-amber-400/10 py-0.5 pl-0.5 pr-2 text-xs text-amber-700 dark:text-amber-400"
                         title={
-                          tieIn.benefitTalkingPoint
-                            ? tieIn.benefitTalkingPoint
-                            : t(locale, "สินค้าผูกเรื่องปรากฏในช็อตนี้", "Product tie-in appears in this shot")
+                          [
+                            tieIn?.benefitTalkingPoint ??
+                              t(locale, "สินค้าผูกเรื่องปรากฏในช็อตนี้", "Product tie-in appears in this shot"),
+                            tieIn?.requiredDisclosure
+                              ? `${t(locale, "คำเตือนบังคับ", "Required disclosure")}: ${tieIn.requiredDisclosure}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join("\n")
                         }
                         data-testid={`vd-storyboard-product-tie-in-chip-${shotNumber}`}
                       >
-                        {tieIn.productName ??
+                        <button
+                          type="button"
+                          className="relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full disabled:cursor-default"
+                          onClick={() => thumbnailUrl && setLightboxProductImageUrl(thumbnailUrl)}
+                          disabled={!thumbnailUrl}
+                          title={
+                            thumbnailUrl
+                              ? t(locale, "ดูภาพสินค้าอ้างอิง", "View product reference image")
+                              : undefined
+                          }
+                        >
+                          {thumbnailUrl ? (
+                            <img
+                              src={thumbnailUrl}
+                              alt={tieIn?.productName ?? t(locale, "สินค้า", "Product")}
+                              className="h-5 w-5 rounded-full object-cover"
+                            />
+                          ) : (
+                            <Package aria-hidden="true" className="h-4 w-4" />
+                          )}
+                          {extraCount > 0 ? (
+                            <span
+                              className="absolute -bottom-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-amber-500 px-0.5 text-[8px] font-semibold leading-none text-white"
+                              data-testid={`vd-storyboard-product-tie-in-chip-${shotNumber}-extra-count`}
+                            >
+                              {vdCopyWithCount(t2.productImageMultipleBadge, extraCount)}
+                            </span>
+                          ) : null}
+                        </button>
+                        {tieIn?.productName ??
                           t(locale, "สินค้าผูกเรื่อง", "Tied-in product")}
-                        {tieIn.placementStyle ? (
+                        {tieIn?.placementStyle ? (
                           <Badge variant="outline" className="px-1 py-0 text-[9px]">
                             {tieIn.placementStyle === "hero_prop"
                               ? t(locale, "อุปกรณ์หลัก", "hero prop")
@@ -1694,6 +1818,19 @@ export function VerticalDramaStoryboardPanel({
                                 ? t(locale, "พื้นหลัง", "background")
                                 : t(locale, "กำลังใช้งาน", "in use")}
                           </Badge>
+                        ) : null}
+                        {onSaveShotProductReferences ? (
+                          <button
+                            type="button"
+                            className="ml-0.5 text-[10px] font-medium underline decoration-dotted underline-offset-2 hover:text-amber-900 dark:hover:text-amber-300"
+                            onClick={() => {
+                              setProductImagePickerDraft(shotProductRefUrls);
+                              setProductImagePickerForShot(shotNumber);
+                            }}
+                            data-testid={`vd-storyboard-change-product-image-${shotNumber}`}
+                          >
+                            {t2.changeProductImage}
+                          </button>
                         ) : null}
                       </span>
                     </div>
@@ -2221,6 +2358,40 @@ export function VerticalDramaStoryboardPanel({
           initialIndex={lightboxAngleCandidate.index}
           open={lightboxAngleCandidate != null}
           onClose={() => setLightboxAngleCandidate(null)}
+        />
+      ) : null}
+
+      {lightboxProductImageUrl != null ? (
+        <ImageLightbox
+          images={[{ src: lightboxProductImageUrl, alt: t(locale, "ภาพอ้างอิงสินค้า", "Product reference image") }]}
+          open={lightboxProductImageUrl != null}
+          onClose={() => setLightboxProductImageUrl(null)}
+        />
+      ) : null}
+
+      {productImagePickerForShot != null ? (
+        <ProductImagePickerDialog
+          locale={locale}
+          t={t2}
+          shotNumber={productImagePickerForShot}
+          images={productImages}
+          imagesLoading={productImagesLoading}
+          selectedUrls={productImagePickerDraft}
+          onToggle={url =>
+            setProductImagePickerDraft(prev =>
+              prev.includes(url) ? prev.filter(u => u !== url) : [...prev, url]
+            )
+          }
+          maxProductImages={VD_PRODUCT_REFERENCE_IMAGE_CAP}
+          totalReferenceBudget={
+            imageModels.find(m => m.modelId === selectedImageModelId)?.maxReferenceImages
+          }
+          saving={savingProductReferencesForShot === productImagePickerForShot}
+          onSave={() => {
+            onSaveShotProductReferences?.(productImagePickerForShot, productImagePickerDraft);
+            setProductImagePickerForShot(null);
+          }}
+          onClose={() => setProductImagePickerForShot(null)}
         />
       ) : null}
 
@@ -2964,6 +3135,145 @@ function ClipDialogueBox({
           </Button>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * ProductImagePickerDialog (2026-07-06 product-reference upgrade) — lets the
+ * user VIEW every available product reference image for the series (its full
+ * Marketplace Capture image set + direct product image URL) and CHOOSE which
+ * one(s) generation actually uses for this specific shot, instead of the
+ * pipeline silently auto-resolving them. Multi-select grid, currently-used
+ * images pre-checked (via `selectedUrls`, seeded by the caller from
+ * `frame.productReferenceAssetIds`). Saving persists
+ * `productReferenceAssetIds` + `productRefsCustomized: true` on the frame (via
+ * `updateEpisodeDraft`, free) — even an explicit empty selection is saved,
+ * which is what marks the shot as "customized" so the pipeline's
+ * auto-resolution never refills it again. Follows the same fixed-overlay
+ * `role="alertdialog"` pattern the panel's other dialogs use (no new Dialog
+ * primitive introduced).
+ */
+function ProductImagePickerDialog({
+  locale,
+  t: t2,
+  shotNumber,
+  images,
+  imagesLoading,
+  selectedUrls,
+  onToggle,
+  maxProductImages,
+  totalReferenceBudget,
+  saving,
+  onSave,
+  onClose,
+}: {
+  locale: Lang;
+  t: ReturnType<typeof vdCopy>;
+  shotNumber: number;
+  images: VerticalDramaAvailableProductImageView[];
+  imagesLoading: boolean;
+  selectedUrls: string[];
+  onToggle: (url: string) => void;
+  maxProductImages: number;
+  totalReferenceBudget?: number;
+  saving: boolean;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label={t2.productImagePickerTitle}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-lg flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-lg"
+        onClick={e => e.stopPropagation()}
+        data-testid={`vd-storyboard-product-image-picker-${shotNumber}`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <Package aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {t2.productImagePickerTitle}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0"
+            onClick={onClose}
+            aria-label={t(locale, "ปิด", "Close")}
+          >
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {vdCopyWithCount(t2.productImagePickerCapHint, maxProductImages)}
+          {totalReferenceBudget != null
+            ? ` · ${vdCopyWithCount(t2.productImagePickerBudgetHint, totalReferenceBudget)}`
+            : ""}
+        </p>
+
+        {imagesLoading ? (
+          <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+            <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+            {t(locale, "กำลังโหลดภาพ…", "Loading images…")}
+          </div>
+        ) : images.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            {t2.productImagePickerNoImages}
+          </p>
+        ) : (
+          <div className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
+            {images.map(img => {
+              const selected = selectedUrls.includes(img.url);
+              return (
+                <button
+                  key={img.url}
+                  type="button"
+                  className={cn(
+                    "relative aspect-square overflow-hidden rounded-md border-2",
+                    selected ? "border-primary ring-2 ring-primary" : "border-border"
+                  )}
+                  onClick={() => onToggle(img.url)}
+                  data-testid={`vd-storyboard-product-image-option-${shotNumber}-${img.url}`}
+                  aria-pressed={selected}
+                >
+                  <img src={img.url} alt={img.label ?? ""} className="h-full w-full object-cover" />
+                  {selected ? (
+                    <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check aria-hidden="true" className="h-3.5 w-3.5" />
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <span className="text-xs text-muted-foreground">
+            {vdCopyWithCount(t2.productImagePickerSelectedCount, selectedUrls.length)}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onSave}
+            disabled={saving}
+            data-testid={`vd-storyboard-product-image-picker-save-${shotNumber}`}
+          >
+            {saving ? (
+              <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              t2.productImagePickerSave
+            )}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

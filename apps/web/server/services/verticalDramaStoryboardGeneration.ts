@@ -31,12 +31,17 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
+  verticalDramaLocaleEnglishName,
+  type VerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries";
+import {
   resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -171,7 +176,7 @@ export interface GenerateStoryboardShotgridParams {
   episodeId: number;
   episodeTitle: string;
   episodeNumber: number;
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   durationSeconds: number;
   storySource: {
     logline?: string;
@@ -220,7 +225,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   const langInstruction =
     params.locale === "th"
       ? "Write all human-readable string values (summaries, narrative_purpose, visual_description, dialogue_excerpt, subtitle_text, plain_text_storyboard) in natural Thai."
-      : "Write all human-readable string values in English.";
+      : `Write all human-readable string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
 
   const { storySource } = params;
   const charactersWithRef = params.characters.filter(c => c.referenceImageUrl);
@@ -237,7 +242,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   const identityLockInstruction = charactersWithRef.length
     ? `Identity lock: ${charactersWithRef.map(c => c.characterId).join(", ")} ${
         charactersWithRef.length === 1 ? "has" : "have"
-      } an approved reference image attached below. List them in "required_character_refs" for every shot they appear in, and write each "image_prompt" so a downstream image model can keep face, hair, and wardrobe consistent with that reference — do not invent a different appearance for these characters.`
+      } an approved reference image attached below. List them in "required_character_refs" for every shot they appear in, and write each "image_prompt" so a downstream image model can keep face, hair, and wardrobe consistent with that reference — do not invent a different appearance for these characters.\n${VD_CHARACTER_LOCK_INSTRUCTION}`
     : null;
 
   const sceneBeatLines = params.sceneBeats?.length

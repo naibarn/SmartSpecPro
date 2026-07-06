@@ -16,7 +16,10 @@ import {
   mergeAndTrimReferenceImageUrls,
   resolveProductReferenceImageUrls,
   resolveMarketplaceCaptureProductImageUrls,
+  listAvailableProductReferenceImages,
+  resolveFrameProductReferenceAssetIds,
   mergeProductLockNegativePrompt,
+  sanitizeBrandMentionsInPrompt,
   VD_PRODUCT_LOCK_INSTRUCTION,
   VD_PRODUCT_LOCK_VIDEO_INSTRUCTION,
   VD_PRODUCT_LOCK_NEGATIVE_TERMS,
@@ -234,28 +237,52 @@ describe("tieInShotNumberSet / findPlacementForShot", () => {
 });
 
 describe("appendProductPresenceDirective", () => {
-  it("appends a natural, non-ad-poster placement direction", () => {
+  it("appends a natural, non-ad-poster placement direction, brand-neutral by default", () => {
     const result = appendProductPresenceDirective("A woman sits at a cafe table.", "GlowCream", {
       shotNumbers: [1],
       storyFunction: "daily_use",
       placementStyle: "hero_prop",
     });
     expect(result).toContain("A woman sits at a cafe table.");
-    expect(result).toContain("GlowCream");
+    // Brand-neutral by design (2026-07-06 Thai ad-compliance upgrade) — the
+    // brand name must never appear in the outgoing directive text.
+    expect(result).not.toContain("GlowCream");
     expect(result.toLowerCase()).toContain("hero prop");
     // The directive explicitly forbids an ad-poster look — the negative
     // instruction itself legitimately contains these words, so assert the
     // instruction is present rather than absent.
     expect(result).toMatch(/never as packaging art, a poster/i);
+    expect(result).toMatch(/never render brand names, logos as text/i);
   });
 
-  it("falls back to a generic product name when absent", () => {
+  it("uses a category descriptor when provided instead of the brand name", () => {
+    const result = appendProductPresenceDirective(
+      "A shot.",
+      "GlowCream",
+      { shotNumbers: [1], storyFunction: "daily_use", placementStyle: "background" },
+      "skincare bottle",
+    );
+    expect(result).toContain("the skincare bottle shown in the reference image");
+    expect(result).not.toContain("GlowCream");
+  });
+
+  it("falls back to the generic reference-image descriptor when no category is given", () => {
     const result = appendProductPresenceDirective("A shot.", undefined, {
       shotNumbers: [1],
       storyFunction: "daily_use",
       placementStyle: "background",
     });
-    expect(result).toContain("the tied-in product");
+    expect(result).toContain("the product shown in the reference image");
+  });
+
+  it("sanitizes a brand name that already appears in the base image prompt", () => {
+    const result = appendProductPresenceDirective("A woman holds GlowCream on the table.", "GlowCream", {
+      shotNumbers: [1],
+      storyFunction: "daily_use",
+      placementStyle: "hero_prop",
+    });
+    expect(result).not.toContain("GlowCream");
+    expect(result).toContain("the product shown in the reference image");
   });
 });
 
@@ -480,5 +507,217 @@ describe("resolveMarketplaceCaptureProductImageUrls", () => {
     );
     const urls = await resolveWithMock("capture-empty", { userId: 1 });
     expect(urls).toEqual([]);
+  });
+});
+
+describe("listAvailableProductReferenceImages", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.doUnmock("../marketplaceInsightService");
+  });
+
+  it("returns only the direct URL when no capture is linked", async () => {
+    const images = await listAvailableProductReferenceImages({
+      productImageUrl: "https://cdn.example.test/direct.png",
+      auth: { userId: 1 },
+    });
+    expect(images).toEqual([{ url: "https://cdn.example.test/direct.png", source: "direct" }]);
+  });
+
+  it("returns [] when neither a capture nor a direct URL is set", async () => {
+    const images = await listAvailableProductReferenceImages({ auth: { userId: 1 } });
+    expect(images).toEqual([]);
+  });
+
+  it("unions the FULL capture image set (not capped at 3) with the direct URL, capture images first", async () => {
+    vi.doMock("../marketplaceInsightService", () => ({
+      listMarketplaceInsightsByCapture: vi.fn().mockResolvedValue([
+        {
+          insightType: "storytelling_handoff",
+          payloadJson: {
+            selectedImages: [
+              { url: "https://cdn.example.test/1.png", role: "hero" },
+              { url: "https://cdn.example.test/2.png", role: "detail" },
+              { url: "https://cdn.example.test/3.png", role: "detail" },
+              { url: "https://cdn.example.test/4.png", role: "detail" },
+              { url: "https://cdn.example.test/5.png", role: "detail" },
+            ],
+          },
+        },
+      ]),
+      buildBasicStorytellingHandoffFromCapture: vi.fn(),
+    }));
+    const { listAvailableProductReferenceImages: listWithMock } = await import(
+      "../verticalDramaProductTieIn"
+    );
+    const images = await listWithMock({
+      productImageUrl: "https://cdn.example.test/direct.png",
+      marketplaceCaptureId: "capture-1",
+      auth: { userId: 1, tenantId: "tenant-a" },
+    });
+    // All 5 capture images (well beyond the generation-time cap of 3) plus the direct URL.
+    expect(images).toHaveLength(6);
+    expect(images.slice(0, 5).every((img) => img.source === "capture")).toBe(true);
+    expect(images[5]).toEqual({ url: "https://cdn.example.test/direct.png", source: "direct" });
+  });
+
+  it("dedupes when the direct URL also appears in the capture image set", async () => {
+    vi.doMock("../marketplaceInsightService", () => ({
+      listMarketplaceInsightsByCapture: vi.fn().mockResolvedValue([
+        {
+          insightType: "storytelling_handoff",
+          payloadJson: { selectedImages: [{ url: "https://cdn.example.test/same.png" }] },
+        },
+      ]),
+      buildBasicStorytellingHandoffFromCapture: vi.fn(),
+    }));
+    const { listAvailableProductReferenceImages: listWithMock } = await import(
+      "../verticalDramaProductTieIn"
+    );
+    const images = await listWithMock({
+      productImageUrl: "https://cdn.example.test/same.png",
+      marketplaceCaptureId: "capture-1",
+      auth: { userId: 1 },
+    });
+    expect(images).toEqual([{ url: "https://cdn.example.test/same.png", source: "capture" }]);
+  });
+
+  it("gracefully degrades to the direct URL only when the capture read throws", async () => {
+    vi.doMock("../marketplaceInsightService", () => ({
+      listMarketplaceInsightsByCapture: vi.fn().mockRejectedValue(new Error("capture_not_found")),
+      buildBasicStorytellingHandoffFromCapture: vi.fn(),
+    }));
+    const { listAvailableProductReferenceImages: listWithMock } = await import(
+      "../verticalDramaProductTieIn"
+    );
+    const images = await listWithMock({
+      productImageUrl: "https://cdn.example.test/direct.png",
+      marketplaceCaptureId: "capture-cross-tenant",
+      auth: { userId: 1, tenantId: "tenant-a" },
+    });
+    expect(images).toEqual([{ url: "https://cdn.example.test/direct.png", source: "direct" }]);
+  });
+});
+
+describe("resolveFrameProductReferenceAssetIds — override semantics", () => {
+  it("never-touched frame (productRefsCustomized absent): auto-merges the resolved product refs", () => {
+    const result = resolveFrameProductReferenceAssetIds({
+      existingProductReferenceAssetIds: [],
+      productRefsCustomized: undefined,
+      resolvedProductRefUrls: ["https://cdn.example.test/auto-1.png"],
+    });
+    expect(result).toEqual(["https://cdn.example.test/auto-1.png"]);
+  });
+
+  it("never-touched frame with prior auto-filled refs: merges + dedupes with the newly resolved refs", () => {
+    const result = resolveFrameProductReferenceAssetIds({
+      existingProductReferenceAssetIds: ["https://cdn.example.test/auto-1.png"],
+      productRefsCustomized: false,
+      resolvedProductRefUrls: ["https://cdn.example.test/auto-1.png", "https://cdn.example.test/auto-2.png"],
+    });
+    expect(result).toEqual([
+      "https://cdn.example.test/auto-1.png",
+      "https://cdn.example.test/auto-2.png",
+    ]);
+  });
+
+  it("customized frame with a non-empty user selection: passes through as-is, ignores newly resolved refs", () => {
+    const result = resolveFrameProductReferenceAssetIds({
+      existingProductReferenceAssetIds: ["https://cdn.example.test/user-chosen.png"],
+      productRefsCustomized: true,
+      resolvedProductRefUrls: ["https://cdn.example.test/auto-1.png"],
+    });
+    expect(result).toEqual(["https://cdn.example.test/user-chosen.png"]);
+  });
+
+  it("customized frame with an EXPLICIT empty selection: stays empty, auto-resolution never refills it", () => {
+    const result = resolveFrameProductReferenceAssetIds({
+      existingProductReferenceAssetIds: [],
+      productRefsCustomized: true,
+      resolvedProductRefUrls: ["https://cdn.example.test/auto-1.png"],
+    });
+    expect(result).toEqual([]);
+  });
+
+  it("distinguishes 'customized to empty' from 'never touched' — same existing value, different productRefsCustomized, different outcome", () => {
+    const neverTouched = resolveFrameProductReferenceAssetIds({
+      existingProductReferenceAssetIds: [],
+      productRefsCustomized: undefined,
+      resolvedProductRefUrls: ["https://cdn.example.test/auto-1.png"],
+    });
+    const customizedEmpty = resolveFrameProductReferenceAssetIds({
+      existingProductReferenceAssetIds: [],
+      productRefsCustomized: true,
+      resolvedProductRefUrls: ["https://cdn.example.test/auto-1.png"],
+    });
+    expect(neverTouched).toEqual(["https://cdn.example.test/auto-1.png"]);
+    expect(customizedEmpty).toEqual([]);
+  });
+});
+
+describe("sanitizeBrandMentionsInPrompt — brand/public-figure sanitize pass", () => {
+  it("replaces every occurrence of the brand name with a generic descriptor", () => {
+    const result = sanitizeBrandMentionsInPrompt(
+      "She reaches for GlowCream on the shelf. GlowCream sparkles in the light.",
+      ["GlowCream"],
+    );
+    expect(result).not.toContain("GlowCream");
+    expect(result.match(/the product shown in the reference image/g)?.length).toBe(2);
+  });
+
+  it("is case-insensitive and word-boundary safe (does not corrupt unrelated words)", () => {
+    const result = sanitizeBrandMentionsInPrompt(
+      "the GLOWCREAM bottle sits near a glowcreamy light source",
+      ["GlowCream"],
+    );
+    expect(result).toContain("the the product shown in the reference image bottle");
+    // "glowcreamy" is not a whole-word match — must remain untouched.
+    expect(result).toContain("glowcreamy");
+  });
+
+  it("uses the category descriptor when provided", () => {
+    const result = sanitizeBrandMentionsInPrompt("GlowCream is visible on the table.", ["GlowCream"], "skincare bottle");
+    expect(result).toContain("the skincare bottle shown in the reference image is visible on the table.");
+  });
+
+  it("is a no-op when no brand names are configured", () => {
+    const prompt = "A clean, brand-free product shot.";
+    expect(sanitizeBrandMentionsInPrompt(prompt, [undefined, null, ""])).toBe(prompt);
+  });
+
+  it("leaves a prompt with no brand mention untouched", () => {
+    const prompt = "A woman sits at a cafe table with a generic bottle.";
+    expect(sanitizeBrandMentionsInPrompt(prompt, ["GlowCream"])).toBe(prompt);
+  });
+});
+
+describe("planTieIn — productCategory -> requiredDisclosure (Thai ad-compliance)", () => {
+  it("surfaces the category-mandated disclosure line on the usage output", () => {
+    const result = planTieIn(
+      planInput({ config: config({ productCategory: "supplement" }) }),
+    );
+    expect(result.usage.requiredDisclosure).toBe("อ่านคำเตือนในฉลากก่อนบริโภค");
+  });
+
+  it("is undefined for a category with no mandated disclosure", () => {
+    const result = planTieIn(
+      planInput({ config: config({ productCategory: "general_goods" }) }),
+    );
+    expect(result.usage.requiredDisclosure).toBeUndefined();
+  });
+
+  it("is undefined when no productCategory is set (backward-compat)", () => {
+    const result = planTieIn(planInput());
+    expect(result.usage.requiredDisclosure).toBeUndefined();
+  });
+
+  it("hard-blocks + warns on a Thai-law prohibited claim even outside the generic regulated-claim list", () => {
+    const result = planTieIn(
+      planInput({ proposedClaims: ["ผลิตภัณฑ์นี้รักษาโรคได้หายขาด100%"] }),
+    );
+    expect(result.blocked).toBe(true);
+    expect(
+      result.warnings.some((w) => w.code === "VD_TIE_IN_THAI_AD_LAW_VIOLATION"),
+    ).toBe(true);
   });
 });

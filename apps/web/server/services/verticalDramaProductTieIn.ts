@@ -26,6 +26,15 @@ import type {
   VerticalDramaTieInUsage,
   VerticalDramaWarning,
 } from "@shared/verticalDramaSeries";
+import {
+  resolveRequiredDisclosureForCategory,
+  screenThaiAdCompliance,
+} from "@shared/verticalDramaSeries/thaiAdCompliance";
+
+// Re-exported so callers of this service don't need a second import for the
+// Thai-law-specific compliance screen alongside the generic `screenClaims`
+// gate below.
+export { screenThaiAdCompliance, resolveRequiredDisclosureForCategory };
 
 /* -------------------------------------------------------------------------- */
 /* Regulated categories (spec §13)                                             */
@@ -170,6 +179,23 @@ export function planTieIn(input: PlanTieInInput): TieInPlanResult {
   }
   if (claimReview.hardBlock) blocked = true;
 
+  // 3b) Thai advertising-law-specific prohibited-claim screening (additive,
+  // separate pattern list from the generic regulated-claim check above —
+  // always hard-blocks, since these are legal-compliance violations, not
+  // just unsupported marketing claims).
+  const thaiAdReview = screenThaiAdCompliance(input.proposedClaims ?? []);
+  if (thaiAdReview.hasViolations) {
+    blocked = true;
+    for (const v of thaiAdReview.violations) {
+      warnings.push({
+        code: "VD_TIE_IN_THAI_AD_LAW_VIOLATION",
+        severity: "blocking",
+        message: `Thai advertising law prohibited claim ("${v.matchedPattern}") detected in: "${v.claim}".`,
+        repairable: true,
+      });
+    }
+  }
+
   // 4) Approved product references for product visuals when available.
   if (config.referenceAssetIds.length > 0 && input.hasApprovedProductReferences === false) {
     warnings.push({
@@ -212,6 +238,11 @@ export function planTieIn(input: PlanTieInInput): TieInPlanResult {
     },
     disclosureRequired,
     disclosureText: disclosureRequired ? input.disclosureText : undefined,
+    // Category-mandated Thai-law disclosure line (spec §13 extension) —
+    // surfaced independently of `disclosurePolicy`/`disclosureText` above so
+    // it always appears when the category requires one, even if the general
+    // disclosure policy is `"not_required"`.
+    requiredDisclosure: resolveRequiredDisclosureForCategory(config.productCategory),
     // approvedByUserId is set only on explicit approval (see approveTieIn).
   };
 
@@ -552,15 +583,33 @@ export const VD_PRODUCT_LOCK_VIDEO_INSTRUCTION =
  * pass has to hard-truncate at the character cap. Caller is responsible for
  * enforcing the final prompt length cap (`VD_IMAGE_PROMPT_MAX` via
  * `ensurePromptWithinLimit`) — this only appends, never truncates.
+ *
+ * Brand-neutral by design (Thai ad-compliance + video-policy guard,
+ * 2026-07-06): the directive NEVER names the product/brand — brand identity
+ * comes from the attached product reference image + the product lock, not
+ * prompt text. `categoryDescriptor` (e.g. "skincare bottle") lets the
+ * directive read more naturally than the generic reference-image phrasing
+ * alone; omit it to fall back to `buildGenericProductDescriptor`'s default.
+ * `productName` is still accepted (for backward-compat call sites) but is
+ * intentionally never interpolated into the outgoing directive text.
  */
 export function appendProductPresenceDirective(
   imagePrompt: string,
   productName: string | undefined,
   placement: VerticalDramaShotProductPlacement,
+  categoryDescriptor?: string,
 ): string {
-  const name = productName?.trim() || "the tied-in product";
-  const directive = `Product placement (natural, not an advertisement): ${name} must be visibly present in this shot — ${PLACEMENT_STYLE_DIRECTIVE[placement.placementStyle]}. Render it as an ordinary object in the world of the scene, photorealistic and consistent with the attached product reference image, never as packaging art, a poster, or on-image text/branding overlay.`;
-  return [imagePrompt.trim(), directive, VD_PRODUCT_LOCK_INSTRUCTION].filter(Boolean).join(" ");
+  const genericName = buildGenericProductDescriptor(categoryDescriptor);
+  const directive = `Product placement (natural, not an advertisement): ${genericName} must be visibly present in this shot — ${PLACEMENT_STYLE_DIRECTIVE[placement.placementStyle]}. Render it as an ordinary object in the world of the scene, photorealistic and consistent with the attached product reference image, never as packaging art, a poster, or on-image text/branding overlay. Never render brand names, logos as text, or trademarked wording as prompt-described text — any branding visible must come only from the attached reference image itself.`;
+  // Defensive sanitize pass over the caller's own `imagePrompt` too — in case
+  // an earlier pipeline stage's LLM output already wrote the literal brand
+  // name into the base shot description.
+  const sanitizedImagePrompt = sanitizeBrandMentionsInPrompt(
+    imagePrompt.trim(),
+    [productName],
+    categoryDescriptor,
+  );
+  return [sanitizedImagePrompt, directive, VD_PRODUCT_LOCK_INSTRUCTION].filter(Boolean).join(" ");
 }
 
 /**
@@ -579,6 +628,70 @@ export function mergeProductLockNegativePrompt(
   return existing
     ? `${existing}, ${VD_PRODUCT_LOCK_NEGATIVE_PROMPT_FRAGMENT}`
     : VD_PRODUCT_LOCK_NEGATIVE_PROMPT_FRAGMENT;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Brand / public-figure sanitize pass (Thai ad-compliance + video-policy     */
+/* guard, 2026-07-06)                                                         */
+/*                                                                            */
+/* Provider-facing prompts (image AND video) must never contain the product's */
+/* brand/trademark name, a real public figure/celebrity name, or a real       */
+/* company name — that identity must come from the attached reference image  */
+/* + the product lock, never from prompt text (some providers content-policy */
+/* reject brand-name/trademark/celebrity mentions in generation prompts, and  */
+/* it is also a marketing/IP risk regardless). This is a rule-based find/     */
+/* replace over the KNOWN product/brand name from the tie-in config — it does */
+/* NOT attempt open-ended celebrity/brand detection (that would need an LLM   */
+/* call); the matching skill instructions ("never name real people,           */
+/* celebrities, or brands") are the complementary guard for names the caller  */
+/* doesn't already know about.                                               */
+/* -------------------------------------------------------------------------- */
+
+/** Generic, brand-neutral placeholder text used when no better category descriptor is available. */
+const VD_GENERIC_PRODUCT_DESCRIPTOR_FALLBACK = "the product shown in the reference image";
+
+/**
+ * Build a generic, brand-neutral descriptor for the product — prefers a
+ * caller-supplied category descriptor (e.g. "the skincare bottle") when
+ * provided, else falls back to the reference-image phrasing.
+ */
+export function buildGenericProductDescriptor(categoryDescriptor?: string): string {
+  const trimmed = categoryDescriptor?.trim();
+  return trimmed ? `the ${trimmed} shown in the reference image` : VD_GENERIC_PRODUCT_DESCRIPTOR_FALLBACK;
+}
+
+/** Escape a string for safe use inside a `RegExp` constructor. */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Strip/replace every occurrence of the product/brand name (and, if
+ * provided, any additional known aliases — e.g. a shortened brand name) in an
+ * outgoing PROVIDER-FACING prompt string with a generic, brand-neutral
+ * descriptor. Case-insensitive, word-boundary match so a brand name that is
+ * also a common word (e.g. "Glow") is only replaced as a whole word, not
+ * inside unrelated words. No-op (returns the prompt unchanged) when no
+ * brand/product name is configured — a tie-in with no `productName` has
+ * nothing to sanitize.
+ */
+export function sanitizeBrandMentionsInPrompt(
+  prompt: string,
+  brandNames: Array<string | undefined | null>,
+  categoryDescriptor?: string,
+): string {
+  const names = brandNames
+    .map((n) => n?.trim())
+    .filter((n): n is string => Boolean(n && n.length > 0));
+  if (names.length === 0) return prompt;
+
+  const genericDescriptor = buildGenericProductDescriptor(categoryDescriptor);
+  let result = prompt;
+  for (const name of names) {
+    const pattern = new RegExp(`\\b${escapeRegExp(name)}\\b`, "gi");
+    result = result.replace(pattern, genericDescriptor);
+  }
+  return result.replace(/\s{2,}/g, " ").trim();
 }
 
 /** Max number of product reference images resolved for a tie-in (before the character-ref merge/trim step). */
@@ -652,6 +765,104 @@ export async function resolveMarketplaceCaptureProductImageUrls(
     // skip, never crash tie-in image resolution over a bad capture link.
     return [];
   }
+}
+
+/** One product reference image the picker can offer the user (spec: "control the reference"). */
+export interface VerticalDramaAvailableProductImage {
+  url: string;
+  source: "capture" | "direct";
+  label?: string;
+}
+
+/**
+ * List EVERY available product reference image for a series' tie-in config —
+ * the full Marketplace Capture image set (not the generation-time capped-3
+ * subset `resolveProductReferenceImageUrls` returns) plus the series' own
+ * `productImageUrl`, for the storyboard panel's "เปลี่ยนภาพสินค้า" picker to
+ * choose from. Read-only, user/tenant-scoped (delegates to
+ * `getMarketplaceCaptureForUser`, which is user-scoped the same way
+ * `resolveMarketplaceCaptureProductImageUrls` already is), deduped by URL,
+ * capture images first (curated/best evidence) then the direct URL. Never
+ * throws: a missing/inaccessible/cross-tenant capture, or one with no
+ * images, degrades to just the direct URL (or `[]`).
+ */
+export async function listAvailableProductReferenceImages(input: {
+  productImageUrl?: string;
+  marketplaceCaptureId?: string;
+  auth: { userId: number; tenantId?: string };
+}): Promise<VerticalDramaAvailableProductImage[]> {
+  const images: VerticalDramaAvailableProductImage[] = [];
+  const seen = new Set<string>();
+
+  if (input.marketplaceCaptureId?.trim()) {
+    try {
+      const {
+        listMarketplaceInsightsByCapture,
+        buildBasicStorytellingHandoffFromCapture,
+      } = await import("./marketplaceInsightService");
+      const insights = await listMarketplaceInsightsByCapture(input.marketplaceCaptureId, input.auth);
+      const syncedHandoff = insights.find(
+        (insight: { insightType?: string }) => insight.insightType === "storytelling_handoff",
+      );
+      const handoff =
+        (syncedHandoff?.payloadJson as
+          | { selectedImages?: Array<{ url?: string; role?: string }> }
+          | undefined) ?? (await buildBasicStorytellingHandoffFromCapture(input.marketplaceCaptureId, input.auth));
+      const selectedImages = Array.isArray((handoff as { selectedImages?: unknown })?.selectedImages)
+        ? (handoff as { selectedImages: Array<{ url?: string; role?: string }> }).selectedImages
+        : [];
+      for (const img of selectedImages) {
+        const url = typeof img?.url === "string" ? img.url.trim() : "";
+        if (!url || seen.has(url)) continue;
+        seen.add(url);
+        images.push({
+          url,
+          source: "capture",
+          label: typeof img.role === "string" && img.role ? img.role : undefined,
+        });
+      }
+    } catch {
+      // Capture missing / inaccessible / cross-tenant / any read error —
+      // graceful skip, matching `resolveMarketplaceCaptureProductImageUrls`.
+    }
+  }
+
+  const manualUrl = input.productImageUrl?.trim();
+  if (manualUrl && !seen.has(manualUrl)) {
+    seen.add(manualUrl);
+    images.push({ url: manualUrl, source: "direct" });
+  }
+
+  return images;
+}
+
+/**
+ * Decide a frame's effective `productReferenceAssetIds` when the pipeline
+ * (re)generates `start_frame_render_plan` (2026-07-06 product-reference
+ * upgrade — override semantics). Pure/unit-testable, called by
+ * `verticalDramaEpisodePipeline.ts`'s tie-in shot-mapping step for every
+ * frame that carries a placement:
+ *
+ *   - `productRefsCustomized: true` (the user explicitly set/cleared this
+ *     shot's product reference image(s) via the storyboard panel's picker) —
+ *     USE THE EXISTING VALUE AS-IS, even `[]` (an explicit "no product image
+ *     for this shot" choice); auto-resolution never overwrites it.
+ *   - otherwise (never touched, or `productRefsCustomized` absent/false —
+ *     the pre-existing default for every frame created before this field
+ *     existed) — merge the newly-resolved `productRefUrls` into whatever was
+ *     already there, deduped (the pre-existing auto-merge behavior,
+ *     unchanged).
+ */
+export function resolveFrameProductReferenceAssetIds(input: {
+  existingProductReferenceAssetIds: string[] | undefined;
+  productRefsCustomized: boolean | undefined;
+  resolvedProductRefUrls: string[];
+}): string[] {
+  const existing = input.existingProductReferenceAssetIds ?? [];
+  if (input.productRefsCustomized) return existing;
+  return input.resolvedProductRefUrls.length
+    ? Array.from(new Set([...existing, ...input.resolvedProductRefUrls]))
+    : existing;
 }
 
 /**

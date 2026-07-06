@@ -49,6 +49,10 @@ import {
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 import { debugError } from "../_core/logger";
+import {
+  verticalDramaLocaleEnglishName,
+  type VerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -129,7 +133,7 @@ export interface RunSeriesMemoryPlanningParams {
   seriesId: number;
   episodeId: number;
   episodeNumber: number;
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   /** Raw (or relevant-subset) output of `vertical-drama-script-builder`. */
   script: Record<string, unknown>;
   /** Raw (or relevant-subset) output of `vertical-drama-storyboard-shotgrid`. */
@@ -154,7 +158,7 @@ function buildUserPrompt(params: RunSeriesMemoryPlanningParams): string {
   const langInstruction =
     params.locale === "th"
       ? "Write all human-readable string values (summaries, recaps, notes) in natural Thai."
-      : "Write all human-readable string values in English.";
+      : `Write all human-readable string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
 
   return [
     `episode_number: ${params.episodeNumber}`,

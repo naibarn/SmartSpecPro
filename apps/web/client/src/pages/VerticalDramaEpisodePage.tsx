@@ -52,10 +52,12 @@ import type {
   RunResult,
   VerticalDramaMemoryKind,
   VerticalDramaPipelineStage,
+  VerticalDramaThaiAccent,
 } from "@shared/verticalDramaSeries";
 import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 import type {
   VerticalDramaAssetUrlMap,
+  VerticalDramaAvailableProductImageView,
   VerticalDramaCapableModel,
   VerticalDramaCharacterPortraitMap,
   VerticalDramaClipDialogueLineView,
@@ -66,6 +68,10 @@ import type {
 } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import {
+  isCharacterLockPolicyFailureMessage,
+  VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
+} from "@shared/verticalDramaSeries/characterLock";
 
 // Persistent right-side reference panel (image swap) — collapsed/width state
 // persisted the same way `StoryboardReviewPage.tsx`'s own right panel does,
@@ -602,7 +608,11 @@ function EpisodeWorkspaceShell({
   const resolveMediaAssetForImportMutation =
     trpc.verticalDramaCharacters.resolveMediaAssetForImport.useMutation();
 
-  async function pollStartFrameTask(taskId: string, shotNumber: number) {
+  async function pollStartFrameTask(
+    taskId: string,
+    shotNumber: number,
+    softenLevel = 0
+  ) {
     setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
     try {
       // Bounded poll (5 min max at 2.5s intervals) — matches the timeout
@@ -638,6 +648,30 @@ function EpisodeWorkspaceShell({
         }
         if (status === "failed") {
           const errorMessage = (task as { errorMessage?: string } | null)?.errorMessage;
+          // Character-lock auto-soften (2026-07-06 prompt-safety upgrade) —
+          // on a policy/content/safety-category provider failure, resubmit
+          // the SAME mutation with `softenLevel + 1` (fresh idempotency key)
+          // instead of surfacing a generic failure toast, up to the max
+          // soften level. Never switches models — only softens prompt text.
+          if (
+            isCharacterLockPolicyFailureMessage(errorMessage) &&
+            softenLevel < VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL
+          ) {
+            const nextLevel = softenLevel + 1;
+            toast.info(
+              lang === "th"
+                ? `ปรับ prompt ให้อ่อนลงอัตโนมัติเนื่องจากติดนโยบาย model (ครั้งที่ ${nextLevel})`
+                : `Automatically softening the prompt due to a model policy rejection (attempt ${nextLevel})`
+            );
+            generateStartFrameImageMutation.mutate({
+              seriesId,
+              episodeId,
+              shotNumber,
+              softenLevel: nextLevel,
+              idempotencyKey: crypto.randomUUID(),
+            });
+            return;
+          }
           toast.error(
             lang === "th"
               ? `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`
@@ -662,7 +696,7 @@ function EpisodeWorkspaceShell({
   const generateStartFrameImageMutation =
     trpc.verticalDramaEpisodes.generateStartFrameImage.useMutation({
       onSuccess: (data, variables) => {
-        void pollStartFrameTask(data.taskId, variables.shotNumber);
+        void pollStartFrameTask(data.taskId, variables.shotNumber, variables.softenLevel ?? 0);
       },
       onError: err => toast.error(err.message),
     });
@@ -717,7 +751,8 @@ function EpisodeWorkspaceShell({
   async function pollAngleVariationsTask(
     taskId: string,
     shotNumber: number,
-    dismissedIndexes: number[] = []
+    dismissedIndexes: number[] = [],
+    softenLevel = 0
   ) {
     if (angleVariationsPollInFlightRef.current.has(shotNumber)) return;
     angleVariationsPollInFlightRef.current.add(shotNumber);
@@ -740,6 +775,29 @@ function EpisodeWorkspaceShell({
         }
         if (status === "failed") {
           const errorMessage = (task as { errorMessage?: string } | null)?.errorMessage;
+          // Character-lock auto-soften — same convention as `pollStartFrameTask`.
+          if (
+            isCharacterLockPolicyFailureMessage(errorMessage) &&
+            softenLevel < VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL
+          ) {
+            const nextLevel = softenLevel + 1;
+            toast.info(
+              lang === "th"
+                ? `ปรับ prompt ให้อ่อนลงอัตโนมัติเนื่องจากติดนโยบาย model (ครั้งที่ ${nextLevel})`
+                : `Automatically softening the prompt due to a model policy rejection (attempt ${nextLevel})`
+            );
+            persistAngleGrid(shotNumber, null);
+            angleVariationsPollInFlightRef.current.delete(shotNumber);
+            setPollingAngleVariationsShot(current => (current === shotNumber ? null : current));
+            generateAngleVariationsMutation.mutate({
+              seriesId,
+              episodeId,
+              shotNumber,
+              softenLevel: nextLevel,
+              idempotencyKey: crypto.randomUUID(),
+            });
+            return;
+          }
           toast.error(
             lang === "th"
               ? `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`
@@ -769,7 +827,12 @@ function EpisodeWorkspaceShell({
         // observes completion, the resume-on-load effect below can pick the
         // task back up instead of the grid being silently lost forever.
         persistAngleGrid(variables.shotNumber, { pendingTaskId: data.taskId, dismissedIndexes: [] });
-        void pollAngleVariationsTask(data.taskId, variables.shotNumber);
+        void pollAngleVariationsTask(
+          data.taskId,
+          variables.shotNumber,
+          [],
+          variables.softenLevel ?? 0
+        );
       },
       onError: err => toast.error(err.message),
     });
@@ -1034,9 +1097,33 @@ function EpisodeWorkspaceShell({
       | undefined;
     const productName = rawProductTieIn?.productName;
 
+    // Additive (2026-07-06 Thai ad-compliance upgrade) — per-clip mandated
+    // disclosure line, keyed by the clip's source shot number, from the
+    // already-loaded `motionPromptPack.clips[].requiredDisclosure` (set by
+    // `generateShotVideoPrompt` when the shot's product category requires
+    // one). Read here rather than re-deriving from the tie-in config alone,
+    // since the category->disclosure mapping is resolved server-side at
+    // generation time.
+    const pack = episodeDetailQuery.data?.motionPromptPack as
+      | { clips?: Array<{ sourceShotNumbers?: number[]; requiredDisclosure?: string }> }
+      | null
+      | undefined;
+    const requiredDisclosureByShot: Record<number, string> = {};
+    for (const clip of pack?.clips ?? []) {
+      if (!clip.requiredDisclosure) continue;
+      for (const shotNumber of clip.sourceShotNumbers ?? []) {
+        requiredDisclosureByShot[shotNumber] = clip.requiredDisclosure;
+      }
+    }
+
     const result: Record<
       number,
-      { productName?: string; placementStyle?: "hero_prop" | "background" | "in_use_moment"; benefitTalkingPoint?: string }
+      {
+        productName?: string;
+        placementStyle?: "hero_prop" | "background" | "in_use_moment";
+        benefitTalkingPoint?: string;
+        requiredDisclosure?: string;
+      }
     > = {};
     for (const raw of tieIns) {
       if (!raw || typeof raw !== "object") continue;
@@ -1066,11 +1153,72 @@ function EpisodeWorkspaceShell({
       for (const n of shotNumbers) {
         const shotNumber = typeof n === "number" ? n : Number(n);
         if (!Number.isInteger(shotNumber) || shotNumber < 1 || shotNumber > 9) continue;
-        result[shotNumber] = { productName, placementStyle, benefitTalkingPoint };
+        result[shotNumber] = {
+          productName,
+          placementStyle,
+          benefitTalkingPoint,
+          requiredDisclosure: requiredDisclosureByShot[shotNumber],
+        };
       }
     }
     return result;
-  }, [episodeDetailQuery.data?.script, seriesQuery.data?.series]);
+  }, [
+    episodeDetailQuery.data?.script,
+    episodeDetailQuery.data?.motionPromptPack,
+    seriesQuery.data?.series,
+  ]);
+
+  /**
+   * Every available product reference image for the series' tie-in config
+   * (2026-07-06 product-reference upgrade) — the storyboard panel's
+   * "เปลี่ยนภาพสินค้า" picker source list. Enabled only once tie-in shots
+   * actually exist for this episode (`productTieInByShot` non-empty), so the
+   * query is never fired for episodes without a product tie-in.
+   */
+  const productImagesQuery = trpc.verticalDramaSeries.listProductImages.useQuery(
+    { seriesId },
+    { enabled: Boolean(seriesId) && Object.keys(productTieInByShot).length > 0 }
+  );
+
+  const [savingProductReferencesForShot, setSavingProductReferencesForShot] =
+    useState<number | null>(null);
+  const saveShotProductReferencesMutation =
+    trpc.verticalDramaEpisodes.updateEpisodeDraft.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th" ? "อัปเดตภาพอ้างอิงสินค้าแล้ว" : "Product reference image(s) updated."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  /**
+   * Persist a shot's user-chosen product reference image URL(s) —
+   * `productReferenceAssetIds` + `productRefsCustomized: true` (even for an
+   * explicit empty selection, so the pipeline's auto-resolution never
+   * refills this shot again — see `verticalDramaEpisodePipeline.ts`'s
+   * `productRefsCustomized` gate). Free `updateEpisodeDraft` JSONB-patch,
+   * same convention as `handleSaveStartFramePrompt`/`persistAngleGrid`.
+   */
+  function handleSaveShotProductReferences(shotNumber: number, urls: string[]) {
+    const plan = episodeDetailQuery.data?.startFramePlan;
+    if (!plan) return;
+    const updatedFrames = (plan.frames ?? []).map(frame =>
+      frame.shotNumber === shotNumber
+        ? { ...frame, productReferenceAssetIds: urls, productRefsCustomized: true }
+        : frame
+    );
+    setSavingProductReferencesForShot(shotNumber);
+    saveShotProductReferencesMutation.mutate(
+      {
+        seriesId,
+        episodeId,
+        startFramePlan: { ...plan, frames: updatedFrames },
+      },
+      { onSettled: () => setSavingProductReferencesForShot(null) }
+    );
+  }
 
   const handleSelectImageModel = (modelId: string) => {
     storeSeriesModelDefault(seriesId, "image", modelId);
@@ -1100,6 +1248,8 @@ function EpisodeWorkspaceShell({
     episodeDetailQuery.data?.motionPromptPack?.promptLanguage ?? "en";
   const selectedDialogueLanguage =
     episodeDetailQuery.data?.motionPromptPack?.dialogueLanguage ?? "th";
+  const selectedThaiAccent =
+    episodeDetailQuery.data?.motionPromptPack?.thaiAccent ?? null;
 
   const setEpisodeVideoPromptLanguageMutation =
     trpc.verticalDramaEpisodes.setEpisodeVideoPromptLanguage.useMutation({
@@ -1124,6 +1274,13 @@ function EpisodeWorkspaceShell({
       seriesId,
       episodeId,
       dialogueLanguage: language as "th" | "en",
+    });
+  };
+  const handleSelectThaiAccent = (value: string) => {
+    setEpisodeVideoPromptLanguageMutation.mutate({
+      seriesId,
+      episodeId,
+      thaiAccent: value as VerticalDramaThaiAccent,
     });
   };
 
@@ -1884,7 +2041,9 @@ function EpisodeWorkspaceShell({
   async function pollRepairImageTask(
     taskId: string,
     shotNumber: number,
-    beforeUrl: string
+    beforeUrl: string,
+    instruction: string,
+    softenLevel = 0
   ) {
     if (repairImagePollInFlightRef.current.has(shotNumber)) return;
     repairImagePollInFlightRef.current.add(shotNumber);
@@ -1912,6 +2071,37 @@ function EpisodeWorkspaceShell({
         }
         if (status === "failed") {
           const errorMessage = (task as { errorMessage?: string } | null)?.errorMessage;
+          // Character-lock auto-soften — same convention as `pollStartFrameTask`.
+          if (
+            isCharacterLockPolicyFailureMessage(errorMessage) &&
+            softenLevel < VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL
+          ) {
+            const nextLevel = softenLevel + 1;
+            toast.info(
+              lang === "th"
+                ? `ปรับ prompt ให้อ่อนลงอัตโนมัติเนื่องจากติดนโยบาย model (ครั้งที่ ${nextLevel})`
+                : `Automatically softening the prompt due to a model policy rejection (attempt ${nextLevel})`
+            );
+            repairImagePollInFlightRef.current.delete(shotNumber);
+            repairShotImageMutation.mutate(
+              {
+                seriesId,
+                episodeId,
+                shotNumber,
+                instruction,
+                softenLevel: nextLevel,
+                idempotencyKey: crypto.randomUUID(),
+                mcpConnectionId: imageModelUsesMcp ? mcpConnectionId ?? undefined : undefined,
+                resolution: selectedImageResolution || undefined,
+              },
+              {
+                onSuccess: data => {
+                  void pollRepairImageTask(data.taskId, shotNumber, beforeUrl, instruction, nextLevel);
+                },
+              }
+            );
+            return;
+          }
           setRepairImageErrorByShot(prev => ({
             ...prev,
             [shotNumber]:
@@ -1974,7 +2164,7 @@ function EpisodeWorkspaceShell({
       },
       {
         onSuccess: data => {
-          void pollRepairImageTask(data.taskId, shotNumber, beforeUrl);
+          void pollRepairImageTask(data.taskId, shotNumber, beforeUrl, instruction);
         },
       }
     );
@@ -2364,6 +2554,10 @@ function EpisodeWorkspaceShell({
             | VerticalDramaCharacterPortraitMap
             | undefined,
           productTieInByShot,
+          productImages: (productImagesQuery.data?.images ?? []) as VerticalDramaAvailableProductImageView[],
+          productImagesLoading: productImagesQuery.isLoading,
+          onSaveShotProductReferences: handleSaveShotProductReferences,
+          savingProductReferencesForShot,
           onChangeCharacterReference: characterId =>
             setImageSwapTarget({ type: "characterPortrait", characterId }),
           onDropCharacterReference: handleDropCharacterReference,
@@ -2405,6 +2599,8 @@ function EpisodeWorkspaceShell({
           selectedDialogueLanguage,
           onSelectPromptLanguage: handleSelectPromptLanguage,
           onSelectDialogueLanguage: handleSelectDialogueLanguage,
+          selectedThaiAccent,
+          onSelectThaiAccent: handleSelectThaiAccent,
           shotReferencesByShot,
           onAddShotReference: handleAddShotReference,
           onRemoveShotReference: handleRemoveShotReference,

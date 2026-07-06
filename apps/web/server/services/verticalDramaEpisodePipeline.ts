@@ -42,6 +42,7 @@ import {
   type VerticalDramaSubShotPolicy,
   type VerticalDramaPromptLanguage,
   type VerticalDramaDialogueLanguage,
+  type VerticalDramaThaiAccent,
   normalizeVerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
@@ -92,6 +93,7 @@ import {
   appendProductPresenceDirective,
   resolveProductReferenceImageUrls,
   resolveMarketplaceCaptureProductImageUrls,
+  resolveFrameProductReferenceAssetIds,
 } from "./verticalDramaProductTieIn";
 
 /* -------------------------------------------------------------------------- */
@@ -1426,6 +1428,7 @@ export class VerticalDramaEpisodePipeline {
     const existingLanguagePlan = episode.motionPromptPack as {
       promptLanguage?: VerticalDramaPromptLanguage;
       dialogueLanguage?: VerticalDramaDialogueLanguage;
+      thaiAccent?: VerticalDramaThaiAccent;
     } | null;
 
     return generateVideoMotionPromptPack({
@@ -1440,6 +1443,7 @@ export class VerticalDramaEpisodePipeline {
       selectedVideoModelId: existingSelectedVideoModelId,
       promptLanguage: existingLanguagePlan?.promptLanguage,
       dialogueLanguage: existingLanguagePlan?.dialogueLanguage,
+      thaiAccent: existingLanguagePlan?.thaiAccent,
       storyboardShots: shots.map(s => ({
         shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
         description: String(s.description ?? s.visual_description ?? ""),
@@ -1824,6 +1828,14 @@ export class VerticalDramaEpisodePipeline {
             typeof rawProductTieIn?.marketplaceCaptureId === "string" && rawProductTieIn.marketplaceCaptureId
               ? rawProductTieIn.marketplaceCaptureId
               : undefined;
+          // Brand-neutral category descriptor (Thai ad-compliance + video-
+          // policy guard) — e.g. "cosmetics" -> reads as "the cosmetics shown
+          // in the reference image" via `buildGenericProductDescriptor`.
+          // Falls back to the generic reference-image phrasing when absent.
+          const productCategoryDescriptor =
+            typeof rawProductTieIn?.productCategory === "string" && rawProductTieIn.productCategory
+              ? rawProductTieIn.productCategory
+              : undefined;
           // Marketplace Capture's selected/best product images (read-only,
           // tenant/user-scoped) — graceful no-op ([]) when the capture is
           // missing, inaccessible, or has no images; falls back to the
@@ -1840,12 +1852,27 @@ export class VerticalDramaEpisodePipeline {
           framesWithTieIn = generated.plan.frames.map((frame) => {
             const placement = findPlacementForShot(placements, frame.shotNumber);
             if (!placement) return frame;
+            // Additive product-reference picker (2026-07-06): once the user
+            // has explicitly customized this shot's product reference
+            // image(s) (`productRefsCustomized: true` — set by the frontend
+            // picker via `updateEpisodeDraft`, even to an explicit empty
+            // selection), auto-resolution must never overwrite that choice on
+            // a plan regen — see `resolveFrameProductReferenceAssetIds`'s doc
+            // comment for the full override-semantics contract. Frames never
+            // customized keep the pre-existing auto-merge behavior unchanged.
             return {
               ...frame,
-              productReferenceAssetIds: productRefUrls.length
-                ? Array.from(new Set([...(frame.productReferenceAssetIds ?? []), ...productRefUrls]))
-                : (frame.productReferenceAssetIds ?? []),
-              imagePrompt: appendProductPresenceDirective(frame.imagePrompt, productName, placement),
+              productReferenceAssetIds: resolveFrameProductReferenceAssetIds({
+                existingProductReferenceAssetIds: frame.productReferenceAssetIds,
+                productRefsCustomized: frame.productRefsCustomized,
+                resolvedProductRefUrls: productRefUrls,
+              }),
+              imagePrompt: appendProductPresenceDirective(
+                frame.imagePrompt,
+                productName,
+                placement,
+                productCategoryDescriptor,
+              ),
             };
           });
         }

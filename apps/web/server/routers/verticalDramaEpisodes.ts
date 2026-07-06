@@ -66,13 +66,21 @@ import {
   findPlacementForShot,
   mergeAndTrimReferenceImageUrls,
   mergeProductLockNegativePrompt,
+  sanitizeBrandMentionsInPrompt,
   VD_PRODUCT_LOCK_INSTRUCTION,
 } from "../services/verticalDramaProductTieIn";
+import {
+  softenCharacterLockPrompt,
+  softenCharacterLockNegativePrompt,
+  VD_CHARACTER_LOCK_INSTRUCTION,
+  VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
+} from "@shared/verticalDramaSeries/characterLock";
 import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
 import {
   VERTICAL_DRAMA_MEMORY_KINDS,
   VERTICAL_DRAMA_PROMPT_LANGUAGES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
+  VERTICAL_DRAMA_THAI_ACCENTS,
 } from "@shared/verticalDramaSeries";
 import type {
   VerticalDramaMemoryKind,
@@ -798,6 +806,16 @@ async function resolveSubShotPolicy(
 /* -------------------------------------------------------------------------- */
 
 const idempotencyKey = z.string().trim().min(1).max(128).optional();
+/**
+ * Character-lock auto-soften level (2026-07-06 prompt-safety upgrade) — 0/
+ * absent = full lock (default/first attempt), 1 = softened wording, 2 =
+ * minimal lock. The client resubmits the SAME mutation with `softenLevel + 1`
+ * (capped at `VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL`) when a generation task
+ * fails with a policy/content/safety-category provider error — see
+ * `isCharacterLockPolicyFailureMessage` / `softenCharacterLockPrompt` in
+ * `@shared/verticalDramaSeries/characterLock`.
+ */
+const softenLevel = z.number().int().min(0).max(VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL).optional();
 const stageEnum = z.enum(
   VERTICAL_DRAMA_PIPELINE_STAGES as unknown as [
     VerticalDramaPipelineStage,
@@ -2259,13 +2277,14 @@ export const verticalDramaEpisodesRouter = router({
         episodeId: z.string().min(1),
         promptLanguage: z.enum(VERTICAL_DRAMA_PROMPT_LANGUAGES).optional(),
         dialogueLanguage: z.enum(VERTICAL_DRAMA_DIALOGUE_LANGUAGES).optional(),
+        thaiAccent: z.enum(VERTICAL_DRAMA_THAI_ACCENTS).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (!input.promptLanguage && !input.dialogueLanguage) {
+      if (!input.promptLanguage && !input.dialogueLanguage && !input.thaiAccent) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Provide at least one of promptLanguage or dialogueLanguage",
+          message: "Provide at least one of promptLanguage, dialogueLanguage, or thaiAccent",
         });
       }
 
@@ -2275,12 +2294,21 @@ export const verticalDramaEpisodesRouter = router({
       const episodeId = parseId(input.episodeId, "episode id");
       const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
 
+      // Hygiene rule: `thaiAccent` is only meaningful when the effective
+      // dialogue language is Thai. If the caller explicitly sets a
+      // non-Thai `dialogueLanguage`, drop any existing `thaiAccent` from
+      // the persisted pack entirely rather than leave a stale accent value
+      // that would silently apply if the language were ever switched back.
+      const shouldClearThaiAccent =
+        Boolean(input.dialogueLanguage) && input.dialogueLanguage !== "th";
+
       const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
       const updatedPack: VerticalDramaMotionPromptPack = existingPack
         ? {
             ...existingPack,
             ...(input.promptLanguage ? { promptLanguage: input.promptLanguage } : {}),
             ...(input.dialogueLanguage ? { dialogueLanguage: input.dialogueLanguage } : {}),
+            ...(input.thaiAccent ? { thaiAccent: input.thaiAccent } : {}),
           }
         : {
             selectedVideoModelId: DEFAULT_MODELS.video,
@@ -2291,7 +2319,12 @@ export const verticalDramaEpisodesRouter = router({
             warnings: [],
             ...(input.promptLanguage ? { promptLanguage: input.promptLanguage } : {}),
             ...(input.dialogueLanguage ? { dialogueLanguage: input.dialogueLanguage } : {}),
+            ...(input.thaiAccent ? { thaiAccent: input.thaiAccent } : {}),
           };
+
+      if (shouldClearThaiAccent) {
+        delete updatedPack.thaiAccent;
+      }
 
       const [updatedRow] = await db
         .update(verticalDramaEpisodes)
@@ -2348,6 +2381,7 @@ export const verticalDramaEpisodesRouter = router({
         // if the model has no resolution axis; validated against the
         // model's derived options otherwise.
         resolution: z.string().trim().max(32).optional(),
+        softenLevel,
         idempotencyKey,
       })
     )
@@ -2381,6 +2415,18 @@ export const verticalDramaEpisodesRouter = router({
           message: `Shot ${input.shotNumber} has no image prompt yet`,
         });
       }
+
+      // Character-lock auto-soften (2026-07-06 prompt-safety upgrade) — a
+      // no-op at `softenLevel` 0/absent (the default/first attempt). Applied
+      // to the STORED prompt text before any further appends below, so a
+      // softened retry also carries through to the product-lock/QC steps
+      // untouched.
+      const effectiveSoftenLevel = input.softenLevel ?? 0;
+      const softenedImagePrompt = softenCharacterLockPrompt(frame.imagePrompt, effectiveSoftenLevel);
+      const softenedNegativePrompt = softenCharacterLockNegativePrompt(
+        frame.negativePrompt,
+        effectiveSoftenLevel,
+      );
 
       // Identity-lock references — resolve each required character's
       // approved portrait, same lookup `generateRealStoryboard` uses.
@@ -2484,7 +2530,7 @@ export const verticalDramaEpisodesRouter = router({
       // when the stored prompt is already within `VD_IMAGE_PROMPT_MAX`.
       const imagePromptQc = await ensurePromptWithinLimit({
         kind: "image",
-        prompt: frame.imagePrompt,
+        prompt: softenedImagePrompt,
         userId,
         tenantId,
         idempotencyKey: input.idempotencyKey
@@ -2503,7 +2549,7 @@ export const verticalDramaEpisodesRouter = router({
             // must also guard against the model reinterpreting/redesigning
             // the product — see `verticalDramaProductTieIn.ts`'s doc comment.
             negativePrompt: mergeProductLockNegativePrompt(
-              frame.negativePrompt,
+              softenedNegativePrompt,
               productRefUrls.length > 0,
             ),
             model: resolvedImageModelId,
@@ -2586,6 +2632,7 @@ export const verticalDramaEpisodesRouter = router({
         // Optional output resolution/size (storyboard-complete plan Phase
         // 6.2b) — same convention as `generateStartFrameImage`.
         resolution: z.string().trim().max(32).optional(),
+        softenLevel,
         idempotencyKey,
       })
     )
@@ -2619,6 +2666,14 @@ export const verticalDramaEpisodesRouter = router({
           message: `Shot ${input.shotNumber} has no image prompt yet`,
         });
       }
+
+      // Character-lock auto-soften — same convention as `generateStartFrameImage`.
+      const effectiveSoftenLevel = input.softenLevel ?? 0;
+      const softenedImagePrompt = softenCharacterLockPrompt(frame.imagePrompt, effectiveSoftenLevel);
+      const softenedNegativePrompt = softenCharacterLockNegativePrompt(
+        frame.negativePrompt,
+        effectiveSoftenLevel,
+      );
 
       const characterRefUrls = await resolveShotCharacterReferenceUrls(
         tenantId,
@@ -2706,7 +2761,7 @@ export const verticalDramaEpisodesRouter = router({
       // extremely explicit and repeated, and mirror it into the negative
       // prompt too so it's enforced on both sides of the request.
       const gridPrompt = [
-        frame.imagePrompt,
+        softenedImagePrompt,
         "",
         "Render this EXACT same scene, subject, wardrobe, lighting, and moment as a single image containing a 3x3 grid of 9 panels — 3 rows, 3 columns, each panel a full 9:16 vertical frame with a thin visible divider between panels.",
         "Each of the 9 panels must show the SAME moment from a DIFFERENT camera angle/framing (for example: wide establishing shot, medium shot, close-up, over-the-shoulder, low angle, high angle, dutch angle, extreme close-up, three-quarter profile) — vary ONLY the camera position/framing per panel, purely through the photographed composition itself.",
@@ -2731,7 +2786,7 @@ export const verticalDramaEpisodesRouter = router({
       // as `generateStartFrameImage`, applied only when this shot actually
       // has product reference image(s) attached to the grid call.
       const gridNegativePrompt = [
-        mergeProductLockNegativePrompt(frame.negativePrompt, productRefUrls.length > 0),
+        mergeProductLockNegativePrompt(softenedNegativePrompt, productRefUrls.length > 0),
         "text, caption, captions, label, labels, title, titles, watermark, watermarks, logo, subtitle, subtitles, typography, lettering, writing, words, on-screen text, panel numbers, shot names, camera angle names",
       ]
         .filter((part): part is string => Boolean(part?.trim()))
@@ -2834,6 +2889,7 @@ export const verticalDramaEpisodesRouter = router({
         // Optional output resolution/size (storyboard-complete plan Phase
         // 6.2b) — same convention as `generateStartFrameImage`.
         resolution: z.string().trim().max(32).optional(),
+        softenLevel,
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -2986,12 +3042,17 @@ export const verticalDramaEpisodesRouter = router({
 
       const repairPrompt = [
         input.instruction.trim(),
-        "Keep the same character identity, wardrobe (unless the instruction explicitly changes it), pose, composition, and framing as the reference image — apply ONLY the requested change.",
+        VD_CHARACTER_LOCK_INSTRUCTION,
+        "Pose, composition, and framing should follow the requested change; apply ONLY the requested change beyond the identity lock above.",
         `Preservation directive (region/ethnicity): ${buildTargetAudienceRegionInstruction(repairRegion)}`,
         repairIsTieInShot ? VD_PRODUCT_LOCK_INSTRUCTION : null,
       ]
         .filter((part): part is string => Boolean(part))
         .join(" ");
+
+      // Character-lock auto-soften — same convention as `generateStartFrameImage`.
+      const effectiveSoftenLevel = input.softenLevel ?? 0;
+      const softenedRepairPrompt = softenCharacterLockPrompt(repairPrompt, effectiveSoftenLevel);
 
       // Final-prompt QC (hard length cap) — enforced on the final repair
       // prompt (`instruction` is already Zod-capped at 2000 chars, but the
@@ -3000,7 +3061,7 @@ export const verticalDramaEpisodesRouter = router({
       // with every other outgoing image prompt in this router).
       const repairPromptQc = await ensurePromptWithinLimit({
         kind: "image",
-        prompt: repairPrompt,
+        prompt: softenedRepairPrompt,
         userId,
         tenantId,
         idempotencyKey: input.idempotencyKey
@@ -3207,6 +3268,7 @@ export const verticalDramaEpisodesRouter = router({
         },
         dialogueLines,
         dialogueLanguage: pack.dialogueLanguage,
+        thaiAccent: pack.thaiAccent,
         modelId: model.id,
         model,
         aspectRatio: "9:16",
@@ -3413,6 +3475,7 @@ export const verticalDramaEpisodesRouter = router({
       const tieInPlacements = extractShotProductPlacements(scriptPayload?.product_tie_in_plan);
       const tieInPlacement = findPlacementForShot(tieInPlacements, input.shotNumber);
       let tieInProductName: string | undefined;
+      let tieInProductCategory: string | undefined;
       if (tieInPlacement) {
         const [tieInSeriesRow] = await db
           .select({ productTieIn: verticalDramaSeries.productTieIn })
@@ -3429,6 +3492,8 @@ export const verticalDramaEpisodesRouter = router({
           (tieInSeriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
         tieInProductName =
           typeof rawProductTieIn?.productName === "string" ? rawProductTieIn.productName : undefined;
+        tieInProductCategory =
+          typeof rawProductTieIn?.productCategory === "string" ? rawProductTieIn.productCategory : undefined;
       }
 
       // Dialogue lines matching this shot (or a clip already sourced from it)
@@ -3503,6 +3568,7 @@ export const verticalDramaEpisodesRouter = router({
                 productName: tieInProductName,
                 benefitTalkingPoint: tieInPlacement.benefitTalkingPoint,
                 placementStyle: tieInPlacement.placementStyle,
+                productCategory: tieInProductCategory,
               }
             : undefined,
         },
@@ -3511,8 +3577,29 @@ export const verticalDramaEpisodesRouter = router({
         locale: normalizeVerticalDramaSeriesLocale(localeSeriesRow?.locale),
         promptLanguage: pack?.promptLanguage,
         dialogueLanguage: pack?.dialogueLanguage,
+        thaiAccent: pack?.thaiAccent,
         idempotencyKey: input.idempotencyKey,
       });
+
+      // Brand/public-figure sanitize pass (Thai ad-compliance + video-policy
+      // guard, 2026-07-06) — provider-facing VIDEO prompts must never contain
+      // the product/brand name; identity comes from the locked reference
+      // image, not prompt text. Run BEFORE the length-cap QC below so the
+      // sanitized (shorter) text is what gets capped, never the reverse.
+      if (tieInPlacement) {
+        result.prompt = sanitizeBrandMentionsInPrompt(
+          result.prompt,
+          [tieInProductName],
+          tieInProductCategory,
+        );
+        if (result.negativeMotionPrompt) {
+          result.negativeMotionPrompt = sanitizeBrandMentionsInPrompt(
+            result.negativeMotionPrompt,
+            [tieInProductName],
+            tieInProductCategory,
+          );
+        }
+      }
 
       // Final-prompt QC (hard length cap) — enforced BEFORE this prompt is
       // persisted onto `motionPromptPack.clips[]` below. Zero-cost no-op
@@ -3548,6 +3635,7 @@ export const verticalDramaEpisodesRouter = router({
             negativeMotionPrompt: result.negativeMotionPrompt,
             durationSeconds: storyboardShot?.durationSeconds ?? 8,
             dialogue: result.dialogue,
+            requiredDisclosure: result.requiredDisclosure,
           });
         } else {
           updatedClips[existingIndex] = {
@@ -3555,6 +3643,7 @@ export const verticalDramaEpisodesRouter = router({
             prompt: result.prompt,
             negativeMotionPrompt: result.negativeMotionPrompt,
             dialogue: result.dialogue,
+            requiredDisclosure: result.requiredDisclosure,
           };
         }
         updatedPack = { ...pack, clips: updatedClips };
@@ -3571,6 +3660,7 @@ export const verticalDramaEpisodesRouter = router({
               negativeMotionPrompt: result.negativeMotionPrompt,
               durationSeconds: storyboardShot?.durationSeconds ?? 8,
               dialogue: result.dialogue,
+              requiredDisclosure: result.requiredDisclosure,
             },
           ],
           warnings: [],

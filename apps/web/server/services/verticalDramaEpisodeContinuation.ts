@@ -21,6 +21,10 @@ import {
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
+import {
+  verticalDramaLocaleEnglishName,
+  type VerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -40,7 +44,7 @@ interface GenerateNextEpisodesViaLlmParams {
   tenantId?: string;
   seriesId: number;
   title: string;
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   genre?: string | null;
   tone?: string | null;
   /** The series' `bible` jsonb (raw wizard fields and/or expanded fields — whichever exist). */
@@ -69,7 +73,7 @@ function buildContinuationPrompts(
   const langInstruction =
     params.locale === "th"
       ? "Write ALL string values in natural Thai."
-      : "Write all string values in English.";
+      : `Write all string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
 
   const systemPrompt = [
     "You are continuing an existing vertical-drama (short-form mobile drama series) story bible.",

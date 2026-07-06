@@ -49,12 +49,15 @@ import type {
   VerticalDramaPromptLanguage,
   VerticalDramaDialogueLanguage,
   VerticalDramaSeriesLocale,
+  VerticalDramaThaiAccent,
 } from "@shared/verticalDramaSeries";
 import {
   VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
+  VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES,
 } from "@shared/verticalDramaSeries";
 import { VD_PRODUCT_LOCK_VIDEO_INSTRUCTION } from "./verticalDramaProductTieIn";
+import { buildThaiAdComplianceInstruction } from "@shared/verticalDramaSeries/thaiAdCompliance";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -217,6 +220,8 @@ export interface VideoMotionPromptPackProjection {
   promptLanguage?: VerticalDramaPromptLanguage;
   /** The language the character(s) SPEAK in the video — echoed straight through from the caller-supplied language plan. */
   dialogueLanguage?: VerticalDramaDialogueLanguage;
+  /** Thai regional speech accent — echoed straight through from the caller-supplied language plan. Only meaningful when `dialogueLanguage` is `"th"` (or absent, which defaults to Thai). */
+  thaiAccent?: VerticalDramaThaiAccent;
   motionMode:
     | "first_last_frame_bridge"
     | "first_frame_to_video"
@@ -273,7 +278,11 @@ export function projectMotionPromptPack(
    * choice — same "honor pre-existing selection" rationale as
    * `callerVideoModelId` above.
    */
-  languagePlan?: { promptLanguage?: VideoMotionPromptPackProjection["promptLanguage"]; dialogueLanguage?: VideoMotionPromptPackProjection["dialogueLanguage"] },
+  languagePlan?: {
+    promptLanguage?: VideoMotionPromptPackProjection["promptLanguage"];
+    dialogueLanguage?: VideoMotionPromptPackProjection["dialogueLanguage"];
+    thaiAccent?: VideoMotionPromptPackProjection["thaiAccent"];
+  },
 ): VideoMotionPromptPackProjection {
   const summary = raw.video_plan_summary as Record<string, unknown>;
   const selectedVideoModelId =
@@ -289,6 +298,7 @@ export function projectMotionPromptPack(
     durationProfileId: fallbackDurationProfileId,
     ...(languagePlan?.promptLanguage ? { promptLanguage: languagePlan.promptLanguage } : {}),
     ...(languagePlan?.dialogueLanguage ? { dialogueLanguage: languagePlan.dialogueLanguage } : {}),
+    ...(languagePlan?.thaiAccent ? { thaiAccent: languagePlan.thaiAccent } : {}),
     motionMode: hasBridgedClip ? "first_last_frame_bridge" : "first_frame_to_video",
     clips: raw.video_clip_requests
       .slice()
@@ -451,6 +461,13 @@ export interface GenerateVideoMotionPromptPackParams {
    * `VerticalDramaDialogueLanguage` in `@shared/verticalDramaSeries`.
    */
   dialogueLanguage?: VerticalDramaDialogueLanguage;
+  /**
+   * Thai regional speech accent (episode-level language plan) — only
+   * meaningful when the effective `dialogueLanguage` is `"th"` (or absent,
+   * which defaults to Thai); ignored otherwise. See `VerticalDramaThaiAccent`
+   * in `@shared/verticalDramaSeries`.
+   */
+  thaiAccent?: VerticalDramaThaiAccent;
 }
 
 function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
@@ -474,6 +491,9 @@ function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
     `When a shot has a "dialogue" line, the resulting clip's "prompt" must explicitly mention the character speaking it and describe mouth/lip movement matching that line — do not produce a silent/mute description for a shot that has dialogue.`,
     `PROMPT LANGUAGE (MANDATORY): write every "video_clip_requests[].prompt" and "negative_motion_prompt" entirely in ${promptLanguageName} — all motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
     `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video — any literal quoted dialogue embedded in a clip's prompt (native-audio models) or returned as a dialogue line must be in ${dialogueLanguageName}, adapted/translated naturally into ${dialogueLanguageName} if the source line above is shown in a different language.`,
+    dialogueLanguage === "th" && params.thaiAccent
+      ? `SPEECH ACCENT (MANDATORY): ${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every spoken line.`
+      : null,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -568,7 +588,11 @@ export async function generateVideoMotionPromptPack(
     params.selectedVideoModelId ?? "dry-run-video-model",
     params.durationProfileId,
     shotDialogueByShotNumber,
-    { promptLanguage: params.promptLanguage, dialogueLanguage: params.dialogueLanguage },
+    {
+      promptLanguage: params.promptLanguage,
+      dialogueLanguage: params.dialogueLanguage,
+      thaiAccent: params.thaiAccent,
+    },
   );
 
   return { pack, raw: validatedData, creditsUsed, model };
@@ -683,6 +707,14 @@ const shotVideoPromptOutputSchema = z
       )
       .optional()
       .default([]),
+    /**
+     * Category-mandated Thai-law disclosure line (spec §13 extension), e.g.
+     * "อ่านคำเตือนในฉลากก่อนบริโภค" for อาหารเสริม — present only when the
+     * shot carries a product tie-in whose category requires one (see
+     * `buildThaiAdComplianceInstruction`). Absent/omitted for silent clips,
+     * non-tie-in shots, or categories with no mandated line.
+     */
+    requiredDisclosure: z.string().optional(),
   })
   .passthrough();
 
@@ -722,6 +754,8 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
       productName?: string;
       benefitTalkingPoint?: string;
       placementStyle?: "hero_prop" | "background" | "in_use_moment";
+      /** Additive (2026-07-06 Thai ad-compliance upgrade) — drives the mandatory disclosure line, see `buildThaiAdComplianceInstruction`. */
+      productCategory?: string;
     };
   };
   selectedVideoModelId: string;
@@ -745,6 +779,13 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * `lineTh`/`dialogue[]` lines returned for the separate-TTS path).
    */
   dialogueLanguage?: VerticalDramaDialogueLanguage;
+  /**
+   * Thai regional speech accent (episode-level language plan) — only
+   * meaningful when the effective `dialogueLanguage` is `"th"` (or absent,
+   * which defaults to Thai); ignored otherwise. See `VerticalDramaThaiAccent`
+   * in `@shared/verticalDramaSeries`.
+   */
+  thaiAccent?: VerticalDramaThaiAccent;
   idempotencyKey?: string;
 }
 
@@ -762,6 +803,8 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
   model: string;
   /** True when the resolved model actually received the image (vision path); false when only the textual `imagePrompt` proxy was used. */
   usedVision: boolean;
+  /** Category-mandated Thai-law disclosure line, see `ShotVideoPromptOutput.requiredDisclosure`. */
+  requiredDisclosure?: string;
 }
 
 function buildShotVideoPromptUserPrompt(
@@ -799,10 +842,19 @@ function buildShotVideoPromptUserPrompt(
       : null,
     `Dialogue for this shot (source lines, already in ${dialogueLanguageName}):\n${dialogueBlock}`,
     shotContext.productContext
-      ? `PRODUCT TIE-IN (MANDATORY for this shot): "${shotContext.productContext.productName ?? "the tied-in product"}" is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in a dialogue line or acting beat for this clip — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. ${VD_PRODUCT_LOCK_VIDEO_INSTRUCTION}`
+      ? `PRODUCT TIE-IN (MANDATORY for this shot): the tied-in product is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product GENERICALLY (e.g. "the product", a category descriptor — NEVER the brand/product name itself, which must never appear in the "prompt"/"negative_motion_prompt"/dialogue text) or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in a dialogue line or acting beat for this clip — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. Brand identity comes ONLY from the attached/locked reference image, never from prompt or dialogue text. ${VD_PRODUCT_LOCK_VIDEO_INSTRUCTION}`
+      : null,
+    shotContext.productContext
+      ? buildThaiAdComplianceInstruction(shotContext.productContext.productCategory)
+      : null,
+    shotContext.productContext
+      ? "Public-figure/brand guard (MANDATORY): never name a real public figure, celebrity, or real company/brand anywhere in the \"prompt\", \"negative_motion_prompt\", or dialogue text."
       : null,
     `PROMPT LANGUAGE (MANDATORY): write the "prompt" and "negative_motion_prompt" fields entirely in ${promptLanguageName} — every word of the motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
     `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video. When dialogue is present, the "dialogue[].lineTh" field must contain the line verbatim in ${dialogueLanguageName} (translate/adapt naturally into ${dialogueLanguageName} if the source line above is in a different language — never leave it in the wrong language).`,
+    dialogueLanguage === "th" && params.thaiAccent
+      ? `SPEECH ACCENT (MANDATORY): ${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every spoken line.`
+      : null,
     nativeAudioDialogue
       ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — when dialogue is present, embed the ${dialogueLanguageName} line(s) VERBATIM in the prompt (written in ${promptLanguageName} elsewhere, but the quoted spoken line itself stays in ${dialogueLanguageName}) with matching mouth/lip movement and delivery direction, and return them again in the "dialogue" array.`
       : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — when dialogue is present, describe mouth movement + acting direction only (in ${promptLanguageName}, no literal transcript in the prompt), and return the resolved ${dialogueLanguageName} lines in the "dialogue" array so the caller can route them to text-to-speech.`,
@@ -954,5 +1006,6 @@ export async function generateVerticalDramaShotVideoPrompt(
     creditsUsed,
     model,
     usedVision: hasVision,
+    requiredDisclosure: data.requiredDisclosure || undefined,
   };
 }

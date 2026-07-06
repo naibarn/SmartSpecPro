@@ -65,6 +65,24 @@ export const GENRE_PRESET_CATEGORY_LABELS: Record<string, GenrePresetCategoryLab
   "premium-commercial-cinematic": { th: "หนังโฆษณาซีเนมาติกพรีเมียม", en: "Premium Commercial Cinematic" },
   "social-short-form-cinematic": { th: "หนังสั้นโซเชียลจังหวะไว", en: "Social Short-Form Cinematic" },
   "family-commercial-lifestyle": { th: "ไลฟ์สไตล์ครอบครัวอบอุ่น", en: "Cozy Family Lifestyle" },
+  "thai_local_service_comedy_mini_drama": {
+    th: "มินิดราม่าคอมเมดี้บริการท้องถิ่น",
+    en: "Thai Local Service Comedy Mini Drama",
+  },
+  "restaurant_service_skit": { th: "สเก็ตช์บริการร้านอาหาร", en: "Restaurant Service Skit" },
+  "food_shop_tie_in_drama": { th: "ดราม่าผูกเรื่องร้านอาหาร", en: "Food Shop Tie-in Drama" },
+  "local_business_comedy_drama": {
+    th: "คอมเมดี้ดราม่าธุรกิจท้องถิ่น",
+    en: "Local Business Comedy Drama",
+  },
+  "customer_staff_situation_comedy": {
+    th: "คอมเมดี้สถานการณ์ลูกค้ากับพนักงาน",
+    en: "Customer and Staff Situation Comedy",
+  },
+  "thai_everyday_lifestyle_skit": {
+    th: "สเก็ตช์ชีวิตประจำวันแบบไทย",
+    en: "Thai Everyday Lifestyle Skit",
+  },
 
   // --- Kids / Family ---------------------------------------------------------
   "soft-cozy-kids": { th: "เด็กเล็กโทนนุ่มอบอุ่น", en: "Soft & Cozy Kids" },
@@ -92,6 +110,61 @@ export const GENRE_PRESET_CATEGORY_LABELS: Record<string, GenrePresetCategoryLab
   "soft-claymation-kids": { th: "เคลย์เมชันเด็กโทนนุ่ม", en: "Soft Claymation Kids" },
   "animated-comic-book": { th: "คอมิกบุ๊กเคลื่อนไหว", en: "Animated Comic Book" },
   "hybrid-2-5d-motion-graphic": { th: "โมชันกราฟิก 2.5D", en: "Hybrid 2.5D Motion Graphic" },
+
+  // --- Educational / Knowledge ----------------------------------------------
+  "mother-child-knowledge": { th: "แม่ลูกเรียนรู้ด้วยกัน", en: "Mother & Child Learning" },
+  "ai-knowledge-for-kids": { th: "ความรู้ AI สำหรับเด็ก", en: "AI Knowledge for Kids" },
+  "ai-knowledge-for-adults": { th: "ความรู้ AI สำหรับผู้ใหญ่", en: "AI Knowledge for Adults" },
+  "general-science-knowledge": { th: "ความรู้วิทยาศาสตร์ทั่วไป", en: "General Science Knowledge" },
+  "physics-knowledge": { th: "ฟิสิกส์รอบตัว", en: "Everyday Physics Knowledge" },
+  "everyday-general-knowledge": { th: "เกร็ดความรู้ประจำวัน", en: "Everyday General Knowledge" },
+
+  // --- Career Drama / Professional Life --------------------------------------
+  "police-career-drama": { th: "ดราม่าอาชีพตำรวจ", en: "Police Career Drama" },
+  "military-career-drama": { th: "ดราม่าอาชีพทหาร", en: "Military Career Drama" },
+  "teacher-career-drama": { th: "ดราม่าอาชีพครู", en: "Teacher Career Drama" },
+  "doctor-career-drama": { th: "ดราม่าอาชีพหมอ", en: "Doctor Career Drama" },
+  "nurse-career-drama": { th: "ดราม่าอาชีพพยาบาล", en: "Nurse Career Drama" },
+  "online-seller-drama": { th: "ดราม่าแม่ค้าออนไลน์", en: "Online Seller Drama" },
+  "market-vendor-drama": { th: "ดราม่าพ่อค้าแม่ค้าตลาด", en: "Market Vendor Drama" },
+  "engineer-career-drama": { th: "ดราม่าอาชีพวิศวกร", en: "Engineer Career Drama" },
+  "coffee-shop-career-drama": { th: "ดราม่าธุรกิจร้านกาแฟ", en: "Coffee Shop Career Drama" },
+
+  // --- Specialized Knowledge Drama --------------------------------------------
+  "hand-tools-knowledge-drama": { th: "ดราม่าความรู้เครื่องมือช่าง", en: "Hand Tools Knowledge Drama" },
+  "construction-knowledge-drama": { th: "ดราม่าความรู้งานก่อสร้าง", en: "Construction Knowledge Drama" },
+  "home-repair-diy-drama": { th: "ดราม่าซ่อมบ้าน DIY", en: "Home Repair DIY Drama" },
+
+  // --- Real Estate / Project Tie-in Drama --------------------------------------
+  "real-estate-knowledge-drama": { th: "ดราม่าความรู้อสังหาฯ", en: "Real Estate Knowledge Drama" },
+  "property-investment-education": { th: "สอนลงทุนอสังหาฯ", en: "Property Investment Education" },
+  "housing-project-tie-in-drama": { th: "ดราม่าผูกโครงการบ้านจัดสรร", en: "Housing Project Tie-in Drama" },
+  "land-sale-tie-in-drama": { th: "ดราม่าผูกการขายที่ดิน", en: "Land Sale Tie-in Drama" },
+  "condo-tie-in-drama": { th: "ดราม่าผูกโครงการคอนโด", en: "Condo Tie-in Drama" },
+  "local-community-property-drama": { th: "ดราม่าอสังหาฯ ชุมชนท้องถิ่น", en: "Local Community Property Drama" },
+
+  // --- Horror / Supernatural belief ------------------------------------------
+  "horror-short-thriller": { th: "หนังสั้นสยองขวัญ", en: "Horror Short Thriller" },
+  "thai-ghost-story": { th: "เรื่องผีไทย", en: "Thai Ghost Story" },
+  "thai-superstition-curse": { th: "ความเชื่อและอาถรรพ์", en: "Superstition & Curse" },
+
+  // --- Period / Time ----------------------------------------------------------
+  "thai-period-retro-drama": { th: "ไทยย้อนยุค", en: "Thai Period Retro Drama" },
+  "time-travel-drama": { th: "ข้ามเวลา", en: "Time Travel Drama" },
+  "parallel-world-drama": { th: "เวลาคู่ขนาน", en: "Parallel Timeline Drama" },
+  "thai-historical-epic": { th: "ประวัติศาสตร์ไทย", en: "Thai Historical Epic" },
+
+  // --- Chinese costume / fantasy ----------------------------------------------
+  "chinese-xianxia-fantasy": { th: "จีนเทพเซียน", en: "Chinese Xianxia Fantasy" },
+  "chinese-historical-costume": { th: "จีนย้อนประวัติศาสตร์", en: "Chinese Historical Costume" },
+
+  // --- Future world -------------------------------------------------------------
+  "futuristic-world-drama": { th: "โลกอนาคต", en: "Futuristic World Drama" },
+  "future-robot-ai-drama": { th: "หุ่นยนต์และ AI อนาคต", en: "Future Robot & AI Drama" },
+
+  // --- Thai folk ---------------------------------------------------------------
+  "thai-rural-life-drama": { th: "ไทยชนบท วิถีบ้านทุ่ง", en: "Thai Rural Life Drama" },
+  "luk-thung-mor-lam-drama": { th: "ลูกทุ่งหมอลำ", en: "Luk Thung & Mor Lam Drama" },
 };
 
 /**

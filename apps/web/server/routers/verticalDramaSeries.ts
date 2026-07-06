@@ -35,6 +35,10 @@ import {
 } from "../../drizzle/schema";
 import type { VerticalDramaStartFramePlan } from "@shared/verticalDramaSeries";
 import {
+  VERTICAL_DRAMA_SERIES_LOCALES,
+  normalizeVerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries";
+import {
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS,
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
@@ -43,6 +47,10 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
 } from "../services/verticalDramaStoryBible";
+import {
+  PresetSynthesisInputError,
+  synthesizeVerticalDramaPreset,
+} from "../services/verticalDramaPresetSynthesis";
 import { debugError } from "../_core/logger";
 
 /** Per-series episode aggregate row shape (typed projection; `db.select` erases to `any`). */
@@ -78,6 +86,19 @@ type RunArtifactProjection = {
   storageKey: string | null;
   mediaAssetIds: unknown;
   createdAt: Date;
+};
+type GenrePresetDto = {
+  id: string;
+  title: string;
+  category: string;
+  scope: string;
+  logline: string;
+  mainPlot: string;
+  seasonArc: string;
+  tone: string;
+  cliffhangerStyle: string;
+  characters: Array<{ name: string; role: string; description: string }>;
+  visualBible: string;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -149,6 +170,22 @@ function parseCharactersDraft(draft: string): Array<{ name: string; role: string
       }
       return { name: line, role: "", description: "" };
     });
+}
+
+function toGenrePresetDto(row: VerticalDramaGenrePresetRow): GenrePresetDto {
+  return {
+    id: String(row.id),
+    title: row.title,
+    category: row.category,
+    scope: row.scope,
+    logline: row.logline,
+    mainPlot: row.mainPlot,
+    seasonArc: row.seasonArc,
+    tone: row.tone,
+    cliffhangerStyle: row.cliffhangerStyle,
+    characters: row.charactersJson as Array<{ name: string; role: string; description: string }>,
+    visualBible: row.visualBible,
+  };
 }
 
 /**
@@ -227,7 +264,7 @@ const SERIES_STATUSES = [
 
 const createSeriesInput = z.object({
   title: z.string().trim().min(1).max(255),
-  locale: z.enum(["th", "en"]).optional(),
+  locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
   aspectRatio: z.literal("9:16").optional(),
   targetEpisodeCount: z.number().int().positive().max(1000).optional(),
   defaultEpisodeDurationSeconds: z.number().int().positive().max(3600).optional(),
@@ -251,6 +288,17 @@ const listSeriesInput = z
     limit: z.number().int().positive().max(200).optional(),
   })
   .optional();
+
+const synthesizeGenrePresetInput = z.object({
+  locale: z.enum(["th", "en"]).optional(),
+  selectedPresetIds: z.array(z.string().min(1)).max(5).optional(),
+  selectedCategories: z.array(z.string().trim().min(1).max(80)).max(5).optional(),
+  primarySelectionId: z.string().trim().max(100).optional(),
+  businessContext: z.string().trim().max(600).optional(),
+  productContext: z.string().trim().max(600).optional(),
+  targetEpisodeCount: z.number().int().positive().max(1000).optional(),
+  toneHint: z.string().trim().max(180).optional(),
+});
 
 /**
  * Edit an owned series' metadata. Every field is optional so callers can patch
@@ -666,6 +714,51 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   /**
+   * List EVERY available product reference image for this series' tie-in
+   * config (spec follow-up: "let the user view and change which product
+   * image(s) are used as generation references per shot"). The full
+   * Marketplace Capture image set (not the generation-time capped-3 subset)
+   * plus the series' own `productTieIn.productImageUrl` — this is the
+   * storyboard panel's "เปลี่ยนภาพสินค้า" picker's source list. Read-only,
+   * ownership-scoped (NOT_FOUND on a cross-tenant/user series id). Never
+   * throws over a missing/inaccessible capture — degrades to `[]` /
+   * direct-URL-only, matching `resolveMarketplaceCaptureProductImageUrls`'s
+   * existing graceful-skip convention.
+   */
+  listProductImages: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+      const rawProductTieIn = (row.productTieIn as Record<string, unknown> | null) ?? null;
+      const productImageUrl =
+        typeof rawProductTieIn?.productImageUrl === "string" && rawProductTieIn.productImageUrl
+          ? rawProductTieIn.productImageUrl
+          : undefined;
+      const marketplaceCaptureId =
+        typeof rawProductTieIn?.marketplaceCaptureId === "string" && rawProductTieIn.marketplaceCaptureId
+          ? rawProductTieIn.marketplaceCaptureId
+          : undefined;
+
+      const { listAvailableProductReferenceImages } = await import(
+        "../services/verticalDramaProductTieIn"
+      );
+      const images = await listAvailableProductReferenceImages({
+        productImageUrl,
+        marketplaceCaptureId,
+        auth: { userId, tenantId },
+      });
+
+      return { images };
+    }),
+
+  /**
    * Soft-archive a series (status -> "archived"). History surfaces stay
    * readable; nothing is destroyed. Ownership enforced.
    */
@@ -808,20 +901,88 @@ export const verticalDramaSeriesRouter = router({
         .orderBy(asc(verticalDramaGenrePresets.sortOrder));
 
       return {
-        presets: rows.map((row) => ({
-          id: String(row.id),
-          title: row.title,
-          category: row.category,
-          scope: row.scope,
-          logline: row.logline,
-          mainPlot: row.mainPlot,
-          seasonArc: row.seasonArc,
-          tone: row.tone,
-          cliffhangerStyle: row.cliffhangerStyle,
-          characters: row.charactersJson as Array<{ name: string; role: string; description: string }>,
-          visualBible: row.visualBible,
-        })),
+        presets: rows.map(toGenrePresetDto),
       };
+    }),
+
+  /**
+   * AI-assisted Mix and Match draft generator for the Create-Series Wizard.
+   * The mutation returns a transient editable preset draft only — it never
+   * writes a global/private preset row, so users stay in control before apply.
+   */
+  synthesizeGenrePreset: verticalDramaProcedure
+    .input(synthesizeGenrePresetInput)
+    .mutation(async ({ ctx, input }) => {
+      const locale = input.locale ?? "th";
+      const tenantId = ctx.tenantId;
+      const userId = ctx.user.id;
+      const selectedPresetIds = Array.from(new Set(input.selectedPresetIds ?? []));
+      const selectedCategories = Array.from(
+        new Set((input.selectedCategories ?? []).map((category) => category.trim()).filter(Boolean)),
+      );
+
+      const selectedPresetNumericIds = selectedPresetIds.map((id) => Number(id));
+      if (selectedPresetNumericIds.some((id) => !Number.isFinite(id))) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid preset id" });
+      }
+
+      const visibleRows: VerticalDramaGenrePresetRow[] = await db
+        .select()
+        .from(verticalDramaGenrePresets)
+        .where(
+          and(
+            eq(verticalDramaGenrePresets.locale, locale),
+            tenantId
+              ? or(
+                  eq(verticalDramaGenrePresets.scope, "global"),
+                  and(
+                    eq(verticalDramaGenrePresets.scope, "private"),
+                    eq(verticalDramaGenrePresets.tenantId, tenantId),
+                    eq(verticalDramaGenrePresets.userId, userId),
+                  ),
+                )
+              : eq(verticalDramaGenrePresets.scope, "global"),
+          ),
+        )
+        .orderBy(asc(verticalDramaGenrePresets.sortOrder));
+
+      const visibleById = new Map(visibleRows.map((row) => [String(row.id), row]));
+      const selectedRows = selectedPresetIds
+        .map((id) => visibleById.get(id))
+        .filter((row): row is VerticalDramaGenrePresetRow => Boolean(row));
+      if (selectedRows.length !== selectedPresetIds.length) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+      }
+
+      try {
+        const result = await synthesizeVerticalDramaPreset({
+          userId,
+          tenantId: tenantId ?? undefined,
+          locale: normalizeVerticalDramaSeriesLocale(locale),
+          selectedPresets: selectedRows.map(toGenrePresetDto),
+          selectedCategories,
+          primarySelectionId: input.primarySelectionId,
+          businessContext: input.businessContext,
+          productContext: input.productContext,
+          targetEpisodeCount: input.targetEpisodeCount,
+          toneHint: input.toneHint,
+        });
+        return result;
+      } catch (error) {
+        if (error instanceof PresetSynthesisInputError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
+        if (error instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+        }
+        if (error instanceof VdSchemaValidationError) {
+          throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: error.message });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Preset synthesis failed",
+        });
+      }
     }),
 
   /**
@@ -851,7 +1012,7 @@ export const verticalDramaSeriesRouter = router({
           tenantId,
           seriesId,
           title: row.title,
-          locale: (row.locale as "th" | "en") ?? "th",
+          locale: normalizeVerticalDramaSeriesLocale(row.locale),
           genre: row.genre,
           tone: row.tone,
           targetEpisodeCount: row.targetEpisodeCount,
@@ -927,7 +1088,10 @@ export const verticalDramaSeriesRouter = router({
         .values({
           title: input.title,
           category: row.genre?.trim() || input.title.toLowerCase().replace(/\s+/g, "-").slice(0, 60),
-          locale: (row.locale as "th" | "en") ?? "th",
+          // Genre presets only support th/en (preset browsing follows the UI
+          // language, not the series' own content locale) — clamp any of the
+          // wider series locales down to the closer of the two.
+          locale: row.locale === "th" ? "th" : "en",
           logline: (bible.logline as string) ?? "",
           mainPlot: (bible.mainPlot as string) ?? "",
           seasonArc: (bible.seasonArc as string) ?? "",

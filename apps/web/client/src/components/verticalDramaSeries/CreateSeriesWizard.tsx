@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ImageIcon, Loader2, Search, Sparkles, X } from "lucide-react";
+import { ImageIcon, Loader2, Maximize2, Minimize2, Search, Sparkles, Wand2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { genrePresetCategoryLabel } from "@shared/verticalDramaSeries";
+import {
+  genrePresetCategoryLabel,
+  VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
+  VERTICAL_DRAMA_SERIES_LOCALES,
+  type VerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries";
 import { pickCopy, verticalDramaCopy, wizardSteps } from "./verticalDramaCopy";
 
 interface WizardState {
@@ -41,7 +46,7 @@ interface WizardState {
   genre: string;
   logline: string;
   targetEpisodeCount: string;
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   targetDurationSeconds: string;
   mainPlot: string;
   seasonArc: string;
@@ -88,7 +93,10 @@ export function CreateSeriesWizard({
   const [stepIndex, setStepIndex] = useState(0);
   const [form, setForm] = useState<WizardState>(INITIAL_WIZARD);
   const [presetSearch, setPresetSearch] = useState("");
-  const [presetCategory, setPresetCategory] = useState<string>("all");
+  const [mixPresetIds, setMixPresetIds] = useState<string[]>([]);
+  const [mixCategories, setMixCategories] = useState<string[]>([]);
+  const [mixBusinessContext, setMixBusinessContext] = useState("");
+  const [mixPrimarySelectionId, setMixPrimarySelectionId] = useState<string | undefined>();
   const [productSearch, setProductSearch] = useState("");
 
   const presetsQuery = trpc.verticalDramaSeries.listGenrePresets.useQuery({ locale: lang });
@@ -97,24 +105,29 @@ export function CreateSeriesWizard({
     () => Array.from(new Set(presets.map((p) => p.category))),
     [presets],
   );
-  const filteredPresets = useMemo(() => {
-    const q = presetSearch.trim().toLowerCase();
-    return presets.filter((p) => {
-      const matchesQuery =
-        !q ||
-        p.title.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        genrePresetCategoryLabel(p.category, lang).toLowerCase().includes(q);
-      const matchesCategory = presetCategory === "all" || p.category === presetCategory;
-      return matchesQuery && matchesCategory;
-    });
-  }, [presets, presetSearch, presetCategory, lang]);
-
   const productsQuery = trpc.marketplaceCapture.listProducts.useQuery(
     { query: productSearch || undefined, limit: 20 },
     { enabled: form.productTieInEnabled },
   );
   const products = productsQuery.data ?? [];
+
+  const synthesizePresetMutation = trpc.verticalDramaSeries.synthesizeGenrePreset.useMutation({
+    onSuccess: () => {
+      toast.success(
+        lang === "th"
+          ? "AI ผสมแนวเรื่องเป็น draft ให้แล้ว"
+          : "AI created a mixed preset draft",
+      );
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(
+        err?.message ||
+          (lang === "th"
+            ? "ผสมแนวเรื่องไม่สำเร็จ ลองลดจำนวนแนวหรือใส่บริบทให้ชัดขึ้น"
+            : "Could not mix these story flavors. Try fewer flavors or clearer context."),
+      );
+    },
+  });
 
   const generateStoryMutation = trpc.verticalDramaSeries.generateStoryBible.useMutation({
     onSuccess: (data: { creditsUsed: number }) => {
@@ -174,6 +187,64 @@ export function CreateSeriesWizard({
         ? `นำ Preset "${preset.title}" มาใช้แล้ว — แก้ไขต่อได้ทุกแท็บ`
         : `Applied preset "${preset.title}" — edit any tab freely`,
     );
+  }
+
+  function applyPresetDraft(draft: SynthesizedGenrePresetDraft) {
+    setForm((prev) => ({
+      ...prev,
+      title: prev.title.trim() ? prev.title : draft.title,
+      genre: draft.title,
+      logline: draft.logline,
+      mainPlot: draft.mainPlot,
+      seasonArc: draft.seasonArc,
+      tone: draft.tone,
+      cliffhangerStyle: draft.cliffhangerStyle,
+      characters: draft.characters.map((c) => `${c.name} — ${c.role}: ${c.description}`).join("\n"),
+      visualBible: draft.visualBible,
+    }));
+    toast.success(
+      lang === "th"
+        ? "ใช้ draft นี้แล้ว — แก้ไขต่อได้ทุกแท็บ"
+        : "Draft applied — edit any tab freely",
+    );
+  }
+
+  function toggleMixPreset(id: string) {
+    setMixPresetIds((prev) => {
+      if (prev.includes(id)) {
+        if (mixPrimarySelectionId === id) setMixPrimarySelectionId(undefined);
+        return prev.filter((value) => value !== id);
+      }
+      if (prev.length >= 5) {
+        toast.info(lang === "th" ? "เลือก preset ได้สูงสุด 5 รายการ" : "Choose up to 5 presets");
+        return prev;
+      }
+      return [...prev, id];
+    });
+  }
+
+  function toggleMixCategory(category: string) {
+    setMixCategories((prev) => {
+      if (prev.includes(category)) return prev.filter((value) => value !== category);
+      return [...prev, category];
+    });
+  }
+
+  function handleSynthesizePreset() {
+    if (mixPresetIds.length < 2) {
+      toast.error(lang === "th" ? "เลือกอย่างน้อย 2 preset ก่อนให้ AI ผสม" : "Choose at least 2 presets first");
+      return;
+    }
+    synthesizePresetMutation.mutate({
+      locale: lang,
+      selectedPresetIds: mixPresetIds,
+      selectedCategories: [],
+      primarySelectionId: mixPrimarySelectionId,
+      businessContext: mixBusinessContext || undefined,
+      productContext: form.productName || undefined,
+      targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
+      toneHint: form.tone || undefined,
+    });
   }
 
   // All steps are always reachable (freely-navigable tabs) — this only drives
@@ -237,11 +308,9 @@ export function CreateSeriesWizard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      {/* Responsive width tiers — must use `sm:`+ variants to override the base
-          DialogContent's `sm:max-w-lg` cap (a non-responsive max-w-* would lose the
-          cascade at sm+ and the dialog would stay ~512px on desktop).
-          mobile: ~full width · tablet: 3xl · laptop: 5xl · desktop: 6xl. */}
-      <DialogContent className="flex h-[92dvh] w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:h-[88dvh] sm:max-w-3xl lg:max-w-5xl xl:max-w-6xl">
+      {/* Desktop uses viewport-based widths so the wizard can use the available
+          canvas instead of staying at the shared dialog's compact default. */}
+      <DialogContent className="flex h-[92dvh] max-h-[96dvh] !w-[96vw] !max-w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:h-[90dvh] sm:min-h-[28rem] sm:min-w-[24rem] sm:resize md:!w-[94vw] md:!max-w-[94vw] lg:!w-[92vw] lg:!max-w-[92vw] xl:!w-[90vw] xl:!max-w-[90vw] 2xl:!w-[88vw] 2xl:!max-w-[120rem]">
         <div className="shrink-0 border-b p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>{pickCopy(lang, verticalDramaCopy.createSeries)}</DialogTitle>
@@ -281,19 +350,29 @@ export function CreateSeriesWizard({
           </ol>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 xl:p-7">
           <WizardStep
             stepIndex={stepIndex}
             lang={lang}
             form={form}
             set={set}
-            presets={filteredPresets as GenrePreset[]}
+            presets={presets as GenrePreset[]}
             presetsLoading={presetsQuery.isLoading}
             presetSearch={presetSearch}
             onPresetSearchChange={setPresetSearch}
-            presetCategory={presetCategory}
-            onPresetCategoryChange={setPresetCategory}
             presetCategories={presetCategories}
+            mixPresetIds={mixPresetIds}
+            mixCategories={mixCategories}
+            mixBusinessContext={mixBusinessContext}
+            onMixBusinessContextChange={setMixBusinessContext}
+            mixPrimarySelectionId={mixPrimarySelectionId}
+            onMixPrimarySelectionIdChange={setMixPrimarySelectionId}
+            mixDraft={synthesizePresetMutation.data?.draft}
+            mixDraftLoading={synthesizePresetMutation.isPending}
+            onToggleMixPreset={toggleMixPreset}
+            onToggleMixCategory={toggleMixCategory}
+            onSynthesizePreset={handleSynthesizePreset}
+            onApplyPresetDraft={applyPresetDraft}
             onApplyPreset={applyPreset}
             products={products as MarketplaceProductOption[]}
             productsLoading={productsQuery.isLoading}
@@ -375,6 +454,25 @@ interface GenrePreset {
   scope: "global" | "private";
 }
 
+interface SynthesizedGenrePresetDraft {
+  title: string;
+  category: string;
+  logline: string;
+  mainPlot: string;
+  seasonArc: string;
+  tone: string;
+  cliffhangerStyle: string;
+  characters: GenrePresetCharacter[];
+  visualBible: string;
+  mixRecipe?: {
+    primaryFlavor?: string;
+    supportingFlavors?: string[];
+    rationale?: string;
+  };
+  warnings?: Array<{ code: string; message: string }>;
+  contract_version: 1;
+}
+
 interface MarketplaceProductOption {
   id: string;
   productName: string;
@@ -393,9 +491,19 @@ function WizardStep({
   presetsLoading,
   presetSearch,
   onPresetSearchChange,
-  presetCategory,
-  onPresetCategoryChange,
   presetCategories,
+  mixPresetIds,
+  mixCategories,
+  mixBusinessContext,
+  onMixBusinessContextChange,
+  mixPrimarySelectionId,
+  onMixPrimarySelectionIdChange,
+  mixDraft,
+  mixDraftLoading,
+  onToggleMixPreset,
+  onToggleMixCategory,
+  onSynthesizePreset,
+  onApplyPresetDraft,
   onApplyPreset,
   products,
   productsLoading,
@@ -410,9 +518,19 @@ function WizardStep({
   presetsLoading: boolean;
   presetSearch: string;
   onPresetSearchChange: (value: string) => void;
-  presetCategory: string;
-  onPresetCategoryChange: (value: string) => void;
   presetCategories: string[];
+  mixPresetIds: string[];
+  mixCategories: string[];
+  mixBusinessContext: string;
+  onMixBusinessContextChange: (value: string) => void;
+  mixPrimarySelectionId?: string;
+  onMixPrimarySelectionIdChange: (value: string | undefined) => void;
+  mixDraft?: SynthesizedGenrePresetDraft;
+  mixDraftLoading: boolean;
+  onToggleMixPreset: (id: string) => void;
+  onToggleMixCategory: (category: string) => void;
+  onSynthesizePreset: () => void;
+  onApplyPresetDraft: (draft: SynthesizedGenrePresetDraft) => void;
   onApplyPreset: (preset: GenrePreset) => void;
   products: MarketplaceProductOption[];
   productsLoading: boolean;
@@ -420,118 +538,119 @@ function WizardStep({
   onProductSearchChange: (value: string) => void;
 }) {
   const th = lang === "th";
+  // Preset browser height: toggle between compact and tall; the list is also
+  // user-draggable via CSS resize-y for anything in between.
+  const [presetListExpanded, setPresetListExpanded] = useState(false);
   switch (stepIndex) {
     case 0:
       return (
-        <div className="grid gap-4">
-          <div className="rounded-lg border bg-muted/30 p-3">
-            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium">
-              <Sparkles className="h-4 w-4" aria-hidden="true" />
-              {th ? "เริ่มจาก Preset แนวเรื่อง (ไม่บังคับ)" : "Start from a genre preset (optional)"}
-            </div>
-            <div className="relative mb-2">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                value={presetSearch}
-                onChange={(e) => onPresetSearchChange(e.target.value)}
-                placeholder={th ? "ค้นหา preset ตามชื่อหรือหมวด…" : "Search presets by title or category…"}
-                className="pl-9"
-              />
-            </div>
-            <Select value={presetCategory} onValueChange={onPresetCategoryChange}>
-              <SelectTrigger className="mb-2 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{th ? "ทุกหมวดหมู่" : "All categories"}</SelectItem>
-                {presetCategories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {genrePresetCategoryLabel(category, lang)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {presetsLoading ? (
-              <p className="text-xs text-muted-foreground">{th ? "กำลังโหลด…" : "Loading…"}</p>
-            ) : presets.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                {th ? "ไม่พบ preset ที่ตรงกัน" : "No matching presets"}
-              </p>
-            ) : (
-              <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-                {presets.map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => onApplyPreset(preset)}
-                    className={cn(
-                      "rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    )}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <p className="font-medium">{preset.title}</p>
-                      {preset.scope === "private" && (
-                        <Badge
-                          variant="secondary"
-                          className="px-1.5 py-0 text-[10px] leading-4"
-                        >
-                          {th ? "ของฉัน" : "Mine"}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground/80">
-                      {genrePresetCategoryLabel(preset.category, lang)}
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 text-muted-foreground">{preset.logline}</p>
-                  </button>
-                ))}
+        <div className="grid min-h-full gap-4 xl:grid-cols-[minmax(0,2.35fr)_minmax(22rem,0.85fr)] xl:items-start">
+          <div className="flex min-h-[32rem] flex-col rounded-xl border bg-muted/20 p-4 shadow-sm xl:min-h-[calc(90dvh-15rem)]">
+            <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                  <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
+                  {th ? "คลัง Preset แนวเรื่อง" : "Story preset library"}
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {th
+                    ? "เลือก preset เดี่ยว หรือให้ AI ผสมหลายแนวเป็น draft เดียว"
+                    : "Choose one preset or let AI mix several flavors into one draft."}
+                </p>
               </div>
-            )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                onClick={() => setPresetListExpanded((v) => !v)}
+                aria-expanded={presetListExpanded}
+              >
+                {presetListExpanded ? (
+                  <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+                {presetListExpanded ? (th ? "ย่อรายการ" : "Collapse") : (th ? "ขยายรายการ" : "Expand")}
+              </Button>
+            </div>
+            <MixAndMatchPresetPanel
+              lang={lang}
+              presets={presets}
+              presetsLoading={presetsLoading}
+              presetSearch={presetSearch}
+              onPresetSearchChange={onPresetSearchChange}
+              categories={presetCategories}
+              selectedPresetIds={mixPresetIds}
+              selectedCategories={mixCategories}
+              businessContext={mixBusinessContext}
+              onBusinessContextChange={onMixBusinessContextChange}
+              primarySelectionId={mixPrimarySelectionId}
+              onPrimarySelectionIdChange={onMixPrimarySelectionIdChange}
+              draft={mixDraft}
+              loading={mixDraftLoading}
+              onTogglePreset={onToggleMixPreset}
+              onToggleCategory={onToggleMixCategory}
+              onGenerate={onSynthesizePreset}
+              onApplyDraft={onApplyPresetDraft}
+              onApplySinglePreset={onApplyPreset}
+              expanded={presetListExpanded}
+            />
           </div>
 
-          <Field label={th ? "ชื่อซีรีย์ *" : "Series title *"}>
-            <Input value={form.title} onChange={(e) => set("title", e.target.value)} autoFocus />
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={th ? "แนวเรื่อง" : "Genre"}>
-              <Input value={form.genre} onChange={(e) => set("genre", e.target.value)} />
-            </Field>
-            <Field label={th ? "จำนวนตอนเป้าหมาย" : "Target episode count"}>
-              <Input
-                type="number"
-                min={1}
-                value={form.targetEpisodeCount}
-                onChange={(e) => set("targetEpisodeCount", e.target.value)}
-              />
-            </Field>
-          </div>
-          <Field label={th ? "เรื่องย่อ (logline)" : "Logline"}>
-            <Textarea value={form.logline} onChange={(e) => set("logline", e.target.value)} rows={2} />
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={th ? "ภาษา" : "Language"}>
-              <Select value={form.locale} onValueChange={(v) => set("locale", v as "th" | "en")}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="th">ไทย</SelectItem>
-                  <SelectItem value="en">English</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label={th ? "ความยาวต่อตอน (วินาที)" : "Target duration (sec)"}>
-              <Input
-                type="number"
-                min={1}
-                value={form.targetDurationSeconds}
-                onChange={(e) => set("targetDurationSeconds", e.target.value)}
-              />
-            </Field>
+          <div className="rounded-xl border bg-background p-4 shadow-sm">
+            <div className="mb-4">
+              <p className="text-sm font-semibold">{th ? "ข้อมูลพื้นฐาน" : "Basic setup"}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {th ? "เลือก preset ก่อน แล้วค่อยปรับข้อมูลสำคัญด้านนี้" : "Pick a preset first, then refine the essentials here."}
+              </p>
+            </div>
+            <div className="grid gap-4">
+              <Field label={th ? "ชื่อซีรีย์ *" : "Series title *"}>
+                <Input value={form.title} onChange={(e) => set("title", e.target.value)} autoFocus />
+              </Field>
+              <Field label={th ? "แนวเรื่อง" : "Genre"}>
+                <Input value={form.genre} onChange={(e) => set("genre", e.target.value)} />
+              </Field>
+              <Field label={th ? "จำนวนตอนเป้าหมาย" : "Target episode count"}>
+                <Input
+                  type="number"
+                  min={1}
+                  value={form.targetEpisodeCount}
+                  onChange={(e) => set("targetEpisodeCount", e.target.value)}
+                />
+              </Field>
+              <Field label={th ? "เรื่องย่อ (logline)" : "Logline"}>
+                <Textarea value={form.logline} onChange={(e) => set("logline", e.target.value)} rows={3} />
+              </Field>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <Field label={th ? "ภาษา" : "Language"}>
+                  <Select
+                    value={form.locale}
+                    onValueChange={(v) => set("locale", v as VerticalDramaSeriesLocale)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[min(60vh,24rem)]">
+                      {VERTICAL_DRAMA_SERIES_LOCALES.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          {VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[code]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label={th ? "ความยาวต่อตอน (วินาที)" : "Target duration (sec)"}>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={form.targetDurationSeconds}
+                    onChange={(e) => set("targetDurationSeconds", e.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -703,7 +822,10 @@ function WizardStep({
             label={th ? "จำนวนตอน" : "Episodes"}
             value={form.targetEpisodeCount || "-"}
           />
-          <ReviewRow label={th ? "ภาษา" : "Language"} value={form.locale} />
+          <ReviewRow
+            label={th ? "ภาษา" : "Language"}
+            value={VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[form.locale] ?? form.locale}
+          />
           <div className="flex items-center justify-between gap-4 border-b py-1.5 last:border-b-0">
             <span className="text-muted-foreground">{th ? "สินค้าผูกเรื่อง" : "Product tie-in"}</span>
             <span className="flex items-center gap-2 font-medium">
@@ -724,6 +846,336 @@ function WizardStep({
         </div>
       );
   }
+}
+
+function PresetCard({
+  preset,
+  lang,
+  selected,
+  onClick,
+}: {
+  preset: GenrePreset;
+  lang: "th" | "en";
+  selected?: boolean;
+  onClick: () => void;
+}) {
+  const th = lang === "th";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        selected && "border-primary bg-primary/5",
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <p className="font-medium">{preset.title}</p>
+        {preset.scope === "private" && (
+          <Badge variant="secondary" className="px-1.5 py-0 text-[10px] leading-4">
+            {th ? "ของฉัน" : "Mine"}
+          </Badge>
+        )}
+        {selected && (
+          <Badge variant="outline" className="px-1.5 py-0 text-[10px] leading-4">
+            {th ? "เลือกแล้ว" : "Selected"}
+          </Badge>
+        )}
+      </div>
+      <p className="mt-0.5 text-[10px] text-muted-foreground/80">
+        {genrePresetCategoryLabel(preset.category, lang)}
+      </p>
+      <p className="mt-0.5 line-clamp-2 text-muted-foreground">{preset.logline}</p>
+    </button>
+  );
+}
+
+function MixAndMatchPresetPanel({
+  lang,
+  presets,
+  presetsLoading,
+  presetSearch,
+  onPresetSearchChange,
+  categories,
+  selectedPresetIds,
+  selectedCategories,
+  businessContext,
+  onBusinessContextChange,
+  primarySelectionId,
+  onPrimarySelectionIdChange,
+  draft,
+  loading,
+  onTogglePreset,
+  onToggleCategory,
+  onGenerate,
+  onApplyDraft,
+  onApplySinglePreset,
+  expanded,
+}: {
+  lang: "th" | "en";
+  presets: GenrePreset[];
+  presetsLoading: boolean;
+  presetSearch: string;
+  onPresetSearchChange: (value: string) => void;
+  categories: string[];
+  selectedPresetIds: string[];
+  selectedCategories: string[];
+  businessContext: string;
+  onBusinessContextChange: (value: string) => void;
+  primarySelectionId?: string;
+  onPrimarySelectionIdChange: (value: string | undefined) => void;
+  draft?: SynthesizedGenrePresetDraft;
+  loading: boolean;
+  onTogglePreset: (id: string) => void;
+  onToggleCategory: (category: string) => void;
+  onGenerate: () => void;
+  onApplyDraft: (draft: SynthesizedGenrePresetDraft) => void;
+  onApplySinglePreset: (preset: GenrePreset) => void;
+  expanded: boolean;
+}) {
+  const th = lang === "th";
+  const selectionCount = selectedPresetIds.length;
+  const canApplySingle = selectionCount === 1 && !loading;
+  const canGenerate = selectionCount >= 2 && selectionCount <= 5 && !loading;
+  const selectedPresetIdSet = new Set(selectedPresetIds);
+  const searchQuery = presetSearch.trim().toLowerCase();
+  const categoryCounts = presets.reduce<Record<string, number>>((acc, preset) => {
+    acc[preset.category] = (acc[preset.category] ?? 0) + 1;
+    return acc;
+  }, {});
+  const filteredPresets = presets.filter((preset) => {
+    if (selectedPresetIdSet.has(preset.id)) return true;
+    const matchesCategory = selectedCategories.length > 0 && selectedCategories.includes(preset.category);
+    const matchesSearch =
+      !searchQuery ||
+      preset.title.toLowerCase().includes(searchQuery) ||
+      preset.category.toLowerCase().includes(searchQuery) ||
+      genrePresetCategoryLabel(preset.category, lang).toLowerCase().includes(searchQuery);
+    return matchesCategory && matchesSearch;
+  });
+  const primaryOptions = [
+    ...selectedPresetIds.map((id) => {
+      const preset = presets.find((item) => item.id === id);
+      return { id, label: preset?.title ?? id };
+    }),
+  ];
+  const selectedSinglePreset =
+    selectionCount === 1 ? presets.find((preset) => preset.id === selectedPresetIds[0]) : undefined;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+        <div className="flex items-start gap-2">
+          <Wand2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <div>
+            <p className="text-sm font-medium">
+              {th ? "เลือก Preset ได้ 1-5 แบบ" : "Choose 1-5 presets"}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {th
+                ? "เลือก 1 แบบเพื่อใช้ preset เดี่ยวแบบเดิม หรือเลือก 2-5 แบบเพื่อให้ AI ช่วย mix เป็น draft เดียว"
+                : "Choose 1 preset to use it directly, or choose 2-5 presets for AI to mix into one draft."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium">{th ? "เลือกหมวดแนวเรื่อง" : "Choose categories"}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {th ? `${selectedCategories.length} หมวดที่ใช้กรอง` : `${selectedCategories.length} filter categories`}
+          </p>
+        </div>
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-1.5 overflow-y-auto rounded-lg border bg-background p-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5",
+            expanded ? "max-h-[18rem]" : "max-h-[14rem]",
+          )}
+        >
+          {categories.map((category) => {
+            const selected = selectedCategories.includes(category);
+            const count = categoryCounts[category] ?? 0;
+            return (
+              <button
+                key={category}
+                type="button"
+                onClick={() => onToggleCategory(category)}
+                aria-pressed={selected}
+                className={cn(
+                  "min-h-8 rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors",
+                  selected
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-accent",
+                )}
+              >
+                {genrePresetCategoryLabel(category, lang)}
+                {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-col gap-2">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            value={presetSearch}
+            onChange={(e) => onPresetSearchChange(e.target.value)}
+            placeholder={th ? "ค้นหา preset ในหมวดที่เลือก…" : "Search presets in selected categories…"}
+            className="pl-9"
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-medium">
+            {th ? "เลือก preset ในหมวดที่เลือก" : "Choose presets from selected categories"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {selectedCategories.length > 0
+              ? th
+                ? `แสดง ${filteredPresets.length} preset`
+                : `${filteredPresets.length} presets shown`
+              : th
+                ? "เลือกหมวดก่อนเพื่อกรอง preset"
+                : "Choose categories first to filter presets"}
+          </p>
+        </div>
+        <div
+          className={cn(
+            "grid auto-rows-min grid-cols-1 gap-2 overflow-y-auto rounded-lg border bg-background/80 p-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4",
+            expanded ? "min-h-[16rem] max-h-[34vh]" : "min-h-[12rem] max-h-[26vh]",
+          )}
+        >
+          {presetsLoading ? (
+            <div className="col-span-full flex min-h-40 items-center justify-center rounded-md border border-dashed bg-muted/30 p-6 text-center text-xs text-muted-foreground">
+              {th ? "กำลังโหลด preset…" : "Loading presets..."}
+            </div>
+          ) : filteredPresets.length > 0 ? (
+            filteredPresets.map((preset) => (
+              <PresetCard
+                key={preset.id}
+                preset={preset}
+                lang={lang}
+                selected={selectedPresetIds.includes(preset.id)}
+                onClick={() => onTogglePreset(preset.id)}
+              />
+            ))
+          ) : (
+            <div className="col-span-full flex min-h-40 items-center justify-center rounded-md border border-dashed bg-muted/30 p-6 text-center text-xs text-muted-foreground">
+              {th
+                ? "เลือกหมวดแนวเรื่องด้านบนก่อน แล้วระบบจะแสดงเฉพาะ preset ในหมวดนั้น"
+                : "Choose one or more categories above, then only matching presets will appear here."}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label={th ? "ธุรกิจ/ร้าน/บริการที่อยากผูกเรื่อง" : "Business, shop, or service context"}>
+          <Input
+            value={businessContext}
+            onChange={(e) => onBusinessContextChange(e.target.value)}
+            placeholder={th ? "เช่น ร้านก๋วยเตี๋ยว, คาเฟ่ในชุมชน" : "e.g. noodle shop, neighborhood cafe"}
+          />
+        </Field>
+        <Field label={th ? "แนวหลัก (ไม่บังคับ)" : "Primary flavor (optional)"}>
+          <Select
+            value={primarySelectionId ?? "auto"}
+            onValueChange={(value) => onPrimarySelectionIdChange(value === "auto" ? undefined : value)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-[min(50vh,20rem)]">
+              <SelectItem value="auto">{th ? "ให้ AI เลือกให้" : "Let AI choose"}</SelectItem>
+              {primaryOptions.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-muted-foreground">
+          {th
+            ? `เลือก preset แล้ว ${selectionCount}/5 แบบ`
+            : `${selectionCount}/5 presets selected`}
+        </p>
+        {canApplySingle ? (
+          <Button
+            type="button"
+            onClick={() => selectedSinglePreset && onApplySinglePreset(selectedSinglePreset)}
+            disabled={!selectedSinglePreset}
+            className="gap-2"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            {th ? "ใช้ Preset นี้" : "Use this preset"}
+          </Button>
+        ) : (
+        <Button type="button" onClick={onGenerate} disabled={!canGenerate} className="gap-2">
+          {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {loading
+            ? th
+              ? "AI กำลังจัดรสชาติเรื่องให้เข้ากัน..."
+              : "AI is mixing the story flavors..."
+            : th
+              ? "ให้ AI ผสมเป็น Preset"
+              : "Mix into a preset"}
+        </Button>
+        )}
+      </div>
+
+      {selectionCount === 0 && (
+        <p className="text-xs text-muted-foreground">
+          {th
+            ? "เริ่มจากเลือกหมวดเพื่อกรองรายการ แล้วเลือก preset 1-5 แบบ"
+            : "Start by choosing categories, then select 1-5 presets."}
+        </p>
+      )}
+
+      {draft && (
+        <div className="rounded-md border bg-background p-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">{draft.title}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{draft.logline}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Badge variant="secondary">{genrePresetCategoryLabel(draft.category, lang)}</Badge>
+                <Badge variant="outline">
+                  {draft.characters.length} {th ? "ตัวละคร" : "characters"}
+                </Badge>
+              </div>
+              {draft.mixRecipe?.rationale && (
+                <p className="mt-2 text-xs text-muted-foreground">{draft.mixRecipe.rationale}</p>
+              )}
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button type="button" size="sm" onClick={() => onApplyDraft(draft)}>
+                {th ? "ใช้ draft นี้" : "Use this draft"}
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={onGenerate} disabled={loading}>
+                {th ? "ปรับใหม่" : "Try again"}
+              </Button>
+            </div>
+          </div>
+          {draft.warnings && draft.warnings.length > 0 && (
+            <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+              {draft.warnings[0]?.message}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

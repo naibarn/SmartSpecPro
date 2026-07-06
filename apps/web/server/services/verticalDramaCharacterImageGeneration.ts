@@ -34,6 +34,7 @@ import {
   buildTargetAudienceRegionInstruction,
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -337,6 +338,13 @@ function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
     VD_SOLO_PORTRAIT_INSTRUCTION,
     `Also append these solo-portrait negative terms to every generated negative_prompt: "${VD_SOLO_PORTRAIT_NEGATIVE_TERMS}".`,
     VD_CINEMATIC_LANGUAGE_INSTRUCTION,
+    // Two-tier identity lock (2026-07-06 prompt-safety upgrade): this
+    // character's portrait/turnaround/full-body/expression/outfit prompts are
+    // the CANONICAL identity reference every downstream generation (start
+    // frames, angle grids, repairs) will lock onto — this instruction keeps
+    // every one of these initial prompts internally consistent about which
+    // traits are the persistent identity anchor vs. the free-to-vary staging.
+    VD_CHARACTER_LOCK_INSTRUCTION,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
     "Return ONLY the JSON object described in your instructions — no markdown fences, no commentary.",
     VD_COMPACT_JSON_INSTRUCTION,

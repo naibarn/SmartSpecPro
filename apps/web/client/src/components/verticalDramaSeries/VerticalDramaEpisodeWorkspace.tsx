@@ -59,6 +59,7 @@ import { VerticalDramaDialogueAudioPanel } from "./VerticalDramaDialogueAudioPan
 import {
   VerticalDramaStoryboardPanel,
   type VerticalDramaAssetUrlMap,
+  type VerticalDramaAvailableProductImageView,
   type VerticalDramaCapableModel,
   type VerticalDramaCharacterPortraitMap,
   type VerticalDramaClipDialogueLineView,
@@ -129,6 +130,12 @@ export interface VerticalDramaStoryboardPanelData {
   characterPortraits?: VerticalDramaCharacterPortraitMap;
   /** Product tie-in placement per shot (spec §13) — read-only chip indicator. */
   productTieInByShot?: Record<number, VerticalDramaShotProductTieInView>;
+  /** Every product reference image available to pick from (2026-07-06 product-
+   *  reference upgrade) — see `VerticalDramaStoryboardPanel`'s prop of the same name. */
+  productImages?: VerticalDramaAvailableProductImageView[];
+  productImagesLoading?: boolean;
+  onSaveShotProductReferences?: (shotNumber: number, urls: string[]) => void;
+  savingProductReferencesForShot?: number | null;
   onChangeCharacterReference?: (characterId: string) => void;
   onDropCharacterReference?: (characterId: string, url: string) => void;
   onDropStartFrame?: (shotNumber: number, url: string) => void;
@@ -163,6 +170,8 @@ export interface VerticalDramaStoryboardPanelData {
   selectedDialogueLanguage?: string;
   onSelectPromptLanguage?: (language: string) => void;
   onSelectDialogueLanguage?: (language: string) => void;
+  selectedThaiAccent?: string | null;
+  onSelectThaiAccent?: (value: string) => void;
 
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
@@ -608,6 +617,10 @@ export function VerticalDramaEpisodeWorkspace({
           onGenerateAllStartFrameImages={storyboardPanel?.onGenerateAllStartFrameImages}
           characterPortraits={storyboardPanel?.characterPortraits}
           productTieInByShot={storyboardPanel?.productTieInByShot}
+          productImages={storyboardPanel?.productImages}
+          productImagesLoading={storyboardPanel?.productImagesLoading}
+          onSaveShotProductReferences={storyboardPanel?.onSaveShotProductReferences}
+          savingProductReferencesForShot={storyboardPanel?.savingProductReferencesForShot}
           onChangeCharacterReference={storyboardPanel?.onChangeCharacterReference}
           onDropCharacterReference={storyboardPanel?.onDropCharacterReference}
           onDropStartFrame={storyboardPanel?.onDropStartFrame}
@@ -634,6 +647,8 @@ export function VerticalDramaEpisodeWorkspace({
           selectedDialogueLanguage={storyboardPanel?.selectedDialogueLanguage}
           onSelectPromptLanguage={storyboardPanel?.onSelectPromptLanguage}
           onSelectDialogueLanguage={storyboardPanel?.onSelectDialogueLanguage}
+          selectedThaiAccent={storyboardPanel?.selectedThaiAccent}
+          onSelectThaiAccent={storyboardPanel?.onSelectThaiAccent}
           shotReferencesByShot={storyboardPanel?.shotReferencesByShot}
           onAddShotReference={storyboardPanel?.onAddShotReference}
           onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
@@ -1086,6 +1101,10 @@ export function VerticalDramaEpisodeWorkspace({
                       onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
                       onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
                       productTieInByShot={storyboardPanel?.productTieInByShot}
+                      productImages={storyboardPanel?.productImages}
+                      productImagesLoading={storyboardPanel?.productImagesLoading}
+                      onSaveShotProductReferences={storyboardPanel?.onSaveShotProductReferences}
+                      savingProductReferencesForShot={storyboardPanel?.savingProductReferencesForShot}
                       imageModels={storyboardPanel?.imageModels}
                       videoModels={storyboardPanel?.videoModels}
                       selectedImageModelId={storyboardPanel?.selectedImageModelId}

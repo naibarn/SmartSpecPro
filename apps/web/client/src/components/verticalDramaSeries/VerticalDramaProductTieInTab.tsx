@@ -30,6 +30,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { pickCopy, verticalDramaCopy } from "@/components/verticalDramaSeries/verticalDramaCopy";
+import {
+  VERTICAL_DRAMA_PRODUCT_CATEGORIES,
+  VERTICAL_DRAMA_PRODUCT_CATEGORY_LABELS_TH,
+  VERTICAL_DRAMA_PRODUCT_CATEGORY_LABELS_EN,
+  type VerticalDramaProductCategory,
+} from "@shared/verticalDramaSeries/thaiAdCompliance";
 
 /**
  * Loose shape for the `productTieIn` JSON column — wider than the parent
@@ -55,6 +61,12 @@ export interface VerticalDramaProductTieIn {
   marketplaceCaptureId?: string;
   /** Free-text caption describing how the product ties into the story/genre, for video narration. */
   videoNarrationCaption?: string;
+  /**
+   * Additive (2026-07-06 Thai ad-compliance upgrade) — broad product category
+   * driving the mandatory disclosure line applied to tie-in dialogue. See
+   * `@shared/verticalDramaSeries/thaiAdCompliance.ts`.
+   */
+  productCategory?: VerticalDramaProductCategory;
   [key: string]: unknown;
 }
 
@@ -84,6 +96,9 @@ export function VerticalDramaProductTieInTab({
   const [videoNarrationCaption, setVideoNarrationCaption] = useState(
     productTieIn?.videoNarrationCaption ?? "",
   );
+  const [productCategory, setProductCategory] = useState<VerticalDramaProductCategory | "">(
+    productTieIn?.productCategory ?? "",
+  );
 
   useEffect(() => {
     setEnabled(Boolean(productTieIn?.enabled));
@@ -91,6 +106,7 @@ export function VerticalDramaProductTieInTab({
     setForbiddenClaims((productTieIn?.forbiddenClaims ?? []).join(", "));
     setMarketplaceCaptureId(productTieIn?.marketplaceCaptureId ?? "");
     setVideoNarrationCaption(productTieIn?.videoNarrationCaption ?? "");
+    setProductCategory(productTieIn?.productCategory ?? "");
   }, [productTieIn]);
 
   // Populates the "link marketplace capture" picker.
@@ -134,6 +150,7 @@ export function VerticalDramaProductTieInTab({
         .filter(Boolean),
       marketplaceCaptureId: marketplaceCaptureId || undefined,
       videoNarrationCaption: videoNarrationCaption.trim() || undefined,
+      productCategory: productCategory || undefined,
     };
     updateMutation.mutate({ seriesId, productTieIn: merged });
   };
@@ -143,7 +160,8 @@ export function VerticalDramaProductTieInTab({
     productName !== (productTieIn?.productName ?? "") ||
     forbiddenClaims !== (productTieIn?.forbiddenClaims ?? []).join(", ") ||
     marketplaceCaptureId !== (productTieIn?.marketplaceCaptureId ?? "") ||
-    videoNarrationCaption !== (productTieIn?.videoNarrationCaption ?? "");
+    videoNarrationCaption !== (productTieIn?.videoNarrationCaption ?? "") ||
+    productCategory !== (productTieIn?.productCategory ?? "");
 
   return (
     <Card>
@@ -191,6 +209,43 @@ export function VerticalDramaProductTieInTab({
                 onChange={(e) => setProductName(e.target.value)}
                 disabled={readOnly || updateMutation.isPending}
               />
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label
+                htmlFor="product-tie-in-category"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                {lang === "th" ? "หมวดหมู่สินค้า" : "Product category"}
+              </Label>
+              <Select
+                value={productCategory}
+                onValueChange={(v) => setProductCategory(v as VerticalDramaProductCategory)}
+                disabled={readOnly || updateMutation.isPending}
+              >
+                <SelectTrigger
+                  id="product-tie-in-category"
+                  aria-label={lang === "th" ? "หมวดหมู่สินค้า" : "Product category"}
+                >
+                  <SelectValue
+                    placeholder={lang === "th" ? "เลือกหมวดหมู่" : "Select a category"}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {VERTICAL_DRAMA_PRODUCT_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {lang === "th"
+                        ? VERTICAL_DRAMA_PRODUCT_CATEGORY_LABELS_TH[category]
+                        : VERTICAL_DRAMA_PRODUCT_CATEGORY_LABELS_EN[category]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "บางหมวดหมู่ต้องมีคำเตือนบังคับตามกฎหมายโฆษณาไทยแนบท้ายคลิปที่มีสินค้านี้"
+                  : "Some categories require a mandatory disclosure line at the end of clips featuring this product."}
+              </p>
             </div>
 
             <div className="grid gap-1.5">

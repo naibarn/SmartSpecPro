@@ -41,6 +41,10 @@ import {
   normalizeTargetAudienceRegion,
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import {
+  VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
+  type VerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries/contracts";
 
 const STATUS_OPTIONS: VerticalDramaSeriesStatus[] = [
   "draft",
@@ -164,7 +168,13 @@ export function VerticalDramaSettingsTab({
       label: { th: "ความยาวต่อตอน (วินาที)", en: "Default episode duration (sec)" },
       value: defaultEpisodeDurationSeconds,
     },
-    { label: { th: "ภาษา", en: "Locale" }, value: locale },
+    {
+      label: { th: "ภาษา", en: "Locale" },
+      value: locale
+        ? (VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[locale as VerticalDramaSeriesLocale] ??
+          locale)
+        : locale,
+    },
     { label: { th: "โลจไลน์", en: "Logline" }, value: b.logline },
     { label: { th: "โครงเรื่องหลัก", en: "Main plot" }, value: b.mainPlot },
     { label: { th: "สไตล์ภาพ", en: "Visual style" }, value: b.visualStyle },

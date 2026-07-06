@@ -40,6 +40,7 @@ import {
   VerticalDramaCharacterStockError,
 } from "../services/verticalDramaCharacterStock";
 import { VERTICAL_DRAMA_CHARACTER_ASSET_STATES } from "@shared/verticalDramaSeries/characterAssets";
+import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
@@ -674,10 +675,14 @@ export const verticalDramaCharactersRouter = router({
           title: verticalDramaSeries.title,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
+          bible: verticalDramaSeries.bible,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
         .limit(1);
+      const targetAudienceRegion = readTargetAudienceRegionFromBible(
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
@@ -697,6 +702,7 @@ export const verticalDramaCharactersRouter = router({
           storyContext: seriesRow
             ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
             : undefined,
+          targetAudienceRegion,
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -785,10 +791,14 @@ export const verticalDramaCharactersRouter = router({
           title: verticalDramaSeries.title,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
+          bible: verticalDramaSeries.bible,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
         .limit(1);
+      const targetAudienceRegion = readTargetAudienceRegionFromBible(
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
@@ -822,6 +832,7 @@ export const verticalDramaCharactersRouter = router({
             storyContext: seriesRow
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
               : undefined,
+            targetAudienceRegion,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1003,10 +1014,14 @@ export const verticalDramaCharactersRouter = router({
           title: verticalDramaSeries.title,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
+          bible: verticalDramaSeries.bible,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
         .limit(1);
+      const targetAudienceRegion = readTargetAudienceRegionFromBible(
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
@@ -1042,6 +1057,7 @@ export const verticalDramaCharactersRouter = router({
             storyContext: seriesRow
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
               : undefined,
+            targetAudienceRegion,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1209,10 +1225,14 @@ export const verticalDramaCharactersRouter = router({
           title: verticalDramaSeries.title,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
+          bible: verticalDramaSeries.bible,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
         .limit(1);
+      const targetAudienceRegion = readTargetAudienceRegionFromBible(
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
@@ -1256,6 +1276,7 @@ export const verticalDramaCharactersRouter = router({
             storyContext: seriesRow
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
               : undefined,
+            targetAudienceRegion,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {

@@ -36,8 +36,11 @@
 import { detectProviderFamily } from "./verticalDramaProviderRouting";
 import type { ModelDefinition } from "./modelRegistry";
 import { resolveVerticalDramaCapabilities } from "./modelRegistry";
-import type { VerticalDramaDialogueLanguage } from "@shared/verticalDramaSeries";
-import { VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES } from "@shared/verticalDramaSeries";
+import type { VerticalDramaDialogueLanguage, VerticalDramaThaiAccent } from "@shared/verticalDramaSeries";
+import {
+  VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
+  VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES,
+} from "@shared/verticalDramaSeries";
 
 /* -------------------------------------------------------------------------- */
 /* Input contracts                                                            */
@@ -89,6 +92,16 @@ export interface FormatVideoClipRequestParams {
    * never has to infer the spoken language from the transcript alone.
    */
   dialogueLanguage?: VerticalDramaDialogueLanguage;
+  /**
+   * Thai regional speech accent (episode-level language plan) — only
+   * meaningful when the effective `dialogueLanguage` is `"th"` (or absent,
+   * which defaults to Thai); ignored otherwise. When set, appends the
+   * matching English delivery directive after the native dialogue clause
+   * (native-audio models only — never in the TTS-fallback/mouth-movement
+   * branch, since that path never embeds a literal transcript for the
+   * accent direction to attach to).
+   */
+  thaiAccent?: VerticalDramaThaiAccent;
   /**
    * The resolved video model. Accepts either a full `ModelDefinition` (from
    * `getModelsByTypeAsync`) or the minimal shape `resolveVerticalDramaCapabilities`
@@ -280,6 +293,10 @@ export function formatVideoClipRequest(
     if (nativeAudioDialogue) {
       const clause = buildNativeDialogueClause(dialogueLines, dialogueLanguageName);
       finalPrompt = `${finalPrompt} ${clause}`.trim();
+      if (dialogueLanguage === "th" && params.thaiAccent) {
+        const accentDirective = `${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every spoken line.`;
+        finalPrompt = `${finalPrompt} ${accentDirective}`.trim();
+      }
       generateAudio = true;
       ttsFallback = false;
     } else {

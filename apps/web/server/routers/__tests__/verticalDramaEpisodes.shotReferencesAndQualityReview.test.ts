@@ -1369,7 +1369,12 @@ describe("repairShotImage (Phase 6.5)", () => {
       expect.any(String),
     );
     const call = (mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(call.prompt).toMatch(/same character identity/i);
+    // Repair prompt now uses the standardized two-tier character-lock
+    // instruction (2026-07-06 prompt-safety upgrade) instead of an inline
+    // "same character identity" sentence.
+    expect(call.prompt).toMatch(/CHARACTER IDENTITY LOCK/i);
+    expect(call.prompt).toMatch(/PERSISTENT/);
+    expect(call.prompt).toMatch(/VARIABLE/);
   });
 
   it("refunds credits when generation submission fails", async () => {

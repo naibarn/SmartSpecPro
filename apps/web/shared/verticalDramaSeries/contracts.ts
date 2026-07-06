@@ -132,6 +132,18 @@ export type VerticalDramaProductTieInConfig = {
     | "caption_disclosure"
     | "manual_review";
   regulatedCategory?: "none" | "health" | "beauty" | "finance" | "medical" | "baby_kids" | "other";
+  /**
+   * Additive (2026-07-06 Thai ad-compliance upgrade) — broad product category
+   * driving which MANDATORY disclosure line the tie-in dialogue must include
+   * per Thai advertising regulation. See
+   * `@shared/verticalDramaSeries/thaiAdCompliance.ts`'s
+   * `VerticalDramaProductCategory` for the value set and the
+   * category->required-disclosure map. Distinct from `regulatedCategory`
+   * above (which governs claim-screening severity/human-review gating, not
+   * disclosure text). Optional/absent on tie-ins created before this field
+   * existed — treated as "no category set" (no mandated disclosure line).
+   */
+  productCategory?: "cosmetics" | "supplement" | "food_beverage" | "general_goods" | "service" | "other";
   allowedStoryFunctions: Array<
     "memory_trigger" | "relationship_token" | "status_symbol" | "daily_use" | "plot_clue" | "soft_cta"
   >;
@@ -153,6 +165,15 @@ export type VerticalDramaTieInUsage = {
   disclosureRequired: boolean;
   disclosureText?: string;
   approvedByUserId?: string;
+  /**
+   * Additive (2026-07-06 Thai ad-compliance upgrade) — the category-mandated
+   * disclosure line (e.g. "อ่านคำเตือนในฉลากก่อนบริโภค" for อาหารเสริม), from
+   * `resolveRequiredDisclosureForCategory`. Distinct from `disclosureText`
+   * (the general tie-in disclosure policy text) — this is specifically the
+   * Thai-law category warning, surfaced separately so the UI can show it even
+   * when the general `disclosurePolicy` is `"not_required"`.
+   */
+  requiredDisclosure?: string;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -216,8 +237,39 @@ export type VerticalDramaUpstreamAgeGroup =
   | "adults"
   | string;
 
+/**
+ * Series-level content locale — the language the series' story bible,
+ * scripts, and episode content are written in. Covers the popular languages
+ * product wants from day one (same set as `VerticalDramaDialogueLanguage`,
+ * which aliases this list). The DB column (`vertical_drama_series.locale`,
+ * varchar(8)) already fits any of these codes; genre presets remain th/en
+ * only (preset browsing follows the UI language, not the series locale).
+ */
+export const VERTICAL_DRAMA_SERIES_LOCALES = [
+  "th",
+  "en",
+  "zh",
+  "ja",
+  "ko",
+  "es",
+  "pt",
+  "id",
+  "vi",
+  "hi",
+  "ar",
+  "fr",
+  "de",
+  "tr",
+  "it",
+  "ru",
+  "fil",
+  "ms",
+] as const;
+
+export type VerticalDramaSeriesLocale = (typeof VERTICAL_DRAMA_SERIES_LOCALES)[number];
+
 export type VerticalDramaMinimalInput = {
-  locale?: "th" | "en";
+  locale?: VerticalDramaSeriesLocale;
   storyTitle: string;
   durationSeconds?: 60;
   storyBrief: string;
@@ -252,7 +304,7 @@ export type VerticalDramaUpstreamMinimalEpisodeInput = {
 };
 
 export const verticalDramaMinimalInputSchema = z.object({
-  locale: z.enum(["th", "en"]).optional(),
+  locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
   storyTitle: z.string().min(1),
   durationSeconds: z.literal(60).optional(),
   storyBrief: z.string().min(1),
@@ -324,7 +376,7 @@ export type VerticalDramaSeriesProject = {
   tenantId: string;
   ownerUserId: string;
   title: string;
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   aspectRatio: "9:16";
   status: "draft" | "planning" | "active" | "paused" | "completed" | "archived";
   targetEpisodeCount: number;
@@ -387,6 +439,20 @@ export type VerticalDramaStartFramePlan = {
     negativePrompt: string;
     requiredCharacterRefs: string[];
     productReferenceAssetIds: string[];
+    /**
+     * Additive (2026-07-06 product-reference picker) — true once the user has
+     * EXPLICITLY set/edited this shot's `productReferenceAssetIds` via the
+     * storyboard panel's "เปลี่ยนภาพสินค้า" picker. Distinguishes "user chose
+     * zero product images for this shot" (`productReferenceAssetIds: []`,
+     * `productRefsCustomized: true` — auto-resolution must NOT refill it) from
+     * "never touched, still pipeline-auto-populated" (`productRefsCustomized`
+     * absent/false — auto-resolution keeps merging the resolved product refs
+     * in on every `start_frame_render_plan` regen, the pre-existing
+     * behavior). Absent on every frame created before this field existed,
+     * which is intentionally equivalent to `false` (fully backward
+     * compatible — those frames keep auto-resolving exactly as before).
+     */
+    productRefsCustomized?: boolean;
     approvedMediaAssetId?: string;
     /** Persisted 3x3 multi-angle picker state (2026-07-05 fix) — the source
      *  grid image is already a completed, durable media task; this just
@@ -460,36 +526,13 @@ export type VerticalDramaPromptLanguage = "en" | "th" | "zh" | "ja" | "ko";
  * (default, the series' own locale), English, and the other popular
  * languages product wants covered from day one.
  */
-export type VerticalDramaDialogueLanguage =
-  | "th"
-  | "en"
-  | "zh"
-  | "ja"
-  | "ko"
-  | "es"
-  | "pt"
-  | "id"
-  | "vi"
-  | "hi"
-  | "ar";
+export type VerticalDramaDialogueLanguage = VerticalDramaSeriesLocale;
 
 /** Runtime value list for `VerticalDramaPromptLanguage` — single source of truth for the server's Zod enum and any client validation. */
 export const VERTICAL_DRAMA_PROMPT_LANGUAGES = ["en", "th", "zh", "ja", "ko"] as const;
 
-/** Runtime value list for `VerticalDramaDialogueLanguage` — single source of truth for the server's Zod enum and the client's language select options. */
-export const VERTICAL_DRAMA_DIALOGUE_LANGUAGES = [
-  "th",
-  "en",
-  "zh",
-  "ja",
-  "ko",
-  "es",
-  "pt",
-  "id",
-  "vi",
-  "hi",
-  "ar",
-] as const;
+/** Runtime value list for `VerticalDramaDialogueLanguage` — aliases `VERTICAL_DRAMA_SERIES_LOCALES` (same set, single source of truth). */
+export const VERTICAL_DRAMA_DIALOGUE_LANGUAGES = VERTICAL_DRAMA_SERIES_LOCALES;
 
 /** English display name per `VerticalDramaPromptLanguage` code — drives the "write ... entirely in X" clause in the skills' instructions. */
 export const VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES: Record<
@@ -524,7 +567,34 @@ export const VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES: Record<
   vi: "Vietnamese",
   hi: "Hindi",
   ar: "Arabic",
+  fr: "French",
+  de: "German",
+  tr: "Turkish",
+  it: "Italian",
+  ru: "Russian",
+  fil: "Filipino",
+  ms: "Malay",
 };
+
+/**
+ * English display name for a series locale — drives "write all output in X"
+ * clauses in generation prompts. Unknown/legacy values fall back to English.
+ */
+export function verticalDramaLocaleEnglishName(locale: string | null | undefined): string {
+  return (
+    VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[locale as VerticalDramaDialogueLanguage] ??
+    "English"
+  );
+}
+
+/** Normalize a stored series locale to a valid `VerticalDramaSeriesLocale`, defaulting to `"th"`. */
+export function normalizeVerticalDramaSeriesLocale(
+  locale: string | null | undefined,
+): VerticalDramaSeriesLocale {
+  return (VERTICAL_DRAMA_SERIES_LOCALES as readonly string[]).includes(locale ?? "")
+    ? (locale as VerticalDramaSeriesLocale)
+    : "th";
+}
 
 /**
  * Native-script display name per `VerticalDramaDialogueLanguage` code — for
@@ -546,6 +616,74 @@ export const VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES: Record<
   vi: "Tiếng Việt",
   hi: "हिन्दी",
   ar: "العربية",
+  fr: "Français",
+  de: "Deutsch",
+  tr: "Türkçe",
+  it: "Italiano",
+  ru: "Русский",
+  fil: "Filipino",
+  ms: "Bahasa Melayu",
+};
+
+/**
+ * Thai regional speech accents — a refinement of `dialogueLanguage: "th"`.
+ * Selecting one injects the matching English delivery directive
+ * (`VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES`) into video prompts so
+ * native-audio models perform the dialogue with that accent. Ignored when the
+ * dialogue language is not Thai.
+ */
+export const VERTICAL_DRAMA_THAI_ACCENTS = [
+  "standard_central_thai",
+  "bangkok_thai_accent",
+  "mild_northern_thai_accent",
+  "mild_isan_thai_accent",
+  "mild_southern_thai_accent",
+  "neutral_thai_with_light_regional_accent",
+] as const;
+
+export type VerticalDramaThaiAccent = (typeof VERTICAL_DRAMA_THAI_ACCENTS)[number];
+
+/**
+ * English dialogue-delivery directive per Thai accent — embedded verbatim in
+ * video prompts (video models read English direction best). Wording is a
+ * product decision; keep the "mild"/"easy to understand" guardrails so
+ * regional accents stay intelligible to general Thai audiences.
+ */
+export const VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES: Record<
+  VerticalDramaThaiAccent,
+  string
+> = {
+  standard_central_thai:
+    "Dialogue: in standard Central Thai, standard Bangkok Thai accent, clear pronunciation, natural conversational tone",
+  bangkok_thai_accent:
+    "Dialogue: in standard Central Thai with a clear Bangkok-style accent, natural conversational delivery, warm and easy to understand.",
+  mild_northern_thai_accent:
+    "Dialogue: in Thai with a mild Northern Thai / Chiang Mai accent, soft warm delivery, gentle pacing, easy to understand.",
+  mild_isan_thai_accent:
+    "Dialogue: in Thai with a mild Isan / Northeastern Thai accent, friendly local tone, lively but clear, easy to understand.",
+  mild_southern_thai_accent:
+    "Dialogue: in Thai with a mild Southern Thai accent, confident energetic delivery, clear pronunciation, not too fast.",
+  neutral_thai_with_light_regional_accent:
+    "Dialogue: Thai spoken naturally with a neutral central tone and a slight regional flavor. The accent should feel local and believable, but still clear, soft, and easy for general Thai audiences to understand. Avoid heavy dialect words or exaggerated regional pronunciation.",
+};
+
+/** Bilingual UI labels per Thai accent — for the storyboard panel's accent select. */
+export const VERTICAL_DRAMA_THAI_ACCENT_LABELS: Record<
+  VerticalDramaThaiAccent,
+  { th: string; en: string }
+> = {
+  standard_central_thai: { th: "ไทยกลางมาตรฐาน", en: "Standard Central Thai" },
+  bangkok_thai_accent: { th: "สำเนียงกรุงเทพฯ", en: "Bangkok Accent" },
+  mild_northern_thai_accent: {
+    th: "สำเนียงเหนืออ่อน ๆ (เชียงใหม่)",
+    en: "Mild Northern (Chiang Mai) Accent",
+  },
+  mild_isan_thai_accent: { th: "สำเนียงอีสานอ่อน ๆ", en: "Mild Isan Accent" },
+  mild_southern_thai_accent: { th: "สำเนียงใต้อ่อน ๆ", en: "Mild Southern Accent" },
+  neutral_thai_with_light_regional_accent: {
+    th: "ไทยกลางแตะสำเนียงท้องถิ่นเบา ๆ",
+    en: "Neutral Thai, Light Regional Flavor",
+  },
 };
 
 /** Typed projection of the `video_motion_prompt_pack` output (spec §6.5, §6.9). */
@@ -556,6 +694,8 @@ export type VerticalDramaMotionPromptPack = {
   promptLanguage?: VerticalDramaPromptLanguage;
   /** The language the characters SPEAK in the video — see `VerticalDramaDialogueLanguage`. Defaults to `"th"` when absent. */
   dialogueLanguage?: VerticalDramaDialogueLanguage;
+  /** Thai regional speech accent — only meaningful when `dialogueLanguage` is `"th"` (or absent, which defaults to Thai). See `VerticalDramaThaiAccent`. */
+  thaiAccent?: VerticalDramaThaiAccent;
   motionMode:
     | "first_last_frame_bridge"
     | "first_frame_to_video"
@@ -575,6 +715,16 @@ export type VerticalDramaMotionPromptPack = {
     subShotNumber?: number;
     /** Dialogue line(s) spoken during this clip (Phase 3.1) — optional, empty/omitted for silent clips. */
     dialogue?: VerticalDramaMotionPromptClipDialogueLine[];
+    /**
+     * Additive (2026-07-06 Thai ad-compliance upgrade) — the category-mandated
+     * disclosure line for this clip's product tie-in (e.g.
+     * "อ่านคำเตือนในฉลากก่อนบริโภค"), rendered as an end-of-clip spoken line
+     * or caption note. Present only when the clip's shot carries a tie-in
+     * whose category requires a mandated disclosure — see
+     * `buildThaiAdComplianceInstruction`/`resolveRequiredDisclosureForCategory`
+     * in `@shared/verticalDramaSeries/thaiAdCompliance.ts`.
+     */
+    requiredDisclosure?: string;
   }>;
   warnings: VerticalDramaWarning[];
 };
@@ -834,7 +984,7 @@ export type NormalizedEpisodeInput = {
   seriesId: string;
   episodeId: string;
   episodeNumber: number;
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   targetDurationSeconds: 60;
   aspectRatio: "9:16";
   storyBrief: string;

@@ -36,6 +36,7 @@ import {
   buildTargetAudienceRegionInstruction,
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -146,6 +147,8 @@ export interface StartFrameRenderPlanProjection {
     negativePrompt: string;
     requiredCharacterRefs: string[];
     productReferenceAssetIds: string[];
+    /** See `VerticalDramaStartFramePlan.frames[].productRefsCustomized` in `@shared/verticalDramaSeries`. */
+    productRefsCustomized?: boolean;
   }>;
 }
 
@@ -260,6 +263,7 @@ function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
       ? `Preferred image model: ${params.selectedImageModelId}`
       : null,
     `Storyboard shots (build exactly one start-frame render request per shot, 9 total):\n${shotLines}`,
+    params.storyboardShots.some((s) => s.characterIds.length > 0) ? VD_CHARACTER_LOCK_INSTRUCTION : null,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
     VD_COMPACT_JSON_INSTRUCTION,
   ]

@@ -15,6 +15,10 @@ import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import { debugLog, debugError } from "../_core/logger";
+import {
+  verticalDramaLocaleEnglishName,
+  type VerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries";
 
 const LAST_RESORT_MODEL = "gpt-4o-mini";
 
@@ -219,7 +223,7 @@ interface GenerateStoryBibleParams {
   tenantId?: string;
   seriesId: number;
   title: string;
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   genre?: string | null;
   tone?: string | null;
   targetEpisodeCount: number;
@@ -230,7 +234,7 @@ function buildPrompts(params: GenerateStoryBibleParams): { systemPrompt: string;
   const langInstruction =
     params.locale === "th"
       ? "Write ALL string values in natural Thai."
-      : "Write all string values in English.";
+      : `Write all string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
 
   const systemPrompt = [
     "You are a vertical-drama (short-form mobile drama series) story bible writer.",

@@ -331,7 +331,19 @@ export const VD_COPY = {
     promptLanguageJa: "Japanese",
     promptLanguageKo: "Korean",
     dialogueLanguageLabel: "Speech language",
+    thaiAccentLabel: "Thai speech accent",
     videoPromptLanguageSaved: "Language settings saved.",
+
+    /* ---- Product reference image picker (2026-07-06 product tie-in upgrade) ---- */
+    changeProductImage: "Change product image",
+    productImagePickerTitle: "Choose product reference image(s)",
+    productImagePickerCapHint: "Up to {n} product images are used per shot",
+    productImagePickerBudgetHint: "This model accepts up to {n} reference images in total (characters + product)",
+    productImagePickerNoImages: "No product images available yet — link a Marketplace Capture or add a product image URL in Product Tie-in settings.",
+    productImagePickerSave: "Save selection",
+    productImagePickerSaved: "Product reference image(s) updated.",
+    productImagePickerSelectedCount: "{n} selected",
+    productImageMultipleBadge: "+{n}",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
@@ -520,7 +532,19 @@ export const VD_COPY = {
     promptLanguageJa: "日本語",
     promptLanguageKo: "한국어",
     dialogueLanguageLabel: "ภาษาเสียงพูด",
+    thaiAccentLabel: "สำเนียงพูดไทย",
     videoPromptLanguageSaved: "บันทึกการตั้งค่าภาษาแล้ว",
+
+    /* ---- Product reference image picker (2026-07-06 product tie-in upgrade) ---- */
+    changeProductImage: "เปลี่ยนภาพสินค้า",
+    productImagePickerTitle: "เลือกภาพอ้างอิงสินค้า",
+    productImagePickerCapHint: "สินค้าใช้ภาพได้สูงสุด {n} ภาพต่อช็อต",
+    productImagePickerBudgetHint: "โมเดลนี้รับภาพอ้างอิงรวมได้สูงสุด {n} ภาพ (ตัวละคร + สินค้า)",
+    productImagePickerNoImages: "ยังไม่มีภาพสินค้าให้เลือก — เชื่อมโยง Marketplace Capture หรือใส่ URL ภาพสินค้าในการตั้งค่าผูกสินค้า",
+    productImagePickerSave: "บันทึกการเลือก",
+    productImagePickerSaved: "อัปเดตภาพอ้างอิงสินค้าแล้ว",
+    productImagePickerSelectedCount: "เลือกแล้ว {n} ภาพ",
+    productImageMultipleBadge: "+{n}",
   },
 } as const;
 

@@ -32,6 +32,10 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
+  verticalDramaLocaleEnglishName,
+  type VerticalDramaSeriesLocale,
+} from "@shared/verticalDramaSeries";
+import {
   resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
@@ -144,7 +148,7 @@ export interface GenerateEpisodeScriptParams {
   episodeId: number;
   episodeTitle: string;
   episodeNumber: number;
-  locale: "th" | "en";
+  locale: VerticalDramaSeriesLocale;
   durationSeconds: number;
   storySource: {
     logline?: string;
@@ -193,7 +197,7 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   const langInstruction =
     params.locale === "th"
       ? "Write all human-readable string values (hook, scene summaries, dialogue lines, cliffhanger, continuity_notes) in natural Thai."
-      : "Write all human-readable string values in English.";
+      : `Write all human-readable string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
 
   const { storySource } = params;
   const characterLines = params.characters.length
