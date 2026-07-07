@@ -2224,6 +2224,15 @@ export const verticalDramaEpisodesRouter = router({
           message: `No start-frame plan entry for shot ${input.shotNumber}`,
         });
       }
+      // Previous main image, before the swap — used below to auto-demote it
+      // into the reference strip (main-image-swap-history upgrade). Read
+      // BEFORE `updatedFrames` overwrites it.
+      const previousAssetIdRaw = plan.frames[frameIndex]?.approvedMediaAssetId;
+      const previousAssetId =
+        previousAssetIdRaw != null && Number.isInteger(Number(previousAssetIdRaw))
+          ? Number(previousAssetIdRaw)
+          : null;
+
       const updatedFrames = plan.frames.slice();
       updatedFrames[frameIndex] = {
         ...updatedFrames[frameIndex],
@@ -2235,6 +2244,45 @@ export const verticalDramaEpisodesRouter = router({
         .update(verticalDramaEpisodes)
         .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
         .where(eq(verticalDramaEpisodes.id, episodeId));
+
+      // Main-image-swap-history upgrade: every swap path (generation,
+      // angle-variation pick, drag-drop, repair-accept, Media History/Library
+      // picker) funnels through this single mutation, so doing the
+      // demotion/promotion-dedup here covers all of them at once.
+      //
+      // 1. Demote the OLD main image into the shot's reference strip (so it
+      //    isn't lost) — skipped when there was no previous asset, or the
+      //    asset didn't actually change (no-op swap).
+      if (previousAssetId && previousAssetId !== numericAssetId) {
+        try {
+          await verticalDramaShotReferencesService.linkReference({
+            tenantId,
+            userId,
+            seriesId,
+            episodeId,
+            shotNumber: input.shotNumber,
+            mediaAssetId: previousAssetId,
+            role: "reference",
+            source: "previous_main",
+          });
+        } catch (err) {
+          // Never fail the swap itself over a best-effort history link (e.g.
+          // the previous asset was hard-deleted between requests) — mirrors
+          // this procedure's existing tolerance for missing assetUrls.
+          if (!(err instanceof VerticalDramaShotReferenceError)) throw err;
+        }
+      }
+      // 2. If the NEW main image was already sitting in the reference strip,
+      //    remove that row — it's being promoted to the main image slot, so
+      //    leaving it in the strip would show it twice.
+      if (previousAssetId !== numericAssetId) {
+        await verticalDramaShotReferencesService.unlinkReferenceByAsset(
+          { tenantId, userId, seriesId },
+          episodeId,
+          input.shotNumber,
+          numericAssetId,
+        );
+      }
 
       const assetUrls = await resolveEpisodePlanAssetUrls(
         tenantId,
@@ -3835,7 +3883,7 @@ export const verticalDramaEpisodesRouter = router({
         shotNumber: z.number().int().positive(),
         mediaAssetId: z.string().min(1),
         role: z.enum(["start_frame", "reference"]).optional(),
-        source: z.enum(["generated", "grid_cut", "history", "library", "upload"]),
+        source: z.enum(["generated", "grid_cut", "history", "library", "upload", "previous_main"]),
         sortOrder: z.number().int().min(0).optional(),
       }),
     )

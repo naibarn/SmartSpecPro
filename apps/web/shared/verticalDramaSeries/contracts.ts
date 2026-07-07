@@ -740,6 +740,16 @@ export type VerticalDramaMotionPromptPack = {
       pendingTaskId?: string;
       videoUrl?: string;
       mediaTaskId?: string;
+      /**
+       * Additive (2026-07-07 upload-video-per-shot upgrade) — marks a
+       * `videoUrl` that was placed by the user uploading an externally
+       * generated clip (`ai.upload`'s multipart sibling,
+       * `/api/media-jobs/upload`) rather than produced by
+       * `generateVideoClip`. Absent/`"generated"` for the normal AI-render
+       * path so existing rows are unaffected. Regenerating (`onGenerateVideoClip`)
+       * always overwrites this back to the generated path.
+       */
+      source?: "generated" | "upload";
     };
   }>;
   warnings: VerticalDramaWarning[];

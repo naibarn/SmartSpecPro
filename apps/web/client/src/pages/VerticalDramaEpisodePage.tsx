@@ -24,6 +24,7 @@ import { FileClock } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppPage } from "@/components/AppPage";
+import { WebAssetResolver } from "@/services/webAssetResolver";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1473,6 +1474,38 @@ function EpisodeWorkspaceShell({
     deleteShotReferenceMutation.mutate({ seriesId, episodeId, referenceId });
   }
 
+  // Promote a reference-strip image to be the shot's main image
+  // (main-image-swap-history upgrade) — reuses `setApprovedStartFrameAsset`
+  // directly (the asset is already a canonical `media_assets` row, no
+  // resolve step needed); the server auto-demotes the previous main image
+  // into the reference strip and removes this asset's own reference row, so
+  // both invalidations below (episode detail + shot references) pick up the
+  // full result of the swap.
+  const [usingShotReferenceAsMainForShot, setUsingShotReferenceAsMainForShot] =
+    useState<number | null>(null);
+  async function handleUseShotReferenceAsMain(shotNumber: number, mediaAssetId: string) {
+    setUsingShotReferenceAsMainForShot(shotNumber);
+    try {
+      await setApprovedStartFrameAssetMutation.mutateAsync({
+        seriesId,
+        episodeId,
+        shotNumber,
+        mediaAssetId,
+      });
+      void utils.verticalDramaEpisodes.listShotReferences.invalidate();
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : lang === "th"
+            ? "เปลี่ยนภาพหลักไม่สำเร็จ"
+            : "Failed to set as main image"
+      );
+    } finally {
+      setUsingShotReferenceAsMainForShot(current => (current === shotNumber ? null : current));
+    }
+  }
+
   /* ---- Phase 3.4 — dialogue box (save via free updateEpisodeDraft) ---- */
   const [savingDialogueForClip, setSavingDialogueForClip] = useState<
     number | null
@@ -1984,6 +2017,23 @@ function EpisodeWorkspaceShell({
   const [trimmedReferenceCountByClip, setTrimmedReferenceCountByClip] =
     useState<Record<number, number>>({});
 
+  /** Clip numbers currently uploading an externally-generated video file
+   *  (2026-07-07 upload-video-per-shot upgrade) — mirrors `pollingVideoClips`'
+   *  shape but for the upload path, so the panel can show its own spinner
+   *  independent of the AI-generate path. */
+  const [uploadingVideoClipForClip, setUploadingVideoClipForClip] = useState<
+    Set<number>
+  >(new Set());
+  /** One `WebAssetResolver` instance for the lifetime of this page — same
+   *  large-file multipart upload route (`/api/media-jobs/upload`) used by
+   *  Media Studio/Storyboard Review, reused here instead of `ai.upload`'s
+   *  base64/tRPC path (bounded by the 10MB JSON body limit — impractical
+   *  for video files). */
+  const videoUploadResolverRef = useRef<WebAssetResolver | null>(null);
+  if (!videoUploadResolverRef.current) {
+    videoUploadResolverRef.current = new WebAssetResolver();
+  }
+
   /** Clip numbers with a video-clip task currently being polled (live submit
    *  OR resumed-on-load) — guards against double-polling the same clip from
    *  both paths, same ref-guard convention as `angleVariationsPollInFlightRef`. */
@@ -2000,7 +2050,7 @@ function EpisodeWorkspaceShell({
     clipNumber: number,
     videoTask:
       | { pendingTaskId: string }
-      | { videoUrl: string; mediaTaskId?: string }
+      | { videoUrl: string; mediaTaskId?: string; source?: "generated" | "upload" }
       | null
   ) {
     const pack = episodeDetailQuery.data?.motionPromptPack;
@@ -2023,13 +2073,19 @@ function EpisodeWorkspaceShell({
   /** Shared completion handler for BOTH the live submit-then-poll path and
    *  the resume-on-load path — both must converge on the identical
    *  persisted `videoTask` shape ({ videoUrl, mediaTaskId }, `pendingTaskId`
-   *  dropped). */
+   *  dropped). `source: "generated"` always overwrites a prior
+   *  self-uploaded clip (2026-07-07 upload-video-per-shot upgrade) — "สร้าง
+   *  ใหม่"/regen is still the AI path and replaces whatever was there. */
   function resolveCompletedVideoClipTask(
     clipNumber: number,
     resultUrl: string,
     taskId: string
   ) {
-    persistVideoTask(clipNumber, { videoUrl: resultUrl, mediaTaskId: taskId });
+    persistVideoTask(clipNumber, {
+      videoUrl: resultUrl,
+      mediaTaskId: taskId,
+      source: "generated",
+    });
   }
 
   async function pollVideoClipTask(taskId: string, clipNumber: number) {
@@ -2078,6 +2134,42 @@ function EpisodeWorkspaceShell({
     } finally {
       videoClipPollInFlightRef.current.delete(clipNumber);
       setPollingVideoClips(prev => {
+        const next = new Set(prev);
+        next.delete(clipNumber);
+        return next;
+      });
+    }
+  }
+
+  /** Upload video file per shot (2026-07-07 upgrade) — for users who
+   *  generated the clip EXTERNALLY (took the main image + prompt elsewhere)
+   *  and want to place the resulting video file as this shot's clip video.
+   *  Uploads via the existing large-file multipart route
+   *  (`/api/media-jobs/upload`, same one Media Studio/Storyboard Review use),
+   *  then persists `{ videoUrl, source: "upload" }` onto the clip's
+   *  `videoTask` via the existing free `persistVideoTask` flow — the player,
+   *  download, and whole-episode assembly all pick it up the same way they
+   *  do a generated clip. */
+  async function handleUploadVideoClip(clipNumber: number, file: File) {
+    setUploadingVideoClipForClip(prev => new Set(prev).add(clipNumber));
+    try {
+      const resolver = videoUploadResolverRef.current!;
+      const { promise } = resolver.uploadAsset(file);
+      const { uri } = await promise;
+      persistVideoTask(clipNumber, { videoUrl: uri, source: "upload" });
+      toast.success(
+        lang === "th" ? "อัปโหลดวิดีโอสำเร็จ" : "Video uploaded."
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : lang === "th"
+            ? "อัปโหลดวิดีโอไม่สำเร็จ"
+            : "Failed to upload the video."
+      );
+    } finally {
+      setUploadingVideoClipForClip(prev => {
         const next = new Set(prev);
         next.delete(clipNumber);
         return next;
@@ -2569,7 +2661,13 @@ function EpisodeWorkspaceShell({
   }
 
   return (
-    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
+    // Tablet-portrait fix (main content + media panel layout): the media
+    // panel becomes a right-side column starting at `md` (768px) — matching
+    // `ResizableCollapsiblePanel`'s own `breakpoint="md"` below — instead of
+    // waiting until `xl` (1280px), which used to stack the panel below the
+    // storyboard on portrait tablets (~768-1024px) even though there's
+    // plenty of horizontal room for a ~300px column there.
+    <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
     <div className="min-w-0 space-y-4">
       <VerticalDramaEpisodeWorkspace
         locale={lang}
@@ -2864,6 +2962,8 @@ function EpisodeWorkspaceShell({
           onAddShotReference: handleAddShotReference,
           onRemoveShotReference: handleRemoveShotReference,
           addingShotReferenceForShot,
+          onUseShotReferenceAsMain: handleUseShotReferenceAsMain,
+          usingShotReferenceAsMainForShot,
           onSaveClipDialogue: handleSaveClipDialogue,
           savingDialogueForClip,
           onGenerateVideoClip: clipNumber => {
@@ -2880,6 +2980,8 @@ function EpisodeWorkspaceShell({
           generatingVideoClipForClip: pollingVideoClips,
           ttsFallbackByClip,
           trimmedReferenceCountByClip,
+          onUploadVideoClip: handleUploadVideoClip,
+          uploadingVideoClipForClip,
           onSaveStartFramePrompt: handleSaveStartFramePrompt,
           onSaveVideoPrompt: handleSaveVideoPrompt,
           onGeneratePromptAndImage: handleGeneratePromptAndImage,
@@ -2976,13 +3078,14 @@ function EpisodeWorkspaceShell({
         own right panel). */}
     <ResizableCollapsiblePanel
       side="right"
+      breakpoint="md"
       collapsed={isRightPanelCollapsed}
       onCollapsedChange={setIsRightPanelCollapsed}
       width={rightPanelWidth}
       onWidthChange={setRightPanelWidth}
       minWidth={EPISODE_RIGHT_PANEL_MIN_WIDTH}
       maxWidth={EPISODE_RIGHT_PANEL_MAX_WIDTH}
-      className="max-h-[min(48rem,82dvh)] xl:h-full xl:max-h-none"
+      className="max-h-[min(48rem,82dvh)] md:h-full md:max-h-none"
       collapsedContent={lang === "th" ? "สื่อ" : "Media"}
       collapseLabel={lang === "th" ? "ยุบ panel สื่อ" : "Collapse media panel"}
       expandLabel={lang === "th" ? "เปิด panel สื่อ" : "Open media panel"}

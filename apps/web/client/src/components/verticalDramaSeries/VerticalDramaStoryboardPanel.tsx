@@ -69,7 +69,46 @@ import { vdCopy, vdCopyWithCount, type VdLocale } from "./verticalDramaWorkspace
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
+
+/** Copy text to the clipboard, preferring the async Clipboard API with a
+ *  `document.execCommand("copy")` fallback for browsers/contexts (e.g.
+ *  non-HTTPS, older WebViews) where `navigator.clipboard` is unavailable or
+ *  rejects (permissions). Used by the copy-prompt/copy-dialogue buttons
+ *  (2026-07-07 upgrade). */
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  if (!text) return false;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to legacy fallback below
+  }
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return ok;
+  } catch {
+    return false;
+  }
+}
 const EMPTY_SHOT_NUMBER_SET: ReadonlySet<number> = new Set();
+/** Client-side sanity cap for the "upload video file per shot" feature
+ *  (2026-07-07 upgrade) — the actual server-side cap on
+ *  `/api/media-jobs/upload` is 2GB (`MAX_UPLOAD_SIZE` in
+ *  `server/routers/mediaJobs.ts`), but a single vertical-drama clip is a few
+ *  seconds of 9:16 video, so 200MB is a generous, sensible ceiling that
+ *  fails fast with a clear message instead of letting a wrong file (e.g. a
+ *  whole raw-footage export) silently hang the upload. */
+const VD_UPLOAD_VIDEO_FILE_MAX_BYTES = 200 * 1024 * 1024;
 
 /** True for absolute http(s) URLs whose origin differs from this page's own
  *  origin — same-origin `/api/storage/...` paths (and any other relative
@@ -151,7 +190,7 @@ export interface VerticalDramaShotReferenceView {
   referenceId: string;
   mediaAssetId: string;
   role?: "start_frame" | "reference";
-  source: "generated" | "grid_cut" | "history" | "library" | "upload";
+  source: "generated" | "grid_cut" | "history" | "library" | "upload" | "previous_main";
   sortOrder: number;
   thumbnailUrl?: string | null;
 }
@@ -309,6 +348,9 @@ export interface VerticalDramaMotionPromptClipView {
     pendingTaskId?: string;
     videoUrl?: string;
     mediaTaskId?: string;
+    /** See `VerticalDramaMotionPromptPack["clips"][number]["videoTask"].source`
+     *  in `@shared/verticalDramaSeries/contracts.ts` — additive. */
+    source?: "generated" | "upload";
   };
 }
 
@@ -490,6 +532,16 @@ interface VerticalDramaStoryboardPanelProps {
   ) => void;
   onRemoveShotReference?: (shotNumber: number, referenceId: string) => void;
   addingShotReferenceForShot?: ReadonlySet<number>;
+  /** Promotes a reference-strip image to be the shot's main (approved
+   *  start-frame) image (main-image-swap-history upgrade) — calls the same
+   *  `setApprovedStartFrameAsset` flow every other swap path uses; the
+   *  server auto-demotes the previous main image into the reference strip
+   *  and removes this asset's own reference row, so the cycle is reversible
+   *  without any extra client bookkeeping. */
+  onUseShotReferenceAsMain?: (shotNumber: number, mediaAssetId: string) => void;
+  /** Non-null while a `onUseShotReferenceAsMain` promotion is in flight for
+   *  this shot, so the strip can show a spinner and disable other actions. */
+  usingShotReferenceAsMainForShot?: number | null;
 
   /* ---- Phase 3.4 — dialogue box ---- */
   /** Saves an edited dialogue line for a clip (free — routed through the
@@ -517,6 +569,19 @@ interface VerticalDramaStoryboardPanelProps {
    *  beyond the model's limit were trimmed before submission — shown as a
    *  small notice on that clip. */
   trimmedReferenceCountByClip?: Record<number, number>;
+  /**
+   * Upload video file per shot (2026-07-07 upgrade) — for users who
+   * generated the clip EXTERNALLY (took the main image + prompt elsewhere)
+   * and want to place the resulting video file as this shot's clip video.
+   * The caller uploads via the existing large-file multipart route
+   * (`/api/media-jobs/upload`, same one `WebAssetResolver` uses — NOT
+   * `ai.upload`'s base64/tRPC path, which is bounded by the 10MB JSON body
+   * limit) and persists `{ videoUrl, source: "upload" }` onto the clip's
+   * `videoTask` via the existing free `persistVideoTask`/`updateEpisodeDraft`
+   * flow. */
+  onUploadVideoClip?: (clipNumber: number, file: File) => void;
+  /** Non-null while an upload+persist is in flight for this clip. */
+  uploadingVideoClipForClip?: ReadonlySet<number>;
 
   /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
   /** Saves an edited image prompt for free (no LLM call) — distinct from
@@ -676,12 +741,16 @@ export function VerticalDramaStoryboardPanel({
   onAddShotReference,
   onRemoveShotReference,
   addingShotReferenceForShot = EMPTY_SHOT_NUMBER_SET,
+  onUseShotReferenceAsMain,
+  usingShotReferenceAsMainForShot = null,
   onSaveClipDialogue,
   savingDialogueForClip = null,
   onGenerateVideoClip,
   generatingVideoClipForClip = EMPTY_SHOT_NUMBER_SET,
   ttsFallbackByClip = {},
   trimmedReferenceCountByClip = {},
+  onUploadVideoClip,
+  uploadingVideoClipForClip = EMPTY_SHOT_NUMBER_SET,
   onSaveStartFramePrompt,
   onSaveVideoPrompt,
   onGeneratePromptAndImage,
@@ -1894,7 +1963,65 @@ export function VerticalDramaStoryboardPanel({
                     onRequestRemove={referenceId =>
                       setConfirmingRemoveReference({ shotNumber, referenceId })
                     }
+                    onUseAsMain={
+                      onUseShotReferenceAsMain
+                        ? mediaAssetId => onUseShotReferenceAsMain(shotNumber, mediaAssetId)
+                        : undefined
+                    }
+                    usingAsMain={usingShotReferenceAsMainForShot === shotNumber}
                   />
+                ) : null}
+
+                {/* Upload video file per shot (2026-07-07 upgrade) — for
+                    users who generated the clip EXTERNALLY (took the main
+                    image + prompt elsewhere) and want to place the resulting
+                    video file as this shot's clip video. Only shown once a
+                    clip exists for this shot (same gate as the video
+                    prompt box below) and hidden while a video is already
+                    rendering/uploading for this clip. */}
+                {onUploadVideoClip && clip ? (
+                  <label
+                    className={cn(
+                      "flex h-7 w-fit cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border px-2 text-[11px] text-muted-foreground hover:border-primary hover:text-primary",
+                      uploadingVideoClipForClip.has(clip.clipNumber) &&
+                        "pointer-events-none opacity-60"
+                    )}
+                    data-testid={`vd-storyboard-upload-video-${shotNumber}`}
+                  >
+                    {uploadingVideoClipForClip.has(clip.clipNumber) ? (
+                      <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Upload aria-hidden="true" className="h-3 w-3" />
+                    )}
+                    {uploadingVideoClipForClip.has(clip.clipNumber)
+                      ? t2.uploadingVideoClip
+                      : t2.uploadVideoClip}
+                    <input
+                      type="file"
+                      accept="video/mp4,video/webm,video/quicktime,video/*"
+                      className="hidden"
+                      disabled={uploadingVideoClipForClip.has(clip.clipNumber)}
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (!file) return;
+                        if (!file.type.startsWith("video/")) {
+                          toast.error(t2.unsupportedVideoFileType);
+                          return;
+                        }
+                        if (file.size > VD_UPLOAD_VIDEO_FILE_MAX_BYTES) {
+                          toast.error(
+                            vdCopyWithCount(
+                              t2.videoFileTooLarge,
+                              Math.round(VD_UPLOAD_VIDEO_FILE_MAX_BYTES / (1024 * 1024)),
+                            ),
+                          );
+                          return;
+                        }
+                        onUploadVideoClip(clip.clipNumber, file);
+                      }}
+                    />
+                  </label>
                 ) : null}
 
                 {/* Completed video-clip player (relocated 2026-07-06 — moved
@@ -1922,6 +2049,16 @@ export function VerticalDramaStoryboardPanel({
                         <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
                           {clip.durationSeconds}
                           {t2.videoClipDurationLabel}
+                        </Badge>
+                      ) : null}
+                      {clip.videoTask.source === "upload" ? (
+                        <Badge
+                          variant="outline"
+                          className="gap-1 px-1.5 py-0 text-[9px]"
+                          data-testid={`vd-storyboard-video-source-upload-${clip.clipNumber}`}
+                        >
+                          <Upload aria-hidden="true" className="h-2.5 w-2.5" />
+                          {t2.videoClipSourceUpload}
                         </Badge>
                       ) : null}
                       <Button
@@ -2025,7 +2162,7 @@ export function VerticalDramaStoryboardPanel({
                 ) : null}
               </div>
 
-              <div className="flex flex-1 flex-col gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">
                     {t(locale, `ช็อต ${shotNumber}`, `Shot ${shotNumber}`)}
@@ -3486,11 +3623,36 @@ function InlineEditablePromptBox({
 }) {
   const liveLength = isEditing ? draft.length : prompt.length;
   const isOverLimit = liveLength > maxChars;
+  const [copied, setCopied] = useState(false);
   return (
     <div className="mt-1 flex flex-col gap-1 rounded-md bg-muted/50 p-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-foreground">{title}</span>
         <div className="flex items-center gap-1">
+          {!isEditing && prompt ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 gap-1 px-2 text-xs"
+              onClick={async () => {
+                const ok = await copyTextToClipboard(prompt);
+                if (ok) {
+                  setCopied(true);
+                  toast.success(t2.copiedPrompt);
+                  setTimeout(() => setCopied(false), 1500);
+                }
+              }}
+              data-testid={`${testIdPrefix}-copy`}
+            >
+              {copied ? (
+                <Check aria-hidden="true" className="h-3 w-3" />
+              ) : (
+                <Copy aria-hidden="true" className="h-3 w-3" />
+              )}
+              {t2.copyPrompt}
+            </Button>
+          ) : null}
           {!isEditing && canSaveFree ? (
             <Button
               type="button"
@@ -3594,6 +3756,8 @@ function ShotReferenceStrip({
   onDragOverChange,
   onAdd,
   onRequestRemove,
+  onUseAsMain,
+  usingAsMain = false,
 }: {
   locale: Lang;
   t: ReturnType<typeof vdCopy>;
@@ -3605,6 +3769,8 @@ function ShotReferenceStrip({
   onDragOverChange: (over: boolean) => void;
   onAdd: (payload: { url: string; source: VerticalDramaShotReferenceView["source"] }) => void;
   onRequestRemove: (referenceId: string) => void;
+  onUseAsMain?: (mediaAssetId: string) => void;
+  usingAsMain?: boolean;
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const atLimit = maxReferenceImages != null && references.length >= maxReferenceImages;
@@ -3684,6 +3850,30 @@ function ShotReferenceStrip({
             >
               <Trash2 aria-hidden="true" className="h-2.5 w-2.5" />
             </button>
+            {onUseAsMain ? (
+              <button
+                type="button"
+                // Always-visible on touch (no hover state on touch devices),
+                // hidden until hover on pointer/mouse — same convention as
+                // the delete X above, plus a min 40px effective tap target
+                // via the padding trick (visual icon stays small at h-4/w-4
+                // but the touch target is comfortably larger via `p-1.5`
+                // negative-margin offset) to match the app's touch-target
+                // convention without inflating the visual thumbnail chrome.
+                className="absolute bottom-0 left-0 flex h-4 w-4 items-center justify-center rounded-tr bg-black/60 text-white opacity-100 disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100"
+                onClick={() => onUseAsMain(ref.mediaAssetId)}
+                disabled={usingAsMain}
+                aria-label={t2.useReferenceAsMain}
+                title={t2.useReferenceAsMain}
+                data-testid={`vd-storyboard-use-reference-as-main-${shotNumber}-${ref.referenceId}`}
+              >
+                {usingAsMain ? (
+                  <Loader2 aria-hidden="true" className="h-2.5 w-2.5 animate-spin" />
+                ) : (
+                  <Check aria-hidden="true" className="h-2.5 w-2.5" />
+                )}
+              </button>
+            ) : null}
           </div>
         ))}
         {adding ? (
@@ -3786,6 +3976,14 @@ function ClipDialogueBox({
   ) => {
     onDraftChange(draft.map((line, i) => (i === index ? { ...line, ...patch } : line)));
   };
+  const [dialogueCopied, setDialogueCopied] = useState(false);
+  const compiledDialogueText = lines
+    .map(line => {
+      const portrait = line.characterKey ? characterPortraits[line.characterKey] : undefined;
+      const speaker = portrait?.name ?? line.characterKey ?? "—";
+      return `${speaker}: ${line.lineTh}`;
+    })
+    .join("\n");
 
   return (
     <div className="mt-1 flex flex-col gap-1.5 rounded-md bg-muted/50 p-2">
@@ -3799,19 +3997,45 @@ function ClipDialogueBox({
             {nativeAudio ? t2.dialogueSpeaksNatively : t2.dialogueSeparateTts}
           </Badge>
         </div>
-        {canEdit && !isEditing ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-6 gap-1 px-2 text-xs"
-            onClick={onStartEdit}
-            data-testid={`vd-storyboard-dialogue-edit-${clip.clipNumber}`}
-          >
-            <Pencil aria-hidden="true" className="h-3 w-3" />
-            {t2.editDialogue}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-1">
+          {!isEditing && lines.length > 0 ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 gap-1 px-2 text-xs"
+              onClick={async () => {
+                const ok = await copyTextToClipboard(compiledDialogueText);
+                if (ok) {
+                  setDialogueCopied(true);
+                  toast.success(t2.copiedDialogue);
+                  setTimeout(() => setDialogueCopied(false), 1500);
+                }
+              }}
+              data-testid={`vd-storyboard-dialogue-copy-${clip.clipNumber}`}
+            >
+              {dialogueCopied ? (
+                <Check aria-hidden="true" className="h-3 w-3" />
+              ) : (
+                <Copy aria-hidden="true" className="h-3 w-3" />
+              )}
+              {t2.copyDialogue}
+            </Button>
+          ) : null}
+          {canEdit && !isEditing ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 gap-1 px-2 text-xs"
+              onClick={onStartEdit}
+              data-testid={`vd-storyboard-dialogue-edit-${clip.clipNumber}`}
+            >
+              <Pencil aria-hidden="true" className="h-3 w-3" />
+              {t2.editDialogue}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {lines.length === 0 && !isEditing ? (

@@ -185,6 +185,8 @@ export interface VerticalDramaStoryboardPanelData {
   ) => void;
   onRemoveShotReference?: (shotNumber: number, referenceId: string) => void;
   addingShotReferenceForShot?: ReadonlySet<number>;
+  onUseShotReferenceAsMain?: (shotNumber: number, mediaAssetId: string) => void;
+  usingShotReferenceAsMainForShot?: number | null;
 
   /* ---- Phase 3.4 — dialogue box ---- */
   onSaveClipDialogue?: (
@@ -198,6 +200,10 @@ export interface VerticalDramaStoryboardPanelData {
   generatingVideoClipForClip?: ReadonlySet<number>;
   ttsFallbackByClip?: Record<number, boolean>;
   trimmedReferenceCountByClip?: Record<number, number>;
+  /** Upload video file per shot (2026-07-07 upgrade) — see the same-named
+   *  prop on `VerticalDramaStoryboardPanel`. */
+  onUploadVideoClip?: (clipNumber: number, file: File) => void;
+  uploadingVideoClipForClip?: ReadonlySet<number>;
 
   /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
   onSaveStartFramePrompt?: (shotNumber: number, prompt: string) => void;
@@ -666,12 +672,16 @@ export function VerticalDramaEpisodeWorkspace({
           onAddShotReference={storyboardPanel?.onAddShotReference}
           onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
           addingShotReferenceForShot={storyboardPanel?.addingShotReferenceForShot}
+          onUseShotReferenceAsMain={storyboardPanel?.onUseShotReferenceAsMain}
+          usingShotReferenceAsMainForShot={storyboardPanel?.usingShotReferenceAsMainForShot}
           onSaveClipDialogue={storyboardPanel?.onSaveClipDialogue}
           savingDialogueForClip={storyboardPanel?.savingDialogueForClip}
           onGenerateVideoClip={storyboardPanel?.onGenerateVideoClip}
           generatingVideoClipForClip={storyboardPanel?.generatingVideoClipForClip}
           ttsFallbackByClip={storyboardPanel?.ttsFallbackByClip}
           trimmedReferenceCountByClip={storyboardPanel?.trimmedReferenceCountByClip}
+          onUploadVideoClip={storyboardPanel?.onUploadVideoClip}
+          uploadingVideoClipForClip={storyboardPanel?.uploadingVideoClipForClip}
           onSaveStartFramePrompt={storyboardPanel?.onSaveStartFramePrompt}
           onSaveVideoPrompt={storyboardPanel?.onSaveVideoPrompt}
           onGeneratePromptAndImage={storyboardPanel?.onGeneratePromptAndImage}

@@ -11,6 +11,14 @@ import { cn } from "@/lib/utils";
 
 type PanelSide = "left" | "right";
 
+/** Tailwind breakpoint at which the panel switches from a full-width,
+ *  stacked-below block to a fixed-width side column. Defaults to `"xl"`
+ *  (the original behavior, still used by `StoryboardReviewPage.tsx`'s own
+ *  panels). `VerticalDramaEpisodePage.tsx` uses `"md"` so portrait tablets
+ *  (~768-1024px) keep the media panel as a right-side column instead of
+ *  stacking it below the narrower storyboard content. */
+type PanelBreakpoint = "md" | "lg" | "xl";
+
 export interface ResizableCollapsiblePanelProps {
   side?: PanelSide;
   collapsed: boolean;
@@ -29,12 +37,37 @@ export interface ResizableCollapsiblePanelProps {
   expandLabel: string;
   resizeLabel: string;
   testId?: string;
+  breakpoint?: PanelBreakpoint;
 }
 
 function clampPanelWidth(value: number, minWidth: number, maxWidth: number): number {
   if (!Number.isFinite(value)) return minWidth;
   return Math.min(maxWidth, Math.max(minWidth, Math.round(value)));
 }
+
+/** Full, literal Tailwind class strings per breakpoint — required so the
+ *  JIT compiler can statically find them (a dynamically-interpolated class
+ *  like `` `${bp}:h-full` `` would never be generated). */
+const ASIDE_SIZE_CLASSES: Record<PanelBreakpoint, string> = {
+  md: "md:h-full md:min-h-0 md:w-[var(--resizable-collapsible-panel-width)]",
+  lg: "lg:h-full lg:min-h-0 lg:w-[var(--resizable-collapsible-panel-width)]",
+  xl: "xl:h-full xl:min-h-0 xl:w-[var(--resizable-collapsible-panel-width)]",
+};
+const COLLAPSED_HEADER_CLASSES: Record<PanelBreakpoint, string> = {
+  md: "md:min-h-0 md:flex-col",
+  lg: "lg:min-h-0 lg:flex-col",
+  xl: "xl:min-h-0 xl:flex-col",
+};
+const COLLAPSED_LABEL_CLASSES: Record<PanelBreakpoint, string> = {
+  md: "md:[writing-mode:vertical-rl]",
+  lg: "lg:[writing-mode:vertical-rl]",
+  xl: "xl:[writing-mode:vertical-rl]",
+};
+const RESIZE_HANDLE_CLASSES: Record<PanelBreakpoint, string> = {
+  md: "md:flex",
+  lg: "lg:flex",
+  xl: "xl:flex",
+};
 
 export function ResizableCollapsiblePanel({
   side = "right",
@@ -54,6 +87,7 @@ export function ResizableCollapsiblePanel({
   expandLabel,
   resizeLabel,
   testId,
+  breakpoint = "xl",
 }: ResizableCollapsiblePanelProps) {
   const isRight = side === "right";
   const clampedWidth = clampPanelWidth(width, minWidth, maxWidth);
@@ -108,12 +142,18 @@ export function ResizableCollapsiblePanel({
         data-collapsed="true"
         style={panelStyle}
         className={cn(
-          "flex min-h-[12rem] shrink-0 flex-col overflow-hidden rounded-lg border bg-white xl:h-full xl:min-h-0 xl:w-[var(--resizable-collapsible-panel-width)]",
+          "flex min-h-[12rem] shrink-0 flex-col overflow-hidden rounded-lg border bg-white",
+          ASIDE_SIZE_CLASSES[breakpoint],
           collapsedClassName,
           className,
         )}
       >
-        <div className="flex h-full min-h-[3rem] items-center justify-between gap-2 p-2 xl:min-h-0 xl:flex-col">
+        <div
+          className={cn(
+            "flex h-full min-h-[3rem] items-center justify-between gap-2 p-2",
+            COLLAPSED_HEADER_CLASSES[breakpoint],
+          )}
+        >
           <Button
             type="button"
             size="icon"
@@ -125,7 +165,12 @@ export function ResizableCollapsiblePanel({
           >
             {isRight ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
           </Button>
-          <div className="min-w-0 flex-1 text-center text-xs font-semibold text-slate-600 xl:[writing-mode:vertical-rl]">
+          <div
+            className={cn(
+              "min-w-0 flex-1 text-center text-xs font-semibold text-slate-600",
+              COLLAPSED_LABEL_CLASSES[breakpoint],
+            )}
+          >
             {collapsedContent}
           </div>
         </div>
@@ -139,7 +184,8 @@ export function ResizableCollapsiblePanel({
       data-collapsed="false"
       style={panelStyle}
       className={cn(
-        "relative flex min-h-[12rem] w-full shrink-0 flex-col overflow-hidden rounded-lg border bg-white xl:h-full xl:min-h-0 xl:w-[var(--resizable-collapsible-panel-width)]",
+        "relative flex min-h-[12rem] w-full shrink-0 flex-col overflow-hidden rounded-lg border bg-white",
+        ASIDE_SIZE_CLASSES[breakpoint],
         className,
       )}
     >
@@ -152,7 +198,8 @@ export function ResizableCollapsiblePanel({
         aria-valuemax={maxWidth}
         aria-valuenow={clampedWidth}
         className={cn(
-          "absolute top-0 z-20 hidden h-full w-3 cursor-col-resize items-center justify-center text-slate-300 outline-none transition-colors hover:text-sky-500 focus-visible:text-sky-600 focus-visible:ring-2 focus-visible:ring-sky-500/40 xl:flex",
+          "absolute top-0 z-20 hidden h-full w-3 cursor-col-resize items-center justify-center text-slate-300 outline-none transition-colors hover:text-sky-500 focus-visible:text-sky-600 focus-visible:ring-2 focus-visible:ring-sky-500/40",
+          RESIZE_HANDLE_CLASSES[breakpoint],
           isRight ? "left-0 -translate-x-1/2" : "right-0 translate-x-1/2",
         )}
         onPointerDown={handleResizePointerDown}

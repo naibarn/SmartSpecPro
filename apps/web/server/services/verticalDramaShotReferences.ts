@@ -40,8 +40,21 @@ export interface VerticalDramaShotReferenceOwner {
 /** Machine-readable role tag — mirrors the DB column's allowed values. */
 export type VerticalDramaShotReferenceRole = "start_frame" | "reference";
 
-/** Where the reference image originated from (client-reported, informational). */
-export type VerticalDramaShotReferenceSource = "generated" | "grid_cut" | "history" | "library" | "upload";
+/** Where the reference image originated from (client-reported, informational).
+ *  `"previous_main"` (storyboard-complete plan, main-image-swap-history
+ *  upgrade) marks a reference row created by auto-demoting a shot's PREVIOUS
+ *  `approvedMediaAssetId` when the user swaps in a different main image —
+ *  distinguishes an auto-demoted row from one the user deliberately added
+ *  via grid-cut/history/library/upload, purely for display/analytics; it is
+ *  never validated differently by this service. Column is `varchar(20)` with
+ *  no DB CHECK constraint, so this is purely additive. */
+export type VerticalDramaShotReferenceSource =
+  | "generated"
+  | "grid_cut"
+  | "history"
+  | "library"
+  | "upload"
+  | "previous_main";
 
 export type ShotReferenceRejectionReason =
   | "episode_not_found"
@@ -339,6 +352,37 @@ export class VerticalDramaShotReferencesService {
       } as typeof verticalDramaShotReferences.$inferInsert)
       .returning();
     return shotReferenceRowToContract(row as VerticalDramaShotReferenceRow);
+  }
+
+  /**
+   * Remove a shot's reference row for a specific `mediaAssetId`, if one
+   * exists — used to de-duplicate the reference strip when that same asset
+   * is PROMOTED to be the shot's new main image (main-image-swap-history
+   * upgrade): the asset should appear as the main image, not also sit in the
+   * reference strip. A no-op (returns `false`) when no such reference row
+   * exists, so callers can always call this unconditionally on promotion
+   * without checking first.
+   */
+  async unlinkReferenceByAsset(
+    owner: VerticalDramaShotReferenceOwner,
+    episodeId: number,
+    shotNumber: number,
+    mediaAssetId: number,
+  ): Promise<boolean> {
+    const deleted = await db
+      .delete(verticalDramaShotReferences)
+      .where(
+        and(
+          eq(verticalDramaShotReferences.tenantId, owner.tenantId),
+          eq(verticalDramaShotReferences.userId, owner.userId),
+          eq(verticalDramaShotReferences.seriesId, owner.seriesId),
+          eq(verticalDramaShotReferences.episodeId, episodeId),
+          eq(verticalDramaShotReferences.shotNumber, shotNumber),
+          eq(verticalDramaShotReferences.mediaAssetId, mediaAssetId),
+        ),
+      )
+      .returning({ id: verticalDramaShotReferences.id });
+    return deleted.length > 0;
   }
 
   private async loadOwnedRow(

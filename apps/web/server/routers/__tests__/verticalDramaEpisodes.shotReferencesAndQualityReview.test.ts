@@ -152,6 +152,7 @@ const { mockShotReferencesService, MockVerticalDramaShotReferenceError } = vi.ho
       listForShot: vi.fn(),
       linkReference: vi.fn(),
       deleteReference: vi.fn(),
+      unlinkReferenceByAsset: vi.fn(),
       reorder: vi.fn(),
     },
     MockVerticalDramaShotReferenceError,
@@ -398,6 +399,126 @@ describe("deleteShotReference", () => {
         input: { seriesId: "10", episodeId: "100", referenceId: "999" },
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + promotion-dedup)", () => {
+  function episodeRowWithFrame(approvedMediaAssetId: string | undefined) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a prompt",
+            requiredCharacterRefs: [],
+            approvedMediaAssetId,
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+  }
+
+  beforeEach(() => {
+    mockShotReferencesService.linkReference.mockResolvedValue({ referenceId: "1" });
+    mockShotReferencesService.unlinkReferenceByAsset.mockResolvedValue(false);
+  });
+
+  it("demotes the previous main image into the reference strip and removes the new asset from the strip", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup for the new asset
+      .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setApprovedStartFrameAsset({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "901" },
+    });
+
+    expect(result.startFramePlan.frames[0].approvedMediaAssetId).toBe("901");
+
+    // 1. Old main image (900) gets linked into the reference strip as
+    //    "previous_main".
+    expect(mockShotReferencesService.linkReference).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      episodeId: 100,
+      shotNumber: 1,
+      mediaAssetId: 900,
+      role: "reference",
+      source: "previous_main",
+    });
+
+    // 2. New main image (901) is removed from the reference strip, if present.
+    expect(mockShotReferencesService.unlinkReferenceByAsset).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      100,
+      1,
+      901,
+    );
+  });
+
+  it("does not demote or promote-dedup when there was no previous main image", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithFrame(undefined)])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    await router.setApprovedStartFrameAsset({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "901" },
+    });
+
+    expect(mockShotReferencesService.linkReference).not.toHaveBeenCalled();
+    // Still de-dupes the strip for the new asset even with no previous main.
+    expect(mockShotReferencesService.unlinkReferenceByAsset).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      100,
+      1,
+      901,
+    );
+  });
+
+  it("is a no-op for demotion/promotion when the new asset is the same as the current main image", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900 }])) // mediaAssets ownership lookup (same asset)
+      .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    await router.setApprovedStartFrameAsset({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "900" },
+    });
+
+    expect(mockShotReferencesService.linkReference).not.toHaveBeenCalled();
+    expect(mockShotReferencesService.unlinkReferenceByAsset).not.toHaveBeenCalled();
+  });
+
+  it("still completes the swap even if demoting the previous asset throws a shot-reference error (best-effort)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithFrame("900")])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 901 }])) // mediaAssets ownership lookup
+      .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+    mockShotReferencesService.linkReference.mockRejectedValue(
+      new MockVerticalDramaShotReferenceError("media_asset_deleted", "deleted"),
+    );
+
+    const result = await router.setApprovedStartFrameAsset({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "901" },
+    });
+
+    expect(result.startFramePlan.frames[0].approvedMediaAssetId).toBe("901");
   });
 });
 

@@ -234,6 +234,7 @@ export const VD_COPY = {
     noReferencesYet: "No reference images yet — drag one here, or add from the grid cutter/history/library.",
     dropReferenceHint: "Drop an image here to add it as a reference",
     uploadReferenceImage: "Upload image",
+    useReferenceAsMain: "Use as main image",
     unsupportedImageFileType: "Only image files are supported",
     imageFileTooLarge: "Image is too large (max {n}MB)",
     uploadingImage: "Uploading…",
@@ -241,6 +242,21 @@ export const VD_COPY = {
     addAsReferences: "Add as references ({n})",
     pickBestAngleTitle: "Pick the best angle",
     angleTileCount: "{n} tiles",
+
+    /* ---- Upload video file per shot (externally-generated clip) ---- */
+    uploadVideoClip: "Upload video",
+    uploadingVideoClip: "Uploading video…",
+    unsupportedVideoFileType: "Only video files are supported (mp4, webm, mov)",
+    videoFileTooLarge: "Video is too large (max {n}MB)",
+    videoClipUploaded: "Video uploaded.",
+    videoClipUploadFailed: "Failed to upload the video.",
+    videoClipSourceUpload: "Self-uploaded video",
+
+    /* ---- Copy prompt / dialogue to clipboard ---- */
+    copyPrompt: "Copy",
+    copiedPrompt: "Copied.",
+    copyDialogue: "Copy",
+    copiedDialogue: "Copied.",
 
     /* ---- Dialogue box (Phase 3.4) ---- */
     dialogueLines: "Dialogue",
@@ -464,6 +480,7 @@ export const VD_COPY = {
     noReferencesYet: "ยังไม่มีภาพอ้างอิง — ลากภาพมาวางที่นี่ หรือเพิ่มจากช่องตัดภาพ/ประวัติ/คลัง",
     dropReferenceHint: "ลากภาพมาวางที่นี่เพื่อเพิ่มเป็นภาพอ้างอิง",
     uploadReferenceImage: "อัปโหลดภาพ",
+    useReferenceAsMain: "ใช้เป็นภาพหลัก",
     unsupportedImageFileType: "รองรับเฉพาะไฟล์ภาพ",
     imageFileTooLarge: "ไฟล์ภาพใหญ่เกินไป (สูงสุด {n}MB)",
     uploadingImage: "กำลังอัปโหลด…",
@@ -471,6 +488,21 @@ export const VD_COPY = {
     addAsReferences: "เพิ่มเป็นภาพอ้างอิง ({n})",
     pickBestAngleTitle: "เลือกมุมกล้องที่ดีที่สุด",
     angleTileCount: "{n} ภาพ",
+
+    /* ---- Upload video file per shot (externally-generated clip) ---- */
+    uploadVideoClip: "อัปโหลดวิดีโอ",
+    uploadingVideoClip: "กำลังอัปโหลดวิดีโอ…",
+    unsupportedVideoFileType: "รองรับเฉพาะไฟล์วิดีโอ (mp4, webm, mov)",
+    videoFileTooLarge: "ไฟล์วิดีโอใหญ่เกินไป (สูงสุด {n}MB)",
+    videoClipUploaded: "อัปโหลดวิดีโอสำเร็จ",
+    videoClipUploadFailed: "อัปโหลดวิดีโอไม่สำเร็จ",
+    videoClipSourceUpload: "วิดีโอที่อัปโหลดเอง",
+
+    /* ---- Copy prompt / dialogue to clipboard ---- */
+    copyPrompt: "คัดลอก",
+    copiedPrompt: "คัดลอกแล้ว",
+    copyDialogue: "คัดลอก",
+    copiedDialogue: "คัดลอกแล้ว",
 
     /* ---- Dialogue box (Phase 3.4) ---- */
     dialogueLines: "บทพูด",
