@@ -377,6 +377,52 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     expect(textPart.text).not.toContain("NO-SOURCE-DIALOGUE");
   });
 
+  // 2026-07-07 non-human-character-vanishing fix — the shot-video-prompt
+  // service context also gets the character identity map so motion/acting
+  // direction for a non-human required character (e.g. เจ้าเกลือ, a cat)
+  // doesn't drift into generic-human phrasing either.
+  it("injects the character identity map into the user prompt when the router supplies one", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "The cat curls up near the bottle.", dialogue: [] }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        shotContext: {
+          description: "desc",
+          camera: "cam",
+          emotion: "calm",
+          dialogueLines: [],
+          characterIdentityMap:
+            "CHARACTER IDENTITY MAP (MANDATORY — read before writing any character description):\n" +
+            "character-8 = เจ้าเกลือ (มาสคอตของร้าน): แมวขาวปุยตาสีทะเลที่ชอบนอนทับขวดสำคัญ\n" +
+            "Every required character listed above MUST be depicted true to this identity.",
+        },
+      }),
+    );
+
+    const call = mockExecute.mock.calls[0][0];
+    const userMessage = call.messages[1];
+    const textPart = (userMessage.content as any[]).find(p => p.type === "text");
+    expect(textPart.text).toContain("CHARACTER IDENTITY MAP");
+    expect(textPart.text).toContain("เจ้าเกลือ");
+  });
+
+  it("omits the character identity map entirely when the router doesn't supply one (backward compatible)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(baseParams());
+
+    const call = mockExecute.mock.calls[0][0];
+    const userMessage = call.messages[1];
+    const textPart = (userMessage.content as any[]).find(p => p.type === "text");
+    expect(textPart.text).not.toContain("CHARACTER IDENTITY MAP");
+  });
+
   it("defaults to English prompt language + Thai speech language when the caller supplies neither (episode-level language plan)", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(
@@ -491,5 +537,111 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
 
     expect(mockExecute).toHaveBeenCalledTimes(2);
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  // 2026-07-07 fix — repro: shot 4/series 4/episode 11, `higgsfield/grok_video`
+  // selected (native audio, verified via audit log + DB), yet the LLM
+  // (gpt-5.4-nano) wrote "lips moving in sync with the spoken line" instead
+  // of quoting the line verbatim, despite receiving the correct instruction.
+  // The compliance retry below is the fix for that failure mode.
+  it("retries with a compliance-correction instruction when a native-audio model's prompt omits the verbatim dialogue line, and uses the corrected result", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute
+      .mockResolvedValueOnce(
+        successResponse({
+          prompt: "Her lips move in sync with the spoken line as she delivers the warning.",
+          dialogue: [{ lineTh: "อย่าเข้ามา", characterKey: "หนูนา" }],
+        }),
+      )
+      .mockResolvedValueOnce(
+        successResponse({
+          prompt: 'She says, in natural spoken Thai, exactly: "อย่าเข้ามา". Guarded, urgent tone.',
+          dialogue: [{ lineTh: "อย่าเข้ามา", characterKey: "หนูนา" }],
+        }),
+      );
+
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        shotContext: {
+          description: "desc",
+          camera: "cam",
+          emotion: "urgent",
+          dialogueLines: [{ lineTh: "อย่าเข้ามา", characterKey: "หนูนา" }],
+        },
+      }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // The corrected (verbatim-embedding) response wins.
+    expect(result.prompt).toContain("อย่าเข้ามา");
+    expect(result.prompt).not.toContain("lips move in sync");
+
+    const retryCall = mockExecute.mock.calls[1][0];
+    const retryUserMessage = retryCall.messages[1];
+    const retryTextPart = (retryUserMessage.content as any[]).find((p: any) => p.type === "text");
+    expect(retryTextPart.text).toContain("COMPLIANCE CORRECTION");
+    expect(retryTextPart.text).toContain("อย่าเข้ามา");
+  });
+
+  it("keeps the original (schema-valid) result when the compliance retry ALSO fails to embed the line verbatim, instead of throwing", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute
+      .mockResolvedValueOnce(
+        successResponse({
+          prompt: "His mouth moves as if speaking the warning line naturally.",
+          dialogue: [{ lineTh: "หยุดนะ" }],
+        }),
+      )
+      .mockResolvedValueOnce(
+        successResponse({
+          prompt: "His mouth moves again, still no literal transcript embedded.",
+          dialogue: [{ lineTh: "หยุดนะ" }],
+        }),
+      );
+
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        shotContext: {
+          description: "desc",
+          camera: "cam",
+          emotion: "urgent",
+          dialogueLines: [{ lineTh: "หยุดนะ" }],
+        },
+      }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // Falls back to the FIRST (original) outcome rather than the still-
+    // non-compliant retry, and never throws.
+    expect(result.prompt).toBe("His mouth moves as if speaking the warning line naturally.");
+  });
+
+  it("does NOT trigger the compliance retry when the model has no native audio (mouth-movement-only prose is correct there)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 9,
+      nativeAudioDialogue: false,
+      verticalDramaReady: true,
+    });
+    mockExecute.mockResolvedValue(
+      successResponse({
+        prompt: "Her lips move in sync with the spoken line, no transcript embedded.",
+        dialogue: [{ lineTh: "อย่าเข้ามา" }],
+      }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseParams({
+        shotContext: {
+          description: "desc",
+          camera: "cam",
+          emotion: "urgent",
+          dialogueLines: [{ lineTh: "อย่าเข้ามา" }],
+        },
+      }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 });

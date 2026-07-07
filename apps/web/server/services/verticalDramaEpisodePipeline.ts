@@ -43,6 +43,7 @@ import {
   type VerticalDramaPromptLanguage,
   type VerticalDramaDialogueLanguage,
   type VerticalDramaThaiAccent,
+  type VerticalDramaMemoryKind,
   normalizeVerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
@@ -88,6 +89,10 @@ import {
   type SeriesMemoryPlannerOutput,
 } from "./verticalDramaSeriesMemoryPlanning";
 import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
+import {
+  findMissingCharacterIdentityWarnings,
+  type VerticalDramaCharacterDescriptorSource,
+} from "@shared/verticalDramaSeries/characterIdentityMap";
 import {
   extractShotProductPlacements,
   findPlacementForShot,
@@ -794,6 +799,211 @@ async function isStageApproved(
   return rows[0]?.state === "approved";
 }
 
+/**
+ * Apply the durable series-memory side effects for the
+ * `summarize_episode_to_series_memory` checkpoint: appends the
+ * `episode_summary` event (and, when a real
+ * `vertical-drama-series-memory-planner` artifact was produced, ALL seven
+ * other memory event kinds too) via the append-only memory service.
+ *
+ * Extracted (2026-07-07) from the `approveCheckpoint` router mutation so it
+ * can run from BOTH:
+ *  - `runStage`, immediately when the auto-approved checkpoint is created
+ *    (manual approval was removed from the product workflow — a checkpoint
+ *    is now born `approved`, so nothing ever calls the mutation for it), and
+ *  - `approveRunCheckpoint`, for legacy checkpoints that predate this change
+ *    and are still sitting `pending` — the mutation's `alreadyTerminal`
+ *    short-circuit (see below) guarantees this only ever runs once per
+ *    checkpoint no matter which path reaches it.
+ *
+ * Every `appendEvent` call carries a checkpoint-scoped idempotency key, so
+ * even a direct double-invocation (e.g. a retried request) never
+ * double-writes any event kind — `appendEvent` returns the existing row for
+ * a matching key instead of inserting again.
+ */
+async function applyEpisodeSummaryMemoryWrites(
+  owner: EpisodeRunOwner,
+  checkpoint: { id: number; runId: number; sourceArtifactIds: unknown },
+  approvedByUserId: number
+): Promise<void> {
+  const { tenantId, userId, seriesId, episodeId } = owner;
+
+  // Resolve the episode number + the artifact under review so the memory
+  // events carry the real planner output (when present).
+  const [episode] = await db
+    .select({ episodeNumber: verticalDramaEpisodes.episodeNumber })
+    .from(verticalDramaEpisodes)
+    .where(
+      and(
+        eq(verticalDramaEpisodes.id, episodeId),
+        eq(verticalDramaEpisodes.tenantId, tenantId),
+        eq(verticalDramaEpisodes.userId, userId),
+        eq(verticalDramaEpisodes.seriesId, seriesId)
+      )
+    )
+    .limit(1);
+  const episodeNumber = episode?.episodeNumber;
+
+  const sourceArtifactIds = (checkpoint.sourceArtifactIds as string[] | null) ?? [];
+  let plannerPayload: Record<string, unknown> | undefined;
+  let summaryText =
+    episodeNumber != null
+      ? `Episode ${episodeNumber} summarized to series memory`
+      : "Episode summarized to series memory";
+  if (sourceArtifactIds.length > 0) {
+    const artifactId = Number(sourceArtifactIds[0]);
+    if (Number.isFinite(artifactId)) {
+      const [artifact] = await db
+        .select({ jsonPayload: verticalDramaRunArtifacts.jsonPayload })
+        .from(verticalDramaRunArtifacts)
+        .where(
+          and(
+            eq(verticalDramaRunArtifacts.id, artifactId),
+            eq(verticalDramaRunArtifacts.tenantId, tenantId),
+            eq(verticalDramaRunArtifacts.seriesId, seriesId),
+            eq(verticalDramaRunArtifacts.episodeId, episodeId)
+          )
+        )
+        .limit(1);
+      const payload = artifact?.jsonPayload as Record<string, unknown> | undefined;
+      if (payload?.summary) summaryText = String(payload.summary);
+      // Only the real planner artifact carries `episode_recap` (the old
+      // pending-only placeholder from `buildStagePayload` never does) — use
+      // its presence to distinguish "real planner ran" from "old run /
+      // dry_run / plan_only, no planner artifact".
+      if (typeof payload?.episode_recap === "string") {
+        plannerPayload = payload;
+        summaryText = payload.episode_recap as string;
+      }
+    }
+  }
+
+  const baseIdempotencyKey = `vd-episode-summary-checkpoint-${checkpoint.id}`;
+
+  await verticalDramaSeriesMemoryService.appendEvent({
+    tenantId,
+    userId,
+    seriesId,
+    episodeId,
+    runId: checkpoint.runId,
+    memoryKind: "episode_summary",
+    payload: {
+      episodeNumber,
+      summary: summaryText,
+      approvedFromCheckpointId: String(checkpoint.id),
+      ...(plannerPayload
+        ? { memoryCompactionSummary: plannerPayload.memory_compaction_summary }
+        : {}),
+    },
+    summaryText,
+    approved: true,
+    approvedByUserId,
+    // Idempotent: a replayed approval never double-writes the summary.
+    idempotencyKey: baseIdempotencyKey,
+  });
+
+  // Fallback preserved for old runs with no planner artifact (dry_run/
+  // plan_only-only history, or runs that predate this wiring): only the
+  // `episode_summary` event above is written, exactly as before.
+  if (!plannerPayload) return;
+
+  const asArray = (value: unknown): Array<Record<string, unknown>> =>
+    Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
+
+  const appendKind = async (
+    memoryKind: VerticalDramaMemoryKind,
+    items: Array<Record<string, unknown>>,
+    summaryOf: (item: Record<string, unknown>) => string,
+    keySuffix: string
+  ) => {
+    for (const [index, item] of items.entries()) {
+      const text = summaryOf(item);
+      await verticalDramaSeriesMemoryService.appendEvent({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+        runId: checkpoint.runId,
+        memoryKind,
+        payload: {
+          episodeNumber,
+          approvedFromCheckpointId: String(checkpoint.id),
+          ...item,
+        },
+        summaryText: text,
+        approved: true,
+        approvedByUserId,
+        // Idempotent per item — a replayed approval never double-appends
+        // any single hook/delta/warning/tie-in.
+        idempotencyKey: `${baseIdempotencyKey}-${keySuffix}-${index}`,
+      });
+    }
+  };
+
+  await appendKind(
+    "hook_opened",
+    asArray(plannerPayload.unresolved_hooks),
+    (item) => String(item.description ?? item.hook ?? item.hookId ?? "hook opened"),
+    "hook-opened"
+  );
+  await appendKind(
+    "hook_resolved",
+    asArray(plannerPayload.resolved_hooks),
+    (item) => String(item.description ?? item.hook ?? item.hookId ?? "hook resolved"),
+    "hook-resolved"
+  );
+  await appendKind(
+    "character_delta",
+    asArray(plannerPayload.character_emotional_state),
+    (item) =>
+      String(item.state ?? item.change ?? `${item.character_id ?? "character"} state change`),
+    "character-delta"
+  );
+  await appendKind(
+    "relationship_delta",
+    asArray(plannerPayload.relationship_state_changes),
+    (item) =>
+      String(item.change ?? `${JSON.stringify(item.pair ?? [])} relationship change`),
+    "relationship-delta"
+  );
+  await appendKind(
+    "continuity_warning",
+    asArray(plannerPayload.continuity_risks),
+    (item) => String(item.risk ?? item.warning ?? "continuity risk"),
+    "continuity-warning"
+  );
+  await appendKind(
+    "product_tie_in_usage",
+    asArray(plannerPayload.product_tie_in_history),
+    (item) => String(item.productName ?? item.product_name ?? "product tie-in usage"),
+    "product-tie-in"
+  );
+
+  // `canonical_fact` events are appended too (kept out of the shared
+  // `appendKind` helper because their summary source field differs).
+  for (const [index, fact] of asArray(plannerPayload.canonical_facts).entries()) {
+    const text = String(fact.statement ?? fact.fact ?? "canonical fact");
+    await verticalDramaSeriesMemoryService.appendEvent({
+      tenantId,
+      userId,
+      seriesId,
+      episodeId,
+      runId: checkpoint.runId,
+      memoryKind: "canonical_fact",
+      payload: {
+        episodeNumber,
+        approvedFromCheckpointId: String(checkpoint.id),
+        fact: text,
+        ...fact,
+      },
+      summaryText: text,
+      approved: true,
+      approvedByUserId,
+      idempotencyKey: `${baseIdempotencyKey}-canonical-fact-${index}`,
+    });
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* The pipeline runner                                                        */
 /* -------------------------------------------------------------------------- */
@@ -810,7 +1020,12 @@ export interface RunStageOutcome {
   result: RunResult;
   /** Downstream stages that became stale (empty unless this was a repair). */
   staleStages: VerticalDramaPipelineStage[];
-  /** The pending checkpoint just created, when `result.next_action === "approve"`. */
+  /**
+   * The (auto-approved, audit-only) checkpoint just created, set whenever
+   * `stage` is one of the approval stages. Manual approval was removed from
+   * the product workflow (2026-07-07) — `result.status` never becomes
+   * `"approval_required"` anymore.
+   */
   checkpointId?: number;
 }
 
@@ -1302,6 +1517,10 @@ export class VerticalDramaEpisodePipeline {
     plan: StartFrameRenderPlanProjection;
     creditsUsed: number;
     model: string;
+    /** Series character identity rows (2026-07-07 fix) — returned alongside
+     *  the plan so the caller can run the missing-character-identity QC
+     *  check without a second DB query. */
+    characters: VerticalDramaCharacterDescriptorSource[];
   }> {
     const storyboard =
       (episode.storyboard as Record<string, unknown> | null) ?? null;
@@ -1342,7 +1561,38 @@ export class VerticalDramaEpisodePipeline {
       (seriesRow?.bible as Record<string, unknown> | null) ?? null
     );
 
-    return generateStartFrameRenderPlan({
+    // Character identity descriptors (2026-07-07 non-human-character-
+    // vanishing fix) — `name`/`role` + the stored `data.description` (e.g.
+    // เจ้าเกลือ's "แมวขาวปุยตาสีทะเล..." confirming it's a cat, not a person),
+    // fed into `buildCharacterIdentityMapBlock` so the planning LLM knows
+    // each required character's real identity instead of a bare
+    // `characterKey`. See `@shared/verticalDramaSeries/characterIdentityMap.ts`.
+    const characterIdentityRows = await db
+      .select({
+        characterKey: verticalDramaCharacters.characterKey,
+        name: verticalDramaCharacters.name,
+        role: verticalDramaCharacters.role,
+        data: verticalDramaCharacters.data,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.seriesId, owner.seriesId)
+        )
+      );
+    const characterIdentitySources: VerticalDramaCharacterDescriptorSource[] =
+      characterIdentityRows.map((row: (typeof characterIdentityRows)[number]) => ({
+        characterKey: row.characterKey,
+        name: row.name,
+        role: row.role,
+        description:
+          typeof (row.data as Record<string, unknown> | null)?.description === "string"
+            ? ((row.data as Record<string, unknown>).description as string)
+            : undefined,
+      }));
+
+    const generated = await generateStartFrameRenderPlan({
       userId: owner.userId,
       tenantId: owner.tenantId,
       seriesId: owner.seriesId,
@@ -1351,6 +1601,7 @@ export class VerticalDramaEpisodePipeline {
       durationSeconds: episode.targetDurationSeconds ?? 60,
       selectedImageModelId: existingSelectedImageModelId,
       targetAudienceRegion,
+      characters: characterIdentitySources,
       storyboardShots: shots.map(s => {
         // The real `storyboard_shotgrid` LLM output uses snake_case fields
         // (`shot_number`, `visual_description`, `camera` object, `characters`
@@ -1386,6 +1637,7 @@ export class VerticalDramaEpisodePipeline {
         };
       }),
     });
+    return { ...generated, characters: characterIdentitySources };
   }
 
   /**
@@ -1485,6 +1737,14 @@ export class VerticalDramaEpisodePipeline {
     });
   }
 
+  /**
+   * Write the stage's approval checkpoint. Manual approval was removed from
+   * the product workflow (2026-07-07) — checkpoints are inserted already
+   * `approved` (never `pending`) so they exist purely as audit records and
+   * never accumulate as a stale "pending approval" badge on the series list.
+   * Kept as its own row (rather than skipped entirely) so the audit trail of
+   * "this stage's output was reviewed at this checkpoint" is preserved.
+   */
   private async ensurePendingCheckpoint(
     owner: EpisodeRunOwner,
     runId: number,
@@ -1500,7 +1760,9 @@ export class VerticalDramaEpisodePipeline {
         episodeId: owner.episodeId,
         runId,
         stage,
-        state: "pending",
+        state: "approved",
+        approvedByUserId: owner.userId,
+        notes: "auto-approved: manual approval step removed from workflow",
         sourceArtifactIds,
         repairRequestIds: [],
       })
@@ -1567,6 +1829,17 @@ export class VerticalDramaEpisodePipeline {
         .update(verticalDramaEpisodeRuns)
         .set({ status: "succeeded", nextAction, updatedAt: new Date() })
         .where(eq(verticalDramaEpisodeRuns.id, checkpoint.runId));
+
+      // Legacy path: this checkpoint predates auto-approval-at-creation and
+      // was sitting `pending` until just now. Apply the durable series-memory
+      // side effects on this genuine pending->approved transition. The
+      // `alreadyTerminal` short-circuit above guarantees this can only ever
+      // run once per checkpoint — a checkpoint created pre-approved (see
+      // `ensurePendingCheckpoint`) never reaches this branch at all, since it
+      // already has its memory writes applied at creation time in `runStage`.
+      if (checkpoint.stage === "summarize_episode_to_series_memory") {
+        await applyEpisodeSummaryMemoryWrites(owner, checkpoint, owner.userId);
+      }
     } else {
       await db
         .update(verticalDramaEpisodeRuns)
@@ -1612,6 +1885,12 @@ export class VerticalDramaEpisodePipeline {
         episode.episodeNumber
       );
     }
+
+    // Non-blocking QC warnings collected by stage-specific override blocks
+    // below (e.g. `start_frame_render_plan`'s missing-character-identity
+    // check, 2026-07-07 non-human-character-vanishing fix) — merged into the
+    // stage's own `warnings` array once it's initialized further down.
+    const stageQcWarnings: VerticalDramaWarning[] = [];
 
     let payload = buildStagePayload(stage, {
       episode,
@@ -1899,6 +2178,30 @@ export class VerticalDramaEpisodePipeline {
             }),
           ),
         };
+
+        // Light, non-blocking QC (2026-07-07 non-human-character-vanishing
+        // fix): warn — never fail the stage — when a frame's finalized
+        // prompt doesn't mention a required character's name/descriptor at
+        // all, the cheap signal that the character was silently
+        // dropped/genericized (see the เจ้าเกลือ repro in this file's
+        // `generateRealStartFramePlan` doc comment).
+        const missingIdentityWarnings = findMissingCharacterIdentityWarnings(
+          generated.plan.frames,
+          generated.characters,
+        );
+        for (const missing of missingIdentityWarnings) {
+          stageQcWarnings.push({
+            code: "VD_START_FRAME_CHARACTER_IDENTITY_MISSING",
+            severity: "warning",
+            message: `Shot ${missing.shotNumber}: required character "${
+              missing.characterName ?? missing.characterKey
+            }" (${missing.characterKey}) is not mentioned in the generated prompt — it may have been rendered as a generic figure instead of its real identity.`,
+            targetStage: stage,
+            targetShotNumber: missing.shotNumber,
+            repairable: true,
+          });
+        }
+
         payload = { stage, ...generated.plan };
         // Persist to the episode's own `startFramePlan` jsonb column.
         await db
@@ -2237,18 +2540,21 @@ export class VerticalDramaEpisodePipeline {
       return { runId, result, staleStages: [] };
     }
 
-    const warnings: VerticalDramaWarning[] = [];
+    const warnings: VerticalDramaWarning[] = [...stageQcWarnings];
     const errors: RunResult["errors"] = [];
     let status: RunResult["status"] = "succeeded";
     let nextAction: RunResult["next_action"] = "resume_next_stage";
     let mediaAssetIds: number[] = [];
     let qc: VerticalDramaQcResult | undefined;
 
-    // 2) Approval gate — approval stages block advancement until approved.
+    // 2) Approval gate — manual approval was removed from the product
+    // workflow (2026-07-07): approval-stage checkpoints are now written
+    // pre-approved (see `ensurePendingCheckpoint`) purely as audit records,
+    // and the pipeline never blocks on them. `isStageApproved` is kept for
+    // callers that still inspect checkpoint history, but the gate itself is
+    // hardcoded true so a stage is never left in `approval_required`.
     const requiresApproval = VERTICAL_DRAMA_APPROVAL_STAGES.has(stage);
-    const approved = requiresApproval
-      ? await isStageApproved(owner, stage)
-      : true;
+    const approved = true;
 
     // 3) Paid gate — paid stages never run in dry-run/plan-only or before approval.
     const isPaid = VERTICAL_DRAMA_PAID_STAGES.has(stage);
@@ -2334,9 +2640,28 @@ export class VerticalDramaEpisodePipeline {
       .set({ artifactIds })
       .where(eq(verticalDramaEpisodeRuns.id, runId));
 
+    // Manual approval was removed from the product workflow (2026-07-07):
+    // approval-stage checkpoints are still written for every approval stage
+    // as an audit record, but pre-approved — `ensurePendingCheckpoint` no
+    // longer inserts `state: "pending"`, so this never resurrects the
+    // approval-required gate above.
     let checkpointId: number | undefined;
-    if (requiresApproval && !approved) {
+    if (requiresApproval) {
       checkpointId = await this.ensurePendingCheckpoint(owner, runId, stage, artifactIds);
+
+      // `summarize_episode_to_series_memory` is reached here only on success
+      // (every failure path above returns early, before this point) — apply
+      // the durable series-memory writes exactly once, right at checkpoint
+      // creation, since the checkpoint is already born `approved` and will
+      // never go through a pending->approved transition in
+      // `approveRunCheckpoint` to trigger them there instead.
+      if (stage === "summarize_episode_to_series_memory") {
+        await applyEpisodeSummaryMemoryWrites(
+          owner,
+          { id: checkpointId, runId, sourceArtifactIds: artifactIds },
+          owner.userId
+        );
+      }
     }
 
     const result: RunResult = {

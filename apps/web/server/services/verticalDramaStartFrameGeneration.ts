@@ -37,6 +37,10 @@ import {
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
+import {
+  buildCharacterIdentityMapBlock,
+  type VerticalDramaCharacterDescriptorSource,
+} from "@shared/verticalDramaSeries/characterIdentityMap";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -244,6 +248,18 @@ export interface GenerateStartFrameRenderPlanParams {
    * precedence over this series-level default.
    */
   targetAudienceRegion?: VerticalDramaTargetAudienceRegion;
+  /**
+   * Series character rows (2026-07-07 non-human-character-vanishing fix) —
+   * used to build a compact "key = name (role): descriptor" map so the
+   * planning LLM knows each required character's real identity (including
+   * species/age) instead of just a bare `characterKey`. See
+   * `@shared/verticalDramaSeries/characterIdentityMap.ts`'s doc comment for
+   * the full bug report (เจ้าเกลือ, a cat mascot, silently rendered as a
+   * generic human figure because the prompt only ever said
+   * `character-8`). Optional — omitted/empty falls back to the prior
+   * bare-key behavior.
+   */
+  characters?: VerticalDramaCharacterDescriptorSource[];
 }
 
 function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
@@ -256,6 +272,12 @@ function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
     )
     .join("\n");
 
+  const allRequiredCharacterKeys = params.storyboardShots.flatMap((s) => s.characterIds);
+  const characterIdentityMapBlock = buildCharacterIdentityMapBlock(
+    allRequiredCharacterKeys,
+    params.characters ?? [],
+  );
+
   return [
     `Episode title: ${params.episodeTitle}`,
     `Episode duration: ${params.durationSeconds} seconds`,
@@ -263,6 +285,7 @@ function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
       ? `Preferred image model: ${params.selectedImageModelId}`
       : null,
     `Storyboard shots (build exactly one start-frame render request per shot, 9 total):\n${shotLines}`,
+    characterIdentityMapBlock,
     params.storyboardShots.some((s) => s.characterIds.length > 0) ? VD_CHARACTER_LOCK_INSTRUCTION : null,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
     VD_COMPACT_JSON_INSTRUCTION,

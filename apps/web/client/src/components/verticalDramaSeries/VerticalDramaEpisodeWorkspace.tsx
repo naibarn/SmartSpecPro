@@ -202,7 +202,7 @@ export interface VerticalDramaStoryboardPanelData {
   trimmedReferenceCountByClip?: Record<number, number>;
   /** Upload video file per shot (2026-07-07 upgrade) — see the same-named
    *  prop on `VerticalDramaStoryboardPanel`. */
-  onUploadVideoClip?: (clipNumber: number, file: File) => void;
+  onUploadVideoClip?: (clipNumber: number, file: File, sourceShotNumber: number) => void;
   uploadingVideoClipForClip?: ReadonlySet<number>;
 
   /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
@@ -219,6 +219,11 @@ export interface VerticalDramaStoryboardPanelData {
   onRunQualityReview?: () => void;
   runningQualityReview?: boolean;
   onCopySuggestedFix?: (suggestedFix: string) => void;
+
+  /* ---- Manual episode -> series memory summarization ---- */
+  onSummarizeEpisodeToMemory?: (opts?: { force?: boolean }) => void;
+  summarizingEpisodeToMemory?: boolean;
+  episodeAlreadySummarizedToMemory?: boolean;
 
   /* ---- Phase 6.5 — image-to-image repair dialog ---- */
   onSubmitRepairImage?: (shotNumber: number, instruction: string) => void;
@@ -690,6 +695,9 @@ export function VerticalDramaEpisodeWorkspace({
           onRunQualityReview={storyboardPanel?.onRunQualityReview}
           runningQualityReview={storyboardPanel?.runningQualityReview}
           onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
+          onSummarizeEpisodeToMemory={storyboardPanel?.onSummarizeEpisodeToMemory}
+          summarizingEpisodeToMemory={storyboardPanel?.summarizingEpisodeToMemory}
+          episodeAlreadySummarizedToMemory={storyboardPanel?.episodeAlreadySummarizedToMemory}
           onSubmitRepairImage={storyboardPanel?.onSubmitRepairImage}
           repairImageSubmittingForShot={storyboardPanel?.repairImageSubmittingForShot}
           repairImageResultByShot={storyboardPanel?.repairImageResultByShot}
@@ -1146,6 +1154,9 @@ export function VerticalDramaEpisodeWorkspace({
                       onRunQualityReview={storyboardPanel?.onRunQualityReview}
                       runningQualityReview={storyboardPanel?.runningQualityReview}
                       onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
+                      onSummarizeEpisodeToMemory={storyboardPanel?.onSummarizeEpisodeToMemory}
+                      summarizingEpisodeToMemory={storyboardPanel?.summarizingEpisodeToMemory}
+                      episodeAlreadySummarizedToMemory={storyboardPanel?.episodeAlreadySummarizedToMemory}
                     />
                   ) : (
                     <VerticalDramaRunDetailView

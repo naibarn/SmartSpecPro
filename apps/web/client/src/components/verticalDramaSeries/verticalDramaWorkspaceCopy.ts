@@ -312,6 +312,18 @@ export const VD_COPY = {
     copySuggestedFix: "Copy suggestion",
     copiedSuggestedFix: "Copied — paste it into Repair.",
 
+    /* ---- Episode -> series memory summarization (manual trigger) ---- */
+    summarizeMemory: "Summarize into series memory (AI)",
+    summarizeMemoryButton: "Summarize into series memory (AI)",
+    summarizeMemoryRunning: "Summarizing…",
+    summarizeMemoryNeedsScript: "Episode needs a generated script and storyboard first.",
+    summarizeMemoryCostNote: "Extracts canonical facts, hooks, character/relationship changes, and continuity risks from this episode into durable series memory used by future episodes.",
+    summarizeMemoryAlready: "This episode was already summarized into series memory.",
+    summarizeMemoryReSummarize: "Re-summarize",
+    summarizeMemoryReSummarizeConfirm: "Re-summarizing appends a fresh set of memory events for this episode. The prior summary is kept in history, not deleted. Continue?",
+    summarizeMemorySuccess: "Memory saved: {count} events",
+    summarizeMemoryFailed: "Failed to summarize episode into series memory.",
+
     /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ---- */
     resolutionLabel: "Resolution",
     resolutionAuto: "Default",
@@ -556,6 +568,18 @@ export const VD_COPY = {
     qualityNoIssues: "ไม่พบจุดที่ต้องแก้",
     copySuggestedFix: "คัดลอกคำแนะนำ",
     copiedSuggestedFix: "คัดลอกแล้ว — นำไปวางในหน้าซ่อม",
+
+    /* ---- Episode -> series memory summarization (manual trigger) ---- */
+    summarizeMemory: "สรุปความจำเข้าซีรีย์ (AI)",
+    summarizeMemoryButton: "สรุปความจำเข้าซีรีย์ (AI)",
+    summarizeMemoryRunning: "กำลังสรุป…",
+    summarizeMemoryNeedsScript: "ตอนนี้ต้องมีบทและสตอรี่บอร์ดที่สร้างแล้วก่อน",
+    summarizeMemoryCostNote: "ดึงข้อเท็จจริงหลัก ปมค้าง การเปลี่ยนแปลงของตัวละคร/ความสัมพันธ์ และความเสี่ยงด้านความต่อเนื่องจากตอนนี้ เข้าสู่ความจำถาวรของซีรีย์ เพื่อใช้กับตอนถัดไป",
+    summarizeMemoryAlready: "ตอนนี้ถูกสรุปเข้าความจำซีรีย์แล้ว",
+    summarizeMemoryReSummarize: "สรุปใหม่",
+    summarizeMemoryReSummarizeConfirm: "การสรุปใหม่จะเพิ่มชุดเหตุการณ์ความจำใหม่สำหรับตอนนี้ สรุปเดิมจะยังถูกเก็บไว้ในประวัติ ไม่ถูกลบ ต้องการดำเนินการต่อหรือไม่?",
+    summarizeMemorySuccess: "บันทึกความจำแล้ว: {count} รายการ",
+    summarizeMemoryFailed: "สรุปความจำเข้าซีรีย์ไม่สำเร็จ",
 
     /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ---- */
     resolutionLabel: "ความละเอียด",

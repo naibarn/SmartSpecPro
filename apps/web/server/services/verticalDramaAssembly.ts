@@ -19,8 +19,9 @@
  *  5. Mark a run `assembly_ready` when a final render cannot run, keeping all
  *     deterministic inputs inspectable.
  *  6. On export completion, write a searchable QC report row, an append-only
- *     memory-event candidate, and a PENDING memory checkpoint — never an
- *     automatic memory mutation.
+ *     memory-event candidate, and an auto-approved memory checkpoint (audit
+ *     record only, manual approval removed from the product workflow,
+ *     2026-07-07) — never an automatic memory mutation.
  *
  * The pure builders (`buildAssemblyManifest`, `flattenClips`, …) take no DB and
  * are exercised directly in tests; the `VerticalDramaAssemblyService` class does
@@ -710,8 +711,9 @@ export class VerticalDramaAssemblyService {
    * Mark a run `assembly_ready` when a final render cannot run. Keeps all
    * deterministic inputs inspectable and writes the export-adjacent metadata
    * (`concat.txt`, `subtitles.srt`, `audio_plan.json`, `ffmpeg_command.sh`) into
-   * the assembly artifact ledger. Creates a PENDING memory checkpoint — never an
-   * automatic memory mutation.
+   * the assembly artifact ledger. Creates an auto-approved memory checkpoint
+   * (manual approval removed from the product workflow, 2026-07-07) — an
+   * audit record only, never a memory mutation.
    */
   async markAssemblyReady(
     owner: AssemblyOwner,
@@ -739,8 +741,10 @@ export class VerticalDramaAssemblyService {
       .set({ status: "assembly_ready", nextAction: "export", updatedAt: new Date() })
       .where(eq(verticalDramaEpisodeRuns.id, args.runId));
 
-    // Pending memory checkpoint after assembly/export — canonical memory is
-    // updated only after approval; this never auto-mutates memory state.
+    // Auto-approved memory checkpoint after assembly/export (manual approval
+    // removed from the product workflow, 2026-07-07) — kept as an audit
+    // record only; it no longer accumulates as a stale "pending approval"
+    // badge on the series list.
     const [checkpoint] = await db
       .insert(verticalDramaApprovalCheckpoints)
       .values({
@@ -750,10 +754,13 @@ export class VerticalDramaAssemblyService {
         episodeId: owner.episodeId,
         runId: args.runId,
         stage: "summarize_episode_to_series_memory",
-        state: "pending",
+        state: "approved",
+        approvedByUserId: owner.userId,
         sourceArtifactIds: (run.artifactIds as string[] | null) ?? [],
         repairRequestIds: [],
-        notes: args.reason ?? "assembly_ready: final render deferred; export metadata inspectable",
+        notes:
+          args.reason ??
+          "assembly_ready: final render deferred; export metadata inspectable (auto-approved)",
       })
       .returning({ id: verticalDramaApprovalCheckpoints.id });
 
@@ -762,8 +769,12 @@ export class VerticalDramaAssemblyService {
 
   /**
    * Record export completion (spec §09 tasks 8-10): persist a final media asset
-   * id + QC report row, an append-only memory-event CANDIDATE, and a PENDING
-   * memory checkpoint. Memory is not auto-mutated — approval applies it later.
+   * id + QC report row, an append-only memory-event CANDIDATE, and an
+   * auto-approved memory checkpoint (manual approval removed from the
+   * product workflow, 2026-07-07) kept only as an audit record. Memory is
+   * not auto-mutated by this method — the candidate event is written
+   * unapproved (`approved: null`) and only applied by whatever later reviews
+   * it.
    */
   async recordExportCompletion(
     owner: AssemblyOwner,
@@ -828,7 +839,10 @@ export class VerticalDramaAssemblyService {
       })
       .returning({ id: verticalDramaMemoryEvents.id });
 
-    // Pending memory checkpoint — approval applies future episode memory.
+    // Auto-approved memory checkpoint (manual approval removed from the
+    // product workflow, 2026-07-07) — kept as an audit record only; it no
+    // longer accumulates as a stale "pending approval" badge on the series
+    // list.
     const [checkpoint] = await db
       .insert(verticalDramaApprovalCheckpoints)
       .values({
@@ -838,10 +852,11 @@ export class VerticalDramaAssemblyService {
         episodeId: owner.episodeId,
         runId: args.runId,
         stage: "summarize_episode_to_series_memory",
-        state: "pending",
+        state: "approved",
+        approvedByUserId: owner.userId,
         sourceArtifactIds: (run.artifactIds as string[] | null) ?? [],
         repairRequestIds: [],
-        notes: "export_complete: memory recap candidate pending approval",
+        notes: "export_complete: memory recap candidate (auto-approved)",
       })
       .returning({ id: verticalDramaApprovalCheckpoints.id });
 

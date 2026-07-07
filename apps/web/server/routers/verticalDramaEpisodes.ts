@@ -57,6 +57,12 @@ import {
   type EpisodeQualityReviewOutput,
 } from "../services/verticalDramaEpisodeQualityReview";
 import {
+  runVerticalDramaSeriesMemoryPlanning,
+  InsufficientCreditsError as MemoryPlanningInsufficientCreditsError,
+  VdSchemaValidationError as MemoryPlanningSchemaValidationError,
+  RateLimitExceededError as MemoryPlanningRateLimitExceededError,
+} from "../services/verticalDramaSeriesMemoryPlanning";
+import {
   formatVideoClipRequest,
   type VerticalDramaClipDialogueLine,
 } from "../services/verticalDramaVideoPromptFormatter";
@@ -76,6 +82,10 @@ import {
   VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
 } from "@shared/verticalDramaSeries/characterLock";
 import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
+import {
+  buildCharacterIdentityMapBlock,
+  type VerticalDramaCharacterDescriptorSource,
+} from "@shared/verticalDramaSeries/characterIdentityMap";
 import {
   VERTICAL_DRAMA_MEMORY_KINDS,
   VERTICAL_DRAMA_PROMPT_LANGUAGES,
@@ -511,6 +521,49 @@ async function resolveShotCharacterReferenceUrls(
     ),
   );
   return urls.filter((u): u is string => Boolean(u));
+}
+
+/**
+ * Resolve a set of character keys to their identity-descriptor rows
+ * (2026-07-07 non-human-character-vanishing fix) — `name`/`role` +
+ * `data.description`, the same shape `verticalDramaEpisodePipeline.ts`'s
+ * `generateRealStartFramePlan` feeds into `buildCharacterIdentityMapBlock`.
+ * Used to re-inject the identity map into call sites that build a fresh
+ * image/video prompt directly from `frame.imagePrompt` (rather than through
+ * the pipeline), e.g. the multi-angle grid prompt and the shot-video-prompt
+ * service context — so those prompts also know a required character's real
+ * identity (species/age) instead of just a bare `characterKey`.
+ */
+async function resolveShotCharacterIdentitySources(
+  tenantId: string,
+  seriesId: number,
+  characterKeys: string[] | undefined,
+): Promise<VerticalDramaCharacterDescriptorSource[]> {
+  if (!characterKeys?.length) return [];
+  const rows = await db
+    .select({
+      characterKey: verticalDramaCharacters.characterKey,
+      name: verticalDramaCharacters.name,
+      role: verticalDramaCharacters.role,
+      data: verticalDramaCharacters.data,
+    })
+    .from(verticalDramaCharacters)
+    .where(
+      and(
+        eq(verticalDramaCharacters.tenantId, tenantId),
+        eq(verticalDramaCharacters.seriesId, seriesId),
+        inArray(verticalDramaCharacters.characterKey, characterKeys),
+      ),
+    );
+  return rows.map((row: (typeof rows)[number]) => ({
+    characterKey: row.characterKey,
+    name: row.name,
+    role: row.role,
+    description:
+      typeof (row.data as Record<string, unknown> | null)?.description === "string"
+        ? ((row.data as Record<string, unknown>).description as string)
+        : undefined,
+  }));
 }
 
 /**
@@ -1638,219 +1691,17 @@ export const verticalDramaEpisodesRouter = router({
           code: "NOT_FOUND",
           message: "Checkpoint not found",
         });
-      const { checkpoint: row, alreadyTerminal } = outcome;
+      const { checkpoint: row } = outcome;
 
-      // Idempotent: a terminal checkpoint returns as-is, no side effects re-run.
-      if (alreadyTerminal) {
-        return { checkpoint: { ...row, id: String(row.id) } };
-      }
-      const approving = input.decision === "approve";
-      const checkpoint = row;
-
-      // Memory-update checkpoint (stage `summarize_episode_to_series_memory`,
-      // the 12th/last approval checkpoint): the episode summary (and, when a
-      // real `vertical-drama-series-memory-planner` artifact was produced by
-      // the pipeline, ALL seven other memory event kinds too) is held PENDING
-      // and never auto-applied by the pipeline. It is written into durable
-      // series memory only on THIS explicit approval — appended via the
-      // append-only memory service. This runs only on the first approval
-      // transition (a terminal checkpoint short-circuits above), and every
-      // `appendEvent` call below carries a checkpoint-scoped idempotency key
-      // so a replayed approval never double-writes any event kind.
-      if (
-        approving &&
-        checkpoint.stage === "summarize_episode_to_series_memory"
-      ) {
-        // Resolve the episode number + the pending artifact under review so
-        // the memory events carry the real planner output (when present).
-        const [episode] = await db
-          .select({ episodeNumber: verticalDramaEpisodes.episodeNumber })
-          .from(verticalDramaEpisodes)
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, episodeId),
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId)
-            )
-          )
-          .limit(1);
-        const episodeNumber = episode?.episodeNumber;
-
-        const sourceArtifactIds =
-          (checkpoint.sourceArtifactIds as string[] | null) ?? [];
-        let plannerPayload: Record<string, unknown> | undefined;
-        let summaryText =
-          episodeNumber != null
-            ? `Episode ${episodeNumber} summarized to series memory`
-            : "Episode summarized to series memory";
-        if (sourceArtifactIds.length > 0) {
-          const artifactId = Number(sourceArtifactIds[0]);
-          if (Number.isFinite(artifactId)) {
-            const [artifact] = await db
-              .select({ jsonPayload: verticalDramaRunArtifacts.jsonPayload })
-              .from(verticalDramaRunArtifacts)
-              .where(
-                and(
-                  eq(verticalDramaRunArtifacts.id, artifactId),
-                  eq(verticalDramaRunArtifacts.tenantId, tenantId),
-                  eq(verticalDramaRunArtifacts.seriesId, seriesId),
-                  eq(verticalDramaRunArtifacts.episodeId, episodeId)
-                )
-              )
-              .limit(1);
-            const payload = artifact?.jsonPayload as
-              | Record<string, unknown>
-              | undefined;
-            if (payload?.summary) summaryText = String(payload.summary);
-            // Only the real planner artifact carries `episode_recap` (the
-            // old pending-only placeholder from `buildStagePayload` never
-            // does) — use its presence to distinguish "real planner ran"
-            // from "old run / dry_run / plan_only, no planner artifact".
-            if (typeof payload?.episode_recap === "string") {
-              plannerPayload = payload;
-              summaryText = payload.episode_recap as string;
-            }
-          }
-        }
-
-        const baseIdempotencyKey = `vd-episode-summary-checkpoint-${checkpoint.id}`;
-
-        await verticalDramaSeriesMemoryService.appendEvent({
-          tenantId,
-          userId,
-          seriesId,
-          episodeId,
-          runId: checkpoint.runId,
-          memoryKind: "episode_summary",
-          payload: {
-            episodeNumber,
-            summary: summaryText,
-            approvedFromCheckpointId: String(checkpoint.id),
-            ...(plannerPayload
-              ? { memoryCompactionSummary: plannerPayload.memory_compaction_summary }
-              : {}),
-          },
-          summaryText,
-          approved: true,
-          approvedByUserId: userId,
-          // Idempotent: a replayed approval never double-writes the summary.
-          idempotencyKey: baseIdempotencyKey,
-        });
-
-        // Fallback preserved for old runs with no planner artifact (dry_run/
-        // plan_only-only history, or runs that predate this wiring): only the
-        // `episode_summary` event above is written, exactly as before.
-        if (plannerPayload) {
-          const asArray = (value: unknown): Array<Record<string, unknown>> =>
-            Array.isArray(value)
-              ? (value as Array<Record<string, unknown>>)
-              : [];
-
-          const appendKind = async (
-            memoryKind: VerticalDramaMemoryKind,
-            items: Array<Record<string, unknown>>,
-            summaryOf: (item: Record<string, unknown>) => string,
-            keySuffix: string
-          ) => {
-            for (const [index, item] of items.entries()) {
-              const text = summaryOf(item);
-              await verticalDramaSeriesMemoryService.appendEvent({
-                tenantId,
-                userId,
-                seriesId,
-                episodeId,
-                runId: checkpoint.runId,
-                memoryKind,
-                payload: {
-                  episodeNumber,
-                  approvedFromCheckpointId: String(checkpoint.id),
-                  ...item,
-                },
-                summaryText: text,
-                approved: true,
-                approvedByUserId: userId,
-                // Idempotent per item — a replayed approval never
-                // double-appends any single hook/delta/warning/tie-in.
-                idempotencyKey: `${baseIdempotencyKey}-${keySuffix}-${index}`,
-              });
-            }
-          };
-
-          await appendKind(
-            "hook_opened",
-            asArray(plannerPayload.unresolved_hooks),
-            (item) =>
-              String(item.description ?? item.hook ?? item.hookId ?? "hook opened"),
-            "hook-opened"
-          );
-          await appendKind(
-            "hook_resolved",
-            asArray(plannerPayload.resolved_hooks),
-            (item) =>
-              String(item.description ?? item.hook ?? item.hookId ?? "hook resolved"),
-            "hook-resolved"
-          );
-          await appendKind(
-            "character_delta",
-            asArray(plannerPayload.character_emotional_state),
-            (item) =>
-              String(
-                item.state ?? item.change ?? `${item.character_id ?? "character"} state change`
-              ),
-            "character-delta"
-          );
-          await appendKind(
-            "relationship_delta",
-            asArray(plannerPayload.relationship_state_changes),
-            (item) =>
-              String(
-                item.change ?? `${JSON.stringify(item.pair ?? [])} relationship change`
-              ),
-            "relationship-delta"
-          );
-          await appendKind(
-            "continuity_warning",
-            asArray(plannerPayload.continuity_risks),
-            (item) => String(item.risk ?? item.warning ?? "continuity risk"),
-            "continuity-warning"
-          );
-          await appendKind(
-            "product_tie_in_usage",
-            asArray(plannerPayload.product_tie_in_history),
-            (item) =>
-              String(item.productName ?? item.product_name ?? "product tie-in usage"),
-            "product-tie-in"
-          );
-
-          // `canonical_fact` events are appended too (kept out of the shared
-          // `appendKind` helper because their summary source field differs).
-          for (const [index, fact] of asArray(
-            plannerPayload.canonical_facts
-          ).entries()) {
-            const text = String(fact.statement ?? fact.fact ?? "canonical fact");
-            await verticalDramaSeriesMemoryService.appendEvent({
-              tenantId,
-              userId,
-              seriesId,
-              episodeId,
-              runId: checkpoint.runId,
-              memoryKind: "canonical_fact",
-              payload: {
-                episodeNumber,
-                approvedFromCheckpointId: String(checkpoint.id),
-                fact: text,
-                ...fact,
-              },
-              summaryText: text,
-              approved: true,
-              approvedByUserId: userId,
-              idempotencyKey: `${baseIdempotencyKey}-canonical-fact-${index}`,
-            });
-          }
-        }
-      }
-
+      // Idempotent: `approveRunCheckpoint` itself short-circuits (no side
+      // effects re-run) when the checkpoint is already terminal. The
+      // `summarize_episode_to_series_memory` durable memory writes that used
+      // to live inline here were moved into
+      // `verticalDramaEpisodePipeline.approveRunCheckpoint` (2026-07-07) so
+      // BOTH this mutation's legacy pending->approved transition AND the
+      // pipeline's new create-time auto-approval apply them from one place,
+      // with no double-write (each checkpoint id carries its own
+      // idempotency-keyed `appendEvent` calls).
       return { checkpoint: { ...row, id: String(row.id) } };
     }),
 
@@ -2856,6 +2707,22 @@ export const verticalDramaEpisodesRouter = router({
       );
       const productRefUrls = resolveShotProductReferenceUrls(frame.productReferenceAssetIds);
 
+      // Character identity map (2026-07-07 non-human-character-vanishing
+      // fix) — re-injected directly into the grid prompt (not just relying
+      // on the base `imagePrompt` already carrying it) since
+      // `softenCharacterLockPrompt` may progressively relax identity-lock
+      // wording on repeated policy-failure retries. See
+      // `@shared/verticalDramaSeries/characterIdentityMap.ts`.
+      const angleGridCharacterIdentitySources = await resolveShotCharacterIdentitySources(
+        tenantId,
+        seriesId,
+        frame.requiredCharacterRefs,
+      );
+      const angleGridCharacterIdentityMapBlock = buildCharacterIdentityMapBlock(
+        frame.requiredCharacterRefs ?? [],
+        angleGridCharacterIdentitySources,
+      );
+
       // Resolution order (spec Phase 1.2): episode-level selection →
       // `DEFAULT_MODELS` — same resolver `generateStartFrameImage` uses, so
       // both call sites for this shot always price + generate with the same
@@ -2940,8 +2807,11 @@ export const verticalDramaEpisodesRouter = router({
         "Each of the 9 panels must show the SAME moment from a DIFFERENT camera angle/framing (for example: wide establishing shot, medium shot, close-up, over-the-shoulder, low angle, high angle, dutch angle, extreme close-up, three-quarter profile) — vary ONLY the camera position/framing per panel, purely through the photographed composition itself.",
         "Keep character identity, wardrobe, and lighting perfectly consistent across all 9 panels — only the camera position/framing changes.",
         `Continuity note (region/ethnicity): ${buildTargetAudienceRegionInstruction(gridRegion)}`,
+        angleGridCharacterIdentityMapBlock,
         "ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: do not render any captions, labels, titles, shot-type names, camera-angle names, panel numbers, watermarks, logos, subtitles, or any other typography or lettering in any panel or in the grid dividers. The grid must contain photographic content ONLY — no on-image text of any kind, in any language, anywhere in the frame.",
-      ].join(" ");
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join(" ");
       // Final-prompt QC (hard length cap) — enforced on the FINAL grid
       // prompt (base imagePrompt + fixed grid instructions), since that
       // concatenated string is what actually gets sent to the provider.
@@ -3691,6 +3561,22 @@ export const verticalDramaEpisodesRouter = router({
       // Resolve the episode-selected video model (Phase 1.2 resolution order).
       const selectedVideoModel = await resolveEpisodeVideoModel(pack);
 
+      // Character identity map (2026-07-07 non-human-character-vanishing
+      // fix) — same descriptor block the start-frame planner/grid prompts
+      // use, so the shot-video-prompt service also knows a required
+      // character's real identity (species/age) instead of a bare
+      // `characterKey` when it writes motion/acting direction for them. See
+      // `@shared/verticalDramaSeries/characterIdentityMap.ts`.
+      const shotVideoCharacterIdentitySources = await resolveShotCharacterIdentitySources(
+        tenantId,
+        seriesId,
+        frame?.requiredCharacterRefs,
+      );
+      const shotVideoCharacterIdentityMapBlock = buildCharacterIdentityMapBlock(
+        frame?.requiredCharacterRefs ?? [],
+        shotVideoCharacterIdentitySources,
+      );
+
       const [localeSeriesRow] = await db
         .select({ locale: verticalDramaSeries.locale })
         .from(verticalDramaSeries)
@@ -3716,6 +3602,7 @@ export const verticalDramaEpisodesRouter = router({
           camera: storyboardShot?.cameraSetup,
           emotion: undefined,
           dialogueLines: dialogueLines.length ? dialogueLines : undefined,
+          characterIdentityMap: shotVideoCharacterIdentityMapBlock,
           productContext: tieInPlacement
             ? {
                 productName: tieInProductName,
@@ -4132,6 +4019,255 @@ export const verticalDramaEpisodesRouter = router({
         .where(eq(verticalDramaEpisodeRuns.id, runRow.id));
 
       return { review: outcome.review, creditsUsed: outcome.creditsUsed };
+    }),
+
+  /* ------------------------------------------------------------------------ */
+  /* Manual episode -> series memory summarization                            */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * Manually trigger the `summarize_episode_to_series_memory` pipeline stage
+   * for THIS episode and immediately append the resulting memory events as
+   * approved — the user's explicit button click IS the approval, mirroring
+   * the same approval-gate principle `approveCheckpoint` uses for the
+   * pipeline-run path (see that mutation's `summarize_episode_to_series_memory`
+   * branch). This exists because the real pipeline stage is only ever reached
+   * by running the FULL tail of the pipeline, which almost no user does in
+   * practice — `vertical_drama_memory_events` was observed to have zero rows
+   * ever written despite the planner service and append-only memory service
+   * both being fully implemented and tested.
+   *
+   * Idempotency / re-summarize semantics (deliberately simple, chosen over the
+   * per-item idempotency-key dedupe the checkpoint path uses, since there is
+   * no single checkpoint id to scope keys to here):
+   *  - If this episode has NEVER been manually summarized (no prior
+   *    `episode_summary` event carrying `payload.source === "manual"` for this
+   *    episodeId), run the planner and append every resulting kind. Returns
+   *    `alreadySummarized: false`.
+   *  - If it HAS already been manually summarized and `force` is not set,
+   *    this is a no-op: no LLM call, no credits spent, no new events appended
+   *    — returns `alreadySummarized: true, eventsAppended: 0, creditsUsed: 0`
+   *    so a naive re-click (e.g. a double form submit) is free and inert.
+   *  - If it HAS already been manually summarized and `force: true` is set,
+   *    this is an explicit user decision to re-summarize: the planner runs
+   *    again and a FRESH set of events is appended (new `episode_summary`,
+   *    new hook/delta/warning/tie-in/canonical-fact events). This is NOT a
+   *    retcon/supersession — per the append-only memory model, the newer
+   *    `episode_summary` (by `createdAt`) simply wins in
+   *    `buildEpisodeMemoryBundle`'s "last N summaries" projection, and the
+   *    older event remains in the durable history (never mutated or
+   *    deleted). This mirrors how the checkpoint path already tolerates
+   *    multiple `episode_summary` events per episode over time (e.g. a
+   *    `repairStageOutput` re-run followed by a fresh approval).
+   *  - Idempotency key convention: every appended event's idempotency key is
+   *    scoped by `runToken` (a fresh random token per manual run, i.e. per
+   *    "attempt") so within ONE call the events are still de-duplicated
+   *    against a network-retried client resubmission (same convention as
+   *    `vd-episode-summary-manual-{episodeId}-{kind}-{index}` from the task
+   *    brief, extended with the run token so a `force` re-run is a distinct
+   *    idempotency scope from the original run):
+   *    `vd-episode-summary-manual-{episodeId}-{runToken}-{kind}-{index}`.
+   */
+  summarizeEpisodeToMemory: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        force: z.boolean().optional(),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+
+      const script = row.script as Record<string, unknown> | null;
+      const storyboard = row.storyboard as Record<string, unknown> | null;
+      if (!script || !storyboard) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "ตอนนี้ต้องมีบทและสตอรี่บอร์ดที่สร้างแล้วก่อน จึงจะสรุปความจำเข้าซีรีย์ได้",
+        });
+      }
+      const dialoguePlan = row.dialogueAudioPlan as Record<string, unknown> | null;
+
+      // Detect whether this episode was already manually summarized — scoped
+      // to THIS episode's own `episode_summary` events tagged `source:
+      // "manual"` (the checkpoint-approval path's events never carry that
+      // tag, so a pipeline-run summarization does not block/require `force`
+      // here, and vice versa — the two paths append to the same durable
+      // event stream but track their own "already ran" state independently).
+      const priorManualSummaries = await verticalDramaSeriesMemoryService.listEvents({
+        tenantId,
+        userId,
+        seriesId,
+        kind: "episode_summary",
+        episodeId,
+        limit: 50,
+      });
+      const alreadySummarized = priorManualSummaries.some(
+        (ev) => ev.payload?.source === "manual",
+      );
+      if (alreadySummarized && !input.force) {
+        return { alreadySummarized: true, eventsAppended: 0, creditsUsed: 0 };
+      }
+
+      const [seriesRow] = await db
+        .select({ locale: verticalDramaSeries.locale })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      const priorMemoryBundle = await verticalDramaSeriesMemoryService.buildEpisodeMemoryBundle(
+        { tenantId, userId, seriesId },
+        row.episodeNumber,
+      );
+
+      let outcome: {
+        planned: import("../services/verticalDramaSeriesMemoryPlanning").SeriesMemoryPlannerOutput;
+        creditsUsed: number;
+        model: string;
+      };
+      try {
+        outcome = await runVerticalDramaSeriesMemoryPlanning({
+          userId,
+          tenantId,
+          seriesId,
+          episodeId,
+          episodeNumber: row.episodeNumber,
+          locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
+          script,
+          storyboard,
+          dialoguePlan,
+          priorMemoryBundle,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (err) {
+        if (err instanceof MemoryPlanningInsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+        }
+        if (err instanceof MemoryPlanningSchemaValidationError) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+        }
+        if (err instanceof MemoryPlanningRateLimitExceededError) {
+          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: err.message });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Episode memory summarization failed",
+        });
+      }
+
+      const planned = outcome.planned;
+      const runToken = crypto.randomBytes(8).toString("hex");
+      const baseKey = `vd-episode-summary-manual-${episodeId}-${runToken}`;
+
+      let eventsAppended = 0;
+      const appendManual = async (
+        memoryKind: VerticalDramaMemoryKind,
+        payload: Record<string, unknown>,
+        summaryText: string,
+        keySuffix: string,
+      ) => {
+        await verticalDramaSeriesMemoryService.appendEvent({
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          memoryKind,
+          payload: {
+            episodeNumber: row.episodeNumber,
+            source: "manual",
+            ...payload,
+          },
+          summaryText,
+          approved: true,
+          approvedByUserId: userId,
+          idempotencyKey: `${baseKey}-${keySuffix}`,
+        });
+        eventsAppended += 1;
+      };
+
+      await appendManual(
+        "episode_summary",
+        { summary: planned.episode_recap, memoryCompactionSummary: planned.memory_compaction_summary },
+        planned.episode_recap,
+        "episode-summary",
+      );
+
+      const asArray = (value: unknown): Array<Record<string, unknown>> =>
+        Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
+
+      const appendKindArray = async (
+        memoryKind: VerticalDramaMemoryKind,
+        items: Array<Record<string, unknown>>,
+        summaryOf: (item: Record<string, unknown>) => string,
+        keySuffix: string,
+      ) => {
+        for (const [index, item] of items.entries()) {
+          await appendManual(memoryKind, item, summaryOf(item), `${keySuffix}-${index}`);
+        }
+      };
+
+      await appendKindArray(
+        "hook_opened",
+        asArray(planned.unresolved_hooks),
+        (item) => String(item.description ?? item.hook ?? item.hookId ?? "hook opened"),
+        "hook-opened",
+      );
+      await appendKindArray(
+        "hook_resolved",
+        asArray(planned.resolved_hooks),
+        (item) => String(item.description ?? item.hook ?? item.hookId ?? "hook resolved"),
+        "hook-resolved",
+      );
+      await appendKindArray(
+        "character_delta",
+        asArray(planned.character_emotional_state),
+        (item) =>
+          String(item.state ?? item.change ?? `${item.character_id ?? "character"} state change`),
+        "character-delta",
+      );
+      await appendKindArray(
+        "relationship_delta",
+        asArray(planned.relationship_state_changes),
+        (item) => String(item.change ?? `${JSON.stringify(item.pair ?? [])} relationship change`),
+        "relationship-delta",
+      );
+      await appendKindArray(
+        "continuity_warning",
+        asArray(planned.continuity_risks),
+        (item) => String(item.risk ?? item.warning ?? "continuity risk"),
+        "continuity-warning",
+      );
+      await appendKindArray(
+        "product_tie_in_usage",
+        asArray(planned.product_tie_in_history),
+        (item) => String(item.productName ?? item.product_name ?? "product tie-in usage"),
+        "product-tie-in",
+      );
+      await appendKindArray(
+        "canonical_fact",
+        asArray(planned.canonical_facts),
+        (item) => String(item.statement ?? item.fact ?? "canonical fact"),
+        "canonical-fact",
+      );
+
+      return {
+        alreadySummarized: false,
+        eventsAppended,
+        creditsUsed: outcome.creditsUsed,
+      };
     }),
 
   /**

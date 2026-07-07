@@ -151,6 +151,65 @@ export function shouldResumeVideoClipPoll(
   return true;
 }
 
+/** Minimal clip shape `persistVideoTask` needs — a subset of
+ *  `VerticalDramaMotionPromptPack["clips"][number]`. */
+export interface MinimalVideoTaskClip {
+  clipNumber: number;
+  sourceShotNumbers: number[];
+  prompt: string;
+  durationSeconds: number;
+  videoTask?: unknown;
+  [key: string]: unknown;
+}
+
+/**
+ * Pure "apply a videoTask patch onto motionPromptPack.clips[]" logic
+ * (2026-07-07 upload-video-per-shot fix) — exported/unit-testable, same
+ * convention as `shouldResumeVideoClipPoll` above.
+ *
+ * Bug this fixes: the "อัปโหลดวิดีโอ" upload button used to render ONLY when
+ * a `motionPromptPack` clip already existed whose `sourceShotNumbers`
+ * included the current shot — so shot 2+ (any shot before a video prompt had
+ * ever been generated for it) silently had no upload option at all. The
+ * button now renders on every shot; when no matching clip exists yet, this
+ * function creates a minimal
+ * `{clipNumber: shotNumber, sourceShotNumbers: [shotNumber], prompt: "", durationSeconds}`
+ * entry instead of silently dropping the upload — the same
+ * "create-a-minimal-clip" convention `generateShotVideoPrompt` (router) uses
+ * for its own "no matching clip yet" branch.
+ *
+ * `videoTask: null` (clear) is a no-op when there is no existing matching
+ * clip — nothing to clear.
+ */
+export function buildUpdatedClipsForVideoTask(
+  existingClips: readonly MinimalVideoTaskClip[],
+  clipNumber: number,
+  videoTask: { pendingTaskId: string } | { videoUrl: string; mediaTaskId?: string; source?: "generated" | "upload" } | null,
+  sourceShotNumber: number | undefined,
+  durationSecondsForNewClip: number
+): MinimalVideoTaskClip[] {
+  const existingIndex = existingClips.findIndex(c => c.clipNumber === clipNumber);
+  if (existingIndex !== -1) {
+    return existingClips.map((clip, i) => {
+      if (i !== existingIndex) return clip;
+      if (videoTask) return { ...clip, videoTask };
+      const { videoTask: _drop, ...rest } = clip;
+      return rest as MinimalVideoTaskClip;
+    });
+  }
+  if (!videoTask || sourceShotNumber == null) return existingClips.slice();
+  return [
+    ...existingClips,
+    {
+      clipNumber,
+      sourceShotNumbers: [sourceShotNumber],
+      prompt: "",
+      durationSeconds: durationSecondsForNewClip,
+      videoTask,
+    },
+  ];
+}
+
 /** Per-series last-picked image/video model (Phase 1.3) — used only as the
  *  DEFAULT for a new episode's model selection; an episode with its own
  *  `startFramePlan.selectedImageModelId` / `motionPromptPack.selectedVideoModelId`
@@ -982,6 +1041,26 @@ function EpisodeWorkspaceShell({
   }, [seriesQuery.data, episodeId]);
 
   const completed = episode?.status === "completed";
+
+  // Detects whether THIS episode was already manually summarized into series
+  // memory (`summarizeEpisodeToMemory`'s own "already ran" state — tracked
+  // independently from the pipeline-run `approveCheckpoint` path's events,
+  // which never carry `payload.source === "manual"`).
+  const episodeMemorySummaryQuery = trpc.verticalDramaEpisodes.listMemoryEvents.useQuery(
+    {
+      seriesId,
+      kind: "episode_summary",
+      episodeNumber: episode?.episodeNumber,
+      limit: 50,
+    },
+    { enabled: Boolean(seriesId) && episode?.episodeNumber != null }
+  );
+  const episodeAlreadySummarizedToMemory = (
+    episodeMemorySummaryQuery.data?.events ?? []
+  ).some(
+    (ev: { memoryKind?: string; payload?: Record<string, unknown> }) =>
+      ev.memoryKind === "episode_summary" && ev.payload?.source === "manual"
+  );
 
   const runRows = runsQuery.data?.runs ?? [];
 
@@ -1993,6 +2072,50 @@ function EpisodeWorkspaceShell({
     );
   }
 
+  /* ---- Manual episode -> series memory summarization — makes the fully-
+   *  wired series-memory pipeline (planner skill -> 8 event kinds -> memory
+   *  bundle -> next-episode script) reachable without running the full
+   *  pipeline tail (which almost no user does in practice). The user's
+   *  explicit click IS the approval. */
+  const summarizeEpisodeToMemoryMutation =
+    trpc.verticalDramaEpisodes.summarizeEpisodeToMemory.useMutation({
+      onSuccess: result => {
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        void utils.verticalDramaEpisodes.listMemoryEvents.invalidate();
+        if (result.alreadySummarized) return;
+        toast.success(
+          lang === "th"
+            ? `บันทึกความจำแล้ว: ${result.eventsAppended} รายการ`
+            : `Memory saved: ${result.eventsAppended} events`
+        );
+      },
+      onError: err => {
+        if (err.data?.code === "PRECONDITION_FAILED") {
+          toast.error(
+            lang === "th"
+              ? "ต้องสร้างสคริปต์และสตอรีบอร์ดก่อนสรุปความจำเข้าซีรีย์"
+              : "The episode needs a generated script and storyboard before it can be summarized into series memory."
+          );
+          return;
+        }
+        toast.error(
+          err.message ||
+            (lang === "th"
+              ? "สรุปความจำเข้าซีรีย์ไม่สำเร็จ"
+              : "Failed to summarize episode into series memory.")
+        );
+      },
+    });
+
+  function handleSummarizeEpisodeToMemory(opts?: { force?: boolean }) {
+    summarizeEpisodeToMemoryMutation.mutate({
+      seriesId,
+      episodeId,
+      force: opts?.force,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
   /* ---- Video clip generation (`generateVideoClip`) — async submit + poll,
    *  same pattern as `pollStartFrameTask`/`pollAngleVariationsTask`. Media
    *  History registers the completed clip automatically (same convention as
@@ -2045,28 +2168,73 @@ function EpisodeWorkspaceShell({
 
   /** Persists `videoTask` onto the matching `motionPromptPack.clips[]` entry
    *  via the existing free `updateEpisodeDraft` JSONB-patch flow — same
-   *  convention as `persistAngleGrid`. `null` clears the field entirely. */
+   *  convention as `persistAngleGrid`. `null` clears the field entirely.
+   *  `sourceShotNumber` (2026-07-07 upload-video-per-shot fix): when no
+   *  clip with this `clipNumber` exists yet (upload button is now shown on
+   *  every shot, even before a video prompt has ever been generated for
+   *  it), creates a minimal clip
+   *  `{clipNumber, sourceShotNumbers: [sourceShotNumber], prompt: "", durationSeconds}`
+   *  — or a minimal pack when `motionPromptPack` is entirely absent — using
+   *  the exact same convention as `generateShotVideoPrompt`'s (router)
+   *  "no matching clip"/"no pack" branches, so this never silently drops the
+   *  upload. */
   function persistVideoTask(
     clipNumber: number,
     videoTask:
       | { pendingTaskId: string }
       | { videoUrl: string; mediaTaskId?: string; source?: "generated" | "upload" }
-      | null
+      | null,
+    sourceShotNumber?: number
   ) {
     const pack = episodeDetailQuery.data?.motionPromptPack;
-    if (!pack) return;
-    const updatedClips = (pack.clips ?? []).map(clip => {
-      if (clip.clipNumber !== clipNumber) return clip;
-      if (videoTask) return { ...clip, videoTask };
-      const { videoTask: _drop, ...rest } = clip as typeof clip & {
-        videoTask?: unknown;
-      };
-      return rest;
-    });
+    const storyboardShot = (
+      episodeDetailQuery.data?.storyboard as
+        | VerticalDramaStoryboardView
+        | null
+        | undefined
+    )?.shots?.find(
+      s => (s.shot_number ?? -1) === (sourceShotNumber ?? clipNumber)
+    );
+
+    if (!pack) {
+      if (!videoTask || !sourceShotNumber) return;
+      updateEpisodeDraftMutation.mutate({
+        seriesId,
+        episodeId,
+        motionPromptPack: {
+          selectedVideoModelId,
+          // `getEpisodeDetail` doesn't return the episode's
+          // `durationProfileId` column to the client (only the router,
+          // which reads `row.durationProfileId` directly, has it) — mirror
+          // the router's own literal default for this minimal-pack case.
+          durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+          motionMode: "first_frame_to_video",
+          clips: [
+            {
+              clipNumber,
+              sourceShotNumbers: [sourceShotNumber],
+              prompt: "",
+              durationSeconds: storyboardShot?.duration_seconds ?? 8,
+              videoTask,
+            },
+          ],
+          warnings: [],
+        },
+      });
+      return;
+    }
+
+    const updatedClips = buildUpdatedClipsForVideoTask(
+      (pack.clips ?? []) as unknown as MinimalVideoTaskClip[],
+      clipNumber,
+      videoTask,
+      sourceShotNumber,
+      storyboardShot?.duration_seconds ?? 8
+    );
     updateEpisodeDraftMutation.mutate({
       seriesId,
       episodeId,
-      motionPromptPack: { ...pack, clips: updatedClips },
+      motionPromptPack: { ...pack, clips: updatedClips as typeof pack.clips },
     });
   }
 
@@ -2141,22 +2309,32 @@ function EpisodeWorkspaceShell({
     }
   }
 
-  /** Upload video file per shot (2026-07-07 upgrade) — for users who
-   *  generated the clip EXTERNALLY (took the main image + prompt elsewhere)
-   *  and want to place the resulting video file as this shot's clip video.
-   *  Uploads via the existing large-file multipart route
-   *  (`/api/media-jobs/upload`, same one Media Studio/Storyboard Review use),
-   *  then persists `{ videoUrl, source: "upload" }` onto the clip's
-   *  `videoTask` via the existing free `persistVideoTask` flow — the player,
-   *  download, and whole-episode assembly all pick it up the same way they
-   *  do a generated clip. */
-  async function handleUploadVideoClip(clipNumber: number, file: File) {
+  /** Upload video file per shot (2026-07-07 upgrade, fixed 2026-07-07: now
+   *  shown/works on EVERY shot, not just ones with an existing motion-pack
+   *  clip) — for users who generated the clip EXTERNALLY (took the main
+   *  image + prompt elsewhere) and want to place the resulting video file as
+   *  this shot's clip video. Uploads via the existing large-file multipart
+   *  route (`/api/media-jobs/upload`, same one Media Studio/Storyboard
+   *  Review use), then persists `{ videoUrl, source: "upload" }` onto the
+   *  clip's `videoTask` via the existing free `persistVideoTask` flow (which
+   *  creates a minimal clip/pack first when `clipNumber` has no existing
+   *  match) — the player, download, and whole-episode assembly all pick it
+   *  up the same way they do a generated clip. */
+  async function handleUploadVideoClip(
+    clipNumber: number,
+    file: File,
+    sourceShotNumber: number
+  ) {
     setUploadingVideoClipForClip(prev => new Set(prev).add(clipNumber));
     try {
       const resolver = videoUploadResolverRef.current!;
       const { promise } = resolver.uploadAsset(file);
       const { uri } = await promise;
-      persistVideoTask(clipNumber, { videoUrl: uri, source: "upload" });
+      persistVideoTask(
+        clipNumber,
+        { videoUrl: uri, source: "upload" },
+        sourceShotNumber
+      );
       toast.success(
         lang === "th" ? "อัปโหลดวิดีโอสำเร็จ" : "Video uploaded."
       );
@@ -2995,6 +3173,9 @@ function EpisodeWorkspaceShell({
             }),
           runningQualityReview: runQualityReviewMutation.isPending,
           onCopySuggestedFix: handleCopySuggestedFix,
+          onSummarizeEpisodeToMemory: handleSummarizeEpisodeToMemory,
+          summarizingEpisodeToMemory: summarizeEpisodeToMemoryMutation.isPending,
+          episodeAlreadySummarizedToMemory,
           onSubmitRepairImage: handleSubmitRepairImage,
           repairImageSubmittingForShot,
           repairImageResultByShot,

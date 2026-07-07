@@ -183,6 +183,18 @@ vi.mock("../../services/verticalDramaEpisodeQualityReview", () => ({
   RateLimitExceededError: MockRateLimitExceededError,
 }));
 
+// Mocked directly (like `verticalDramaEpisodeQualityReview` above) so this
+// file never pulls in `verticalDramaSeriesMemoryPlanning.ts` ->
+// `verticalDramaStoryBible.ts` -> `enabledLlmModels.ts` -> `llmProviders.ts`'s
+// `adminProcedure` dependency, which this file's `../../_core/trpc` mock does
+// not export.
+vi.mock("../../services/verticalDramaSeriesMemoryPlanning", () => ({
+  runVerticalDramaSeriesMemoryPlanning: vi.fn(),
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+  RateLimitExceededError: class extends Error {},
+}));
+
 vi.mock("../../services/verticalDramaVideoPromptFormatter", () => ({
   formatVideoClipRequest: vi.fn(() => ({
     prompt: "formatted prompt",

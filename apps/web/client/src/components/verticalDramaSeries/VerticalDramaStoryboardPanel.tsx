@@ -578,8 +578,14 @@ interface VerticalDramaStoryboardPanelProps {
    * `ai.upload`'s base64/tRPC path, which is bounded by the 10MB JSON body
    * limit) and persists `{ videoUrl, source: "upload" }` onto the clip's
    * `videoTask` via the existing free `persistVideoTask`/`updateEpisodeDraft`
-   * flow. */
-  onUploadVideoClip?: (clipNumber: number, file: File) => void;
+   * flow. `clipNumber` is `clip.clipNumber` when a matching clip already
+   * exists for this shot, or `shotNumber` itself when it doesn't yet (2026-
+   * 07-07 fix — button is now shown on every shot); `sourceShotNumber` is
+   * always passed so the caller can create a minimal
+   * `{clipNumber, sourceShotNumbers: [sourceShotNumber]}` clip entry when
+   * none exists yet, same convention as `generateShotVideoPrompt`'s
+   * server-side "no matching clip" branch. */
+  onUploadVideoClip?: (clipNumber: number, file: File, sourceShotNumber: number) => void;
   /** Non-null while an upload+persist is in flight for this clip. */
   uploadingVideoClipForClip?: ReadonlySet<number>;
 
@@ -608,6 +614,15 @@ interface VerticalDramaStoryboardPanelProps {
   runningQualityReview?: boolean;
   /** Copies a suggested fix so the user can paste it into the repair dialog. */
   onCopySuggestedFix?: (suggestedFix: string) => void;
+
+  /* ---- Manual episode -> series memory summarization ---- */
+  /** Submits `summarizeEpisodeToMemory`. `force` re-summarizes an episode
+   *  that was already summarized (appends a fresh set of memory events —
+   *  the prior events are kept, never mutated/deleted). */
+  onSummarizeEpisodeToMemory?: (opts?: { force?: boolean }) => void;
+  summarizingEpisodeToMemory?: boolean;
+  /** True once this episode has a manually-summarized memory event on record. */
+  episodeAlreadySummarizedToMemory?: boolean;
 
   /* ---- Phase 6.5 — image-to-image repair dialog ---- */
   /** Submits `repairShotImage` for a shot that already has an approved
@@ -759,6 +774,9 @@ export function VerticalDramaStoryboardPanel({
   onRunQualityReview,
   runningQualityReview = false,
   onCopySuggestedFix,
+  onSummarizeEpisodeToMemory,
+  summarizingEpisodeToMemory = false,
+  episodeAlreadySummarizedToMemory = false,
   onSubmitRepairImage,
   repairImageSubmittingForShot = null,
   repairImageResultByShot = {},
@@ -1395,6 +1413,22 @@ export function VerticalDramaStoryboardPanel({
         />
       ) : null}
 
+      {/* Manual episode -> series memory summarization — makes the fully-
+          wired series-memory pipeline (planner skill -> 8 event kinds ->
+          memory bundle -> next-episode script) reachable without running the
+          full pipeline tail. The user's click IS the approval. */}
+      {onSummarizeEpisodeToMemory ? (
+        <SummarizeMemoryCard
+          locale={locale}
+          t={t2}
+          disabled={!storyboard}
+          running={summarizingEpisodeToMemory}
+          alreadySummarized={episodeAlreadySummarizedToMemory}
+          onRun={() => onSummarizeEpisodeToMemory()}
+          onReSummarize={() => onSummarizeEpisodeToMemory({ force: true })}
+        />
+      ) : null}
+
       {reviewCharacters.length > 0 ? (
         <div
           className="flex flex-wrap gap-3 rounded-md border border-border bg-muted/30 p-3"
@@ -1972,35 +2006,42 @@ export function VerticalDramaStoryboardPanel({
                   />
                 ) : null}
 
-                {/* Upload video file per shot (2026-07-07 upgrade) — for
-                    users who generated the clip EXTERNALLY (took the main
-                    image + prompt elsewhere) and want to place the resulting
-                    video file as this shot's clip video. Only shown once a
-                    clip exists for this shot (same gate as the video
-                    prompt box below) and hidden while a video is already
+                {/* Upload video file per shot (2026-07-07 upgrade, fixed
+                    2026-07-07: previously only rendered when a
+                    `motionPromptPack` clip already existed for this shot, so
+                    shot 2+ silently had no upload option until a video
+                    prompt had been generated at least once). Shown on EVERY
+                    shot now — when no clip exists yet, `onUploadVideoClip`
+                    is called with `shotNumber` itself as the target clip
+                    number, and the page-level handler creates a minimal
+                    `{clipNumber, sourceShotNumbers: [shotNumber]}` clip
+                    entry through the same `persistVideoTask`/
+                    `updateEpisodeDraft` convention `generateShotVideoPrompt`
+                    (router) already uses for this exact "no matching clip
+                    yet" case. Hidden while a video is already
                     rendering/uploading for this clip. */}
-                {onUploadVideoClip && clip ? (
+                {onUploadVideoClip ? (
                   <label
                     className={cn(
                       "flex h-7 w-fit cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border px-2 text-[11px] text-muted-foreground hover:border-primary hover:text-primary",
-                      uploadingVideoClipForClip.has(clip.clipNumber) &&
+                      uploadingVideoClipForClip.has(clip?.clipNumber ?? shotNumber) &&
                         "pointer-events-none opacity-60"
                     )}
                     data-testid={`vd-storyboard-upload-video-${shotNumber}`}
                   >
-                    {uploadingVideoClipForClip.has(clip.clipNumber) ? (
+                    {uploadingVideoClipForClip.has(clip?.clipNumber ?? shotNumber) ? (
                       <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
                     ) : (
                       <Upload aria-hidden="true" className="h-3 w-3" />
                     )}
-                    {uploadingVideoClipForClip.has(clip.clipNumber)
+                    {uploadingVideoClipForClip.has(clip?.clipNumber ?? shotNumber)
                       ? t2.uploadingVideoClip
                       : t2.uploadVideoClip}
                     <input
                       type="file"
                       accept="video/mp4,video/webm,video/quicktime,video/*"
                       className="hidden"
-                      disabled={uploadingVideoClipForClip.has(clip.clipNumber)}
+                      disabled={uploadingVideoClipForClip.has(clip?.clipNumber ?? shotNumber)}
                       onChange={e => {
                         const file = e.target.files?.[0];
                         e.target.value = "";
@@ -2018,7 +2059,7 @@ export function VerticalDramaStoryboardPanel({
                           );
                           return;
                         }
-                        onUploadVideoClip(clip.clipNumber, file);
+                        onUploadVideoClip(clip?.clipNumber ?? shotNumber, file, shotNumber);
                       }}
                     />
                   </label>
@@ -3571,6 +3612,117 @@ function QualityReviewCard({
               </ul>
             )
           ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Manual episode -> series memory summarization card. Reachable episode-level
+ * action so the fully-wired series-memory pipeline (planner skill -> 8 event
+ * kinds appended on approval -> memory bundle -> next-episode script) actually
+ * gets used, without requiring the user to run the full pipeline tail.
+ */
+function SummarizeMemoryCard({
+  locale,
+  t: t2,
+  disabled,
+  running,
+  alreadySummarized,
+  onRun,
+  onReSummarize,
+}: {
+  locale: Lang;
+  t: ReturnType<typeof vdCopy>;
+  disabled?: boolean;
+  running?: boolean;
+  alreadySummarized?: boolean;
+  onRun: () => void;
+  onReSummarize: () => void;
+}) {
+  const [confirmingReSummarize, setConfirmingReSummarize] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border bg-muted/20 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-sm font-medium">
+          <Sparkles aria-hidden="true" className="h-4 w-4 text-purple-500" />
+          {t2.summarizeMemory}
+        </div>
+        {!alreadySummarized || confirmingReSummarize ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={onRun}
+            disabled={disabled || running}
+            title={disabled ? t2.summarizeMemoryNeedsScript : undefined}
+            data-testid="vd-storyboard-summarize-memory"
+          >
+            {running ? (
+              <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+            )}
+            {running ? t2.summarizeMemoryRunning : t2.summarizeMemoryButton}
+          </Button>
+        ) : null}
+      </div>
+      <p className="text-xs text-muted-foreground">{t2.summarizeMemoryCostNote}</p>
+      {disabled ? (
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          {t2.summarizeMemoryNeedsScript}
+        </p>
+      ) : null}
+
+      {alreadySummarized && !confirmingReSummarize ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-emerald-500/10 p-2">
+          <div className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
+            <Check aria-hidden="true" className="h-3.5 w-3.5" />
+            {t2.summarizeMemoryAlready}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 gap-1 text-xs"
+            onClick={() => setConfirmingReSummarize(true)}
+            disabled={disabled || running}
+            data-testid="vd-storyboard-resummarize-memory"
+          >
+            {t2.summarizeMemoryReSummarize}
+          </Button>
+        </div>
+      ) : null}
+
+      {confirmingReSummarize ? (
+        <div className="flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs">
+          <p>{t2.summarizeMemoryReSummarizeConfirm}</p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmingReSummarize(false)}
+              disabled={running}
+            >
+              {locale === "th" ? "ยกเลิก" : "Cancel"}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setConfirmingReSummarize(false);
+                onReSummarize();
+              }}
+              disabled={running}
+              data-testid="vd-storyboard-resummarize-memory-confirm"
+            >
+              {t2.summarizeMemoryReSummarize}
+            </Button>
+          </div>
         </div>
       ) : null}
     </div>

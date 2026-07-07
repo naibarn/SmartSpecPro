@@ -179,8 +179,8 @@ export function VerticalDramaSeriesMemoryTab({
   // yet doesn't read as broken.
   const whenItAppearsHint =
     lang === "th"
-      ? "จะบันทึกอัตโนมัติเมื่อทำ pipeline ครบและอนุมัติขั้นสรุปความจำ (ขั้นสุดท้าย) ของแต่ละตอน"
-      : "Recorded automatically once you complete the pipeline and approve the final \"summarize to series memory\" checkpoint for an episode.";
+      ? "จะบันทึกอัตโนมัติเมื่อทำ pipeline ครบและอนุมัติขั้นสรุปความจำ (ขั้นสุดท้าย) ของแต่ละตอน หรือกดปุ่ม \"สรุปความจำเข้าซีรีย์\" ในหน้าตอน"
+      : "Recorded automatically once you complete the pipeline and approve the final \"summarize to series memory\" checkpoint for an episode — or click the \"Summarize into series memory\" button on the episode page.";
 
   return (
     <div className="grid gap-4">

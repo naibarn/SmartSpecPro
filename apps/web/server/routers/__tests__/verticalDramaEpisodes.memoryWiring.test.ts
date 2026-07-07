@@ -1,18 +1,22 @@
 /**
  * Vertical Drama Series memory-system gap fixes — backend integration unit
  * coverage for `verticalDramaEpisodes.ts`:
- *  - `approveCheckpoint` on the `summarize_episode_to_series_memory`
- *    checkpoint: appends ALL memory event kinds found in a real
- *    `vertical-drama-series-memory-planner` artifact (episode_summary +
- *    hook_opened[] + hook_resolved[] + character_delta[] +
- *    relationship_delta[] + continuity_warning[] + product_tie_in_usage[] +
- *    canonical_fact[]) in one pass, each with its own idempotency key.
- *  - Falls back to the old summary-only behavior when no planner artifact
- *    is present (old runs / dry_run / plan_only).
- *  - A terminal (already-approved) checkpoint short-circuits and never
- *    re-appends anything (idempotency).
+ *  - `approveCheckpoint` delegates entirely to
+ *    `verticalDramaEpisodePipeline.approveRunCheckpoint` and returns its
+ *    checkpoint row as-is — it no longer performs any memory-write side
+ *    effects itself.
  *  - `proposeRetcon` wraps `verticalDramaSeriesMemory.ts`'s `proposeRetcon()`
  *    with the correct Zod-validated fields.
+ *
+ * (2026-07-07: the `summarize_episode_to_series_memory` memory-event writes —
+ * episode_summary + hook_opened[] + hook_resolved[] + character_delta[] +
+ * relationship_delta[] + continuity_warning[] + product_tie_in_usage[] +
+ * canonical_fact[], each with its own idempotency key — used to live inline
+ * in this router's `approveCheckpoint` mutation. They were relocated into
+ * `verticalDramaEpisodePipeline.approveRunCheckpoint` so BOTH the legacy
+ * pending->approved transition AND the new create-time auto-approval path in
+ * `runStage` apply them from one place. See
+ * `verticalDramaEpisodePipeline.memoryWiring.test.ts` for that coverage.)
  *
  * Same "mock the whole module graph, test the exported procedure handlers
  * directly" convention as `verticalDramaEpisodes.shotReferencesAndQualityReview.test.ts`.
@@ -132,6 +136,21 @@ vi.mock("../../services/verticalDramaEpisodeQualityReview", () => ({
   RateLimitExceededError: class extends Error {},
 }));
 
+// Mocked directly (like `verticalDramaEpisodeQualityReview` above) so this
+// file never pulls in `verticalDramaSeriesMemoryPlanning.ts` ->
+// `verticalDramaStoryBible.ts` -> `enabledLlmModels.ts` -> `llmProviders.ts`'s
+// `adminProcedure` dependency, which this file's `../../_core/trpc` mock does
+// not export.
+const { mockRunVerticalDramaSeriesMemoryPlanning } = vi.hoisted(() => ({
+  mockRunVerticalDramaSeriesMemoryPlanning: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaSeriesMemoryPlanning", () => ({
+  runVerticalDramaSeriesMemoryPlanning: mockRunVerticalDramaSeriesMemoryPlanning,
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+  RateLimitExceededError: class extends Error {},
+}));
+
 vi.mock("../../services/verticalDramaVideoPromptFormatter", () => ({
   formatVideoClipRequest: vi.fn(),
 }));
@@ -186,26 +205,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("approveCheckpoint — summarize_episode_to_series_memory (full planner artifact)", () => {
-  const PLANNER_ARTIFACT = {
-    stage: "summarize_episode_to_series_memory",
-    episodeNumber: 3,
-    pending: true,
-    contract_version: 1,
-    canonical_facts: [{ fact_id: "f1", statement: "Aria is CFO of Vantor Group" }],
-    prior_episode_summaries: [],
-    unresolved_hooks: [{ hook_id: "h_clinic", description: "sister's clinic funding" }],
-    resolved_hooks: [{ hook_id: "h_old", description: "old hook resolved" }],
-    relationship_state_changes: [
-      { pair: ["char_aria", "char_rival"], change: "trust -> rivalry" },
-    ],
-    character_emotional_state: [{ character_id: "char_aria", state: "suspicious" }],
-    product_tie_in_history: [{ productName: "SkinGlow serum" }],
-    continuity_risks: [{ risk: "wardrobe drift", severity: "low" }],
-    episode_recap: "Episode 3: Aria uncovers the hidden clause.",
-    memory_compaction_summary: "Series so far: corporate betrayal.",
-  };
-
+describe("approveCheckpoint — delegates to the pipeline, no router-level side effects", () => {
   function checkpointOutcome(over: Record<string, unknown> = {}) {
     return {
       checkpoint: {
@@ -221,14 +221,15 @@ describe("approveCheckpoint — summarize_episode_to_series_memory (full planner
     };
   }
 
-  it("appends episode_summary + every other memory event kind from the planner artifact", async () => {
+  it("returns the pipeline's checkpoint outcome as-is and never calls the memory service itself", async () => {
+    // All `summarize_episode_to_series_memory` memory-write side effects now
+    // happen INSIDE `verticalDramaEpisodePipeline.approveRunCheckpoint`
+    // (mocked here as `mockApproveRunCheckpoint`) — see
+    // `verticalDramaEpisodePipeline.memoryWiring.test.ts` for that coverage.
+    // This router mutation must not duplicate any of it.
     mockApproveRunCheckpoint.mockResolvedValue(checkpointOutcome());
-    mockDb.select
-      .mockReturnValueOnce(selectChain([{ episodeNumber: 3 }])) // episode lookup
-      .mockReturnValueOnce(selectChain([{ jsonPayload: PLANNER_ARTIFACT }])); // artifact lookup
-    mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
 
-    await router.approveCheckpoint({
+    const result = await router.approveCheckpoint({
       ctx: ctx(),
       input: {
         seriesId: "10",
@@ -238,91 +239,34 @@ describe("approveCheckpoint — summarize_episode_to_series_memory (full planner
       },
     });
 
-    const calls = mockMemoryService.appendEvent.mock.calls.map((c) => c[0]);
-    const kinds = calls.map((c) => c.memoryKind);
-
-    expect(kinds).toContain("episode_summary");
-    expect(kinds).toContain("hook_opened");
-    expect(kinds).toContain("hook_resolved");
-    expect(kinds).toContain("character_delta");
-    expect(kinds).toContain("relationship_delta");
-    expect(kinds).toContain("continuity_warning");
-    expect(kinds).toContain("product_tie_in_usage");
-    expect(kinds).toContain("canonical_fact");
-
-    // episode_summary carries the real recap text, not the deterministic placeholder.
-    const summaryCall = calls.find((c) => c.memoryKind === "episode_summary");
-    expect(summaryCall.summaryText).toBe(PLANNER_ARTIFACT.episode_recap);
-
-    // Every appended event is marked approved by the acting user.
-    for (const c of calls) {
-      expect(c.approved).toBe(true);
-      expect(c.approvedByUserId).toBe(42);
-    }
-  });
-
-  it("uses distinct idempotency keys per item so re-approval never double-appends (idempotency)", async () => {
-    mockApproveRunCheckpoint.mockResolvedValue(checkpointOutcome());
-    mockDb.select
-      .mockReturnValueOnce(selectChain([{ episodeNumber: 3 }]))
-      .mockReturnValueOnce(selectChain([{ jsonPayload: PLANNER_ARTIFACT }]));
-    mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
-
-    await router.approveCheckpoint({
-      ctx: ctx(),
-      input: {
-        seriesId: "10",
-        episodeId: "100",
-        checkpointId: "900",
-        decision: "approve",
-      },
-    });
-
-    const keys = mockMemoryService.appendEvent.mock.calls.map(
-      (c) => c[0].idempotencyKey,
+    expect(mockApproveRunCheckpoint).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, episodeId: 100 },
+      900,
+      "approve",
+      undefined,
     );
-    // No duplicate idempotency keys across all appended events.
-    expect(new Set(keys).size).toBe(keys.length);
-    // The base checkpoint-scoped key is present for episode_summary.
-    expect(keys).toContain("vd-episode-summary-checkpoint-900");
+    expect(result).toEqual({ checkpoint: { ...checkpointOutcome().checkpoint, id: "900" } });
+    expect(mockMemoryService.appendEvent).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
   });
 
-  it("falls back to summary-only append when the artifact has no planner output (old run)", async () => {
-    mockApproveRunCheckpoint.mockResolvedValue(checkpointOutcome());
-    mockDb.select
-      .mockReturnValueOnce(selectChain([{ episodeNumber: 3 }]))
-      .mockReturnValueOnce(
-        selectChain([
-          {
-            jsonPayload: {
-              stage: "summarize_episode_to_series_memory",
-              episodeNumber: 3,
-              summary: "Episode 3 summary (pending approval — not yet applied)",
-              pending: true,
-            },
-          },
-        ]),
-      );
-    mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+  it("returns NOT_FOUND when the pipeline can't find the checkpoint", async () => {
+    mockApproveRunCheckpoint.mockResolvedValue(null);
 
-    await router.approveCheckpoint({
-      ctx: ctx(),
-      input: {
-        seriesId: "10",
-        episodeId: "100",
-        checkpointId: "900",
-        decision: "approve",
-      },
-    });
-
-    // Only the single episode_summary append — no planner-derived kinds.
-    expect(mockMemoryService.appendEvent).toHaveBeenCalledTimes(1);
-    expect(mockMemoryService.appendEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ memoryKind: "episode_summary" }),
-    );
+    await expect(
+      router.approveCheckpoint({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          checkpointId: "900",
+          decision: "approve",
+        },
+      }),
+    ).rejects.toThrow("Checkpoint not found");
   });
 
-  it("short-circuits on an already-terminal checkpoint — never re-appends (idempotency)", async () => {
+  it("is a no-op pass-through for an already-terminal checkpoint (idempotency)", async () => {
     mockApproveRunCheckpoint.mockResolvedValue({
       checkpoint: {
         id: 900,
@@ -333,7 +277,7 @@ describe("approveCheckpoint — summarize_episode_to_series_memory (full planner
       alreadyTerminal: true,
     });
 
-    await router.approveCheckpoint({
+    const result = await router.approveCheckpoint({
       ctx: ctx(),
       input: {
         seriesId: "10",
@@ -343,26 +287,9 @@ describe("approveCheckpoint — summarize_episode_to_series_memory (full planner
       },
     });
 
+    expect(result.checkpoint.id).toBe("900");
     expect(mockMemoryService.appendEvent).not.toHaveBeenCalled();
     expect(mockDb.select).not.toHaveBeenCalled();
-  });
-
-  it("does not append any memory events for a non-summarize stage checkpoint", async () => {
-    mockApproveRunCheckpoint.mockResolvedValue(
-      checkpointOutcome({ stage: "plan_episode_script" }),
-    );
-
-    await router.approveCheckpoint({
-      ctx: ctx(),
-      input: {
-        seriesId: "10",
-        episodeId: "100",
-        checkpointId: "900",
-        decision: "approve",
-      },
-    });
-
-    expect(mockMemoryService.appendEvent).not.toHaveBeenCalled();
   });
 });
 
@@ -427,4 +354,150 @@ describe("proposeRetcon", () => {
     );
   });
 
+});
+
+describe("summarizeEpisodeToMemory — manual episode -> series memory trigger", () => {
+  const EPISODE_ROW = {
+    id: 100,
+    episodeNumber: 3,
+    script: { title: "Ep 3" },
+    storyboard: { shots: [] },
+    dialogueAudioPlan: null,
+  };
+
+  const PLANNED = {
+    contract_version: 1,
+    canonical_facts: [{ fact_id: "f1", statement: "Aria is CFO of Vantor Group" }],
+    prior_episode_summaries: [],
+    unresolved_hooks: [{ hook_id: "h_clinic", description: "sister's clinic funding" }],
+    resolved_hooks: [{ hook_id: "h_old", description: "old hook resolved" }],
+    relationship_state_changes: [
+      { pair: ["char_aria", "char_rival"], change: "trust -> rivalry" },
+    ],
+    character_emotional_state: [{ character_id: "char_aria", state: "suspicious" }],
+    product_tie_in_history: [{ productName: "SkinGlow serum" }],
+    continuity_risks: [{ risk: "wardrobe drift", severity: "low" }],
+    episode_recap: "Episode 3: Aria uncovers the hidden clause.",
+    memory_compaction_summary: "Series so far: corporate betrayal.",
+  };
+
+  it("throws PRECONDITION_FAILED when the episode has no script/storyboard", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([{ ...EPISODE_ROW, script: null, storyboard: null }]),
+    ); // loadOwnedEpisode
+
+    await expect(
+      router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      }),
+    ).rejects.toThrow(/บทและสตอรี่บอร์ด/);
+
+    expect(mockRunVerticalDramaSeriesMemoryPlanning).not.toHaveBeenCalled();
+  });
+
+  it("runs the planner and appends every memory event kind on first summarization", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([EPISODE_ROW])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // series locale lookup
+    mockMemoryService.listEvents.mockResolvedValue([]); // no prior manual summary
+    mockMemoryService.buildEpisodeMemoryBundle = vi.fn().mockResolvedValue({});
+    mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+      planned: PLANNED,
+      creditsUsed: 12,
+      model: "gpt-x",
+    });
+    mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+
+    const result = await router.summarizeEpisodeToMemory({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    const calls = mockMemoryService.appendEvent.mock.calls.map((c) => c[0]);
+    const kinds = calls.map((c) => c.memoryKind);
+
+    expect(kinds).toContain("episode_summary");
+    expect(kinds).toContain("hook_opened");
+    expect(kinds).toContain("hook_resolved");
+    expect(kinds).toContain("character_delta");
+    expect(kinds).toContain("relationship_delta");
+    expect(kinds).toContain("continuity_warning");
+    expect(kinds).toContain("product_tie_in_usage");
+    expect(kinds).toContain("canonical_fact");
+
+    for (const c of calls) {
+      expect(c.approved).toBe(true);
+      expect(c.approvedByUserId).toBe(42);
+      expect(c.payload.source).toBe("manual");
+    }
+
+    expect(result.alreadySummarized).toBe(false);
+    expect(result.eventsAppended).toBe(calls.length);
+    expect(result.creditsUsed).toBe(12);
+  });
+
+  it("uses distinct idempotency keys per appended event (idempotency)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([EPISODE_ROW]))
+      .mockReturnValueOnce(selectChain([]));
+    mockMemoryService.listEvents.mockResolvedValue([]);
+    mockMemoryService.buildEpisodeMemoryBundle = vi.fn().mockResolvedValue({});
+    mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+      planned: PLANNED,
+      creditsUsed: 12,
+      model: "gpt-x",
+    });
+    mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+
+    await router.summarizeEpisodeToMemory({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    const keys = mockMemoryService.appendEvent.mock.calls.map((c) => c[0].idempotencyKey);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys.every((k: string) => k.startsWith("vd-episode-summary-manual-100-"))).toBe(true);
+  });
+
+  it("is a free no-op when already manually summarized and force is not set", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW])); // loadOwnedEpisode
+    mockMemoryService.listEvents.mockResolvedValue([
+      { memoryKind: "episode_summary", payload: { source: "manual" } },
+    ]);
+
+    const result = await router.summarizeEpisodeToMemory({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result).toEqual({ alreadySummarized: true, eventsAppended: 0, creditsUsed: 0 });
+    expect(mockRunVerticalDramaSeriesMemoryPlanning).not.toHaveBeenCalled();
+    expect(mockMemoryService.appendEvent).not.toHaveBeenCalled();
+  });
+
+  it("re-runs the planner and appends a fresh set of events when force is set", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([EPISODE_ROW]))
+      .mockReturnValueOnce(selectChain([]));
+    mockMemoryService.listEvents.mockResolvedValue([
+      { memoryKind: "episode_summary", payload: { source: "manual" } },
+    ]);
+    mockMemoryService.buildEpisodeMemoryBundle = vi.fn().mockResolvedValue({});
+    mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+      planned: PLANNED,
+      creditsUsed: 12,
+      model: "gpt-x",
+    });
+    mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "2" });
+
+    const result = await router.summarizeEpisodeToMemory({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", force: true },
+    });
+
+    expect(mockRunVerticalDramaSeriesMemoryPlanning).toHaveBeenCalledTimes(1);
+    expect(result.alreadySummarized).toBe(false);
+    expect(result.eventsAppended).toBeGreaterThan(0);
+  });
 });

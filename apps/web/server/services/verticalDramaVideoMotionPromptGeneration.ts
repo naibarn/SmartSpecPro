@@ -794,6 +794,19 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
       subtext?: string;
     }>;
     /**
+     * Compact "key = name (role): descriptor" character identity map
+     * (2026-07-07 non-human-character-vanishing fix), pre-built by the
+     * router via `buildCharacterIdentityMapBlock` from this shot's required
+     * character rows — see `@shared/verticalDramaSeries/characterIdentityMap.ts`.
+     * When present, injected verbatim into the user prompt so the model
+     * knows each required character's real identity (species/age) instead
+     * of inferring a generic human figure from the bare `characterKey`
+     * mentions already baked into `description`/`imagePrompt`. `undefined`
+     * when the shot has no required characters or none resolved to a known
+     * row (falls back to the pre-existing behavior).
+     */
+    characterIdentityMap?: string;
+    /**
      * Product tie-in context (spec §13) — present ONLY when this shot is a
      * tie-in shot per the script stage's `product_tie_in_plan.tie_ins[]`
      * (see `verticalDramaProductTieIn.ts`'s `extractShotProductPlacements`).
@@ -891,6 +904,7 @@ function buildShotVideoPromptUserPrompt(
     params.imagePrompt
       ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
       : null,
+    shotContext.characterIdentityMap ?? null,
     `Dialogue for this shot (source lines, already in ${dialogueLanguageName}):\n${dialogueBlock}`,
     dialogueLines.length === 0
       ? `NO-SOURCE-DIALOGUE (MANDATORY): no dialogue line was supplied for this shot. If the shot description/camera setup above clearly implies a character is speaking (e.g. mentions talking, calling out, answering, a line of dialogue, or a mouth-open speaking beat), WRITE one short, natural line yourself (1 sentence, fitting the scene's emotion) in ${dialogueLanguageName}, and return it in the "dialogue" array. Otherwise (the shot is genuinely silent/ambient — no character is depicted speaking), leave "dialogue" as an empty array and do NOT invent speech.`
@@ -917,6 +931,29 @@ function buildShotVideoPromptUserPrompt(
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+/**
+ * True when every dialogue line's `lineTh` text appears verbatim somewhere in
+ * `prompt` (normalizing curly/straight quotes since the LLM may substitute
+ * one style for the other around the embedded line). Used to catch the
+ * silent-non-compliance failure mode where the model was correctly told the
+ * selected video model has native lip-synced audio (see
+ * `buildShotVideoPromptUserPrompt`'s `nativeAudioDialogue` branch) but still
+ * wrote descriptive "mouth moves in sync"-style prose instead of quoting the
+ * line — 2026-07-07 fix, see the shot 4/series 4/episode 11 bug report.
+ */
+function promptEmbedsDialogueVerbatim(
+  prompt: string,
+  dialogueLines: Array<{ lineTh: string }>,
+): boolean {
+  if (dialogueLines.length === 0) return true;
+  const normalize = (s: string) => s.replace(/[""''`]/g, "").replace(/\s+/g, " ").trim();
+  const normalizedPrompt = normalize(prompt);
+  return dialogueLines.every((line) => {
+    const normalizedLine = normalize(line.lineTh);
+    return normalizedLine.length > 0 && normalizedPrompt.includes(normalizedLine);
+  });
 }
 
 /**
@@ -1023,6 +1060,50 @@ export async function generateVerticalDramaShotVideoPrompt(
         ]
       : retryText;
     outcome = await attempt(retryContent, 4000);
+  }
+
+  // Verbatim-embedding compliance check (2026-07-07 fix): the model was
+  // correctly instructed that the selected video model has native lip-synced
+  // audio and to quote the line(s) verbatim, but weaker models (e.g. "nano"
+  // tiers) sometimes ignore this and write descriptive "mouth moves in sync"
+  // prose instead — see this file's bug report for a real repro. One
+  // corrective retry with an explicit, unambiguous instruction before giving
+  // up and returning the model's (still schema-valid) best effort.
+  if (
+    nativeAudioDialogue &&
+    !promptEmbedsDialogueVerbatim(outcome.data.prompt, outcome.data.dialogue ?? [])
+  ) {
+    try {
+      const dialogueForRetry = outcome.data.dialogue ?? [];
+      const quotedLines = dialogueForRetry
+        .map((l) => `"${l.lineTh}"`)
+        .join(", ");
+      const complianceRetryText = `${userPromptText}\n\nCOMPLIANCE CORRECTION (MANDATORY): your previous "prompt" did NOT include the dialogue line(s) verbatim in quotes — it only described mouth movement. This video model DOES support native lip-synced audio, so you MUST quote the exact spoken line(s) ${quotedLines} inside "prompt", each wrapped in quotation marks exactly as given, alongside the acting/delivery direction. Rewrite "prompt" now so it contains the verbatim quoted line(s).`;
+      const complianceRetryContent = hasVision
+        ? [
+            { type: "text" as const, text: complianceRetryText },
+            {
+              type: "image_url" as const,
+              image_url: { url: params.imageUrl, detail: "high" as const },
+            },
+          ]
+        : complianceRetryText;
+      const correctedOutcome = await attempt(complianceRetryContent, 2000);
+      if (
+        promptEmbedsDialogueVerbatim(
+          correctedOutcome.data.prompt,
+          correctedOutcome.data.dialogue ?? dialogueForRetry,
+        )
+      ) {
+        outcome = correctedOutcome;
+      }
+      // If the corrective retry still doesn't comply, keep the original
+      // (still schema-valid) outcome rather than throwing — a slightly
+      // non-compliant prompt is better than a hard failure on a paid call.
+    } catch {
+      // Corrective retry is best-effort only; never fail the whole call
+      // over it — keep the original outcome.
+    }
   }
 
   const { data, response } = outcome;

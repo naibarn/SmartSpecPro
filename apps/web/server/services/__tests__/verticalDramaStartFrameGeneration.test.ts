@@ -292,6 +292,47 @@ describe("generateStartFrameRenderPlan", () => {
 
     expect(mockExecute).toHaveBeenCalledTimes(1);
   });
+
+  // 2026-07-07 non-human-character-vanishing fix — repro: shot 3, required
+  // character เจ้าเกลือ (a cat, shop mascot) rendered as "a figure... face
+  // mostly obscured by shadows" because the prompt only ever said
+  // `character-8`. Injecting a compact identity map fixes this at the
+  // prompt layer.
+  it("injects the character identity map into the LLM user prompt when `characters` rows are supplied", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStartFrameRenderPlan(
+      baseParams({
+        characters: [
+          {
+            characterKey: "char-1",
+            name: "เจ้าเกลือ",
+            role: "มาสคอตของร้าน",
+            description: "แมวขาวปุยตาสีทะเลที่ชอบนอนทับขวดสำคัญ",
+          },
+        ],
+      }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain("CHARACTER IDENTITY MAP");
+    expect(userMessage).toContain("เจ้าเกลือ");
+    expect(userMessage).toContain("แมวขาวปุยตาสีทะเลที่ชอบนอนทับขวดสำคัญ");
+    expect(userMessage).toMatch(/NEVER render a non-human character/i);
+  });
+
+  it("omits the character identity map block entirely when no `characters` rows are supplied (backward compatible)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    await generateStartFrameRenderPlan(baseParams());
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).not.toContain("CHARACTER IDENTITY MAP");
+  });
 });
 
 describe("projectStartFramePlan", () => {
