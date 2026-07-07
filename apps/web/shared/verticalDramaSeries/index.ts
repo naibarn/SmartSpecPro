@@ -17,5 +17,6 @@ export * from "./storyboardHandoff";
 export * from "./artifacts";
 export * from "./targetAudienceRegion";
 export * from "./genrePresetCategories";
+export * from "./createSeriesFieldLimits";
 export * from "./characterLock";
 export * from "./thaiAdCompliance";

@@ -1,0 +1,24 @@
+{
+  "locale": "th",
+  "selections": [
+    {
+      "kind": "category",
+      "id": "thai_local_service_comedy_mini_drama",
+      "label": "มินิดราม่าคอมเมดี้บริการท้องถิ่น"
+    },
+    {
+      "kind": "category",
+      "id": "food_shop_tie_in_drama",
+      "label": "ดราม่าผูกเรื่องร้านอาหาร"
+    },
+    {
+      "kind": "category",
+      "id": "thai_everyday_lifestyle_skit",
+      "label": "สเก็ตช์ชีวิตประจำวันแบบไทย"
+    }
+  ],
+  "primarySelectionId": "thai_local_service_comedy_mini_drama",
+  "businessContext": "คาเฟ่ชุมชนข้างสถานีรถไฟ",
+  "productContext": "เมนูเครื่องดื่มซิกเนเจอร์ประจำร้าน",
+  "targetEpisodeCount": 12
+}

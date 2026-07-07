@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-preset-synthesizer/input",
+  "title": "Vertical Drama Preset Synthesizer Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["locale", "selections"],
+  "properties": {
+    "locale": {
+      "type": "string",
+      "enum": ["th", "en"]
+    },
+    "selections": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["kind", "id", "label"],
+        "additionalProperties": true,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["preset", "category"]
+          },
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "preset": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "primarySelectionId": {
+      "type": "string"
+    },
+    "businessContext": {
+      "type": "string"
+    },
+    "productContext": {
+      "type": "string"
+    },
+    "targetEpisodeCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "toneHint": {
+      "type": "string"
+    }
+  }
+}

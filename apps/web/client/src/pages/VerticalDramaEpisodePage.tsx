@@ -332,9 +332,22 @@ export default function VerticalDramaEpisodePage() {
     });
   }
 
+  // The route param is the episode's DB id (globally sequential across all
+  // series) — never show it as the episode number. Resolve the real
+  // episodeNumber from the owning series' episode list (same query key the
+  // inner workspace uses, so TanStack dedupes the fetch).
+  const headerSeriesQuery = trpc.verticalDramaSeries.get.useQuery(
+    { seriesId },
+    { enabled: Boolean(seriesId) && !isRunRoute, staleTime: 30_000 }
+  );
+  const headerEpisodeNumber = (headerSeriesQuery.data?.episodes ?? []).find(
+    (e: { id: string | number; episodeNumber: number }) =>
+      String(e.id) === String(episodeId)
+  )?.episodeNumber;
+
   const pageTitle = isRunRoute
     ? pickCopy(lang, verticalDramaCopy.runDetailTitle)
-    : `${pickCopy(lang, verticalDramaCopy.episodeCrumb)} ${episodeId}`;
+    : `${pickCopy(lang, verticalDramaCopy.episodeCrumb)} ${headerEpisodeNumber ?? "…"}`;
 
   return (
     <VerticalDramaShell currentSeriesId={seriesId}>
@@ -2072,6 +2085,80 @@ function EpisodeWorkspaceShell({
     );
   }
 
+  /* ---- 3B.6 — approve-and-apply-suggestions / request-alternative loop ---- */
+  const previousQualityOverallRef = useRef<number | null>(null);
+  const applyQualityReviewSuggestionsMutation =
+    trpc.verticalDramaEpisodes.applyQualityReviewSuggestions.useMutation({
+      onSuccess: result => {
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        const before = previousQualityOverallRef.current;
+        const after = result.newReview?.scorecard?.overall ?? null;
+        if (result.warning) {
+          toast.warning(result.warning);
+        } else if (before != null && after != null) {
+          toast.success(
+            lang === "th"
+              ? `ปรับแก้เรียบร้อย — คะแนนรวม ${before}/5 -> ${after}/5`
+              : `Fixes applied — overall score ${before}/5 -> ${after}/5`
+          );
+        } else {
+          toast.success(
+            lang === "th" ? "ปรับแก้เรียบร้อย — ตรวจคุณภาพซ้ำแล้ว" : "Fixes applied — episode re-reviewed."
+          );
+        }
+        if (result.staleStages.length > 0) {
+          toast.info(
+            lang === "th"
+              ? `หมายเหตุ: ${result.staleStages.length} ขั้นตอนถัดไปกลายเป็นข้อมูลเก่าแล้ว ควรสร้าง prompt ภาพ/วิดีโอของช็อตที่เกี่ยวข้องใหม่`
+              : `Note: ${result.staleStages.length} downstream stage(s) are now stale — regenerate affected shots' image/video prompts.`
+          );
+        }
+      },
+      onError: err => {
+        if (err.data?.code === "PRECONDITION_FAILED") {
+          toast.error(
+            lang === "th"
+              ? "ยังไม่มีผลตรวจคุณภาพให้ปรับตาม — กรุณาตรวจคุณภาพก่อน"
+              : "No quality review yet to apply — run a quality review first."
+          );
+          return;
+        }
+        toast.error(err.message);
+      },
+    });
+
+  function handleApplyQualityReviewSuggestions() {
+    previousQualityOverallRef.current =
+      episodeDetailQuery.data?.qualityReview?.scorecard?.overall ?? null;
+    applyQualityReviewSuggestionsMutation.mutate({
+      seriesId,
+      episodeId,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
+  const requestAlternativeQualityReviewMutation =
+    trpc.verticalDramaEpisodes.runEpisodeQualityReview.useMutation({
+      onSuccess: () => {
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        toast.success(
+          lang === "th" ? "ได้คำแนะนำแนวทางใหม่แล้ว" : "New alternative suggestions ready."
+        );
+      },
+      onError: err => {
+        toast.error(err.message);
+      },
+    });
+
+  function handleRequestAlternativeQualityReview() {
+    requestAlternativeQualityReviewMutation.mutate({
+      seriesId,
+      episodeId,
+      avoidPrevious: true,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
   /* ---- Manual episode -> series memory summarization — makes the fully-
    *  wired series-memory pipeline (planner skill -> 8 event kinds -> memory
    *  bundle -> next-episode script) reachable without running the full
@@ -3173,6 +3260,10 @@ function EpisodeWorkspaceShell({
             }),
           runningQualityReview: runQualityReviewMutation.isPending,
           onCopySuggestedFix: handleCopySuggestedFix,
+          onApplyQualityReviewSuggestions: handleApplyQualityReviewSuggestions,
+          applyingQualityReviewSuggestions: applyQualityReviewSuggestionsMutation.isPending,
+          onRequestAlternativeQualityReview: handleRequestAlternativeQualityReview,
+          requestingAlternativeQualityReview: requestAlternativeQualityReviewMutation.isPending,
           onSummarizeEpisodeToMemory: handleSummarizeEpisodeToMemory,
           summarizingEpisodeToMemory: summarizeEpisodeToMemoryMutation.isPending,
           episodeAlreadySummarizedToMemory,

@@ -53,10 +53,12 @@ vi.mock("../../_core/logger", () => ({
 
 import {
   PresetSynthesisInputError,
+  clampDraftForCreateSeries,
   synthesizeVerticalDramaPreset,
   validatePresetSynthesisSelection,
 } from "../verticalDramaPresetSynthesis";
 import { VdSchemaValidationError } from "../verticalDramaStoryBible";
+import { CREATE_SERIES_FIELD_LIMITS } from "@shared/verticalDramaSeries";
 
 const VALID_DRAFT = {
   contract_version: 1,
@@ -162,5 +164,60 @@ describe("synthesizeVerticalDramaPreset", () => {
       VdSchemaValidationError,
     );
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("clamps a too-long title/tone before returning the draft (create-series field limits)", async () => {
+    // Exceeds CREATE_SERIES_FIELD_LIMITS.tone/.genre (100) but stays within this
+    // service's own (looser) synthesis schema bounds (tone <=160, title <=150) —
+    // exactly the "valid here, too long there" drift this fix guards against.
+    const longTone = "a".repeat(120);
+    const longTitle = "b".repeat(130);
+    expect(longTone.length).toBeGreaterThan(CREATE_SERIES_FIELD_LIMITS.tone);
+    expect(longTitle.length).toBeGreaterThan(CREATE_SERIES_FIELD_LIMITS.genre);
+
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({ ...VALID_DRAFT, title: longTitle, tone: longTone }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const result = await synthesizeVerticalDramaPreset(baseParams());
+
+    expect(result.draft.title.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.genre);
+    expect(result.draft.tone.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.tone);
+    expect(
+      result.draft.warnings.some((w) => w.code === "preset_field_length_clamped"),
+    ).toBe(true);
+  });
+});
+
+describe("clampDraftForCreateSeries", () => {
+  it("leaves the draft untouched when title/tone are already within limits", () => {
+    const { draft, clamped } = clampDraftForCreateSeries(VALID_DRAFT as never);
+    expect(clamped).toBe(false);
+    expect(draft).toBe(VALID_DRAFT);
+  });
+
+  it("clamps title and tone and appends a warning when either exceeds the create-series limits", () => {
+    const overLimitDraft = {
+      ...VALID_DRAFT,
+      title: "x".repeat(CREATE_SERIES_FIELD_LIMITS.genre + 20),
+      tone: "y".repeat(CREATE_SERIES_FIELD_LIMITS.tone + 20),
+    };
+
+    const { draft, clamped } = clampDraftForCreateSeries(overLimitDraft as never);
+
+    expect(clamped).toBe(true);
+    expect(draft.title.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.genre);
+    expect(draft.tone.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.tone);
+    expect(draft.warnings.some((w) => w.code === "preset_field_length_clamped")).toBe(true);
   });
 });

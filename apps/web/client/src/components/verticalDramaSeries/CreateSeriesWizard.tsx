@@ -37,6 +37,7 @@ import {
   genrePresetCategoryLabel,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
   VERTICAL_DRAMA_SERIES_LOCALES,
+  clampToCreateSeriesLimit,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import { pickCopy, verticalDramaCopy, wizardSteps } from "./verticalDramaCopy";
@@ -171,11 +172,11 @@ export function CreateSeriesWizard({
     setForm((prev) => ({ ...prev, [key]: value }));
 
   function applyPreset(preset: (typeof presets)[number]) {
-    set("genre", preset.title);
+    set("genre", clampToCreateSeriesLimit(preset.title, "genre") ?? preset.title);
     set("logline", preset.logline);
     set("mainPlot", preset.mainPlot);
     set("seasonArc", preset.seasonArc);
-    set("tone", preset.tone);
+    set("tone", clampToCreateSeriesLimit(preset.tone, "tone") ?? preset.tone);
     set("cliffhangerStyle", preset.cliffhangerStyle);
     set(
       "characters",
@@ -193,11 +194,11 @@ export function CreateSeriesWizard({
     setForm((prev) => ({
       ...prev,
       title: prev.title.trim() ? prev.title : draft.title,
-      genre: draft.title,
+      genre: clampToCreateSeriesLimit(draft.title, "genre") ?? draft.title,
       logline: draft.logline,
       mainPlot: draft.mainPlot,
       seasonArc: draft.seasonArc,
-      tone: draft.tone,
+      tone: clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone,
       cliffhangerStyle: draft.cliffhangerStyle,
       characters: draft.characters.map((c) => `${c.name} — ${c.role}: ${c.description}`).join("\n"),
       visualBible: draft.visualBible,

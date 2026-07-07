@@ -312,6 +312,20 @@ export const VD_COPY = {
     copySuggestedFix: "Copy suggestion",
     copiedSuggestedFix: "Copied — paste it into Repair.",
 
+    /* ---- Quality review approve/alternative loop (3B.6) ---- */
+    qualityApply: "Approve & apply suggestions (paid)",
+    qualityApplyRunning: "Applying fixes…",
+    qualityApplyConfirmTitle: "This will apply the following suggested fixes:",
+    qualityApplyCostNote:
+      "Real AI repair calls — spends credits on each affected stage (script and/or storyboard).",
+    qualityApplySuccess: "Fixes applied — episode re-reviewed.",
+    qualityApplySuccessNoReReview: "Fixes applied, but the re-review could not run.",
+    qualityApplyStaleNotice:
+      "Note: downstream stages are now stale — regenerate affected shots' image/video prompts.",
+    qualityAlternative: "Re-review — suggest different fixes (paid)",
+    qualityAlternativeRunning: "Reviewing…",
+    qualityAlternativeSuccess: "New alternative suggestions ready.",
+
     /* ---- Episode -> series memory summarization (manual trigger) ---- */
     summarizeMemory: "Summarize into series memory (AI)",
     summarizeMemoryButton: "Summarize into series memory (AI)",
@@ -567,6 +581,20 @@ export const VD_COPY = {
     qualityIssues: "จุดที่ควรแก้",
     qualityNoIssues: "ไม่พบจุดที่ต้องแก้",
     copySuggestedFix: "คัดลอกคำแนะนำ",
+
+    /* ---- Quality review approve/alternative loop (3B.6) ---- */
+    qualityApply: "อนุมัติและปรับเรื่องตามคำแนะนำ (มีค่าใช้จ่าย)",
+    qualityApplyRunning: "กำลังปรับแก้…",
+    qualityApplyConfirmTitle: "ระบบจะปรับแก้ตามคำแนะนำต่อไปนี้:",
+    qualityApplyCostNote:
+      "เป็นการเรียก AI จริงเพื่อแก้ไข — มีค่าใช้จ่ายในแต่ละส่วนที่ได้รับผลกระทบ (บทและ/หรือสตอรีบอร์ด)",
+    qualityApplySuccess: "ปรับแก้เรียบร้อย — ตรวจคุณภาพซ้ำแล้ว",
+    qualityApplySuccessNoReReview: "ปรับแก้เรียบร้อย แต่ตรวจคุณภาพซ้ำไม่สำเร็จ",
+    qualityApplyStaleNotice:
+      "หมายเหตุ: ขั้นตอนถัดไปกลายเป็นข้อมูลเก่าแล้ว — ควรสร้าง prompt ภาพ/วิดีโอของช็อตที่เกี่ยวข้องใหม่",
+    qualityAlternative: "ตรวจใหม่ แนะนำแนวทางอื่น (มีค่าใช้จ่าย)",
+    qualityAlternativeRunning: "กำลังตรวจสอบ…",
+    qualityAlternativeSuccess: "ได้คำแนะนำแนวทางใหม่แล้ว",
     copiedSuggestedFix: "คัดลอกแล้ว — นำไปวางในหน้าซ่อม",
 
     /* ---- Episode -> series memory summarization (manual trigger) ---- */

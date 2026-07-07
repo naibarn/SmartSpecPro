@@ -150,6 +150,18 @@ export interface RunEpisodeQualityReviewParams {
   storyboard: Record<string, unknown>;
   /** Optional raw (or relevant-subset) output of `vertical-drama-dialogue-audio-planner`. */
   dialoguePlan?: Record<string, unknown> | null;
+  /**
+   * When set together with `previousIssues`, instructs the LLM to propose
+   * substantively DIFFERENT alternative issues/suggested fixes than the
+   * previous review — the "ตรวจใหม่ แนะนำแนวทางอื่น" ("re-review, suggest a
+   * different approach") loop the storyboard quality-review UI offers after
+   * the user has already seen one set of suggestions and wants alternatives
+   * instead of applying them. Ignored (no effect on the prompt) if
+   * `previousIssues` is empty/absent.
+   */
+  avoidPrevious?: boolean;
+  /** The previous review's `issues[]` — only consulted when `avoidPrevious` is set. */
+  previousIssues?: Array<{ location: string; problem: string; suggested_fix: string }>;
   /** Forwarded to `deductCredits` so a retried request doesn't double-charge. */
   idempotencyKey?: string;
 }
@@ -174,6 +186,18 @@ function buildUserPrompt(params: RunEpisodeQualityReviewParams): string {
       ? "Write summary/problem/suggested_fix in natural Thai."
       : `Write summary/problem/suggested_fix in natural ${verticalDramaLocaleEnglishName(params.locale)}.`;
 
+  const avoidPreviousInstruction =
+    params.avoidPrevious && params.previousIssues && params.previousIssues.length > 0
+      ? [
+          "The user already saw the following previous review issues/suggested fixes and",
+          "explicitly asked for a DIFFERENT set of alternative improvements — do NOT repeat",
+          "these same issues or rephrase the same suggested fixes; propose substantively",
+          "different problems and/or different fix approaches (still grounded in the actual",
+          "script/storyboard content, still citing real shot/beat numbers):",
+          JSON.stringify(params.previousIssues),
+        ].join("\n")
+      : null;
+
   return [
     `episode_title: ${params.episodeTitle}`,
     langInstruction,
@@ -182,6 +206,7 @@ function buildUserPrompt(params: RunEpisodeQualityReviewParams): string {
     params.dialoguePlan
       ? `dialogue_plan:\n${JSON.stringify(params.dialoguePlan)}`
       : "dialogue_plan: (not provided — score dialogue_naturalness as null)",
+    avoidPreviousInstruction,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)

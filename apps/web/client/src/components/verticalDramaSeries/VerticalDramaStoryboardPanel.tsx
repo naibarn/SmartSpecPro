@@ -614,6 +614,12 @@ interface VerticalDramaStoryboardPanelProps {
   runningQualityReview?: boolean;
   /** Copies a suggested fix so the user can paste it into the repair dialog. */
   onCopySuggestedFix?: (suggestedFix: string) => void;
+  /** "อนุมัติและปรับเรื่องตามคำแนะนำ" — auto-applies every suggested fix (paid). */
+  onApplyQualityReviewSuggestions?: () => void;
+  applyingQualityReviewSuggestions?: boolean;
+  /** "ตรวจใหม่ แนะนำแนวทางอื่น" — re-reviews asking for different suggestions (paid). */
+  onRequestAlternativeQualityReview?: () => void;
+  requestingAlternativeQualityReview?: boolean;
 
   /* ---- Manual episode -> series memory summarization ---- */
   /** Submits `summarizeEpisodeToMemory`. `force` re-summarizes an episode
@@ -774,6 +780,10 @@ export function VerticalDramaStoryboardPanel({
   onRunQualityReview,
   runningQualityReview = false,
   onCopySuggestedFix,
+  onApplyQualityReviewSuggestions,
+  applyingQualityReviewSuggestions = false,
+  onRequestAlternativeQualityReview,
+  requestingAlternativeQualityReview = false,
   onSummarizeEpisodeToMemory,
   summarizingEpisodeToMemory = false,
   episodeAlreadySummarizedToMemory = false,
@@ -1410,6 +1420,10 @@ export function VerticalDramaStoryboardPanel({
           expanded={qualityIssuesExpanded}
           onToggleExpanded={() => setQualityIssuesExpanded(v => !v)}
           onCopySuggestedFix={onCopySuggestedFix}
+          onApply={onApplyQualityReviewSuggestions}
+          applying={applyingQualityReviewSuggestions}
+          onRequestAlternative={onRequestAlternativeQualityReview}
+          requestingAlternative={requestingAlternativeQualityReview}
         />
       ) : null}
 
@@ -3479,7 +3493,7 @@ function LanguageSelect({
   );
 }
 
-/** Compact episode quality-review scorecard (Phase 3B.5). */
+/** Compact episode quality-review scorecard (Phase 3B.5 + 3B.6 approve-loop). */
 function QualityReviewCard({
   locale,
   t: t2,
@@ -3489,6 +3503,10 @@ function QualityReviewCard({
   expanded,
   onToggleExpanded,
   onCopySuggestedFix,
+  onApply,
+  applying,
+  onRequestAlternative,
+  requestingAlternative,
 }: {
   locale: Lang;
   t: ReturnType<typeof vdCopy>;
@@ -3498,7 +3516,14 @@ function QualityReviewCard({
   expanded: boolean;
   onToggleExpanded: () => void;
   onCopySuggestedFix?: (suggestedFix: string) => void;
+  /** "อนุมัติและปรับเรื่องตามคำแนะนำ" — auto-applies every suggested fix (paid). */
+  onApply?: () => void;
+  applying?: boolean;
+  /** "ตรวจใหม่ แนะนำแนวทางอื่น" — re-reviews asking for different suggestions (paid). */
+  onRequestAlternative?: () => void;
+  requestingAlternative?: boolean;
 }) {
+  const [confirmingApply, setConfirmingApply] = useState(false);
   const scoreColor = (score: number) =>
     score >= 4
       ? "text-emerald-600 dark:text-emerald-400"
@@ -3611,6 +3636,101 @@ function QualityReviewCard({
                 ))}
               </ul>
             )
+          ) : null}
+
+          {/* Approve-and-apply / request-alternative loop (3B.6) — only
+              offered once a review with at least one issue exists; a
+              zero-issue review has nothing to apply or reconsider. */}
+          {review.issues.length > 0 && (onApply || onRequestAlternative) ? (
+            <div className="flex flex-col gap-2 border-t border-border pt-2">
+              {confirmingApply ? (
+                <div
+                  className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-xs dark:bg-amber-950/30"
+                  data-testid="vd-quality-review-apply-confirm"
+                >
+                  <p className="font-medium">{t2.qualityApplyConfirmTitle}</p>
+                  <ul className="mt-1 list-disc pl-4">
+                    {review.issues.map((issue, idx) => (
+                      <li key={idx}>
+                        [{issue.location}] {issue.suggested_fix}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-1 text-muted-foreground">{t2.qualityApplyCostNote}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="default"
+                      className="gap-1.5"
+                      disabled={applying}
+                      onClick={() => {
+                        setConfirmingApply(false);
+                        onApply?.();
+                      }}
+                      data-testid="vd-quality-review-apply-confirm-submit"
+                    >
+                      {applying ? (
+                        <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+                      )}
+                      {applying ? t2.qualityApplyRunning : t2.confirm}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={applying}
+                      onClick={() => setConfirmingApply(false)}
+                    >
+                      {t2.cancel}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2">
+                {onApply ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={applying || confirmingApply}
+                    onClick={() => setConfirmingApply(true)}
+                    data-testid="vd-quality-review-apply"
+                  >
+                    {applying ? (
+                      <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+                    )}
+                    {applying ? t2.qualityApplyRunning : t2.qualityApply}
+                  </Button>
+                ) : null}
+                {onRequestAlternative ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={requestingAlternative}
+                    onClick={onRequestAlternative}
+                    data-testid="vd-quality-review-alternative"
+                  >
+                    {requestingAlternative ? (
+                      <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                    )}
+                    {requestingAlternative
+                      ? t2.qualityAlternativeRunning
+                      : t2.qualityAlternative}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           ) : null}
         </div>
       ) : null}

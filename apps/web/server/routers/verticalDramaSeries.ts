@@ -33,10 +33,15 @@ import {
   type VerticalDramaSeriesRow,
   type VerticalDramaGenrePresetRow,
 } from "../../drizzle/schema";
-import type { VerticalDramaStartFramePlan } from "@shared/verticalDramaSeries";
+import type {
+  VerticalDramaStartFramePlan,
+  VerticalDramaMotionPromptPack,
+  VerticalDramaSeriesTrailerState,
+} from "@shared/verticalDramaSeries";
 import {
   VERTICAL_DRAMA_SERIES_LOCALES,
   normalizeVerticalDramaSeriesLocale,
+  CREATE_SERIES_FIELD_LIMITS,
 } from "@shared/verticalDramaSeries";
 import {
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS,
@@ -52,6 +57,12 @@ import {
   synthesizeVerticalDramaPreset,
 } from "../services/verticalDramaPresetSynthesis";
 import { debugError } from "../_core/logger";
+import {
+  resolveSeriesThumbnailUrls,
+  resolveEpisodeThumbnailUrls,
+} from "../services/verticalDramaThumbnails";
+import { submitTrailerJob, getTrailerJobStatus } from "../services/verticalDramaSeriesTrailerAssembly";
+import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 
 /** Per-series episode aggregate row shape (typed projection; `db.select` erases to `any`). */
 type EpisodeAggRow = { seriesId: number; maxEpisodeNumber: number; episodeCount: number };
@@ -262,16 +273,22 @@ const SERIES_STATUSES = [
   "archived",
 ] as const;
 
-const createSeriesInput = z.object({
-  title: z.string().trim().min(1).max(255),
+/**
+ * Exported (in addition to being used inline below) so tests can assert this
+ * schema's length limits stay in lockstep with `CREATE_SERIES_FIELD_LIMITS`
+ * (the shared source of truth also used by preset synthesis clamping and the
+ * Create Series wizard) — see createSeriesFieldLimits.agreement.test.ts.
+ */
+export const createSeriesInput = z.object({
+  title: z.string().trim().min(1).max(CREATE_SERIES_FIELD_LIMITS.title),
   locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
   aspectRatio: z.literal("9:16").optional(),
   targetEpisodeCount: z.number().int().positive().max(1000).optional(),
   defaultEpisodeDurationSeconds: z.number().int().positive().max(3600).optional(),
-  genre: z.string().trim().max(100).optional(),
-  tone: z.string().trim().max(100).optional(),
-  targetAudience: z.string().trim().max(100).optional(),
-  agePolicyId: z.string().trim().max(64).optional(),
+  genre: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.genre).optional(),
+  tone: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.tone).optional(),
+  targetAudience: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.targetAudience).optional(),
+  agePolicyId: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.agePolicyId).optional(),
   // Wizard shell payloads — stored losslessly, validated by their own contracts.
   bible: z.record(z.string(), z.unknown()).optional(),
   memory: z.record(z.string(), z.unknown()).optional(),
@@ -396,6 +413,14 @@ export const verticalDramaSeriesRouter = router({
     const maxBySeries = new Map(episodeAgg.map((a) => [a.seriesId, a]));
     const pendingBySeries = new Map(approvalAgg.map((a) => [a.seriesId, Number(a.pendingCount)]));
 
+    // Derived thumbnails (no schema change) — episode 1's approved shot image
+    // per series, resolved from `startFramePlan.frames[i].approvedMediaAssetId`.
+    const thumbnailBySeries = await resolveSeriesThumbnailUrls(db, {
+      tenantId,
+      userId,
+      seriesIds,
+    });
+
     return {
       series: rows.map((row) => {
         const agg = maxBySeries.get(row.id);
@@ -413,6 +438,7 @@ export const verticalDramaSeriesRouter = router({
           nextEpisodeNumber: Number(agg?.maxEpisodeNumber ?? 0) + 1,
           pendingApprovalCount: pendingBySeries.get(row.id) ?? 0,
           productTieInEnabled: productTieIn?.enabled === true,
+          thumbnailUrl: thumbnailBySeries.get(row.id) ?? null,
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
         };
@@ -505,9 +531,21 @@ export const verticalDramaSeriesRouter = router({
         )
         .orderBy(verticalDramaEpisodes.episodeNumber);
 
+      // Derived thumbnails (no schema change) — each episode's own approved
+      // shot image, resolved from `startFramePlan.frames[i].approvedMediaAssetId`.
+      const thumbnailByEpisode = await resolveEpisodeThumbnailUrls(db, {
+        tenantId,
+        userId,
+        episodeIds: episodes.map((e) => e.id),
+      });
+
       return {
         series: { ...row, id: String(row.id) },
-        episodes: episodes.map((e) => ({ ...e, id: String(e.id) })),
+        episodes: episodes.map((e) => ({
+          ...e,
+          id: String(e.id),
+          thumbnailUrl: thumbnailByEpisode.get(e.id) ?? null,
+        })),
       };
     }),
 
@@ -1249,6 +1287,187 @@ export const verticalDramaSeriesRouter = router({
       });
 
       return { deleted: true, seriesId: input.seriesId, ...counts };
+    }),
+
+  /**
+   * Submit a series-level narrated trailer compile job (Bible tab "series
+   * trailer" feature, 2026-07-07). The client already generated the narration
+   * voice-over via `media.generateAudio` (same pattern as Media Studio) and
+   * hands us the resulting `audioUrl` (+ duration, if known) here; this
+   * procedure gathers the visual sources SERVER-SIDE (never trusts the client
+   * to supply media URLs) and kicks off the background ffmpeg assembly job.
+   *
+   * Idempotent while a job is already in flight: if `series.trailer.status
+   * === "processing"` and that job is still tracked in-process, the existing
+   * `jobId` is returned instead of double-submitting (protects against
+   * double-click / duplicate mutation calls before the first poll observes
+   * completion).
+   */
+  generateTrailer: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        audioUrl: z.string().min(1),
+        audioDurationSeconds: z.number().positive().optional(),
+        idempotencyKey: z.string().trim().min(1).max(128),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      // Ensure the caller owns it (throws NOT_FOUND otherwise).
+      const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const existingTrailer = seriesRow.trailer as VerticalDramaSeriesTrailerState | null;
+      if (existingTrailer?.status === "processing" && existingTrailer.jobId) {
+        const liveJob = getTrailerJobStatus(existingTrailer.jobId);
+        if (liveJob && liveJob.status === "processing") {
+          return { jobId: existingTrailer.jobId, imageCount: 0, videoClipCount: 0, resumed: true };
+        }
+      }
+
+      const episodeRows = await db
+        .select({
+          episodeNumber: verticalDramaEpisodes.episodeNumber,
+          startFramePlan: verticalDramaEpisodes.startFramePlan,
+          motionPromptPack: verticalDramaEpisodes.motionPromptPack,
+        })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId),
+          ),
+        )
+        .orderBy(asc(verticalDramaEpisodes.episodeNumber));
+
+      const isUsableUrl = (url: string | undefined | null): url is string =>
+        !!url && (/^https?:\/\//i.test(url) || url.startsWith("/api/storage") || url.startsWith("/uploads"));
+
+      // --- Images: episode 1 first (all of its approved/angle-grid images),
+      // then a sample from the other episodes, in episode order. ---
+      const approvedAssetIds = new Set<number>();
+      const episodeOneImageUrls: string[] = [];
+      const otherEpisodeImageUrls: string[] = [];
+
+      for (const row of episodeRows) {
+        const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+        for (const frame of plan?.frames ?? []) {
+          if (frame.approvedMediaAssetId) {
+            const parsed = Number(frame.approvedMediaAssetId);
+            if (Number.isFinite(parsed)) approvedAssetIds.add(parsed);
+          }
+        }
+      }
+
+      // Resolve approvedMediaAssetId -> originalUrl in one batched query, then
+      // bucket by episode number using a second light per-episode lookup
+      // (small dataset — vertical drama series have a handful of episodes).
+      const assetUrlById = new Map<number, string>();
+      if (approvedAssetIds.size > 0) {
+        const assetRows = await db
+          .select({ id: mediaAssets.id, url: mediaAssets.originalUrl })
+          .from(mediaAssets)
+          .where(
+            and(
+              eq(mediaAssets.tenantId, tenantId),
+              eq(mediaAssets.userId, userId),
+              inArray(mediaAssets.id, Array.from(approvedAssetIds)),
+            ),
+          );
+        for (const row of assetRows) {
+          if (row.url) assetUrlById.set(row.id, row.url);
+        }
+      }
+
+      for (const row of episodeRows) {
+        const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+        const isEpisodeOne = row.episodeNumber === 1;
+        const bucket = isEpisodeOne ? episodeOneImageUrls : otherEpisodeImageUrls;
+        for (const frame of plan?.frames ?? []) {
+          if (frame.approvedMediaAssetId) {
+            const parsed = Number(frame.approvedMediaAssetId);
+            const url = Number.isFinite(parsed) ? assetUrlById.get(parsed) : undefined;
+            if (isUsableUrl(url)) bucket.push(url);
+          } else if (frame.angleGrid?.imageUrl && isUsableUrl(frame.angleGrid.imageUrl)) {
+            bucket.push(frame.angleGrid.imageUrl);
+          }
+        }
+      }
+
+      // Shuffle the "other episodes" bucket (deterministic-enough Fisher-Yates)
+      // so a long series doesn't just show episodes 2/3 repeatedly.
+      for (let i = otherEpisodeImageUrls.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [otherEpisodeImageUrls[i], otherEpisodeImageUrls[j]] = [otherEpisodeImageUrls[j], otherEpisodeImageUrls[i]];
+      }
+      const imageUrls = [...episodeOneImageUrls, ...otherEpisodeImageUrls];
+
+      // --- Video clips: episode 1 first, then others, completed only. ---
+      const episodeOneClipUrls: string[] = [];
+      const otherEpisodeClipUrls: string[] = [];
+      for (const row of episodeRows) {
+        const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+        const bucket = row.episodeNumber === 1 ? episodeOneClipUrls : otherEpisodeClipUrls;
+        for (const clip of pack?.clips ?? []) {
+          const url = clip.videoTask?.videoUrl;
+          if (isUsableUrl(url)) bucket.push(url);
+        }
+      }
+      const videoClipUrls = [...episodeOneClipUrls, ...otherEpisodeClipUrls];
+
+      if (imageUrls.length === 0 && videoClipUrls.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "No episode images or video clips are available yet to build a trailer — generate at least one episode's start frames or video clips first.",
+        });
+      }
+
+      const runtimeConfig = getCachedAppRuntimeConfig();
+      const internalBaseUrl = runtimeConfig.internalNodeUrl || ctx.publicUrl || "http://localhost:3000";
+
+      const { jobId } = await submitTrailerJob({
+        owner: { tenantId, userId, seriesId },
+        audioUrl: input.audioUrl,
+        audioDurationSeconds: input.audioDurationSeconds,
+        imageUrls,
+        videoClipUrls,
+        internalBaseUrl,
+      });
+
+      return {
+        jobId,
+        imageCount: imageUrls.length,
+        videoClipCount: videoClipUrls.length,
+        resumed: false,
+      };
+    }),
+
+  /**
+   * Poll the series trailer job status. Returns `null` when no trailer has
+   * ever been generated for this series (client treats `null` as "idle" —
+   * show the generate button, not an error state).
+   */
+  getTrailerStatus: verticalDramaProcedure
+    .input(z.object({ seriesId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      const row = await loadOwnedSeries(tenantId, userId, seriesId);
+      const trailer = row.trailer as VerticalDramaSeriesTrailerState | null;
+      return trailer ?? null;
     }),
 });
 

@@ -13,6 +13,8 @@ import { parseSkillFile } from "@smartspec/skills";
 import {
   genrePresetCategoryLabel,
   verticalDramaLocaleEnglishName,
+  clampToCreateSeriesLimit,
+  CREATE_SERIES_FIELD_LIMITS,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import {
@@ -132,6 +134,44 @@ function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
+/**
+ * The Create Series wizard maps `draft.title` -> `genre` and `draft.tone` ->
+ * `tone` verbatim (see CreateSeriesWizard.tsx `applyPresetDraft`). Those two
+ * create-series input fields have stricter length limits than this schema's
+ * own `title`/`tone` bounds, so an LLM output that is valid here can still be
+ * too long for `verticalDramaSeriesRouter.create`. Clamp to the shared
+ * create-series limits (belt) in addition to the skill prompt guidance
+ * (suspenders) so the wizard never receives an unusable draft.
+ */
+export function clampDraftForCreateSeries(
+  draft: SynthesizedGenrePresetDraft,
+): { draft: SynthesizedGenrePresetDraft; clamped: boolean } {
+  const clampedTitle = clampToCreateSeriesLimit(draft.title, "genre") ?? draft.title;
+  const clampedTone = clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone;
+  const clamped = clampedTitle !== draft.title || clampedTone !== draft.tone;
+
+  if (!clamped) {
+    return { draft, clamped: false };
+  }
+
+  return {
+    draft: {
+      ...draft,
+      title: clampedTitle,
+      tone: clampedTone,
+      warnings: [
+        ...draft.warnings,
+        {
+          code: "preset_field_length_clamped",
+          message:
+            "AI output exceeded the Create Series field limits and was automatically shortened.",
+        },
+      ],
+    },
+    clamped: true,
+  };
+}
+
 function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
   const langInstruction =
     params.locale === "th"
@@ -178,6 +218,8 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
       "Keep the result easy for a non-technical creator to edit.",
       "Product or service tie-in may help a scene, but must not magically solve the main conflict.",
       "Use compact JSON only.",
+      `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
+      `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
     ],
   };
 
@@ -222,7 +264,7 @@ export async function synthesizeVerticalDramaPreset(
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt({ ...params, selectedCategories });
 
-  const { data: draft, response } = await executeJsonPlanningCallWithRetry({
+  const { data: synthesizedDraft, response } = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt,
     userPrompt,
@@ -232,6 +274,8 @@ export async function synthesizeVerticalDramaPreset(
     schema: synthesizedPresetDraftSchema,
     label: "Preset synthesis",
   });
+
+  const { draft } = clampDraftForCreateSeries(synthesizedDraft);
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(

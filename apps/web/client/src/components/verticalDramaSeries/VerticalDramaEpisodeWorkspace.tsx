@@ -219,6 +219,10 @@ export interface VerticalDramaStoryboardPanelData {
   onRunQualityReview?: () => void;
   runningQualityReview?: boolean;
   onCopySuggestedFix?: (suggestedFix: string) => void;
+  onApplyQualityReviewSuggestions?: () => void;
+  applyingQualityReviewSuggestions?: boolean;
+  onRequestAlternativeQualityReview?: () => void;
+  requestingAlternativeQualityReview?: boolean;
 
   /* ---- Manual episode -> series memory summarization ---- */
   onSummarizeEpisodeToMemory?: (opts?: { force?: boolean }) => void;
@@ -695,6 +699,10 @@ export function VerticalDramaEpisodeWorkspace({
           onRunQualityReview={storyboardPanel?.onRunQualityReview}
           runningQualityReview={storyboardPanel?.runningQualityReview}
           onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
+          onApplyQualityReviewSuggestions={storyboardPanel?.onApplyQualityReviewSuggestions}
+          applyingQualityReviewSuggestions={storyboardPanel?.applyingQualityReviewSuggestions}
+          onRequestAlternativeQualityReview={storyboardPanel?.onRequestAlternativeQualityReview}
+          requestingAlternativeQualityReview={storyboardPanel?.requestingAlternativeQualityReview}
           onSummarizeEpisodeToMemory={storyboardPanel?.onSummarizeEpisodeToMemory}
           summarizingEpisodeToMemory={storyboardPanel?.summarizingEpisodeToMemory}
           episodeAlreadySummarizedToMemory={storyboardPanel?.episodeAlreadySummarizedToMemory}
@@ -1154,6 +1162,10 @@ export function VerticalDramaEpisodeWorkspace({
                       onRunQualityReview={storyboardPanel?.onRunQualityReview}
                       runningQualityReview={storyboardPanel?.runningQualityReview}
                       onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
+          onApplyQualityReviewSuggestions={storyboardPanel?.onApplyQualityReviewSuggestions}
+          applyingQualityReviewSuggestions={storyboardPanel?.applyingQualityReviewSuggestions}
+          onRequestAlternativeQualityReview={storyboardPanel?.onRequestAlternativeQualityReview}
+          requestingAlternativeQualityReview={storyboardPanel?.requestingAlternativeQualityReview}
                       onSummarizeEpisodeToMemory={storyboardPanel?.onSummarizeEpisodeToMemory}
                       summarizingEpisodeToMemory={storyboardPanel?.summarizingEpisodeToMemory}
                       episodeAlreadySummarizedToMemory={storyboardPanel?.episodeAlreadySummarizedToMemory}

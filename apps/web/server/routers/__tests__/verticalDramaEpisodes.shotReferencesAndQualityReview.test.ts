@@ -115,8 +115,9 @@ vi.mock("../../services/mediaTransportResolver", () => ({
   resolveMediaTransport: mockResolveMediaTransport,
 }));
 
+const { mockRepairStage } = vi.hoisted(() => ({ mockRepairStage: vi.fn() }));
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
-  verticalDramaEpisodePipeline: {},
+  verticalDramaEpisodePipeline: { repairStage: mockRepairStage },
   VerticalDramaEpisodePipeline: class {},
   VERTICAL_DRAMA_PIPELINE_STAGES: ["plan_episode_script"],
   VERTICAL_DRAMA_RUNNER_MODES: ["dry_run", "full"],
@@ -675,6 +676,217 @@ describe("runEpisodeQualityReview", () => {
       router.runEpisodeQualityReview({ ctx: ctx(), input: { seriesId: "10", episodeId: "100" } }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mockRunVerticalDramaEpisodeQualityReview).not.toHaveBeenCalled();
+  });
+
+  describe("avoidPrevious", () => {
+    it("loads the previous stored review and forwards its issues + avoidPrevious: true", async () => {
+      const previousReview = {
+        episode_title: "Episode 1",
+        scorecard: {},
+        summary: "ok",
+        issues: [{ location: "shot 1", problem: "flat", suggested_fix: "vary it" }],
+        warnings: [],
+        repair_queue: [],
+      };
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ jsonPayload: previousReview }])) // loadLatestQualityReview
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", avoidPrevious: true },
+      });
+
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          avoidPrevious: true,
+          previousIssues: previousReview.issues,
+        }),
+      );
+    });
+
+    it("degrades to a normal (non-avoid) review when no previous review exists yet", async () => {
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview -> none yet
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", avoidPrevious: true },
+      });
+
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({ avoidPrevious: false, previousIssues: undefined }),
+      );
+    });
+  });
+});
+
+describe("applyQualityReviewSuggestions", () => {
+  function episodeRow(over: Record<string, unknown> = {}) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      episodeNumber: 1,
+      title: "Episode 1",
+      script: { episode_title: "Episode 1" },
+      storyboard: { shots: [] },
+      dialogueAudioPlan: null,
+      ...over,
+    };
+  }
+
+  const STORED_REVIEW = {
+    episode_title: "Episode 1",
+    scorecard: { overall: 3 },
+    summary: "needs work",
+    issues: [
+      { location: "shot 1", problem: "flat emotion", suggested_fix: "vary expression" },
+      { location: "beat 2", problem: "weak reversal", suggested_fix: "sharpen the flip" },
+    ],
+    warnings: [],
+    repair_queue: [],
+  };
+
+  beforeEach(() => {
+    mockRepairStage.mockReset();
+  });
+
+  it("throws PRECONDITION_FAILED when there is no stored quality review yet", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // loadLatestQualityReview -> none
+
+    await expect(
+      router.applyQualityReviewSuggestions({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(mockRepairStage).not.toHaveBeenCalled();
+  });
+
+  it("groups issues by stage, repairs script before storyboard with one combined instruction each, re-reviews, and returns the fresh scorecard", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ jsonPayload: STORED_REVIEW }])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([episodeRow()])) // refreshedRow (loadOwnedEpisode again)
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup for re-review
+    mockRepairStage
+      .mockResolvedValueOnce({
+        runId: 1,
+        result: {} as any,
+        staleStages: ["storyboard_shotgrid", "start_frame_render_plan"],
+      })
+      .mockResolvedValueOnce({
+        runId: 2,
+        result: {} as any,
+        staleStages: ["start_frame_render_plan"],
+      });
+    const freshReview = {
+      episode_title: "Episode 1",
+      scorecard: { overall: 4 },
+      summary: "better",
+      issues: [],
+      warnings: [],
+      repair_queue: [],
+    };
+    mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+      review: freshReview,
+      creditsUsed: 3,
+      model: "gpt-x",
+    });
+    mockDb.insert
+      .mockReturnValueOnce(insertChain([{ id: 555 }]))
+      .mockReturnValueOnce(insertChain([{ id: 777 }]));
+    mockDb.update.mockReturnValueOnce(updateChain([]));
+
+    const result = await router.applyQualityReviewSuggestions({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    // Script repaired first, then storyboard.
+    expect(mockRepairStage).toHaveBeenCalledTimes(2);
+    expect(mockRepairStage.mock.calls[0][1]).toBe("plan_episode_script");
+    expect(mockRepairStage.mock.calls[0][2].instruction).toContain("beat 2");
+    expect(mockRepairStage.mock.calls[1][1]).toBe("storyboard_shotgrid");
+    expect(mockRepairStage.mock.calls[1][2].instruction).toContain("shot 1");
+
+    expect(result.stagesRepaired).toEqual(["plan_episode_script", "storyboard_shotgrid"]);
+    expect(result.staleStages).toEqual(
+      expect.arrayContaining(["storyboard_shotgrid", "start_frame_render_plan"]),
+    );
+    expect(result.newReview).toEqual(freshReview);
+    expect(result.warning).toBeNull();
+  });
+
+  it("returns success with a warning when the auto re-review fails after repairs succeed", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ jsonPayload: STORED_REVIEW }])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([episodeRow()])) // refreshedRow
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+    mockRepairStage.mockResolvedValue({ runId: 1, result: {} as any, staleStages: [] });
+    mockRunVerticalDramaEpisodeQualityReview.mockRejectedValue(new Error("llm down"));
+
+    const result = await router.applyQualityReviewSuggestions({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.stagesRepaired).toEqual(["plan_episode_script", "storyboard_shotgrid"]);
+    expect(result.newReview).toBeNull();
+    expect(result.warning).toContain("llm down");
+  });
+
+  it("passes idempotencyKey through with a -rereview suffix for the auto re-review", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ jsonPayload: STORED_REVIEW }])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([episodeRow()])) // refreshedRow
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+    mockRepairStage.mockResolvedValue({ runId: 1, result: {} as any, staleStages: [] });
+    mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+      review: STORED_REVIEW,
+      creditsUsed: 1,
+      model: "gpt-x",
+    });
+    mockDb.insert
+      .mockReturnValueOnce(insertChain([{ id: 555 }]))
+      .mockReturnValueOnce(insertChain([{ id: 777 }]));
+    mockDb.update.mockReturnValueOnce(updateChain([]));
+
+    await router.applyQualityReviewSuggestions({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", idempotencyKey: "apply-key-1" },
+    });
+
+    expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: "apply-key-1-rereview" }),
+    );
   });
 });
 

@@ -57,6 +57,10 @@ import {
   type EpisodeQualityReviewOutput,
 } from "../services/verticalDramaEpisodeQualityReview";
 import {
+  groupQualityReviewIssuesByStage,
+  composeQualityReviewRepairInstruction,
+} from "../services/verticalDramaQualityReviewApply";
+import {
   runVerticalDramaSeriesMemoryPlanning,
   InsufficientCreditsError as MemoryPlanningInsufficientCreditsError,
   VdSchemaValidationError as MemoryPlanningSchemaValidationError,
@@ -318,6 +322,54 @@ async function loadLatestQualityReview(
     .limit(1);
   if (!row?.jsonPayload) return null;
   return row.jsonPayload as EpisodeQualityReviewOutput;
+}
+
+/**
+ * Persist a freshly-generated quality-review payload via the existing
+ * run/artifact ledger tables (see `VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG`'s
+ * doc comment) — extracted so both `runEpisodeQualityReview` and
+ * `applyQualityReviewSuggestions`'s auto re-review share the exact same
+ * persistence path (one ledger row shape, one place to change it).
+ */
+async function persistQualityReviewArtifact(
+  owner: EpisodeRunOwner,
+  review: EpisodeQualityReviewOutput,
+): Promise<void> {
+  const [runRow] = await db
+    .insert(verticalDramaEpisodeRuns)
+    .values({
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      stage: VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG,
+      runMode: "full",
+      status: "succeeded",
+      nextAction: "none",
+      artifactIds: [],
+      warnings: [],
+      errors: [],
+    })
+    .returning({ id: verticalDramaEpisodeRuns.id });
+
+  const [artifactRow] = await db
+    .insert(verticalDramaRunArtifacts)
+    .values({
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      runId: runRow.id,
+      stage: VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG,
+      jsonPayload: review as unknown as Record<string, unknown>,
+      mediaAssetIds: null,
+    })
+    .returning({ id: verticalDramaRunArtifacts.id });
+
+  await db
+    .update(verticalDramaEpisodeRuns)
+    .set({ artifactIds: [String(artifactRow.id)] })
+    .where(eq(verticalDramaEpisodeRuns.id, runRow.id));
 }
 
 /**
@@ -3894,6 +3946,12 @@ export const verticalDramaEpisodesRouter = router({
       z.object({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
+        // "ตรวจใหม่ แนะนำแนวทางอื่น" ("re-review, suggest a different
+        // approach") — when set, the previous stored review's issues are
+        // fed back into the prompt with an instruction to propose
+        // substantively DIFFERENT alternative issues/fixes rather than the
+        // same ones rephrased (see `RunEpisodeQualityReviewParams.avoidPrevious`).
+        avoidPrevious: z.boolean().optional(),
         idempotencyKey,
       }),
     )
@@ -3913,6 +3971,13 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
       const dialoguePlan = row.dialogueAudioPlan as Record<string, unknown> | null;
+
+      // Only consulted when `avoidPrevious` is set — loaded BEFORE the LLM
+      // call so a "no previous review yet" case degrades gracefully to a
+      // normal (non-avoid) review instead of erroring.
+      const previousReviewForAvoid = input.avoidPrevious
+        ? await loadLatestQualityReview({ tenantId, userId, seriesId, episodeId })
+        : null;
 
       // Guard against pathologically large payloads before spending an LLM
       // call on them — a malformed/looping script or storyboard could
@@ -3957,6 +4022,8 @@ export const verticalDramaEpisodesRouter = router({
           script,
           storyboard,
           dialoguePlan,
+          avoidPrevious: input.avoidPrevious && previousReviewForAvoid != null,
+          previousIssues: previousReviewForAvoid?.issues,
           idempotencyKey: input.idempotencyKey,
         });
       } catch (err) {
@@ -3978,47 +4045,135 @@ export const verticalDramaEpisodesRouter = router({
       // Persist via the existing run/artifact ledger tables (see
       // `VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG`'s doc comment) so the
       // scorecard survives reload — `getEpisodeDetail` reads it back via
-      // `loadLatestQualityReview`. Writes directly with `db.insert(...)`
-      // rather than the pipeline class's stage-typed `writeRun`/
-      // `writeArtifact` methods, since this is not one of the 15 canonical
-      // pipeline stages.
-      const [runRow] = await db
-        .insert(verticalDramaEpisodeRuns)
-        .values({
-          tenantId,
-          userId,
-          seriesId,
-          episodeId,
-          stage: VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG,
-          runMode: "full",
-          status: "succeeded",
-          nextAction: "none",
-          artifactIds: [],
-          warnings: [],
-          errors: [],
-        })
-        .returning({ id: verticalDramaEpisodeRuns.id });
-
-      const [artifactRow] = await db
-        .insert(verticalDramaRunArtifacts)
-        .values({
-          tenantId,
-          userId,
-          seriesId,
-          episodeId,
-          runId: runRow.id,
-          stage: VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG,
-          jsonPayload: outcome.review as unknown as Record<string, unknown>,
-          mediaAssetIds: null,
-        })
-        .returning({ id: verticalDramaRunArtifacts.id });
-
-      await db
-        .update(verticalDramaEpisodeRuns)
-        .set({ artifactIds: [String(artifactRow.id)] })
-        .where(eq(verticalDramaEpisodeRuns.id, runRow.id));
+      // `loadLatestQualityReview`.
+      await persistQualityReviewArtifact({ tenantId, userId, seriesId, episodeId }, outcome.review);
 
       return { review: outcome.review, creditsUsed: outcome.creditsUsed };
+    }),
+
+  /**
+   * "อนุมัติและปรับเรื่องตามคำแนะนำ" (approve + auto-apply quality-review
+   * suggestions): loads the LATEST persisted quality review, groups its
+   * `issues[]` by the pipeline stage each references (script vs storyboard —
+   * see `verticalDramaQualityReviewApply.ts`), and composes ONE combined
+   * repair instruction per affected stage. Reuses
+   * `verticalDramaEpisodePipeline.repairStage(...)` directly — the SAME
+   * internal repair path `repairStageOutput` calls — so this is not a new
+   * repair engine, just an automated multi-issue caller of the existing one.
+   * Script is repaired before storyboard (matches canonical pipeline order —
+   * the storyboard is generated from the script) so any script-level fix is
+   * reflected before the storyboard repair instruction is composed... note
+   * the storyboard repair instruction is still built from the ORIGINAL
+   * review's storyboard-classified issues (not re-derived from the just-
+   * repaired script), since re-deriving would require a fresh review first —
+   * which is exactly what the auto re-review step below provides for the
+   * NEXT iteration of this loop.
+   *
+   * After repairs complete, automatically re-runs
+   * `runVerticalDramaEpisodeQualityReview` once more and persists it (same
+   * `persistQualityReviewArtifact` path), so the UI can immediately show a
+   * fresh scorecard without a separate manual "check quality" click. A
+   * re-review failure does not fail the whole mutation — the repairs already
+   * succeeded and are real, paid work the user should not lose visibility
+   * into; it is surfaced as a `warning` string instead.
+   */
+  applyQualityReviewSuggestions: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        idempotencyKey,
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const owner: EpisodeRunOwner = { tenantId, userId, seriesId, episodeId };
+      const row = await loadOwnedEpisode(owner);
+
+      const latestReview = await loadLatestQualityReview(owner);
+      if (!latestReview) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "ยังไม่มีผลตรวจคุณภาพให้ปรับตาม — กรุณาตรวจคุณภาพก่อน",
+        });
+      }
+
+      const grouped = groupQualityReviewIssuesByStage(latestReview.issues ?? []);
+      if (grouped.length === 0) {
+        return {
+          stagesRepaired: [] as VerticalDramaPipelineStage[],
+          staleStages: [] as VerticalDramaPipelineStage[],
+          newReview: null as EpisodeQualityReviewOutput | null,
+          warning: null as string | null,
+        };
+      }
+
+      const stagesRepaired: VerticalDramaPipelineStage[] = [];
+      const staleStagesSet = new Set<VerticalDramaPipelineStage>();
+      for (const group of grouped) {
+        const instruction = composeQualityReviewRepairInstruction(group.issues);
+        const outcome = await verticalDramaEpisodePipeline.repairStage(owner, group.stage, {
+          instruction,
+        });
+        stagesRepaired.push(group.stage);
+        for (const stale of outcome.staleStages) staleStagesSet.add(stale);
+      }
+
+      // Auto re-review (step 2 of the task brief) — best-effort: a failure
+      // here must not discard the repairs the user already paid for.
+      let newReview: EpisodeQualityReviewOutput | null = null;
+      let warning: string | null = null;
+      try {
+        const refreshedRow = await loadOwnedEpisode(owner);
+        const script = refreshedRow.script as Record<string, unknown> | null;
+        const storyboard = refreshedRow.storyboard as Record<string, unknown> | null;
+        const dialoguePlan = refreshedRow.dialogueAudioPlan as Record<string, unknown> | null;
+        if (script && storyboard) {
+          const [seriesRow] = await db
+            .select({ locale: verticalDramaSeries.locale })
+            .from(verticalDramaSeries)
+            .where(
+              and(
+                eq(verticalDramaSeries.id, seriesId),
+                eq(verticalDramaSeries.tenantId, tenantId),
+                eq(verticalDramaSeries.userId, userId),
+              ),
+            )
+            .limit(1);
+          const reReviewOutcome = await runVerticalDramaEpisodeQualityReview({
+            userId,
+            tenantId,
+            seriesId,
+            episodeId,
+            episodeTitle: refreshedRow.title ?? `Episode ${refreshedRow.episodeNumber}`,
+            locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
+            script,
+            storyboard,
+            dialoguePlan,
+            idempotencyKey: input.idempotencyKey ? `${input.idempotencyKey}-rereview` : undefined,
+          });
+          newReview = reReviewOutcome.review;
+          await persistQualityReviewArtifact(owner, newReview);
+        } else {
+          warning =
+            "แก้ไขสำเร็จ แต่ยังไม่สามารถตรวจคุณภาพซ้ำได้ (ไม่มีสคริปต์/สตอรีบอร์ด)";
+        }
+      } catch (err) {
+        warning =
+          err instanceof Error
+            ? `แก้ไขสำเร็จ แต่ตรวจคุณภาพซ้ำไม่สำเร็จ: ${err.message}`
+            : "แก้ไขสำเร็จ แต่ตรวจคุณภาพซ้ำไม่สำเร็จ";
+      }
+
+      return {
+        stagesRepaired,
+        staleStages: Array.from(staleStagesSet),
+        newReview,
+        warning,
+      };
     }),
 
   /* ------------------------------------------------------------------------ */

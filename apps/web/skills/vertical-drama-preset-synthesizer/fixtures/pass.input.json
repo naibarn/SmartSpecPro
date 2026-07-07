@@ -1,0 +1,17 @@
+{
+  "locale": "th",
+  "selections": [
+    {
+      "kind": "category",
+      "id": "restaurant_service_skit",
+      "label": "สเก็ตช์บริการร้านอาหาร"
+    },
+    {
+      "kind": "category",
+      "id": "customer_staff_situation_comedy",
+      "label": "คอมเมดี้ลูกค้ากับพนักงาน"
+    }
+  ],
+  "businessContext": "ร้านก๋วยเตี๋ยวชุมชนใกล้ตลาด",
+  "targetEpisodeCount": 10
+}

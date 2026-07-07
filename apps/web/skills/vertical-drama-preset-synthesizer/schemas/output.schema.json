@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-preset-synthesizer/output",
+  "title": "Vertical Drama Preset Synthesizer Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "title",
+    "category",
+    "logline",
+    "mainPlot",
+    "seasonArc",
+    "tone",
+    "cliffhangerStyle",
+    "characters",
+    "visualBible",
+    "mixRecipe",
+    "warnings",
+    "contract_version"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 150
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "logline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mainPlot": {
+      "type": "string",
+      "minLength": 1
+    },
+    "seasonArc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tone": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cliffhangerStyle": {
+      "type": "string",
+      "minLength": 1
+    },
+    "characters": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["name", "role", "description"],
+        "additionalProperties": true,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "visualBible": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mixRecipe": {
+      "type": "object",
+      "required": ["primaryFlavor", "supportingFlavors", "rationale"],
+      "additionalProperties": true,
+      "properties": {
+        "primaryFlavor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "supportingFlavors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message"],
+        "additionalProperties": true,
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "contract_version": {
+      "const": 1
+    }
+  }
+}
