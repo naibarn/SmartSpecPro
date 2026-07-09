@@ -107,6 +107,56 @@ describe("tenantFeatureFlagGroups", () => {
     expect(agentExperienceGroup?.flags.some((flag) => /persona/i.test(flag.label))).toBe(false);
   });
 
+  it("groups the Deep Story Drafts flag (F131T) with Vertical Drama Series", () => {
+    const dramaGroup = buildTenantFeatureFlagGroups().find(
+      (group) => group.title === "Vertical Drama Series",
+    );
+    const deepDraftsFlag = dramaGroup?.flags.find(
+      (flag) => flag.key === "verticalDramaSeriesDeepStoryDrafts",
+    );
+
+    expect(deepDraftsFlag).toEqual(
+      expect.objectContaining({
+        label: "Deep Story Drafts",
+        description: expect.stringContaining("F131T"),
+      }),
+    );
+  });
+
+  it("groups the Story Lock flag (F131V) with Vertical Drama Series exactly once", () => {
+    const dramaGroup = buildTenantFeatureFlagGroups().find(
+      (group) => group.title === "Vertical Drama Series",
+    );
+    const storyLockFlags = dramaGroup?.flags.filter(
+      (flag) => flag.key === "verticalDramaSeriesStoryLock",
+    );
+
+    expect(storyLockFlags).toHaveLength(1);
+    expect(storyLockFlags?.[0]).toEqual(
+      expect.objectContaining({
+        label: "Story Lock",
+        description: expect.stringContaining("F131V"),
+      }),
+    );
+  });
+
+  it("groups the Share Links flag (F131AA) with Vertical Drama Series exactly once", () => {
+    const dramaGroup = buildTenantFeatureFlagGroups().find(
+      (group) => group.title === "Vertical Drama Series",
+    );
+    const shareLinksFlags = dramaGroup?.flags.filter(
+      (flag) => flag.key === "verticalDramaSeriesShareLinks",
+    );
+
+    expect(shareLinksFlags).toHaveLength(1);
+    expect(shareLinksFlags?.[0]).toEqual(
+      expect.objectContaining({
+        label: "Share Links",
+        description: expect.stringContaining("F131AA"),
+      }),
+    );
+  });
+
   it("covers every declared tenant feature flag", () => {
     const groupedKeys = new Set(
       buildTenantFeatureFlagGroups().flatMap((group) => group.flags.map((flag) => flag.key)),

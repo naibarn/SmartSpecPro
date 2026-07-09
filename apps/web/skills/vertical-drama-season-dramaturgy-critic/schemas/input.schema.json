@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-season-dramaturgy-critic/input",
+  "title": "Vertical Drama Season Dramaturgy Critic Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "title",
+    "protagonistStake",
+    "worldRules",
+    "deterministicFindings",
+    "episodes"
+  ],
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "genre": {
+      "type": ["string", "null"]
+    },
+    "tone": {
+      "type": ["string", "null"]
+    },
+    "protagonistStake": {
+      "description": "The season's stated protagonist stake, or the literal string \"(none recorded)\" when no drafted episode has recorded one.",
+      "type": "string"
+    },
+    "worldRules": {
+      "description": "Every world_rules entry recorded across the season's drafted episodes.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["rule", "limit_or_cost"],
+        "properties": {
+          "rule": { "type": "string" },
+          "limit_or_cost": { "type": "string" }
+        }
+      }
+    },
+    "deterministicFindings": {
+      "description": "Findings already established by code (analyzeSeasonDramaturgy) BEFORE this call — treat every one as TRUE and never contradict it.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["kind", "evidenceEpisodes", "detail"],
+        "properties": {
+          "kind": { "type": "string" },
+          "evidenceEpisodes": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 }
+          },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "episodes": {
+      "description": "Compact per-episode digest for every deep-drafted episode being critiqued — full shot summaries/dialogue text are intentionally omitted to keep the prompt a manageable size for a full-season critique.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["episodeNumber", "workingTitle", "logline"],
+        "properties": {
+          "episodeNumber": { "type": "integer", "minimum": 1 },
+          "workingTitle": { "type": "string" },
+          "logline": { "type": "string" },
+          "cliffhangerLine": { "type": ["string", "null"] },
+          "antagonistTactics": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "characterDecisions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["character", "decision"],
+              "properties": {
+                "character": { "type": "string" },
+                "decision": { "type": "string" }
+              }
+            }
+          },
+          "pricePaid": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "revision_context": {
+      "description": "Optional (documented for future tuning, not yet wired — see skill.md 'Revise/apply mode'). When present, scopes a revision-aware pass to the selected findings/episodes instead of a fresh full-season critique.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "findingsBeingApplied": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "episodesBeingRevised": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        }
+      }
+    }
+  }
+}

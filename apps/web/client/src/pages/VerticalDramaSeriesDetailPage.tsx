@@ -12,9 +12,9 @@
  */
 
 import { useMemo, useState } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Loader2, Plus, Save, Sparkles } from "lucide-react";
+import { Clapperboard, Loader2, Plus, Save, Sparkles } from "lucide-react";
 
 import { AppPage, type AppPageState } from "@/components/AppPage";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +33,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { VerticalDramaCharacterStockPanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
+import { VerticalDramaSeriesTrailerPanel } from "@/components/verticalDramaSeries/VerticalDramaSeriesTrailerPanel";
 import { VerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDramaShell";
 import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/VerticalDramaSettingsTab";
 import { VerticalDramaProductTieInTab } from "@/components/verticalDramaSeries/VerticalDramaProductTieInTab";
 import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/VerticalDramaAssetsTab";
 import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
+import { VerticalDramaSeriesShareDialog } from "@/components/verticalDramaSeries/VerticalDramaSeriesShareDialog";
+import { getActiveBreakdownItemsForDisplay } from "@/components/verticalDramaSeries/VerticalDramaArcReplanCard";
+import {
+  VerticalDramaDeepStoryDraftEpisodeDetail,
+  VerticalDramaDeepStoryDraftsActions,
+  readDeepDraftShotDrafts,
+  type VerticalDramaDeepDraftSummary,
+} from "@/components/verticalDramaSeries/VerticalDramaDeepStoryDraftsPanel";
 import {
   pickCopy,
   seriesStatusCopy,
@@ -49,6 +66,38 @@ import {
   verticalDramaRoutes,
   type VerticalDramaSeriesStatus,
 } from "@/components/verticalDramaSeries/verticalDramaCopy";
+/**
+ * Task #22 (season-level product tie-in draft awareness, added 2026-07-09) —
+ * own STANDALONE copy module (see that file's own header doc comment).
+ * Aliased `pickCopy` to avoid colliding with `verticalDramaCopy.ts`'s own
+ * `pickCopy` already imported above — both are structurally
+ * `(lang: "th" | "en", value) => value[lang]`, so calling either with this
+ * page's own `lang` works without a cast.
+ */
+import {
+  pickCopy as pickTieInDraftCopy,
+  verticalDramaTieInDraftCopy,
+} from "@/components/verticalDramaSeries/verticalDramaTieInDraftCopy";
+/**
+ * Task #21 / W12.5 "Final Render Suite" phase B (season batch render,
+ * added 2026-07-09) — this page otherwise uses `verticalDramaCopy.ts`'s
+ * `pickCopy(lang, verticalDramaCopy.X)` convention exclusively, but the
+ * season-render dialog reuses the SAME subtitle-preset labels + option
+ * copy the per-episode workspace section already defines in
+ * `verticalDramaWorkspaceCopy.ts` (owned by this same wave) — importing it
+ * here (rather than duplicating 9 preset names + option copy a second time
+ * in `verticalDramaCopy.ts`, which this wave does not own) is the least-
+ * invasive option, and `VerticalDramaEpisodePage.tsx` already establishes
+ * the precedent of a page importing from BOTH copy modules at once.
+ */
+import {
+  VD_FINAL_RENDER_SUBTITLE_PRESET_IDS,
+  vdCopy,
+  vdCopyWithParams,
+  vdFinalRenderSubtitlePresetLabel,
+  vdSeasonRenderSkipReasonLabel,
+  type VdFinalRenderSubtitlePresetValue,
+} from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
 
 type TabId =
   | "overview"
@@ -84,11 +133,44 @@ const tabLabels: Record<TabId, { th: string; en: string }> = {
   settings: { th: "ตั้งค่า", en: "Settings" },
 };
 
+/**
+ * Resolve the tab this page should open on, from the URL's `?tab=` query
+ * param (W12-B voice chain wave — lets another surface, e.g. the episode
+ * Dialogue/Audio panel's missing-casting banner, deep-link straight to the
+ * Characters tab via `` `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=characters` ``).
+ * Falls back to `"overview"` (the pre-existing default) for a missing/
+ * unrecognized/empty value — pure, exported for direct unit testing, same
+ * convention as `VerticalDramaEpisodePage.tsx`'s `shouldResumeVideoClipPoll`.
+ */
+export function resolveInitialSeriesTab(search: string): TabId {
+  const requested = new URLSearchParams(search).get("tab");
+  return requested && (ALL_TABS as readonly string[]).includes(requested)
+    ? (requested as TabId)
+    : "overview";
+}
+
 export default function VerticalDramaSeriesDetailPage() {
   const lang = useVerticalDramaLang();
   const [, params] = useRoute("/drama-series/:seriesId");
   const seriesId = params?.seriesId ?? "";
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const search = useSearch();
+  const [activeTab, setActiveTab] = useState<TabId>(() => resolveInitialSeriesTab(search));
+  // W10-C (spec F131T) — resolved once here and passed down as a prop so
+  // `StoryBibleOverviewCard` (and the deep-draft child components it
+  // conditionally mounts) stay fully prop-driven; flag off -> those children
+  // never mount, so the Overview tab renders byte-identical to today.
+  const deepDraftsFlagEnabled = useTenantFeatureFlag("verticalDramaSeriesDeepStoryDrafts");
+  // W12-B voice chain wave — gates the Characters tab's per-character voice
+  // casting card (`VerticalDramaCharacterVoiceCastingCard`, mounted from
+  // `VerticalDramaCharacterStockPanel.tsx`). Same fail-closed convention as
+  // `deepDraftsFlagEnabled` above.
+  const voiceChainEnabled = useTenantFeatureFlag("verticalDramaSeriesVoiceChain");
+  // Task #32 (Collab-lite L1, added 2026-07-09) — gates ONLY the "แชร์ซีรีส์"
+  // header button (`VerticalDramaSeriesShareDialog` self-gates on this prop,
+  // same convention as `deepDraftsFlagEnabled` above). The public viewer
+  // route (`/share/vd/:token`) is intentionally NOT gated by this flag —
+  // see `routers/verticalDramaShare.ts`'s own doc comment for why.
+  const shareLinksEnabled = useTenantFeatureFlag("verticalDramaSeriesShareLinks");
 
   const detailQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
@@ -116,6 +198,8 @@ export default function VerticalDramaSeriesDetailPage() {
           forbiddenClaims?: string[];
           [key: string]: unknown;
         } | null;
+        /** W10-C (spec F131T) — additive, `null` when no episode has a deep draft yet. */
+        deepDraftSummary?: VerticalDramaDeepDraftSummary | null;
       }
     | undefined;
   const episodes = (detailQuery.data?.episodes ?? []) as Array<{
@@ -123,6 +207,7 @@ export default function VerticalDramaSeriesDetailPage() {
     episodeNumber: number;
     title?: string | null;
     status: string;
+    thumbnailUrl?: string | null;
     updatedAt?: Date | string | null;
   }>;
 
@@ -166,6 +251,13 @@ export default function VerticalDramaSeriesDetailPage() {
           { label: pickCopy(lang, verticalDramaCopy.menuTitle), href: verticalDramaRoutes.seriesList() },
           { label: pageTitle },
         ]}
+        actions={
+          <VerticalDramaSeriesShareDialog
+            lang={lang}
+            enabled={shareLinksEnabled}
+            seriesId={seriesId}
+          />
+        }
         state={pageState}
         loadingSkeleton={
           <div className="grid gap-4" aria-busy="true">
@@ -232,6 +324,9 @@ export default function VerticalDramaSeriesDetailPage() {
                   readOnly={isArchived}
                   onViewEpisodes={() => setActiveTab("episodes")}
                   onEpisodesGenerated={() => detailQuery.refetch()}
+                  deepDraftsFlagEnabled={deepDraftsFlagEnabled}
+                  deepDraftSummary={series.deepDraftSummary}
+                  createdEpisodeNumbers={episodes.map((episode) => episode.episodeNumber)}
                 />
 
                 {!isArchived && (
@@ -246,9 +341,19 @@ export default function VerticalDramaSeriesDetailPage() {
               {STORY_TABS.concat(ADVANCED_TABS).map((tab) => (
                 <TabsContent key={tab} value={tab} className="pt-4">
                   {tab === "characters" ? (
-                    <VerticalDramaCharacterStockPanel seriesId={seriesId} readOnly={isArchived} />
+                    <VerticalDramaCharacterStockPanel
+                      seriesId={seriesId}
+                      readOnly={isArchived}
+                      voiceChainEnabled={voiceChainEnabled}
+                    />
                   ) : tab === "bible" ? (
-                    <StoryBibleTab lang={lang} bible={series.bible} readOnly={isArchived} />
+                    <StoryBibleTab
+                      lang={lang}
+                      seriesId={seriesId}
+                      locale={series.locale}
+                      bible={series.bible}
+                      readOnly={isArchived}
+                    />
                   ) : tab === "memory" ? (
                     <VerticalDramaSeriesMemoryTab
                       lang={lang}
@@ -294,7 +399,11 @@ export default function VerticalDramaSeriesDetailPage() {
   );
 }
 
-function EpisodesTab({
+/** Exported (2026-07-09, task #21 phase B) so the season batch render button
+ *  + dialog can be covered by direct, isolated render tests — same "export
+ *  the sub-component for direct testing" convention as `StoryBibleOverviewCard`
+ *  below. */
+export function EpisodesTab({
   lang,
   seriesId,
   episodes,
@@ -307,11 +416,79 @@ function EpisodesTab({
     episodeNumber: number;
     title?: string | null;
     status: string;
+    thumbnailUrl?: string | null;
     updatedAt?: Date | string | null;
   }>;
   readOnly: boolean;
 }) {
   const utils = trpc.useUtils();
+  const t = vdCopy(lang);
+  /* ---- Task #21 / W12.5 "Final Render Suite" phase B — season batch
+   *  render (added 2026-07-09). Same direct `useTenantFeatureFlag` gate as
+   *  this page's own `voiceChainEnabled` (used a few lines up the tree for
+   *  `VerticalDramaCharacterStockPanel`) — gates ONLY the dialog's dialogue-
+   *  audio checkbox; plain concat + subtitles work without the flag, so the
+   *  button/dialog themselves are never gated on it (owner-specified: "do
+   *  not gate on F131U"). */
+  const seasonVoiceChainEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesVoiceChain",
+  );
+  const episodeNumberById = useMemo(
+    () => new Map(episodes.map((ep) => [ep.id, ep.episodeNumber])),
+    [episodes],
+  );
+  const [seasonRenderDialogOpen, setSeasonRenderDialogOpen] = useState(false);
+  const [seasonRenderIncludeDialogueAudio, setSeasonRenderIncludeDialogueAudio] =
+    useState(false);
+  const [seasonRenderLoudnessNormalize, setSeasonRenderLoudnessNormalize] =
+    useState(false);
+  const [seasonRenderSubtitlePreset, setSeasonRenderSubtitlePreset] =
+    useState<VdFinalRenderSubtitlePresetValue>("classic_box");
+  /** Durable inline result (not just a toast) — mirrors the episode
+   *  workspace's own `finalRenderOptionsPanel.lastResult` convention.
+   *  `null` until the first successful `assembleSeasonVideos` call. */
+  const [seasonRenderResult, setSeasonRenderResult] = useState<{
+    submitted: Array<{ episodeId: string; jobId: string }>;
+    skipped: Array<{ episodeId: string; reason: string }>;
+  } | null>(null);
+
+  const assembleSeasonVideosMutation =
+    trpc.verticalDramaSeries.assembleSeasonVideos.useMutation({
+      onSuccess: (data: {
+        submitted: Array<{ episodeId: string; jobId: string }>;
+        skipped: Array<{ episodeId: string; reason: string }>;
+      }) => {
+        setSeasonRenderResult({
+          submitted: data.submitted,
+          skipped: data.skipped,
+        });
+        setSeasonRenderDialogOpen(false);
+        if (data.submitted.length === 0) {
+          toast.warning(t.seasonRenderNoneSubmittedToast);
+        } else {
+          toast.success(t.seasonRenderStartedToast);
+        }
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(err?.message || t.seasonRenderFailedToast);
+      },
+    });
+
+  function handleConfirmSeasonRender() {
+    assembleSeasonVideosMutation.mutate({
+      seriesId,
+      options: {
+        // Belt-and-suspenders re-check mirroring `assembleSeasonVideos`'s own
+        // `voiceChainEnabled && options.includeDialogueAudio === true` guard
+        // (server/routers/verticalDramaSeries.ts) — the checkbox itself never
+        // renders while the flag is off, so this can never actually differ.
+        includeDialogueAudio:
+          seasonVoiceChainEnabled && seasonRenderIncludeDialogueAudio,
+        loudnessNormalize: seasonRenderLoudnessNormalize,
+        subtitlePreset: seasonRenderSubtitlePreset,
+      },
+    });
+  }
 
   const generateNextEpisodesMutation = trpc.verticalDramaEpisodes.generateNextEpisodes.useMutation({
     onSuccess: (data: {
@@ -374,12 +551,29 @@ function EpisodesTab({
             <Link href={verticalDramaRoutes.episode(seriesId, ep.id)}>
               <Card className="cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
                 <CardContent className="flex items-center justify-between gap-3 p-4">
-                  <div className="min-w-0">
-                    <p className="font-medium">
-                      EP {ep.episodeNumber}
-                      {ep.title ? ` · ${ep.title}` : ""}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{ep.status}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    {ep.thumbnailUrl ? (
+                      <img
+                        src={ep.thumbnailUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="aspect-[9/16] w-12 shrink-0 rounded-md border border-border object-cover"
+                      />
+                    ) : (
+                      <div
+                        aria-hidden="true"
+                        className="flex aspect-[9/16] w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40"
+                      >
+                        <Clapperboard className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        EP {ep.episodeNumber}
+                        {ep.title ? ` · ${ep.title}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{ep.status}</p>
+                    </div>
                   </div>
                   <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.open)}</Badge>
                 </CardContent>
@@ -388,22 +582,179 @@ function EpisodesTab({
           </li>
         ))}
       </ul>
-      {!readOnly && (
+      <div className="flex flex-wrap items-center gap-2">
+        {!readOnly && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={isAdding}
+            onClick={handleAddEpisode}
+          >
+            {isAdding ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            )}
+            {lang === "th" ? "เพิ่มตอน" : "Add episode"}
+          </Button>
+        )}
+        {/* Task #21 / W12.5 "Final Render Suite" phase B — season batch
+            render (2026-07-09). NOT gated on `readOnly`: rendering already-
+            generated clips into an mp4 doesn't modify the series' story
+            content (same "free, mechanical re-encode of already-owned
+            media" rationale as the per-episode assemble action) — an
+            archived/completed series should still be able to export its
+            finished videos. */}
         <Button
           variant="outline"
           size="sm"
           className="gap-2"
-          disabled={isAdding}
-          onClick={handleAddEpisode}
+          onClick={() => setSeasonRenderDialogOpen(true)}
+          data-testid="vd-season-render-button"
         >
-          {isAdding ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Plus className="h-4 w-4" aria-hidden="true" />
-          )}
-          {lang === "th" ? "เพิ่มตอน" : "Add episode"}
+          <Clapperboard className="h-4 w-4" aria-hidden="true" />
+          {t.seasonRenderButton}
         </Button>
-      )}
+      </div>
+
+      {seasonRenderResult ? (
+        <div
+          className="rounded-md border bg-muted/30 p-3 text-sm"
+          data-testid="vd-season-render-result"
+        >
+          <p data-testid="vd-season-render-submitted-summary">
+            {vdCopyWithParams(t.seasonRenderSubmittedSummaryTemplate, {
+              n: seasonRenderResult.submitted.length,
+              episodes: seasonRenderResult.submitted
+                .map(
+                  (s) => episodeNumberById.get(s.episodeId) ?? s.episodeId,
+                )
+                .join(", "),
+            })}
+          </p>
+          {seasonRenderResult.skipped.length > 0 ? (
+            <div data-testid="vd-season-render-skipped-summary">
+              <p>
+                {vdCopyWithParams(t.seasonRenderSkippedSummaryTemplate, {
+                  n: seasonRenderResult.skipped.length,
+                })}
+              </p>
+              <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+                {seasonRenderResult.skipped.map((s) => (
+                  <li key={s.episodeId}>
+                    EP {episodeNumberById.get(s.episodeId) ?? s.episodeId}:{" "}
+                    {vdSeasonRenderSkipReasonLabel(s.reason, lang)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Dialog
+        open={seasonRenderDialogOpen}
+        onOpenChange={setSeasonRenderDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t.seasonRenderDialogTitle}</DialogTitle>
+            <DialogDescription>
+              {t.seasonRenderDialogExplainer}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            {seasonVoiceChainEnabled ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="season-render-include-audio"
+                    checked={seasonRenderIncludeDialogueAudio}
+                    onCheckedChange={(checked) =>
+                      setSeasonRenderIncludeDialogueAudio(checked === true)
+                    }
+                    data-testid="vd-season-render-include-audio"
+                  />
+                  <Label
+                    htmlFor="season-render-include-audio"
+                    className="text-sm font-medium"
+                  >
+                    {t.finalRenderIncludeDialogueAudioLabel}
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2 pl-6">
+                  <Checkbox
+                    id="season-render-loudness-normalize"
+                    checked={seasonRenderLoudnessNormalize}
+                    disabled={!seasonRenderIncludeDialogueAudio}
+                    onCheckedChange={(checked) =>
+                      setSeasonRenderLoudnessNormalize(checked === true)
+                    }
+                    data-testid="vd-season-render-loudness-normalize"
+                  />
+                  <Label
+                    htmlFor="season-render-loudness-normalize"
+                    className="text-sm text-muted-foreground"
+                  >
+                    {t.finalRenderLoudnessNormalizeLabel}
+                  </Label>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="grid gap-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t.finalRenderSubtitlePresetLabel}
+              </Label>
+              <Select
+                value={seasonRenderSubtitlePreset}
+                onValueChange={(v) =>
+                  setSeasonRenderSubtitlePreset(
+                    v as VdFinalRenderSubtitlePresetValue,
+                  )
+                }
+              >
+                <SelectTrigger data-testid="vd-season-render-subtitle-preset">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">
+                    {t.finalRenderSubtitlePresetNone}
+                  </SelectItem>
+                  {VD_FINAL_RENDER_SUBTITLE_PRESET_IDS.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {vdFinalRenderSubtitlePresetLabel(id, lang)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSeasonRenderDialogOpen(false)}
+              disabled={assembleSeasonVideosMutation.isPending}
+            >
+              {lang === "th" ? "ยกเลิก" : "Cancel"}
+            </Button>
+            <Button
+              onClick={handleConfirmSeasonRender}
+              disabled={assembleSeasonVideosMutation.isPending}
+              className="gap-2"
+              data-testid="vd-season-render-confirm"
+            >
+              {assembleSeasonVideosMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              )}
+              {t.seasonRenderDialogConfirm}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -468,10 +819,14 @@ interface ExpandedStoryBible {
  */
 function StoryBibleTab({
   lang,
+  seriesId,
+  locale,
   bible,
   readOnly,
 }: {
   lang: "th" | "en";
+  seriesId: string;
+  locale?: string | null;
   bible: unknown;
   readOnly: boolean;
 }) {
@@ -489,6 +844,15 @@ function StoryBibleTab({
       {readOnly && (
         <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.readOnly)}</Badge>
       )}
+
+      <VerticalDramaSeriesTrailerPanel
+        lang={lang}
+        seriesId={seriesId}
+        locale={locale}
+        logline={b.logline}
+        mainPlot={b.mainPlot}
+        readOnly={readOnly}
+      />
 
       <Card>
         <CardHeader>
@@ -556,7 +920,7 @@ function StoryBibleTab({
  * real, credit-consuming LLM call in this feature. Shows the expanded season
  * arc + episode breakdown once generated, or a Generate/retry CTA otherwise.
  */
-function StoryBibleOverviewCard({
+export function StoryBibleOverviewCard({
   lang,
   seriesId,
   bible,
@@ -566,6 +930,9 @@ function StoryBibleOverviewCard({
   readOnly,
   onViewEpisodes,
   onEpisodesGenerated,
+  deepDraftsFlagEnabled = false,
+  deepDraftSummary,
+  createdEpisodeNumbers = [],
 }: {
   lang: "th" | "en";
   seriesId: string;
@@ -576,10 +943,65 @@ function StoryBibleOverviewCard({
   readOnly: boolean;
   onViewEpisodes?: () => void;
   onEpisodesGenerated?: () => void;
+  /** W10-C (spec F131T) — flag off (default) keeps this card byte-identical to before. */
+  deepDraftsFlagEnabled?: boolean;
+  deepDraftSummary?: VerticalDramaDeepDraftSummary | null;
+  /**
+   * Manual dialogue edits (W10.5) — episode numbers that already have a REAL
+   * created episode row (this page's own `episodes` list — the same data
+   * source the "ดูตอนจริงที่สร้างแล้ว..." link below reads). Threaded straight
+   * through to `VerticalDramaDeepStoryDraftEpisodeDetail` as a per-episode
+   * `episodeAlreadyCreated` boolean. Defaults to `[]` so every pre-existing
+   * caller (including this file's own test suite) renders byte-identical.
+   */
+  createdEpisodeNumbers?: number[];
 }) {
   const utils = trpc.useUtils();
   const expanded = (bible ?? {}) as ExpandedStoryBible;
+  const createdEpisodeNumberSet = useMemo(() => new Set(createdEpisodeNumbers), [createdEpisodeNumbers]);
   const hasStory = Boolean(expanded.episodeBreakdown && expanded.episodeBreakdown.length > 0);
+  // W10-C — resolves the SAME active-breakdown-version the server uses for
+  // deep drafts (`getActiveBreakdown` in the server-only
+  // `verticalDramaStoryBible.ts`), so per-episode shot drafts/cliffhanger
+  // lines/completeness (persisted onto `bible.breakdownVersions[]`, not the
+  // legacy top-level `bible.episodeBreakdown` this card otherwise reads) are
+  // still found by episode number. Flag-gated so there is zero extra work
+  // when the flag is off.
+  const activeBreakdownByEpisode = useMemo(() => {
+    if (!deepDraftsFlagEnabled) return new Map<number, ReturnType<typeof getActiveBreakdownItemsForDisplay>[number]>();
+    return new Map(getActiveBreakdownItemsForDisplay(bible).map((item) => [item.episodeNumber, item]));
+  }, [deepDraftsFlagEnabled, bible]);
+  // Task #31 (spec §7.7.2/§7.7.3, added 2026-07-09) — season-plan tie-in
+  // badge, computed INDEPENDENTLY of `deepDraftsFlagEnabled` above (an
+  // unrelated feature's gate) so the badge works regardless of that flag.
+  // Self-gating: `tieIn` is only ever populated once the
+  // `verticalDramaSeriesTieInReplan` flag has been used at least once for
+  // this series (bootstrap or full-season plan) — a legacy/flag-off series
+  // simply never has any entries here, so this Map is empty and the badge
+  // never renders (grandfather).
+  //
+  // Task #22 (added 2026-07-09) — EXTENDED with draft-awareness: `isDrafted`/
+  // `hasMarkedShot` read the SAME `shotDrafts`/`tie_in` marking
+  // `reconcileTieInDraftMarking` checks server-side (via the Panel's own
+  // `readDeepDraftShotDrafts` tolerant reader — this page already imports
+  // several siblings from that file). An episode with no `shotDrafts` yet
+  // (`isDrafted: false`) is NOT treated as a mismatch — nothing to judge yet.
+  const tieInStateByEpisode = useMemo(() => {
+    const map = new Map<
+      number,
+      { planned: boolean; isDrafted: boolean; hasMarkedShot: boolean }
+    >();
+    for (const item of getActiveBreakdownItemsForDisplay(bible)) {
+      if (!item.tieIn) continue;
+      const shotDrafts = readDeepDraftShotDrafts(item);
+      map.set(item.episodeNumber, {
+        planned: item.tieIn.planned,
+        isDrafted: shotDrafts !== null,
+        hasMarkedShot: shotDrafts?.some((shot) => shot.tie_in?.has_product_moment === true) ?? false,
+      });
+    }
+    return map;
+  }, [bible]);
 
   // After a full story is (re)generated, materialize the newly-planned
   // episodes into real episode rows for free — this only ever hits Mode A
@@ -625,6 +1047,16 @@ function StoryBibleOverviewCard({
     },
   });
 
+  // Consolidated primary action (spec addendum, added 2026-07-08) — thin
+  // awaitable wrapper so `VerticalDramaDeepStoryDraftsActions` can sequence
+  // its own deep-draft call after this one resolves, without needing to know
+  // this mutation's input/output shape. Rejects on failure; `onError` above
+  // already shows the error toast, so callers only need to know settlement,
+  // not the reason.
+  const runGenerateStoryBible = async () => {
+    await generateMutation.mutateAsync({ seriesId });
+  };
+
   const contextParts: string[] = [];
   if (genre) contextParts.push(`${lang === "th" ? "แนว" : "Genre"}: ${genre}`);
   if (tone) contextParts.push(`${lang === "th" ? "โทน" : "Tone"}: ${tone}`);
@@ -653,22 +1085,35 @@ function StoryBibleOverviewCard({
                 ? "ยังไม่ได้สร้างเนื้อเรื่องเต็ม — กดเพื่อขยายโครงเรื่อง/เรื่องย่อ/ตัวละครให้เป็นเนื้อเรื่องเต็มพร้อมแบ่งตอน แล้วสร้างตอนจริงให้อัตโนมัติ (ใช้เครดิต)"
                 : "No full story yet — generate one to expand the plot/logline/characters into a full episode-by-episode story, and real episodes will be created automatically (uses credits)."}
             </p>
-            {!readOnly && (
-              <Button
-                onClick={() => generateMutation.mutate({ seriesId })}
-                disabled={generateMutation.isPending}
-                className="gap-2"
-              >
-                {generateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                {generateMutation.isPending
-                  ? lang === "th"
-                    ? "กำลังสร้าง…"
-                    : "Generating…"
-                  : lang === "th"
-                    ? "สร้างเนื้อเรื่องเต็ม"
-                    : "Generate story"}
-              </Button>
-            )}
+            {!readOnly &&
+              (deepDraftsFlagEnabled ? (
+                // W12 (consolidated primary action) — no plan yet: the ONE
+                // primary button always chains generateStoryBible ->
+                // generateStoryBibleDeep; see VerticalDramaDeepStoryDraftsActions.
+                <VerticalDramaDeepStoryDraftsActions
+                  lang={lang}
+                  seriesId={seriesId}
+                  readOnly={readOnly}
+                  targetEpisodeCount={targetEpisodeCount}
+                  hasPlan={false}
+                  onGenerateStoryBible={runGenerateStoryBible}
+                />
+              ) : (
+                <Button
+                  onClick={() => generateMutation.mutate({ seriesId })}
+                  disabled={generateMutation.isPending}
+                  className="gap-2"
+                >
+                  {generateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                  {generateMutation.isPending
+                    ? lang === "th"
+                      ? "กำลังสร้าง…"
+                      : "Generating…"
+                    : lang === "th"
+                      ? "สร้างเนื้อเรื่องเต็ม"
+                      : "Generate story"}
+                </Button>
+              ))}
           </>
         ) : (
           <>
@@ -679,22 +1124,54 @@ function StoryBibleOverviewCard({
               {lang === "th" ? "แผนเนื้อเรื่องรายตอน (ร่าง)" : "Episode-by-episode story plan (draft)"}
             </p>
             <ol className="space-y-2">
-              {expanded.episodeBreakdown!.map((ep) => (
-                <li key={ep.episodeNumber} className="rounded-md border p-2.5">
-                  <p className="font-medium">
-                    {lang === "th"
-                      ? `ตอนที่ ${ep.episodeNumber} (แผน)`
-                      : `Episode ${ep.episodeNumber} (draft plan)`}
-                    {` · ${ep.workingTitle}`}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{ep.logline}</p>
-                  <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                    {ep.keyBeats.map((beat, i) => (
-                      <li key={i}>{beat}</li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
+              {expanded.episodeBreakdown!.map((ep) => {
+                const tieInState = tieInStateByEpisode.get(ep.episodeNumber);
+                // Task #22 — "warning" tone ONLY once a draft actually exists
+                // and still has no shot marked; an undrafted planned episode
+                // (or one that IS correctly marked) both read as "normal".
+                const tieInDraftMismatch = Boolean(
+                  tieInState?.planned && tieInState.isDrafted && !tieInState.hasMarkedShot,
+                );
+                return (
+                  <li key={ep.episodeNumber} className="rounded-md border p-2.5">
+                    <p className="flex flex-wrap items-center gap-1.5 font-medium">
+                      <span>
+                        {lang === "th"
+                          ? `ตอนที่ ${ep.episodeNumber} (แผน)`
+                          : `Episode ${ep.episodeNumber} (draft plan)`}
+                        {` · ${ep.workingTitle}`}
+                      </span>
+                      {tieInState?.planned ? (
+                        <Badge
+                          variant={tieInDraftMismatch ? "destructive" : "secondary"}
+                          className="text-[10px] font-normal"
+                          data-testid={`vd-overview-tie-in-badge-${ep.episodeNumber}`}
+                        >
+                          {tieInDraftMismatch
+                            ? pickTieInDraftCopy(lang, verticalDramaTieInDraftCopy.badgePlannedUnmarked)
+                            : pickTieInDraftCopy(lang, verticalDramaTieInDraftCopy.badgePlannedNormal)}
+                        </Badge>
+                      ) : null}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{ep.logline}</p>
+                    <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
+                      {ep.keyBeats.map((beat, i) => (
+                        <li key={i}>{beat}</li>
+                      ))}
+                    </ul>
+                    {deepDraftsFlagEnabled && (
+                      <VerticalDramaDeepStoryDraftEpisodeDetail
+                        lang={lang}
+                        seriesId={seriesId}
+                        episodeNumber={ep.episodeNumber}
+                        item={activeBreakdownByEpisode.get(ep.episodeNumber)}
+                        readOnly={readOnly}
+                        episodeAlreadyCreated={createdEpisodeNumberSet.has(ep.episodeNumber)}
+                      />
+                    )}
+                  </li>
+                );
+              })}
             </ol>
             {onViewEpisodes ? (
               <button
@@ -713,7 +1190,11 @@ function StoryBibleOverviewCard({
                   : 'See the actual created episodes in the "Episodes" tab'}
               </p>
             )}
-            {!readOnly && (
+            {/* W12 (consolidated primary action) — this standalone Regenerate
+                button is HIDDEN once the flag is on: its behavior now lives
+                inside VerticalDramaDeepStoryDraftsActions' confirm dialog as
+                the "rewrite everything" scope. Flag off -> byte-identical. */}
+            {!readOnly && !deepDraftsFlagEnabled && (
               <Button
                 variant="outline"
                 size="sm"
@@ -724,6 +1205,17 @@ function StoryBibleOverviewCard({
                 {generateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 {lang === "th" ? "สร้างใหม่อีกครั้ง" : "Regenerate"}
               </Button>
+            )}
+            {deepDraftsFlagEnabled && (
+              <VerticalDramaDeepStoryDraftsActions
+                lang={lang}
+                seriesId={seriesId}
+                readOnly={readOnly}
+                targetEpisodeCount={targetEpisodeCount}
+                deepDraftSummary={deepDraftSummary}
+                hasPlan={true}
+                onGenerateStoryBible={runGenerateStoryBible}
+              />
             )}
           </>
         )}

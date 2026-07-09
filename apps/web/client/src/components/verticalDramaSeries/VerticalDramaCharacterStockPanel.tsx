@@ -40,6 +40,11 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
+import { VerticalDramaCharacterVoiceCastingCard } from "@/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard";
+import type {
+  VerticalDramaCharacterVoiceConfig,
+  VerticalDramaVoiceCatalogEntry,
+} from "@shared/verticalDramaSeries/voiceCasting";
 import { readDroppedImageInput, readFileAsDataUrl } from "@/components/media/ImageSourcePicker";
 import ModelSelectorDialog, {
   type MediaModel,
@@ -223,6 +228,12 @@ export interface VerticalDramaCharacterStockPanelProps {
   seriesId: string;
   /** When true (archived series), all mutating controls are disabled. */
   readOnly?: boolean;
+  /** W12-B voice chain wave — gates the per-character voice-casting card
+   *  (`VerticalDramaCharacterVoiceCastingCard`) mounted below the selected
+   *  character's detail card. `false`/omitted renders byte-identical to
+   *  before this wave (see `VerticalDramaSeriesDetailPage.tsx`'s
+   *  `useTenantFeatureFlag("verticalDramaSeriesVoiceChain")`). */
+  voiceChainEnabled?: boolean;
   className?: string;
 }
 
@@ -233,6 +244,7 @@ export interface VerticalDramaCharacterStockPanelProps {
 export function VerticalDramaCharacterStockPanel({
   seriesId,
   readOnly = false,
+  voiceChainEnabled = false,
   className,
 }: VerticalDramaCharacterStockPanelProps) {
   const lang = useVerticalDramaLang();
@@ -424,6 +436,138 @@ export function VerticalDramaCharacterStockPanel({
     toast.error(
       err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong")
     );
+
+  /* ---- W12-B voice chain — per-character voice casting ----
+   * Series-scoped (not per-character), so this query is fetched once
+   * regardless of which character is selected — `listVoiceCatalog`'s own
+   * input is `{seriesId}` only. Only enabled once the tenant flag is on,
+   * mirroring `voiceChainEnabled`'s own byte-identical-when-off contract. */
+  const voiceCatalogQuery = trpc.verticalDramaCharacters.listVoiceCatalog.useQuery(
+    { seriesId },
+    { enabled: voiceChainEnabled && Boolean(seriesId), staleTime: 5 * 60_000 }
+  );
+  const voiceCatalog: VerticalDramaVoiceCatalogEntry[] =
+    voiceCatalogQuery.data?.voices ?? [];
+
+  const setVoiceConfigMutation =
+    trpc.verticalDramaCharacters.setCharacterVoiceConfig.useMutation({
+      onSuccess: (_res, variables) => {
+        invalidate();
+        toast.success(
+          variables.voiceConfig === null
+            ? t(lang, "ล้างเสียงแล้ว", "Voice cleared")
+            : t(lang, "กำหนดเสียงแล้ว", "Voice cast")
+        );
+      },
+      onError,
+    });
+
+  /** Character ids currently between "preview task submitted" and
+   *  "preview task completed" — same Set-keyed-by-id convention as
+   *  `pollingCharacters` above (independent characters can preview
+   *  concurrently). */
+  const [previewingVoiceCharacterIds, setPreviewingVoiceCharacterIds] =
+    useState<Set<string>>(new Set());
+  const [voicePreviewUrlByCharacterId, setVoicePreviewUrlByCharacterId] =
+    useState<Record<string, string>>({});
+  /** Resolved `creditCost` from the most recent `previewCharacterVoice`
+   *  response, per character (debt-item-2, 2026-07-08) — same Record-keyed-
+   *  by-id convention as `voicePreviewUrlByCharacterId` above. Set in
+   *  `previewVoiceMutation`'s `onSuccess` (available immediately on submit,
+   *  unlike the audio URL which only resolves once `pollVoicePreviewTask`
+   *  completes). */
+  const [voicePreviewCreditCostByCharacterId, setVoicePreviewCreditCostByCharacterId] =
+    useState<Record<string, number>>({});
+
+  /** Poll a submitted character-voice-preview task to completion, mirroring
+   *  `pollCharacterImageTask`'s exact `utils.media.getTask.fetch` loop
+   *  (120 attempts, 2.5s interval) — simpler than that function since a
+   *  voice preview never links into character stock, it only needs the
+   *  resolved audio URL for the inline `<audio>` player. */
+  async function pollVoicePreviewTask(taskId: string, characterId: string) {
+    setPreviewingVoiceCharacterIds(prev => new Set(prev).add(characterId));
+    try {
+      for (let attempt = 0; attempt < 120; attempt++) {
+        const task = await utils.media.getTask.fetch({ taskId });
+        const status = (task as { status?: string } | null)?.status;
+        if (status === "completed") {
+          const resultUrl = (task as { resultUrl?: string } | null)?.resultUrl;
+          if (!resultUrl) {
+            toast.error(
+              t(lang, "สร้างตัวอย่างเสียงสำเร็จแต่ไม่พบ URL ผลลัพธ์", "Preview completed but no result URL.")
+            );
+            return;
+          }
+          setVoicePreviewUrlByCharacterId(prev => ({ ...prev, [characterId]: resultUrl }));
+          return;
+        }
+        if (status === "failed") {
+          const errorMessage = (task as { errorMessage?: string } | null)?.errorMessage;
+          toast.error(
+            t(
+              lang,
+              `สร้างตัวอย่างเสียงล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`,
+              `Voice preview failed${errorMessage ? `: ${errorMessage}` : ""}`
+            )
+          );
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      toast.error(
+        t(lang, "สร้างตัวอย่างเสียงใช้เวลานานเกินไป ลองตรวจสอบภายหลัง", "Preview is taking too long — check back later.")
+      );
+    } finally {
+      setPreviewingVoiceCharacterIds(prev => {
+        const next = new Set(prev);
+        next.delete(characterId);
+        return next;
+      });
+    }
+  }
+
+  const previewVoiceMutation =
+    trpc.verticalDramaCharacters.previewCharacterVoice.useMutation({
+      onSuccess: (res, variables) => {
+        setVoicePreviewCreditCostByCharacterId(prev => ({
+          ...prev,
+          [variables.characterId]: res.creditCost,
+        }));
+        void pollVoicePreviewTask(res.taskId, variables.characterId);
+      },
+      onError,
+    });
+
+  const handleCastVoice = (characterId: string, entry: VerticalDramaVoiceCatalogEntry) => {
+    setVoiceConfigMutation.mutate({
+      seriesId,
+      characterId,
+      voiceConfig: {
+        voiceModelId: entry.voiceModelId,
+        voiceId: entry.voiceId,
+        voiceLabel: entry.label,
+      },
+      idempotencyKey: crypto.randomUUID(),
+    });
+  };
+
+  const handleClearVoice = (characterId: string) => {
+    setVoiceConfigMutation.mutate({
+      seriesId,
+      characterId,
+      voiceConfig: null,
+      idempotencyKey: crypto.randomUUID(),
+    });
+  };
+
+  const handlePreviewVoice = (characterId: string) => {
+    setVoicePreviewUrlByCharacterId(prev => {
+      if (!(characterId in prev)) return prev;
+      const { [characterId]: _drop, ...rest } = prev;
+      return rest;
+    });
+    previewVoiceMutation.mutate({ seriesId, characterId });
+  };
 
   const createMutation =
     trpc.verticalDramaCharacters.createCharacter.useMutation({
@@ -867,6 +1011,18 @@ export function VerticalDramaCharacterStockPanel({
     characters.find(
       (c: VdCharacterListItem) => c.characterId === effectiveSelectedId
     ) ?? null;
+  /** `characterRowToDto`'s conditional `...(includeVoiceConfig ? {voiceConfig} : {})`
+   *  spread makes its own TS-inferred return type a union whose OTHER branch
+   *  has no `voiceConfig` property at all — a defensive cast (not `any`)
+   *  reading it back off `selectedCharacter` sidesteps that union-property-
+   *  access without assuming a shape the server didn't actually send
+   *  (`voiceConfig` is simply `undefined` when the flag is off or the
+   *  character was never cast). */
+  const selectedCharacterVoiceConfig = (
+    selectedCharacter as
+      | (VdCharacterListItem & { voiceConfig?: VerticalDramaCharacterVoiceConfig })
+      | null
+  )?.voiceConfig;
   /** Show the persistent right-side reference-panel column only when there's
    *  a character to attach references to and mutations are allowed — matches
    *  the condition that previously gated mounting `VerticalDramaCharacterReferencePanel`
@@ -1817,6 +1973,40 @@ export function VerticalDramaCharacterStockPanel({
                     })()}
                   </CardContent>
                 </Card>
+
+                {/* W12-B voice chain — per-character voice casting. Gated on
+                    `voiceChainEnabled` (flag off -> byte-identical, nothing
+                    below renders at all). */}
+                {voiceChainEnabled && (
+                  <VerticalDramaCharacterVoiceCastingCard
+                    lang={lang}
+                    characterName={selectedCharacter.name}
+                    readOnly={readOnly}
+                    voiceConfig={selectedCharacterVoiceConfig}
+                    voices={voiceCatalog}
+                    voicesLoading={voiceCatalogQuery.isLoading}
+                    casting={
+                      setVoiceConfigMutation.isPending &&
+                      setVoiceConfigMutation.variables?.characterId ===
+                        selectedCharacter.characterId &&
+                      setVoiceConfigMutation.variables?.voiceConfig !== null
+                    }
+                    clearing={
+                      setVoiceConfigMutation.isPending &&
+                      setVoiceConfigMutation.variables?.characterId ===
+                        selectedCharacter.characterId &&
+                      setVoiceConfigMutation.variables?.voiceConfig === null
+                    }
+                    onCast={entry => handleCastVoice(selectedCharacter.characterId, entry)}
+                    onClear={() => handleClearVoice(selectedCharacter.characterId)}
+                    onPreview={() => handlePreviewVoice(selectedCharacter.characterId)}
+                    previewing={previewingVoiceCharacterIds.has(selectedCharacter.characterId)}
+                    previewAudioUrl={voicePreviewUrlByCharacterId[selectedCharacter.characterId] ?? null}
+                    previewCreditCost={
+                      voicePreviewCreditCostByCharacterId[selectedCharacter.characterId] ?? null
+                    }
+                  />
+                )}
 
                 <ModelSelectorDialog
                   open={isModelDialogOpen}

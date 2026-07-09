@@ -84,17 +84,38 @@ function makeMockDb(existingJob?: any) {
   const limitAfterOrder = vi.fn().mockReturnValue({ offset: offsetFn });
   const orderByAfterWhere = vi.fn().mockReturnValue({ limit: limitAfterOrder });
 
-  const whereResult = {
-    limit: vi.fn().mockResolvedValue(rows),
-    orderBy: orderByAfterWhere,
-  };
+  // debt-item-7 (2026-07-08) — `listJobs`'s COUNT query
+  // (`select({ value: count() }).from(automationJobs).where(...)`, see
+  // jobAutomationService.ts) awaits the `.where()` return value DIRECTLY —
+  // no `.limit()`/`.orderBy()` call first — so it must be thenable itself,
+  // resolving to `[{ value: N }]` for a count query or `rows` otherwise
+  // (`resolvedRows` picks the right shape — see `select` below). The
+  // pre-existing `.limit(1)` (cancelJob/getJob) and
+  // `.orderBy().limit().offset()` (listJobs row-fetch) chains are additive
+  // siblings on the SAME object, unaffected.
+  function makeWhereResult(resolvedRows: unknown[]) {
+    return {
+      limit: vi.fn().mockResolvedValue(resolvedRows),
+      orderBy: orderByAfterWhere,
+      then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) =>
+        Promise.resolve(resolvedRows).then(resolve, reject),
+    };
+  }
 
   return {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue(whereResult),
-        orderBy: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ offset: vi.fn().mockResolvedValue(rows) }) }),
-      }),
+    // debt-item-7 — `select` now inspects its (optional) `fields` argument:
+    // `listJobs`'s row-count query passes `{ value: count() }` (mirrors the
+    // real Drizzle result shape, `[{ value: N }]`); every other call site in
+    // jobAutomationService.ts calls bare `.select()` and wants full `rows`.
+    select: vi.fn().mockImplementation((fields?: Record<string, unknown>) => {
+      const isCountQuery = Boolean(fields && typeof fields === "object" && "value" in fields);
+      const resolvedRows = isCountQuery ? [{ value: rows.length }] : rows;
+      return {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue(makeWhereResult(resolvedRows)),
+          orderBy: vi.fn().mockReturnValue({ limit: vi.fn().mockReturnValue({ offset: vi.fn().mockResolvedValue(rows) }) }),
+        }),
+      };
     }),
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
@@ -105,6 +126,20 @@ function makeMockDb(existingJob?: any) {
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([]),
       }),
+    }),
+    // debt-item-7 — `cancelJob` (jobAutomationService.ts) runs its status
+    // update + credit refund inside `drizzle.transaction(async (tx) => {...})`;
+    // the mock previously had no `transaction` method at all. `tx` mirrors
+    // the plain `update` mock above (the only method `cancelJob` calls on it).
+    transaction: vi.fn().mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      };
+      return callback(tx);
     }),
   };
 }

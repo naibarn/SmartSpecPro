@@ -27,6 +27,15 @@ import {
 } from "@shared/verticalDramaSeries";
 import type { VerticalDramaSeriesMemory } from "@shared/verticalDramaSeries";
 import { artifactChecksumSha256 } from "@shared/verticalDramaSeries";
+// Story-density reform (spec §7.7.3, section-13, added 2026-07-07) — imported
+// DIRECTLY from the submodule (not the shared barrel), mirroring the
+// convention `verticalDramaStoryBible.ts`/`verticalDramaScriptGeneration.ts`
+// already established for this module: `contentBudget.ts` is the ONE
+// canonical content-budget/breakdown-versioning contract source.
+import type {
+  VerticalDramaArcDriftReasonCode,
+  VerticalDramaEpisodeBreakdownItem,
+} from "@shared/verticalDramaSeries/contentBudget";
 
 /* -------------------------------------------------------------------------- */
 /* Tuning constants                                                           */
@@ -95,6 +104,43 @@ export interface VerticalDramaProductTieInFatigue {
 }
 
 /**
+ * Bundle item 9 (spec §7.7.3, section-13, added 2026-07-07) — the currently
+ * ACTIVE episode-breakdown version, so episode-planning callers can see what
+ * the season currently plans for future episodes without a separate bible
+ * read. `versionId` is `null` for a legacy series that has never adopted
+ * breakdown versioning (only a flat `bible.episodeBreakdown` array exists) —
+ * `items` is still populated in that case via `getActiveBreakdown`'s own
+ * legacy-fallback read (spec §7.7.2 hard rule 6). This module has no DB
+ * access to the series `bible` column itself (it only ever loads memory
+ * EVENTS) — the caller resolves this via `verticalDramaStoryBible.ts`'s
+ * `getActiveBreakdown`/`readBreakdownVersions` and passes it in through
+ * `BuildEpisodeMemoryBundleOpts.activeBreakdownVersion`.
+ */
+export interface VerticalDramaActiveBreakdownVersionSummary {
+  versionId: string | null;
+  items: VerticalDramaEpisodeBreakdownItem[];
+}
+
+/**
+ * Bundle item 9 (spec §7.7.3, section-13, added 2026-07-07) — a standing,
+ * unresolved arc-drift warning derived PURELY from the append-only event log
+ * itself (no bible/DB read needed, unlike `activeBreakdownVersion` above):
+ * an `arc_replan_proposal` event for which no later `arc_replan_applied`
+ * event references it yet. Deliberately does NOT exclude a REJECTED
+ * proposal — spec §7.7.3: "rejecting keeps the old plan and leaves a
+ * standing continuity warning on affected future episodes" — only an
+ * APPROVED (applied) proposal actually resolves the drift, since approval is
+ * the only outcome that changes the plan to match what was realized.
+ */
+export interface VerticalDramaStandingArcDriftWarning {
+  proposalId: string;
+  triggeredByEpisodeNumber: number;
+  driftReasons: VerticalDramaArcDriftReasonCode[];
+  affectedEpisodeNumbers: number[];
+  rationale: string;
+}
+
+/**
  * The retrieval bundle. It is structurally a `VerticalDramaSeriesMemory` (so it
  * satisfies `NormalizedEpisodeInput.memoryBundle`) plus explicit fatigue and
  * lookback metadata that downstream generation uses to respect fatigue limits.
@@ -104,10 +150,89 @@ export interface VerticalDramaEpisodeMemoryBundle extends VerticalDramaSeriesMem
   resolvedHookLookback: string[];
   /** True when compacted text replaced the full inlined event history. */
   usedCompaction: boolean;
+  /**
+   * Bundle item 9 (spec §7.7.3, section-13) — flag-gated by the caller's
+   * `verticalDramaSeriesArcReplan` tenant flag (`BuildEpisodeMemoryBundleOpts
+   * .arcReplanEnabled`). `undefined` when the flag is off/omitted, so the
+   * bundle shape is otherwise BYTE-IDENTICAL to before this change
+   * (section-13 acceptance: "flags off — ... byte-compatible").
+   */
+  activeBreakdownVersion?: VerticalDramaActiveBreakdownVersionSummary;
+  /** See `VerticalDramaStandingArcDriftWarning`. Same flag-gating as `activeBreakdownVersion`. */
+  standingArcDriftWarnings?: VerticalDramaStandingArcDriftWarning[];
+}
+
+/**
+ * Additive options bag for `buildEpisodeMemoryBundle` (spec §7.7.3,
+ * section-13, added 2026-07-07) — bundle item 9. Both the pure function and
+ * the DB-backed service method accept this as an optional trailing
+ * parameter; omitting it entirely preserves today's exact bundle shape
+ * (flags-off byte-identical, section-13 acceptance).
+ */
+export interface BuildEpisodeMemoryBundleOpts {
+  /**
+   * Feature flag `verticalDramaSeriesArcReplan` — gates BOTH bundle item 9
+   * fields entirely. This module has no direct tenant-flag read of its own
+   * (that lives in `server/services/tenantFeatureFlagService.ts`); the
+   * caller resolves the flag and passes the boolean through, matching this
+   * codebase's established "gate at the call site" convention (see
+   * `server/routers/verticalDramaEpisodes.ts`'s `resolveSubShotPolicy`).
+   */
+  arcReplanEnabled?: boolean;
+  /**
+   * Caller-resolved active breakdown version (see
+   * `VerticalDramaActiveBreakdownVersionSummary`'s doc comment for why this
+   * module cannot resolve it itself). Only read when `arcReplanEnabled` is
+   * true; a `null`/omitted value with the flag on simply omits
+   * `activeBreakdownVersion` from the returned bundle (e.g. the series row
+   * failed to load) rather than throwing.
+   */
+  activeBreakdownVersion?: VerticalDramaActiveBreakdownVersionSummary | null;
 }
 
 /** Outcome derived from the append-only chain, never stored on the proposal. */
 export type VerticalDramaRetconOutcome = "proposed" | "approved" | "rejected";
+
+/**
+ * Standing (unresolved) arc-replan proposals from the append-only event log
+ * (spec §7.7.3, section-13 bundle item 9) — see
+ * `VerticalDramaStandingArcDriftWarning`'s doc comment for the exact
+ * "unresolved" definition. Pure, deterministic — operates on the same
+ * `live` (retcon-supersession-filtered) event list `buildEpisodeMemoryBundle`
+ * already computes.
+ */
+export function deriveStandingArcDriftWarnings(
+  liveEvents: VerticalDramaMemoryEvent[],
+): VerticalDramaStandingArcDriftWarning[] {
+  const appliedProposalIds = new Set<string>();
+  for (const ev of liveEvents) {
+    if (ev.memoryKind !== "arc_replan_applied") continue;
+    const proposalId = ev.payload?.proposalId ?? ev.payload?.arcReplanApprovalOf;
+    if (typeof proposalId === "string") appliedProposalIds.add(proposalId);
+  }
+
+  const warnings: VerticalDramaStandingArcDriftWarning[] = [];
+  for (const ev of liveEvents) {
+    if (ev.memoryKind !== "arc_replan_proposal") continue;
+    const payload = ev.payload ?? {};
+    const proposalId = payload.proposalId;
+    if (typeof proposalId !== "string" || appliedProposalIds.has(proposalId)) continue;
+
+    const triggeredByEpisodeNumber = payload.triggeredByEpisodeNumber;
+    const driftReasons = Array.isArray(payload.driftReasons) ? payload.driftReasons : [];
+    const affectedEpisodeNumbers = Array.isArray(payload.affectedEpisodeNumbers)
+      ? payload.affectedEpisodeNumbers
+      : [];
+    warnings.push({
+      proposalId,
+      triggeredByEpisodeNumber: typeof triggeredByEpisodeNumber === "number" ? triggeredByEpisodeNumber : 0,
+      driftReasons: driftReasons as VerticalDramaArcDriftReasonCode[],
+      affectedEpisodeNumbers: affectedEpisodeNumbers.filter((n): n is number => typeof n === "number"),
+      rationale: typeof payload.rationale === "string" ? payload.rationale : "",
+    });
+  }
+  return warnings;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Row <-> contract mapping                                                    */
@@ -211,6 +336,7 @@ export function buildEpisodeMemoryBundle(
   events: VerticalDramaMemoryEvent[],
   episodeNumber: number,
   policy: VerticalDramaMemoryRetrievalPolicy = VERTICAL_DRAMA_MEMORY_RETRIEVAL_POLICY_DEFAULT,
+  opts: BuildEpisodeMemoryBundleOpts = {},
 ): VerticalDramaEpisodeMemoryBundle {
   const sorted = sortEventsStable(events);
 
@@ -279,6 +405,17 @@ export function buildEpisodeMemoryBundle(
   // Deterministic updatedAt: last event's timestamp, else epoch.
   const updatedAt = sorted.length > 0 ? sorted[sorted.length - 1].createdAt : new Date(0).toISOString();
 
+  // Bundle item 9 (spec §7.7.3, section-13, added 2026-07-07) — flag-gated;
+  // omitted entirely (not even present as `undefined` keys — see the object
+  // spread below) when the flag is off, so the bundle shape is otherwise
+  // byte-identical to before this change.
+  const arcReplanExtras = opts.arcReplanEnabled
+    ? {
+        ...(opts.activeBreakdownVersion ? { activeBreakdownVersion: opts.activeBreakdownVersion } : {}),
+        standingArcDriftWarnings: deriveStandingArcDriftWarnings(live),
+      }
+    : {};
+
   return {
     canonicalFacts,
     episodeSummaries: lastSummaries,
@@ -291,6 +428,7 @@ export function buildEpisodeMemoryBundle(
     productTieInFatigue,
     resolvedHookLookback,
     usedCompaction,
+    ...arcReplanExtras,
   };
 }
 
@@ -386,9 +524,10 @@ export class VerticalDramaSeriesMemoryService {
     owner: VerticalDramaMemoryOwner,
     episodeNumber: number,
     policy: VerticalDramaMemoryRetrievalPolicy = VERTICAL_DRAMA_MEMORY_RETRIEVAL_POLICY_DEFAULT,
+    opts: BuildEpisodeMemoryBundleOpts = {},
   ): Promise<VerticalDramaEpisodeMemoryBundle> {
     const events = await this.loadAllEvents(owner);
-    return buildEpisodeMemoryBundle(events, episodeNumber, policy);
+    return buildEpisodeMemoryBundle(events, episodeNumber, policy, opts);
   }
 
   /** Persist a compacted memory snapshot (distinct from append-only events). */

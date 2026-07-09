@@ -78,8 +78,14 @@ vi.mock("../../middleware/requireFeatureFlag", () => ({
 }));
 
 vi.mock("../../services/mediaGenerationService", () => ({
-  mediaGenerationService: { generateImageAsync: vi.fn(), generateVideoAsync: vi.fn() },
-  DEFAULT_MODELS: { image: "google-nano-banana-pro", video: "veo3/generate-veo-3-video-lite" },
+  mediaGenerationService: {
+    generateImageAsync: vi.fn(),
+    generateVideoAsync: vi.fn(),
+  },
+  DEFAULT_MODELS: {
+    image: "google-nano-banana-pro",
+    video: "veo3/generate-veo-3-video-lite",
+  },
 }));
 
 vi.mock("../../services/pricingCalculator", () => ({
@@ -97,7 +103,10 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
-  mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
+  mediaGenerationLimiter: {
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  },
 }));
 
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
@@ -115,11 +124,28 @@ vi.mock("../../services/mediaTransportResolver", () => ({
   resolveMediaTransport: mockResolveMediaTransport,
 }));
 
-const { mockRepairStage } = vi.hoisted(() => ({ mockRepairStage: vi.fn() }));
+const { mockRepairStage, mockRunStage } = vi.hoisted(() => ({
+  mockRepairStage: vi.fn(),
+  // Wave-4A — additive: the dry-run singleton pipeline's `runStage` was
+  // never mocked before this wave (no pre-existing test called
+  // `router.runStage`/`router.regenerateStage`); needed for the "dry-run is
+  // never gated" test below.
+  mockRunStage: vi.fn().mockResolvedValue({}),
+}));
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
-  verticalDramaEpisodePipeline: { repairStage: mockRepairStage },
-  VerticalDramaEpisodePipeline: class {},
-  VERTICAL_DRAMA_PIPELINE_STAGES: ["plan_episode_script"],
+  verticalDramaEpisodePipeline: {
+    repairStage: mockRepairStage,
+    runStage: mockRunStage,
+  },
+  VerticalDramaEpisodePipeline: class {
+    repairStage = mockRepairStage;
+    runStage = mockRunStage;
+    static downstreamStages = vi.fn(() => []);
+  },
+  VERTICAL_DRAMA_PIPELINE_STAGES: [
+    "plan_episode_script",
+    "create_storyboard_review_project",
+  ],
   VERTICAL_DRAMA_RUNNER_MODES: ["dry_run", "full"],
 }));
 
@@ -127,8 +153,15 @@ vi.mock("../../services/verticalDramaProviderRouting", () => ({
   createVerticalDramaProviderRoutingPort: vi.fn(),
 }));
 
+const { mockAppendEvent, mockListEvents } = vi.hoisted(() => ({
+  mockAppendEvent: vi.fn().mockResolvedValue({ memoryEventId: "evt-1" }),
+  mockListEvents: vi.fn().mockResolvedValue([]),
+}));
 vi.mock("../../services/verticalDramaSeriesMemory", () => ({
-  verticalDramaSeriesMemoryService: {},
+  verticalDramaSeriesMemoryService: {
+    appendEvent: mockAppendEvent,
+    listEvents: mockListEvents,
+  },
   memoryRowToEvent: vi.fn(),
 }));
 
@@ -138,27 +171,105 @@ vi.mock("../../services/verticalDramaEpisodeContinuation", () => ({
   VdSchemaValidationError: class extends Error {},
 }));
 
-const { mockShotReferencesService, MockVerticalDramaShotReferenceError } = vi.hoisted(() => {
-  class MockVerticalDramaShotReferenceError extends Error {
-    reason: string;
-    constructor(reason: string, message: string) {
-      super(message);
-      this.name = "VerticalDramaShotReferenceError";
-      this.reason = reason;
+// Wave-7D (spec §7.7.2/§8.8) — `buildProductionWizardInput` loads this via a
+// runtime `import()` (never static — see that function's doc comment in
+// `verticalDramaEpisodes.ts`), but `vi.mock` intercepts dynamic imports of a
+// mocked path exactly like static ones (same convention already established
+// by `verticalDramaEpisodes.memoryWiring.test.ts`'s identical mock for the
+// SAME module/export, covering `runArcDriftCheckAndProposeIfNeeded`'s use of
+// it). This file never previously imported this module.
+const { mockEvaluateScriptSpeechCoverage } = vi.hoisted(() => ({
+  mockEvaluateScriptSpeechCoverage: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaScriptGeneration", () => ({
+  evaluateScriptSpeechCoverage: mockEvaluateScriptSpeechCoverage,
+}));
+
+// Task #31 (spec §7.7.3, added 2026-07-09) — `deferEpisodeTieIn`'s F131Y
+// path and `resolveSeasonTieInPlacementForEpisode` (`getEpisodeDetail`) both
+// dynamically `import("../services/verticalDramaStoryBible")` for
+// `getActiveBreakdown` (same "3 modules transitively pull in adminProcedure"
+// reasoning as every other dynamic import in this file — see
+// `runArcDriftCheckAndProposeIfNeeded`'s own doc comment, which ALSO
+// dynamically imports this exact module for `getActiveBreakdown` +
+// `deriveLegacyContentBudget`, mocked here too so that call site stays safe
+// even though no pre-existing test in this file enables `verticalDramaSeriesArcReplan`).
+const { mockGetActiveBreakdown, mockDeriveLegacyContentBudget } = vi.hoisted(
+  () => ({
+    mockGetActiveBreakdown: vi.fn(() => [] as unknown[]),
+    mockDeriveLegacyContentBudget: vi.fn(),
+  })
+);
+vi.mock("../../services/verticalDramaStoryBible", () => ({
+  getActiveBreakdown: mockGetActiveBreakdown,
+  deriveLegacyContentBudget: mockDeriveLegacyContentBudget,
+}));
+
+// Wave-7D (spec §8.2.2 flow-through rule) — `generateStartFrameAngleVariations`
+// and `repairShotImage` now also load these 2 pure fragment-merge functions
+// via the SAME runtime `import()` pattern `generateStartFrameImage` already
+// established (this file never previously imported this module — it
+// transitively reaches `enabledLlmModels.ts` -> `llmProviders.ts`'s
+// `adminProcedure`, unsafe for this file's `../../_core/trpc` mock, same
+// reasoning as every other dynamically-imported module in this router).
+// Real pure logic mirrored inline (not `vi.importActual`, for that same
+// reason) so tests can assert on both call args and resulting prompt text.
+const {
+  mockAppendPresetVisualIdentityFragmentsToImagePrompt,
+  mockMergePresetVisualIdentityNegativeFragments,
+} = vi.hoisted(() => ({
+  mockAppendPresetVisualIdentityFragmentsToImagePrompt: vi.fn(
+    (
+      imagePrompt: string,
+      identity?: { imagePromptFragments?: { positive?: string[] } }
+    ) => {
+      const positive = identity?.imagePromptFragments?.positive ?? [];
+      if (positive.length === 0) return imagePrompt;
+      return `${imagePrompt}, ${positive.join(", ")}`;
     }
-  }
-  return {
-    mockShotReferencesService: {
-      listForEpisode: vi.fn(),
-      listForShot: vi.fn(),
-      linkReference: vi.fn(),
-      deleteReference: vi.fn(),
-      unlinkReferenceByAsset: vi.fn(),
-      reorder: vi.fn(),
-    },
-    MockVerticalDramaShotReferenceError,
-  };
-});
+  ),
+  mockMergePresetVisualIdentityNegativeFragments: vi.fn(
+    (
+      negativePrompt: string | undefined,
+      identity?: { imagePromptFragments?: { negative?: string[] } }
+    ) => {
+      const negative = identity?.imagePromptFragments?.negative ?? [];
+      if (negative.length === 0) return negativePrompt;
+      const fragment = negative.join(", ");
+      const existing = negativePrompt?.trim();
+      return existing ? `${existing}, ${fragment}` : fragment;
+    }
+  ),
+}));
+vi.mock("../../services/verticalDramaStartFrameGeneration", () => ({
+  appendPresetVisualIdentityFragmentsToImagePrompt:
+    mockAppendPresetVisualIdentityFragmentsToImagePrompt,
+  mergePresetVisualIdentityNegativeFragments:
+    mockMergePresetVisualIdentityNegativeFragments,
+}));
+
+const { mockShotReferencesService, MockVerticalDramaShotReferenceError } =
+  vi.hoisted(() => {
+    class MockVerticalDramaShotReferenceError extends Error {
+      reason: string;
+      constructor(reason: string, message: string) {
+        super(message);
+        this.name = "VerticalDramaShotReferenceError";
+        this.reason = reason;
+      }
+    }
+    return {
+      mockShotReferencesService: {
+        listForEpisode: vi.fn(),
+        listForShot: vi.fn(),
+        linkReference: vi.fn(),
+        deleteReference: vi.fn(),
+        unlinkReferenceByAsset: vi.fn(),
+        reorder: vi.fn(),
+      },
+      MockVerticalDramaShotReferenceError,
+    };
+  });
 
 vi.mock("../../services/verticalDramaShotReferences", () => ({
   verticalDramaShotReferencesService: mockShotReferencesService,
@@ -167,18 +278,38 @@ vi.mock("../../services/verticalDramaShotReferences", () => ({
 
 const {
   mockRunVerticalDramaEpisodeQualityReview,
+  mockComputeVerticalDramaDensityMetrics,
   MockInsufficientCreditsError,
   MockVdSchemaValidationError,
   MockRateLimitExceededError,
 } = vi.hoisted(() => ({
   mockRunVerticalDramaEpisodeQualityReview: vi.fn(),
+  // Wave-4A (spec §16.1) — deterministic fake so tests can assert the
+  // computed value flows through to `runVerticalDramaEpisodeQualityReview`'s
+  // `densityMetrics` param unchanged.
+  mockComputeVerticalDramaDensityMetrics: vi.fn(() => ({
+    estimated_speech_seconds: 42,
+    per_clip_coverage: {
+      clips_evaluated: 9,
+      clips_below_min_ratio: 0,
+      clips_below_error_ratio: 0,
+      average_coverage_ratio: 0.9,
+    },
+    silent_gap_count: 0,
+    duplicate_line_count: 0,
+    stage_direction_count: 0,
+    reversal_count: 1,
+    max_consecutive_same_emotion: 1,
+  })),
   MockInsufficientCreditsError: class extends Error {},
   MockVdSchemaValidationError: class extends Error {},
   MockRateLimitExceededError: class extends Error {},
 }));
 
 vi.mock("../../services/verticalDramaEpisodeQualityReview", () => ({
-  runVerticalDramaEpisodeQualityReview: mockRunVerticalDramaEpisodeQualityReview,
+  runVerticalDramaEpisodeQualityReview:
+    mockRunVerticalDramaEpisodeQualityReview,
+  computeVerticalDramaDensityMetrics: mockComputeVerticalDramaDensityMetrics,
   InsufficientCreditsError: MockInsufficientCreditsError,
   VdSchemaValidationError: MockVdSchemaValidationError,
   RateLimitExceededError: MockRateLimitExceededError,
@@ -231,19 +362,33 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 import { mediaGenerationService } from "../../services/mediaGenerationService";
-import { hasEnoughCredits, deductCredits, refundCredits } from "../../services/creditService";
+import {
+  hasEnoughCredits,
+  deductCredits,
+  refundCredits,
+} from "../../services/creditService";
 import { calculateCreditCost } from "../../services/pricingCalculator";
 import { formatVideoClipRequest } from "../../services/verticalDramaVideoPromptFormatter";
+import { getTenantFeatureFlags } from "../../services/tenantFeatureFlagService";
+import { VD_STORY_LOCK_SCRIPT_REPAIR_CONSTRAINT } from "../../services/verticalDramaQualityReviewApply";
 
-const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
-const mockGenerateVideoAsync = vi.mocked(mediaGenerationService.generateVideoAsync);
+const router = verticalDramaEpisodesRouter as unknown as Record<
+  string,
+  Function
+>;
+const mockGetTenantFeatureFlags = vi.mocked(getTenantFeatureFlags);
+const mockGenerateVideoAsync = vi.mocked(
+  mediaGenerationService.generateVideoAsync
+);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockRefundCredits = vi.mocked(refundCredits);
 const mockCalculateCreditCost = vi.mocked(calculateCreditCost);
 const mockFormatVideoClipRequest = vi.mocked(formatVideoClipRequest);
 
-function ctx(overrides: Partial<{ tenantId: string; user: { id: number } }> = {}) {
+function ctx(
+  overrides: Partial<{ tenantId: string; user: { id: number } }> = {}
+) {
   return {
     tenantId: "tenant-1",
     user: { id: 42 },
@@ -284,6 +429,15 @@ function updateChain(returned: unknown[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // `vi.clearAllMocks()` clears call history but NOT a previously configured
+  // `mockResolvedValue` default (only `mockReset()` does that) — without
+  // this, a test elsewhere in the file that sets
+  // `mockGetTenantFeatureFlags.mockResolvedValue({...someFlagsOn})` would
+  // leak that default into every LATER test in this file that never
+  // explicitly sets its own flags (Wave-4A discovery). Explicitly resetting
+  // to "everything off" here makes every test's implicit reliance on the
+  // flags-off default robust to file ordering.
+  mockGetTenantFeatureFlags.mockResolvedValue({} as any);
 });
 
 describe("listShotReferences", () => {
@@ -299,30 +453,42 @@ describe("listShotReferences", () => {
     expect(result).toEqual({ references: manifest });
     expect(mockShotReferencesService.listForEpisode).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
-      100,
+      100
     );
   });
 
   it("maps episode_not_found to NOT_FOUND", async () => {
     mockShotReferencesService.listForEpisode.mockRejectedValue(
-      new MockVerticalDramaShotReferenceError("episode_not_found", "Episode not found"),
+      new MockVerticalDramaShotReferenceError(
+        "episode_not_found",
+        "Episode not found"
+      )
     );
 
     await expect(
-      router.listShotReferences({ ctx: ctx(), input: { seriesId: "10", episodeId: "999" } }),
+      router.listShotReferences({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "999" },
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("rejects a non-integer episodeId with BAD_REQUEST (parseId integer guard, T4)", async () => {
     await expect(
-      router.listShotReferences({ ctx: ctx(), input: { seriesId: "10", episodeId: "100.5" } }),
+      router.listShotReferences({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100.5" },
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mockShotReferencesService.listForEpisode).not.toHaveBeenCalled();
   });
 
   it("rejects a non-integer seriesId with BAD_REQUEST (parseId integer guard, T4)", async () => {
     await expect(
-      router.listShotReferences({ ctx: ctx(), input: { seriesId: "10.9", episodeId: "100" } }),
+      router.listShotReferences({
+        ctx: ctx(),
+        input: { seriesId: "10.9", episodeId: "100" },
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mockShotReferencesService.listForEpisode).not.toHaveBeenCalled();
   });
@@ -360,27 +526,42 @@ describe("linkShotReference", () => {
 
   it("maps media_asset_cross_tenant to NOT_FOUND (never discloses cross-tenant existence)", async () => {
     mockShotReferencesService.linkReference.mockRejectedValue(
-      new MockVerticalDramaShotReferenceError("media_asset_cross_tenant", "cross tenant"),
+      new MockVerticalDramaShotReferenceError(
+        "media_asset_cross_tenant",
+        "cross tenant"
+      )
     );
 
     await expect(
       router.linkShotReference({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "500", source: "upload" },
-      }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          mediaAssetId: "500",
+          source: "upload",
+        },
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("maps media_asset_deleted to BAD_REQUEST", async () => {
     mockShotReferencesService.linkReference.mockRejectedValue(
-      new MockVerticalDramaShotReferenceError("media_asset_deleted", "deleted"),
+      new MockVerticalDramaShotReferenceError("media_asset_deleted", "deleted")
     );
 
     await expect(
       router.linkShotReference({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "500", source: "upload" },
-      }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          mediaAssetId: "500",
+          source: "upload",
+        },
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
@@ -397,20 +578,23 @@ describe("deleteShotReference", () => {
     expect(result).toEqual({ deleted: true });
     expect(mockShotReferencesService.deleteReference).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
-      7,
+      7
     );
   });
 
   it("maps reference_not_found to NOT_FOUND", async () => {
     mockShotReferencesService.deleteReference.mockRejectedValue(
-      new MockVerticalDramaShotReferenceError("reference_not_found", "not found"),
+      new MockVerticalDramaShotReferenceError(
+        "reference_not_found",
+        "not found"
+      )
     );
 
     await expect(
       router.deleteShotReference({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", referenceId: "999" },
-      }),
+      })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
@@ -438,7 +622,9 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
   }
 
   beforeEach(() => {
-    mockShotReferencesService.linkReference.mockResolvedValue({ referenceId: "1" });
+    mockShotReferencesService.linkReference.mockResolvedValue({
+      referenceId: "1",
+    });
     mockShotReferencesService.unlinkReferenceByAsset.mockResolvedValue(false);
   });
 
@@ -451,7 +637,12 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
 
     const result = await router.setApprovedStartFrameAsset({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "901" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "901",
+      },
     });
 
     expect(result.startFramePlan.frames[0].approvedMediaAssetId).toBe("901");
@@ -470,11 +661,13 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
     });
 
     // 2. New main image (901) is removed from the reference strip, if present.
-    expect(mockShotReferencesService.unlinkReferenceByAsset).toHaveBeenCalledWith(
+    expect(
+      mockShotReferencesService.unlinkReferenceByAsset
+    ).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
       100,
       1,
-      901,
+      901
     );
   });
 
@@ -487,16 +680,23 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
 
     await router.setApprovedStartFrameAsset({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "901" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "901",
+      },
     });
 
     expect(mockShotReferencesService.linkReference).not.toHaveBeenCalled();
     // Still de-dupes the strip for the new asset even with no previous main.
-    expect(mockShotReferencesService.unlinkReferenceByAsset).toHaveBeenCalledWith(
+    expect(
+      mockShotReferencesService.unlinkReferenceByAsset
+    ).toHaveBeenCalledWith(
       { tenantId: "tenant-1", userId: 42, seriesId: 10 },
       100,
       1,
-      901,
+      901
     );
   });
 
@@ -509,11 +709,18 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
 
     await router.setApprovedStartFrameAsset({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "900" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "900",
+      },
     });
 
     expect(mockShotReferencesService.linkReference).not.toHaveBeenCalled();
-    expect(mockShotReferencesService.unlinkReferenceByAsset).not.toHaveBeenCalled();
+    expect(
+      mockShotReferencesService.unlinkReferenceByAsset
+    ).not.toHaveBeenCalled();
   });
 
   it("still completes the swap even if demoting the previous asset throws a shot-reference error (best-effort)", async () => {
@@ -523,12 +730,17 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
       .mockReturnValueOnce(selectChain([])); // resolveEpisodePlanAssetUrls
     mockDb.update.mockReturnValueOnce(updateChain([{}]));
     mockShotReferencesService.linkReference.mockRejectedValue(
-      new MockVerticalDramaShotReferenceError("media_asset_deleted", "deleted"),
+      new MockVerticalDramaShotReferenceError("media_asset_deleted", "deleted")
     );
 
     const result = await router.setApprovedStartFrameAsset({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mediaAssetId: "901" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mediaAssetId: "901",
+      },
     });
 
     expect(result.startFramePlan.frames[0].approvedMediaAssetId).toBe("901");
@@ -579,10 +791,15 @@ describe("runEpisodeQualityReview", () => {
   }
 
   it("throws PRECONDITION_FAILED when the episode has no script/storyboard yet", async () => {
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow({ script: null })]));
+    mockDb.select.mockReturnValueOnce(
+      selectChain([episodeRow({ script: null })])
+    );
 
     await expect(
-      router.runEpisodeQualityReview({ ctx: ctx(), input: { seriesId: "10", episodeId: "100" } }),
+      router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(mockRunVerticalDramaEpisodeQualityReview).not.toHaveBeenCalled();
   });
@@ -592,7 +809,14 @@ describe("runEpisodeQualityReview", () => {
       .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
     mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
-      review: { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] },
+      review: {
+        episode_title: "Episode 1",
+        scorecard: {},
+        summary: "ok",
+        issues: [],
+        warnings: [],
+        repair_queue: [],
+      },
       creditsUsed: 3,
       model: "gpt-x",
     });
@@ -609,7 +833,12 @@ describe("runEpisodeQualityReview", () => {
     expect(result.creditsUsed).toBe(3);
     expect(result.review.summary).toBe("ok");
     expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 42, tenantId: "tenant-1", seriesId: 10, episodeId: 100 }),
+      expect.objectContaining({
+        userId: 42,
+        tenantId: "tenant-1",
+        seriesId: 10,
+        episodeId: 100,
+      })
     );
     expect(mockDb.insert).toHaveBeenCalledTimes(2);
   });
@@ -619,11 +848,14 @@ describe("runEpisodeQualityReview", () => {
       .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
     mockRunVerticalDramaEpisodeQualityReview.mockRejectedValue(
-      new MockInsufficientCreditsError("not enough credits"),
+      new MockInsufficientCreditsError("not enough credits")
     );
 
     await expect(
-      router.runEpisodeQualityReview({ ctx: ctx(), input: { seriesId: "10", episodeId: "100" } }),
+      router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
@@ -632,11 +864,14 @@ describe("runEpisodeQualityReview", () => {
       .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
     mockRunVerticalDramaEpisodeQualityReview.mockRejectedValue(
-      new MockRateLimitExceededError("slow down"),
+      new MockRateLimitExceededError("slow down")
     );
 
     await expect(
-      router.runEpisodeQualityReview({ ctx: ctx(), input: { seriesId: "10", episodeId: "100" } }),
+      router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
     ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
   });
 
@@ -645,7 +880,14 @@ describe("runEpisodeQualityReview", () => {
       .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
     mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
-      review: { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] },
+      review: {
+        episode_title: "Episode 1",
+        scorecard: {},
+        summary: "ok",
+        issues: [],
+        warnings: [],
+        repair_queue: [],
+      },
       creditsUsed: 3,
       model: "gpt-x",
     });
@@ -660,7 +902,7 @@ describe("runEpisodeQualityReview", () => {
     });
 
     expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: "qr-key-1" }),
+      expect.objectContaining({ idempotencyKey: "qr-key-1" })
     );
   });
 
@@ -669,11 +911,16 @@ describe("runEpisodeQualityReview", () => {
     // JSON.stringify length over the 400_000 char guard.
     const huge = "x".repeat(450_000);
     mockDb.select.mockReturnValueOnce(
-      selectChain([episodeRow({ script: { episode_title: "Episode 1", huge } })]),
+      selectChain([
+        episodeRow({ script: { episode_title: "Episode 1", huge } }),
+      ])
     );
 
     await expect(
-      router.runEpisodeQualityReview({ ctx: ctx(), input: { seriesId: "10", episodeId: "100" } }),
+      router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mockRunVerticalDramaEpisodeQualityReview).not.toHaveBeenCalled();
   });
@@ -684,7 +931,9 @@ describe("runEpisodeQualityReview", () => {
         episode_title: "Episode 1",
         scorecard: {},
         summary: "ok",
-        issues: [{ location: "shot 1", problem: "flat", suggested_fix: "vary it" }],
+        issues: [
+          { location: "shot 1", problem: "flat", suggested_fix: "vary it" },
+        ],
         warnings: [],
         repair_queue: [],
       };
@@ -693,7 +942,14 @@ describe("runEpisodeQualityReview", () => {
         .mockReturnValueOnce(selectChain([{ jsonPayload: previousReview }])) // loadLatestQualityReview
         .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
       mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
-        review: { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] },
+        review: {
+          episode_title: "Episode 1",
+          scorecard: {},
+          summary: "ok",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
         creditsUsed: 3,
         model: "gpt-x",
       });
@@ -711,7 +967,7 @@ describe("runEpisodeQualityReview", () => {
         expect.objectContaining({
           avoidPrevious: true,
           previousIssues: previousReview.issues,
-        }),
+        })
       );
     });
 
@@ -721,7 +977,14 @@ describe("runEpisodeQualityReview", () => {
         .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview -> none yet
         .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
       mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
-        review: { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] },
+        review: {
+          episode_title: "Episode 1",
+          scorecard: {},
+          summary: "ok",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
         creditsUsed: 3,
         model: "gpt-x",
       });
@@ -736,8 +999,268 @@ describe("runEpisodeQualityReview", () => {
       });
 
       expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
-        expect.objectContaining({ avoidPrevious: false, previousIssues: undefined }),
+        expect.objectContaining({
+          avoidPrevious: false,
+          previousIssues: undefined,
+        })
       );
+    });
+  });
+
+  describe("Wave-4A — hybrid density metrics + tie-in passthrough (spec §16.1/§13.1)", () => {
+    beforeEach(() => {
+      mockComputeVerticalDramaDensityMetrics.mockClear();
+    });
+
+    it("flags off: densityMetrics/tieInConfig stay undefined (byte-identical v1 call shape)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { locale: "th", productTieIn: null, qualityPolicy: null },
+          ])
+        ); // series row
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: {
+          episode_title: "Episode 1",
+          scorecard: {},
+          summary: "ok",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockComputeVerticalDramaDensityMetrics).not.toHaveBeenCalled();
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          densityMetrics: undefined,
+          tieInConfig: undefined,
+        })
+      );
+      // Exactly the v1 shape: 2 inserts (run + artifact) for the review only.
+      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+    });
+
+    it("verticalDramaSeriesSpeechBudget on: computes densityMetrics and passes it through", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesSpeechBudget: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { locale: "th", productTieIn: null, qualityPolicy: null },
+          ])
+        ); // series row
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: {
+          episode_title: "Episode 1",
+          scorecard: {},
+          summary: "ok",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockComputeVerticalDramaDensityMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          script: expect.anything(),
+          storyboard: expect.anything(),
+        })
+      );
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          densityMetrics: expect.objectContaining({
+            estimated_speech_seconds: 42,
+          }),
+          tieInConfig: undefined,
+        })
+      );
+    });
+
+    it("verticalDramaSeriesQualityLoopV2 alone (no speechBudget) also computes densityMetrics", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesQualityLoopV2: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()]))
+        .mockReturnValueOnce(
+          selectChain([
+            { locale: "th", productTieIn: null, qualityPolicy: null },
+          ])
+        );
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: {
+          episode_title: "Episode 1",
+          scorecard: {},
+          summary: "ok",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockComputeVerticalDramaDensityMetrics).toHaveBeenCalled();
+    });
+
+    it("tieInQc chain fully on + series tie-in enabled: passes tieInConfig and builds + persists the tie-in report", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesSpeechBudget: true,
+        verticalDramaSeriesQualityLoopV2: true,
+        verticalDramaSeriesTieInQc: true,
+      } as any);
+      const seriesTieIn = {
+        enabled: true,
+        productName: "GlowCream",
+        referenceAssetIds: [],
+        disclosurePolicy: "not_required",
+        allowedStoryFunctions: ["daily_use"],
+        forbiddenClaims: [],
+        maxEpisodesWithTieInPerTenEpisodes: 3,
+        requireHumanApproval: true,
+      };
+      const scriptWithTieIn = {
+        episode_title: "Episode 1",
+        product_tie_in_plan: {
+          tie_ins: [{ shot_numbers: [3], story_function: "daily_use" }],
+        },
+      };
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([episodeRow({ script: scriptWithTieIn })])
+        ) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { locale: "th", productTieIn: seriesTieIn, qualityPolicy: null },
+          ])
+        ) // series row (locale+productTieIn+qualityPolicy)
+        .mockReturnValueOnce(selectChain([{ productTieIn: seriesTieIn }])) // maybeBuildAndPersistTieInQualityReport's own productTieIn select
+        .mockReturnValueOnce(
+          selectChain([{ episodeNumber: 1, script: scriptWithTieIn }])
+        ); // loadSeriesTieInPlacementHistory
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: {
+          episode_title: "Episode 1",
+          scorecard: { overall: 5, tie_in_naturalness: 5 },
+          summary: "ok",
+          tie_in_assessment: "feels earned",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }])) // review run
+        .mockReturnValueOnce(insertChain([{ id: 777 }])) // review artifact
+        .mockReturnValueOnce(insertChain([{ id: 888 }])) // tie-in report run
+        .mockReturnValueOnce(insertChain([{ id: 999 }])); // tie-in report artifact
+      mockDb.update
+        .mockReturnValueOnce(updateChain([])) // review run artifactIds update
+        .mockReturnValueOnce(updateChain([])); // tie-in report run artifactIds update
+
+      const result = await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tieInConfig: expect.objectContaining({
+            enabled: true,
+            productName: "GlowCream",
+          }),
+        })
+      );
+      expect(result.tieInQualityReport).toEqual(
+        expect.objectContaining({
+          naturalnessScore: 100,
+          passed: true,
+          visualShotCount: 1,
+        })
+      );
+      expect(mockDb.insert).toHaveBeenCalledTimes(4);
+    });
+
+    it("tieInQc requires BOTH speechBudget AND qualityLoopV2 (spec §17) — off when only tieInQc itself is set", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesTieInQc: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()]))
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              locale: "th",
+              productTieIn: { enabled: true },
+              qualityPolicy: null,
+            },
+          ])
+        );
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: {
+          episode_title: "Episode 1",
+          scorecard: {},
+          summary: "ok",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({ tieInConfig: undefined })
+      );
+      // No tie-in report side effects — only the 2 review inserts.
+      expect(mockDb.insert).toHaveBeenCalledTimes(2);
     });
   });
 });
@@ -763,8 +1286,16 @@ describe("applyQualityReviewSuggestions", () => {
     scorecard: { overall: 3 },
     summary: "needs work",
     issues: [
-      { location: "shot 1", problem: "flat emotion", suggested_fix: "vary expression" },
-      { location: "beat 2", problem: "weak reversal", suggested_fix: "sharpen the flip" },
+      {
+        location: "shot 1",
+        problem: "flat emotion",
+        suggested_fix: "vary expression",
+      },
+      {
+        location: "beat 2",
+        problem: "weak reversal",
+        suggested_fix: "sharpen the flip",
+      },
     ],
     warnings: [],
     repair_queue: [],
@@ -783,7 +1314,7 @@ describe("applyQualityReviewSuggestions", () => {
       router.applyQualityReviewSuggestions({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100" },
-      }),
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(mockRepairStage).not.toHaveBeenCalled();
   });
@@ -835,9 +1366,12 @@ describe("applyQualityReviewSuggestions", () => {
     expect(mockRepairStage.mock.calls[1][1]).toBe("storyboard_shotgrid");
     expect(mockRepairStage.mock.calls[1][2].instruction).toContain("shot 1");
 
-    expect(result.stagesRepaired).toEqual(["plan_episode_script", "storyboard_shotgrid"]);
+    expect(result.stagesRepaired).toEqual([
+      "plan_episode_script",
+      "storyboard_shotgrid",
+    ]);
     expect(result.staleStages).toEqual(
-      expect.arrayContaining(["storyboard_shotgrid", "start_frame_render_plan"]),
+      expect.arrayContaining(["storyboard_shotgrid", "start_frame_render_plan"])
     );
     expect(result.newReview).toEqual(freshReview);
     expect(result.warning).toBeNull();
@@ -849,15 +1383,24 @@ describe("applyQualityReviewSuggestions", () => {
       .mockReturnValueOnce(selectChain([{ jsonPayload: STORED_REVIEW }])) // loadLatestQualityReview
       .mockReturnValueOnce(selectChain([episodeRow()])) // refreshedRow
       .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
-    mockRepairStage.mockResolvedValue({ runId: 1, result: {} as any, staleStages: [] });
-    mockRunVerticalDramaEpisodeQualityReview.mockRejectedValue(new Error("llm down"));
+    mockRepairStage.mockResolvedValue({
+      runId: 1,
+      result: {} as any,
+      staleStages: [],
+    });
+    mockRunVerticalDramaEpisodeQualityReview.mockRejectedValue(
+      new Error("llm down")
+    );
 
     const result = await router.applyQualityReviewSuggestions({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100" },
     });
 
-    expect(result.stagesRepaired).toEqual(["plan_episode_script", "storyboard_shotgrid"]);
+    expect(result.stagesRepaired).toEqual([
+      "plan_episode_script",
+      "storyboard_shotgrid",
+    ]);
     expect(result.newReview).toBeNull();
     expect(result.warning).toContain("llm down");
   });
@@ -868,7 +1411,11 @@ describe("applyQualityReviewSuggestions", () => {
       .mockReturnValueOnce(selectChain([{ jsonPayload: STORED_REVIEW }])) // loadLatestQualityReview
       .mockReturnValueOnce(selectChain([episodeRow()])) // refreshedRow
       .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
-    mockRepairStage.mockResolvedValue({ runId: 1, result: {} as any, staleStages: [] });
+    mockRepairStage.mockResolvedValue({
+      runId: 1,
+      result: {} as any,
+      staleStages: [],
+    });
     mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
       review: STORED_REVIEW,
       creditsUsed: 1,
@@ -881,12 +1428,382 @@ describe("applyQualityReviewSuggestions", () => {
 
     await router.applyQualityReviewSuggestions({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", idempotencyKey: "apply-key-1" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        idempotencyKey: "apply-key-1",
+      },
     });
 
     expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: "apply-key-1-rereview" }),
+      expect.objectContaining({ idempotencyKey: "apply-key-1-rereview" })
     );
+  });
+
+  describe("Wave-4A — loop mode (spec §16.1)", () => {
+    const BELOW_FLOOR_REVIEW = {
+      episode_title: "Episode 1",
+      scorecard: { overall: 2 },
+      summary: "needs work",
+      issues: [],
+      warnings: [],
+      repair_queue: [],
+    };
+
+    it("falls through to the exact v1 single-pass behavior when loop:true but the flag is off", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ jsonPayload: STORED_REVIEW }])) // loadLatestQualityReview
+        .mockReturnValueOnce(selectChain([episodeRow()])) // refreshedRow (v1 re-review path)
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      mockRepairStage.mockResolvedValue({
+        runId: 1,
+        result: {} as any,
+        staleStages: [],
+      });
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: STORED_REVIEW,
+        creditsUsed: 1,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      const result = await router.applyQualityReviewSuggestions({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", loop: true },
+      });
+
+      // v1 shape: `stagesRepaired`/`staleStages`/`warning` present, no `loopState`.
+      expect(result).not.toHaveProperty("loopState");
+      expect(result.stagesRepaired).toEqual([
+        "plan_episode_script",
+        "storyboard_shotgrid",
+      ]);
+    });
+
+    it("with maxAutoImproveRounds: 0, evaluates the initial review against policy floors without calling any effects, and returns {loopState, newReview}", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesQualityLoopV2: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ jsonPayload: BELOW_FLOOR_REVIEW }])) // loadLatestQualityReview (outer guard)
+        .mockReturnValueOnce(
+          selectChain([{ qualityPolicy: { maxAutoImproveRounds: 0 } }])
+        ) // loadVerticalDramaQualityPolicy
+        .mockReturnValueOnce(selectChain([{ id: 900 }])) // loadLatestQualityReviewArtifactId
+        .mockReturnValueOnce(selectChain([{ jsonPayload: BELOW_FLOOR_REVIEW }])) // loadLatestQualityReview (inner, loop fn)
+        .mockReturnValueOnce(
+          selectChain([{ locale: "th", productTieIn: null }])
+        ) // seriesRowForLoop
+        .mockReturnValueOnce(
+          selectChain([{ jsonPayload: BELOW_FLOOR_REVIEW }])
+        ); // loadQualityReviewArtifactById
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 1001 }])) // quality_loop_state run
+        .mockReturnValueOnce(insertChain([{ id: 1002 }])); // quality_loop_state artifact
+      mockDb.update.mockReturnValueOnce(updateChain([])); // quality_loop_state run artifactIds update
+
+      const result = await router.applyQualityReviewSuggestions({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", loop: true },
+      });
+
+      expect(result).toHaveProperty("loopState");
+      expect((result as any).loopState.status).toBe("idle");
+      expect((result as any).loopState.rounds).toEqual([]);
+      expect((result as any).newReview).toEqual(BELOW_FLOOR_REVIEW);
+      expect(mockRepairStage).not.toHaveBeenCalled();
+      expect(mockRunVerticalDramaEpisodeQualityReview).not.toHaveBeenCalled();
+    });
+
+    it("rejects with FORBIDDEN when the estimated full-loop credit cost exceeds the user's balance", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesQualityLoopV2: true,
+      } as any);
+      mockHasEnoughCredits.mockResolvedValueOnce(false);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ jsonPayload: BELOW_FLOOR_REVIEW }])) // loadLatestQualityReview (outer)
+        .mockReturnValueOnce(
+          selectChain([{ qualityPolicy: { maxAutoImproveRounds: 2 } }])
+        ); // loadVerticalDramaQualityPolicy
+
+      await expect(
+        router.applyQualityReviewSuggestions({
+          ctx: ctx(),
+          input: { seriesId: "10", episodeId: "100", loop: true },
+        })
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(mockRepairStage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("W11.6 Story Lock — v1 single-apply path", () => {
+    const PRIOR_SCRIPT = {
+      episode_title: "Episode 1",
+      hook: "Aria discovers a secret clause hidden inside the merger contract.",
+      cliffhanger:
+        "As Aria walks out, her assistant reveals the rival's own board just voted against him.",
+      structure: {
+        beats: [
+          { beat: 1, summary: "setup", is_reversal: false },
+          { beat: 2, summary: "reveal", is_reversal: true },
+        ],
+      },
+      scene_dialogue_summary: [{ scene: 1, location: "boardroom" }],
+    };
+    // Beat count 2 -> 3 is a deterministic, unambiguous story-lock violation
+    // regardless of hook/cliffhanger text (kept identical here on purpose).
+    const VIOLATING_REPAIRED_SCRIPT = {
+      ...PRIOR_SCRIPT,
+      structure: {
+        beats: [
+          { beat: 1, summary: "setup", is_reversal: false },
+          { beat: 2, summary: "reveal", is_reversal: true },
+          { beat: 3, summary: "a brand new scene", is_reversal: false },
+        ],
+      },
+    };
+    const SCRIPT_ONLY_REVIEW = {
+      episode_title: "Episode 1",
+      scorecard: { overall: 3 },
+      summary: "needs work",
+      issues: [
+        {
+          location: "beat 1",
+          problem: "weak reversal",
+          suggested_fix: "sharpen the flip",
+        },
+      ],
+      warnings: [],
+      repair_queue: [],
+    };
+
+    function scriptEpisodeRow(
+      script: unknown,
+      over: Record<string, unknown> = {}
+    ) {
+      return {
+        id: 100,
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        episodeNumber: 1,
+        title: "Episode 1",
+        script,
+        storyboard: { shots: [] },
+        dialogueAudioPlan: null,
+        ...over,
+      };
+    }
+
+    beforeEach(() => {
+      mockRepairStage.mockReset();
+    });
+
+    it("rejects a violating script repair: reverts the live script, writes an audit artifact, excludes the stage from stagesRepaired/staleStages, and surfaces a warning", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesStoryLock: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([scriptEpisodeRow(PRIOR_SCRIPT)])) // loadOwnedEpisode (outer)
+        .mockReturnValueOnce(selectChain([{ jsonPayload: SCRIPT_ONLY_REVIEW }])) // loadLatestQualityReview
+        .mockReturnValueOnce(selectChain([scriptEpisodeRow(PRIOR_SCRIPT)])) // guard "before" snapshot
+        .mockReturnValueOnce(
+          selectChain([scriptEpisodeRow(VIOLATING_REPAIRED_SCRIPT)])
+        ) // guard "after" snapshot
+        // refreshedRow for the auto re-review — storyboard: null short-circuits the LLM re-review path.
+        .mockReturnValueOnce(
+          selectChain([
+            scriptEpisodeRow(VIOLATING_REPAIRED_SCRIPT, { storyboard: null }),
+          ])
+        );
+      mockRepairStage.mockResolvedValueOnce({
+        runId: 1,
+        result: {} as any,
+        staleStages: ["storyboard_shotgrid"],
+      });
+      const revertChain = updateChain([]);
+      const artifactIdsChain = updateChain([]);
+      mockDb.update
+        .mockReturnValueOnce(revertChain)
+        .mockReturnValueOnce(artifactIdsChain);
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 900 }])) // story_lock_violation run row
+        .mockReturnValueOnce(insertChain([{ id: 901 }])); // story_lock_violation artifact row
+
+      const result = await router.applyQualityReviewSuggestions({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      // Instruction sent to the pipeline carries the execution-only constraint.
+      expect(mockRepairStage).toHaveBeenCalledTimes(1);
+      expect(mockRepairStage.mock.calls[0][1]).toBe("plan_episode_script");
+      expect(mockRepairStage.mock.calls[0][2].instruction).toContain(
+        VD_STORY_LOCK_SCRIPT_REPAIR_CONSTRAINT
+      );
+
+      // Reverted the live script column back to the PRIOR content.
+      expect(revertChain.set).toHaveBeenCalledWith(
+        expect.objectContaining({ script: PRIOR_SCRIPT })
+      );
+
+      // Audit artifact recorded (append-only; the rejected artifact `repairStage`
+      // already wrote is never deleted, this is a separate violation record).
+      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+
+      // Rejected round never counts as "repaired" and never marks anything stale.
+      expect(result.stagesRepaired).toEqual([]);
+      expect(result.staleStages).toEqual([]);
+      expect(result.warning).toContain("ปฏิเสธการซ่อม 1 รายการ");
+      expect(result.warning).toContain("เนื้อเรื่องเปลี่ยนเกินกำหนด");
+    });
+
+    it("accepts a wording-only script repair: no revert, stage counted as repaired, no story-lock warning", async () => {
+      const WORDING_ONLY_REPAIRED_SCRIPT = {
+        ...PRIOR_SCRIPT,
+        hook: "Inside the merger contract, Aria discovers a secret clause hidden there.",
+      };
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesStoryLock: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([scriptEpisodeRow(PRIOR_SCRIPT)])) // loadOwnedEpisode (outer)
+        .mockReturnValueOnce(selectChain([{ jsonPayload: SCRIPT_ONLY_REVIEW }])) // loadLatestQualityReview
+        .mockReturnValueOnce(selectChain([scriptEpisodeRow(PRIOR_SCRIPT)])) // guard "before" snapshot
+        .mockReturnValueOnce(
+          selectChain([scriptEpisodeRow(WORDING_ONLY_REPAIRED_SCRIPT)])
+        ) // guard "after" snapshot
+        .mockReturnValueOnce(
+          selectChain([
+            scriptEpisodeRow(WORDING_ONLY_REPAIRED_SCRIPT, {
+              storyboard: null,
+            }),
+          ])
+        ); // refreshedRow
+      mockRepairStage.mockResolvedValueOnce({
+        runId: 1,
+        result: {} as any,
+        staleStages: ["storyboard_shotgrid"],
+      });
+
+      const result = await router.applyQualityReviewSuggestions({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockDb.insert).not.toHaveBeenCalled();
+      expect(result.stagesRepaired).toEqual(["plan_episode_script"]);
+      expect(result.staleStages).toEqual(["storyboard_shotgrid"]);
+      expect(result.warning).not.toContain("เนื้อเรื่องเปลี่ยนเกินกำหนด");
+    });
+
+    it("does not append the constraint or run the guard when the flag is off (byte-identical to pre-W11.6)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([scriptEpisodeRow(PRIOR_SCRIPT)])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ jsonPayload: SCRIPT_ONLY_REVIEW }])) // loadLatestQualityReview
+        .mockReturnValueOnce(
+          selectChain([
+            scriptEpisodeRow(VIOLATING_REPAIRED_SCRIPT, { storyboard: null }),
+          ])
+        ); // refreshedRow only — NO extra guard snapshots
+      mockRepairStage.mockResolvedValueOnce({
+        runId: 1,
+        result: {} as any,
+        staleStages: ["storyboard_shotgrid"],
+      });
+
+      const result = await router.applyQualityReviewSuggestions({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockRepairStage.mock.calls[0][2].instruction).not.toContain(
+        VD_STORY_LOCK_SCRIPT_REPAIR_CONSTRAINT
+      );
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockDb.insert).not.toHaveBeenCalled();
+      expect(result.stagesRepaired).toEqual(["plan_episode_script"]);
+      expect(result.warning).not.toContain("เนื้อเรื่องเปลี่ยนเกินกำหนด");
+    });
+  });
+});
+
+describe("repairStageOutput — W11.6 Story Lock", () => {
+  function episodeRow() {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      episodeNumber: 1,
+      title: "Episode 1",
+      script: {},
+      storyboard: {},
+      dialogueAudioPlan: null,
+    };
+  }
+
+  beforeEach(() => {
+    mockRepairStage.mockReset();
+  });
+
+  it("does not modify the manual repair instruction when the flag is off (byte-identical)", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRow()]));
+    mockRepairStage.mockResolvedValue({
+      runId: 1,
+      result: {} as any,
+      staleStages: [],
+    });
+
+    await router.repairStageOutput({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        stage: "plan_episode_script",
+        instruction: "fix the pacing in shot 3",
+      },
+    });
+
+    expect(mockRepairStage.mock.calls[0][2].instruction).toBe(
+      "fix the pacing in shot 3"
+    );
+  });
+
+  it("appends the script constraint block to the manual repair instruction when the flag is on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesStoryLock: true,
+    } as any);
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRow()]));
+    mockRepairStage.mockResolvedValue({
+      runId: 1,
+      result: {} as any,
+      staleStages: [],
+    });
+
+    await router.repairStageOutput({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        stage: "plan_episode_script",
+        instruction: "fix the pacing in shot 3",
+      },
+    });
+
+    const instruction = mockRepairStage.mock.calls[0][2].instruction;
+    expect(instruction).toContain("fix the pacing in shot 3");
+    expect(instruction).toContain(VD_STORY_LOCK_SCRIPT_REPAIR_CONSTRAINT);
   });
 });
 
@@ -907,7 +1824,7 @@ describe("getEpisodeDetail — qualityReview field", () => {
             startFramePlan: null,
             motionPromptPack: null,
           },
-        ]),
+        ])
       ) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits character rows
       .mockReturnValueOnce(selectChain([])); // loadLatestQualityReview -> no artifact yet
@@ -921,7 +1838,14 @@ describe("getEpisodeDetail — qualityReview field", () => {
   });
 
   it("returns the latest persisted quality-review artifact payload", async () => {
-    const review = { episode_title: "Episode 1", scorecard: {}, summary: "ok", issues: [], warnings: [], repair_queue: [] };
+    const review = {
+      episode_title: "Episode 1",
+      scorecard: {},
+      summary: "ok",
+      issues: [],
+      warnings: [],
+      repair_queue: [],
+    };
     mockDb.select
       .mockReturnValueOnce(
         selectChain([
@@ -937,7 +1861,7 @@ describe("getEpisodeDetail — qualityReview field", () => {
             startFramePlan: null,
             motionPromptPack: null,
           },
-        ]),
+        ])
       )
       .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([{ jsonPayload: review }]));
@@ -948,6 +1872,999 @@ describe("getEpisodeDetail — qualityReview field", () => {
     });
 
     expect(result.qualityReview).toEqual(review);
+  });
+
+  it("Wave-4A: all new keys are null/0 and flags all false when every 2026-07-07 flag is off", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            script: null,
+            dialogueAudioPlan: null,
+            storyboard: null,
+            storyboardReviewId: null,
+            startFramePlan: null,
+            motionPromptPack: null,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])); // loadLatestQualityReview
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.qualityPolicyResolved).toBeNull();
+    expect(result.latestQualityLoopState).toBeNull();
+    expect(result.tieInQualityReport).toBeNull();
+    expect(result.arcReplanPendingCount).toBe(0);
+    expect(result.wizard).toBeNull();
+    // W10-B (2026-07-08) — `episodeDraftAvailable` is `null` when
+    // `verticalDramaSeriesDeepStoryDrafts` is off, same convention as
+    // `wizard`'s own null-when-flag-off shape.
+    expect(result.episodeDraftAvailable).toBeNull();
+    expect(result.flags).toEqual({
+      speechBudget: false,
+      arcReplan: false,
+      qualityLoopV2: false,
+      tieInQc: false,
+      productionWizard: false,
+      presetMixV2: false,
+      deepStoryDrafts: false,
+      // debt-item-1 (2026-07-08) — see `verticalDramaEpisodes.voiceChain.test.ts`
+      // for dedicated flags.voiceChain coverage.
+      voiceChain: false,
+      // F131W (#30-A2) — see `verticalDramaEpisodes.adBannerPlan.test.ts` for
+      // dedicated flags.adBannerOverlay coverage.
+      adBannerOverlay: false,
+    });
+    // Pre-existing fields stay exactly as before — no extra db.select calls
+    // beyond the original 3 (byte-identical flags-off proof; W10-B's own
+    // `resolveEpisodeDraftAvailable` select never runs when its flag is off).
+    expect(mockDb.select).toHaveBeenCalledTimes(3);
+  });
+
+  it("Wave-4A: populates qualityPolicyResolved, latestQualityLoopState, and a derived wizard state when qualityLoopV2 + productionWizard are on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesQualityLoopV2: true,
+      verticalDramaSeriesProductionWizard: true,
+    } as any);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            episodeNumber: 1,
+            targetDurationSeconds: 60,
+            script: null,
+            dialogueAudioPlan: null,
+            storyboard: null,
+            storyboardReviewId: null,
+            startFramePlan: null,
+            motionPromptPack: null,
+            assemblyManifest: null,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview -> none
+      .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // loadVerticalDramaQualityPolicy
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityLoopState -> none
+      .mockReturnValueOnce(selectChain([{ productTieIn: null }])); // wizard's own productTieIn lookup
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.qualityPolicyResolved).toEqual(
+      expect.objectContaining({ minOverall: 4, maxAutoImproveRounds: 2 })
+    );
+    expect(result.latestQualityLoopState).toBeNull();
+    expect(result.wizard).toEqual(
+      expect.objectContaining({
+        activeStepId: expect.any(String),
+        steps: expect.any(Array),
+        primaryCta: expect.any(String),
+      })
+    );
+    expect((result.wizard as any).steps.length).toBe(11);
+    expect(result.flags.qualityLoopV2).toBe(true);
+    expect(result.flags.productionWizard).toBe(true);
+  });
+
+  it("2026-07-08 fix: wires the REAL latestQualityLoopState.status into the wizard's script_qc evidence instead of always hardcoding 'not_run'", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesQualityLoopV2: true,
+      verticalDramaSeriesProductionWizard: true,
+    } as any);
+    const persistedLoopState = {
+      episodeId: "100",
+      rounds: [],
+      status: "escalated_max_rounds",
+      activeReviewArtifactId: "artifact-1",
+    };
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            episodeNumber: 1,
+            targetDurationSeconds: 60,
+            // Non-null script + storyboard — script_qc is only ever
+            // EVALUATED (rather than "locked") once the storyboard step
+            // itself has passed.
+            script: { episode_title: "Episode 1", structure: { beats: [] } },
+            dialogueAudioPlan: null,
+            storyboard: { shots: [] },
+            storyboardReviewId: null,
+            startFramePlan: null,
+            motionPromptPack: null,
+            assemblyManifest: null,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview -> none
+      .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // loadVerticalDramaQualityPolicy
+      .mockReturnValueOnce(selectChain([{ jsonPayload: persistedLoopState }])) // loadLatestQualityLoopState -> real state
+      .mockReturnValueOnce(selectChain([{ productTieIn: null }])); // wizard's own productTieIn lookup
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.latestQualityLoopState).toEqual(persistedLoopState);
+    const scriptQcStep = (result.wizard as any).steps.find(
+      (s: any) => s.stepId === "script_qc"
+    );
+    expect(scriptQcStep.status).toBe("needs_repair");
+    const loopRow = scriptQcStep.evidence.find(
+      (r: any) => r.label === "Auto-improve loop"
+    );
+    expect(loopRow.value).toBe("escalated_max_rounds");
+    expect(loopRow.loopState).toBe("escalated_max_rounds");
+    const loopCriterion = scriptQcStep.criteria.find(
+      (c: any) => c.id === "loop_state"
+    );
+    expect(loopCriterion.passed).toBe(false);
+  });
+
+  it("Wave-7D: wizard's script.coverageStatus is the REAL evaluateScriptSpeechCoverage result when speechBudget + qualityLoopV2 + productionWizard are all on and the episode has a script", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesSpeechBudget: true,
+      verticalDramaSeriesQualityLoopV2: true,
+      verticalDramaSeriesProductionWizard: true,
+    } as any);
+    const script = { episode_title: "Episode 1", structure: { beats: [] } };
+    mockEvaluateScriptSpeechCoverage.mockReturnValue({
+      estimatedSpeechSeconds: 5,
+      coverageRatio: 0.08,
+      status: "underfilled_error",
+      // 2026-07-08 fix — evaluateScriptSpeechCoverage's real contract now
+      // always includes the target band too; this mock matches the shape.
+      targetSpeechSecondsMin: 34.8,
+      targetSpeechSecondsMax: 40.8,
+    });
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            episodeNumber: 1,
+            targetDurationSeconds: 60,
+            script,
+            dialogueAudioPlan: null,
+            storyboard: null,
+            storyboardReviewId: null,
+            startFramePlan: null,
+            motionPromptPack: null,
+            assemblyManifest: null,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview -> none
+      .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // loadVerticalDramaQualityPolicy
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityLoopState -> none
+      .mockReturnValueOnce(selectChain([{ productTieIn: null, locale: "en" }])); // wizard's own productTieIn + locale lookup
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(mockEvaluateScriptSpeechCoverage).toHaveBeenCalledWith(
+      script,
+      60,
+      "en"
+    );
+    const scriptStep = (result.wizard as any).steps.find(
+      (s: any) => s.stepId === "episode_script"
+    );
+    expect(scriptStep).toMatchObject({
+      status: "needs_repair",
+      blockingReasons: ["VD_WIZARD_SCRIPT_UNDERFILLED"],
+    });
+  });
+
+  it("Wave-7D: wizard's script.coverageStatus stays the in_range placeholder when speechBudget is off, even with a script present (flags-off byte-identical)", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesQualityLoopV2: true,
+      verticalDramaSeriesProductionWizard: true,
+    } as any);
+    const script = { episode_title: "Episode 1", structure: { beats: [] } };
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            episodeNumber: 1,
+            targetDurationSeconds: 60,
+            script,
+            dialogueAudioPlan: null,
+            storyboard: null,
+            storyboardReviewId: null,
+            startFramePlan: null,
+            motionPromptPack: null,
+            assemblyManifest: null,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview -> none
+      .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // loadVerticalDramaQualityPolicy
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityLoopState -> none
+      .mockReturnValueOnce(selectChain([{ productTieIn: null, locale: "en" }])); // wizard's own productTieIn + locale lookup
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(mockEvaluateScriptSpeechCoverage).not.toHaveBeenCalled();
+    const scriptStep = (result.wizard as any).steps.find(
+      (s: any) => s.stepId === "episode_script"
+    );
+    expect(scriptStep).toMatchObject({ status: "passed", blockingReasons: [] });
+  });
+
+  it("2026-07-08 fix: a legacy script with no_dialogue_data stays passed (never locks storyboard_shots) and the evidence row carries the real numbers, never the raw enum string", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesSpeechBudget: true,
+      verticalDramaSeriesQualityLoopV2: true,
+      verticalDramaSeriesProductionWizard: true,
+    } as any);
+    const script = {
+      episode_title: "Episode 1",
+      structure: {
+        beats: [{ beat: 1, summary: "legacy beat, no dialogue_lines" }],
+      },
+      scene_dialogue_summary: [],
+    };
+    mockEvaluateScriptSpeechCoverage.mockReturnValue({
+      estimatedSpeechSeconds: 36.8,
+      coverageRatio: 0.613,
+      status: "no_dialogue_data",
+      targetSpeechSecondsMin: 34.8,
+      targetSpeechSecondsMax: 40.8,
+    });
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            episodeNumber: 1,
+            targetDurationSeconds: 60,
+            script,
+            dialogueAudioPlan: null,
+            storyboard: null,
+            storyboardReviewId: null,
+            startFramePlan: null,
+            motionPromptPack: null,
+            assemblyManifest: null,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview -> none
+      .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // loadVerticalDramaQualityPolicy
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityLoopState -> none
+      .mockReturnValueOnce(selectChain([{ productTieIn: null, locale: "en" }])); // wizard's own productTieIn + locale lookup
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    const scriptStep = (result.wizard as any).steps.find(
+      (s: any) => s.stepId === "episode_script"
+    );
+    expect(scriptStep).toMatchObject({ status: "passed", blockingReasons: [] });
+    const storyboardStep = (result.wizard as any).steps.find(
+      (s: any) => s.stepId === "storyboard_shots"
+    );
+    expect(storyboardStep.status).not.toBe("locked");
+
+    const evidenceRow = scriptStep.evidence[0];
+    expect(evidenceRow.value).not.toBe("no_dialogue_data");
+    expect(evidenceRow.scriptCoverage).toEqual({
+      status: "no_dialogue_data",
+      estimatedSpeechSeconds: 36.8,
+      targetSpeechSecondsMin: 34.8,
+      targetSpeechSecondsMax: 40.8,
+    });
+  });
+
+  /**
+   * 2026-07-08/W9-A (spec §14.1 rule 6b, section-12 "Pass Semantics —
+   * Content Completeness") — end-to-end coverage through `getEpisodeDetail`:
+   * `episode_script`'s 4 new criteria, `storyboard_shots`' 2 new criteria +
+   * "incomplete" passState, and the new `perShotDialoguePreview` field. Shot
+   * 2's dialogue is the REAL episode-11 bad-data line verbatim (curly
+   * wrapping quotes + a speaker parenthetical + a tilde) — chosen because
+   * `resolveShotDialogueLines`'s OWN pre-existing junk-fragment filter does
+   * NOT drop it (it only recognizes `เสียง…`-prefixed fragments), proving
+   * this wave's new speakability analyzer catches something nothing else
+   * already did.
+   */
+  describe("2026-07-08/W9-A content-completeness wave", () => {
+    const script = {
+      episode_title: "Episode 11",
+      structure: { beats: [] },
+      scene_dialogue_summary: [
+        { scene: 1, dialogue_lines: ['หนูนา: "ปล่อยฉันออกไปที"'] },
+        { scene: 2, dialogue_lines: ["เจ้าเกลือ(เหมียว): “เหมียว~”"] },
+      ],
+    };
+    const storyboard = {
+      shots: [
+        {
+          shot_number: 1,
+          duration_seconds: 8,
+          narrative_purpose: "หนูนาพยายามเตือนยายทวด",
+          image_prompt: "a girl warning her great-grandmother, vertical frame",
+        },
+        {
+          shot_number: 2,
+          duration_seconds: 8,
+          narrative_purpose: "เจ้าเกลือส่งเสียงเตือนภัย",
+          image_prompt: "a cat reacting to danger, vertical frame",
+        },
+      ],
+    };
+
+    it("flags the real bad-data line: episode_script's all_lines_speakable reads false for shot 2 only, passState 'failed', status/locks unaffected", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesQualityLoopV2: true,
+        verticalDramaSeriesProductionWizard: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              id: 100,
+              tenantId: "tenant-1",
+              userId: 42,
+              seriesId: 10,
+              episodeNumber: 11,
+              targetDurationSeconds: 60,
+              script,
+              dialogueAudioPlan: null,
+              storyboard,
+              storyboardReviewId: null,
+              startFramePlan: null,
+              motionPromptPack: null,
+              assemblyManifest: null,
+            },
+          ])
+        ) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+        .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview -> none
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // loadVerticalDramaQualityPolicy
+        .mockReturnValueOnce(selectChain([])) // loadLatestQualityLoopState -> none
+        .mockReturnValueOnce(
+          selectChain([{ productTieIn: null, locale: "th" }])
+        ); // wizard's own productTieIn + locale lookup
+
+      const result = await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const scriptStep = (result.wizard as any).steps.find(
+        (s: any) => s.stepId === "episode_script"
+      );
+      expect(scriptStep.status).toBe("passed");
+      expect(scriptStep.passState).toBe("failed");
+      expect(
+        scriptStep.criteria.find((c: any) => c.id === "all_lines_speakable")
+      ).toEqual({
+        id: "all_lines_speakable",
+        passed: false,
+        detail: "1/2",
+      });
+      expect(
+        scriptStep.criteria.find((c: any) => c.id === "dialogue_every_shot")
+      ).toEqual({
+        id: "dialogue_every_shot",
+        passed: true,
+        detail: "2/2",
+      });
+      // Section-12 "CTA ordering/locks unchanged" — storyboard_shots (the
+      // gate this step feeds) is completely unaffected.
+      expect(
+        (result.wizard as any).steps.find(
+          (s: any) => s.stepId === "storyboard_shots"
+        ).status
+      ).toBe("passed");
+
+      // The preview carries the RAW (unsanitized) text — never the cleaned
+      // suggestion — so the user sees exactly what needs fixing.
+      const preview = (result as any).perShotDialoguePreview;
+      expect(preview).toHaveLength(2);
+      expect(preview[0]).toEqual({
+        shotNumber: 1,
+        lines: [{ speaker: "หนูนา", line: "ปล่อยฉันออกไปที" }],
+        overLength: false,
+        silent: expect.any(Boolean),
+      });
+      expect(preview[1].lines).toEqual([
+        { speaker: "เจ้าเกลือ(เหมียว)", line: "“เหมียว~”" },
+      ]);
+    });
+
+    it("storyboard exists with image prompts but no motion prompt pack yet: storyboard_shots is 'incomplete', never a clean pass, and never re-locks the downstream pipeline", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesQualityLoopV2: true,
+        verticalDramaSeriesProductionWizard: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              id: 100,
+              tenantId: "tenant-1",
+              userId: 42,
+              seriesId: 10,
+              episodeNumber: 11,
+              targetDurationSeconds: 60,
+              script,
+              dialogueAudioPlan: null,
+              storyboard,
+              storyboardReviewId: null,
+              startFramePlan: null,
+              // No motion prompt pack yet — freshly generated storyboard.
+              motionPromptPack: null,
+              assemblyManifest: null,
+            },
+          ])
+        )
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(
+          selectChain([{ productTieIn: null, locale: "th" }])
+        );
+
+      const result = await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const storyboardStep = (result.wizard as any).steps.find(
+        (s: any) => s.stepId === "storyboard_shots"
+      );
+      expect(storyboardStep.status).toBe("passed");
+      expect(storyboardStep.passState).toBe("incomplete");
+      expect(
+        storyboardStep.criteria.find(
+          (c: any) => c.id === "image_prompts_all_shots"
+        )
+      ).toEqual({
+        id: "image_prompts_all_shots",
+        passed: true,
+      });
+      expect(
+        storyboardStep.criteria.find(
+          (c: any) => c.id === "video_prompts_all_shots"
+        )
+      ).toEqual({
+        id: "video_prompts_all_shots",
+        passed: false,
+      });
+    });
+
+    it("no db.select calls beyond the existing 6 — this wave adds zero new queries", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesQualityLoopV2: true,
+        verticalDramaSeriesProductionWizard: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              id: 100,
+              tenantId: "tenant-1",
+              userId: 42,
+              seriesId: 10,
+              episodeNumber: 11,
+              targetDurationSeconds: 60,
+              script,
+              dialogueAudioPlan: null,
+              storyboard,
+              storyboardReviewId: null,
+              startFramePlan: null,
+              motionPromptPack: null,
+              assemblyManifest: null,
+            },
+          ])
+        )
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(
+          selectChain([{ productTieIn: null, locale: "th" }])
+        );
+
+      await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockDb.select).toHaveBeenCalledTimes(6);
+    });
+
+    it("productionWizard flag off: perShotDialoguePreview stays null (flags-off byte-identical)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              id: 100,
+              tenantId: "tenant-1",
+              userId: 42,
+              seriesId: 10,
+              script,
+              dialogueAudioPlan: null,
+              storyboard,
+              storyboardReviewId: null,
+              startFramePlan: null,
+              motionPromptPack: null,
+            },
+          ])
+        )
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([]));
+
+      const result = await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect((result as any).perShotDialoguePreview).toBeNull();
+      expect(mockDb.select).toHaveBeenCalledTimes(3);
+    });
+  });
+});
+
+/**
+ * 2026-07-08 acceptance-review fixes #2 (HIGH false-negative, circular
+ * assemblyManifest gate) and #5 (LOW-MED dead input, shotRepair.
+ * failingTargetCount) — end-to-end coverage through `getEpisodeDetail`'s
+ * wizard wiring. Drives every step through `episode_script` -> `video_clips`
+ * to "passed" (qualityLoopV2/productionWizard coupling requires a real
+ * passing scorecard — v1's always-passed fallback is unavailable once
+ * productionWizard is on) so `video_clips`/`final_episode`'s OWN status is
+ * actually reachable and observable.
+ */
+describe("2026-07-08 acceptance-review fix #2 — video_clips real completedClips signal (no more circular assemblyManifest gate)", () => {
+  function fullyPassingEpisodeRow(over: Record<string, unknown> = {}) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      episodeNumber: 1,
+      targetDurationSeconds: 16,
+      script: { episode_title: "Episode 1", structure: { beats: [] } },
+      dialogueAudioPlan: { audioStrategy: "dialogue_tts" },
+      storyboard: { shots: [] },
+      storyboardReviewId: null,
+      startFramePlan: {
+        selectedImageModelId: "model-1",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a prompt",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "900",
+          },
+        ],
+      },
+      motionPromptPack: null,
+      assemblyManifest: null,
+      ...over,
+    };
+  }
+
+  function passingReview() {
+    return {
+      episode_title: "Episode 1",
+      scorecard: {
+        reversal_count: 0,
+        reversal_sharpness: 4,
+        emotion_variety: 4,
+        dialogue_naturalness: 4,
+        pacing: 4,
+        overall: 4,
+      },
+      summary: "ok",
+      issues: [],
+      warnings: [],
+      repair_queue: [],
+    };
+  }
+
+  /** Full 8-call db.select chain for a `productionWizardEnabled` request
+   *  whose `startFramePlan` has an `approvedMediaAssetId` (so
+   *  `resolveEpisodePlanAssetUrls` ALSO issues a real query — one more than
+   *  the "no db.select calls beyond the existing 6" tests above, none of
+   *  which set an approved asset id) AND a non-null `motionPromptPack` (so
+   *  debt-item-4's `resolveVideoPromptsStale` ALSO issues a real query — see
+   *  that function's doc comment; `getEpisodeDetail` only fires it once a
+   *  motion-prompt-pack artifact exists). Order: loadOwnedEpisode ->
+   *  resolveEpisodePlanAssetUrls -> resolveSeriesCharacterPortraits ->
+   *  loadLatestQualityReview -> loadVerticalDramaQualityPolicy ->
+   *  loadLatestQualityLoopState -> wizard's own productTieIn+locale lookup ->
+   *  resolveVideoPromptsStale. `artifactRows` (default `[]`, resolving
+   *  `stale` to `false`) feeds that final call — pass explicit
+   *  `{stage, id}` rows to exercise a real stale/not-stale outcome. */
+  function mockFullPassingChain(
+    row: Record<string, unknown>,
+    artifactRows: unknown[] = []
+  ) {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesQualityLoopV2: true,
+      verticalDramaSeriesProductionWizard: true,
+    } as any);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([row])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveEpisodePlanAssetUrls
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([{ jsonPayload: passingReview() }])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // loadVerticalDramaQualityPolicy
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityLoopState -> none
+      .mockReturnValueOnce(selectChain([{ productTieIn: null, locale: "th" }])) // wizard's productTieIn + locale lookup
+      .mockReturnValueOnce(selectChain(artifactRows)); // resolveVideoPromptsStale
+  }
+
+  it("all clips carry videoTask.videoUrl but assemblyManifest is absent: video_clips passes and final_episode unlocks (guided flow no longer stranded)", async () => {
+    const row = fullyPassingEpisodeRow({
+      motionPromptPack: {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "profile-a",
+        motionMode: "first_frame_to_video",
+        clips: [
+          {
+            clipNumber: 1,
+            sourceShotNumbers: [1],
+            prompt: "p1",
+            durationSeconds: 8,
+            videoTask: { videoUrl: "https://x/1.mp4" },
+          },
+          {
+            clipNumber: 2,
+            sourceShotNumbers: [1],
+            prompt: "p2",
+            durationSeconds: 8,
+            videoTask: { videoUrl: "https://x/2.mp4" },
+          },
+        ],
+        warnings: [],
+      },
+      assemblyManifest: null,
+    });
+    mockFullPassingChain(row);
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+    const steps = (result.wizard as any).steps;
+
+    const videoClipsStep = steps.find((s: any) => s.stepId === "video_clips");
+    expect(videoClipsStep.status).toBe("passed");
+    expect(videoClipsStep.evidence[0].detail).toBe("2/2");
+
+    const finalEpisodeStep = steps.find(
+      (s: any) => s.stepId === "final_episode"
+    );
+    expect(finalEpisodeStep.status).not.toBe("locked");
+    expect(finalEpisodeStep.status).toBe("ready");
+    expect(finalEpisodeStep.primaryAction).toBe("assemble_episode");
+  });
+
+  it("partial clips (only some carry videoTask.videoUrl): video_clips stays 'ready' with an 'n/total' evidence detail, final_episode stays locked on VD_WIZARD_VIDEO_CLIPS_INCOMPLETE", async () => {
+    const row = fullyPassingEpisodeRow({
+      motionPromptPack: {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "profile-a",
+        motionMode: "first_frame_to_video",
+        clips: [
+          {
+            clipNumber: 1,
+            sourceShotNumbers: [1],
+            prompt: "p1",
+            durationSeconds: 8,
+            videoTask: { videoUrl: "https://x/1.mp4" },
+          },
+          {
+            clipNumber: 2,
+            sourceShotNumbers: [1],
+            prompt: "p2",
+            durationSeconds: 8,
+          },
+        ],
+        warnings: [],
+      },
+      assemblyManifest: null,
+    });
+    mockFullPassingChain(row);
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+    const steps = (result.wizard as any).steps;
+
+    const videoClipsStep = steps.find((s: any) => s.stepId === "video_clips");
+    expect(videoClipsStep.status).toBe("ready");
+    expect(videoClipsStep.evidence[0].value).toBe("1/2");
+    expect(videoClipsStep.evidence[0].detail).toBe("1/2");
+
+    const finalEpisodeStep = steps.find(
+      (s: any) => s.stepId === "final_episode"
+    );
+    expect(finalEpisodeStep.status).toBe("locked");
+    expect(finalEpisodeStep.blockingReasons).toEqual([
+      "VD_WIZARD_VIDEO_CLIPS_INCOMPLETE",
+    ]);
+  });
+
+  it("acceptance-review fix #5: a clip whose videoTask carries status 'failed' counts toward shot_repair.failingTargetCount (best-effort signal, evidence reflects the real count)", async () => {
+    const row = fullyPassingEpisodeRow({
+      motionPromptPack: {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "profile-a",
+        motionMode: "first_frame_to_video",
+        clips: [
+          {
+            clipNumber: 1,
+            sourceShotNumbers: [1],
+            prompt: "p1",
+            durationSeconds: 8,
+            videoTask: { videoUrl: "https://x/1.mp4" },
+          },
+          {
+            clipNumber: 2,
+            sourceShotNumbers: [1],
+            prompt: "p2",
+            durationSeconds: 8,
+            // Best-effort read: nothing in this codebase's write path
+            // persists this today, but the field is honoured the moment it
+            // exists on the loaded JSONB payload.
+            videoTask: { status: "failed" } as unknown as { videoUrl?: string },
+          },
+        ],
+        warnings: [],
+      },
+      assemblyManifest: null,
+    });
+    mockFullPassingChain(row);
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+    const shotRepairStep = (result.wizard as any).steps.find(
+      (s: any) => s.stepId === "shot_repair"
+    );
+
+    expect(shotRepairStep.status).toBe("needs_repair");
+    expect(shotRepairStep.primaryAction).toBe("repair_shots");
+    expect(shotRepairStep.evidence[0].value).toBe("1");
+    expect(shotRepairStep.evidence[0].detail).toBe("1");
+  });
+
+  it("acceptance-review fix #5: zero failed videoTasks -> shot_repair.failingTargetCount stays 0 (optional, not needs_repair) — unchanged from before this fix", async () => {
+    const row = fullyPassingEpisodeRow({
+      motionPromptPack: {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "profile-a",
+        motionMode: "first_frame_to_video",
+        clips: [
+          {
+            clipNumber: 1,
+            sourceShotNumbers: [1],
+            prompt: "p1",
+            durationSeconds: 8,
+            videoTask: { videoUrl: "https://x/1.mp4" },
+          },
+        ],
+        warnings: [],
+      },
+      assemblyManifest: null,
+      targetDurationSeconds: 8,
+    });
+    mockFullPassingChain(row);
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+    const shotRepairStep = (result.wizard as any).steps.find(
+      (s: any) => s.stepId === "shot_repair"
+    );
+    expect(shotRepairStep.status).toBe("optional");
+    expect(shotRepairStep.evidence[0].value).toBe("0");
+  });
+
+  /**
+   * debt-item-4 (2026-07-08) — `videoPrompts.stale` is now a real signal:
+   * whether the episode's LATEST `storyboard_shotgrid` artifact was written
+   * AFTER its latest `video_motion_prompt_pack` artifact. `id` is strictly
+   * increasing (bigserial), so a higher `id` always means "written later" —
+   * these rows don't need real timestamps to exercise both outcomes.
+   */
+  describe("debt-item-4: videoPrompts.stale (real per-artifact-ledger signal)", () => {
+    function rowWithPack() {
+      return fullyPassingEpisodeRow({
+        motionPromptPack: {
+          selectedVideoModelId: "veo-3-1",
+          durationProfileId: "profile-a",
+          motionMode: "first_frame_to_video",
+          clips: [
+            {
+              clipNumber: 1,
+              sourceShotNumbers: [1],
+              prompt: "p1",
+              durationSeconds: 8,
+              videoTask: { videoUrl: "https://x/1.mp4" },
+            },
+          ],
+          warnings: [],
+        },
+        assemblyManifest: null,
+      });
+    }
+
+    function findVideoPromptsStep(
+      result: Awaited<ReturnType<typeof router.getEpisodeDetail>>
+    ) {
+      return (result.wizard as any).steps.find(
+        (s: any) => s.stepId === "video_prompts"
+      );
+    }
+
+    it("is true when the storyboard artifact was written AFTER the video-prompts artifact (storyboard re-edited since)", async () => {
+      mockFullPassingChain(rowWithPack(), [
+        { stage: "storyboard_shotgrid", id: 20 }, // newer (higher id)
+        { stage: "video_motion_prompt_pack", id: 10 },
+      ]);
+
+      const result = await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const videoPromptsStep = findVideoPromptsStep(result);
+      expect(videoPromptsStep.status).toBe("needs_repair");
+      expect(videoPromptsStep.evidence[0].value).toBe("Stale");
+      expect(
+        videoPromptsStep.criteria.find(
+          (c: any) => c.id === "video_prompts_not_stale"
+        ).passed
+      ).toBe(false);
+    });
+
+    it("is false when the video-prompts artifact was written AFTER (or at the same time as) the storyboard artifact", async () => {
+      mockFullPassingChain(rowWithPack(), [
+        { stage: "video_motion_prompt_pack", id: 20 }, // newer (higher id)
+        { stage: "storyboard_shotgrid", id: 10 },
+      ]);
+
+      const result = await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const videoPromptsStep = findVideoPromptsStep(result);
+      expect(videoPromptsStep.status).toBe("passed");
+      expect(videoPromptsStep.evidence[0].value).toBe("Fresh");
+      expect(
+        videoPromptsStep.criteria.find(
+          (c: any) => c.id === "video_prompts_not_stale"
+        ).passed
+      ).toBe(true);
+    });
+
+    it("is false (fail-safe default) when one or both stages have no artifact row yet", async () => {
+      mockFullPassingChain(rowWithPack(), [
+        { stage: "storyboard_shotgrid", id: 20 },
+      ]);
+
+      const result = await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const videoPromptsStep = findVideoPromptsStep(result);
+      expect(videoPromptsStep.status).toBe("passed");
+      expect(videoPromptsStep.evidence[0].value).toBe("Fresh");
+    });
+
+    it("never queries resolveVideoPromptsStale when motionPromptPack is null (select count stays at the pre-debt-item-4 7 calls)", async () => {
+      // `fullyPassingEpisodeRow()`'s default `startFramePlan` carries an
+      // `approvedMediaAssetId`, so — same as `mockFullPassingChain`'s row —
+      // `resolveEpisodePlanAssetUrls` ALSO issues a real query here; only
+      // the 8th (`resolveVideoPromptsStale`) call is the one debt-item-4
+      // conditionally skips.
+      const row = fullyPassingEpisodeRow({
+        motionPromptPack: null,
+        assemblyManifest: null,
+      });
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesQualityLoopV2: true,
+        verticalDramaSeriesProductionWizard: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([row])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])) // resolveEpisodePlanAssetUrls
+        .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+        .mockReturnValueOnce(selectChain([{ jsonPayload: passingReview() }])) // loadLatestQualityReview
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // loadVerticalDramaQualityPolicy
+        .mockReturnValueOnce(selectChain([])) // loadLatestQualityLoopState -> none
+        .mockReturnValueOnce(
+          selectChain([{ productTieIn: null, locale: "th" }])
+        ); // wizard's productTieIn + locale lookup
+
+      const result = await router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const videoPromptsStep = findVideoPromptsStep(result);
+      expect(videoPromptsStep.evidence[0].value).toBe("Not generated");
+      expect(mockDb.select).toHaveBeenCalledTimes(7);
+    });
   });
 });
 
@@ -977,13 +2894,22 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     };
   }
 
-  function shotReference(over: Partial<{ mediaAssetId: string; sortOrder: number }> = {}) {
+  function shotReference(
+    over: Partial<{ mediaAssetId: string; sortOrder: number }> = {}
+  ) {
     return { referenceId: "r", mediaAssetId: "1", sortOrder: 0, ...over };
   }
 
   beforeEach(() => {
     mockGetModelsByTypeAsync.mockResolvedValue([
-      { id: "veo-3-1", type: "video", isEnabled: true, creditCost: 50, aliases: [], configJson: {} },
+      {
+        id: "veo-3-1",
+        type: "video",
+        isEnabled: true,
+        creditCost: 50,
+        aliases: [],
+        configJson: {},
+      },
     ]);
     mockHasEnoughCredits.mockResolvedValue(true);
     mockDeductCredits.mockResolvedValue(undefined as any);
@@ -1002,10 +2928,15 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
   });
 
   it("throws PRECONDITION_FAILED when the clip has no motion prompt yet", async () => {
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithPack({ prompt: "" })]));
+    mockDb.select.mockReturnValueOnce(
+      selectChain([episodeRowWithPack({ prompt: "" })])
+    );
 
     await expect(
-      router.generateVideoClip({ ctx: ctx(), input: { seriesId: "10", episodeId: "100", clipNumber: 1 } }),
+      router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
 
@@ -1027,7 +2958,7 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
           { id: 900, originalUrl: "https://cdn/900.png" },
           { id: 1, originalUrl: "https://cdn/1.png" },
           { id: 2, originalUrl: "https://cdn/2.png" },
-        ]),
+        ])
       ) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
 
@@ -1039,9 +2970,13 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     expect(result.trimmedReferenceCount).toBe(0);
     expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        referenceImageUrls: ["https://cdn/900.png", "https://cdn/1.png", "https://cdn/2.png"],
+        referenceImageUrls: [
+          "https://cdn/900.png",
+          "https://cdn/1.png",
+          "https://cdn/2.png",
+        ],
       }),
-      expect.any(String),
+      expect.any(String)
     );
   });
 
@@ -1063,7 +2998,7 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
         selectChain([
           { id: 900, originalUrl: "https://cdn/900.png" },
           { id: 1, originalUrl: "https://cdn/1.png" },
-        ]),
+        ])
       ) // resolveMediaAssetUrlsByIds — only start frame + the ONE kept reference (id 1, sortOrder 0)
       .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
 
@@ -1078,7 +3013,7 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       expect.objectContaining({
         referenceImageUrls: ["https://cdn/900.png", "https://cdn/1.png"],
       }),
-      expect.any(String),
+      expect.any(String)
     );
   });
 
@@ -1094,7 +3029,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     ]);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // start frame only
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // start frame only
       .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
 
     const result = await router.generateVideoClip({
@@ -1105,7 +3042,7 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     expect(result.trimmedReferenceCount).toBe(1);
     expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
       expect.objectContaining({ referenceImageUrls: ["https://cdn/900.png"] }),
-      expect.any(String),
+      expect.any(String)
     );
   });
 
@@ -1119,16 +3056,23 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     mockShotReferencesService.listForShot.mockResolvedValue([]);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
 
     await router.generateVideoClip({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", clipNumber: 1, idempotencyKey: "vc-key-1" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        clipNumber: 1,
+        idempotencyKey: "vc-key-1",
+      },
     });
 
     expect(mockDeductCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: "vc-key-1" }),
+      expect.objectContaining({ idempotencyKey: "vc-key-1" })
     );
   });
 
@@ -1140,7 +3084,14 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
       verticalDramaReady: true,
     });
     mockGetModelsByTypeAsync.mockResolvedValue([
-      { id: "higgsfield/nano_banana_2", type: "video", isEnabled: true, creditCost: 0, aliases: [], configJson: {} },
+      {
+        id: "higgsfield/nano_banana_2",
+        type: "video",
+        isEnabled: true,
+        creditCost: 0,
+        aliases: [],
+        configJson: {},
+      },
     ]);
     mockShotReferencesService.listForShot.mockResolvedValue([]);
     // `generateVideoClip` now prices via `calculateCreditCost` (storyboard-
@@ -1150,9 +3101,15 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     mockCalculateCreditCost.mockReturnValueOnce(0);
     mockDb.select
       .mockReturnValueOnce(
-        selectChain([episodeRowWithPack({ /* keep default clip shape */ })]),
+        selectChain([
+          episodeRowWithPack({
+            /* keep default clip shape */
+          }),
+        ])
       ) // loadOwnedEpisode — uses the default "veo-3-1" selection from episodeRowWithPack
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
 
     const result = await router.generateVideoClip({
@@ -1179,12 +3136,17 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     mockCalculateCreditCost.mockReturnValueOnce(0);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
     mockGenerateVideoAsync.mockRejectedValueOnce(new Error("submit failed"));
 
     await expect(
-      router.generateVideoClip({ ctx: ctx(), input: { seriesId: "10", episodeId: "100", clipNumber: 1 } }),
+      router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      })
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
@@ -1193,7 +3155,9 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
 });
 
 describe("generateStartFrameImage / generateStartFrameAngleVariations — idempotencyKey passthrough (T2)", () => {
-  function episodeRowWithStartFramePlan(frameOverrides: Record<string, unknown> = {}) {
+  function episodeRowWithStartFramePlan(
+    frameOverrides: Record<string, unknown> = {}
+  ) {
     return {
       id: 100,
       tenantId: "tenant-1",
@@ -1223,15 +3187,22 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])); // pricing lookup
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
 
     await router.generateStartFrameImage({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, idempotencyKey: "sf-key-1" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        idempotencyKey: "sf-key-1",
+      },
     });
 
     expect(mockDeductCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: "sf-key-1" }),
+      expect.objectContaining({ idempotencyKey: "sf-key-1" })
     );
   });
 
@@ -1240,15 +3211,22 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
       .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
 
     await router.generateStartFrameAngleVariations({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, idempotencyKey: "av-key-1" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        idempotencyKey: "av-key-1",
+      },
     });
 
     expect(mockDeductCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: "av-key-1" }),
+      expect.objectContaining({ idempotencyKey: "av-key-1" })
     );
   });
 
@@ -1257,7 +3235,9 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
 
     const result = await router.generateStartFrameImage({
       ctx: ctx(),
@@ -1274,13 +3254,15 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])); // pricing lookup — zero-cost model
-    mediaGenerationService.generateImageAsync = vi.fn().mockRejectedValue(new Error("submit failed"));
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockRejectedValue(new Error("submit failed"));
 
     await expect(
       router.generateStartFrameImage({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
-      }),
+      })
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
@@ -1293,7 +3275,9 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }])) // pricing lookup — zero-cost model
       .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
 
     const result = await router.generateStartFrameAngleVariations({
       ctx: ctx(),
@@ -1305,10 +3289,16 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
-  it("generateStartFrameImage builds transportMetadata.transport === \"mcp\" for an MCP-transport model (e.g. higgsfield/nano_banana_2) and forwards it to generateImageAsync", async () => {
+  it('generateStartFrameImage builds transportMetadata.transport === "mcp" for an MCP-transport model (e.g. higgsfield/nano_banana_2) and forwards it to generateImageAsync', async () => {
     mockCalculateCreditCost.mockReturnValueOnce(0); // MCP models are zero-cost (billed via MCP subscription)
     mockGetModelsByTypeAsync.mockResolvedValue([
-      { id: "higgsfield/nano_banana_2", type: "image", isEnabled: true, aliases: [], configJson: {} },
+      {
+        id: "higgsfield/nano_banana_2",
+        type: "image",
+        isEnabled: true,
+        aliases: [],
+        configJson: {},
+      },
     ]);
     mockDb.select
       .mockReturnValueOnce(
@@ -1317,10 +3307,16 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
             ...episodeRowWithStartFramePlan(),
             startFramePlan: {
               selectedImageModelId: "higgsfield/nano_banana_2",
-              frames: [{ shotNumber: 1, imagePrompt: "a prompt", requiredCharacterRefs: [] }],
+              frames: [
+                {
+                  shotNumber: 1,
+                  imagePrompt: "a prompt",
+                  requiredCharacterRefs: [],
+                },
+              ],
             },
           },
-        ]),
+        ])
       ) // loadOwnedEpisode — episode-level selection resolves to the MCP model
       .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: {} }])); // pricing lookup — zero-cost MCP model
     const mcpMetadata = {
@@ -1332,11 +3328,18 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
       creditPolicy: "provider_credits_tracked",
     };
     mockResolveMediaTransport.mockResolvedValue(mcpMetadata);
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "mcp-task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "mcp-task-1" });
 
     const result = await router.generateStartFrameImage({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, mcpConnectionId: "conn-1" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        mcpConnectionId: "conn-1",
+      },
     });
 
     expect(result.taskId).toBe("mcp-task-1");
@@ -1348,13 +3351,13 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
         requestedTransport: "mcp",
         mcpConnectionId: "conn-1",
         providerKey: "higgsfield",
-      }),
+      })
     );
     expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
       expect.objectContaining({
         transportMetadata: expect.objectContaining({ transport: "mcp" }),
       }),
-      expect.any(String),
+      expect.any(String)
     );
     // Zero-cost MCP model — credit reserve/refund cycle still skipped.
     expect(mockHasEnoughCredits).not.toHaveBeenCalled();
@@ -1364,7 +3367,13 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
   it("generateStartFrameImage throws BAD_REQUEST for an MCP-transport model when no mcpConnectionId is provided (fails closed instead of dispatching to the wrong provider)", async () => {
     mockCalculateCreditCost.mockReturnValueOnce(0);
     mockGetModelsByTypeAsync.mockResolvedValue([
-      { id: "higgsfield/nano_banana_2", type: "image", isEnabled: true, aliases: [], configJson: {} },
+      {
+        id: "higgsfield/nano_banana_2",
+        type: "image",
+        isEnabled: true,
+        aliases: [],
+        configJson: {},
+      },
     ]);
     mockDb.select
       .mockReturnValueOnce(
@@ -1373,10 +3382,16 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
             ...episodeRowWithStartFramePlan(),
             startFramePlan: {
               selectedImageModelId: "higgsfield/nano_banana_2",
-              frames: [{ shotNumber: 1, imagePrompt: "a prompt", requiredCharacterRefs: [] }],
+              frames: [
+                {
+                  shotNumber: 1,
+                  imagePrompt: "a prompt",
+                  requiredCharacterRefs: [],
+                },
+              ],
             },
           },
-        ]),
+        ])
       ) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: {} }])); // pricing lookup
 
@@ -1384,7 +3399,7 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
       router.generateStartFrameImage({
         ctx: ctx(),
         input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockResolveMediaTransport).not.toHaveBeenCalled();
@@ -1393,7 +3408,9 @@ describe("generateStartFrameImage / generateStartFrameAngleVariations — idempo
 });
 
 describe("resolution validation + pricing (Phase 6.2)", () => {
-  function episodeRowWithStartFramePlan(frameOverrides: Record<string, unknown> = {}) {
+  function episodeRowWithStartFramePlan(
+    frameOverrides: Record<string, unknown> = {}
+  ) {
     return {
       id: 100,
       tenantId: "tenant-1",
@@ -1417,7 +3434,9 @@ describe("resolution validation + pricing (Phase 6.2)", () => {
   beforeEach(() => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockDeductCredits.mockResolvedValue(undefined as any);
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
   });
 
   it("generateStartFrameImage passes a valid resolution through to generateImageAsync and calculateCreditCost", async () => {
@@ -1427,20 +3446,29 @@ describe("resolution validation + pricing (Phase 6.2)", () => {
     ]);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ creditCost: 150, configJson: { pricingFormula: "matrix" } }])); // pricing lookup
+      .mockReturnValueOnce(
+        selectChain([
+          { creditCost: 150, configJson: { pricingFormula: "matrix" } },
+        ])
+      ); // pricing lookup
 
     await router.generateStartFrameImage({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, resolution: "1080p" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        resolution: "1080p",
+      },
     });
 
     expect(mockCalculateCreditCost).toHaveBeenCalledWith(
       expect.objectContaining({ creditCost: 150 }),
-      expect.objectContaining({ resolution: "1080p" }),
+      expect.objectContaining({ resolution: "1080p" })
     );
     expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
       expect.objectContaining({ resolution: "1080p" }),
-      expect.any(String),
+      expect.any(String)
     );
   });
 
@@ -1456,8 +3484,13 @@ describe("resolution validation + pricing (Phase 6.2)", () => {
     await expect(
       router.generateStartFrameImage({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, resolution: "8K" },
-      }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          resolution: "8K",
+        },
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
@@ -1472,18 +3505,25 @@ describe("resolution validation + pricing (Phase 6.2)", () => {
 
     const result = await router.generateStartFrameImage({
       ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1, resolution: "anything" },
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        resolution: "anything",
+      },
     });
 
     expect(result.taskId).toBe("task-1");
     expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
       expect.objectContaining({ resolution: "anything" }),
-      expect.any(String),
+      expect.any(String)
     );
   });
 
   it("generateStartFrameAngleVariations rejects an invalid resolution with BAD_REQUEST", async () => {
-    mockDeriveModelResolutionOptions.mockReturnValueOnce([{ value: "720p", label: "720p" }]);
+    mockDeriveModelResolutionOptions.mockReturnValueOnce([
+      { value: "720p", label: "720p" },
+    ]);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
@@ -1491,14 +3531,21 @@ describe("resolution validation + pricing (Phase 6.2)", () => {
     await expect(
       router.generateStartFrameAngleVariations({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, resolution: "invalid" },
-      }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          resolution: "invalid",
+        },
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
 
 describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () => {
-  function episodeRowWithStartFramePlan(frameOverrides: Record<string, unknown> = {}) {
+  function episodeRowWithStartFramePlan(
+    frameOverrides: Record<string, unknown> = {}
+  ) {
     return {
       id: 100,
       tenantId: "tenant-1",
@@ -1530,14 +3577,18 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
       .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
 
     await router.generateStartFrameAngleVariations({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
 
-    const call = (mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const call = (
+      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
+    ).mock.calls[0][0];
 
     // Prompt must explicitly forbid on-image text and must NOT phrase angle
     // names as something to render as a label (still lists example angle
@@ -1559,24 +3610,101 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
   it("still includes negative-prompt no-text terms even when the shot has no negativePrompt of its own", async () => {
     mockDb.select
       .mockReturnValueOnce(
-        selectChain([episodeRowWithStartFramePlan({ negativePrompt: undefined })]),
+        selectChain([
+          episodeRowWithStartFramePlan({ negativePrompt: undefined }),
+        ])
       )
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }]))
       .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
 
     await router.generateStartFrameAngleVariations({
       ctx: ctx(),
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
 
-    const call = (mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const call = (
+      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
+    ).mock.calls[0][0];
     expect(call.negativePrompt).toMatch(/text/i);
+  });
+
+  it("Wave-7D: appends the series' preset visual identity fragments onto the grid prompt/negative-prompt when verticalDramaSeriesPresetMixV2 is on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesPresetMixV2: true,
+    } as any);
+    // Full shape required by the REAL `verticalDramaPresetVisualIdentitySchema`
+    // parse inside `loadSeriesPresetVisualIdentity` (min-3 palette etc.) — a
+    // partial fixture silently fails validation and the flow-through no-ops.
+    const identity = {
+      styleName: "sci-fi mecha noir",
+      palette: ["steel blue", "amber", "gunmetal"],
+      lighting: "cold rim light",
+      environmentMotifs: ["hangar bays"],
+      wardrobeGrammar: ["pilot suits"],
+      signaturePropsAndCompanions: ["mecha unit"],
+      cameraGrammar: "low angle hero shots",
+      characterArchetypes: [],
+      imagePromptFragments: {
+        positive: ["mecha plating"],
+        negative: ["cartoonish"],
+      },
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ bible: { presetVisualIdentity: identity } }])
+      ) // loadSeriesPresetVisualIdentity
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
+
+    await router.generateStartFrameAngleVariations({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(
+      mockAppendPresetVisualIdentityFragmentsToImagePrompt
+    ).toHaveBeenCalledWith("a prompt", identity);
+    const call = (
+      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
+    ).mock.calls[0][0];
+    expect(call.prompt).toMatch(/mecha plating/);
+    expect(call.negativePrompt).toMatch(/cartoonish/);
+  });
+
+  it("Wave-7D: does not append preset fragments when verticalDramaSeriesPresetMixV2 is off (default — flags-off byte-identical)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
+
+    await router.generateStartFrameAngleVariations({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(
+      mockAppendPresetVisualIdentityFragmentsToImagePrompt
+    ).not.toHaveBeenCalled();
+    expect(
+      mockMergePresetVisualIdentityNegativeFragments
+    ).not.toHaveBeenCalled();
   });
 });
 
 describe("repairShotImage (Phase 6.5)", () => {
-  function episodeRowWithApprovedAsset(frameOverrides: Record<string, unknown> = {}) {
+  function episodeRowWithApprovedAsset(
+    frameOverrides: Record<string, unknown> = {}
+  ) {
     return {
       id: 100,
       tenantId: "tenant-1",
@@ -1608,31 +3736,60 @@ describe("repairShotImage (Phase 6.5)", () => {
       verticalDramaReady: true,
     });
     mockGetModelsByTypeAsync.mockResolvedValue([
-      { id: "google-nano-banana-pro", type: "image", isEnabled: true, name: "Google Nano Banana Pro", aliases: [], configJson: {} },
+      {
+        id: "google-nano-banana-pro",
+        type: "image",
+        isEnabled: true,
+        name: "Google Nano Banana Pro",
+        aliases: [],
+        configJson: {},
+      },
     ]);
   });
 
   it("throws PRECONDITION_FAILED when the shot has no startFramePlan yet", async () => {
-    mockDb.select.mockReturnValueOnce(selectChain([{ id: 100, tenantId: "tenant-1", userId: 42, seriesId: 10, startFramePlan: null }]));
-
-    await expect(
-      router.repairShotImage({
-        ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
-      }),
-    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
-  });
-
-  it("throws PRECONDITION_FAILED when the shot has no approvedMediaAssetId yet", async () => {
     mockDb.select.mockReturnValueOnce(
-      selectChain([episodeRowWithApprovedAsset({ approvedMediaAssetId: undefined })]),
+      selectChain([
+        {
+          id: 100,
+          tenantId: "tenant-1",
+          userId: 42,
+          seriesId: 10,
+          startFramePlan: null,
+        },
+      ])
     );
 
     await expect(
       router.repairShotImage({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
-      }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          instruction: "change the jacket to red",
+        },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("throws PRECONDITION_FAILED when the shot has no approvedMediaAssetId yet", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        episodeRowWithApprovedAsset({ approvedMediaAssetId: undefined }),
+      ])
+    );
+
+    await expect(
+      router.repairShotImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          instruction: "change the jacket to red",
+        },
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
 
@@ -1644,8 +3801,13 @@ describe("repairShotImage (Phase 6.5)", () => {
     await expect(
       router.repairShotImage({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
-      }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          instruction: "change the jacket to red",
+        },
+      })
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
 
@@ -1657,25 +3819,61 @@ describe("repairShotImage (Phase 6.5)", () => {
       verticalDramaReady: false,
     });
     mockGetModelsByTypeAsync.mockResolvedValue([
-      { id: "z-image", type: "image", isEnabled: true, name: "Z-Image (no i2i)", aliases: [], configJson: {} },
-      { id: "google-nano-banana-pro", type: "image", isEnabled: true, name: "Google Nano Banana Pro", aliases: [], configJson: {} },
+      {
+        id: "z-image",
+        type: "image",
+        isEnabled: true,
+        name: "Z-Image (no i2i)",
+        aliases: [],
+        configJson: {},
+      },
+      {
+        id: "google-nano-banana-pro",
+        type: "image",
+        isEnabled: true,
+        name: "Google Nano Banana Pro",
+        aliases: [],
+        configJson: {},
+      },
     ]);
     // First call (guard check on the resolved model) -> not capable.
     // Second call (building the capable-models list) -> nano banana pro IS capable.
     mockResolveVerticalDramaCapabilities
-      .mockReturnValueOnce({ supportsStartFrame: false, maxReferenceImages: 0, nativeAudioDialogue: false, verticalDramaReady: false })
-      .mockReturnValueOnce({ supportsStartFrame: false, maxReferenceImages: 0, nativeAudioDialogue: false, verticalDramaReady: false })
-      .mockReturnValueOnce({ supportsStartFrame: true, maxReferenceImages: 3, nativeAudioDialogue: false, verticalDramaReady: true });
+      .mockReturnValueOnce({
+        supportsStartFrame: false,
+        maxReferenceImages: 0,
+        nativeAudioDialogue: false,
+        verticalDramaReady: false,
+      })
+      .mockReturnValueOnce({
+        supportsStartFrame: false,
+        maxReferenceImages: 0,
+        nativeAudioDialogue: false,
+        verticalDramaReady: false,
+      })
+      .mockReturnValueOnce({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
 
     await expect(
       router.repairShotImage({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
-      }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          instruction: "change the jacket to red",
+        },
+      })
     ).rejects.toMatchObject({
       code: "PRECONDITION_FAILED",
       message: expect.stringContaining("Google Nano Banana Pro"),
@@ -1686,10 +3884,14 @@ describe("repairShotImage (Phase 6.5)", () => {
   it("submits an image-to-image edit with the current image as the sole reference, a preservation directive, and reserves credits", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
       .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
-    mediaGenerationService.generateImageAsync = vi.fn().mockResolvedValue({ id: "repair-task-1" });
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "repair-task-1" });
 
     const result = await router.repairShotImage({
       ctx: ctx(),
@@ -1702,18 +3904,24 @@ describe("repairShotImage (Phase 6.5)", () => {
       },
     });
 
-    expect(result).toEqual({ taskId: "repair-task-1", modelId: "google-nano-banana-pro", creditCost: 10 });
+    expect(result).toEqual({
+      taskId: "repair-task-1",
+      modelId: "google-nano-banana-pro",
+      creditCost: 10,
+    });
     expect(mockDeductCredits).toHaveBeenCalledWith(
-      expect.objectContaining({ idempotencyKey: "repair-key-1", amount: 10 }),
+      expect.objectContaining({ idempotencyKey: "repair-key-1", amount: 10 })
     );
     expect(mediaGenerationService.generateImageAsync).toHaveBeenCalledWith(
       expect.objectContaining({
         referenceImageUrls: ["https://cdn/900.png"],
         prompt: expect.stringContaining("change the jacket to red"),
       }),
-      expect.any(String),
+      expect.any(String)
     );
-    const call = (mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const call = (
+      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
+    ).mock.calls[0][0];
     // Repair prompt now uses the standardized two-tier character-lock
     // instruction (2026-07-06 prompt-safety upgrade) instead of an inline
     // "same character identity" sentence.
@@ -1725,26 +3933,39 @@ describe("repairShotImage (Phase 6.5)", () => {
   it("refunds credits when generation submission fails", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
       .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
-    mediaGenerationService.generateImageAsync = vi.fn().mockRejectedValue(new Error("submit failed"));
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockRejectedValue(new Error("submit failed"));
 
     await expect(
       router.repairShotImage({
         ctx: ctx(),
-        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "change the jacket to red" },
-      }),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          instruction: "change the jacket to red",
+        },
+      })
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
     expect(mockRefundCredits).toHaveBeenCalled();
   });
 
   it("rejects an invalid resolution with BAD_REQUEST before submitting", async () => {
-    mockDeriveModelResolutionOptions.mockReturnValueOnce([{ value: "1K", label: "1K" }]);
+    mockDeriveModelResolutionOptions.mockReturnValueOnce([
+      { value: "1K", label: "1K" },
+    ]);
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
 
     await expect(
@@ -1757,8 +3978,1117 @@ describe("repairShotImage (Phase 6.5)", () => {
           instruction: "change the jacket to red",
           resolution: "4K",
         },
-      }),
+      })
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
+  });
+
+  it("Wave-7D: appends the series' preset visual identity fragments onto the repair prompt/negative-prompt when verticalDramaSeriesPresetMixV2 is on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesPresetMixV2: true,
+    } as any);
+    const identity = {
+      styleName: "sci-fi mecha noir",
+      palette: ["steel blue", "amber", "gunmetal"],
+      lighting: "cold rim light",
+      environmentMotifs: ["hangar bays"],
+      wardrobeGrammar: ["pilot suits"],
+      signaturePropsAndCompanions: ["mecha unit"],
+      cameraGrammar: "low angle hero shots",
+      characterArchetypes: [],
+      imagePromptFragments: {
+        positive: ["mecha plating"],
+        negative: ["cartoonish"],
+      },
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])) // loadSeriesTargetAudienceRegion — defaults to "thai"
+      .mockReturnValueOnce(
+        selectChain([{ bible: { presetVisualIdentity: identity } }])
+      ); // loadSeriesPresetVisualIdentity
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "repair-task-1" });
+
+    await router.repairShotImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        instruction: "change the jacket to red",
+      },
+    });
+
+    expect(
+      mockAppendPresetVisualIdentityFragmentsToImagePrompt
+    ).toHaveBeenCalled();
+    const call = (
+      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
+    ).mock.calls[0][0];
+    expect(call.prompt).toMatch(/mecha plating/);
+    expect(call.negativePrompt).toMatch(/cartoonish/);
+    // Pre-existing repair negative prompt is `undefined` for a non-tie-in
+    // shot — the preset's negative fragment is still merged in on its own,
+    // proving `mergePresetVisualIdentityNegativeFragments` handles the
+    // `undefined` base case (mirrors `generateStartFrameImage`'s usage).
+    expect(call.negativePrompt).not.toMatch(/^undefined/);
+  });
+
+  it("Wave-7D: does not append preset fragments when verticalDramaSeriesPresetMixV2 is off (default — flags-off byte-identical)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithApprovedAsset()])) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+      ) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTargetAudienceRegion — defaults to "thai"
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "repair-task-1" });
+
+    const result = await router.repairShotImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        instruction: "change the jacket to red",
+      },
+    });
+
+    expect(result.taskId).toBe("repair-task-1");
+    expect(
+      mockAppendPresetVisualIdentityFragmentsToImagePrompt
+    ).not.toHaveBeenCalled();
+    expect(
+      mockMergePresetVisualIdentityNegativeFragments
+    ).not.toHaveBeenCalled();
+    const call = (
+      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
+    ).mock.calls[0][0];
+    // Byte-identical to before Wave-7D: no tie-in shot -> negativePrompt is `undefined`.
+    expect(call.negativePrompt).toBeUndefined();
+  });
+});
+
+describe("Wave-4A — tie-in quality gate (spec §13.1) on generateStartFrameImage / generateVideoClip", () => {
+  const TIE_IN_QC_FLAGS = {
+    verticalDramaSeriesSpeechBudget: true,
+    verticalDramaSeriesQualityLoopV2: true,
+    verticalDramaSeriesTieInQc: true,
+  } as any;
+
+  const scriptWithTieInOnShot1 = {
+    episode_title: "Episode 1",
+    product_tie_in_plan: {
+      tie_ins: [{ shot_numbers: [1], story_function: "daily_use" }],
+    },
+  };
+  const scriptWithTieInOnShot9Only = {
+    episode_title: "Episode 1",
+    product_tie_in_plan: {
+      tie_ins: [{ shot_numbers: [9], story_function: "daily_use" }],
+    },
+  };
+
+  function episodeRowWithStartFramePlan(over: Record<string, unknown> = {}) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      script: scriptWithTieInOnShot1,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          { shotNumber: 1, imagePrompt: "a prompt", requiredCharacterRefs: [] },
+        ],
+      },
+      ...over,
+    };
+  }
+
+  function episodeRowWithPack(over: Record<string, unknown> = {}) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      script: scriptWithTieInOnShot1,
+      motionPromptPack: {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+        motionMode: "first_frame_to_video",
+        clips: [
+          {
+            clipNumber: 1,
+            sourceShotNumbers: [1],
+            prompt: "clip 1 motion prompt",
+            durationSeconds: 8,
+            startFrameAssetId: "900",
+          },
+        ],
+        warnings: [],
+      },
+      ...over,
+    };
+  }
+
+  beforeEach(() => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      {
+        id: "veo-3-1",
+        type: "video",
+        isEnabled: true,
+        creditCost: 50,
+        aliases: [],
+        configJson: {},
+      },
+    ]);
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+    mockShotReferencesService.listForShot.mockResolvedValue([]);
+    mockFormatVideoClipRequest.mockReturnValue({
+      prompt: "final prompt",
+      negativePrompt: undefined,
+      providerFamily: "veo",
+      nativeAudioDialogue: true,
+      generateAudio: true,
+      ttsFallback: false,
+      ttsLines: [],
+      maxReferenceImages: 3,
+      supportsStartFrame: true,
+    } as any);
+    mediaGenerationService.generateImageAsync = vi
+      .fn()
+      .mockResolvedValue({ id: "task-1" });
+    // Explicit (not relying on an earlier describe block's persisted
+    // `mockResolvedValue` default — `vi.clearAllMocks()` clears call
+    // history but not a previously-set default implementation, which would
+    // make this block's tests fragile to file execution order).
+    mockGenerateVideoAsync.mockResolvedValue({ id: "task-1" } as any);
+  });
+
+  describe("generateStartFrameImage", () => {
+    it("rejects with VD_TIE_IN_BELOW_FLOOR when no tie-in report exists yet for a tie-in shot", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])); // loadLatestTieInQualityReport -> none
+
+      await expect(
+        router.generateStartFrameImage({
+          ctx: ctx(),
+          input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+        })
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      });
+      expect(mediaGenerationService.generateImageAsync).not.toHaveBeenCalled();
+    });
+
+    it("rejects with VD_TIE_IN_BELOW_FLOOR when the latest tie-in report is failing", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { jsonPayload: { passed: false, naturalnessScore: 40 } },
+          ])
+        ); // failing report
+
+      await expect(
+        router.generateStartFrameImage({
+          ctx: ctx(),
+          input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+        })
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      });
+    });
+
+    it("proceeds normally when the latest tie-in report has passed", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ jsonPayload: { passed: true, naturalnessScore: 90 } }])
+        ) // passing report
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // Wave-7D: loadVerticalDramaQualityPolicy (defaults -> blockPaidGenerationBelowFloor: true -> override-audit short-circuits)
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 10, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(result.taskId).toBe("task-1");
+      expect(mediaGenerationService.generateImageAsync).toHaveBeenCalled();
+      // Guided-mode default policy (blockPaidGenerationBelowFloor: true) never
+      // records an override — only the policy select runs, no insert/update.
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("Wave-7D: records a VD_QUALITY_FLOOR_OVERRIDE audit event in expert mode with a failing scorecard, but still proceeds with generation (does not block)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      let capturedArtifactValues: any;
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ jsonPayload: { passed: true, naturalnessScore: 90 } }])
+        ) // passing tie-in report
+        .mockReturnValueOnce(
+          selectChain([
+            { qualityPolicy: { blockPaidGenerationBelowFloor: false } },
+          ])
+        ) // expert-mode policy
+        .mockReturnValueOnce(selectChain([{ id: 555 }])) // loadLatestQualityReviewArtifactId
+        .mockReturnValueOnce(
+          selectChain([
+            { jsonPayload: { scorecard: { overall: 2, pacing: 2 } } },
+          ])
+        ) // loadLatestQualityReview -> failing scorecard
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 10, configJson: null }])
+        ); // pricing lookup
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 700 }])) // override-audit run row
+        .mockReturnValueOnce({
+          values: vi.fn((v: any) => {
+            capturedArtifactValues = v;
+            return { returning: vi.fn(() => Promise.resolve([{ id: 701 }])) };
+          }),
+        }); // override-audit artifact row
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      const result = await router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      // Does NOT block: generation still proceeds normally.
+      expect(result.taskId).toBe("task-1");
+      expect(mediaGenerationService.generateImageAsync).toHaveBeenCalled();
+
+      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+      expect(capturedArtifactValues).toMatchObject({
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        episodeId: 100,
+        stage: "quality_floor_override_audit",
+        jsonPayload: expect.objectContaining({
+          code: "VD_QUALITY_FLOOR_OVERRIDE",
+          userId: 42,
+          episodeId: 100,
+          reviewArtifactId: "555",
+          overall: 2,
+          failingDimensions: expect.arrayContaining(["overall", "pacing"]),
+          source: "trpc.verticalDramaEpisodes.generateStartFrameImage",
+        }),
+      });
+    });
+
+    it("Wave-7D: does not record an override when expert mode but the latest scorecard already passes the policy floor", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ jsonPayload: { passed: true, naturalnessScore: 90 } }])
+        ) // passing tie-in report
+        .mockReturnValueOnce(
+          selectChain([
+            { qualityPolicy: { blockPaidGenerationBelowFloor: false } },
+          ])
+        ) // expert-mode policy
+        .mockReturnValueOnce(selectChain([{ id: 555 }])) // loadLatestQualityReviewArtifactId
+        .mockReturnValueOnce(
+          selectChain([
+            { jsonPayload: { scorecard: { overall: 5, pacing: 5 } } },
+          ])
+        ) // passing scorecard
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 10, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(result.taskId).toBe("task-1");
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("does not check the tie-in report at all for a shot with no tie-in placement", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([
+            episodeRowWithStartFramePlan({
+              script: scriptWithTieInOnShot9Only,
+            }),
+          ])
+        ) // loadOwnedEpisode — shot 1 requested, tie-in is on shot 9
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // Wave-7D: loadVerticalDramaQualityPolicy (no tie-in-report select in between — the tie-in gate itself no-ops for this episode)
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 10, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(result.taskId).toBe("task-1");
+    });
+
+    it("skips the gate entirely when verticalDramaSeriesTieInQc is off (default)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 10, configJson: null }])
+        ); // pricing lookup (no tie-in-report select)
+
+      const result = await router.generateStartFrameImage({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(result.taskId).toBe("task-1");
+    });
+  });
+
+  describe("generateVideoClip", () => {
+    it("rejects with VD_TIE_IN_BELOW_FLOOR when no tie-in report exists yet for a tie-in-carrying clip", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])); // loadLatestTieInQualityReport -> none
+
+      await expect(
+        router.generateVideoClip({
+          ctx: ctx(),
+          input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+        })
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      });
+      expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+    });
+
+    it("proceeds normally when the latest tie-in report has passed", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ jsonPayload: { passed: true, naturalnessScore: 90 } }])
+        ) // passing report
+        .mockReturnValueOnce(selectChain([{ qualityPolicy: null }])) // Wave-7D: loadVerticalDramaQualityPolicy (defaults -> no override recorded)
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.taskId).toBe("task-1");
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("Wave-7D: records a VD_QUALITY_FLOOR_OVERRIDE audit event in expert mode with a failing scorecard, but still proceeds with generation (does not block)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      let capturedArtifactValues: any;
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ jsonPayload: { passed: true, naturalnessScore: 90 } }])
+        ) // passing tie-in report
+        .mockReturnValueOnce(
+          selectChain([
+            { qualityPolicy: { blockPaidGenerationBelowFloor: false } },
+          ])
+        ) // expert-mode policy
+        .mockReturnValueOnce(selectChain([{ id: 555 }])) // loadLatestQualityReviewArtifactId
+        .mockReturnValueOnce(
+          selectChain([
+            { jsonPayload: { scorecard: { overall: 1, pacing: 1 } } },
+          ])
+        ) // failing scorecard
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 700 }])) // override-audit run row
+        .mockReturnValueOnce({
+          values: vi.fn((v: any) => {
+            capturedArtifactValues = v;
+            return { returning: vi.fn(() => Promise.resolve([{ id: 701 }])) };
+          }),
+        }); // override-audit artifact row
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.taskId).toBe("task-1");
+      expect(mockGenerateVideoAsync).toHaveBeenCalled();
+      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+      expect(capturedArtifactValues).toMatchObject({
+        stage: "quality_floor_override_audit",
+        jsonPayload: expect.objectContaining({
+          code: "VD_QUALITY_FLOOR_OVERRIDE",
+          reviewArtifactId: "555",
+          source: "trpc.verticalDramaEpisodes.generateVideoClip",
+        }),
+      });
+    });
+
+    it("skips the gate entirely when verticalDramaSeriesTieInQc is off (default)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.taskId).toBe("task-1");
+    });
+
+    it("passes clip.audioDirection through to formatVideoClipRequest when present (task #36)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      const episodeRow = episodeRowWithPack({
+        motionPromptPack: {
+          selectedVideoModelId: "veo-3-1",
+          durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+          motionMode: "first_frame_to_video",
+          clips: [
+            {
+              clipNumber: 1,
+              sourceShotNumbers: [1],
+              prompt: "clip 1 motion prompt",
+              durationSeconds: 8,
+              startFrameAssetId: "900",
+              audioDirection: "Rain taps the window; a door creaks shut.",
+            },
+          ],
+          warnings: [],
+        },
+      });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(
+          selectChain([{ creditCost: 50, configJson: null }])
+        ); // pricing lookup
+
+      await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockFormatVideoClipRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clip: expect.objectContaining({
+            audioDirection: "Rain taps the window; a door creaks shut.",
+          }),
+        }),
+      );
+    });
+
+    it("passes clip.audioDirection as undefined when the clip never opted in (byte-identical call shape)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])
+        )
+        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }]));
+
+      await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockFormatVideoClipRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clip: expect.objectContaining({ audioDirection: undefined }),
+        }),
+      );
+    });
+  });
+});
+
+describe("Wave-4A — tie-in quality gate (spec §13.1) on runStage / regenerateStage (create_storyboard_review_project)", () => {
+  const TIE_IN_QC_FLAGS = {
+    verticalDramaSeriesSpeechBudget: true,
+    verticalDramaSeriesQualityLoopV2: true,
+    verticalDramaSeriesTieInQc: true,
+  } as any;
+
+  function episodeRowWithTieIn() {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      script: {
+        episode_title: "Episode 1",
+        product_tie_in_plan: {
+          tie_ins: [{ shot_numbers: [3], story_function: "daily_use" }],
+        },
+      },
+    };
+  }
+
+  beforeEach(() => {
+    mockRunStage.mockClear();
+  });
+
+  describe("runStage", () => {
+    it("rejects VD_TIE_IN_BELOW_FLOOR for a real (full-mode) create_storyboard_review_project run when the tie-in report is missing", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithTieIn()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])); // loadLatestTieInQualityReport -> none
+
+      await expect(
+        router.runStage({
+          ctx: ctx(),
+          input: {
+            seriesId: "10",
+            episodeId: "100",
+            stage: "create_storyboard_review_project",
+            mode: "full",
+          },
+        })
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      });
+      expect(mockRunStage).not.toHaveBeenCalled();
+    });
+
+    it("never gates a dry_run/plan_only preview run, even with a failing tie-in report", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithTieIn()])); // loadOwnedEpisode only — no tie-in-report select
+
+      const result = await router.runStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "create_storyboard_review_project",
+          mode: "dry_run",
+        },
+      });
+
+      expect(result).toEqual({});
+      expect(mockRunStage).toHaveBeenCalled();
+    });
+
+    it("does not gate other stages even when the episode has a failing tie-in report", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithTieIn()])) // loadOwnedEpisode
+        // Task #26 — `plan_episode_script` + real mode now also runs
+        // `assertEpisodeWithinSeasonPlan`'s `resolveEpisodeBreakdownStatus`
+        // bible lookup; an empty row (`bible: null`) resolves "no_plan"
+        // (grandfathered legacy series), so the gate is a no-op here.
+        .mockReturnValueOnce(selectChain([]));
+
+      const result = await router.runStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "plan_episode_script",
+          mode: "full",
+        },
+      });
+
+      expect(result).toEqual({});
+    });
+  });
+
+  describe("regenerateStage", () => {
+    it("rejects VD_TIE_IN_BELOW_FLOOR before deleting any prior run when the tie-in report is failing", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithTieIn()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { jsonPayload: { passed: false, naturalnessScore: 30 } },
+          ])
+        ); // failing report
+
+      await expect(
+        router.regenerateStage({
+          ctx: ctx(),
+          input: {
+            seriesId: "10",
+            episodeId: "100",
+            stage: "create_storyboard_review_project",
+          },
+        })
+      ).rejects.toMatchObject({
+        code: "PRECONDITION_FAILED",
+        message: expect.stringContaining("VD_TIE_IN_BELOW_FLOOR"),
+      });
+      expect(mockDb.delete).not.toHaveBeenCalled();
+    });
+
+    it("skips the gate entirely when verticalDramaSeriesTieInQc is off (default)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithTieIn()])); // loadOwnedEpisode only
+      mockDb.delete.mockReturnValueOnce({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      const result = await router.regenerateStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "create_storyboard_review_project",
+        },
+      });
+
+      expect(result).toEqual({});
+      expect(mockRunStage).toHaveBeenCalled();
+    });
+  });
+});
+
+describe("deferEpisodeTieIn (spec §13.1 defer path)", () => {
+  const TIE_IN_QC_FLAGS = {
+    verticalDramaSeriesSpeechBudget: true,
+    verticalDramaSeriesQualityLoopV2: true,
+    verticalDramaSeriesTieInQc: true,
+  } as any;
+
+  function episodeRowWithTieIn(over: Record<string, unknown> = {}) {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      episodeNumber: 7,
+      script: {
+        episode_title: "Episode 7",
+        product_tie_in_plan: {
+          tie_ins: [{ shot_numbers: [3], story_function: "daily_use" }],
+        },
+      },
+      ...over,
+    };
+  }
+
+  beforeEach(() => {
+    mockAppendEvent.mockClear();
+    mockAppendEvent.mockResolvedValue({ memoryEventId: "evt-1" });
+    mockGetActiveBreakdown.mockReset();
+    mockGetActiveBreakdown.mockReturnValue([]);
+  });
+
+  /** A clean N-episode season breakdown item, no `tieIn` field (legacy/bootstrap starting state). */
+  function breakdownItem(episodeNumber: number) {
+    return {
+      episodeNumber,
+      workingTitle: `Episode ${episodeNumber} title`,
+      logline: `Episode ${episodeNumber} logline`,
+      keyBeats: [`beat ${episodeNumber}`],
+      contentBudget: {
+        beatCount: 6,
+        estimatedSpeechSeconds: 35,
+        conflictLevel: 3,
+        reversalTarget: 2,
+        arcThreads: [],
+      },
+    };
+  }
+  function season(count: number) {
+    return Array.from({ length: count }, (_, i) => breakdownItem(i + 1));
+  }
+
+  it("rejects with FORBIDDEN when verticalDramaSeriesTieInQc is off", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+
+    await expect(
+      router.deferEpisodeTieIn({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mockDb.select).not.toHaveBeenCalled();
+  });
+
+  it("rejects with PRECONDITION_FAILED when the episode has no script yet", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+    mockDb.select.mockReturnValueOnce(
+      selectChain([episodeRowWithTieIn({ script: null })])
+    );
+
+    await expect(
+      router.deferEpisodeTieIn({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("rejects with PRECONDITION_FAILED when the episode has no tie-in placement to defer", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        episodeRowWithTieIn({
+          script: {
+            episode_title: "Episode 7",
+            product_tie_in_plan: { tie_ins: [] },
+          },
+        }),
+      ])
+    );
+
+    await expect(
+      router.deferEpisodeTieIn({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("strips tie_ins, backs up the prior script as a run artifact, appends a deferred memory event, and returns staleStages", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTieIn()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // schedule-risk series row -> none (skips risk sub-flow)
+    mockDb.insert
+      .mockReturnValueOnce(insertChain([{ id: 501 }])) // prior-script run
+      .mockReturnValueOnce(insertChain([{ id: 601 }])); // prior-script artifact
+    mockDb.update
+      .mockReturnValueOnce(updateChain([])) // run artifactIds update
+      .mockReturnValueOnce(updateChain([])); // episode.script overwrite
+
+    const result = await router.deferEpisodeTieIn({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        idempotencyKey: "defer-key-1",
+      },
+    });
+
+    expect(result.scriptArtifactRef).toEqual({ priorScriptArtifactId: "601" });
+    expect((result.script as any).product_tie_in_plan.tie_ins).toEqual([]);
+    expect(result.staleStages).toEqual([]); // mocked VerticalDramaEpisodePipeline.downstreamStages -> []
+    expect(mockAppendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memoryKind: "product_tie_in_usage",
+        payload: { deferred: true, fromEpisodeNumber: 7 },
+        idempotencyKey: "defer-key-1",
+      })
+    );
+  });
+
+  it("computes scheduleAtRisk: true when the window falls short of the target and no future episodes remain", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithTieIn({ episodeNumber: 10 })])
+      ) // loadOwnedEpisode — last episode
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            productTieIn: {
+              enabled: true,
+              maxEpisodesWithTieInPerTenEpisodes: 3,
+            },
+            targetEpisodeCount: 10,
+          },
+        ])
+      ) // schedule-risk series row
+      .mockReturnValueOnce(selectChain([])); // loadSeriesTieInPlacementHistory -> no other placements in window
+    mockDb.insert
+      .mockReturnValueOnce(insertChain([{ id: 501 }]))
+      .mockReturnValueOnce(insertChain([{ id: 601 }]));
+    mockDb.update
+      .mockReturnValueOnce(updateChain([]))
+      .mockReturnValueOnce(updateChain([]));
+
+    const result = await router.deferEpisodeTieIn({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.scheduleAtRisk).toBe(true);
+  });
+
+  it("computes scheduleAtRisk: false when future episodes remain to reschedule into", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithTieIn({ episodeNumber: 3 })])
+      ) // not the last episode
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            productTieIn: {
+              enabled: true,
+              maxEpisodesWithTieInPerTenEpisodes: 3,
+            },
+            targetEpisodeCount: 10,
+          },
+        ])
+      )
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.insert
+      .mockReturnValueOnce(insertChain([{ id: 501 }]))
+      .mockReturnValueOnce(insertChain([{ id: 601 }]));
+    mockDb.update
+      .mockReturnValueOnce(updateChain([]))
+      .mockReturnValueOnce(updateChain([]));
+
+    const result = await router.deferEpisodeTieIn({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.scheduleAtRisk).toBe(false);
+  });
+
+  describe("F131Y `verticalDramaSeriesTieInReplan` real proposal path (task #31)", () => {
+    const TIE_IN_REPLAN_FLAGS = {
+      ...TIE_IN_QC_FLAGS,
+      verticalDramaSeriesTieInReplan: true,
+    } as any;
+
+    it("flag off: result.proposal and result.reason are both undefined (grandfather, byte-identical)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_QC_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([episodeRowWithTieIn({ episodeNumber: 3 })])
+        )
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              productTieIn: {
+                enabled: true,
+                maxEpisodesWithTieInPerTenEpisodes: 3,
+              },
+              targetEpisodeCount: 10,
+            },
+          ])
+        )
+        .mockReturnValueOnce(selectChain([]));
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 501 }]))
+        .mockReturnValueOnce(insertChain([{ id: 601 }]));
+      mockDb.update
+        .mockReturnValueOnce(updateChain([]))
+        .mockReturnValueOnce(updateChain([]));
+
+      const result = await router.deferEpisodeTieIn({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(result.proposal).toBeUndefined();
+      expect(result.reason).toBeUndefined();
+      expect(mockGetActiveBreakdown).not.toHaveBeenCalled();
+    });
+
+    it("flag on + legacy series (no tieIn on any item) bootstraps a season plan and persists a real arc_replan_proposal", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_REPLAN_FLAGS);
+      mockGetActiveBreakdown.mockReturnValueOnce(season(10));
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([episodeRowWithTieIn({ episodeNumber: 5 })])
+        ) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain(
+            [1, 2, 3, 4, 5].map(n => ({
+              episodeNumber: n,
+              script: { episode_title: `Episode ${n}` },
+            }))
+          )
+        ) // loadProducedEpisodeNumbers -> [1,2,3,4,5]
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              bible: { episodeBreakdown: season(10) },
+              productTieIn: {
+                enabled: true,
+                maxEpisodesWithTieInPerTenEpisodes: 3,
+              },
+              targetEpisodeCount: 10,
+            },
+          ])
+        ); // seriesRowForReplan
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 501 }]))
+        .mockReturnValueOnce(insertChain([{ id: 601 }]));
+      mockDb.update
+        .mockReturnValueOnce(updateChain([]))
+        .mockReturnValueOnce(updateChain([]));
+
+      const result = await router.deferEpisodeTieIn({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          idempotencyKey: "defer-key-2",
+        },
+      });
+
+      expect(result.scheduleAtRisk).toBe(false);
+      expect(result.reason).toBeUndefined();
+      expect(result.proposal).toBeDefined();
+      expect(result.proposal?.targetEpisodeNumber).toBeGreaterThan(5);
+
+      expect(mockAppendEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          memoryKind: "arc_replan_proposal",
+          idempotencyKey: "defer-key-2:arc-replan-proposal",
+          payload: expect.objectContaining({
+            triggeredByEpisodeNumber: 5,
+            driftReasons: ["VD_ARC_TIE_IN_DEFERRED"],
+            status: "proposed",
+            affectedEpisodeNumbers: expect.arrayContaining([5]),
+          }),
+        })
+      );
+      const proposalCall = mockAppendEvent.mock.calls.find(
+        (call: any[]) => call[0]?.memoryKind === "arc_replan_proposal"
+      );
+      const proposedBreakdown = proposalCall?.[0]?.payload
+        ?.proposedBreakdown as Array<{
+        episodeNumber: number;
+      }>;
+      expect(proposedBreakdown).toHaveLength(10); // whole-season bootstrap, not just the 2 touched episodes
+    });
+
+    it("flag on + no eligible future episode: falls back to scheduleAtRisk with reason 'no_future_slot'", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_REPLAN_FLAGS);
+      mockGetActiveBreakdown.mockReturnValueOnce(season(10));
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([episodeRowWithTieIn({ episodeNumber: 10 })])
+        ) // last episode
+        .mockReturnValueOnce(selectChain([])) // loadProducedEpisodeNumbers -> []
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              bible: { episodeBreakdown: season(10) },
+              productTieIn: {
+                enabled: true,
+                maxEpisodesWithTieInPerTenEpisodes: 3,
+              },
+              targetEpisodeCount: 10,
+            },
+          ])
+        ) // seriesRowForReplan
+        .mockReturnValueOnce(
+          selectChain([
+            {
+              productTieIn: {
+                enabled: true,
+                maxEpisodesWithTieInPerTenEpisodes: 3,
+              },
+              targetEpisodeCount: 10,
+            },
+          ])
+        ) // fallback seriesRowForSchedule
+        .mockReturnValueOnce(selectChain([])); // fallback loadSeriesTieInPlacementHistory
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 501 }]))
+        .mockReturnValueOnce(insertChain([{ id: 601 }]));
+      mockDb.update
+        .mockReturnValueOnce(updateChain([]))
+        .mockReturnValueOnce(updateChain([]));
+
+      const result = await router.deferEpisodeTieIn({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(result.proposal).toBeUndefined();
+      expect(result.reason).toBe("no_future_slot");
+      expect(result.scheduleAtRisk).toBe(true); // fallback to the pre-#31 signal
+    });
+
+    it("flag on but tie-in disabled at the series level: never calls getActiveBreakdown, falls back to scheduleAtRisk logic", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue(TIE_IN_REPLAN_FLAGS);
+      mockDb.select
+        .mockReturnValueOnce(
+          selectChain([episodeRowWithTieIn({ episodeNumber: 3 })])
+        )
+        .mockReturnValueOnce(selectChain([])) // loadProducedEpisodeNumbers -> []
+        .mockReturnValueOnce(
+          selectChain([
+            { productTieIn: { enabled: false }, targetEpisodeCount: 10 },
+          ])
+        ) // seriesRowForReplan — disabled
+        .mockReturnValueOnce(
+          selectChain([
+            { productTieIn: { enabled: false }, targetEpisodeCount: 10 },
+          ])
+        ); // fallback seriesRowForSchedule
+      // fallback scheduleAtRisk short-circuits (scheduleTieInConfig.enabled === false) — no further select.
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 501 }]))
+        .mockReturnValueOnce(insertChain([{ id: 601 }]));
+      mockDb.update
+        .mockReturnValueOnce(updateChain([]))
+        .mockReturnValueOnce(updateChain([]));
+
+      const result = await router.deferEpisodeTieIn({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockGetActiveBreakdown).not.toHaveBeenCalled();
+      expect(result.proposal).toBeUndefined();
+      expect(result.scheduleAtRisk).toBe(false);
+    });
   });
 });

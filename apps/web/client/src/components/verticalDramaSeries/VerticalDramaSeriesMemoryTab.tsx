@@ -7,6 +7,12 @@
  * `retcon_proposal` events additionally expose Approve/Reject actions
  * (`approveRetconProposal` / `rejectRetconProposal`) for proposals that have
  * not yet been resolved by a later event in the append-only chain.
+ *
+ * `arc_replan_proposal` events (spec §7.7.3, section-13, added 2026-07-07)
+ * get the same append-only pending/resolved review treatment via the
+ * standalone `VerticalDramaArcReplanCard` below — the FORWARD-facing mirror
+ * of the retcon proposal card above (retcon corrects the past; an arc
+ * re-plan proposes changing the planned, non-produced future).
  */
 
 import { useState } from "react";
@@ -46,6 +52,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import type { VerticalDramaMemoryKind } from "@shared/verticalDramaSeries";
+import { VerticalDramaArcReplanCard } from "./VerticalDramaArcReplanCard";
 
 interface VerticalDramaMemoryEventRow {
   memoryEventId: string;
@@ -399,6 +406,8 @@ export function VerticalDramaSeriesMemoryTab({
           )}
         </CardContent>
       </Card>
+
+      <VerticalDramaArcReplanCard lang={lang} seriesId={seriesId} readOnly={readOnly} />
 
       <Dialog open={proposeOpen} onOpenChange={setProposeOpen}>
         <DialogContent className="max-w-lg">

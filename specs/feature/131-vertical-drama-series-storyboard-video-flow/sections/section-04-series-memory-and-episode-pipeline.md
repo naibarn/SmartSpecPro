@@ -95,7 +95,7 @@ The 15 canonical `VerticalDramaPipelineStage` stages are internal fidelity, not 
 
 The workspace renders a phase progress indicator (which phase is active, which are complete, which are blocked/waiting) derived from the underlying stage statuses. Regardless of how many stages are in flight, the workspace surfaces exactly ONE primary call-to-action, driven by the current stage's `next_action` (for example "Run dry run", "Approve start frames", "Repair script", "Generate video"). Secondary/expert controls (per-stage detail, per-stage repair) remain available on drill-down but never compete with the single primary CTA. This is the key simplification: operators act on one clear next step, not a 15-item checklist.
 
-### Failed-Validation Rule (spec 11.5, line 2084)
+### Failed-Validation Rule (spec §11.5)
 
 A stage runner MUST NOT silently continue past a schema-validation failure. When a stage's skill output or artifact fails schema validation, the runner sets `status = "failed"` and `next_action = "repair"` and attaches a stable machine-readable error code (for example `VD_SCHEMA_VALIDATION_FAILED`, not free-form text). The stable error code drives the repair UI/CTA and is persisted with the stage artifact/QC result. A failed validation never advances the stage sequence and never marks the stage `completed`.
 
@@ -178,6 +178,32 @@ The memory model is strictly append-only. Retcons are EXPLICIT proposals, never 
 - A proposed retcon is persisted as a memory event of kind `retcon_proposal` (see `VerticalDramaMemoryKind` in spec 1387-1396) and requires user approval.
 - Approving a retcon creates a NEW memory event that supersedes the contradicted fact going forward. It NEVER mutates or deletes any prior event; the historical append-only chain is preserved intact for audit and replay.
 - If a new episode contradicts canonical memory, the pipeline stops at a repair checkpoint and emits a `retcon_proposal` rather than silently rewriting the past.
+
+### Arc Re-Plan Interplay (added 2026-07-07 — spec §7.7.3, implemented by section-13)
+
+The density reform (section-13) hooks into this section's runner and memory
+model at three points; this section owns the hook points, section-13 owns the
+implementation:
+
+- **Drift-check hooks**: the deterministic arc-drift check runs (1) after
+  `plan_episode_script` approval, (2) inside
+  `summarize_episode_to_series_memory`, and (3) on re-approval of a
+  repaired/regenerated script of an already-approved episode. A material
+  drift appends an `arc_replan_proposal` memory event and creates a repair
+  checkpoint instead of silently continuing.
+- **Memory kinds**: `VerticalDramaMemoryKind` includes `arc_replan_proposal`
+  and `arc_replan_applied` (11 kinds total — section-02). Both are
+  append-only like retcons; the Memory tab timeline and its filters include
+  them.
+- **Procedures**: `approveArcReplanProposal` / `rejectArcReplanProposal`
+  live on `verticalDramaSeries` BESIDE the retcon procedures they mirror,
+  following the same ownership/flag/authz/audit/idempotency rules as every
+  other mutating route in this section. Approval appends a new breakdown
+  version (`breakdownVersions[]`, pointer move — section-02) and an
+  `arc_replan_applied` event; produced episodes are never rewritten.
+- **Bundle input**: `buildEpisodeMemoryBundle` gains item 9 — the ACTIVE
+  breakdown version plus standing drift warnings — so episode N+1 always
+  plans from the approved current plan (spec §7.6/§7.7.3).
 
 ### Memory Event Timeline And Retcon Proposal Review (spec 7.6)
 

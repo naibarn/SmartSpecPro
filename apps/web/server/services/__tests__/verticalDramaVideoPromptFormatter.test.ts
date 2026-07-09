@@ -313,6 +313,63 @@ describe("formatVideoClipRequest — start-frame grounding instruction (video MC
   });
 });
 
+describe("formatVideoClipRequest — speakability sanitize on native embed (2026-07-08/W9-A, spec §14.1 rule 6b)", () => {
+  const veoModel = {
+    id: "veo3/generate-veo-3-video-lite",
+    type: "video" as const,
+    provider: "kie.ai",
+    aliases: ["veo 3.1 lite", "veo3-lite"],
+    configJson: {},
+  };
+
+  it("sanitizes a real bad-data line (wrapping quotes + parenthetical + tilde) before embedding it verbatim", () => {
+    const result = formatVideoClipRequest({
+      clip: clip(),
+      dialogueLines: [
+        dialogueLine({ characterKey: "เจ้าเกลือ", lineTh: "“เหมียว~”" }),
+      ],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    // The RAW quoted/tilde text never reaches the outbound prompt.
+    expect(result.prompt).not.toContain("“เหมียว~”");
+    expect(result.prompt).not.toContain("~");
+    // The sanitized text is embedded instead.
+    expect(result.prompt).toContain('exactly: "เหมียว".');
+  });
+
+  it("sanitizes an em-dash line to a comma before embedding (the dialogue's OWN em-dash is gone — unrelated em-dashes elsewhere in the instructional prompt template are untouched)", () => {
+    const result = formatVideoClipRequest({
+      clip: clip(),
+      dialogueLines: [
+        dialogueLine({
+          characterKey: "ชายนต์",
+          lineTh: "“ใจเย็น ฟังให้ครบตามกติกา—ความจริงที่ปลอดภัยต้องพิสูจน์ได้ด้วย”",
+        }),
+      ],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt).not.toContain("กติกา—ความจริง");
+    expect(result.prompt).toContain(
+      'exactly: "ใจเย็น ฟังให้ครบตามกติกา, ความจริงที่ปลอดภัยต้องพิสูจน์ได้ด้วย".',
+    );
+  });
+
+  it("a clean, already-speakable line is embedded byte-identical (idempotent sanitizer, no visible change)", () => {
+    const result = formatVideoClipRequest({
+      clip: clip(),
+      dialogueLines: [dialogueLine()],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt).toContain('exactly: "เราไม่ได้จบกันแค่นี้หรอกนะ".');
+  });
+});
+
 describe("resolveProviderFamily", () => {
   it("detects veo/grok/seedance/generic independently of resolveVerticalDramaCapabilities", () => {
     expect(
@@ -335,5 +392,64 @@ describe("resolveProviderFamily", () => {
     expect(
       resolveProviderFamily("acme-video-1", { type: "video", provider: "acme", aliases: [] }),
     ).toBe("generic");
+  });
+});
+
+describe("formatVideoClipRequest — audioDirection (task #36 — optional NATIVE AUDIO DIRECTION prompt option)", () => {
+  const veoModel = {
+    id: "veo3/generate-veo-3-video-lite",
+    type: "video" as const,
+    provider: "kie.ai",
+    aliases: ["veo 3.1 lite", "veo3-lite"],
+    configJson: {},
+  };
+
+  it("leaves the prompt byte-identical when audioDirection is absent", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ startFrameAssetId: undefined }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+    expect(result.prompt).toBe(clip().prompt);
+  });
+
+  it("appends audioDirection to the end of a silent (no-dialogue) clip's prompt", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({
+        startFrameAssetId: undefined,
+        audioDirection:
+          "Door slams shut; distant rain patters against the window.",
+      }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+    expect(result.prompt).toBe(
+      `${clip().prompt} Door slams shut; distant rain patters against the window.`,
+    );
+  });
+
+  it("appends audioDirection AFTER the dialogue clause (ordering: acting/dialogue direction first, ambient/SFX direction last)", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ audioDirection: "Rain taps steadily on the glass." }),
+      dialogueLines: [dialogueLine()],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+    const dialogueIndex = result.prompt.indexOf("เราไม่ได้จบกันแค่นี้หรอกนะ");
+    const audioIndex = result.prompt.indexOf("Rain taps steadily on the glass.");
+    expect(dialogueIndex).toBeGreaterThan(-1);
+    expect(audioIndex).toBeGreaterThan(dialogueIndex);
+  });
+
+  it("appends audioDirection independent of provider family (generic/non-Veo model)", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ audioDirection: "Footsteps echo on gravel." }),
+      dialogueLines: [],
+      modelId: "acme-video-1",
+      model: { type: "video", provider: "acme", aliases: [] },
+    });
+    expect(result.prompt).toContain("Footsteps echo on gravel.");
   });
 });

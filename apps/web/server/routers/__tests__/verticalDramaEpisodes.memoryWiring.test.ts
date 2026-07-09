@@ -86,8 +86,11 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
+  mockGetTenantFeatureFlags: vi.fn(),
+}));
 vi.mock("../../services/tenantFeatureFlagService", () => ({
-  getTenantFeatureFlags: vi.fn(),
+  getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
 
 const { mockApproveRunCheckpoint } = vi.hoisted(() => ({
@@ -111,11 +114,45 @@ const { mockMemoryService } = vi.hoisted(() => ({
     proposeRetcon: vi.fn(),
     approveRetconProposal: vi.fn(),
     rejectRetconProposal: vi.fn(),
+    buildEpisodeMemoryBundle: vi.fn(),
   },
 }));
 vi.mock("../../services/verticalDramaSeriesMemory", () => ({
   verticalDramaSeriesMemoryService: mockMemoryService,
   memoryRowToEvent: vi.fn(),
+}));
+
+// Story-density reform (spec §7.7.3, section-13, added 2026-07-07) — the
+// router loads these 3 modules via a runtime `import()` (not a static
+// import — see `runArcDriftCheckAndProposeIfNeeded`'s doc comment in
+// `verticalDramaEpisodes.ts` for why), but `vi.mock` intercepts dynamic
+// imports of a mocked path exactly like static ones, so these mocks apply
+// here too. Simple, fully-controlled fakes — the real drift-detection
+// algorithm is already covered by `verticalDramaArcReplan.test.ts`; this
+// file only tests the WIRING (hook points, flag gating, idempotency).
+const { mockDetectArcDrift, mockBuildArcReplanProposal } = vi.hoisted(() => ({
+  mockDetectArcDrift: vi.fn(),
+  mockBuildArcReplanProposal: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaArcReplan", () => ({
+  detectArcDrift: mockDetectArcDrift,
+  buildArcReplanProposal: mockBuildArcReplanProposal,
+}));
+
+const { mockGetActiveBreakdown, mockDeriveLegacyContentBudget } = vi.hoisted(() => ({
+  mockGetActiveBreakdown: vi.fn(),
+  mockDeriveLegacyContentBudget: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaStoryBible", () => ({
+  getActiveBreakdown: mockGetActiveBreakdown,
+  deriveLegacyContentBudget: mockDeriveLegacyContentBudget,
+}));
+
+const { mockEvaluateScriptSpeechCoverage } = vi.hoisted(() => ({
+  mockEvaluateScriptSpeechCoverage: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaScriptGeneration", () => ({
+  evaluateScriptSpeechCoverage: mockEvaluateScriptSpeechCoverage,
 }));
 
 vi.mock("../../services/verticalDramaEpisodeContinuation", () => ({
@@ -203,6 +240,14 @@ function selectChain(rows: unknown[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // `vi.clearAllMocks()` clears call history but NOT a mock's implementation
+  // (that's `mockReset`) — `mockGetTenantFeatureFlags.mockResolvedValue(...)`
+  // set by one arc-drift test would otherwise silently persist as the
+  // DEFAULT for every later test in this file (flag "leaks" on). Explicitly
+  // reset just this one mock so every test starts from the fail-closed
+  // default (`undefined` -> optional-chained to "flag off" by the router)
+  // unless it explicitly opts in.
+  mockGetTenantFeatureFlags.mockReset();
 });
 
 describe("approveCheckpoint — delegates to the pipeline, no router-level side effects", () => {
@@ -290,6 +335,220 @@ describe("approveCheckpoint — delegates to the pipeline, no router-level side 
     expect(result.checkpoint.id).toBe("900");
     expect(mockMemoryService.appendEvent).not.toHaveBeenCalled();
     expect(mockDb.select).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Story-density reform (spec §7.7.3, section-13, added 2026-07-07) —
+ * deterministic arc-drift check hooked onto a genuine `plan_episode_script`
+ * OR `summarize_episode_to_series_memory` checkpoint approval transition
+ * (covers first-time script approval, re-approval of a repaired script —
+ * `repairStageOutput` always creates a NEW checkpoint on the same stage —
+ * and the pipeline-driven memory-summary checkpoint). Flag-gated
+ * (`verticalDramaSeriesArcReplan`); best-effort (never blocks the approval).
+ */
+describe("approveCheckpoint — arc-drift check (spec §7.7.3, section-13)", () => {
+  function checkpointOutcome(over: Record<string, unknown> = {}) {
+    return {
+      checkpoint: {
+        id: 900,
+        runId: 800,
+        stage: "plan_episode_script",
+        state: "approved",
+        sourceArtifactIds: ["700"],
+        notes: null,
+        ...over,
+      },
+      alreadyTerminal: false,
+    };
+  }
+
+  const EPISODE_ROW_FOR_DRIFT = {
+    id: 100,
+    episodeNumber: 3,
+    script: { structure: { beats: [{ beat: 1, intensity: 4 }] }, continuity_notes: [] },
+  };
+
+  const ACTIVE_BREAKDOWN_ITEM = {
+    episodeNumber: 4,
+    workingTitle: "Ep 4",
+    logline: "The rival strikes back",
+    keyBeats: ["confrontation"],
+  };
+
+  function mockHappyPathDependencies() {
+    mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue({ unresolvedHooks: [] });
+    mockGetActiveBreakdown.mockReturnValue([ACTIVE_BREAKDOWN_ITEM]);
+    mockEvaluateScriptSpeechCoverage.mockReturnValue({
+      estimatedSpeechSeconds: 50,
+      coverageRatio: 0.83,
+      status: "in_range",
+    });
+    mockDetectArcDrift.mockReturnValue({
+      drifted: true,
+      reasons: [{ code: "VD_ARC_CONTENT_BUDGET_EXCEEDED", evidence: "over budget" }],
+      affectedEpisodeNumbers: [4],
+    });
+    mockDeriveLegacyContentBudget.mockReturnValue({
+      beatCount: 6,
+      estimatedSpeechSeconds: 36,
+      conflictLevel: 3,
+      reversalTarget: 2,
+      arcThreads: [],
+    });
+    mockBuildArcReplanProposal.mockReturnValue({
+      proposalId: "p-1",
+      seriesId: "10",
+      triggeredByEpisodeNumber: 3,
+      driftReasons: ["VD_ARC_CONTENT_BUDGET_EXCEEDED"],
+      affectedEpisodeNumbers: [4],
+      proposedBreakdown: [{ ...ACTIVE_BREAKDOWN_ITEM, contentBudget: {} }],
+      rationale: "Episode 3 exceeded its content budget.",
+      status: "proposed",
+    });
+    mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "55" });
+  }
+
+  it("appends an arc_replan_proposal event on genuine approval of the plan_episode_script stage when the flag is on and drift is detected", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+    mockApproveRunCheckpoint.mockResolvedValue(checkpointOutcome({ stage: "plan_episode_script" }));
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_FOR_DRIFT])); // loadOwnedEpisode (drift hook)
+    mockDb.select.mockReturnValueOnce(selectChain([{ bible: {} }])); // series bible
+    mockHappyPathDependencies();
+
+    await router.approveCheckpoint({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", checkpointId: "900", decision: "approve" },
+    });
+
+    expect(mockMemoryService.appendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        episodeId: 100,
+        memoryKind: "arc_replan_proposal",
+        idempotencyKey: "vd-arc-replan-proposal-checkpoint-900",
+      }),
+    );
+  });
+
+  it("also runs on genuine approval of the pipeline-driven summarize_episode_to_series_memory checkpoint", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+    mockApproveRunCheckpoint.mockResolvedValue(
+      checkpointOutcome({ stage: "summarize_episode_to_series_memory" }),
+    );
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_FOR_DRIFT]));
+    mockDb.select.mockReturnValueOnce(selectChain([{ bible: {} }]));
+    mockHappyPathDependencies();
+
+    await router.approveCheckpoint({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", checkpointId: "900", decision: "approve" },
+    });
+
+    expect(mockMemoryService.appendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ memoryKind: "arc_replan_proposal" }),
+    );
+  });
+
+  it("does not run the drift check when the flag is off (default)", async () => {
+    mockApproveRunCheckpoint.mockResolvedValue(checkpointOutcome());
+
+    await router.approveCheckpoint({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", checkpointId: "900", decision: "approve" },
+    });
+
+    expect(mockGetActiveBreakdown).not.toHaveBeenCalled();
+    expect(mockDetectArcDrift).not.toHaveBeenCalled();
+    expect(mockMemoryService.appendEvent).not.toHaveBeenCalled();
+  });
+
+  it("does not run the drift check for an already-terminal checkpoint, even with the flag on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+    mockApproveRunCheckpoint.mockResolvedValue({
+      checkpoint: { id: 900, runId: 800, stage: "plan_episode_script", state: "approved" },
+      alreadyTerminal: true,
+    });
+
+    await router.approveCheckpoint({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", checkpointId: "900", decision: "approve" },
+    });
+
+    expect(mockDetectArcDrift).not.toHaveBeenCalled();
+    expect(mockDb.select).not.toHaveBeenCalled();
+  });
+
+  it("does not run the drift check on a rejection, even with the flag on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+    mockApproveRunCheckpoint.mockResolvedValue(
+      checkpointOutcome({ stage: "plan_episode_script", state: "rejected" }),
+    );
+
+    await router.approveCheckpoint({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", checkpointId: "900", decision: "reject" },
+    });
+
+    expect(mockDetectArcDrift).not.toHaveBeenCalled();
+  });
+
+  it("does not run the drift check for a checkpoint stage outside the 2 hooked stages, even with the flag on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+    mockApproveRunCheckpoint.mockResolvedValue(checkpointOutcome({ stage: "storyboard_shotgrid" }));
+
+    await router.approveCheckpoint({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", checkpointId: "900", decision: "approve" },
+    });
+
+    expect(mockDetectArcDrift).not.toHaveBeenCalled();
+  });
+
+  it("does not append a proposal when detectArcDrift finds no drift", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+    mockApproveRunCheckpoint.mockResolvedValue(checkpointOutcome());
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_FOR_DRIFT]));
+    mockDb.select.mockReturnValueOnce(selectChain([{ bible: {} }]));
+    mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue({ unresolvedHooks: [] });
+    mockGetActiveBreakdown.mockReturnValue([ACTIVE_BREAKDOWN_ITEM]);
+    mockEvaluateScriptSpeechCoverage.mockReturnValue({
+      estimatedSpeechSeconds: 40,
+      coverageRatio: 0.67,
+      status: "in_range",
+      targetSpeechSecondsMin: 34.8,
+      targetSpeechSecondsMax: 40.8,
+    });
+    mockDetectArcDrift.mockReturnValue({ drifted: false, reasons: [], affectedEpisodeNumbers: [] });
+
+    await router.approveCheckpoint({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", checkpointId: "900", decision: "approve" },
+    });
+
+    expect(mockBuildArcReplanProposal).not.toHaveBeenCalled();
+    expect(mockMemoryService.appendEvent).not.toHaveBeenCalled();
+  });
+
+  it("is best-effort — an unexpected error in the drift check never fails the approval response", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+    mockApproveRunCheckpoint.mockResolvedValue(checkpointOutcome());
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_FOR_DRIFT]));
+    mockDb.select.mockReturnValueOnce(selectChain([{ bible: {} }]));
+    mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue({ unresolvedHooks: [] });
+    mockGetActiveBreakdown.mockImplementation(() => {
+      throw new Error("boom");
+    });
+
+    const result = await router.approveCheckpoint({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", checkpointId: "900", decision: "approve" },
+    });
+
+    expect(result.checkpoint.id).toBe("900");
+    expect(mockMemoryService.appendEvent).not.toHaveBeenCalled();
   });
 });
 
@@ -499,5 +758,184 @@ describe("summarizeEpisodeToMemory — manual episode -> series memory trigger",
     expect(mockRunVerticalDramaSeriesMemoryPlanning).toHaveBeenCalledTimes(1);
     expect(result.alreadySummarized).toBe(false);
     expect(result.eventsAppended).toBeGreaterThan(0);
+  });
+
+  /**
+   * Story-density reform (spec §7.7.3, section-13, added 2026-07-07) —
+   * arc-drift check hooked onto the end of a FRESH manual summarization run
+   * (never on the `alreadySummarized` short-circuit above). Flag-gated;
+   * `newHookDescriptions` is diffed from `planned.unresolved_hooks` against
+   * `priorMemoryBundle.unresolvedHooks` — richer than the `approveCheckpoint`
+   * hook, which has no structured hook source at script-approval time.
+   */
+  describe("arc-drift check", () => {
+    function mockHappyPathDriftDependencies() {
+      mockGetActiveBreakdown.mockReturnValue([
+        { episodeNumber: 4, workingTitle: "Ep 4", logline: "The rival strikes back", keyBeats: ["confrontation"] },
+      ]);
+      mockEvaluateScriptSpeechCoverage.mockReturnValue({
+        estimatedSpeechSeconds: 50,
+        coverageRatio: 0.83,
+        status: "in_range",
+        // 2026-07-08 fix — evaluateScriptSpeechCoverage's real contract now
+        // always includes the target band too; this mock matches the shape.
+        targetSpeechSecondsMin: 34.8,
+        targetSpeechSecondsMax: 40.8,
+      });
+      mockDetectArcDrift.mockReturnValue({
+        drifted: true,
+        reasons: [{ code: "VD_ARC_HOOK_UNPLANNED", evidence: "new hook not in plan" }],
+        affectedEpisodeNumbers: [4],
+      });
+      mockDeriveLegacyContentBudget.mockReturnValue({
+        beatCount: 6,
+        estimatedSpeechSeconds: 36,
+        conflictLevel: 3,
+        reversalTarget: 2,
+        arcThreads: [],
+      });
+      mockBuildArcReplanProposal.mockReturnValue({
+        proposalId: "p-2",
+        seriesId: "10",
+        triggeredByEpisodeNumber: 3,
+        driftReasons: ["VD_ARC_HOOK_UNPLANNED"],
+        affectedEpisodeNumbers: [4],
+        proposedBreakdown: [],
+        rationale: "Episode 3 introduced an unplanned hook.",
+        status: "proposed",
+      });
+    }
+
+    it("appends an arc_replan_proposal event on a fresh run when the flag is on and drift is detected", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([EPISODE_ROW])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])) // series locale lookup
+        .mockReturnValueOnce(selectChain([{ bible: {} }])); // series bible (drift hook)
+      mockMemoryService.listEvents.mockResolvedValue([]);
+      mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue({ unresolvedHooks: [] });
+      mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+        planned: PLANNED,
+        creditsUsed: 12,
+        model: "gpt-x",
+      });
+      mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+      mockHappyPathDriftDependencies();
+
+      await router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", idempotencyKey: "sum-1" },
+      });
+
+      expect(mockMemoryService.appendEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          memoryKind: "arc_replan_proposal",
+          idempotencyKey: "sum-1:arc-replan-proposal",
+        }),
+      );
+      // The planner's own hook (`sister's clinic funding`) is NOT already in
+      // the prior bundle's `unresolvedHooks` ([]), so it is passed through
+      // as a genuinely NEW hook for `VD_ARC_HOOK_UNPLANNED` to evaluate.
+      expect(mockDetectArcDrift).toHaveBeenCalledWith(
+        expect.objectContaining({
+          approvedScript: expect.objectContaining({
+            newHookDescriptions: ["sister's clinic funding"],
+          }),
+        }),
+      );
+    });
+
+    it("does not run the drift check when the flag is off (default)", async () => {
+      mockDb.select
+        .mockReturnValueOnce(selectChain([EPISODE_ROW]))
+        .mockReturnValueOnce(selectChain([]));
+      mockMemoryService.listEvents.mockResolvedValue([]);
+      mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue({ unresolvedHooks: [] });
+      mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+        planned: PLANNED,
+        creditsUsed: 12,
+        model: "gpt-x",
+      });
+      mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+
+      await router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockDetectArcDrift).not.toHaveBeenCalled();
+      expect(mockMemoryService.appendEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ memoryKind: "arc_replan_proposal" }),
+      );
+    });
+
+    it("does not run the drift check on the alreadySummarized short-circuit, even with the flag on", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+      mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW]));
+      mockMemoryService.listEvents.mockResolvedValue([
+        { memoryKind: "episode_summary", payload: { source: "manual" } },
+      ]);
+
+      const result = await router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(result.alreadySummarized).toBe(true);
+      expect(mockDetectArcDrift).not.toHaveBeenCalled();
+    });
+
+    it("omits the arc-replan-proposal idempotency suffix when the caller supplied no idempotencyKey", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([EPISODE_ROW]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([{ bible: {} }]));
+      mockMemoryService.listEvents.mockResolvedValue([]);
+      mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue({ unresolvedHooks: [] });
+      mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+        planned: PLANNED,
+        creditsUsed: 12,
+        model: "gpt-x",
+      });
+      mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+      mockHappyPathDriftDependencies();
+
+      await router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockMemoryService.appendEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ memoryKind: "arc_replan_proposal", idempotencyKey: undefined }),
+      );
+    });
+
+    it("is best-effort — an unexpected error in the drift check never fails summarizeEpisodeToMemory's own result", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesArcReplan: true });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([EPISODE_ROW]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([{ bible: {} }]));
+      mockMemoryService.listEvents.mockResolvedValue([]);
+      mockMemoryService.buildEpisodeMemoryBundle.mockResolvedValue({ unresolvedHooks: [] });
+      mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+        planned: PLANNED,
+        creditsUsed: 12,
+        model: "gpt-x",
+      });
+      mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+      mockGetActiveBreakdown.mockImplementation(() => {
+        throw new Error("boom");
+      });
+
+      const result = await router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(result.alreadySummarized).toBe(false);
+      expect(result.creditsUsed).toBe(12);
+    });
   });
 });

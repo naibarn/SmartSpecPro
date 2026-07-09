@@ -68,6 +68,7 @@ interface SidebarSeriesItem {
   nextEpisodeNumber: number;
   episodeCount: number;
   pendingApprovalCount: number;
+  thumbnailUrl?: string | null;
 }
 
 function statusDotClass(status: string): string {
@@ -197,24 +198,41 @@ export function VerticalDramaShell({
                   type="button"
                   onClick={() => handleSelectSeries(item.id)}
                   className={cn(
-                    "flex w-full flex-col gap-1 rounded-lg border p-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "flex w-full items-start gap-2 rounded-lg border p-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isSelected ? "border-cyan-300 bg-cyan-50" : "border-transparent bg-white hover:bg-slate-50",
                   )}
                 >
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={cn("h-2 w-2 shrink-0 rounded-full", statusDotClass(item.status))}
+                  {item.thumbnailUrl ? (
+                    <img
+                      src={item.thumbnailUrl}
+                      alt=""
                       aria-hidden="true"
+                      className="h-10 w-7 shrink-0 rounded object-cover"
                     />
-                    <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{item.title}</span>
-                    {item.pendingApprovalCount > 0 && (
-                      <Badge variant="destructive" className="shrink-0 px-1.5 py-0 text-[10px]">
-                        {item.pendingApprovalCount}
-                      </Badge>
-                    )}
-                  </span>
-                  <span className="truncate pl-4 text-xs text-muted-foreground">
-                    {statusLabel} · EP {item.nextEpisodeNumber}/{item.episodeCount}
+                  ) : (
+                    <div
+                      aria-hidden="true"
+                      className="flex h-10 w-7 shrink-0 items-center justify-center rounded bg-slate-100"
+                    >
+                      <Clapperboard className="h-3.5 w-3.5 text-slate-300" aria-hidden="true" />
+                    </div>
+                  )}
+                  <span className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={cn("h-2 w-2 shrink-0 rounded-full", statusDotClass(item.status))}
+                        aria-hidden="true"
+                      />
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{item.title}</span>
+                      {item.pendingApprovalCount > 0 && (
+                        <Badge variant="destructive" className="shrink-0 px-1.5 py-0 text-[10px]">
+                          {item.pendingApprovalCount}
+                        </Badge>
+                      )}
+                    </span>
+                    <span className="truncate pl-4 text-xs text-muted-foreground">
+                      {statusLabel} · EP {item.nextEpisodeNumber}/{item.episodeCount}
+                    </span>
                   </span>
                 </button>
               );

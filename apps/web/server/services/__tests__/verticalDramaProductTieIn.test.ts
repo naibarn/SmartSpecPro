@@ -23,7 +23,13 @@ import {
   VD_PRODUCT_LOCK_INSTRUCTION,
   VD_PRODUCT_LOCK_VIDEO_INSTRUCTION,
   VD_PRODUCT_LOCK_NEGATIVE_TERMS,
+  buildTieInQualityReport,
+  isSoftCtaStoryFunction,
+  VD_TIE_IN_MAX_SPOKEN_MENTIONS,
+  VD_TIE_IN_MAX_VISUAL_SHOTS,
+  VERTICAL_DRAMA_AD_SPEAK_LEXICON,
   type PlanTieInInput,
+  type BuildTieInQualityReportParams,
 } from "../verticalDramaProductTieIn";
 import type { VerticalDramaProductTieInConfig } from "@shared/verticalDramaSeries";
 
@@ -719,5 +725,203 @@ describe("planTieIn — productCategory -> requiredDisclosure (Thai ad-complianc
     expect(
       result.warnings.some((w) => w.code === "VD_TIE_IN_THAI_AD_LAW_VIOLATION"),
     ).toBe(true);
+  });
+});
+
+describe("isSoftCtaStoryFunction", () => {
+  it("matches the exact enum literal", () => {
+    expect(isSoftCtaStoryFunction("soft_cta")).toBe(true);
+  });
+
+  it("matches normalized prose variants", () => {
+    expect(isSoftCtaStoryFunction("a soft CTA moment")).toBe(true);
+    expect(isSoftCtaStoryFunction("soft-cta")).toBe(true);
+  });
+
+  it("does not match other story functions", () => {
+    expect(isSoftCtaStoryFunction("daily_use")).toBe(false);
+    expect(isSoftCtaStoryFunction(undefined)).toBe(false);
+  });
+});
+
+describe("buildTieInQualityReport (spec §13.1)", () => {
+  function scriptWithTieIns(
+    tieIns: Array<{ shot_numbers: number[]; story_function: string; benefit_talking_point?: string }>,
+  ): Record<string, unknown> {
+    return { product_tie_in_plan: { tie_ins: tieIns } };
+  }
+
+  function reportParams(
+    overrides: Partial<BuildTieInQualityReportParams> = {},
+  ): BuildTieInQualityReportParams {
+    return {
+      script: scriptWithTieIns([
+        { shot_numbers: [3], story_function: "daily_use", benefit_talking_point: "keeps skin hydrated" },
+      ]),
+      storyboard: { shots: [] },
+      dialogueLinesByShot: new Map([[3, ["a normal line about her day"]]]),
+      tieInConfig: config(),
+      scorecardV2: { tie_in_naturalness: 5, tie_in_assessment: "feels earned" },
+      fatigueContext: { exceeded: false },
+      policy: { tieInMinNaturalnessScore: 70 },
+      ...overrides,
+    };
+  }
+
+  it("passes with a high qualitative score and zero deterministic violations", () => {
+    const report = buildTieInQualityReport(reportParams());
+    expect(report.naturalnessScore).toBe(100);
+    expect(report.passed).toBe(true);
+    expect(report.adSpeakViolations).toEqual([]);
+    expect(report.claimViolations).toEqual([]);
+    expect(report.disclosureSeparated).toBe(true);
+    expect(report.fatigueOk).toBe(true);
+  });
+
+  it("folds the single shipped tie_in_naturalness dimension onto all three spec sub-dimensions (documented adaptation)", () => {
+    const report = buildTieInQualityReport(reportParams({ scorecardV2: { tie_in_naturalness: 4 } }));
+    expect(report.storyIntegration).toBe(4);
+    expect(report.characterMotivation).toBe(4);
+    expect(report.toneMatch).toBe(4);
+    expect(report.naturalnessScore).toBe(80); // round(4/5*100)
+  });
+
+  it("defaults a null/absent tie_in_naturalness to the worst-case 0 (never silently passes)", () => {
+    const report = buildTieInQualityReport(reportParams({ scorecardV2: { tie_in_naturalness: null } }));
+    expect(report.naturalnessScore).toBe(0);
+    expect(report.passed).toBe(false);
+  });
+
+  it("counts spoken product-name/benefit mentions only within tie-in-carrying shots", () => {
+    const params = reportParams({
+      tieInConfig: config({ productName: "GlowCream" }),
+      dialogueLinesByShot: new Map([
+        [3, ['I love using GlowCream every morning', "it keeps skin hydrated all day"]],
+        [7, ["GlowCream is mentioned here too but shot 7 has no placement"]],
+      ]),
+    });
+    const report = buildTieInQualityReport(params);
+    // Both shot-3 lines mention the product/benefit; shot 7 is not a tie-in shot, so it's ignored.
+    expect(report.spokenMentionCount).toBe(2);
+  });
+
+  it("flags a violation and caps the score at 69 when spokenMentionCount exceeds the max", () => {
+    const lines = Array.from({ length: VD_TIE_IN_MAX_SPOKEN_MENTIONS + 1 }, () => "I love my GlowCream");
+    const params = reportParams({
+      tieInConfig: config({ productName: "GlowCream" }),
+      dialogueLinesByShot: new Map([[3, lines]]),
+      scorecardV2: { tie_in_naturalness: 5 },
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.spokenMentionCount).toBeGreaterThan(VD_TIE_IN_MAX_SPOKEN_MENTIONS);
+    expect(report.naturalnessScore).toBe(69);
+    expect(report.passed).toBe(false);
+  });
+
+  it("flags a violation and caps the score at 69 when visualShotCount exceeds the max", () => {
+    const params = reportParams({
+      script: scriptWithTieIns([
+        { shot_numbers: [1, 2, 3, 4], story_function: "daily_use" },
+      ]),
+      dialogueLinesByShot: new Map(),
+      scorecardV2: { tie_in_naturalness: 5 },
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.visualShotCount).toBe(4);
+    expect(report.visualShotCount).toBeGreaterThan(VD_TIE_IN_MAX_VISUAL_SHOTS);
+    expect(report.naturalnessScore).toBe(69);
+    expect(report.passed).toBe(false);
+  });
+
+  it("flags an ad-speak lexicon hit outside a soft_cta shot", () => {
+    const phrase = VERTICAL_DRAMA_AD_SPEAK_LEXICON[0];
+    const params = reportParams({
+      script: scriptWithTieIns([{ shot_numbers: [3], story_function: "daily_use" }]),
+      dialogueLinesByShot: new Map([[3, [`this is the ${phrase} product around`]]]),
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.adSpeakViolations.length).toBe(1);
+    expect(report.naturalnessScore).toBe(69);
+  });
+
+  it("does NOT flag an ad-speak lexicon hit inside an explicit soft_cta shot", () => {
+    const phrase = VERTICAL_DRAMA_AD_SPEAK_LEXICON[0];
+    const params = reportParams({
+      script: scriptWithTieIns([{ shot_numbers: [3], story_function: "soft_cta" }]),
+      dialogueLinesByShot: new Map([[3, [`this is the ${phrase} product around`]]]),
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.adSpeakViolations).toEqual([]);
+    expect(report.naturalnessScore).toBe(100);
+    expect(report.passed).toBe(true);
+  });
+
+  it("wires claimViolations from the existing screenClaims gate", () => {
+    const params = reportParams({
+      tieInConfig: config({ forbiddenClaims: ["miracle"] }),
+      dialogueLinesByShot: new Map([[3, ["it's a miracle serum"]]]),
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.claimViolations.length).toBeGreaterThan(0);
+    expect(report.naturalnessScore).toBe(69);
+    expect(report.passed).toBe(false);
+  });
+
+  it("flags disclosureSeparated: false when the category-mandated disclosure text leaks into the script/storyboard", () => {
+    const params = reportParams({
+      tieInConfig: config({ productCategory: "supplement" }),
+      script: {
+        ...scriptWithTieIns([{ shot_numbers: [3], story_function: "daily_use" }]),
+        leaked_note: "อ่านคำเตือนในฉลากก่อนบริโภค",
+      },
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.disclosureSeparated).toBe(false);
+    expect(report.naturalnessScore).toBe(69);
+  });
+
+  it("passes disclosureSeparated when the category has no mandated disclosure line", () => {
+    const params = reportParams({ tieInConfig: config({ productCategory: "general_goods" }) });
+    const report = buildTieInQualityReport(params);
+    expect(report.disclosureSeparated).toBe(true);
+  });
+
+  it("flags fatigueOk: false and caps the score when the fatigue window is exceeded", () => {
+    const params = reportParams({ fatigueContext: { exceeded: true } });
+    const report = buildTieInQualityReport(params);
+    expect(report.fatigueOk).toBe(false);
+    expect(report.naturalnessScore).toBe(69);
+    expect(report.passed).toBe(false);
+  });
+
+  it("requires the score to clear the policy floor even with zero deterministic violations", () => {
+    const params = reportParams({
+      scorecardV2: { tie_in_naturalness: 3 }, // round(3/5*100) = 60
+      policy: { tieInMinNaturalnessScore: 70 },
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.naturalnessScore).toBe(60);
+    expect(report.passed).toBe(false);
+  });
+
+  it("respects a raised (regulated-category) policy floor", () => {
+    const params = reportParams({
+      scorecardV2: { tie_in_naturalness: 4 }, // round(4/5*100) = 80
+      policy: { tieInMinNaturalnessScore: 85 },
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.naturalnessScore).toBe(80);
+    expect(report.passed).toBe(false);
+  });
+
+  it("returns zero deterministic violations and a null-safe report for an episode with no tie-in placements", () => {
+    const params = reportParams({
+      script: scriptWithTieIns([]),
+      dialogueLinesByShot: new Map(),
+    });
+    const report = buildTieInQualityReport(params);
+    expect(report.visualShotCount).toBe(0);
+    expect(report.spokenMentionCount).toBe(0);
+    expect(report.adSpeakViolations).toEqual([]);
   });
 });

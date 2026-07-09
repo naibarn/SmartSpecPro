@@ -38,6 +38,18 @@ import {
   VD_CHARACTER_LOCK_INSTRUCTION,
   VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT,
 } from "@shared/verticalDramaSeries/characterLock";
+// Preset visual identity flow-through (spec §8.2.2 flow-through rule,
+// section-15 change D, added 2026-07-07) — imported DIRECTLY from the
+// submodule (not the shared barrel, which does not yet re-export it), same
+// convention as `verticalDramaPresetSynthesis.ts`. This module never
+// re-decides the flag — the router resolves `presetVisualIdentity` (undefined
+// when the tenant's `verticalDramaSeriesPresetMixV2` flag is off) and passes
+// it straight through; this file only threads it into the prompt when present.
+import {
+  verticalDramaPresetVisualIdentitySchema,
+  type VerticalDramaPresetCharacterArchetype,
+  type VerticalDramaPresetVisualIdentity,
+} from "@shared/verticalDramaSeries/presetVisualIdentity";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -603,6 +615,92 @@ export interface GenerateCharacterVisualPromptsParams {
    * explicitly.
    */
   targetAudienceRegion?: VerticalDramaTargetAudienceRegion;
+  /**
+   * Preset visual identity flow-through (spec §8.2.2 flow-through rule,
+   * section-15 change D) — the series' STAMPED `bible.presetVisualIdentity`
+   * (see `readPresetVisualIdentityFromBible` / `verticalDramaSeries.ts`'s
+   * `create`), already flag-gated by the caller (undefined when the
+   * tenant's `verticalDramaSeriesPresetMixV2` flag is off, or the series
+   * carries no preset identity — legacy tolerant). When present, the
+   * archetype `look` matching this character's role, `wardrobeGrammar`, and
+   * `palette` are woven into every generated prompt (portrait/turnaround/
+   * full-body/expression/outfit), same as the appearance directive above.
+   */
+  presetVisualIdentity?: VerticalDramaPresetVisualIdentity;
+}
+
+/**
+ * Reads `bible.presetVisualIdentity` (stamped by `verticalDramaSeries.ts`'s
+ * `create` — spec §8.2.2 flow-through rule, section-15 change C) off an
+ * already-loaded series bible. Best-effort: returns `undefined` for a
+ * legacy/non-preset series (key absent) or a malformed value — never
+ * throws, this is an enrichment, never a required field.
+ */
+export function readPresetVisualIdentityFromBible(
+  bible: Record<string, unknown> | null | undefined,
+): VerticalDramaPresetVisualIdentity | undefined {
+  const raw = (bible as { presetVisualIdentity?: unknown } | null | undefined)?.presetVisualIdentity;
+  if (!raw || typeof raw !== "object") return undefined;
+  const parsed = verticalDramaPresetVisualIdentitySchema.safeParse(raw);
+  return parsed.success ? (parsed.data as VerticalDramaPresetVisualIdentity) : undefined;
+}
+
+/**
+ * Picks the `characterArchetypes` entry whose `role` best matches this
+ * character's own `role`/`description` (bidirectional, case-insensitive
+ * substring containment — archetype roles are often compound, e.g.
+ * "นางเอก/องครักษ์ป่า", so each `/`-or-`,`-separated part is checked
+ * individually). Falls back to the FIRST archetype when nothing matches —
+ * a generic "this preset's dominant look" anchor is still better than none
+ * — and to `undefined` only when the identity has no archetypes at all.
+ */
+export function pickMatchingCharacterArchetype(
+  identity: VerticalDramaPresetVisualIdentity,
+  role: string | null | undefined,
+  description?: string | null,
+): VerticalDramaPresetCharacterArchetype | undefined {
+  if (identity.characterArchetypes.length === 0) return undefined;
+  const haystack = `${role ?? ""} ${description ?? ""}`.trim().toLowerCase();
+  if (haystack) {
+    const matched = identity.characterArchetypes.find((archetype) =>
+      archetype.role
+        .toLowerCase()
+        .split(/[/,]/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .some((part) => haystack.includes(part) || part.includes(haystack)),
+    );
+    if (matched) return matched;
+  }
+  return identity.characterArchetypes[0];
+}
+
+/**
+ * Builds the preset-visual-identity instruction block appended to the user
+ * prompt (spec §8.2.2 flow-through rule, section-15 change D) — surgical
+ * addition, only present when `identity` is supplied (undefined when the
+ * flag is off or the series carries no preset identity).
+ */
+function buildPresetVisualIdentityInstruction(
+  identity: VerticalDramaPresetVisualIdentity,
+  role: string | null | undefined,
+  description?: string | null,
+): string {
+  const archetype = pickMatchingCharacterArchetype(identity, role, description);
+  const parts = [
+    `This series uses a preset visual identity ("${identity.styleName}") that every character reference must match:`,
+    `palette ${identity.palette.join(", ")};`,
+    `wardrobe grammar ${identity.wardrobeGrammar.join(", ")};`,
+    archetype ? `matched archetype look for this character's role: ${archetype.look};` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    `${parts} Blend this consistently into primary_portrait_prompt, turnaround_prompt, ` +
+    "full_body_prompt, expression_sheet_prompt, and outfit_sheet_prompt — WITHOUT contradicting " +
+    "the character's own description/age/identity above (the character's own description always wins " +
+    "on age/identity; the preset identity governs style/wardrobe/palette/lighting mood only)."
+  );
 }
 
 function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
@@ -655,6 +753,9 @@ function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
     // traits are the persistent identity anchor vs. the free-to-vary staging.
     VD_CHARACTER_LOCK_INSTRUCTION,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
+    ...(params.presetVisualIdentity
+      ? [buildPresetVisualIdentityInstruction(params.presetVisualIdentity, params.role, params.description)]
+      : []),
     "Return ONLY the JSON object described in your instructions — no markdown fences, no commentary.",
     VD_COMPACT_JSON_INSTRUCTION,
   ].join("\n\n");
@@ -778,14 +879,17 @@ export async function generateCharacterVisualPrompts(
     `${matched.primary_portrait_prompt}, wearing their signature outfit, full body`;
 
   // Defensive merge (belt-and-suspenders alongside the system/user-prompt
-  // instructions above): guarantee the solo-portrait negative terms AND the
+  // instructions above): guarantee the solo-portrait negative terms, the
   // role-tier appearance negatives (e.g. "fashion model look, corporate
-  // portrait" for leads) are present even if the LLM response omits them,
+  // portrait" for leads), AND the preset visual identity's own
+  // `imagePromptFragments.negative` (spec §8.2.2 flow-through rule,
+  // section-15 change D) are present even if the LLM response omits them,
   // for every one of the three generation paths (portrait/turnaround/sheet)
   // that read this single `negative_prompt` field.
   const negativePrompt = [
     matched.negative_prompt,
     getRoleTierNegativeTerms(params.role, params.description),
+    params.presetVisualIdentity?.imagePromptFragments.negative.join(", "),
     VD_SOLO_PORTRAIT_NEGATIVE_TERMS,
   ]
     .filter((part): part is string => Boolean(part && part.trim()))

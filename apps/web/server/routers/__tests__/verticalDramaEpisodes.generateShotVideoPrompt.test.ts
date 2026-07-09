@@ -84,8 +84,11 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
+  mockGetTenantFeatureFlags: vi.fn(),
+}));
 vi.mock("../../services/tenantFeatureFlagService", () => ({
-  getTenantFeatureFlags: vi.fn(),
+  getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));
 
 vi.mock("../../services/mediaTransportResolver", () => ({
@@ -163,11 +166,62 @@ vi.mock("../../services/verticalDramaVideoPromptFormatter", () => ({
   })),
 }));
 
-const { mockGenerateVerticalDramaShotVideoPrompt } = vi.hoisted(() => ({
-  mockGenerateVerticalDramaShotVideoPrompt: vi.fn(),
-}));
+const {
+  mockGenerateVerticalDramaShotVideoPrompt,
+  mockGenerateVerticalDramaClipDialogue,
+  mockAppendPresetVisualIdentityStyleTokensToMotionPrompt,
+  MockInsufficientCreditsError,
+  MockVdSchemaValidationError,
+  MockRateLimitExceededError,
+} = vi.hoisted(() => {
+  class MockInsufficientCreditsError extends Error {
+    code = "VD_INSUFFICIENT_CREDITS";
+  }
+  class MockVdSchemaValidationError extends Error {
+    code = "VD_SCHEMA_VALIDATION_FAILED";
+    constructor(message: string, public issues: unknown) {
+      super(message);
+    }
+  }
+  class MockRateLimitExceededError extends Error {
+    code = "VD_RATE_LIMIT_EXCEEDED";
+  }
+  return {
+    mockGenerateVerticalDramaShotVideoPrompt: vi.fn(),
+    mockGenerateVerticalDramaClipDialogue: vi.fn(),
+    // Wave-7D (spec §8.2.2 flow-through rule) — `generateShotVideoPrompt`
+    // calls this directly (already-statically-imported, real function in
+    // production; mocked here like every other export of this module). Real
+    // pure logic mirrored inline (not `vi.importActual` — this module
+    // transitively reaches `enabledLlmModels.ts` -> `llmProviders.ts`'s
+    // `adminProcedure`, unsafe for this file's `../../_core/trpc` mock, same
+    // reasoning as every other mock in this file) so tests can assert on
+    // BOTH the call args and the resulting persisted prompt text.
+    mockAppendPresetVisualIdentityStyleTokensToMotionPrompt: vi.fn(
+      (prompt: string, identity?: { styleName?: string; lighting?: string }) => {
+        if (!identity?.styleName && !identity?.lighting) return prompt;
+        const tokens = [
+          identity.styleName ? `visual style: ${identity.styleName}` : null,
+          identity.lighting ? `lighting: ${identity.lighting}` : null,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        return `${prompt} Preset style tokens (${tokens}).`;
+      },
+    ),
+    MockInsufficientCreditsError,
+    MockVdSchemaValidationError,
+    MockRateLimitExceededError,
+  };
+});
 vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaShotVideoPrompt: mockGenerateVerticalDramaShotVideoPrompt,
+  generateVerticalDramaClipDialogue: mockGenerateVerticalDramaClipDialogue,
+  appendPresetVisualIdentityStyleTokensToMotionPrompt:
+    mockAppendPresetVisualIdentityStyleTokensToMotionPrompt,
+  InsufficientCreditsError: MockInsufficientCreditsError,
+  VdSchemaValidationError: MockVdSchemaValidationError,
+  RateLimitExceededError: MockRateLimitExceededError,
 }));
 
 // `verticalDramaEpisodes.ts` imports `ensurePromptWithinLimit` from
@@ -186,6 +240,7 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
+import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
 
@@ -274,6 +329,11 @@ beforeEach(() => {
     model: "gpt-vision",
     usedVision: true,
   });
+  mockGenerateVerticalDramaClipDialogue.mockResolvedValue({
+    dialogue: [{ lineTh: "บทสดใหม่ของช็อตนี้", characterKey: "hero" }],
+    creditsUsed: 2,
+    model: "gpt-4o-mini",
+  });
 });
 
 describe("generateShotVideoPrompt", () => {
@@ -297,6 +357,7 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
       .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup (no tie-in placement -> no productTieIn select)
 
     let capturedSet: any;
@@ -397,6 +458,7 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
       .mockReturnValueOnce(selectChain([{ locale: "th" }]));
 
     let capturedSet: any;
@@ -428,12 +490,281 @@ describe("generateShotVideoPrompt", () => {
     );
   });
 
+  it("uses the requested shot's image, storyboard context, and matching clip when regenerating shot 2", async () => {
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "shot 1 prompt must stay untouched",
+          durationSeconds: 6,
+          dialogue: [{ lineTh: "บทช็อตหนึ่ง", characterKey: "hero" }],
+        },
+        {
+          clipNumber: 2,
+          sourceShotNumbers: [2],
+          prompt: "old shot 2 prompt",
+          durationSeconds: 6,
+          dialogue: [
+            {
+              lineTh: "ยายทวดจันมองตู้กระจกแล้วพูดเบา ๆ ว่าของในนั้นไม่ควรถูกแตะอีก",
+              characterKey: "grandmother",
+            },
+          ],
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "shot one image prompt",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "900",
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "shot two image prompt by the glass cabinet",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "901",
+          },
+        ],
+      },
+      storyboard: {
+        gridLayout: "3x3",
+        shotCount: 9,
+        shots: [
+          {
+            shotNumber: 1,
+            description: "Shot one description",
+            cameraSetup: "wide shot",
+            characterIds: ["hero"],
+            continuityNotes: [],
+            durationSeconds: 6,
+          },
+          {
+            shotNumber: 2,
+            description: "Girl reaches toward the glass cabinet",
+            cameraSetup: "close-up, eye level, slow push-in",
+            characterIds: ["hero", "grandmother"],
+            continuityNotes: [],
+            durationSeconds: 6,
+          },
+        ],
+      },
+      motionPromptPack: pack,
+    });
+
+    mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+      prompt: "generated motion prompt for shot 2",
+      negativeMotionPrompt: "no glitching",
+      dialogue: [{ lineTh: "บทใหม่ช็อตสอง", characterKey: "grandmother" }],
+      creditsUsed: 3,
+      model: "gpt-vision",
+      usedVision: true,
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
+    });
+
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotNumber: 2,
+        imageUrl: "https://cdn/901.png",
+        imagePrompt: "shot two image prompt by the glass cabinet",
+        shotContext: expect.objectContaining({
+          description: "Girl reaches toward the glass cabinet",
+          camera: "close-up, eye level, slow push-in",
+          dialogueLines: [
+            {
+              lineTh: "ยายทวดจันมองตู้กระจกแล้วพูดเบา ๆ ว่าของในนั้นไม่ควรถูกแตะอีก",
+              characterKey: "grandmother",
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(capturedSet.motionPromptPack.clips).toEqual([
+      expect.objectContaining({
+        clipNumber: 1,
+        sourceShotNumbers: [1],
+        prompt: "shot 1 prompt must stay untouched",
+        dialogue: [{ lineTh: "บทช็อตหนึ่ง", characterKey: "hero" }],
+      }),
+      expect.objectContaining({
+        clipNumber: 2,
+        sourceShotNumbers: [2],
+        prompt: "generated motion prompt for shot 2",
+        dialogue: [{ lineTh: "บทใหม่ช็อตสอง", characterKey: "grandmother" }],
+      }),
+    ]);
+  });
+
+  it("refreshes duplicated persisted dialogue before regenerating shot 2 video prompt", async () => {
+    const duplicatedDialogue = [
+      { lineTh: "ยายทวดจัน…วันนี้อย่าหลงนะ", characterKey: "หนูนา" },
+      { lineTh: "เสียง…ชา…อืม…ใครมาฝากอีกแล้วหรือเปล่า", characterKey: "ยายทวดจัน" },
+    ];
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "shot 1 prompt",
+          durationSeconds: 6,
+          dialogue: duplicatedDialogue,
+        },
+        {
+          clipNumber: 2,
+          sourceShotNumbers: [2],
+          prompt: "old shot 2 prompt",
+          durationSeconds: 6,
+          dialogue: duplicatedDialogue,
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 2,
+            imagePrompt: "shot two image prompt by the glass cabinet",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "901",
+          },
+        ],
+      },
+      storyboard: {
+        gridLayout: "3x3",
+        shotCount: 9,
+        shots: [
+          {
+            shotNumber: 2,
+            description: "Girl reaches toward the glass cabinet",
+            cameraSetup: "close-up, eye level, slow push-in",
+            characterIds: ["หนูนา", "ยายทวดจัน"],
+            continuityNotes: [],
+            durationSeconds: 6,
+          },
+        ],
+      },
+      motionPromptPack: pack,
+    });
+    const freshDialogue = [
+      { lineTh: "ยาย มองเห็นอะไรในตู้ไหม", characterKey: "หนูนา" },
+      { lineTh: "ข้าเห็นเงาเก่าขยับอยู่ข้างใน", characterKey: "ยายทวดจัน" },
+    ];
+    mockGenerateVerticalDramaClipDialogue.mockResolvedValueOnce({
+      dialogue: freshDialogue,
+      creditsUsed: 2,
+      model: "gpt-4o-mini",
+    });
+    mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+      prompt: "generated motion prompt for shot 2 with fresh dialogue",
+      negativeMotionPrompt: "no glitching",
+      dialogue: freshDialogue,
+      creditsUsed: 3,
+      model: "gpt-vision",
+      usedVision: true,
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    const result = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 2, idempotencyKey: "shot2" },
+    });
+
+    expect(mockGenerateVerticalDramaClipDialogue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotNumber: 2,
+        idempotencyKey: "shot2:dialogue-refresh",
+        shotContext: expect.objectContaining({
+          description: "Girl reaches toward the glass cabinet",
+          sceneDialogueContext: [
+            'หนูนา: "ยายทวดจัน…วันนี้อย่าหลงนะ"',
+            'ยายทวดจัน: "เสียง…ชา…อืม…ใครมาฝากอีกแล้วหรือเปล่า"',
+          ],
+        }),
+      }),
+    );
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotNumber: 2,
+        shotContext: expect.objectContaining({ dialogueLines: freshDialogue }),
+      }),
+    );
+    expect(result.creditsUsed).toBe(5);
+    expect(capturedSet.motionPromptPack.clips).toEqual([
+      expect.objectContaining({
+        clipNumber: 1,
+        sourceShotNumbers: [1],
+        dialogue: duplicatedDialogue,
+      }),
+      expect.objectContaining({
+        clipNumber: 2,
+        sourceShotNumbers: [2],
+        prompt: "generated motion prompt for shot 2 with fresh dialogue",
+        dialogue: freshDialogue,
+      }),
+    ]);
+  });
+
   it("creates a minimal pack when motionPromptPack is entirely absent", async () => {
     const episodeRow = baseEpisodeRow({ motionPromptPack: null });
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
       .mockReturnValueOnce(selectChain([{ locale: "th" }]));
 
     let capturedSet: any;
@@ -466,6 +797,7 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
       .mockReturnValueOnce(selectChain([{ locale: "th" }]));
     mockDb.update.mockReturnValueOnce({
       set: vi.fn(() => updateChain([episodeRow])),
@@ -484,5 +816,385 @@ describe("generateShotVideoPrompt", () => {
     expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
       expect.objectContaining({ idempotencyKey: "idem-key-123" }),
     );
+  });
+
+  describe("nativeAudioEnabled (task #36 — optional NATIVE AUDIO DIRECTION prompt option)", () => {
+    it("rollout gate is hardcoded off (F131AC pending) — the service call always receives nativeAudioEnabled: false, even when the client sends true", async () => {
+      const pack = {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+        motionMode: "first_frame_to_video",
+        clips: [
+          { clipNumber: 1, sourceShotNumbers: [1], prompt: "old", durationSeconds: 6 },
+        ],
+        warnings: [],
+      };
+      const episodeRow = baseEpisodeRow({ motionPromptPack: pack });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          nativeAudioEnabled: true,
+        },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ nativeAudioEnabled: false }),
+      );
+    });
+
+    it("persists audioDirection onto the matching clip and returns it, while still gating the service call off", async () => {
+      mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+        prompt: "generated motion prompt",
+        negativeMotionPrompt: "no glitching",
+        dialogue: [],
+        creditsUsed: 3,
+        model: "gpt-vision",
+        usedVision: true,
+        audioDirection: "Rain taps the window; a door creaks shut.",
+      });
+      const pack = {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+        motionMode: "first_frame_to_video",
+        clips: [
+          { clipNumber: 1, sourceShotNumbers: [1], prompt: "old", durationSeconds: 6 },
+        ],
+        warnings: [],
+      };
+      const episodeRow = baseEpisodeRow({ motionPromptPack: pack });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      let capturedSet: any;
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn((v: any) => {
+          capturedSet = v;
+          return updateChain([episodeRow]);
+        }),
+      });
+
+      const result = await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(result.audioDirection).toBe("Rain taps the window; a door creaks shut.");
+      expect(capturedSet.motionPromptPack.clips).toEqual([
+        expect.objectContaining({
+          clipNumber: 1,
+          audioDirection: "Rain taps the window; a door creaks shut.",
+        }),
+      ]);
+    });
+
+    it("persists the raw nativeAudioEnabled preference onto a brand-new pack even though the rollout gate is off", async () => {
+      const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      let capturedSet: any;
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn((v: any) => {
+          capturedSet = v;
+          return updateChain([episodeRow]);
+        }),
+      });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          nativeAudioEnabled: true,
+        },
+      });
+
+      expect(capturedSet.motionPromptPack.nativeAudioEnabled).toBe(true);
+      // ...but the service call itself was still gated off (see the
+      // rollout-gate test above) — the preference is stored for whenever
+      // the conductor flips F131AC, not honored yet.
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ nativeAudioEnabled: false }),
+      );
+    });
+  });
+});
+
+/**
+ * Story-density reform (spec §7.7.2 Layer 3/4, section-13, added
+ * 2026-07-07) — `verticalDramaSeriesSpeechBudget`-gated wiring:
+ *  - duration-aware first-pass video prompt params (`shotDurationSeconds` /
+ *    `targetSpeechSeconds`, consumed by `buildShotVideoPromptUserPrompt`);
+ *  - `resolveShotDialogueLines`'s deterministic beat-index mapping, wired
+ *    end-to-end from the storyboard shot's `sourceBeatIndexes` through to
+ *    the `shotContext.dialogueLines` this router mutation sends the LLM.
+ */
+describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)", () => {
+  it("omits shotDurationSeconds/targetSpeechSeconds when the flag is off (default — byte-identical to before)", async () => {
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    const callArgs = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
+    expect(callArgs.shotDurationSeconds).toBeUndefined();
+    expect(callArgs.targetSpeechSeconds).toBeUndefined();
+  });
+
+  it("passes shotDurationSeconds + targetSpeechSeconds (via targetVerticalDramaSpeechSeconds) when the flag is on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesSpeechBudget: true });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null }); // storyboard shot 1 durationSeconds: 6
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    const callArgs = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
+    expect(callArgs.shotDurationSeconds).toBe(6);
+    expect(callArgs.targetSpeechSeconds).toBeCloseTo(targetVerticalDramaSpeechSeconds(6), 5);
+  });
+
+  it("maps dialogue via the shot's sourceBeatIndexes (source 3a) instead of the positional guess when the flag is on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesSpeechBudget: true });
+    const episodeRow = baseEpisodeRow({
+      motionPromptPack: null,
+      script: {
+        structure: {
+          beats: [
+            { beat: 1, dialogue_lines: [{ speaker: "hero", line: "Positional decoy line" }] },
+            {
+              beat: 2,
+              dialogue_lines: [
+                {
+                  speaker: "hero",
+                  // Deliberately long enough that its estimated speech
+                  // seconds clear MIN_CLIP_COVERAGE_RATIO for a 6s clip
+                  // (>= 2.7s of speech) — otherwise the PRE-EXISTING,
+                  // unrelated `shouldRegenerateDialogueForVideoPrompt`
+                  // quality gate (VD_DIALOGUE_UNDERFILLED) auto-regenerates
+                  // this line via `generateVerticalDramaClipDialogue` before
+                  // it ever reaches `generateVerticalDramaShotVideoPrompt`,
+                  // masking the assertion this test actually cares about.
+                  line: "This beat-mapped dialogue line is long enough to clear the coverage floor",
+                },
+              ],
+            },
+          ],
+        },
+        scene_dialogue_summary: [{ scene: 1, dialogue_lines: ['hero: "legacy positional line"'] }],
+      },
+      storyboard: {
+        gridLayout: "3x3",
+        shotCount: 9,
+        shots: [
+          {
+            shotNumber: 1,
+            description: "Hero stands in the rain, looking up",
+            cameraSetup: "wide shot, low angle",
+            characterIds: ["hero"],
+            continuityNotes: [],
+            durationSeconds: 6,
+            sourceBeatIndexes: [1],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    // The dialogue-regeneration safety net never fires for this well-formed,
+    // non-`script_fallback` beat-mapped line.
+    expect(mockGenerateVerticalDramaClipDialogue).not.toHaveBeenCalled();
+    const callArgs = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
+    expect(callArgs.shotContext.dialogueLines).toEqual([
+      {
+        characterKey: "hero",
+        lineTh: "This beat-mapped dialogue line is long enough to clear the coverage floor",
+      },
+    ]);
+  });
+
+  it("still falls back to the positional guess (source 3b) when the flag is on but the shot has no sourceBeatIndexes", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesSpeechBudget: true });
+    const episodeRow = baseEpisodeRow({
+      motionPromptPack: null,
+      script: {
+        scene_dialogue_summary: [{ scene: 1, dialogue_lines: ['hero: "legacy positional line"'] }],
+      },
+      // storyboard shot (from baseEpisodeRow) carries no sourceBeatIndexes.
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    // Source 3b's `script_fallback` tag is exactly what the PRE-EXISTING,
+    // unrelated `shouldRegenerateDialogueForVideoPrompt` safety net always
+    // regenerates before the final LLM call — so the positional guess's
+    // resolved text is observable one layer earlier, as the regeneration
+    // call's `sceneDialogueContext` (proving 3b, not 3a, produced it).
+    expect(mockGenerateVerticalDramaClipDialogue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotContext: expect.objectContaining({
+          sceneDialogueContext: ['hero: "legacy positional line"'],
+        }),
+      }),
+    );
+    // The (mocked) regenerated dialogue is what reaches the final call.
+    const callArgs = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
+    expect(callArgs.shotContext.dialogueLines).toEqual([
+      { lineTh: "บทสดใหม่ของช็อตนี้", characterKey: "hero" },
+    ]);
+  });
+});
+
+/**
+ * Wave-7D (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
+ * — extends the identity flow-through W4-A already wired into
+ * `generateVideoClip`'s PROVIDER payload onto this procedure's user-visible
+ * FIRST-PASS prompt (the one persisted onto `motionPromptPack.clips[]` and
+ * returned to the caller before any paid render happens).
+ */
+describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-7D, flag-gated)", () => {
+  function presetVisualIdentityBible(over: Record<string, unknown> = {}) {
+    return {
+      presetVisualIdentity: {
+        styleName: "sci-fi mecha noir",
+        palette: ["steel blue", "amber", "gunmetal"],
+        lighting: "cold rim light with amber practicals",
+        environmentMotifs: ["hangar bays"],
+        wardrobeGrammar: ["pilot suits"],
+        signaturePropsAndCompanions: ["mecha unit"],
+        cameraGrammar: "low angle hero shots",
+        characterArchetypes: [],
+        imagePromptFragments: { positive: ["mecha plating"], negative: ["cartoonish"] },
+        ...over,
+      },
+    };
+  }
+
+  it("appends the preset's style tokens onto the persisted first-pass prompt when the flag is on and the series carries a preset identity", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: true });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([{ bible: presetVisualIdentityBible() }])); // loadSeriesPresetVisualIdentity
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    const result = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockAppendPresetVisualIdentityStyleTokensToMotionPrompt).toHaveBeenCalledWith(
+      "generated motion prompt",
+      expect.objectContaining({ styleName: "sci-fi mecha noir", lighting: "cold rim light with amber practicals" }),
+    );
+    const expectedPrompt =
+      "generated motion prompt Preset style tokens (visual style: sci-fi mecha noir, lighting: cold rim light with amber practicals).";
+    expect(result.prompt).toBe(expectedPrompt);
+    expect(capturedSet.motionPromptPack.clips[0]).toMatchObject({ prompt: expectedPrompt });
+  });
+
+  it("does not append and does not load preset identity when the flag is off (default — flags-off byte-identical)", async () => {
+    // Explicit (not relying on an earlier test's `mockResolvedValue` default
+    // — `vi.clearAllMocks()` clears call history but not a previously-set
+    // default implementation, same footgun documented elsewhere in this
+    // file's test suite).
+    mockGetTenantFeatureFlags.mockResolvedValue({});
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    const result = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockAppendPresetVisualIdentityStyleTokensToMotionPrompt).not.toHaveBeenCalled();
+    expect(result.prompt).toBe("generated motion prompt");
+    // Exactly the 4 pre-Wave-7D selects — no extra `loadSeriesPresetVisualIdentity` read.
+    expect(mockDb.select).toHaveBeenCalledTimes(4);
+  });
+
+  it("does not append when the flag is on but the series carries no preset identity (legacy/non-preset series)", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: true });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([{ bible: null }])); // no presetVisualIdentity stamped
+
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    const result = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockAppendPresetVisualIdentityStyleTokensToMotionPrompt).not.toHaveBeenCalled();
+    expect(result.prompt).toBe("generated motion prompt");
   });
 });

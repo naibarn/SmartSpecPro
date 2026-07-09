@@ -40,6 +40,12 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
+  // Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
+  // at compile time, zero runtime import), safe regardless of any test's
+  // mocking of this module: this file already has a REAL, static VALUE
+  // dependency on `verticalDramaStoryBible.ts` (the imports above), so its
+  // transitive chain is already loaded by every test of this file.
+  type VdDeepDraftShotDraft,
 } from "./verticalDramaStoryBible";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 
@@ -219,6 +225,50 @@ export interface GenerateStoryboardShotgridParams {
     role: string | null;
     referenceImageUrl?: string | null;
   }>;
+  /**
+   * Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
+   * 2026-07-08) — same `episode_draft` payload
+   * `verticalDramaScriptGeneration.ts`'s `GenerateEpisodeScriptParams`
+   * accepts (see that file's doc comment for the full rationale). Refine
+   * mode here preserves the 9-shot allocation: each draft shot's `summary`
+   * maps into that SAME shot's description and `shot_number` alignment is
+   * kept, while every other required field of the shot schema (camera,
+   * image_prompt, `source_beat_indexes`, etc.) is still produced —
+   * hydration only changes the prompt's starting material, never what a
+   * valid shot must contain.
+   */
+  episodeDraft?: {
+    shots: VdDeepDraftShotDraft[];
+    cliffhanger_line?: string;
+  };
+  /**
+   * Repair-mode override — see `GenerateEpisodeScriptParams.repairContext`'s
+   * doc comment (`verticalDramaScriptGeneration.ts`) for the shared
+   * rationale; identical convention, storyboard-shaped payload. Only set by
+   * `verticalDramaEpisodePipeline.ts`'s `repairStage` (before this field
+   * existed, `repairStage` never called this function at all — every repair
+   * of every stage returned only the deterministic dry-run placeholder).
+   * Omitted for every fresh-generation call site (`runStage`'s
+   * `storyboard_shotgrid` override), so the prompt it produces is
+   * byte-identical to before this field existed whenever `repairContext` is
+   * absent.
+   */
+  repairContext?: {
+    currentStoryboard: Record<string, unknown>;
+    instruction: string;
+  };
+  /**
+   * Additive feature-flag bag (W10-B) — mirrors
+   * `GenerateEpisodeScriptParams.opts`'s decoupled-payload-vs-flag
+   * convention: `episodeDraft` above is only rendered into the prompt when
+   * `episodeDraftHydrationEnabled` is also true, so a caller that supplies
+   * `episodeDraft` without the flag (or omits `opts` entirely) gets today's
+   * byte-identical prompt.
+   */
+  opts?: {
+    /** Feature flag `verticalDramaSeriesDeepStoryDrafts` (W10-B). */
+    episodeDraftHydrationEnabled?: boolean;
+  };
 }
 
 function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
@@ -263,6 +313,36 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     ? `Episode scenes (this is what ACTUALLY happens in this episode's script — ground every shot in these, in order; do not invent generic mood shots disconnected from this list):\n${sceneBeatLines}\nDistribute the 9 shots across these scenes in order (multiple shots may cover the same scene). For any shot depicting a scene that has a "line", use that exact line (translated/adapted only if needed for length) as the shot's "dialogue_excerpt" and a short version as "subtitle_text" — do not invent unrelated dialogue.`
     : null;
 
+  // Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
+  // 2026-07-08) — additive; only sent when `verticalDramaSeriesDeepStoryDrafts`
+  // is enabled AND an `episodeDraft` was actually resolved for this episode,
+  // so the flag-off (or no-draft) prompt is byte-identical to before this
+  // change. Mirrors `verticalDramaScriptGeneration.ts`'s identical section —
+  // the instruction sentence travels with the actual `episode_draft` data in
+  // the same message rather than living solely in the skill's system-prompt
+  // brief, so it is directly verifiable by this function's own unit tests.
+  const episodeDraftEnabled = params.opts?.episodeDraftHydrationEnabled === true;
+  const episodeDraftSection =
+    episodeDraftEnabled && params.episodeDraft
+      ? [
+          "A vetted per-shot draft exists — REFINE it into the full storyboard shot schema: preserve the 9-shot allocation (map each draft shot's summary into that SAME shot's description, keeping shot_number alignment) and pass through silence_intent as-is; do NOT renumber, merge, or drop shots, and do NOT invent a divergent plot. Still produce every required field for each shot (camera, image_prompt, source_beat_indexes when applicable, etc.) per the existing shot schema.",
+          `episode_draft: ${JSON.stringify(params.episodeDraft)}`,
+        ].join("\n")
+      : null;
+
+  // Repair-mode framing — see `GenerateStoryboardShotgridParams.repairContext`'s
+  // doc comment. Additive; only rendered when a caller explicitly supplies
+  // `repairContext`, so every fresh-generation call site's prompt is
+  // byte-identical to before this section existed.
+  const repairSection = params.repairContext
+    ? [
+        "REPAIR MODE: You are REPAIRING an existing storyboard shotgrid that was already generated — you are NOT creating a new one from scratch.",
+        "Apply ONLY the targeted change(s) the instruction below calls for. Preserve every other shot's camera, composition, timing, and description exactly as-is unless the instruction specifically requires changing it — do not rewrite unrelated shots. Still produce exactly 9 complete shots.",
+        `current_storyboard: ${JSON.stringify(params.repairContext.currentStoryboard)}`,
+        `repair_instruction: ${params.repairContext.instruction}`,
+      ].join("\n")
+    : null;
+
   return [
     `Episode title: ${params.episodeTitle}`,
     `Episode number: ${params.episodeNumber}`,
@@ -278,6 +358,8 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     sceneBeatInstruction,
     `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
+    episodeDraftSection,
+    repairSection,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)

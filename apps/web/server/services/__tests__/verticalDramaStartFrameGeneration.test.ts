@@ -50,6 +50,8 @@ import {
   generateStartFrameRenderPlan,
   projectStartFramePlan,
   RateLimitExceededError,
+  appendPresetVisualIdentityFragmentsToImagePrompt,
+  mergePresetVisualIdentityNegativeFragments,
 } from "../verticalDramaStartFrameGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
@@ -368,5 +370,52 @@ describe("projectStartFramePlan", () => {
     };
     const plan = projectStartFramePlan(raw as any, "");
     expect(plan.selectedImageModelId).toBe("llm-claimed-model");
+  });
+});
+
+describe("appendPresetVisualIdentityFragmentsToImagePrompt (spec §8.2.2 flow-through)", () => {
+  it("is a no-op when identity is undefined", () => {
+    expect(appendPresetVisualIdentityFragmentsToImagePrompt("a hero portrait", undefined)).toBe(
+      "a hero portrait",
+    );
+  });
+
+  it("is a no-op when the identity carries no positive fragments", () => {
+    const identity = { imagePromptFragments: { positive: [], negative: [] } };
+    expect(appendPresetVisualIdentityFragmentsToImagePrompt("a hero portrait", identity)).toBe(
+      "a hero portrait",
+    );
+  });
+
+  it("appends positive fragments, comma-joined", () => {
+    const identity = {
+      imagePromptFragments: { positive: ["bioluminescent rim light", "neon orchids"], negative: [] },
+    };
+    const result = appendPresetVisualIdentityFragmentsToImagePrompt("a hero portrait", identity);
+    expect(result).toBe("a hero portrait, bioluminescent rim light, neon orchids");
+  });
+});
+
+describe("mergePresetVisualIdentityNegativeFragments (spec §8.2.2 flow-through)", () => {
+  it("returns the original negative prompt unchanged (including undefined) when identity is absent", () => {
+    expect(mergePresetVisualIdentityNegativeFragments(undefined, undefined)).toBeUndefined();
+    expect(mergePresetVisualIdentityNegativeFragments("blurry", undefined)).toBe("blurry");
+  });
+
+  it("returns the original negative prompt unchanged when the identity carries no negative fragments", () => {
+    const identity = { imagePromptFragments: { positive: [], negative: [] } };
+    expect(mergePresetVisualIdentityNegativeFragments("blurry", identity)).toBe("blurry");
+  });
+
+  it("merges negative fragments into an existing negative prompt (never replaces it)", () => {
+    const identity = { imagePromptFragments: { positive: [], negative: ["modern clothing", "cars"] } };
+    expect(mergePresetVisualIdentityNegativeFragments("blurry", identity)).toBe(
+      "blurry, modern clothing, cars",
+    );
+  });
+
+  it("uses the negative fragments alone when there is no existing negative prompt", () => {
+    const identity = { imagePromptFragments: { positive: [], negative: ["modern clothing"] } };
+    expect(mergePresetVisualIdentityNegativeFragments(undefined, identity)).toBe("modern clothing");
   });
 });

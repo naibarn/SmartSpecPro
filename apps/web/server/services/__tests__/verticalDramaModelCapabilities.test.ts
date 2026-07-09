@@ -225,6 +225,73 @@ describe("deriveVerticalDramaCapabilities", () => {
   });
 });
 
+describe("supportsNativeAudio (task #36 — optional NATIVE AUDIO DIRECTION prompt option)", () => {
+  it("marks every Veo 3.1 tier (incl. extend) as supportsNativeAudio — description states native audio explicitly", () => {
+    for (const id of [
+      "veo3/generate-veo-3-video-lite",
+      "veo-3-1",
+      "veo3/generate-veo-3-video-fast",
+      "veo3/extend-video",
+    ]) {
+      expect(findVideo(id).supportsNativeAudio).toBe(true);
+    }
+  });
+
+  it("marks grok-imagine-video-1-5-preview as supportsNativeAudio (xAI synchronized in-video audio, user-confirmed)", () => {
+    expect(findVideo("grok-imagine-video-1-5-preview").supportsNativeAudio).toBe(true);
+  });
+
+  it("marks gemini-omni-video as supportsNativeAudio (configJson.hasAudio: true)", () => {
+    expect(findVideo("gemini-omni-video").supportsNativeAudio).toBe(true);
+  });
+
+  it("leaves supportsNativeAudio unset/false for models with no verified native-audio signal", () => {
+    for (const id of [
+      "happyhorse/text-to-video",
+      "happyhorse/image-to-video",
+      "happyhorse/reference-to-video",
+      "happyhorse/video-edit",
+      "sora-2",
+      "kling-2.6",
+      "veo_3_1-fast",
+      "grok-video-3",
+    ]) {
+      expect(findVideo(id).supportsNativeAudio).not.toBe(true);
+    }
+  });
+
+  it("mirrors nativeAudioDialogue exactly for every static video model (same underlying technical signal)", () => {
+    for (const model of videoModels) {
+      expect(Boolean(model.supportsNativeAudio)).toBe(Boolean(model.nativeAudioDialogue));
+    }
+  });
+});
+
+describe("deriveVerticalDramaCapabilities — supportsNativeAudio (task #36)", () => {
+  it("derives supportsNativeAudio true whenever nativeAudioDialogue derives true (configJson.hasAudio/nativeAudio)", () => {
+    const caps = deriveVerticalDramaCapabilities({
+      type: "video",
+      aspectRatios: ["9:16"],
+      configJson: { apiPayloadFormat: "veo", hasAudio: true },
+    });
+    expect(caps.supportsNativeAudio).toBe(true);
+    expect(caps.supportsNativeAudio).toBe(caps.nativeAudioDialogue);
+  });
+
+  it("derives supportsNativeAudio false when no audio signal is present", () => {
+    const caps = deriveVerticalDramaCapabilities({
+      type: "video",
+      aspectRatios: ["9:16"],
+      configJson: {},
+    });
+    expect(caps.supportsNativeAudio).toBe(false);
+  });
+
+  it("audio models never set supportsNativeAudio (only video models carry this flag)", () => {
+    expect(deriveVerticalDramaCapabilities({ type: "audio" }).supportsNativeAudio).toBeUndefined();
+  });
+});
+
 describe("resolveVerticalDramaCapabilities", () => {
   it("prefers the hand-tuned static catalog entry over generic derivation", () => {
     // veo3/extend-video is Veo-family (apiPayloadFormat would derive true) but
@@ -247,6 +314,16 @@ describe("resolveVerticalDramaCapabilities", () => {
     expect(caps.supportsStartFrame).toBe(true);
     expect(caps.maxReferenceImages).toBe(4);
     expect(caps.nativeAudioDialogue).toBe(true);
+    expect(caps.supportsNativeAudio).toBe(true);
     expect(caps.verticalDramaReady).toBe(true);
+  });
+
+  it("resolves supportsNativeAudio: true for the static veo-3-1 catalog entry (task #36)", () => {
+    const caps = resolveVerticalDramaCapabilities("veo-3-1", {
+      type: "video",
+      aspectRatios: ["auto", "16:9", "9:16"],
+      configJson: getStaticModelById("veo-3-1")?.configJson,
+    });
+    expect(caps.supportsNativeAudio).toBe(true);
   });
 });

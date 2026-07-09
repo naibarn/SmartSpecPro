@@ -78,6 +78,27 @@ export interface ModelDefinition {
   /** Model can embed spoken dialogue directly in the video (native audio + lip sync), vs requiring separate TTS. */
   nativeAudioDialogue?: boolean;
 
+  /**
+   * Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt option,
+   * added 2026-07-09) — true when this model's OWN metadata/description
+   * verifies it generates synchronized audio natively as part of the
+   * rendered clip (ambient soundscape + SFX, directed via the video prompt
+   * text — never dialogue/music, which stay owned by the TTS and BGM layers
+   * respectively; see `skills/vertical-drama-shot-video-prompt/skill.md`'s
+   * "NATIVE AUDIO DIRECTION" section). Deliberately mirrors
+   * `nativeAudioDialogue` (both are driven by the exact same underlying
+   * technical fact — "this model renders audio in-clip, not just video" —
+   * whether the caller then directs that audio channel toward speech or
+   * toward ambience/SFX is a PROMPTING choice, not a separate model
+   * capability) rather than being derived independently, so every model
+   * verified to support native lip-synced dialogue also carries this flag;
+   * `undefined`/`false` for any model this catalog cannot verify generates
+   * native audio at all. Optional so every pre-existing definition (and
+   * every DB row that predates this field) keeps working unchanged, exactly
+   * like the other Vertical Drama capability flags above.
+   */
+  supportsNativeAudio?: boolean;
+
   /** Model has 9:16 + video quality sufficient for Vertical Drama Series episode rendering. */
   verticalDramaReady?: boolean;
 }
@@ -273,19 +294,27 @@ function buildVeo31Config(kieModelId: "veo3" | "veo3_fast" | "veo3_lite", pricin
 }
 
 /**
- * Derive the 4 Vertical Drama capability flags (`supportsStartFrame`,
- * `maxReferenceImages`, `nativeAudioDialogue`, `verticalDramaReady`) from a
- * model's already-known type/aspectRatios/configJson, ONLY for entries that
- * don't set them explicitly below. Centralizing this keeps every video model
- * — including future ones — consistent, and lets `dbModelToDefinition` reuse
- * the exact same derivation for DB-backed rows (so admin-imported/edited
- * models get sensible capability badges without needing a manual DB edit).
+ * Derive the 5 Vertical Drama capability flags (`supportsStartFrame`,
+ * `maxReferenceImages`, `nativeAudioDialogue`, `supportsNativeAudio`,
+ * `verticalDramaReady`) from a model's already-known
+ * type/aspectRatios/configJson, ONLY for entries that don't set them
+ * explicitly below. Centralizing this keeps every video model — including
+ * future ones — consistent, and lets `dbModelToDefinition` reuse the exact
+ * same derivation for DB-backed rows (so admin-imported/edited models get
+ * sensible capability badges without needing a manual DB edit).
  */
 export function deriveVerticalDramaCapabilities(model: {
   type: MediaType;
   aspectRatios?: string[];
   configJson?: Record<string, any>;
-}): Pick<ModelDefinition, "supportsStartFrame" | "maxReferenceImages" | "nativeAudioDialogue" | "verticalDramaReady"> {
+}): Pick<
+  ModelDefinition,
+  | "supportsStartFrame"
+  | "maxReferenceImages"
+  | "nativeAudioDialogue"
+  | "supportsNativeAudio"
+  | "verticalDramaReady"
+> {
   if (model.type === "image") {
     // An image model qualifies for the vertical-drama start-frame picker as
     // long as it can render 9:16 — the other three fields only apply to video.
@@ -327,11 +356,19 @@ export function deriveVerticalDramaCapabilities(model: {
     (maxReferenceImages ?? 0) > 0 ||
     generateType.includes("image-to-video");
   const nativeAudioDialogue = cfg.hasAudio === true || cfg.nativeAudio === true;
+  // Task #36 — same underlying signal as `nativeAudioDialogue` (see that
+  // field's doc comment on `ModelDefinition`): a model whose configJson
+  // marks it as generating native audio at all is verified to support the
+  // NATIVE AUDIO DIRECTION prompt option too, whether the caller then
+  // directs that audio toward speech (nativeAudioDialogue's use) or toward
+  // ambience/SFX (this flag's use).
+  const supportsNativeAudio = nativeAudioDialogue;
   const supports9x16 = (model.aspectRatios ?? []).includes("9:16");
   return {
     supportsStartFrame,
     maxReferenceImages,
     nativeAudioDialogue,
+    supportsNativeAudio,
     verticalDramaReady: supports9x16 && supportsStartFrame,
   };
 }
@@ -521,6 +558,9 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     supportsStartFrame: true,
     maxReferenceImages: 3,
     nativeAudioDialogue: true,
+    // Task #36 — description above states "with native audio" explicitly
+    // (Veo 3.1 family, verified).
+    supportsNativeAudio: true,
     verticalDramaReady: true,
   },
   {
@@ -553,6 +593,9 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     supportsStartFrame: true,
     maxReferenceImages: 3,
     nativeAudioDialogue: true,
+    // Task #36 — description above states "with native audio" explicitly
+    // (Veo 3.1 family, verified).
+    supportsNativeAudio: true,
     verticalDramaReady: true,
   },
   {
@@ -575,6 +618,9 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     supportsStartFrame: true,
     maxReferenceImages: 3,
     nativeAudioDialogue: true,
+    // Task #36 — description above states "with native audio" explicitly
+    // (Veo 3.1 family, verified).
+    supportsNativeAudio: true,
     verticalDramaReady: true,
   },
   {
@@ -614,6 +660,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     supportsStartFrame: false,
     maxReferenceImages: 0,
     nativeAudioDialogue: true,
+    // Task #36 — same Veo 3.1 technology as the 3 render-capable tiers above
+    // (not start-frame-capable itself, so it never reaches the Vertical
+    // Drama picker anyway, but the capability metadata stays accurate).
+    supportsNativeAudio: true,
     verticalDramaReady: false,
   },
   {
@@ -819,6 +869,10 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     supportsStartFrame: true,
     maxReferenceImages: 1,
     nativeAudioDialogue: true,
+    // Task #36 — see this entry's own comment above: xAI added synchronized
+    // in-video audio (incl. speech) to Grok Imagine v1.x in late 2025,
+    // user-confirmed 2026-07-06.
+    supportsNativeAudio: true,
     verticalDramaReady: true,
   },
   {
@@ -1110,6 +1164,11 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     supportsStartFrame: true,
     maxReferenceImages: 7,
     nativeAudioDialogue: true,
+    // Task #36 — `configJson.hasAudio: true` above + "multimodal video
+    // generation" description; Gemini Omni's native audio channel is
+    // verified the same way the other `nativeAudioDialogue: true` entries
+    // in this catalog are.
+    supportsNativeAudio: true,
     verticalDramaReady: true,
   },
 ];
@@ -1180,23 +1239,51 @@ function matchesStaticModelLookupKey(model: ModelDefinition, lookupKey: string):
 export function resolveVerticalDramaCapabilities(
   modelId: string,
   model: { type: MediaType; aspectRatios?: string[]; configJson?: Record<string, any> },
-): Pick<ModelDefinition, "supportsStartFrame" | "maxReferenceImages" | "nativeAudioDialogue" | "verticalDramaReady"> {
+): Pick<
+  ModelDefinition,
+  | "supportsStartFrame"
+  | "maxReferenceImages"
+  | "nativeAudioDialogue"
+  | "supportsNativeAudio"
+  | "verticalDramaReady"
+> {
   const staticMatch = getStaticModelById(modelId);
   if (
     staticMatch &&
     (staticMatch.supportsStartFrame !== undefined ||
       staticMatch.maxReferenceImages !== undefined ||
       staticMatch.nativeAudioDialogue !== undefined ||
+      staticMatch.supportsNativeAudio !== undefined ||
       staticMatch.verticalDramaReady !== undefined)
   ) {
     return {
       supportsStartFrame: staticMatch.supportsStartFrame,
       maxReferenceImages: staticMatch.maxReferenceImages,
       nativeAudioDialogue: staticMatch.nativeAudioDialogue,
+      supportsNativeAudio: staticMatch.supportsNativeAudio,
       verticalDramaReady: staticMatch.verticalDramaReady,
     };
   }
   return deriveVerticalDramaCapabilities(model);
+}
+
+/**
+ * Vertical Drama task #36 — convenience single-arg lookup: true when the
+ * given model id resolves (via the cache-aware registry, so both DB-backed
+ * and static-catalog entries work) to a video model whose own metadata
+ * verifies it generates native audio. Mirrors `getModelById`'s "id-only, no
+ * model shape needed" convention, for callers that only have an id in hand
+ * (e.g. a router-level gate deciding whether to even accept the caller's
+ * NATIVE AUDIO DIRECTION request). Callers that already resolved a
+ * `resolveVerticalDramaCapabilities(...)` object for this same model
+ * (`verticalDramaVideoMotionPromptGeneration.ts`,
+ * `verticalDramaVideoPromptFormatter.ts`) should read
+ * `capabilities.supportsNativeAudio` directly instead of calling this a
+ * second time — same "prefer the already-resolved object" guidance the
+ * `resolveEpisodeVideoModel` doc comment gives for `nativeAudioDialogue`.
+ */
+export function videoModelSupportsNativeAudio(modelId: string): boolean {
+  return getModelById(modelId)?.supportsNativeAudio === true;
 }
 
 /** One selectable resolution/size option surfaced to the client, with the

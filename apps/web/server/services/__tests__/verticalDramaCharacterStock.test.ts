@@ -11,10 +11,18 @@ import {
 //   select().from().where().limit()   (existing-row lookup + media-asset check)
 //   insert().values().returning()     (new-row insert)
 //   update().set().where().returning() (idempotent-update branch)
+// Additive (F131Z): `.from()` also exposes `.innerJoin()` for
+// `getCharacterReferenceUrls`'s sheet-asset query
+// (select().from().innerJoin().where(), resolved directly — no
+// orderBy/limit, since sheet ranking happens in JS via
+// `pickBestCharacterSheetAsset`). Never touched by `linkAsset`, so this is
+// purely additive to `mockFrom`'s existing tests.
 // ---------------------------------------------------------------------------
 const mockLimit = vi.fn();
 const mockWhereSelect = vi.fn(() => ({ limit: mockLimit }));
-const mockFrom = vi.fn(() => ({ where: mockWhereSelect }));
+const mockJoinWhere = vi.fn();
+const mockInnerJoin = vi.fn(() => ({ where: mockJoinWhere }));
+const mockFrom = vi.fn(() => ({ where: mockWhereSelect, innerJoin: mockInnerJoin }));
 const mockSelect = vi.fn(() => ({ from: mockFrom }));
 
 const mockInsertReturning = vi.fn();
@@ -39,7 +47,9 @@ import {
   deriveCharacterAssetState,
   characterAssetRowToContract,
   characterRefChangeStaleTargets,
+  pickBestCharacterSheetAsset,
   VerticalDramaCharacterStockService,
+  type CharacterSheetAssetCandidate,
 } from "../verticalDramaCharacterStock";
 
 function asset(over: Partial<VerticalDramaCharacterAsset>): VerticalDramaCharacterAsset {
@@ -291,5 +301,186 @@ describe("VerticalDramaCharacterStockService.linkAsset — idempotency (bug repr
     // only the insert path runs.
     expect(mockSelect).not.toHaveBeenCalled();
     expect(mockInsert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("pickBestCharacterSheetAsset (F131Z sheet-selection preference matrix)", () => {
+  function candidate(over: Partial<CharacterSheetAssetCandidate>): CharacterSheetAssetCandidate {
+    return {
+      url: "https://cdn.example.com/sheet.png",
+      role: "character_sheet_full",
+      approved: true,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      ...over,
+    };
+  }
+
+  it("returns null for an empty candidate list (caller falls back to portrait-only)", () => {
+    expect(pickBestCharacterSheetAsset([])).toBeNull();
+  });
+
+  it("approved beats unapproved outright, regardless of role/recency", () => {
+    const approvedFull = candidate({
+      url: "approved-full",
+      role: "character_sheet_full",
+      approved: true,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const unapprovedTurnaroundNewer = candidate({
+      url: "unapproved-turnaround",
+      role: "character_sheet_turnaround",
+      approved: false,
+      updatedAt: "2026-06-01T00:00:00.000Z", // newer AND turnaround — still loses to approved
+    });
+    expect(
+      pickBestCharacterSheetAsset([unapprovedTurnaroundNewer, approvedFull])?.url,
+    ).toBe("approved-full");
+    // Order-independent.
+    expect(
+      pickBestCharacterSheetAsset([approvedFull, unapprovedTurnaroundNewer])?.url,
+    ).toBe("approved-full");
+  });
+
+  it("prefers turnaround over full when approved status ties", () => {
+    const full = candidate({ url: "full", role: "character_sheet_full", approved: true });
+    const turnaround = candidate({
+      url: "turnaround",
+      role: "character_sheet_turnaround",
+      approved: true,
+    });
+    expect(pickBestCharacterSheetAsset([full, turnaround])?.url).toBe("turnaround");
+    expect(pickBestCharacterSheetAsset([turnaround, full])?.url).toBe("turnaround");
+  });
+
+  it("falls back to newest updatedAt when approved and role both tie", () => {
+    const older = candidate({
+      url: "older",
+      role: "character_sheet_turnaround",
+      approved: true,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    const newer = candidate({
+      url: "newer",
+      role: "character_sheet_turnaround",
+      approved: true,
+      updatedAt: "2026-02-01T00:00:00.000Z",
+    });
+    expect(pickBestCharacterSheetAsset([older, newer])?.url).toBe("newer");
+    expect(pickBestCharacterSheetAsset([newer, older])?.url).toBe("newer");
+  });
+});
+
+describe("VerticalDramaCharacterStockService.getCharacterReferenceUrls (F131Z)", () => {
+  const owner = { tenantId: "t1", userId: 42, seriesId: 10 };
+
+  beforeEach(() => {
+    mockSelect.mockClear();
+    mockFrom.mockClear();
+    mockInnerJoin.mockClear();
+    mockJoinWhere.mockClear();
+    mockWhereSelect.mockClear();
+    mockLimit.mockClear();
+  });
+
+  it("returns portrait only when includeSheet=false — reuses getPrimaryPortraitUrl unchanged and never queries sheets", async () => {
+    const service = new VerticalDramaCharacterStockService();
+    const portraitSpy = vi
+      .spyOn(service, "getPrimaryPortraitUrl")
+      .mockResolvedValue("https://cdn.example.com/portrait.png");
+
+    const result = await service.getCharacterReferenceUrls(owner, 5, {
+      includeSheet: false,
+    });
+
+    expect(result).toEqual(["https://cdn.example.com/portrait.png"]);
+    expect(portraitSpy).toHaveBeenCalledWith(owner, 5);
+    // Byte-identical to pre-F131Z portrait resolution: no sheet query issued at all.
+    expect(mockInnerJoin).not.toHaveBeenCalled();
+  });
+
+  it("returns portrait only when includeSheet=true but the character has no sheet asset yet", async () => {
+    const service = new VerticalDramaCharacterStockService();
+    vi.spyOn(service, "getPrimaryPortraitUrl").mockResolvedValue(
+      "https://cdn.example.com/portrait.png",
+    );
+    mockJoinWhere.mockResolvedValueOnce([]);
+
+    const result = await service.getCharacterReferenceUrls(owner, 5, {
+      includeSheet: true,
+    });
+
+    expect(result).toEqual(["https://cdn.example.com/portrait.png"]);
+  });
+
+  it("appends the best sheet asset after the portrait when includeSheet=true (turnaround beats full)", async () => {
+    const service = new VerticalDramaCharacterStockService();
+    vi.spyOn(service, "getPrimaryPortraitUrl").mockResolvedValue(
+      "https://cdn.example.com/portrait.png",
+    );
+    mockJoinWhere.mockResolvedValueOnce([
+      {
+        url: "https://cdn.example.com/sheet-full.png",
+        role: "character_sheet_full",
+        approved: true,
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+      {
+        url: "https://cdn.example.com/sheet-turnaround.png",
+        role: "character_sheet_turnaround",
+        approved: true,
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ]);
+
+    const result = await service.getCharacterReferenceUrls(owner, 5, {
+      includeSheet: true,
+    });
+
+    expect(result).toEqual([
+      "https://cdn.example.com/portrait.png",
+      "https://cdn.example.com/sheet-turnaround.png",
+    ]);
+  });
+
+  it("returns an empty array when neither a portrait nor a sheet exist", async () => {
+    const service = new VerticalDramaCharacterStockService();
+    vi.spyOn(service, "getPrimaryPortraitUrl").mockResolvedValue(null);
+    mockJoinWhere.mockResolvedValueOnce([]);
+
+    const result = await service.getCharacterReferenceUrls(owner, 5, {
+      includeSheet: true,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it("filters out sheet rows with a null resolved url before ranking", async () => {
+    const service = new VerticalDramaCharacterStockService();
+    vi.spyOn(service, "getPrimaryPortraitUrl").mockResolvedValue(
+      "https://cdn.example.com/portrait.png",
+    );
+    mockJoinWhere.mockResolvedValueOnce([
+      {
+        url: null,
+        role: "character_sheet_turnaround",
+        approved: true,
+        updatedAt: new Date("2026-03-01T00:00:00.000Z"),
+      },
+      {
+        url: "https://cdn.example.com/sheet-full.png",
+        role: "character_sheet_full",
+        approved: true,
+        updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      },
+    ]);
+
+    const result = await service.getCharacterReferenceUrls(owner, 5, {
+      includeSheet: true,
+    });
+
+    expect(result).toEqual([
+      "https://cdn.example.com/portrait.png",
+      "https://cdn.example.com/sheet-full.png",
+    ]);
   });
 });

@@ -51,6 +51,7 @@ import {
   projectMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
+  appendPresetVisualIdentityStyleTokensToMotionPrompt,
   RateLimitExceededError,
   type VideoMotionPromptPackProjection,
 } from "../verticalDramaVideoMotionPromptGeneration";
@@ -434,6 +435,33 @@ describe("projectMotionPromptPack", () => {
     const withoutLanguage = projectMotionPromptPack(raw as any, "model-x", "profile-x");
     expect(withoutLanguage.promptLanguage).toBeUndefined();
     expect(withoutLanguage.dialogueLanguage).toBeUndefined();
+  });
+});
+
+describe("appendPresetVisualIdentityStyleTokensToMotionPrompt (spec §8.2.2 flow-through)", () => {
+  it("is a no-op when identity is undefined", () => {
+    expect(appendPresetVisualIdentityStyleTokensToMotionPrompt("hero walks forward", undefined)).toBe(
+      "hero walks forward",
+    );
+  });
+
+  it("appends both styleName and lighting as deterministic style tokens", () => {
+    const result = appendPresetVisualIdentityStyleTokensToMotionPrompt("hero walks forward", {
+      styleName: "Neon Bio-Jungle Tech",
+      lighting: "bioluminescent rim light",
+    });
+    expect(result).toContain("hero walks forward");
+    expect(result).toContain("Neon Bio-Jungle Tech");
+    expect(result).toContain("bioluminescent rim light");
+  });
+
+  it("appends only the present field when the other is empty", () => {
+    const result = appendPresetVisualIdentityStyleTokensToMotionPrompt("hero walks forward", {
+      styleName: "Neon Bio-Jungle Tech",
+      lighting: "",
+    });
+    expect(result).toContain("Neon Bio-Jungle Tech");
+    expect(result).not.toContain("lighting: ,");
   });
 });
 

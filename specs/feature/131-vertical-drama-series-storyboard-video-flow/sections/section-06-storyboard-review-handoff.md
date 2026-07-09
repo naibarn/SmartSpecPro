@@ -54,11 +54,11 @@ Modify:
 
 - Image-side prompts are surfaced read-only in the review panel, not only the video prompt (spec §8.5). For each shot the panel exposes the contact-sheet prompt, the per-cell prompts, the negative prompts, and the selected-candidate lineage (which candidate frame ID / prompt-set ID produced the chosen start/stop frame). These render clearly separated from the video `task.prompt` so image prompts are never confused with the motion prompt.
 - The video/motion prompt is **editable** in Storyboard Review (spec: prompts are inspectable AND editable). The panel provides an explicit editable video/motion-prompt control, not just a read-only inspector.
-- Each manual prompt edit is persisted as a NEW append-only artifact version (never an in-place overwrite), reusing the existing supersede semantics (§11.6, L1686). Every edit version captures `editedByUserId`, `editedAt`, and the original prompt text so the full edit history is auditable and reversible.
+- Each manual prompt edit is persisted as a NEW append-only artifact version (never an in-place overwrite), reusing the existing supersede semantics (§11.6). Every edit version captures `editedByUserId`, `editedAt`, and the original prompt text so the full edit history is auditable and reversible.
 - Editing a video prompt re-applies the stale/paid-generation gating: a manual edit marks downstream paid generation stale until re-confirmed, consistent with the model/frame stale rules.
 - The provider payload preview renders as a labeled key/value block or a collapsible formatted block — never an unstructured raw-JSON blob — so creators can scan model, parameters, and reference wiring at a glance.
 - QC `recommendedRepairs[]` (§8.5 QC, §16) render as actionable buttons, not display-only text. Each entry opens a repair dialog PRE-FILLED with its `action`, `instruction`, and target (`shotNumber` / `clipNumber` / `artifactId`), and submitting calls the existing repair route with that exact target + instruction.
-- Completed runs/tasks expose a read-only "prompts used" view keyed to the finished run/task (§8.5, L2665). Reopening a finished episode shows the exact prompts (per shot / per cell / per clip) that were actually used to generate it, including any edited prompt versions from the append-only history.
+- Completed runs/tasks expose a read-only "prompts used" view keyed to the finished run/task (§8.5). Reopening a finished episode shows the exact prompts (per shot / per cell / per clip) that were actually used to generate it, including any edited prompt versions from the append-only history.
 - A breadcrumb (Series › Episode › Storyboard Review) is provided alongside the existing back link so users can navigate the lineage from the review surface.
 
 ### Sub-Shot Handoff Rules (`verticalDramaSeriesSubShots`)
@@ -74,7 +74,7 @@ Modify:
 
 ### Sub-Shot Prompt Editing Rules
 
-- Each sub-shot's camera setup, motion prompt, duration, and transition are editable in Storyboard Review before paid generation, reusing the existing editable video/motion-prompt control and append-only edit-history rules (see "Prompt Visibility, Editing, and Repair Rules"; supersede semantics §11.6, L1686).
+- Each sub-shot's camera setup, motion prompt, duration, and transition are editable in Storyboard Review before paid generation, reusing the existing editable video/motion-prompt control and append-only edit-history rules (see "Prompt Visibility, Editing, and Repair Rules"; supersede semantics §11.6).
 - Each manual sub-shot edit is persisted as a NEW append-only artifact version (never in-place overwrite), capturing `editedByUserId`, `editedAt`, and the original value, so the sub-shot edit history is auditable and reversible.
 - Editing any sub-shot field re-applies the stale/paid-generation gating for that sub-shot's task, consistent with the model/frame stale rules; sub-shot repair is scoped per sub-shot (spec §7.4 `repair_sub_shot`).
 
@@ -113,10 +113,10 @@ The Storyboard Review episode/metadata panel must display these vertical-drama f
 - voice casting and subtitle safe-area status
 - per-shot image-side prompts (contact-sheet prompt, per-cell prompts, negative prompts) shown read-only and clearly separated from the video prompt (§8.5)
 - selected-candidate lineage per shot (candidate frame ID / prompt-set ID that produced the chosen start/stop frame)
-- editable video/motion prompt control with an append-only edit-history view (editor + timestamp + original text per version) (§11.6, L1686)
+- editable video/motion prompt control with an append-only edit-history view (editor + timestamp + original text per version) (§11.6)
 - formatted (labeled key/value or collapsible) provider payload preview — not raw JSON
 - repair queue rendered as actionable, prefilled `recommendedRepairs[]` repair buttons (§8.5 QC, §16)
-- read-only "prompts used" view for completed runs/tasks (per shot / cell / clip) (§8.5, L2665)
+- read-only "prompts used" view for completed runs/tasks (per shot / cell / clip) (§8.5)
 - per-shot sub-shot breakdown when `verticalDramaSeriesSubShots` is on and the shot was decomposed: the sub-shot count, and for each sub-shot its camera setup, duration, transition (`cut`/`match_cut`/`smash_cut`/`continuous`), and motion prompt — shown grouped under the parent shot and clearly labelled as sub-shots (§7.4); a non-decomposed shot shows no sub-shot group
 - editable sub-shot fields (camera setup / motion prompt / duration / transition) per sub-shot, reusing the editable video/motion-prompt control and append-only edit-history view, visible before paid generation (§7.4, §11.6)
 - breadcrumb (Series › Episode › Storyboard Review) alongside the back link
@@ -191,17 +191,17 @@ Capture Storyboard Review metadata with selected frames, provider payload previe
 - Test: `companionAudioUpdatedAt` is preserved alongside `companionAudio`, `voiceoverFullScript`, and per-task duration.
 - Test: metadata panel displays all §8.5 episode-panel fields (motion mode label, voice casting, subtitle safe-area status, and repair queue).
 - Test: the review panel renders per-shot image-side prompts (contact-sheet prompt, per-cell prompts, negative prompts) and selected-candidate lineage, visually/structurally separated from the video `task.prompt` (§8.5).
-- Test: editing a video/motion prompt records an append-only edit version capturing `editedByUserId`, `editedAt`, and the original prompt text (supersede semantics, §11.6, L1686) rather than overwriting in place, and re-applies stale/paid-generation gating.
+- Test: editing a video/motion prompt records an append-only edit version capturing `editedByUserId`, `editedAt`, and the original prompt text (supersede semantics, §11.6) rather than overwriting in place, and re-applies stale/paid-generation gating.
 - Test: the provider payload preview renders as labeled key/value rows or a collapsible formatted block, not an unstructured raw-JSON blob.
 - Test: each `recommendedRepairs[]` entry renders as an actionable button that opens a repair dialog pre-filled with its `action`, `instruction`, and target (`shotNumber`/`clipNumber`/`artifactId`); submitting calls the repair route with the correct target + instruction (§8.5 QC, §16).
-- Test: reopening a completed episode shows the exact "prompts used" per clip (per shot/cell/clip), keyed to the finished run/task, including edited prompt versions from the append-only history (§8.5, L2665).
+- Test: reopening a completed episode shows the exact "prompts used" per clip (per shot/cell/clip), keyed to the finished run/task, including edited prompt versions from the append-only history (§8.5).
 - Test: a breadcrumb (Series › Episode › Storyboard Review) renders alongside the existing back link and navigates the lineage.
 - Test: with `verticalDramaSeriesSubShots` on and a main shot decomposed into sub-clips, the handoff creates one ordered Storyboard Review video task PER sub-shot under the parent shot, in shot-order then sub-shot-order (`parentShotNumber` then `subShotNumber`).
 - Test: each sub-shot task's `extraParams` carries the correct `parentShotNumber`, `subShotNumber`, `subShotCount`, and `subShotTransitionIn` (one of `cut`/`match_cut`/`smash_cut`/`continuous`), and `extraParams.shotNumber` still resolves to the parent storyboard shot (§7.4, §12).
 - Test: a sub-shot task's `task.prompt` is the sub-shot motion prompt only (excludes the parent-shot prompt, image prompts, camera-setup text, and transition label), and its `durationSeconds` is the sub-shot duration.
 - Test (no regression): a non-decomposed shot (flag off, or provider degrades to a single clip) produces exactly ONE task with no sub-shot `extraParams` (or `subShotNumber = null`), identical to default handoff.
 - Test: the metadata panel renders the grouped per-shot sub-shot breakdown (count, and each sub-shot's camera setup, duration, transition, and prompt) under the parent shot, clearly labelled; a non-decomposed shot renders no sub-shot group.
-- Test: editing a sub-shot camera setup / motion prompt / duration / transition records an append-only edit version (`editedByUserId`, `editedAt`, original value) via supersede semantics (§11.6, L1686) rather than overwriting, and re-applies stale/paid-generation gating for that sub-shot task.
+- Test: editing a sub-shot camera setup / motion prompt / duration / transition records an append-only edit version (`editedByUserId`, `editedAt`, original value) via supersede semantics (§11.6) rather than overwriting, and re-applies stale/paid-generation gating for that sub-shot task.
 
 ## Implementation Tasks
 
@@ -214,10 +214,10 @@ Capture Storyboard Review metadata with selected frames, provider payload previe
 7. Preserve existing Storyboard Review audio and duration conventions.
 8. Add tests for load/save/backlink and duplicate prevention.
 9. Surface per-shot image-side prompts (contact-sheet, per-cell, negative) and selected-candidate lineage read-only, separated from the video prompt (§8.5).
-10. Add an editable video/motion-prompt control that writes each manual edit as a new append-only artifact version with `editedByUserId`/`editedAt`/original text (reuse supersede semantics, §11.6, L1686) and re-triggers stale/paid gating.
+10. Add an editable video/motion-prompt control that writes each manual edit as a new append-only artifact version with `editedByUserId`/`editedAt`/original text (reuse supersede semantics, §11.6) and re-triggers stale/paid gating.
 11. Render the provider payload preview as a labeled key/value or collapsible formatted block (no raw-JSON blob).
 12. Wire `recommendedRepairs[]` entries to actionable buttons that open a prefilled repair dialog (`action` + `instruction` + target) and call the repair route.
-13. Add a read-only "prompts used" view for completed runs/tasks keyed by run/task ID (§8.5, L2665).
+13. Add a read-only "prompts used" view for completed runs/tasks keyed by run/task ID (§8.5).
 14. Add a breadcrumb (Series › Episode › Storyboard Review) alongside the back link.
 15. When `verticalDramaSeriesSubShots` is on and a shot is emitted as sub-clips, fan the parent shot out into one ordered Storyboard Review task per sub-shot (shot order then sub-shot order), writing `parentShotNumber`/`subShotNumber`/`subShotCount`/`subShotTransitionIn` into each task's `extraParams` and the sub-shot motion prompt into `task.prompt`; keep the single-task path unchanged when the flag is off or the provider degrades to a single clip.
 16. Render the grouped per-shot sub-shot breakdown in the metadata panel and make each sub-shot's camera setup / motion prompt / duration / transition editable via the existing append-only edit-history control before paid generation.

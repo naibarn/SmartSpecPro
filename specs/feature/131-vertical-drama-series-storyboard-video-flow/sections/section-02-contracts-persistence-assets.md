@@ -222,10 +222,37 @@ type VerticalDramaMemoryKind =
   | "hook_resolved"
   | "product_tie_in_usage"
   | "continuity_warning"
-  | "retcon_proposal";
+  | "retcon_proposal"
+  | "arc_replan_proposal"   // added 2026-07-07 (spec §7.7.3, section-13)
+  | "arc_replan_applied";   // added 2026-07-07 (spec §7.7.3, section-13)
 ```
 
 Retcons are explicit proposals requiring user approval. Approved retcons create **new** memory events; they never mutate older events in place. When a new episode contradicts canonical memory, the pipeline stops at a repair checkpoint instead of silently rewriting the past.
+
+Arc re-plans (added 2026-07-07) follow the same append-only discipline facing FORWARD: an `arc_replan_proposal` proposes replacing future (non-produced) `episodeBreakdown` entries; approval appends a new breakdown version plus an `arc_replan_applied` event and never mutates prior events or produced episodes (spec §7.7.3, section-13).
+
+### Series Bible Breakdown Versioning And Quality Policy (added 2026-07-07)
+
+Pinned contract additions (all additive/optional so existing rows stay valid — spec §7.7.2/§7.7.3/§16.1; implemented by section-13/14):
+
+```ts
+// additions inside the series bible JSONB (VerticalDramaSeriesBible)
+episodeBreakdown?: VerticalDramaEpisodeBreakdownItem[]; // active view (shipped shape + contentBudget, spec §7.7.2)
+breakdownVersions?: Array<{
+  versionId: string;
+  createdAt: string;
+  createdByUserId: number;
+  source: "generate_story" | "arc_replan";
+  items: VerticalDramaEpisodeBreakdownItem[];
+}>;                                    // append-only — never edited in place
+activeBreakdownVersionId?: string;     // pointer moved only by approval
+
+// new nullable column on vertical_drama_series
+qualityPolicy: jsonb | null;           // VerticalDramaQualityPolicy (spec §16.1);
+                                       // resolution: series column -> tenant default -> built-in defaults
+```
+
+`vertical_drama_genre_presets` may carry an optional `qualityPolicy` copy that is stamped onto the series at create/apply time (section-14).
 
 ### Duration Profiles (spec §7.4)
 
@@ -507,7 +534,8 @@ Indirect. Covered by Dashboard and artifact/debug panels in sections 03 and 09.
 - Test: `VerticalDramaSubShot` and `VerticalDramaSubShotPolicy` shapes round-trip through JSONB, including `transitionIn`, `status`, `parentShotNumber`/`subShotNumber`, and the optional `subShotPolicy` carried on the duration profile.
 - Test: sub-shot durations per parent shot sum to that main shot's duration and the episode total stays 60 seconds, and sub-shots never change the 9-shot/9-frame count.
 - Test: sub-shot count is capped at `maxPerShot` and every sub-shot duration is `>= minSubShotSeconds`, with `auto` mode yielding `N = min(targetPerShot, floor(D / minSubShotSeconds))`.
-- Test: `VerticalDramaMemoryKind` enumerates all 9 kinds including `retcon_proposal`, and approved retcons append new events without mutating prior events.
+- Test: `VerticalDramaMemoryKind` enumerates all 11 kinds including `retcon_proposal`, `arc_replan_proposal`, and `arc_replan_applied` (2026-07-07), and approved retcons/arc-replans append new events without mutating prior events.
+- Test: `breakdownVersions[]` is append-only with `activeBreakdownVersionId` moved only by approval; `qualityPolicy` column round-trips and resolves series → tenant → built-in defaults (2026-07-07).
 - Test: `VerticalDramaMemoryRetrievalPolicy` defaults resolve to `includeLastEpisodeCount === 3`, `includeResolvedHookLookbackCount === 10`, and `compactionStrategy === "rolling_summary_plus_events"`.
 - Test: `VerticalDramaSeriesPolicy.generationMode` restricts to `dry_run | approval_required | auto_after_approval` and gates auto-execution accordingly.
 - Test: `VerticalDramaSeriesBible` round-trips `logline`, `seasonArc`, `cameraGrammar`, `relationshipMap`, `recurringProps`, and `continuityRules` through JSONB.

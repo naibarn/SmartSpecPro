@@ -41,6 +41,13 @@ import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
   VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES,
 } from "@shared/verticalDramaSeries";
+// Speakability sanitizer (2026-07-08/W9-A, spec §14.1 rule 6b) — applied
+// ONLY to the literal transcript embedded for native-audio models below
+// (`buildNativeDialogueClause`'s `exactly: "..."` clause), never to the
+// persisted `VerticalDramaClipDialogueLine`/artifact text this module reads
+// from. The mouth-movement-only branch (`buildMouthMovementOnlyClause`)
+// never embeds a literal transcript at all, so it needs no sanitization.
+import { sanitizeSpeakableLineForDelivery } from "@shared/verticalDramaSeries/dialogueQuality";
 
 /* -------------------------------------------------------------------------- */
 /* Input contracts                                                            */
@@ -74,6 +81,17 @@ export interface VerticalDramaFormatterClip {
   durationSeconds: number;
   startFrameAssetId?: string;
   endFrameAssetId?: string;
+  /**
+   * Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt option)
+   * — this clip's model-directed ambient bed + SFX cues, when the option
+   * was on + supported at generation time (see
+   * `VerticalDramaMotionPromptPack["clips"][number].audioDirection`'s own
+   * doc comment, `@shared/verticalDramaSeries/contracts`, for the full
+   * rationale). `undefined`/absent for every clip that never opted in —
+   * this formatter appends nothing in that case, so the final prompt stays
+   * byte-identical to before this task.
+   */
+  audioDirection?: string;
 }
 
 export type VerticalDramaProviderFamily = "veo" | "grok" | "seedance" | "generic";
@@ -174,6 +192,14 @@ function actingDirectionSentence(line: VerticalDramaClipDialogueLine): string {
  * lip-sync it, followed by the delivery/acting direction. States the spoken
  * language explicitly (e.g. "in natural spoken Thai"/"in natural spoken
  * English") so the provider never has to infer it from the transcript alone.
+ *
+ * Speakability sanitize (2026-07-08/W9-A, spec §14.1 rule 6b) — the line is
+ * run through `sanitizeSpeakableLineForDelivery` right here, at the moment
+ * it enters the OUTBOUND provider prompt (the literal `exactly: "..."`
+ * clause the provider lip-syncs to). The original `line.lineTh` on the
+ * caller's artifact is never mutated — only this local copy of the text
+ * changes. A line with no violations is byte-identical (idempotent
+ * sanitizer), so this is a no-op for the overwhelming majority of dialogue.
  */
 function buildNativeDialogueClause(
   lines: VerticalDramaClipDialogueLine[],
@@ -183,7 +209,8 @@ function buildNativeDialogueClause(
     .map((line) => {
       const speaker = line.characterKey ? `${line.characterKey} says` : "Character says";
       const direction = actingDirectionSentence(line);
-      return `${speaker}, in natural spoken ${dialogueLanguageName}, exactly: "${line.lineTh}". ${direction}`;
+      const speakableLine = sanitizeSpeakableLineForDelivery(line.lineTh);
+      return `${speaker}, in natural spoken ${dialogueLanguageName}, exactly: "${speakableLine}". ${direction}`;
     })
     .join(" ");
 }
@@ -320,6 +347,19 @@ export function formatVideoClipRequest(
       generateAudio = false;
       ttsFallback = true;
     }
+  }
+
+  // Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt option)
+  // — appended LAST, after any dialogue clause, so the model reads acting/
+  // dialogue direction before the ambient/SFX direction. This is the ONLY
+  // place `audioDirection` is folded into the actual provider-submitted
+  // prompt text — it stays a separate persisted field everywhere upstream
+  // (see the clip type's own doc comment,
+  // `@shared/verticalDramaSeries/contracts`, for why). No-op when absent
+  // (the option was off/unsupported at generation time), keeping the final
+  // prompt byte-identical to before this task.
+  if (clip.audioDirection) {
+    finalPrompt = `${finalPrompt} ${clip.audioDirection}`.trim();
   }
 
   return {

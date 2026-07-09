@@ -166,6 +166,10 @@ import { createPublicMediaRouter } from "../routes/publicMediaApi";
 import { createPublicJobsRouter } from "../routes/publicJobsApi";
 import { createPublicKnowledgeRouter } from "../routes/publicKnowledgeApi";
 import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/jobAutomationService";
+import {
+  initVerticalDramaStoryJobsQueue,
+  closeVerticalDramaStoryJobsQueue,
+} from "../services/verticalDramaStoryJobs";
 import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
@@ -1469,6 +1473,14 @@ async function main() {
   const server = createServer(app);
   httpServer = server;
 
+  // Long-running LLM mutations (season critique apply, premium deep drafts)
+  // legitimately exceed Node 18+'s 300s default requestTimeout — the socket
+  // was being closed mid-response, surfacing as nginx 502 "HTML instead of
+  // JSON" on /trpc (observed live 2026-07-08). Match nginx's 600s proxy
+  // window; headersTimeout must stay > requestTimeout per Node docs.
+  server.requestTimeout = 620_000;
+  server.headersTimeout = 625_000;
+
   // WebSocket upgrade routing
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
@@ -1536,6 +1548,14 @@ async function main() {
     await initAutomationJobsQueue();
   } catch (error) {
     console.error("[Startup] Failed to initialize automation jobs queue:", error);
+  }
+
+  // Initialize Vertical Drama Story Jobs queue (BullMQ — async story LLM
+  // mutations: deep drafts, extend, season critique + apply, task #28)
+  try {
+    await initVerticalDramaStoryJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize vertical drama story jobs queue:", error);
   }
 
   // Initialize Webhook API Delivery queue (BullMQ — outbound delivery to external webhook endpoints)
@@ -1872,6 +1892,7 @@ process.on("SIGTERM", async () => {
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
+  await closeVerticalDramaStoryJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
@@ -1938,6 +1959,7 @@ process.on("SIGINT", async () => {
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
+  await closeVerticalDramaStoryJobsQueue().catch(() => {});
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});

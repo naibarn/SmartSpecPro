@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "skillId": "vertical-drama-season-dramaturgy-critic",
+  "contract_version": 1,
+  "title": "Vertical Drama Season Dramaturgy Critic",
+  "titleTh": "นักวิจารณ์งานเขียนบทละครแนวตั้งทั้งซีซัน",
+  "description": "Judge a vertical-drama season's story craft ONLY (structure, character agency, stakes, antagonist tactics, world-rule consistency, dialogue subtlety, action-vs-exposition balance) across every deep-drafted episode.",
+  "descriptionTh": "ให้คะแนนงานเขียนบทของทั้งซีซันละครแนวตั้ง (โครงเรื่อง อำนาจการตัดสินใจของตัวละคร เดิมพัน กลยุทธ์ตัวร้าย ความสอดคล้องของกฎโลก ความเป็นธรรมชาติของบทพูด และสัดส่วนฉากดราม่ากับฉากอธิบาย) ในทุกตอนที่ร่างบทละเอียดแล้ว",
+  "sections": [
+    {
+      "id": "input",
+      "title": "Input",
+      "titleTh": "ข้อมูลนำเข้า",
+      "icon": "gavel",
+      "fields": [
+        {
+          "id": "payload",
+          "type": "textarea",
+          "label": "Skill JSON Input",
+          "labelTh": "ข้อมูล JSON ของสกิล",
+          "placeholder": "Provided by the season dramaturgy critique action (deterministic findings + episode digest)",
+          "placeholderTh": "ระบบวิจารณ์งานเขียนบททั้งซีซันเป็นผู้ส่งให้ (ข้อเท็จจริงที่ตรวจพบอัตโนมัติ + สรุปย่อรายตอน)",
+          "helpText": "This skill is invoked by the Vertical Drama season dramaturgy critique action, not from chat.",
+          "helpTextTh": "สกิลนี้ถูกเรียกโดยฟีเจอร์วิจารณ์งานเขียนบททั้งซีซันของละครแนวตั้ง ไม่ใช่จากแชท",
+          "required": true,
+          "rows": 6
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "payload": "payload"
+  }
+}

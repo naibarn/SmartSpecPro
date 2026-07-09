@@ -168,6 +168,7 @@ const StoryboardReviewPage = lazy(() => import("./pages/StoryboardReviewPage"));
 const VerticalDramaSeriesPage = lazy(() => import("./pages/VerticalDramaSeriesPage"));
 const VerticalDramaSeriesDetailPage = lazy(() => import("./pages/VerticalDramaSeriesDetailPage"));
 const VerticalDramaEpisodePage = lazy(() => import("./pages/VerticalDramaEpisodePage"));
+const VerticalDramaSharedSeriesPage = lazy(() => import("./pages/VerticalDramaSharedSeriesPage"));
 const RenderJobsPage = lazy(() => import("./pages/RenderJobsPage"));
 const Credits = lazy(() => import("./pages/Credits"));
 const BillingCenter = lazy(() => import("./pages/BillingCenter"));
@@ -325,6 +326,19 @@ function RequireDomainAdmin({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Share-link tokens are bearer secrets that live in the URL path
+ * (`/share/vd/:token` and the library's `/share/:token`) — sending the raw
+ * href to PostHog would hand the secret to a third party (security review
+ * 2026-07-09, finding #2). Redact the token segment before capture; the
+ * redacted form still distinguishes the two share surfaces for analytics.
+ */
+export function redactShareTokenFromUrl(href: string): string {
+  return href
+    .replace(/(\/share\/vd\/)[^/?#]+/, "$1[redacted]")
+    .replace(/(\/share\/)(?!vd\/)[^/?#]+/, "$1[redacted]");
+}
+
 function PostHogPageViewTracker() {
   const [location] = useLocation();
   const prevPath = useRef<string | null>(null);
@@ -332,7 +346,9 @@ function PostHogPageViewTracker() {
   useEffect(() => {
     if (location !== prevPath.current) {
       prevPath.current = location;
-      getPostHog()?.capture("$pageview", { $current_url: window.location.href });
+      getPostHog()?.capture("$pageview", {
+        $current_url: redactShareTokenFromUrl(window.location.href),
+      });
     }
   }, [location]);
 
@@ -610,6 +626,12 @@ function Router() {
         <Route path="/drama-series/:seriesId/episodes/:episodeId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaEpisodePage /></RequireVerticalDramaSeries></RequireAuth></Route>
         <Route path="/drama-series/:seriesId"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaSeriesDetailPage /></RequireVerticalDramaSeries></RequireAuth></Route>
         <Route path="/drama-series"><RequireAuth><RequireVerticalDramaSeries><VerticalDramaSeriesPage /></RequireVerticalDramaSeries></RequireAuth></Route>
+        {/* Task #32 (Collab-lite L1, F131AA) — PUBLIC read-only share link viewer.
+            Deliberately OUTSIDE RequireAuth/RequireVerticalDramaSeries: no account,
+            no login, no tenant flag check on this route itself (see
+            routers/verticalDramaShare.ts's own doc comment for why) — same
+            "component={...}, no wrapper" convention as /login, /signup below. */}
+        <Route path="/share/vd/:token" component={VerticalDramaSharedSeriesPage} />
         {/* Legacy path redirects — the /dashboard prefix was dropped after initial launch. */}
         <Route path="/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId">
           {(params) => <Redirect to={`/drama-series/${params.seriesId}/episodes/${params.episodeId}/runs/${params.runId}`} />}

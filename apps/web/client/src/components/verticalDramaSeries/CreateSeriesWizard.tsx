@@ -7,7 +7,7 @@
  * creates a series shell only and never triggers paid generation.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ImageIcon, Loader2, Maximize2, Minimize2, Search, Sparkles, Wand2, X } from "lucide-react";
 
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,13 @@ import {
   clampToCreateSeriesLimit,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
-import { pickCopy, verticalDramaCopy, wizardSteps } from "./verticalDramaCopy";
+import type {
+  VerticalDramaBlendReport,
+  VerticalDramaPresetMixWeight,
+  VerticalDramaPresetVisualIdentity,
+} from "@shared/verticalDramaSeries/presetVisualIdentity";
+import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
+import { mixWeightLabel, pickCopy, verticalDramaCopy, visualStyleLabel, wizardSteps } from "./verticalDramaCopy";
 
 interface WizardState {
   title: string;
@@ -60,6 +67,15 @@ interface WizardState {
   productId?: string;
   productImageUrl?: string;
   forbiddenClaims: string;
+  /**
+   * Genre preset id the wizard applied directly (spec §8.2.2.A flow-through
+   * rule, section-15) — set only by the single-preset "Use this preset" path
+   * (`applyPreset`), never by the AI-mixed draft path (`applyPresetDraft`
+   * clears it, since a synthesized draft is not itself a stored preset row).
+   * Forwarded on `create` so the server can additively stamp the preset's
+   * `visualIdentityJson` (if any) into the new series' bible.
+   */
+  appliedPresetId?: string;
 }
 
 const INITIAL_WIZARD: WizardState = {
@@ -80,6 +96,21 @@ const INITIAL_WIZARD: WizardState = {
   forbiddenClaims: "",
 };
 
+/** Default weight for a newly-selected preset (spec §8.2.2.C.1 — "default equal"). */
+const DEFAULT_MIX_WEIGHT: VerticalDramaPresetMixWeight = 3;
+
+/**
+ * Clamps/rounds an arbitrary number (e.g. straight off a Radix `Slider`'s
+ * `onValueChange`) into the 1-5 `VerticalDramaPresetMixWeight` union.
+ * Pure — exported for direct unit testing.
+ */
+export function clampMixWeight(value: number): VerticalDramaPresetMixWeight {
+  const rounded = Math.round(value);
+  if (rounded <= 1) return 1;
+  if (rounded >= 5) return 5;
+  return rounded as VerticalDramaPresetMixWeight;
+}
+
 export function CreateSeriesWizard({
   open,
   lang,
@@ -98,6 +129,11 @@ export function CreateSeriesWizard({
   const [mixCategories, setMixCategories] = useState<string[]>([]);
   const [mixBusinessContext, setMixBusinessContext] = useState("");
   const [mixPrimarySelectionId, setMixPrimarySelectionId] = useState<string | undefined>();
+  // Preset Mix v2 (spec §8.2.2.C.1, section-15) — sparse map, missing entries
+  // default to DEFAULT_MIX_WEIGHT at read time; intentionally NOT cleared when
+  // a preset is deselected, so re-selecting it remembers the user's prior
+  // adjustment instead of silently resetting it.
+  const [mixWeights, setMixWeights] = useState<Record<string, VerticalDramaPresetMixWeight>>({});
   const [productSearch, setProductSearch] = useState("");
 
   const presetsQuery = trpc.verticalDramaSeries.listGenrePresets.useQuery({ locale: lang });
@@ -183,6 +219,10 @@ export function CreateSeriesWizard({
       preset.characters.map((c) => `${c.name} — ${c.role}: ${c.description}`).join("\n"),
     );
     set("visualBible", preset.visualBible);
+    // Spec §8.2.2.A flow-through rule (section-15) — remembered so `create`
+    // can additively stamp this preset's `visualIdentityJson` (if any) into
+    // the new series' bible; a no-op server side for presets without one.
+    set("appliedPresetId", preset.id);
     toast.success(
       lang === "th"
         ? `นำ Preset "${preset.title}" มาใช้แล้ว — แก้ไขต่อได้ทุกแท็บ`
@@ -202,6 +242,10 @@ export function CreateSeriesWizard({
       cliffhangerStyle: draft.cliffhangerStyle,
       characters: draft.characters.map((c) => `${c.name} — ${c.role}: ${c.description}`).join("\n"),
       visualBible: draft.visualBible,
+      // An AI-mixed draft is not itself a single stored preset row — clear
+      // any single-preset `appliedPresetId` a prior "Use this preset" click
+      // may have left behind so `create` doesn't stamp the wrong identity.
+      appliedPresetId: undefined,
     }));
     toast.success(
       lang === "th"
@@ -231,6 +275,10 @@ export function CreateSeriesWizard({
     });
   }
 
+  function setMixWeight(id: string, weight: VerticalDramaPresetMixWeight) {
+    setMixWeights((prev) => ({ ...prev, [id]: weight }));
+  }
+
   function handleSynthesizePreset() {
     if (mixPresetIds.length < 2) {
       toast.error(lang === "th" ? "เลือกอย่างน้อย 2 preset ก่อนให้ AI ผสม" : "Choose at least 2 presets first");
@@ -245,6 +293,15 @@ export function CreateSeriesWizard({
       productContext: form.productName || undefined,
       targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
       toneHint: form.tone || undefined,
+      // Preset Mix v2 (spec §8.2.2.C.1, section-15) — sent ALONGSIDE legacy
+      // `selectedPresetIds` unconditionally; the SERVER decides whether the
+      // tenant's `verticalDramaSeriesPresetMixV2` flag is on and only then
+      // reads this field (flag-off requests ignore it, byte-identical v1
+      // behavior). Missing weights default to DEFAULT_MIX_WEIGHT.
+      selections: mixPresetIds.map((id) => ({
+        presetId: id,
+        weight: mixWeights[id] ?? DEFAULT_MIX_WEIGHT,
+      })),
     });
   }
 
@@ -304,6 +361,10 @@ export function CreateSeriesWizard({
               : [],
           }
         : undefined,
+      // Spec §8.2.2.A flow-through rule (section-15) — best-effort on the
+      // server; a no-op when unset, invalid, or the preset has no
+      // `visualIdentityJson`. See `applyPreset`/`applyPresetDraft` above.
+      appliedPresetId: form.appliedPresetId,
     });
   };
 
@@ -368,6 +429,8 @@ export function CreateSeriesWizard({
             onMixBusinessContextChange={setMixBusinessContext}
             mixPrimarySelectionId={mixPrimarySelectionId}
             onMixPrimarySelectionIdChange={setMixPrimarySelectionId}
+            mixWeights={mixWeights}
+            onMixWeightChange={setMixWeight}
             mixDraft={synthesizePresetMutation.data?.draft}
             mixDraftLoading={synthesizePresetMutation.isPending}
             onToggleMixPreset={toggleMixPreset}
@@ -407,7 +470,7 @@ export function CreateSeriesWizard({
                 className="gap-2"
               >
                 {(createMutation.isPending || generateStoryMutation.isPending) && (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                 )}
                 {createMutation.isPending
                   ? lang === "th"
@@ -453,9 +516,19 @@ interface GenrePreset {
   characters: GenrePresetCharacter[];
   visualBible: string;
   scope: "global" | "private";
+  /**
+   * Structured visual identity (spec §8.2.2.A, section-15) — additive,
+   * nullable column on the preset row. NOT YET returned by
+   * `listGenrePresets` today (its `toGenrePresetDto` mapper only forwards
+   * the legacy preset fields above) — this field is feature-detected
+   * (rendered only when present) so the chip row activates automatically
+   * once the list procedure starts including it, with zero further UI
+   * changes required.
+   */
+  visualIdentityJson?: VerticalDramaPresetVisualIdentity | null;
 }
 
-interface SynthesizedGenrePresetDraft {
+interface SynthesizedGenrePresetDraftBase {
   title: string;
   category: string;
   logline: string;
@@ -471,8 +544,28 @@ interface SynthesizedGenrePresetDraft {
     rationale?: string;
   };
   warnings?: Array<{ code: string; message: string }>;
+}
+
+interface SynthesizedGenrePresetDraftV1 extends SynthesizedGenrePresetDraftBase {
   contract_version: 1;
 }
+
+/**
+ * Preset Mix v2 (spec §8.2.2.C, section-15, `verticalDramaSeriesPresetMixV2`)
+ * — a pure SUPERSET of v1: every v1 field is still present, plus the blend
+ * provenance report (`VerticalDramaBlendReportPanel` renders this) and,
+ * when at least one selected preset carried a `visualIdentityJson`, the
+ * deterministically-merged `visualIdentity`. The server decides whether v2
+ * fields exist (tenant flag) — this wizard only needs to branch on
+ * `contract_version` in the RESPONSE, never check the flag itself.
+ */
+interface SynthesizedGenrePresetDraftV2 extends SynthesizedGenrePresetDraftBase {
+  contract_version: 2;
+  blendReport: VerticalDramaBlendReport;
+  visualIdentity?: VerticalDramaPresetVisualIdentity;
+}
+
+type SynthesizedGenrePresetDraft = SynthesizedGenrePresetDraftV1 | SynthesizedGenrePresetDraftV2;
 
 interface MarketplaceProductOption {
   id: string;
@@ -499,6 +592,8 @@ function WizardStep({
   onMixBusinessContextChange,
   mixPrimarySelectionId,
   onMixPrimarySelectionIdChange,
+  mixWeights,
+  onMixWeightChange,
   mixDraft,
   mixDraftLoading,
   onToggleMixPreset,
@@ -526,6 +621,8 @@ function WizardStep({
   onMixBusinessContextChange: (value: string) => void;
   mixPrimarySelectionId?: string;
   onMixPrimarySelectionIdChange: (value: string | undefined) => void;
+  mixWeights: Record<string, VerticalDramaPresetMixWeight>;
+  onMixWeightChange: (id: string, weight: VerticalDramaPresetMixWeight) => void;
   mixDraft?: SynthesizedGenrePresetDraft;
   mixDraftLoading: boolean;
   onToggleMixPreset: (id: string) => void;
@@ -545,7 +642,7 @@ function WizardStep({
   switch (stepIndex) {
     case 0:
       return (
-        <div className="grid min-h-full gap-4 xl:grid-cols-[minmax(0,2.35fr)_minmax(22rem,0.85fr)] xl:items-start">
+        <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,2.35fr)_minmax(22rem,0.85fr)] lg:items-start">
           <div className="flex min-h-[32rem] flex-col rounded-xl border bg-muted/20 p-4 shadow-sm xl:min-h-[calc(90dvh-15rem)]">
             <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
@@ -588,6 +685,8 @@ function WizardStep({
               onBusinessContextChange={onMixBusinessContextChange}
               primarySelectionId={mixPrimarySelectionId}
               onPrimarySelectionIdChange={onMixPrimarySelectionIdChange}
+              weights={mixWeights}
+              onWeightChange={onMixWeightChange}
               draft={mixDraft}
               loading={mixDraftLoading}
               onTogglePreset={onToggleMixPreset}
@@ -889,7 +988,44 @@ function PresetCard({
         {genrePresetCategoryLabel(preset.category, lang)}
       </p>
       <p className="mt-0.5 line-clamp-2 text-muted-foreground">{preset.logline}</p>
+      {preset.visualIdentityJson && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          <Badge variant="outline" className="px-1.5 py-0 text-[10px] leading-4">
+            {visualStyleLabel(lang, preset.visualIdentityJson.styleName)}
+          </Badge>
+          <VisualIdentityPaletteSwatches palette={preset.visualIdentityJson.palette} />
+        </div>
+      )}
     </button>
+  );
+}
+
+/**
+ * Palette swatches for a preset's/draft's visual identity (spec §8.2.2.A,
+ * section-15 Accessibility Acceptance: "Palette swatches carry text labels
+ * (color names), never color-only"). `palette` entries may be a color NAME
+ * or a hex code — the swatch attempts a best-effort CSS background from the
+ * raw value (a non-CSS-color string is simply ignored by the browser, never
+ * an error), but the color NAME is always rendered as real text regardless
+ * of whether the swatch itself renders a recognizable color.
+ */
+function VisualIdentityPaletteSwatches({ palette }: { palette: string[] }) {
+  return (
+    <>
+      {palette.slice(0, 6).map((color) => (
+        <span
+          key={color}
+          className="inline-flex items-center gap-1 rounded-md border bg-background px-1.5 py-0 text-[10px] leading-4 text-muted-foreground"
+        >
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 shrink-0 rounded-full border border-muted-foreground/30"
+            style={{ backgroundColor: color }}
+          />
+          {color}
+        </span>
+      ))}
+    </>
   );
 }
 
@@ -906,6 +1042,8 @@ function MixAndMatchPresetPanel({
   onBusinessContextChange,
   primarySelectionId,
   onPrimarySelectionIdChange,
+  weights,
+  onWeightChange,
   draft,
   loading,
   onTogglePreset,
@@ -927,6 +1065,8 @@ function MixAndMatchPresetPanel({
   onBusinessContextChange: (value: string) => void;
   primarySelectionId?: string;
   onPrimarySelectionIdChange: (value: string | undefined) => void;
+  weights: Record<string, VerticalDramaPresetMixWeight>;
+  onWeightChange: (id: string, weight: VerticalDramaPresetMixWeight) => void;
   draft?: SynthesizedGenrePresetDraft;
   loading: boolean;
   onTogglePreset: (id: string) => void;
@@ -964,6 +1104,16 @@ function MixAndMatchPresetPanel({
   ];
   const selectedSinglePreset =
     selectionCount === 1 ? presets.find((preset) => preset.id === selectedPresetIds[0]) : undefined;
+  const presetTitleById = presets.reduce<Record<string, string>>((acc, preset) => {
+    acc[preset.id] = preset.title;
+    return acc;
+  }, {});
+
+  // Preset Mix v2 (spec §8.2.2.C.1, section-15) — the weight sliders' scroll
+  // target for the blend report's "adjust weights" CTA below.
+  const weightsSectionRef = useRef<HTMLDivElement>(null);
+  const scrollToWeights = () =>
+    weightsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -1006,7 +1156,7 @@ function MixAndMatchPresetPanel({
                 onClick={() => onToggleCategory(category)}
                 aria-pressed={selected}
                 className={cn(
-                  "min-h-8 rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors",
+                  "min-h-8 rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   selected
                     ? "border-primary bg-primary text-primary-foreground"
                     : "bg-background hover:bg-accent",
@@ -1105,6 +1255,40 @@ function MixAndMatchPresetPanel({
         </Field>
       </div>
 
+      {/* Preset Mix v2 (spec §8.2.2.C.1, section-15) — per-selection weight,
+          shown once 2+ presets are picked (weight only matters when blending;
+          a single-preset selection is applied directly, unweighted). Sending
+          `selections` is unconditional (see `handleSynthesizePreset`) — the
+          server decides whether the tenant's flag is on. */}
+      {selectionCount >= 2 && (
+        <div ref={weightsSectionRef} className="grid gap-2 rounded-lg border bg-background p-3">
+          <p className="text-xs font-medium">{pickCopy(lang, verticalDramaCopy.mixWeightSectionTitle)}</p>
+          <div className="grid gap-3">
+            {selectedPresetIds.map((id) => {
+              const weight = weights[id] ?? DEFAULT_MIX_WEIGHT;
+              const presetTitle = presetTitleById[id] ?? id;
+              return (
+                <div key={id} className="grid gap-1">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="min-w-0 truncate font-medium">{presetTitle}</span>
+                    <span className="shrink-0 text-muted-foreground">{mixWeightLabel(lang, weight)}</span>
+                  </div>
+                  <Slider
+                    value={[weight]}
+                    min={1}
+                    max={5}
+                    step={1}
+                    onValueChange={([value]) => onWeightChange(id, clampMixWeight(value))}
+                    aria-label={`${presetTitle} — ${mixWeightLabel(lang, weight)}`}
+                    className="py-3"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">
           {th
@@ -1123,7 +1307,7 @@ function MixAndMatchPresetPanel({
           </Button>
         ) : (
         <Button type="button" onClick={onGenerate} disabled={!canGenerate} className="gap-2">
-          {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
           {loading
             ? th
               ? "AI กำลังจัดรสชาติเรื่องให้เข้ากัน..."
@@ -1158,6 +1342,16 @@ function MixAndMatchPresetPanel({
               {draft.mixRecipe?.rationale && (
                 <p className="mt-2 text-xs text-muted-foreground">{draft.mixRecipe.rationale}</p>
               )}
+              {draft.contract_version === 2 && draft.visualIdentity && (
+                <div className="mt-2">
+                  <p className="text-xs font-medium">
+                    {visualStyleLabel(lang, draft.visualIdentity.styleName)}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <VisualIdentityPaletteSwatches palette={draft.visualIdentity.palette} />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex shrink-0 gap-2">
               <Button type="button" size="sm" onClick={() => onApplyDraft(draft)}>
@@ -1169,8 +1363,19 @@ function MixAndMatchPresetPanel({
             </div>
           </div>
           {draft.warnings && draft.warnings.length > 0 && (
-            <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
               {draft.warnings[0]?.message}
+            </div>
+          )}
+          {draft.contract_version === 2 && (
+            <div className="mt-3">
+              <VerticalDramaBlendReportPanel
+                lang={lang}
+                blendReport={draft.blendReport}
+                presetOrder={selectedPresetIds}
+                presetTitleById={presetTitleById}
+                onAdjustWeights={scrollToWeights}
+              />
             </div>
           )}
         </div>

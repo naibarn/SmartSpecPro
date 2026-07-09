@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-ad-banner-prompt/input",
+  "title": "Vertical Drama Ad Banner Prompt Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["product", "stylePreset", "placement"],
+  "properties": {
+    "product": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["forbiddenClaims", "copy"],
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "category": { "type": ["string", "null"] },
+        "copy": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "headline": { "type": ["string", "null"] },
+            "subtext": { "type": ["string", "null"] },
+            "priceText": { "type": ["string", "null"] },
+            "ctaText": { "type": ["string", "null"] }
+          }
+        },
+        "forbiddenClaims": {
+          "description": "Claims that must NEVER appear anywhere in the output, in any form.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "hasProductReferenceImages": {
+      "description": "True when one or more product reference images are attached to this call for vision analysis.",
+      "type": "boolean"
+    },
+    "stylePreset": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "nameEn", "promptTokens", "negativeTokens"],
+      "properties": {
+        "id": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "essenceTh": { "type": ["string", "null"] },
+        "promptTokens": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["style", "composition", "texture", "lighting"],
+          "properties": {
+            "style": { "type": "array", "items": { "type": "string" } },
+            "composition": { "type": "array", "items": { "type": "string" } },
+            "texture": { "type": "array", "items": { "type": "string" } },
+            "lighting": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "negativeTokens": { "type": "array", "items": { "type": "string" } },
+        "textInImageRisk": { "type": "string", "enum": ["low", "med", "high"] }
+      }
+    },
+    "placement": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "compositionGuidance"],
+      "properties": {
+        "id": { "type": "string", "enum": ["bottom_band", "side_vertical", "fullscreen"] },
+        "targetAspect": { "type": ["string", "null"] },
+        "compositionGuidance": { "type": "string" },
+        "sideAlign": { "type": ["string", "null"], "enum": ["left", "right", null] }
+      }
+    },
+    "language": {
+      "description": "Language of the user-authored copy fields (commonly Thai) — quoted in-image text must stay in this language.",
+      "type": "string"
+    }
+  }
+}

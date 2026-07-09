@@ -23,8 +23,11 @@
  * `buildStoryboardReviewAudioMetadata`) are DB-free and unit-testable in isolation.
  */
 
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
+import { parseSkillFile } from "@smartspec/skills";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
@@ -32,8 +35,31 @@ import {
   verticalDramaRunArtifacts,
   type VerticalDramaEpisodeRunRow,
 } from "../../drizzle/schema";
-import type { VerticalDramaWarning } from "@shared/verticalDramaSeries";
-import { artifactChecksumSha256 } from "@shared/verticalDramaSeries";
+import type { VerticalDramaWarning, VerticalDramaSeriesLocale } from "@shared/verticalDramaSeries";
+import { artifactChecksumSha256, verticalDramaLocaleEnglishName } from "@shared/verticalDramaSeries";
+import {
+  resolveSkillDirCandidates,
+  resolveSkillManifestPath,
+} from "./skillFiles";
+import {
+  hasEnoughCredits,
+  deductCredits,
+  calculateCreditsForLLM,
+} from "./creditService";
+import { mediaGenerationLimiter } from "./rateLimiter";
+import {
+  resolveStoryBibleModel,
+  executeJsonPlanningCallWithRetry,
+  InsufficientCreditsError,
+  VdSchemaValidationError,
+  VD_COMPACT_JSON_INSTRUCTION,
+} from "./verticalDramaStoryBible";
+
+// Re-exported so `verticalDramaEpisodePipeline.ts` only needs to import from
+// this one module for its `dialogue_audio_plan` real-repair wiring — mirrors
+// `verticalDramaScriptGeneration.ts`/`verticalDramaStoryboardGeneration.ts`'s
+// identical re-export convention exactly.
+export { InsufficientCreditsError, VdSchemaValidationError };
 import type { VerticalDramaProviderCapabilities } from "@shared/verticalDramaSeries/providerRouting";
 import {
   VERTICAL_DRAMA_AUDIO_STRATEGIES,
@@ -55,6 +81,11 @@ import {
   type VerticalDramaSpeakerVoiceMapEntry,
 } from "@shared/verticalDramaSeries/audio";
 import {
+  analyzeVerticalDramaEpisodeDialogueQuality,
+  sanitizeSpeakableLineForDelivery,
+  type VerticalDramaEpisodeDialogueQuality,
+} from "@shared/verticalDramaSeries/dialogueQuality";
+import {
   VERTICAL_DRAMA_DEFAULT_SUBTITLE_SAFE_AREA,
   computeSubShotSpans,
   validateCueSafeAreaPerSubShot,
@@ -62,6 +93,11 @@ import {
   type VerticalDramaSubtitleCue,
   type VerticalDramaSubtitleSafeArea,
 } from "@shared/verticalDramaSeries/subtitles";
+import {
+  buildCharacterVoiceConfigMap,
+  verticalDramaCharacterVoiceConfigMapEntrySchema,
+  type VerticalDramaCharacterVoiceConfig,
+} from "@shared/verticalDramaSeries/voiceCasting";
 
 /** Run/artifact stage key used for the dialogue-audio plan (spec §7.3). */
 export const VERTICAL_DRAMA_DIALOGUE_AUDIO_STAGE = "dialogue_audio_plan" as const;
@@ -143,6 +179,19 @@ export const planDialogueAudioInputSchema = z.object({
   beats: z.array(dialogueBeatInputSchema),
   shots: z.array(shotTimingInputSchema),
   voiceBindings: z.array(seriesVoiceBindingSchema).optional(),
+  /**
+   * Authoritative per-character voice casting (W12-A voice chain wave) — when
+   * a beat's `speakerCharacterId` has an entry here, it OVERRIDES whatever
+   * `voiceBindings` resolves for that speaker; `voiceBindings` remains the
+   * fallback source for uncast characters (unchanged codepath, including the
+   * `missing_voice_id` warning when neither source resolves a voice — see
+   * `buildSpeakerVoiceMap`). Threaded in by
+   * `server/routers/verticalDramaDialogueAudio.ts` from the series'
+   * `vertical_drama_characters.voiceConfig` column, flag-gated on
+   * `verticalDramaSeriesVoiceChain`. Absent/empty is fully
+   * backward-compatible — identical to pre-W12-A behavior.
+   */
+  characterVoiceConfigs: z.array(verticalDramaCharacterVoiceConfigMapEntrySchema).optional(),
   nativeAudio: z
     .object({
       requested: z.boolean().default(false),
@@ -194,10 +243,19 @@ function resolveVoiceId(binding?: SeriesVoiceBinding): string | undefined {
  * a binding marked `locked` is carried verbatim. A speaker with no resolvable
  * voice id gets `missingVoiceId: true` — this warns and blocks separate TTS but
  * never blocks script planning (spec §14 Audio Strategy Rules).
+ *
+ * `characterVoiceConfigs` (W12-A, optional) — a `characterId -> casting`
+ * lookup that is AUTHORITATIVE when present for a beat's
+ * `speakerCharacterId`: it overrides whatever `voiceBindings` would have
+ * resolved for that speaker. `voiceBindings` remains the fallback source when
+ * a speaker has no casting entry, so a speaking character with neither a
+ * casting NOR a resolvable binding still gets `missingVoiceId: true` — the
+ * EXACT same warning path as before this parameter existed (unchanged codes).
  */
 export function buildSpeakerVoiceMap(
   beats: DialogueBeatInput[],
   voiceBindings: SeriesVoiceBinding[],
+  characterVoiceConfigs?: Map<string, VerticalDramaCharacterVoiceConfig>,
 ): VerticalDramaSpeakerVoiceMap {
   const bindingByKey = new Map<string, SeriesVoiceBinding>();
   for (const b of voiceBindings) {
@@ -209,6 +267,27 @@ export function buildSpeakerVoiceMap(
   for (const beat of beats) {
     const key = speakerKey(beat.speakerName, beat.speakerCharacterId);
     if (seen.has(key)) continue;
+
+    const casting = beat.speakerCharacterId
+      ? characterVoiceConfigs?.get(beat.speakerCharacterId)
+      : undefined;
+    if (casting) {
+      // Casting is a deliberate, explicit per-character lock — always
+      // `locked: true` and never `missingVoiceId` (the schema guarantees
+      // `voiceModelId`/`voiceId` are present whenever a casting exists).
+      seen.set(key, {
+        speakerName: beat.speakerName,
+        characterId: beat.speakerCharacterId,
+        voiceProvider: casting.voiceProvider,
+        voiceModelId: casting.voiceModelId,
+        voiceId: casting.voiceId,
+        fallbackVoiceId: undefined,
+        locked: true,
+        missingVoiceId: false,
+      });
+      continue;
+    }
+
     const binding =
       bindingByKey.get(key) ??
       (beat.speakerCharacterId ? bindingByKey.get(`char:${beat.speakerCharacterId}`) : undefined) ??
@@ -369,11 +448,28 @@ export function buildTimingSummary(
  * and `dialogue_tts`. `injectsIntoVideoPrompts` is pinned `false`: separate TTS
  * NEVER writes speech/lip-sync into the visual video prompts (spec §14 rule 7).
  * A line whose speaker has no resolvable voice id is `blocked`.
+ *
+ * Speakability sanitize (2026-07-08/W9-A, spec §14.1 rule 6b) — each item's
+ * `text` (the literal string that will be sent to the TTS provider) is run
+ * through `sanitizeSpeakableLineForDelivery` here, at the point dialogue
+ * text enters the TTS payload. `plan.dialogueLines[].text` (the original
+ * artifact this function reads FROM) is never mutated — only the OUTBOUND
+ * `items[].text` copy is sanitized. A clean line is byte-identical.
+ *
+ * `characterVoiceConfigs` (W12-A, optional) — same authoritative-casting
+ * override `buildSpeakerVoiceMap` applies, repeated here directly against
+ * `voiceMap`'s resolved `entry` as the fallback. When this function is
+ * called via `buildDialogueAudioPlan` below, `voiceMap` has ALREADY been
+ * built with casting merged in, so passing the map again here is a no-op
+ * (idempotent); it exists so a call site with a raw, unmerged `voiceMap`
+ * (e.g. a future caller, or a direct unit test) still resolves casting
+ * correctly without going through `buildSpeakerVoiceMap` first.
  */
 export function buildSeparateTtsPlan(
   strategy: "separate_tts_voiceover" | "dialogue_tts",
   lines: VerticalDramaDialogueLine[],
   voiceMap: VerticalDramaSpeakerVoiceMap,
+  characterVoiceConfigs?: Map<string, VerticalDramaCharacterVoiceConfig>,
 ): VerticalDramaSeparateTtsPlan {
   const entryByKey = new Map(
     voiceMap.entries.map((e) => [speakerKey(e.speakerName, e.characterId), e]),
@@ -386,18 +482,23 @@ export function buildSeparateTtsPlan(
     const entry =
       entryByKey.get(speakerKey(line.speakerName, line.speakerCharacterId)) ??
       entryByKey.get(speakerKey(line.speakerName));
-    const voiceId = entry?.voiceId;
-    provider = provider ?? entry?.voiceProvider;
+    const casting = line.speakerCharacterId
+      ? characterVoiceConfigs?.get(line.speakerCharacterId)
+      : undefined;
+    const voiceProvider = casting?.voiceProvider ?? entry?.voiceProvider;
+    const voiceModelId = casting?.voiceModelId ?? entry?.voiceModelId;
+    const voiceId = casting?.voiceId ?? entry?.voiceId;
+    provider = provider ?? voiceProvider;
     const blocked = !voiceId;
     if (blocked) blockedLineIds.push(line.lineId);
     items.push({
       lineId: line.lineId,
       speakerName: line.speakerName,
       characterId: line.speakerCharacterId,
-      voiceProvider: entry?.voiceProvider,
-      voiceModelId: entry?.voiceModelId,
+      voiceProvider,
+      voiceModelId,
       voiceId,
-      text: line.text,
+      text: sanitizeSpeakableLineForDelivery(line.text),
       targetDurationSeconds: line.targetDurationSeconds,
       blocked,
       blockReason: blocked ? "missing_voice_id" : undefined,
@@ -407,7 +508,13 @@ export function buildSeparateTtsPlan(
   return { strategy, provider, items, injectsIntoVideoPrompts: false, blockedLineIds };
 }
 
-/** Native-audio prompt snippets — ONLY when native audio is policy-allowed. */
+/**
+ * Native-audio prompt snippets — ONLY when native audio is policy-allowed.
+ * Speakability sanitize (2026-07-08/W9-A, spec §14.1 rule 6b) — same
+ * treatment as `buildSeparateTtsPlan` above: `text` is the outbound native-
+ * audio consumption copy, sanitized here; `plan.dialogueLines[].text`
+ * (the artifact) is untouched.
+ */
 function buildNativeAudioSnippets(
   lines: VerticalDramaDialogueLine[],
   allowed: boolean,
@@ -416,7 +523,7 @@ function buildNativeAudioSnippets(
   return lines.map((line) => ({
     shotNumber: line.shotNumber,
     speakerName: line.isNarration ? undefined : line.speakerName,
-    text: line.text,
+    text: sanitizeSpeakableLineForDelivery(line.text),
   }));
 }
 
@@ -429,6 +536,7 @@ export function buildRepairQueue(args: {
   lines: VerticalDramaDialogueLine[];
   voiceMap: VerticalDramaSpeakerVoiceMap;
   timing: VerticalDramaAudioTimingSummary;
+  dialogueQuality?: VerticalDramaEpisodeDialogueQuality;
   cues: VerticalDramaSubtitleCue[];
   nativeAudioRequested: boolean;
   nativeAudioAllowed: boolean;
@@ -524,6 +632,39 @@ export function buildRepairQueue(args: {
     });
   }
 
+  const underfilledIssues = (args.dialogueQuality?.issues ?? []).filter(
+    (issue) =>
+      issue.code === "VD_DIALOGUE_UNDERFILLED" ||
+      issue.code === "VD_DIALOGUE_EPISODE_UNDERFILLED",
+  );
+  if (underfilledIssues.length > 0) {
+    const episodeUnderfilled = underfilledIssues.find(
+      (issue) => issue.code === "VD_DIALOGUE_EPISODE_UNDERFILLED",
+    );
+    repairQueue.push({
+      repairId: "repair-underfilled-dialogue",
+      kind: "expand_underfilled_dialogue",
+      targetShotNumber: episodeUnderfilled ? undefined : underfilledIssues[0]?.shotNumber,
+      reasonCode: episodeUnderfilled
+        ? "episode_dialogue_underfilled"
+        : "shot_dialogue_underfilled",
+      instruction:
+        "Regenerate the dialogue/audio plan for the whole episode so spoken content fits the 60-second pacing before rebuilding video prompts.",
+      autoRunnable: false,
+      state: "open",
+    });
+    warnings.push({
+      code: episodeUnderfilled ? "episode_dialogue_underfilled" : "shot_dialogue_underfilled",
+      severity: episodeUnderfilled?.severity === "error" ? "error" : "warning",
+      message: episodeUnderfilled
+        ? "The episode has too little spoken content for its target duration; regenerate the dialogue plan before video prompts."
+        : "One or more shots have too little dialogue for their duration; regenerate the dialogue plan before video prompts.",
+      targetStage: "dialogue_audio_plan",
+      targetShotNumber: episodeUnderfilled ? undefined : underfilledIssues[0]?.shotNumber,
+      repairable: true,
+    });
+  }
+
   // Invalid per-sub-shot safe areas.
   for (const cue of args.cues) {
     const invalid = (cue.safeAreaPerSubShot ?? []).filter((c) => !c.valid);
@@ -562,6 +703,7 @@ export function buildDialogueAudioPlan(input: PlanDialogueAudioInput): VerticalD
     (a, b) => a.shotNumber - b.shotNumber || (a.clipNumber ?? 0) - (b.clipNumber ?? 0),
   );
   const voiceBindings = input.voiceBindings ?? [];
+  const characterVoiceConfigMap = buildCharacterVoiceConfigMap(input.characterVoiceConfigs);
   const subShotsEnabled = Boolean(input.subShotsEnabled);
   const safeArea = input.subtitleSafeArea ?? VERTICAL_DRAMA_DEFAULT_SUBTITLE_SAFE_AREA;
   const episodeTargetSeconds = input.episodeTargetSeconds ?? VERTICAL_DRAMA_EPISODE_TARGET_SECONDS;
@@ -569,7 +711,7 @@ export function buildDialogueAudioPlan(input: PlanDialogueAudioInput): VerticalD
   const now = input.now ?? new Date().toISOString();
 
   const dialogueLines = buildDialogueLines(beats, input.shots, subShotsEnabled);
-  const speakerVoiceMap = buildSpeakerVoiceMap(beats, voiceBindings);
+  const speakerVoiceMap = buildSpeakerVoiceMap(beats, voiceBindings, characterVoiceConfigMap);
 
   // Native-audio policy (spec §14 rules 6-7) — revalidated whenever the model changes.
   const nativeAudioRequested = Boolean(input.nativeAudio?.requested);
@@ -595,10 +737,19 @@ export function buildDialogueAudioPlan(input: PlanDialogueAudioInput): VerticalD
     input.faceRegionByShotSubShot,
   );
   const timing = buildTimingSummary(dialogueLines, input.shots, episodeTargetSeconds, tolerance);
+  const dialogueQuality = analyzeVerticalDramaEpisodeDialogueQuality(
+    input.shots.map((shot) => ({
+      shotNumber: shot.shotNumber,
+      durationSeconds: shot.shotDurationSeconds,
+      dialogue: dialogueLines
+        .filter((line) => line.shotNumber === shot.shotNumber)
+        .map((line) => ({ lineTh: line.text })),
+    })),
+  );
 
   const separateTtsPlan =
     audioStrategy === "separate_tts_voiceover" || audioStrategy === "dialogue_tts"
-      ? buildSeparateTtsPlan(audioStrategy, dialogueLines, speakerVoiceMap)
+      ? buildSeparateTtsPlan(audioStrategy, dialogueLines, speakerVoiceMap, characterVoiceConfigMap)
       : undefined;
 
   const nativeAudioSnippets = buildNativeAudioSnippets(
@@ -610,6 +761,7 @@ export function buildDialogueAudioPlan(input: PlanDialogueAudioInput): VerticalD
     lines: dialogueLines,
     voiceMap: speakerVoiceMap,
     timing,
+    dialogueQuality,
     cues,
     nativeAudioRequested,
     nativeAudioAllowed: nativeAudioPolicy.allowed,
@@ -632,6 +784,7 @@ export function buildDialogueAudioPlan(input: PlanDialogueAudioInput): VerticalD
     subtitleCues: cues,
     subtitleSafeArea: safeArea,
     timing,
+    dialogueQuality,
     repairQueue,
     warnings,
     subShotsEnabled,
@@ -825,6 +978,275 @@ function relayShotTimings(plan: VerticalDramaDialogueAudioPlan, shotNumber: numb
       cue.end = line.end;
     }
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* LLM-driven real generation (`vertical-drama-dialogue-audio-planner`)       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The `vertical-drama-dialogue-audio-planner` skill
+ * (`apps/web/skills/vertical-drama-dialogue-audio-planner/`) has existed on
+ * disk since it was authored, with its own doc comment stating "The Vertical
+ * Drama episode pipeline invokes it explicitly" — but nothing ever actually
+ * invoked it: `dialogue_audio_plan`'s `runStage` override does not exist (see
+ * `verticalDramaEpisodePipeline.ts`'s `buildStagePayload` — this stage's
+ * placeholder was always returned unconditionally, including for every real
+ * runner mode), and `repairStage` returned the same placeholder for every
+ * stage, dialogue included. `generateEpisodeDialogueAudioPlan` below is the
+ * fix for `repairStage`'s `dialogue_audio_plan` case specifically (see
+ * `verticalDramaEpisodePipeline.ts`'s `generateRealDialogueAudioPlan`) — it
+ * is intentionally NOT wired into `runStage`'s fresh-generation path, which
+ * is out of THIS fix's scope (the dedicated Dialogue & Audio workspace tab's
+ * `planDialogueAudio`/`repairAudio` mutations above already cover the
+ * "fresh plan" and "structured repair action" cases for real; only a
+ * free-text quality-review `instruction`-driven repair of dialogue content —
+ * routed here via the pipeline's `repairStage` — had no real path at all).
+ *
+ * Returns the skill's RAW validated (snake_case) output — deliberately NOT
+ * the shape persisted onto `vertical_drama_episodes.dialogueAudioPlan`
+ * (`VerticalDramaDialogueAudioPlan`, camelCase). `dialogueAudioPlan` has
+ * several STRICT, camelCase-typed readers elsewhere in this codebase (e.g.
+ * `verticalDramaEpisodes.ts`'s separate-TTS submission flow, the dialogue
+ * timeline builder) — persisting this skill's raw shape directly into that
+ * column would silently break every one of them. The caller
+ * (`generateRealDialogueAudioPlan`) instead extracts this output's
+ * `dialogue_lines[]` TEXT content and feeds it through the SAME canonical,
+ * already-battle-tested `buildDialogueAudioPlan` pure builder above (mirrors
+ * `applyAudioRepair`'s "run the LLM/repair, then re-derive every downstream
+ * field through the ONE canonical builder" convention), so the persisted
+ * plan is byte-shape-identical to one produced by the dedicated
+ * `planDialogueAudio` mutation — only the dialogue TEXT differs.
+ */
+const DIALOGUE_AUDIO_PLANNER_SKILL_FOLDER_PATH = path.join(
+  "skills",
+  "vertical-drama-dialogue-audio-planner",
+);
+
+let cachedDialogueAudioPlannerSystemPrompt: string | null = null;
+
+/** Mirrors `verticalDramaScriptGeneration.ts`'s `loadSkillSystemPrompt`. */
+function loadDialogueAudioPlannerSkillSystemPrompt(): string {
+  if (cachedDialogueAudioPlannerSystemPrompt) return cachedDialogueAudioPlannerSystemPrompt;
+
+  for (const dir of resolveSkillDirCandidates(DIALOGUE_AUDIO_PLANNER_SKILL_FOLDER_PATH)) {
+    const manifestPath = resolveSkillManifestPath(dir);
+    if (manifestPath && fs.existsSync(manifestPath)) {
+      const raw = fs.readFileSync(manifestPath, "utf-8");
+      const { content } = parseSkillFile(raw);
+      if (content && content.trim().length > 0) {
+        cachedDialogueAudioPlannerSystemPrompt = content;
+        return cachedDialogueAudioPlannerSystemPrompt;
+      }
+    }
+  }
+
+  throw new Error(
+    `Could not locate skill.md for "vertical-drama-dialogue-audio-planner" under any known skills directory`,
+  );
+}
+
+/** Mirrors `vertical-drama-dialogue-audio-planner/schemas/output.schema.json`'s REQUIRED fields — `.passthrough()` everywhere so the skill's richer optional fields (delivery/subtext/native audio/etc.) survive even though only the required subset is strictly validated here. */
+const dialogueAudioPlannerDeliverySchema = z
+  .object({
+    tone: z.string().optional(),
+    pace: z.string().optional(),
+    pauses: z.string().optional(),
+    texture: z.string().optional(),
+  })
+  .passthrough();
+
+const dialogueAudioPlannerLineSchema = z
+  .object({
+    shot_number: z.number().int().optional(),
+    clip_number: z.number().int().optional(),
+    speaker_character_id: z.string(),
+    dialogue_line: z.string(),
+    estimated_seconds: z.number().nonnegative().optional(),
+    delivery: dialogueAudioPlannerDeliverySchema.optional(),
+    subtext: z.string().optional(),
+    origin: z.enum(["script", "script_fallback"]).optional(),
+  })
+  .passthrough();
+
+const dialogueAudioPlannerSubtitleCueSchema = z
+  .object({
+    shot_number: z.number().int().optional(),
+    text: z.string().optional(),
+    start_seconds: z.number().optional(),
+    end_seconds: z.number().optional(),
+    safe_area_hint: z.string().optional(),
+  })
+  .passthrough();
+
+export const dialogueAudioPlannerOutputSchema = z
+  .object({
+    contract_version: z.literal(1),
+    dialogue_lines: z.array(dialogueAudioPlannerLineSchema),
+    speaker_mapping: z.array(z.object({}).passthrough()),
+    voice_continuity_map: z.object({}).passthrough(),
+    missing_voice_warnings: z.array(z.object({}).passthrough()),
+    subtitle_cues: z.array(dialogueAudioPlannerSubtitleCueSchema),
+    audio_timing_estimate: z.object({}).passthrough(),
+    native_audio_snippets: z.array(z.object({}).passthrough()),
+    separate_tts_plan: z.object({}).passthrough(),
+    warnings: z.array(z.object({}).passthrough()),
+    repair_queue: z.array(z.object({}).passthrough()),
+  })
+  .passthrough();
+
+export type DialogueAudioPlannerOutput = z.infer<typeof dialogueAudioPlannerOutputSchema>;
+
+export interface GenerateEpisodeDialogueAudioPlanParams {
+  userId: number;
+  tenantId?: string;
+  seriesId: number;
+  episodeId: number;
+  locale: VerticalDramaSeriesLocale;
+  durationSeconds: number;
+  /** The episode's own persisted `script` column (full object) — the skill's dialogue-complete source of truth when present. */
+  episodeScript: Record<string, unknown>;
+  audioStrategy?: string;
+  characters: Array<{ characterId: string; name: string; role: string | null }>;
+  shotClipTiming?: Array<{
+    shotNumber: number;
+    clipNumber?: number;
+    durationSeconds: number;
+  }>;
+  /**
+   * Repair-mode context — see `GenerateEpisodeScriptParams.repairContext`'s
+   * doc comment (`verticalDramaScriptGeneration.ts`) for the shared
+   * convention. Only set by `verticalDramaEpisodePipeline.ts`'s
+   * `repairStage` — `runStage` never calls this function (see this section's
+   * header doc comment).
+   */
+  repairContext?: {
+    currentPlan: Record<string, unknown> | null;
+    instruction: string;
+  };
+}
+
+function buildDialogueAudioPlannerUserPrompt(params: GenerateEpisodeDialogueAudioPlanParams): string {
+  const langInstruction =
+    params.locale === "th"
+      ? "Write dialogue_line (and any Thai native_audio_snippets/separate_tts_plan lines) in natural spoken Thai per the HARD RULEs above."
+      : `Write dialogue_line (and any native_audio_snippets/separate_tts_plan lines) in natural spoken ${verticalDramaLocaleEnglishName(params.locale)}.`;
+
+  const characterLines = params.characters.length
+    ? params.characters
+        .map((c) => `- ${c.characterId}: ${c.name}${c.role ? ` (${c.role})` : ""}`)
+        .join("\n")
+    : "(no characters registered yet — use the script's own character names/ids)";
+
+  const shotTimingSection = params.shotClipTiming?.length
+    ? `shot_clip_timing: ${JSON.stringify(
+        params.shotClipTiming.map((s) => ({
+          shot_number: s.shotNumber,
+          clip_number: s.clipNumber,
+          duration_seconds: s.durationSeconds,
+        })),
+      )}`
+    : null;
+
+  // Repair-mode framing — see `GenerateEpisodeDialogueAudioPlanParams.repairContext`'s
+  // doc comment. Additive; only rendered when a caller explicitly supplies
+  // `repairContext`, so the (currently sole) call site always renders it —
+  // there is no fresh-generation call site for this function today.
+  const repairSection = params.repairContext
+    ? [
+        "REPAIR MODE: You are REPAIRING an existing dialogue/audio plan — you are NOT planning from scratch.",
+        "Apply ONLY the targeted change(s) the instruction below calls for. Preserve every other line's speaker, timing, and delivery from the CURRENT plan exactly as-is unless the instruction specifically requires changing it — do not rewrite unrelated shots' dialogue.",
+        params.repairContext.currentPlan
+          ? `current_plan: ${JSON.stringify(params.repairContext.currentPlan)}`
+          : "current_plan: (none on record yet for this episode — produce a first plan that satisfies the instruction)",
+        `repair_instruction: ${params.repairContext.instruction}`,
+      ].join("\n")
+    : null;
+
+  return [
+    `episode_script: ${JSON.stringify(params.episodeScript)}`,
+    `audio_strategy: ${params.audioStrategy ?? "separate_tts_voiceover"}`,
+    `target_language: ${params.locale}`,
+    langInstruction,
+    `target_duration_seconds: ${params.durationSeconds}`,
+    `characters:\n${characterLines}`,
+    shotTimingSection,
+    repairSection,
+    VD_COMPACT_JSON_INSTRUCTION,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/**
+ * Generate the `dialogue_audio_plan` stage's real content via the
+ * `vertical-drama-dialogue-audio-planner` skill, using a direct
+ * `executeWithFallback` LLM call (through the shared
+ * `executeJsonPlanningCallWithRetry` wrapper). Credit-gated (throws
+ * `InsufficientCreditsError` before calling out) and schema-validated
+ * (throws `VdSchemaValidationError` on a malformed LLM response) — mirrors
+ * `generateEpisodeScript`/`generateStoryboardShotgrid`'s check-credits ->
+ * resolve-model -> call -> validate -> deduct-credits convention exactly.
+ */
+export async function generateEpisodeDialogueAudioPlan(
+  params: GenerateEpisodeDialogueAudioPlanParams,
+): Promise<{
+  plan: DialogueAudioPlannerOutput;
+  creditsUsed: number;
+  model: string;
+}> {
+  const rateLimitKey = `user:${params.userId}`;
+  if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+    throw new Error(
+      `Rate limit exceeded for dialogue audio plan generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+    );
+  }
+
+  const hasCredits = await hasEnoughCredits(params.userId, 1);
+  if (!hasCredits) {
+    throw new InsufficientCreditsError();
+  }
+
+  const model = await resolveStoryBibleModel();
+  const systemPrompt = loadDialogueAudioPlannerSkillSystemPrompt();
+  const userPrompt = buildDialogueAudioPlannerUserPrompt(params);
+
+  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
+    model,
+    systemPrompt,
+    userPrompt,
+    temperature: 0.8,
+    userId: params.userId,
+    maxTokens: 12000,
+    schema: dialogueAudioPlannerOutputSchema,
+    label: "Dialogue audio plan",
+  });
+
+  const usage = response.usage;
+  const creditsUsed = calculateCreditsForLLM(
+    usage?.prompt_tokens ?? 0,
+    usage?.completion_tokens ?? 0,
+    model,
+  );
+
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    description: `Vertical Drama — generate dialogue audio plan (episode #${params.episodeId})`,
+    sourceType: "skill",
+    metadata: {
+      model,
+      llmModel: model,
+      feature: "vertical_drama_series",
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+    },
+  });
+
+  return { plan: validatedData, creditsUsed, model };
 }
 
 /* -------------------------------------------------------------------------- */

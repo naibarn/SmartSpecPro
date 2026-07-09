@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-ad-banner-prompt/output",
+  "title": "Vertical Drama Ad Banner Prompt Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["imagePrompt", "negativePrompt", "textInImage", "compositionNotes", "complianceNotes"],
+  "properties": {
+    "imagePrompt": {
+      "description": "Full English image-generation prompt for the ad banner.",
+      "type": "string",
+      "minLength": 1
+    },
+    "negativePrompt": {
+      "description": "English, comma-separated artifacts/qualities to avoid.",
+      "type": "string"
+    },
+    "textInImage": {
+      "description": "Every short string intended to render as visible text inside the generated image. Empty array when the design has no in-image text.",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "compositionNotes": {
+      "description": "Short English note on how the placement's composition guidance was applied.",
+      "type": "string"
+    },
+    "complianceNotes": {
+      "description": "Short English note confirming no forbidden claim was used, plus anything the caller should review.",
+      "type": "string"
+    }
+  }
+}

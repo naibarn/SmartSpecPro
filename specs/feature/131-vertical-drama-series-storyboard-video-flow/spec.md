@@ -1,11 +1,89 @@
 # Feature 131: Vertical Drama Series Storyboard Video Flow
 
-Version: 0.3
-Date: 2026-07-04
-Status: Proposed (§8.1-§8.4, §8.7 updated 2026-07-04 to match the shipped UI redesign — see section-10-ui-redesign-genre-presets-story-generation.md)
+Version: 0.5
+Date: 2026-07-09
+Status: Proposed (§8.1-§8.4, §8.7 updated 2026-07-04 to match the shipped UI redesign — see section-10-ui-redesign-genre-presets-story-generation.md. 2026-07-07 production-grade upgrade: §7.7 story density/speech budget, §8.8 guided production wizard, §13.1 tie-in naturalness QC, §14.1 dialogue coverage, §16.1 quality-review auto-improve loop, §23 traceability — see section-13/section-14 and reviews/production-grade-upgrade-audit-2026-07-07.md. 2026-07-08 to 2026-07-09 sync-to-shipped pass (this version): async story jobs + deep story drafts §8.2.3, season dramaturgy critic §6.8.2/§16.2, length-aware format profiles §7.8, tie-in aware deep drafts §13.2, ad banner overlay §13.3, beyond-plan sanity §11.8, final render suite §12.4, character reference v2 §9.3, voice casting §14.2, read-only share links §24 (proposed, not yet built) — see §0 Changelog, §23.1, and reviews/spec-sync-audit-2026-07-09.md)
 Owner: Dashboard / Storyboard Review / Media Studio / Skill Runtime / Video Generation / Audio / Data
 Depends-on: 112-storyboard-studio-skill-based-prompt-generation-qa-loop, 117-production-director-agents-sdk-auto-storyboard-video, 122-video-segment-planner-multi-shot-storyboard-review, 127-article-to-storyboard-video-project, 130-hybrid-flow-openai-agents-sdk-runtime
 External guide: https://github.com/naibarn/vertical-drama-video-flow at commit `e2dbef07d07447489d041112d862d994adeac5d4`
+
+---
+
+## 0. Changelog
+
+### [0.5] - 2026-07-09
+
+Sync-to-shipped pass. Between v0.4 (2026-07-07) and this version, roughly ten
+production waves shipped and deployed against this feature (see
+`planning/vertical-drama-production-grade-upgrade/plan.md` progress log,
+`planning/vertical-drama-ad-banner-overlay/plan.md`,
+`planning/vertical-drama-tie-in-replan/plan.md`). This version brings the
+spec back in sync with what is actually on disk and deployed. §7.7.2 tieIn
+type, §7.7.3 deliberate-replan paragraph, §13.1 defer path, section-08, and
+section-13 were already updated in-flight by task #31's implementation pass
+(2026-07-09) and are carried forward unchanged here.
+
+#### Added
+- feat(§8.2.3): async story-job flow for `generateStoryBibleDeep`,
+  `extendStoryDraftHorizon`, `critiqueSeasonDrafts`, `applySeasonCritique`
+  (submit → enqueue on BullMQ queue `vertical_drama_story_jobs` → `{jobId}` →
+  poll `getStoryJobStatus`/`getActiveStoryJob` → resume-on-mount), replacing
+  the earlier synchronous framing (task #28, #29, #24).
+- feat(§6.8.2, §16.2): `vertical-drama-season-dramaturgy-critic` skill and
+  the season-level critique/apply workflow — 10 finding kinds (7
+  deterministic incl. `tie_in_distribution`, 2 LLM-only, 1 fallback) (task
+  #29, #22).
+- feat(§7.8): length-aware format profiles (`ultra_short` ≤5 episodes /
+  `short` 6-12 / `standard` ≥13) tuning deep-draft density prompts, cold-open
+  hook timing, dramaturgy critic thresholds, premium judge hook floor, and
+  prorated tie-in budget; flag F131X (task #23).
+- feat(§13.2): tie-in aware deep story drafts — season-level tie-in
+  placement bootstrap, per-chunk PRODUCT TIE-IN prompt sections, per-shot
+  `tie_in` marking, reconciliation warnings, `tie_in_naturalness` premium
+  judge dimension, Overview badges (task #22).
+- feat(§13.3): ad banner overlay — series-level banner design studio (10
+  style presets, 3 placements), per-episode banner plan, composited by the
+  Node ffmpeg render engine; explicitly separate from in-story product
+  tie-in and exempt from its brand-neutrality guards; flag F131W (task #30).
+- feat(§11.8): beyond-plan sanity — fail-fast `VD_EPISODE_BEYOND_PLAN` when
+  an episode number exceeds the planned season length, with a grandfather
+  path for legacy series without a breakdown (task #26).
+- feat(§12.4): final render suite — Node ffmpeg dialogue-audio mixdown, ASS
+  subtitle burn-in (10 presets incl. "none"), banner overlay compositing,
+  per-episode render options, batch season render; explicitly no
+  upload/publish/scheduling (task #21).
+- feat(§9.3): character reference resolution v2 — a second identity-lock
+  reference image (best character sheet) per character alongside the
+  primary portrait, zero additional provider cost; flag F131Z (task #27-A).
+- feat(§14.2): voice casting and whole-episode dialogue audio generation
+  (voice chain); flag F131U (task #15/W12).
+- feat(§24, proposed): read-only series share links (Collab-lite L1) —
+  design complete, **not yet implemented** on disk; flag F131AA reserved
+  (task #32).
+- feat(§17): register flags F131T-F131AA (10 flags) that shipped after v0.4
+  and were missing from the flag table.
+
+#### Changed
+- refactor(§8.2.1): corrected — `generateStoryBible` is no longer "the one
+  paid exception in this flow"; superseded in practice by the deep-draft
+  actions in §8.2.3. Framing updated, not removed (both remain valid entry
+  points).
+- refactor(§16.1): quality-review scorecard is invoked synchronously (not
+  jobified); async jobification (task #28) applies only to the
+  season/deep-draft story actions in §8.2.3, not the per-episode quality
+  loop — clarified to avoid confusion between the two.
+
+#### Fixed
+- fix(§23.1): added post-2026-07-07 traceability rows for tasks #21-#32.
+- Self-audit: corrected stale claims in the spec that no longer match
+  shipped behavior — "single reference image" per character (§9.3 now
+  documents the v2 resolver), "concat-only" final assembly (§12.4), "the one
+  paid exception"/"the one action... genuinely paid" framing in §8.2.1/§8.7,
+  and the pre-task-#23 skill-folder count in §10.1/§15/section-01. Also
+  noted (§23.1 footer): `videoPrompts.stale` was never a spec-documented
+  concept at all (it was an internal wizard-resolver simplification noted
+  only in code comments/plan.md) and is now a real signal — recorded here so
+  this gap in what the spec used to cover doesn't recur.
 
 ---
 
@@ -182,17 +260,27 @@ Inputs:
 - age/safety profile
 - locale
 
+Inputs (added 2026-07-07, §7.7): the episode speech budget (target speech
+seconds + per-shot band) and the active breakdown item's `contentBudget`.
+
 Outputs:
 
 - episode title
 - hook
-- 3-act or beat-level structure
+- 3-act or beat-level structure with per-beat `power_shift`, `is_reversal`,
+  `intensity` (1-10), and `character_emotional_arcs[]` (Phase 3B narrative
+  grammar; >= 2 reversals per episode)
+- **dialogue-complete beats** (§7.7.2): per-beat `dialogue_lines[]` with
+  `speaker`, `line`, `delivery`, `subtext`, and computed
+  `estimated_speech_seconds` — dialogue is authored here, sized by the
+  canonical estimator, not reconstructed downstream
 - scene/dialogue summary
 - cliffhanger/payoff
 - character state deltas
 - product tie-in usage plan
 - continuity notes
-- warnings and repair queue
+- warnings and repair queue (an episode below `MIN_EPISODE_COVERAGE_RATIO`
+  ends `needs_repair`, §7.7.2)
 
 ### 6.2 `vertical-drama-character-visual-bible`
 
@@ -280,6 +368,9 @@ Outputs:
 - continuity risks
 - episode recap for next planning run
 - memory compaction summary
+- arc drift signals (added 2026-07-07, §7.7.3): beats consumed early, hooks
+  resolved off-plan, content-budget overruns — inputs to the deterministic
+  drift check that may raise an `arc_replan_proposal`
 
 ### 6.7 `vertical-drama-product-tie-in-planner`
 
@@ -304,15 +395,103 @@ Purpose: convert episode script beats into production-ready dialogue, narration,
 
 Outputs:
 
-- cast-aware dialogue lines by shot/clip
+- cast-aware dialogue lines by shot/clip — sourced from the
+  dialogue-complete script (§7.7.2): this skill distributes and enriches
+  script lines (timing, voice continuity, per-line `delivery`/`subtext`,
+  spoken-register Thai); it must not invent a parallel script
 - speaker-to-character mapping
 - stable voice continuity map
 - missing voice ID warnings
 - subtitle cue plan with 9:16 safe-area hints
-- audio timing estimate
+- audio timing estimate (via the canonical estimator, §7.7.1)
 - native audio prompt snippets only when allowed
 - separate-TTS render plan
-- repair queue for overlong speech, unsupported native audio, unsafe claims, or missing voice/provider access
+- repair queue for overlong speech, underfilled coverage, unsupported native
+  audio, unsafe claims, or missing voice/provider access
+
+### 6.8.1 `vertical-drama-episode-quality-review` (shipped 2026-07-05; formalized 2026-07-07)
+
+SmartSpecPro-only skill, already implemented (see §16.1). LLM-only, cheap,
+runs BEFORE any paid image/video credit spend.
+
+Purpose: score a finished script + storyboard (+ optional dialogue plan) as a
+short scorecard, list concrete flat spots, and feed the auto-improve loop.
+
+Outputs (contract v1 shipped / v2 target, §16.1):
+
+- scorecard: `reversal_count`, `reversal_sharpness` (1-5), `emotion_variety`
+  (1-5), `dialogue_naturalness` (1-5 | null), `pacing` (1-5), `overall` (1-5);
+  v2 adds `hook_strength`, `cliffhanger_strength`, `continuity_consistency`,
+  `tie_in_naturalness` (1-5 | null) and echoes deterministic density metrics
+- summary (short Thai-first readable verdict)
+- `issues[]`: `{ location, problem, suggested_fix }` — locations parseable to
+  a pipeline stage (`beat N` → script, `shot N` → storyboard)
+- warnings and repair queue
+
+### 6.8.2 `vertical-drama-season-dramaturgy-critic` (shipped 2026-07-09, task #29)
+
+SmartSpecPro-only skill. A SEPARATE, on-demand, SEASON-level pass — distinct
+from the per-episode §6.8.1 quality review and never runs inside the §11
+premium multi-round draft pipeline (§8.2.3) or changes its behavior. Invoked
+by the async story-job mutations `critiqueSeasonDrafts` / `applySeasonCritique`
+(§8.2.3).
+
+Purpose: judge whether an entire drafted season holds together dramaturgically
+— stakes, world-rule consistency, character introduction pacing, character
+agency, antagonist variety, finale cost, dialogue subtext, and pacing — and
+propose targeted revisions without corrupting the story spine.
+
+Findings are produced across exactly 10 stable kinds
+(`VdSeasonCritiqueFindingKind`, `shared` via
+`server/services/verticalDramaStoryBible.ts`):
+
+| # | Kind | Source |
+| --- | --- | --- |
+| 1 | `protagonist_no_stake` | LLM-only |
+| 2 | `world_rules_undefined` | deterministic |
+| 3 | `key_character_late_intro` | deterministic |
+| 4 | `character_agency_zero_decisions` | deterministic |
+| 5 | `antagonist_tactic_repetition` | deterministic |
+| 6 | `finale_no_price_paid` | deterministic |
+| 7 | `on_the_nose_dialogue` | deterministic (abstract-word-density proxy) |
+| 8 | `info_heavy_low_action` | LLM-only |
+| 9 | `tie_in_distribution` | deterministic (task #22 — bunched or unmarked planned placements, §13.2) |
+| 10 | `other` | fallback |
+
+The 6 pure deterministic checks (kinds 2-7) run via `analyzeSeasonDramaturgy`
+BEFORE the LLM critic call and are injected into its prompt as established
+facts (so the LLM never re-derives what code can already prove), and AGAIN
+after `applySeasonCritique` applies a fix as a regression guard: a revision
+that introduces a NEW deterministic finding touching an already-passing
+episode is rejected. Kinds 1 and 8 need semantic judgment no code signal can
+approximate and are produced ONLY by the LLM critic. Thresholds for kinds 3
+("late intro"), 5 ("tactic repetition"), and 4's minimum-decisions bar are
+tunable per length tier — see §7.8 Format Profiles.
+
+Model resolution is capability-based, never hard-coded:
+`selectBestLlmModel({ supportsThinking: true, supportsStructuredOutputs: true,
+contextLength >= VD_SEASON_CRITIQUE_MIN_CONTEXT_LENGTH (100k) })`, falling
+back to `resolveStoryBibleModel()` when no model clears that bar. Applies to
+both the critique call and the apply/revise call.
+
+Outputs:
+
+- `findings[]`: `{ kind, evidenceEpisodes[], detail }` for both deterministic
+  and LLM-judged findings, merged into one report;
+- a revise-mode contract for `applySeasonCritique` producing a corrected
+  breakdown/draft consistent with the story-lock rule (§16.3): execution-only
+  rewrites, never a new story spine.
+
+### 6.8.3 `vertical-drama-ad-banner-prompt` (shipped 2026-07-09, task #30)
+
+SmartSpecPro-only skill supporting the ad banner overlay subsystem (§13.3).
+Purpose: turn a product's name/category/copy plus product reference images
+into an on-brand banner image prompt for one of the 10 style presets (§13.3).
+Model resolution: `selectBestLlmModel({ supportsVision: true,
+supportsStructuredOutputs: true })` when a product image is available,
+falling back to `resolveStoryBibleModel()`. Full input/output contract and
+UI flow are documented in §13.3 to keep the banner-overlay narrative in one
+place; this entry exists so §6's skill inventory stays complete.
 
 ### 6.9 Imported GitHub Contract Parity
 
@@ -1502,10 +1681,332 @@ type VerticalDramaMemoryKind =
   | "hook_resolved"
   | "product_tie_in_usage"
   | "continuity_warning"
-  | "retcon_proposal";
+  | "retcon_proposal"
+  | "arc_replan_proposal"   // added 2026-07-07 (§7.7): proposed forward re-plan of the episode breakdown
+  | "arc_replan_applied";   // added 2026-07-07 (§7.7): approved re-plan outcome (new breakdown version activated)
 ```
 
 Retcons are explicit proposals requiring user approval. Approved retcons create new memory events; they do not mutate older events in place.
+
+Arc re-plans follow the same append-only discipline as retcons but face FORWARD:
+a retcon corrects the recorded past, an `arc_replan_proposal` proposes changing
+the planned future (`episodeBreakdown` entries of episodes that have not been
+produced yet). See §7.7 for triggers, approval semantics, and versioning.
+
+### 7.7 Story Density And Speech Budget (added 2026-07-07)
+
+> Requirement source: production feedback 2026-07-07 — episodes feel hollow
+> because each 8-second shot carries only 1-2 seconds of speech. Repairing a
+> single shot cannot fix this: with 9 fixed shots and 60 fixed seconds, more
+> speech per shot means more STORY per episode, and more story per episode
+> shifts the season arc. Density must therefore be planned top-down (bible →
+> script → shots → dialogue → QC), not patched bottom-up.
+
+#### 7.7.1 Canonical Speech Estimator And Budget Constants
+
+`apps/web/shared/verticalDramaSeries/dialogueQuality.ts` is the ONE canonical
+speech-budget module. It already ships and is provider-free/deterministic; all
+layers (LLM prompt construction, post-generation gates, UI meters, TTS timing)
+MUST use it — no second estimator may be introduced. Its pinned constants are
+spec-level contract values:
+
+```ts
+// speech-rate model (deterministic)
+THAI_CHARS_PER_SECOND = 8.5          // th locale: characters per spoken second
+NON_THAI_WORDS_PER_SECOND = 2.7      // non-Thai locales: words per spoken second
+MIN_DIALOGUE_SECONDS_PER_LINE = 0.75 // floor per delivered line
+
+// coverage targets (ratio of clip/episode duration that is spoken)
+TARGET_CLIP_COVERAGE_RATIO = 0.68    // per-clip target
+MIN_CLIP_COVERAGE_RATIO = 0.45      // per-clip warning floor
+ERROR_CLIP_COVERAGE_RATIO = 0.25    // per-clip error floor
+MIN_EPISODE_COVERAGE_RATIO = 0.58   // whole-episode warning floor (~35s of 60s)
+ERROR_EPISODE_COVERAGE_RATIO = 0.33 // whole-episode error floor (~20s of 60s)
+
+// per-clip speech target for duration d (seconds)
+targetVerticalDramaSpeechSeconds(d) = clamp(d * 0.68, 2.5, d - 0.75)
+```
+
+Exported functions treated as contract: `estimateVerticalDramaSpeechSeconds`,
+`targetVerticalDramaSpeechSeconds`, `analyzeVerticalDramaClipDialogueQuality`,
+`analyzeVerticalDramaEpisodeDialogueQuality`, and the stable issue codes
+`VD_DIALOGUE_EMPTY | VD_DIALOGUE_STAGE_DIRECTION | VD_DIALOGUE_SCRIPT_FALLBACK |
+VD_DIALOGUE_UNDERFILLED | VD_DIALOGUE_EPISODE_UNDERFILLED | VD_DIALOGUE_DUPLICATE`.
+
+For a 60-second episode this yields the operating band the wizard's dialogue
+QC gate (§8.8, section-12) enforces: roughly **35-50 seconds of spoken
+content**, with an 8-second dialogue clip targeting ~5.4s (2-3 lines) and the
+trailing 4-second clip ~2.7s, unless a shot is explicitly visual-only.
+
+#### 7.7.2 Density-First Planning Ladder (the reform)
+
+The speech budget stops being a post-hoc analyzer and becomes a MANDATORY
+INPUT at every planning layer. Status today: the budget is only consulted
+after generation (gate + repair); first-pass script and video prompts are not
+duration-sized. That is the root cause being fixed.
+
+Layer 1 — Series bible (`generateStoryBible`, and future re-plans):
+
+Every `episodeBreakdown[]` item gains a content budget so an episode is
+CONCEIVED with enough narrative material, not padded later:
+
+```ts
+type VerticalDramaEpisodeContentBudget = {
+  beatCount: number;                 // default 5-7 per 60s episode
+  estimatedSpeechSeconds: number;    // must satisfy MIN_EPISODE_COVERAGE_RATIO
+  conflictLevel: 1 | 2 | 3 | 4 | 5;  // escalation curve across the season
+  reversalTarget: number;            // default >= 2 (Phase 3B reversal grammar)
+  arcThreads: string[];              // season threads this episode advances
+};
+
+type VerticalDramaEpisodeBreakdownItem = {
+  episodeNumber: number;
+  workingTitle: string;
+  logline: string;
+  keyBeats: string[];
+  contentBudget: VerticalDramaEpisodeContentBudget; // NEW — required for new series
+  tieIn?: VerticalDramaEpisodeTieInPlacement; // NEW (task #31, added 2026-07-09) — see §7.7.3
+};
+
+// Task #31 (added 2026-07-09) — season-level per-episode tie-in placement
+// decision, elevating "does this episode carry a product" from a reactive
+// script-time signal to a first-class planned field (§7.7.3).
+type VerticalDramaEpisodeTieInPlacement = {
+  planned: boolean;
+  intensity?: "light" | "featured";
+  benefitFocus?: string;
+  source: "planned" | "deferred" | "manual";
+  movedFromEpisodeNumber?: number; // present iff source === "deferred"
+};
+```
+
+The story-bible generation prompt must state the per-episode speech budget in
+seconds and require enough plot per episode to fill it. Legacy series without
+`contentBudget` remain readable; planning derives defaults. A legacy series
+can ADOPT Layer-1 density planning by re-running "Generate story" /
+"Regenerate" (§8.3): the regenerated breakdown carries `contentBudget` and is
+appended as a NEW breakdown version (approval-gated like an arc re-plan,
+§7.7.3) — produced episodes stay untouched, so re-conception is available
+without a migration.
+
+Layer 2 — Episode script (`plan_episode_script` /
+`verticalDramaScriptGeneration.ts` + `vertical-drama-script-builder` skill):
+
+The script becomes **dialogue-complete**: dialogue is authored AT SCRIPT
+STAGE, sized by the estimator, instead of being reconstructed later from
+scene summaries.
+
+- every beat carries `dialogue_lines[]` (`speaker`, `line`, plus Phase 3B
+  `delivery`/`subtext`) and a computed `estimated_speech_seconds`;
+- the script prompt receives the episode speech budget (target seconds and
+  the per-shot band) and the `contentBudget` from the active breakdown item;
+- script output validation computes `estimatedSpeechSeconds` for the whole
+  episode with the canonical estimator; a result below
+  `MIN_EPISODE_COVERAGE_RATIO` is `VD_DIALOGUE_EPISODE_UNDERFILLED` and the
+  script stage ends `needs_repair` — the storyboard stage is NOT reachable
+  from an underfilled script in guided mode;
+- the existing Phase 3B narrative grammar (per-beat `power_shift`,
+  `is_reversal`, `intensity` 1-10, `character_emotional_arcs[]`) is a spec
+  requirement, not an implementation detail: >= 2 reversals per episode, no
+  flat escalation curve.
+
+Layer 3 — Storyboard allocation (`storyboard_shotgrid`):
+
+- each of the 9 shots receives an explicit per-shot speech budget derived
+  from its clip duration via `targetVerticalDramaSpeechSeconds`;
+- the shot-to-scene/beat mapping is PERSISTED (`sourceBeatIndexes[]` per
+  shot) — replacing today's positional/proportional guess — so dialogue,
+  repair, and QC can attribute lines to shots deterministically;
+- a shot may be declared visual-only with an explicit
+  `silenceIntent: "dramatic_pause" | "action_visual" | "montage" | "establishing"`;
+  at most 2 of 9 shots may be visual-only unless the episode is explicitly
+  marked visual-first; visual-only shots are excluded from per-clip coverage
+  gates but still count toward the episode floor.
+
+```ts
+type VerticalDramaPerShotSpeechBudget = {
+  shotNumber: number;
+  clipDurationSeconds: number;
+  targetSpeechSeconds: number;   // targetVerticalDramaSpeechSeconds(duration)
+  minSpeechSeconds: number;      // MIN_CLIP_COVERAGE_RATIO * duration
+  sourceBeatIndexes: number[];   // persisted beat attribution
+  silenceIntent?: "dramatic_pause" | "action_visual" | "montage" | "establishing";
+};
+```
+
+Layer 4 — Dialogue plan and video prompts:
+
+- `dialogue_audio_plan` and `resolveShotDialogueLines` treat the
+  dialogue-complete script as the SOURCE OF TRUTH: the plan distributes and
+  enriches script lines (timing, voice, delivery) and may not invent a
+  parallel script; `script_fallback` parsing of freeform scene summaries
+  becomes a legacy path that always carries a warning;
+- `buildShotVideoPromptUserPrompt` (first-pass video prompt builder) MUST
+  receive `shotDurationSeconds` and the shot's `targetSpeechSeconds` — today
+  only the repair/regeneration path is duration-aware, which is the reform's
+  most direct fix;
+- silent-gap rule: within a speaking clip, estimated continuous silence may
+  not exceed 2.5 seconds; violations surface as `VD_DIALOGUE_UNDERFILLED`
+  with the gap location.
+
+#### 7.7.3 Cross-Episode Propagation: Arc Drift And Re-Plan
+
+Raising density per episode consumes season material faster. The system must
+detect and manage this instead of letting episode N+1 silently contradict the
+plan.
+
+Drift detection (deterministic; runs after script approval, after
+`summarize_episode_to_series_memory`, and again whenever an
+already-approved episode script is later repaired/regenerated — evaluated on
+its re-approval, so late edits to a produced episode cannot bypass the
+check):
+
+- beats consumed that the active breakdown assigned to LATER episodes;
+- hooks resolved earlier than planned / new hooks not in the plan;
+- episode `estimatedSpeechSeconds` or beat count materially exceeding the
+  breakdown `contentBudget` (default threshold: > 25% over);
+- conflictLevel realized out of order (escalation curve broken).
+
+On material drift the pipeline appends an `arc_replan_proposal` memory event
+and creates a repair checkpoint:
+
+```ts
+type VerticalDramaArcReplanProposal = {
+  proposalId: string;
+  seriesId: string;
+  triggeredByEpisodeNumber: number;
+  driftReasons: string[];                 // stable codes, e.g. VD_ARC_BEATS_CONSUMED_EARLY
+  affectedEpisodeNumbers: number[];       // FUTURE, non-produced episodes only
+  proposedBreakdown: VerticalDramaEpisodeBreakdownItem[]; // replacement entries
+  rationale: string;
+  status: "proposed" | "approved" | "rejected";
+};
+```
+
+Approval semantics (mirrors retcon review, §7.6 / section-04):
+
+- the series bible keeps append-only breakdown versions:
+  `bible.breakdownVersions[]` plus an `activeBreakdownVersionId` pointer;
+  approving a proposal appends a NEW version, appends an
+  `arc_replan_applied` memory event, and moves the pointer — nothing is
+  mutated in place;
+- episodes already produced (any run past `plan_episode_script` approval)
+  are NEVER rewritten by a re-plan; only future episode entries change;
+- rejecting keeps the old plan and leaves a standing continuity warning on
+  affected future episodes;
+- `plan_episode_script` for episode N always consumes the ACTIVE breakdown
+  version plus drift warnings, so continuity into the next episode is
+  explicit instead of accidental.
+
+**Deliberate re-plan: tie-in defer (task #31, added 2026-07-09).** A 6th
+`driftReasons` code, `VD_ARC_TIE_IN_DEFERRED`, is DELIBERATE rather than
+detected: it marks a proposal the user triggered directly via
+`deferEpisodeTieIn` (§13.1) instead of one `detectArcDrift` found in an
+approved script. Behind flag `verticalDramaSeriesTieInReplan`, deferring
+episode E's product placement builds a real `arc_replan_proposal` that
+moves `tieIn.planned` from episode E to the nearest eligible future episode
+E' (not yet produced, not already planned, within the
+`maxEpisodesWithTieInPerTenEpisodes` fatigue window) and persists it
+through the identical channel a detected-drift proposal uses, so it appears
+on the SAME review card. Because every OTHER field on this proposal type
+must stay byte-identical to the active version (approval-time guard —
+`applyApprovedArcReplan` rejects a `VD_ARC_TIE_IN_DEFERRED` proposal that
+changes anything besides `tieIn`), the review UI shows a compact
+"placement moved E → E'" diff instead of the full breakdown diff. When no
+eligible future episode exists (or the fatigue cap is already exhausted
+everywhere), no proposal is built and the mutation falls back to the
+pre-#31 `scheduleAtRisk` signal instead. A legacy series whose breakdown
+has never adopted `tieIn` planning is bootstrapped in-memory (an even,
+budget-respecting initial spread, `planSeasonTieInPlacements`) the first
+time it defers — the bootstrap is only durably adopted if that first
+proposal is approved.
+
+`plan_episode_script` also reads `tieIn` for the episode it is about to
+generate: `planned: true` REQUIRES the placement in that episode's prompt
+(no "skip if unnatural" escape hatch), `planned: false` EXCLUDES it even
+though the series-level tie-in policy is enabled, and an absent `tieIn`
+field preserves the pre-#31 fully-reactive behavior (the model decides
+per episode, scored after the fact by the §13.1 naturalness report).
+
+#### 7.7.4 Acceptance (density reform)
+
+- new-series story bibles carry `contentBudget` per episode and state the
+  speech budget in the generation prompt;
+- an approved episode script is dialogue-complete and never below
+  `MIN_EPISODE_COVERAGE_RATIO` without an explicit visual-first override;
+- storyboard shots persist `sourceBeatIndexes` and per-shot speech budgets;
+- first-pass video prompt generation is duration- and budget-aware (not only
+  the repair path);
+- a drift-triggering episode yields an `arc_replan_proposal` that the user
+  can review/approve/reject from the Memory surface, with produced episodes
+  untouched and future planning following the approved version;
+- every layer uses `dialogueQuality.ts` — no duplicate estimator exists.
+
+### 7.8 Length-Aware Format Profiles (added 2026-07-08, task #23)
+
+> Requirement source: owner feedback 2026-07-08 — "ซีรีส์สั้นมาก 3 ตอน
+> คิดได้ดีเทียบกันไหม" (can a 3-episode series plan as well as a 20-episode
+> one?). Before this module, deep-draft prompts, the premium judge's floors,
+> and the §6.8.2 dramaturgy critic's thresholds all silently assumed
+> long-season pacing (e.g. "a key character can wait until roughly a third of
+> the way in" is fine for 20 episodes and actively wrong for 3).
+
+`shared/verticalDramaSeries/formatProfiles.ts` is the single source of truth
+for how generation/critique/judge/tie-in behavior differs by season length.
+Pure, side-effect-free, isomorphic (safe for both server and client).
+
+Three tiers, resolved from `plannedEpisodeCount` and never throwing (garbage
+input clamps to `standard`):
+
+```ts
+type VerticalDramaFormatProfileTier = "ultra_short" | "short" | "standard";
+// plannedEpisodeCount <= 5  -> "ultra_short"
+// plannedEpisodeCount 6-12  -> "short"
+// plannedEpisodeCount >= 13 -> "standard" (also the fallback for unusable input)
+```
+
+Each resolved profile (`resolveVerticalDramaFormatProfile(plannedEpisodeCount)`)
+carries:
+
+- `beatDensityGuidanceTh`/`beatDensityGuidanceEn` — injected into the deep-draft
+  generation prompt (§8.2.3) as a "FORMAT PROFILE" block for non-`standard`
+  tiers only; `ultra_short` requires every episode to carry 2-3 standard
+  episodes' worth of plot with no filler/pure-setup episodes and an in-medias-res
+  open from shot 1; `short` requires every episode to visibly move plot or
+  relationship by at least one concrete beat;
+- `perEpisodeHookRule: { requireColdOpenHook, hookWithinSeconds }` — a hard
+  cold-open requirement for `ultra_short` (hook within **3s**) and `short`
+  (hook within **5s**); `standard` keeps the original, softer expectation
+  (`requireColdOpenHook: false`, indicative `8s`);
+- `dramaturgy` — tier-fixed (not formula-scaled) overrides for the §6.8.2
+  critic's `keyCharacterLateIntroMaxEpisode`, `antagonistTacticRepetitionWindow`,
+  and `agencyMinDecisionsBeforeFinale`; a fixed bar reads correctly across a
+  tier's whole episode-count band where a `total/N` formula would drift.
+  `analyzeSeasonDramaturgy` only reads these fields for a non-`standard`
+  profile — an absent profile or the `standard` tier always falls back to
+  its original formulas/constants, which is what keeps flag-off and
+  long-season behavior byte-identical;
+- `judge.hookStrengthFloorDelta` — added to the premium judge's per-dimension
+  floor (§8.2.3) for the `hook_strength` dimension only; `+1` for
+  `ultra_short` (the cold open is the single highest-leverage craft element
+  in a 3-5 episode season), `0` for `short`/`standard`;
+- `tieIn.maxEpisodesWithTieIn(plannedCount, perTenCap)` — same formula for
+  every tier (proration is a function of season length, not tier label):
+  `resolveTieInEpisodeBudget` prorates the admin-configured
+  `maxEpisodesWithTieInPerTenEpisodes` (§13) down to
+  `ceil(perTenCap * plannedCount / 10)`, floored at **1** whenever
+  `plannedCount >= 3` so a short season is never accidentally rounded to zero
+  tie-in episodes. Consumed by §13.2's `planSeasonTieInPlacements`.
+
+Feature flag: `verticalDramaSeriesFormatProfiles` (F131X, §17; default off).
+Real callers thread a `formatProfilesEnabled` boolean resolved from this flag
+rather than importing the flag check directly (keeps the module
+server/client-import-free). **Side effect of wiring this flag on:** the
+conductor swap of the format-profiles gate at the series-router executor
+sites also passes `totalEpisodeCount` for the first time, which wakes up the
+previously-dormant `finale_no_price_paid` dramaturgy-critic rule (kind 6,
+§6.8.2) — that rule existed in code since task #29 but was inert until this
+wiring supplied the total-episode-count input it needs.
 
 ---
 
@@ -1563,12 +2064,19 @@ to the new series. A failure here is non-fatal — the series shell still
 exists and "Generate story" is retryable from the Series Workspace Overview
 tab (§8.3).
 
-#### 8.2.1 Generate Story (real LLM call — the one paid exception in this flow)
+#### 8.2.1 Generate Story (real LLM call)
+
+> **2026-07-08 correction:** this was originally "the one paid exception in
+> this flow." It no longer is — §8.2.3 (Deep Story Drafts) added several more
+> genuinely paid, credit-consuming actions on the same series. This
+> subsection now documents the ORIGINAL bible-expansion action; §8.2.3
+> documents the deeper per-episode draft actions that a series typically
+> runs next.
 
 Every other action in this feature (series create, series update, episode
 stage runs in `dry_run`/`plan_only` mode) is metadata-only or provider-mocked.
-`generateStoryBible` is the first genuinely paid, credit-consuming LLM call in
-the vertical-drama surface: given the series' bible fields, it produces an
+`generateStoryBible` is a genuinely paid, credit-consuming LLM call in the
+vertical-drama surface: given the series' bible fields, it produces an
 expanded season arc, refined character profiles, and a per-episode breakdown
 (`episodeNumber`, `workingTitle`, `logline`, `keyBeats[]`), written back into
 the series' existing `bible` jsonb column (no schema change). It follows the
@@ -1577,6 +2085,186 @@ and is conceptually the series-level counterpart to the `plan_only` run mode
 already described in §11.4 (real LLM planning allowed, no image/video/TTS
 calls) — it does not violate Non-Goal §3.4, which is scoped to image/video/TTS
 providers.
+
+#### 8.2.2 Genre Preset Visual Identity And Real Mix (added 2026-07-07)
+
+> Requirement source: production feedback 2026-07-07 (with 5 reference
+> images — neon bio-jungle techwear, girl-and-giant-mecha bond, cyborg-arm
+> battlefield, desert spider-mech: high-tech sci-fi aesthetics with a human
+> lead and a machine/creature companion). Two asks: (a) presets must be able
+> to REPRODUCE a look like this end-to-end — not just seed a logline — and
+> (b) preset mixing must genuinely blend every selected preset, verifiably.
+
+**A. Structured visual identity on presets.** Today
+`vertical_drama_genre_presets.visualBible` is one text blob, so a preset's
+look degrades into prose that later prompts paraphrase. Add a nullable
+additive `visualIdentityJson` column:
+
+```ts
+type VerticalDramaPresetVisualIdentity = {
+  styleName: string;                 // e.g. "Neon Bio-Jungle Tech", "Battered Mecha Hangar"
+  palette: string[];                 // 3-6 dominant colors (names or hex)
+  lighting: string;                  // e.g. bioluminescent rim light, overcast hangar glow
+  environmentMotifs: string[];       // neon orchids, jungle waterfall, desert dunes, mech bay
+  wardrobeGrammar: string[];         // tactical straps, techwear knit, plated armor accents
+  signaturePropsAndCompanions: string[]; // giant robot companion, cyber cat, spider-mech mount
+  cameraGrammar: string;             // low-angle hero portrait, shallow DOF, centered 9:16
+  characterArchetypes: Array<{ role: string; look: string }>;
+  imagePromptFragments: {
+    positive: string[];              // reusable tokens appended to image prompts
+    negative: string[];              // style-breaking tokens to suppress
+  };
+  referenceAssetIds?: string[];      // optional curated reference images (tenant-owned)
+};
+```
+
+**Flow-through rule (what makes the look real):** when a series is created
+from (or applies) a preset carrying `visualIdentityJson`, the identity must
+flow into every visual layer, not just the bible text: series
+`bible.visualStyle`/`cameraGrammar` fields; character visual bible and
+character reference generation prompts (archetype `look` + wardrobe +
+palette); start-frame / contact-sheet per-cell prompts (append
+`imagePromptFragments.positive`, merge `negative`); and motion prompts
+(style/lighting tokens). Start-frame QC gains a "visual identity adherence"
+checklist line for preset-driven series. Without this rule a mecha preset
+produces mecha loglines and generic frames — the exact failure being fixed.
+
+**B. Seeded preset family for this aesthetic.** Seed (via
+`apps/web/scripts/seed-vertical-drama-genre-presets.ts`, th + en locales) a
+`sci_fi_mecha` category with at least 4 presets, each with full
+`visualIdentityJson` grounded in the reference images:
+
+1. `องครักษ์ป่านีออน / Neon Jungle Guardian` — bioluminescent jungle, neon
+   orchids, teal-green palette, techwear scout + animal companion.
+2. `สหายเหล็ก / My Giant Companion` — girl and battle-worn giant robot,
+   hangar/industrial light, ivory-gold or gunmetal palette, bond/protection
+   drama.
+3. `แขนกลสมรภูมิ / Cyborg Arm Battlefield` — post-war base, overcast light,
+   cyborg-arm lead, leather-over-armor wardrobe, military mecha background.
+4. `นักเร่ร่อนกลทะเลทราย / Desert Mech Nomad` — desert dunes, spider-mech
+   mount, monochrome-black armor against sand, survival wandering drama.
+
+Presets in this family default `blockPaidGenerationBelowFloor`-compatible
+quality policy unchanged; they are content seeds, not policy changes.
+
+**C. Real mix (synthesis v2).** The shipped `synthesizeGenrePreset` ("Mix
+and Match", 2-5 selections, `mixRecipe{primaryFlavor, supportingFlavors,
+rationale}`) collapses non-primary presets into unverifiable "flavor". V2
+makes blending explicit and checkable:
+
+1. **Weights**: each selection carries `weight` 1-5 (UI slider; default
+   equal). The primary spine (mainPlot/seasonArc skeleton) comes from
+   `primarySelectionId`; weights scale every other facet's contribution.
+2. **Facet assignment before the LLM call**: a deterministic pre-pass builds
+   a `facetAssignments` table over facets `{story_spine, situations,
+   characters, tone, cliffhanger_style, world_texture, visual_identity,
+   product_fit}` and REQUIRES every selected preset to contribute concrete
+   elements to at least `minFacetsPerPreset` (default 2) facets. The LLM
+   fills the assigned slots; it may not silently drop a preset.
+3. **Deterministic visual-identity merge**: `visualIdentityJson` facets merge
+   in code, not prose — palette weighted-merge (primary-heavy, capped 6),
+   motif/wardrobe/prop union with dedupe, negative-fragment union; the LLM
+   only writes the blended `styleName` and a coherence pass.
+4. **Blend provenance report**: output v2 extends `mixRecipe` with
+   `blendReport`: per-facet `contributions[]` (`presetId`, `element`,
+   `kept`) plus `contributionCoverage` (presetId → facet count). The
+   create-wizard preset step renders this report so the user SEES what each
+   preset contributed.
+5. **Blend QC gate (deterministic)**: after synthesis, code verifies every
+   selected preset reached `minFacetsPerPreset`; on failure it auto-retries
+   once with a corrective instruction naming the under-blended preset, then
+   surfaces a visible warning ("preset X ยังไม่ถูกผสมจริง — ปรับน้ำหนักหรือเลือกใหม่")
+   with the coverage numbers. Blending quality is verified, never assumed.
+6. Contract remains a superset: v1 outputs (`contract_version: 1`) stay
+   parseable; v2 sets `contract_version: 2`.
+
+Feature flag: `verticalDramaSeriesPresetMixV2` (§17; default off — flags-off
+keeps shipped Mix and Match byte-identical). Implementation: section-15.
+
+#### 8.2.3 Deep Story Drafts And Async Story Jobs (added 2026-07-08/09, tasks #28, #10/W10-W11)
+
+> Requirement source: production feedback 2026-07-08 — a per-episode
+> breakdown (`workingTitle`/`logline`/`keyBeats[]`) is not a usable script.
+> Deep Story Drafts generate a full 9-shot, speakable-dialogue draft for
+> EVERY planned episode directly from the season chunk, ahead of per-episode
+> generation, so a creator can review the whole season's actual dialogue
+> before spending per-episode credits.
+
+**What it generates.** `generateStoryBibleDeep` (new series, no existing
+breakdown) and `extendStoryDraftHorizon` (extend an existing draft) chunk the
+season 5 episodes per call, carrying a continuous recap and `open_threads`
+between chunks, and draft 9 shots with full `dialogue_lines[]` per episode —
+the SAME dialogue-complete shape §7.7.2 requires from `plan_episode_script`,
+produced earlier, at bible/season-generation time. Output passes through the
+same speakability auto-clean (§14.1 item 6b) and draft-completeness check
+(the canonical `dialogueQuality.ts` estimator, §7.7.1) as per-episode
+generation. Partial failures keep whatever chunks succeeded; credits are
+charged per completed chunk, not all-or-nothing. `deepDraftSummary` surfaces
+on the series list/detail so a creator can see draft coverage without
+opening every episode. Hydration into the real per-episode pipeline
+(`generate_or_import_character_refs`/`storyboard_shotgrid` etc.) happens at
+the actual call site in `refine` mode — the deep draft seeds the script and
+storyboard skills' input as a superset, it does not bypass them.
+
+**Format-profile awareness.** When `verticalDramaSeriesFormatProfiles`
+(F131X, §7.8) is on, the chunk prompt is prefixed with the resolved tier's
+`beatDensityGuidanceTh`/`En` and the per-episode cold-open hook rule.
+
+**Premium multi-round mode (task #11/W11, added 2026-07-08).** An opt-in,
+more expensive draft mode selectable AT BOOTSTRAP (series creation) or when
+generating/extending: fan out 3 narrative lenses per chunk in parallel →
+deterministic gates → one inline LLM judge call scoring 8 dimensions (1-5,
+floor 4 on `hook_strength` + format-profile delta from §7.8, floor 3 on the
+rest) → targeted revision of only the episodes that failed (max 2 rounds,
+per-episode regression guard, early-stop once all pass) → one continuous-
+season sweep pass at the end (plus a targeted spot-revise if the sweep finds
+an issue) → a `draftScorecard` per episode plus season-level
+`premiumMetrics` (`roundsUsedPerChunk`, `firstPassGatePassRate`,
+`episodesBelowFloorAfter`, `sweepIssuesFound`, `callsMade`) persisted into
+the deep-draft metadata. Credit pre-estimate: `chunks × 6 calls + 2` (fan-out
+3 + judge 1 + up to 2 revise rounds averaged, + the season sweep); actual
+deduction follows calls really made, including partial runs. A best-effort
+call failure preserves the prior state rather than corrupting it.
+
+**Season Dramaturgy Critic (§6.8.2, added 2026-07-09, task #29).**
+`critiqueSeasonDrafts` and `applySeasonCritique` are the other two async
+story-job kinds: critique produces the 10-finding-kind report (§6.8.2)
+against the current draft; apply revises flagged episodes under the
+Story Lock guard (§16.3) and re-runs the deterministic checks as a
+regression guard before accepting the revision.
+
+**Async job pattern (task #28, added 2026-07-08).** All four mutations above
+(`generateStoryBibleDeep`, `extendStoryDraftHorizon`, `critiqueSeasonDrafts`,
+`applySeasonCritique`) share ONE generic, kind-agnostic async job mechanism
+instead of an inline synchronous `await` — this replaced an earlier stopgap
+of raising Node's request-timeout to ~620s:
+
+- submit → the router does fast synchronous validation (ownership, flag,
+  input shape), then enqueues onto a BullMQ queue named
+  `vertical_drama_story_jobs` and returns `{ jobId, deduped? }` immediately;
+- **per-series exclusivity**: at most ONE story job of ANY of the four kinds
+  may be active per series at a time, enforced by a separate Redis pointer
+  key (not BullMQ worker concurrency, which is queue-wide across every
+  tenant) — resubmitting while a job is active returns the SAME `jobId`
+  (`deduped: true`) instead of double-submitting; the pointer clears on every
+  terminal outcome;
+- job status/progress/result is a small Redis-JSON record per `jobId`
+  (`vd:story-job:<jobId>`), not a new DB table/column — this is dispatch
+  bookkeeping, not durable series state; durable output still lands in the
+  series `bible` jsonb / breakdown versions as before;
+- poll — the client calls `getStoryJobStatus({ seriesId, jobId })` on an
+  interval (2.5s) and `getActiveStoryJob({ seriesId })` on mount to
+  resume-safely reattach to an in-flight job after a refresh/navigation,
+  with progress phases `outline` → `draft` → `review` → `fix` → `reading`
+  surfaced to the UI;
+- on completion (success or failure), a notification is created through the
+  existing `notificationService` so the user is alerted even if they
+  navigated away while the job ran; notification failures are caught and
+  never fail the underlying job;
+- **breaking change from the pre-#28 shape**: these four mutations now
+  return `{ jobId }` immediately instead of the final result directly — no
+  other caller in the codebase invoked them synchronously, so this had no
+  external breaking blast radius at ship time.
 
 ### 8.3 Series Workspace
 
@@ -1695,10 +2383,56 @@ hiding tabs made it harder to audit a series before generating:
   still empty show a small amber completion dot (green once populated) so the user can see at
   a glance what still needs attention without losing the ability to jump there directly.
 - Planning, prompt generation, and PAID generation are always visually and textually distinct
-  so paid actions are never triggered by accident — this now also covers the new "Generate
-  story" action (§8.2.1), which is the one action in this feature that is genuinely paid and is
-  labeled/confirmed accordingly (credits-used toast, distinct button copy).
+  so paid actions are never triggered by accident — this now also covers "Generate story"
+  (§8.2.1) and every §8.2.3 deep-draft/critique async action, all of which are genuinely paid and
+  labeled/confirmed accordingly (credits-used toast, distinct button copy, up-front credit
+  estimate for async jobs since a job may run many LLM calls before it resolves).
 - A breadcrumb (Series › Episode › Storyboard Review) makes deep navigation reversible.
+
+### 8.8 Guided Production Wizard (added 2026-07-07 — primary episode UX)
+
+> Requirement source: production feedback 2026-07-07 — users currently have
+> to MEMORIZE the production order. The episode surface is one long scrolling
+> panel (`VerticalDramaStoryboardPanel`) where every action is available at
+> once; the only stepper in the product is the series-CREATION wizard. Users
+> guess what to run next and in what order.
+
+The guided Production Wizard (full contract: section-12) becomes the PRIMARY
+episode-production surface, not an optional overlay:
+
+1. **One visible ordered path.** The wizard stepper renders the production
+   order for the episode: series setup → episode script → storyboard shots →
+   script quality QC → start frames → dialogue/audio plan → dialogue & density
+   QC → video prompts → shot repair → video clips → final episode. Exactly one
+   primary CTA points at the next safe step (reusing `RunResult.next_action`).
+   Script quality QC sits after the storyboard because the shipped review
+   skill scores script + storyboard together (§6.8.1) and tie-in checks need
+   shot data (§13.1); it sits before start frames because that is the first
+   paid stage. The script step itself carries the deterministic density gate
+   (§7.7.2), which needs no storyboard.
+2. **Quality gates are wizard steps, not hidden checks.** The script-quality
+   auto-improve loop (§16.1) and the dialogue/density gate (§7.7, §14) render
+   as first-class steps with their scorecard/coverage evidence inline, so a
+   user always sees WHY progress is blocked and which repair unblocks it.
+3. **Custom work never forces a restart.** Every step exposes "view/edit
+   artifact" and per-target repair (shot, clip, frame, line, tie-in). A spot
+   repair marks only DOWNSTREAM artifacts stale (section-12 stale-propagation
+   table); the wizard then re-enters at the earliest stale step. The user
+   never re-runs unaffected stages and never rebuilds the episode to fix one
+   shot.
+4. **Expert mode stays.** The existing stage-card grid / long panel remains
+   available behind an "Advanced stages" disclosure for power users and
+   debugging; it must not compete with the wizard's single primary CTA.
+5. **Paid actions stay explicit.** Every step carries its credit-spend label
+   (`none | llm | image | video | tts`); paid steps keep the existing
+   credit-estimate confirmation.
+6. **Resume-safe.** Wizard state is derived from persisted artifacts/runs
+   (no separate wizard table), so refresh, another device, or a crashed tab
+   re-derives the same active step.
+
+Feature flag: `verticalDramaSeriesProductionWizard` (§17). Rollout follows
+section-12: render read-only first, then take over the primary CTA, then
+enforce server-side gates.
 
 ---
 
@@ -1979,13 +2713,52 @@ Secret and environment mapping:
 - SmartSpecPro must use its existing secret/config conventions for equivalent provider keys and model defaults;
 - no API key, bearer token, signed upload URL, or provider webhook secret may be stored in series tables, Storyboard Review metadata, run artifacts, or browser-visible JSON.
 
+### 9.3 Character Reference Resolution V2 (added 2026-07-08, task #27-A)
+
+> Requirement source: research
+> `planning/vertical-drama-character-consistency/research-2026-07-09.md` —
+> shipped generation always sent exactly ONE reference image per character
+> (the primary portrait), even though the character stock already PERSISTS
+> additional sheets (`character_sheet_turnaround`, `character_sheet_full`)
+> that were generated but never read back for generation. The gap was the
+> resolver, not the data.
+
+Behind flag `verticalDramaSeriesCharacterRefV2` (F131Z, §17; default off),
+character reference resolution sends a SECOND identity-lock image per
+character — the character's best available sheet asset, chosen by
+`pickBestCharacterSheetAsset` with priority **approved > turnaround > full >
+most-recently-updated** — alongside the existing primary portrait, into
+start-frame and video-clip generation. This costs nothing extra in provider
+fees; it reuses assets already generated and stored.
+
+Ordering matters for reference-budget trimming: when multiple characters'
+references are merged and the combined count exceeds the provider's
+`maxReferenceImages`, `resolveShotCharacterReferenceUrls` orders the merged
+list as **all portraits first, then all sheets**, so trimming from the end
+always drops sheets before it ever drops a primary portrait. `getPrimaryPortraitUrl`
+itself stays byte-identical (unchanged single-portrait behavior) for callers
+that only need the portrait; `getCharacterReferenceUrls` is the new resolver
+that additionally returns the best sheet. With the flag off, resolution is a
+literal duplicate of the pre-#27-A single-reference logic — not merely gated,
+so existing narrow test mocks are unaffected.
+
+This is Option A of the character-consistency research's option table (S
+effort, $0 cost). The research also evaluated and explicitly DEFERRED,
+pending owner decision or dedicated follow-up work: switching the default
+image model to a stronger-consistency model (owner must approve before
+defaulting — cost is ~4x), wiring provider-native consistency mechanisms
+(Gemini Omni `character_ids`, Higgsfield `soul_cast`) that other features in
+this codebase already use but vertical drama never adopted, and an opt-in
+vision-LLM identity-drift QC pass (non-deterministic, has a per-shot cost).
+
 ---
 
 ## 10. Skill Runtime And Import Contract
 
 ### 10.1 Location
 
-Required new skill folders:
+Required new skill folders (original MVP wave — 4 imported from the GitHub
+guide, 4 SmartSpecPro-only):
 
 ```text
 apps/web/skills/vertical-drama-script-builder/
@@ -1997,6 +2770,18 @@ apps/web/skills/vertical-drama-video-motion-prompt-pack/
 apps/web/skills/vertical-drama-series-memory-planner/
 apps/web/skills/vertical-drama-product-tie-in-planner/
 ```
+
+> **Shipped folders beyond the original 8 (verified on disk 2026-07-09):**
+> `apps/web/skills/vertical-drama-episode-quality-review/` (§6.8.1, shipped
+> 2026-07-05), `apps/web/skills/vertical-drama-season-dramaturgy-critic/`
+> (§6.8.2, task #29), `apps/web/skills/vertical-drama-ad-banner-prompt/`
+> (§6.8.3, task #30), `apps/web/skills/vertical-drama-preset-synthesizer/`
+> and `apps/web/skills/vertical-drama-shot-video-prompt/` (both predate this
+> version's sync pass and are out of scope for the 2026-07-09 delta list —
+> flagged here so this location list stays a complete, trustworthy index
+> rather than silently going stale again; see section-15 and section-06 for
+> whichever of these two already has implementation-section coverage). 13
+> skill folders exist on disk in total as of this version.
 
 Each folder must include:
 
@@ -2379,6 +3164,27 @@ type VerticalDramaAuditEvent = {
 - `approval` and `repair` events must reference the checkpoint/repair artifact they act on.
 - `archive` events must reference the archived series (and episode when applicable).
 
+### 11.8 Beyond-Plan Sanity (added 2026-07-08, task #26)
+
+An episode number that exceeds the series' planned season length
+(`episodeNumber > plannedEpisodeCount` from the active breakdown) is an
+inconsistent state, not a valid "extra episode" — it means the season plan
+was never extended to cover this episode.
+
+- `getEpisodeDetail` reports `breakdownStatus: "beyond_plan"` for such an
+  episode instead of silently treating it as in-plan;
+- script generation for a beyond-plan episode fails fast with a stable error
+  prefix `VD_EPISODE_BEYOND_PLAN` and a Thai guidance message directing the
+  user to extend the season plan from the series Overview before generating
+  this episode's script;
+- cadence/window math (used by tie-in fatigue and arc-drift bookkeeping)
+  guards against reading past the end of the planned breakdown;
+- **grandfathering**: legacy series that have no breakdown at all (predate
+  `generateStoryBible`/deep drafts entirely) are exempt from this check —
+  there is no plan length to exceed;
+- the client renders a warning banner on a beyond-plan episode with a direct
+  link to extend the season plan.
+
 ---
 
 ## 12. Storyboard Review Mapping
@@ -2468,9 +3274,81 @@ Storyboard Review remains the review and generation workspace. After video clips
 
 Export completion must not mutate canonical series memory automatically. It creates a pending memory update checkpoint that the user can approve or repair.
 
+> **2026-07-09 note:** "final MP4/media asset ID when export completes" is no
+> longer concat-only — see §12.4 Final Render Suite for the shipped Node
+> ffmpeg render graph (dialogue mixdown, subtitle burn-in, banner
+> compositing) that now produces that final asset.
+
 ### 12.3 Archival Behavior
 
 Archiving a series is a soft operation. Setting series `status = "archived"` hides its assets from the active workspace but MUST preserve Storyboard Review history and the handoff linkage (`seriesId`/`episodeId` backlinks, idempotency keys, approval checkpoints, and audit events). Archival must never orphan Storyboard Review projects and must never hard-delete artifacts that participate in the audit chain. Restoring the series must re-surface the same linked history intact.
+
+### 12.4 Final Render Suite (added 2026-07-09, task #21)
+
+> Requirement source: Wave 7 §7 acceptance ("final assembly manifest
+> round-trips...") described the CONTRACT; the actual render path shipped
+> 2026-07-09 as a pure, unit-testable Node ffmpeg filter-graph builder
+> (`server/services/verticalDramaFinalRenderGraph.ts`), replacing the
+> earlier concat-only assumption implicit in §7.3's `ffmpegConcatPlan`.
+> Explicitly **NOT** in scope: upload, publish, or scheduling to any
+> platform — this suite produces a durable MP4 media asset and stops there.
+
+**Concat regression lock.** The pre-existing plain-concatenation path
+(`buildConcatFfmpegArgs`) stays byte-identical and is protected by a
+regression test — every new capability below is ADDITIVE to the render
+graph, gated by whether its inputs are present, never a replacement of the
+concat baseline.
+
+**Dialogue-audio mixdown.** When per-line dialogue audio exists (§14.2 voice
+chain), the render graph mixes it into the final audio track: a
+`dialogueAudioTimeline` resolves each line's shot-local timing to the
+episode's absolute timeline (with a speech-estimator fallback for lines that
+never got a real audio render), then the graph applies
+`adelay`/`volume`/`loudnorm` (`amix`) to lay the dialogue over the clip
+audio. Optional `loudnessNormalize` and a currently-no-op `duckClipAudioDb`
+parameter (accepted, not yet wired) round out the mix options.
+
+**Subtitle burn-in.** ASS-format subtitles burned into the final render,
+reusing the SAME 10 caption presets already shipped for HyperFrames captions
+(`classic_box`, `minimal_shadow`, `creator_pop`, `karaoke_word`,
+`highlight_bar`, `lower_third`, `cinematic_wide`, `neon_glow`,
+`review_bubble`, and `no_subtitle_style` as the 10th/"no burn-in" option) —
+ported 1:1 from the shipped `hyperframesRenderWorker.buildFinalCompositeAss`
+precedent, not a new preset system. A speaking line's speaker name renders
+as an inline override within the same Dialogue line (avoiding a
+separate-drawtext-per-name approach that risked filter-graph blowup).
+
+**Banner overlay compositing.** When an episode has an `adBannerPlan` (§13.3),
+resolved banners are composited into the SAME render graph: scale + crop to
+the placement box, fade in/out (0.3s), `enable='between(t,S,E)'` windowing,
+in z-order video → band/side banners → subtitles → fullscreen banners. An
+"entire"-duration banner resolves its window to `[0, actualClipDuration]`
+AFTER the clip is ffprobe'd (not before) — an earlier version resolved
+against the target duration before probing, which could fail validation on a
+clip shorter than expected; this was fixed in the same wave (task #21-B).
+
+**Per-episode render options** (`assembleEpisodeVideo`):
+
+```ts
+type VerticalDramaRenderOptions = {
+  includeDialogueAudio: boolean;   // gated by verticalDramaSeriesVoiceChain (§14.2)
+  loudnessNormalize: boolean;
+  subtitlePreset?: CaptionPresetId; // one of the 10 presets above, or omitted
+};
+```
+
+The response includes counts (clips included/excluded) and
+`excludedAdBanners` (banners that could not be included, with reasons —
+e.g. regulated category pending approval, validation failure) so a partial
+render is never silently different from what the user configured.
+
+**Batch season render** (`assembleSeasonVideos`, added 2026-07-09): submits
+a render job for every render-ready episode in the season up front (job IDs
+minted immediately, so progress is visible even before execution starts),
+then executes strictly sequentially with continue-on-failure (one episode's
+failure does not stop the rest). **Ad banners are excluded from batch
+render in v1** — banner compositing remains per-episode-only until the
+banner-input resolver is promoted to a shared service (documented backlog).
 
 ---
 
@@ -2531,6 +3409,297 @@ Acceptance:
 - disclosure/caption/overlay text is stored separately from the video prompt
 - product provenance is retained for audit and later Library/marketplace workflows
 
+### 13.1 Production-Grade Tie-In Naturalness QC (added 2026-07-07)
+
+> Requirement source: production feedback 2026-07-07 — tie-ins must be woven
+> in at production grade, and the SCRIPT quality of a placement must be
+> measured, not assumed. The shipped placement machinery
+> (`product_tie_in_plan.tie_ins[]` with `shot_numbers[]`, `story_function`,
+> `placement_style ∈ {hero_prop, background, in_use_moment}`,
+> `benefit_talking_point`; claim screening; fatigue window 10;
+> `sanitizeBrandMentionsInPrompt`; Thai ad compliance) stays as-is — this
+> section adds the missing QUALITY MEASUREMENT and repair loop on top.
+
+#### Naturalness scorecard
+
+Every episode with a tie-in produces a `VerticalDramaTieInQualityReport`
+before paid generation. Scoring is hybrid: deterministic checks computed in
+code, qualitative dimensions judged by the quality-review skill (§6.8.1 v2,
+as the `tie_in_naturalness` dimension plus a detailed tie-in block).
+
+```ts
+type VerticalDramaTieInQualityReport = {
+  reportId: string;
+  episodeId: string;
+  runId: string;
+  // qualitative (LLM-judged, 1-5)
+  storyIntegration: number;      // would the beat still work without the product? (should ride an existing need)
+  characterMotivation: number;   // does the character have an in-story reason to touch/mention it?
+  toneMatch: number;             // placement matches genre/tone (no sudden ad-voice)
+  // deterministic (computed, not judged)
+  spokenMentionCount: number;    // default max 2 per episode
+  visualShotCount: number;       // default max 3 of 9 shots
+  adSpeakViolations: string[];   // locale ad-speak lexicon hits in dialogue (superlatives,
+                                 // CTA phrasing) outside an allowed soft_cta story function
+  claimViolations: string[];     // forbiddenClaims + regulated-category patterns (existing screenClaims)
+  disclosureSeparated: boolean;  // existing isDisclosureSeparateFromPrompt
+  fatigueOk: boolean;            // existing evaluateFatigue within maxEpisodesWithTieInPerTenEpisodes
+  // verdict
+  naturalnessScore: number;      // 0-100 — exact formula below
+  passed: boolean;               // naturalnessScore >= floor AND no deterministic violation
+};
+```
+
+`naturalnessScore` formula (deterministic, so telemetry averages are
+comparable): `round(mean(storyIntegration, characterMotivation, toneMatch)
+/ 5 * 100)`; if ANY deterministic violation exists (`adSpeakViolations`,
+`claimViolations`, mention/shot-count overruns, `disclosureSeparated ===
+false`, `fatigueOk === false`), the stored score is capped at `min(score,
+69)` — one point below the default pass floor — so a violation can never be
+masked by high qualitative scores, in the gate or in averages.
+
+`VerticalDramaTieInUsage.placementNaturalnessScore` (§13) is henceforth
+DEFINED as this report's `naturalnessScore` (0-100 scale). Default pass
+threshold: **70**, per-tenant/per-series configurable via the quality policy
+(§16.1); regulated categories may only RAISE it.
+
+#### Gates and repair loop
+
+- a failing tie-in report BLOCKS paid image/video generation for tie-in
+  shots in guided mode and blocks Storyboard Review handoff of the episode
+  until resolved (repair, removal, or explicit human override); the report
+  is produced at the wizard's script-quality step (§8.8) — after the
+  storyboard exists, since its deterministic checks count storyboard shots —
+  and always before the first paid stage;
+- tie-in issues join the §16.1 auto-improve loop as the `tie_in` repair
+  group — FOURTH in the §16.1 canonical order (script → storyboard →
+  dialogue → tie_in): the rewrite touches ONLY tie-in-carrying
+  beats/lines/shots and preserves the story spine — story beats may not be
+  restructured to sell the product;
+- if the loop exhausts `maxAutoImproveRounds` and the report still fails,
+  the recommended repair becomes `remove_or_rewrite_tie_in` with default
+  action **defer**: strip the placement from this episode (deterministic,
+  no LLM call) and record the deferral in tie-in history/fatigue. Behind
+  flag `verticalDramaSeriesTieInReplan` (task #31, added 2026-07-09), this
+  ALSO attempts to build a real `arc_replan_proposal` (§7.7.3,
+  `driftReasons: ["VD_ARC_TIE_IN_DEFERRED"]`) that re-places the product on
+  the nearest eligible future episode's season plan — the user reviews and
+  approves it on the SAME arc re-plan card as a detected-drift proposal.
+  `scheduleAtRisk: true` is now the FALLBACK signal, only returned when no
+  eligible future episode exists or the fatigue cap is already exhausted
+  everywhere (or the flag is off) — see §7.7.3's "Deliberate re-plan: tie-in
+  defer" for the full mechanism;
+- an explicit human override (ship below threshold) is allowed for
+  non-regulated categories only and is recorded with `approvedByUserId`,
+  the failing report id, and an audit event.
+
+#### Visual grounding QC
+
+- every tie-in shot must attach at least one APPROVED product reference
+  asset when references exist (cap stays 3); a tie-in shot rendered without
+  its product reference is a QC error, not a silent fallback;
+- start-frame QC for tie-in shots adds a product-fidelity checklist: product
+  visible per `placement_style`, label/branding not warped or hallucinated,
+  scale plausible; failure creates a prefilled `regenerate_start_frame`
+  repair with the product-lock instruction enforced;
+- brand-name sanitization for provider prompts (existing behavior) must
+  never remove the product from the DISCLOSURE layer — disclosure text stays
+  intact and separate.
+
+#### Measurement and telemetry
+
+- the tie-in report persists as a run artifact per episode (append-only,
+  like quality reviews);
+- the series Product Tie-in tab shows: placements used vs
+  `maxEpisodesWithTieInPerTenEpisodes`, average `naturalnessScore`, deferral
+  count, claim/ad-speak violation count, and per-episode pass/fail history;
+- acceptance: no episode ships a tie-in with a failing report without a
+  recorded human override.
+
+### 13.2 Tie-In Aware Deep Story Drafts (added 2026-07-09, task #22)
+
+> Requirement source: gap identified during the 2026-07-08 roadmap review —
+> season-level deep drafts (§8.2.3) were generated with NO knowledge of
+> product tie-in at all; placement was purely a REACTIVE, per-episode
+> decision made by `evaluateFatigue` looking backward at the last 10
+> episodes' scripts. Task #31 (§7.7.3) built the `tieIn` field and the
+> propose→approve→apply plumbing for MOVING a placement; this task is what
+> actually POPULATES that field at season-generation time and threads it
+> through deep drafting.
+
+Gate: `productTieIn.enabled && verticalDramaSeriesTieInReplan` (F131Y, §17)
+— no new flag introduced; this task extends the same flag §7.7.3 introduced.
+
+**Season-level bootstrap.** `planSeasonTieInPlacements` (§7.7.3) runs at
+season generation time (the `generate_story` source), persisting an initial
+`tieIn` placement onto each relevant breakdown item of the NEW breakdown
+version — evenly spaced, respecting the format-profile-prorated budget
+(§7.8's `resolveTieInEpisodeBudget`), avoiding episode 1 (hook-only) by
+default.
+
+**Chunk prompts.** Deep-draft chunk prompts (§8.2.3, both standard and the
+premium fan-out/revise paths) gain a PRODUCT TIE-IN section for any episode
+in the chunk whose breakdown item has `tieIn.planned === true`, carrying
+`benefitFocus`/`intensity` into the drafting context.
+
+**Shot marking.** Drafted shots additively carry:
+
+```ts
+type VerticalDramaDraftShotTieIn = {
+  has_product_moment: boolean;
+  benefit_line?: string;
+};
+```
+
+**Reconciliation.** `reconcileTieInDraftMarking` deterministically compares
+the plan (`tieIn.planned`) against what the draft actually marked
+(`has_product_moment`) and raises `tie_in_placement_mismatch` warnings plus a
+`tieInMismatchCount` when they disagree in either direction (planned-but-
+unmarked, or marked-but-unplanned).
+
+**Premium judge dimension.** `tie_in_naturalness` is scored by the premium
+multi-round judge (§8.2.3) as a SEPARATE dimension outside the 8 core
+dimensions — separate because it only applies to episodes that actually
+place the product, whereas the 8 core dimensions score every episode.
+
+**Season Dramaturgy Critic kind 9.** `tie_in_distribution` (§6.8.2) is the
+season-wide, whole-draft-granularity version of the same mismatch signal —
+it also catches BUNCHING (two adjacent episodes both planned, instead of the
+even spread `planSeasonTieInPlacements` targets), which a per-run
+reconciliation cannot see across multiple generate/extend calls.
+
+**Overview badges.** The series Overview renders two badge states on
+episodes with a planned placement: normal ("planned") when the draft marks
+it, and a destructive/warning state when the draft does not mark it despite
+being planned — giving the same signal the reconciliation warnings carry, at
+a glance.
+
+### 13.3 Ad Banner Overlay (Story-External Ad Layer) (added 2026-07-08/09, task #30)
+
+> Requirement source: owner directive 2026-07-08 — in the Product Tie-in
+> tab, add an option to overlay ad banners on top of the rendered video:
+> bottom band / side vertical / fullscreen; the system reads product
+> image+details and generates a prompt following one of 10 current
+> (2026) ad-design trends; the user picks a media model and size the model
+> supports; the prompt is editable before generation; banners display for a
+> time window or the whole clip; 1-5 banners per video; composited at
+> render time; production grade.
+
+**This is explicitly NOT in-story tie-in (§13-§13.2).** Story tie-in means
+the product exists WITHIN the narrative (dialogue, scene, shot) with
+naturalness QC. Ad banner overlay is a deliberate advertising LAYER
+composited ON TOP of a rendered clip — the TV equivalent of an L-band,
+lower-third, or interstitial. The two systems are independent: a series can
+use either, both, or neither, and enabling one does not touch the other's
+data, prompts, or storyboard.
+
+**Architectural consequence — guard exemption.** Because a banner IS
+intentionally an advertisement, the banner prompt path deliberately does
+**NOT** pass through the story-side brand-neutrality guards
+(`VD_PRODUCT_LOCK_INSTRUCTION`, `sanitizeBrandMentionsInPrompt` —
+`verticalDramaProductTieIn.ts`) that exist specifically to stop an
+IN-STORY shot from reading like an ad poster. What DOES still apply to
+banners: `forbiddenClaims[]` (checked deterministically in the banner prompt
+and every copy field, before generation AND before render), `regulatedCategory`
+(forces `requireHumanApproval` before a banner may enter a render), and
+`disclosurePolicy` (v1: recommended in-prompt; a deterministic drawtext
+disclosure badge is backlog, pending the same drawtext capability §13.3
+already uses for other overlays via §12.4).
+
+**Data model.** Two layers — design is series-scoped (a product's banner
+designs are reusable across episodes), usage is episode-scoped:
+
+```ts
+// Series layer — new `adBanners` key inside the EXISTING
+// vertical_drama_series.productTieIn jsonb column (merge-patched, no migration)
+type VerticalDramaAdBannerDesign = {
+  id: string;
+  stylePresetId: VdAdBannerStyleId;              // one of 10 style presets, below
+  placementId: "bottom_band" | "side_vertical" | "fullscreen";
+  sideAlign?: "left" | "right";                  // side_vertical only
+  copy: { headline?: string; subtext?: string; priceText?: string; ctaText?: string };
+  prompt: { generated?: string; negative?: string; final?: string; editedAt?: string };
+  generation: { modelId?: string; aspectRatio?: string; size?: string };
+  imageAsset?: { url: string; taskId?: string; width?: number; height?: number; generatedAt: string };
+  defaultTiming: { mode: "entire" | "window"; startSec?: number; durationSec?: number };
+  status: "draft" | "prompt_ready" | "generating" | "ready" | "failed";
+  approval?: { required: boolean; approvedBy?: string; approvedAt?: string };
+}; // max 5 designs per series
+
+// Episode layer — new nullable column vertical_drama_episodes.adBannerPlan jsonb
+// (manual SQL + provenance file; series continues to use the existing
+// productTieIn jsonb, so only the episode side needed a schema change)
+type VerticalDramaAdBannerPlan = {
+  enabled: boolean;
+  selections: Array<{
+    bannerId: string;
+    timing?: { mode: "entire" | "window"; startSec: number; durationSec: number }; // overrides defaultTiming
+  }>; // max 5 selections per episode; fullscreen selections must not overlap each other in time
+};
+```
+
+**Placement presets** (coordinate boxes on a 1080×1920 frame):
+
+| id | box (x, y, w, h) | target aspect | default timing | notes |
+| --- | --- | --- | --- | --- |
+| `bottom_band` | 0, 1400, 1080, 360 | 3:1 | entire clip | sits above the bottom 160px safe zone (platform UI / subtitles) |
+| `side_vertical` | 20 or 760, 480, 300, 960 | ~1:3 | entire clip | hugs left/right edge, vertically centered, clears TikTok-style right-edge UI |
+| `fullscreen` | 0, 0, 1080, 1920 | 9:16 | 3s window | interstitial/end-card, 0.3s fade, fully opaque |
+
+Media models do not natively offer 3:1/1:3 aspect ratios, so generation
+targets the model's closest supported aspect (band → 16:9, side → 9:16 or
+2:3, fullscreen → 9:16 exactly) and the render graph (§12.4) cover-fits +
+center-crops into the placement box; the banner-prompt skill (§6.8.3) is
+instructed to compose crop-safely (e.g. "critical content within center 60%
+height" for a band).
+
+**Style presets** (`shared/verticalDramaSeries/adBannerPresets.ts`,
+`VD_AD_BANNER_STYLE_IDS`) — 10 2026 ad-design trends, each with
+`promptTokens` (style/composition/texture/lighting), `negativeTokens`,
+`fitCategories` (used to auto-recommend presets against the tie-in's
+`productCategory`), and a `textInImageRisk` rating (AI image generation
+renders non-Latin script, including Thai, unreliably — surfaced as a UI
+warning, not silently hidden):
+
+`imperfect_by_design`, `reality_warp`, `tactile_sensory`, `bold_typography`,
+`retro_futurism`, `documentary_realism`, `multi_dimensional`,
+`emotional_gradient`, `collage_mixed_media`, `vertical_first`.
+
+**Generation flow (series-level banner studio, in the Product Tie-in tab):**
+
+1. pick a style preset (recommended presets surface first, by
+   `fitCategories` match) and a placement, fill in copy fields;
+2. pick a media model + aspect/size the model supports (same filtering
+   pattern as Media Studio);
+3. "Generate prompt" invokes `vertical-drama-ad-banner-prompt` (§6.8.3),
+   which reads the product's reference images + copy and produces
+   `{ imagePrompt, negativePrompt, textInImage[], compositionNotes,
+   complianceNotes }`; the prompt renders in the same reusable
+   `InlineEditablePromptBox` used elsewhere in this feature and is EDITABLE
+   before generation;
+4. "Generate banner image" submits to the existing async media-generation
+   pipeline with the product's reference images attached (same
+   reference-resolution/cap-3 convention as story tie-in shots), then polls
+   to completion and previews the result on a mock 9:16 frame at its
+   placement;
+5. a regulated-category product shows a "needs approval before use" badge
+   and an explicit approve action before the banner may enter a render.
+
+**Per-episode usage:** in the episode assembly UI, "banners in this video"
+lets the user pick from the series' `ready` banner designs and adjust timing
+per selection (entire clip, or a start-second + duration window); validation
+enforces the max-5 cap and that fullscreen selections do not overlap, with a
+non-blocking warning if fullscreen banners together exceed 20% of the clip's
+length or if a band and a side banner run simultaneously for the whole clip
+("ad fatigue" — allowed, just flagged).
+
+**Compositing:** see §12.4 Final Render Suite — banners share the same Node
+ffmpeg render graph as subtitles/dialogue mixdown, z-ordered video → band/side
+→ subtitles → fullscreen, and are the reason the render graph moved from
+concat-only to a full filter-graph builder in the same wave.
+
+Feature flag: `verticalDramaSeriesAdBannerOverlay` (F131W, §17; default off).
+
 ---
 
 ## 14. Audio, Dialogue, And Subtitles
@@ -2553,6 +3722,56 @@ Rules:
 5. Subtitle and overlay text remain separate from video prompt text.
 6. If native video audio is selected, Storyboard Review must show that script changes require video regeneration.
 7. If separate TTS is selected, Storyboard Review must be able to regenerate audio without changing video prompts or frame references.
+
+### 14.1 Dialogue Density And Speech Coverage (added 2026-07-07)
+
+These rules make §7.7's budget enforceable at the audio layer. All numbers
+come from the canonical module (§7.7.1) — never re-declared locally.
+
+1. The dialogue-complete SCRIPT is the source of truth for lines (§7.7.2).
+   The dialogue/audio plan distributes, times, and enriches those lines
+   (voice, `delivery`, `subtext`, spoken-register Thai); inventing new story
+   content at this stage is a contract violation. The legacy
+   `script_fallback` chain (parsing freeform scene summaries, positional
+   shot mapping) always tags its output `origin: "script_fallback"` and
+   carries a warning until reviewed or regenerated.
+2. Per-clip coverage: estimated speech seconds for a speaking clip must
+   reach `MIN_CLIP_COVERAGE_RATIO` (warning) and never sit below
+   `ERROR_CLIP_COVERAGE_RATIO` (error). Target is
+   `targetVerticalDramaSpeechSeconds(clipDuration)`.
+3. Whole-episode coverage: total estimated speech must reach
+   `MIN_EPISODE_COVERAGE_RATIO` (warning below) /
+   `ERROR_EPISODE_COVERAGE_RATIO` (blocking error below) unless the episode
+   is explicitly visual-first.
+4. Silent-gap rule: continuous estimated silence inside a speaking clip may
+   not exceed 2.5 seconds; the analyzer reports the gap position.
+5. Duplicate lines across unrelated shots (`VD_DIALOGUE_DUPLICATE`) and
+   stage directions / sound cues inside dialogue
+   (`VD_DIALOGUE_STAGE_DIRECTION`) are errors.
+6. Thai dialogue must be spoken-register (ภาษาพูด: natural sentence-final
+   particles, short clauses, no written/translated register) — a hard rule
+   in the dialogue skills with good/bad examples (shipped Phase 3B behavior,
+   now contract).
+6b. **Speakability (added 2026-07-08, owner feedback with live evidence)**:
+   every dialogue line must be literally speakable by TTS/a human actor —
+   no wrapping quote marks (“ ” " '), no parenthetical stage directions in
+   the speaker or the line (`หนูนา(สะดุ้ง)` → speaker `หนูนา`, delivery
+   `สะดุ้ง`), no tildes/asterisks/brackets/slashes/markup, no em-dash as a
+   spoken beat (use a comma or a new line), ellipsis runs collapsed (max
+   one `…` per line), no emoji. A deterministic analyzer
+   (`VD_DIALOGUE_UNSPEAKABLE_SYMBOLS`, in `dialogueQuality.ts`) flags
+   violations with the offending characters and a cleaned suggestion; the
+   dialogue skills carry the prohibition as a hard rule with the real
+   observed bad examples; TTS/native-audio consumption paths sanitize
+   wrapper punctuation before rendering; non-verbal "lines" (animal sounds,
+   ambient voices) must be declared as sound cues, not dialogue lines.
+7. After separate-TTS rendering, actual audio durations reconcile against
+   estimates; per-clip drift > 15% raises an `adjust_audio_subtitle` repair
+   suggestion instead of silently stretching or truncating.
+8. Underfilled coverage found at this stage routes repair UPSTREAM by
+   default: "repair whole-episode dialogue plan" first, per-shot rewrite
+   second, because density failures are usually story-material failures
+   (§7.7). The wizard's dialogue QC step (§8.8, section-12) owns this gate.
 
 Recommended metadata:
 
@@ -2584,6 +3803,35 @@ type VerticalDramaDialogueAudioPlan = {
   warnings: VerticalDramaWarning[];
 };
 ```
+
+### 14.2 Voice Casting And Dialogue Audio Generation (voice chain, added 2026-07-08, task #15/W12)
+
+> This subsection makes real what §14 Rule 1 ("each named character should
+> have a stable voice assignment") describes only abstractly. Before this
+> task, voice continuity was schema-shaped but had no UI or generation path.
+
+Behind flag `verticalDramaSeriesVoiceChain` (F131U, §17; default off):
+
+- a per-character voice-casting surface on the Characters tab lets a creator
+  pick a voice from the existing TTS voice catalog (reusing the same voice
+  source already used by the series-trailer TTS feature), preview it (a
+  real, credit-charged async media-generation call, `previewCharacterVoice`,
+  mirroring the same async submit/poll convention as clip generation), and
+  lock the selection — this populates
+  `VerticalDramaDialogueAudioPlan.voiceContinuityMap` for real instead of
+  leaving it empty;
+- an episode-level "generate dialogue speech for this episode" action
+  (`generateEpisodeDialogueAudio`) renders every dialogue line's TTS audio
+  in one batch, resumable per line (mirrors the existing per-clip video-task
+  resume pattern rather than introducing a new async primitive), with
+  per-line playback and status in the dialogue panel;
+- the resulting per-line audio is what §12.4's dialogue-audio mixdown
+  (`dialogueAudioTimeline`) consumes to build the final episode audio track.
+
+Missing voice IDs continue to block only PAID TTS generation, not
+script/storyboard planning, per §14 Rule 2 — voice chain does not change
+that rule, it is the first UI that lets a user actually resolve the
+missing-voice state.
 
 ---
 
@@ -2620,7 +3868,9 @@ Client:
 
 Skills:
 
-- the eight `apps/web/skills/vertical-drama-*` folders listed in Section 10
+- the `apps/web/skills/vertical-drama-*` folders listed in §10.1 — 8 from the
+  original MVP wave plus 5 shipped later (13 total as of this version; see
+  §10.1's shipped-folders note)
 
 API boundaries:
 
@@ -2725,6 +3975,163 @@ type VerticalDramaQcResult = {
 };
 ```
 
+### 16.1 Episode Quality Review And Auto-Improve Loop (v1 shipped 2026-07-05; v2 added 2026-07-07)
+
+> Requirement source: production feedback 2026-07-07 — story intensity and QC
+> quality must rise together with dialogue density, and post-QC improvement
+> must run automatically. A v1 of this loop already shipped (Phase 3B of
+> `planning/vertical-drama-storyboard-complete/plan.md`); this section makes
+> it spec-level contract and defines the v2 extension.
+
+#### Shipped v1 contract (record — do not regress)
+
+- Skill `vertical-drama-episode-quality-review` (§6.8.1) invoked by
+  `runVerticalDramaEpisodeQualityReview`
+  (`server/services/verticalDramaEpisodeQualityReview.ts`); LLM-only, ~20
+  credit estimate, never blocks by itself — always returns a full scorecard.
+- Scorecard v1: `reversal_count`, `reversal_sharpness` (1-5),
+  `emotion_variety` (1-5), `dialogue_naturalness` (1-5 | null), `pacing`
+  (1-5), `overall` (1-5); plus `summary`, `issues[]`
+  (`{location, problem, suggested_fix}`), `warnings[]`, `repair_queue[]`.
+- Router procedures on `verticalDramaEpisodes`: `runEpisodeQualityReview`
+  (supports `avoidPrevious` re-review: feeds prior issues back and asks for
+  DIFFERENT fixes) and `applyQualityReviewSuggestions` ("อนุมัติและปรับเรื่อง
+  ตามคำแนะนำ"): groups issues by stage via
+  `classifyQualityReviewIssueLocation` (`beat N` → `plan_episode_script`;
+  `shot N` / unrecognized → `storyboard_shotgrid`), composes ONE combined
+  Thai repair instruction per stage
+  (`composeQualityReviewRepairInstruction`), calls
+  `verticalDramaEpisodePipeline.repairStage(...)` script-before-storyboard,
+  then auto re-runs the review once and persists it.
+- Persistence: run/artifact ledger rows with stage tag
+  `episode_quality_review` (append-only; latest read back by
+  `getEpisodeDetail`).
+
+#### v2 extension: thresholds, loop control, unified signals
+
+1. **Scorecard v2 (superset, `contract_version: 2`).** Adds `hook_strength`
+   (1-5), `cliffhanger_strength` (1-5), `continuity_consistency` (1-5), and
+   `tie_in_naturalness` (1-5 | null when tie-in disabled). v1 fields keep
+   their exact names/scales so persisted v1 artifacts stay readable.
+2. **Hybrid scoring — deterministic metrics join the report.** The review
+   input AND the persisted report embed the deterministic density metrics
+   from §7.7.1 (`estimatedSpeechSeconds`, per-clip coverage, silent gaps,
+   duplicate-line and stage-direction counts, reversal count from script
+   markers, consecutive-emotion repeats). The LLM judges qualitative
+   dimensions only; deterministic facts are computed in code and never
+   re-estimated by the LLM. This unifies today's two disconnected signals
+   (LLM scorecard vs `dialogueQuality.ts` analyzer) into one report.
+3. **Quality policy (per-tenant/per-series, preset-carriable).**
+
+```ts
+type VerticalDramaQualityPolicy = {
+  minOverall: number;              // default 4 (of 5)
+  minPerDimension: number;         // default 3 (of 5)
+  tieInMinNaturalnessScore: number;// default 70 (of 100, §13.1); regulated categories may only raise
+  maxAutoImproveRounds: number;    // default 2, allowed 0-3; 0 = manual apply only
+  autoRunReviewAfterStoryboard: boolean;   // default true in guided mode — the review scores
+                                           // script + storyboard together (§6.8.1), so it
+                                           // auto-runs once the storyboard exists
+  blockPaidGenerationBelowFloor: boolean; // default true in guided mode, false in expert mode
+};
+```
+
+4. **Auto-improve loop contract.** One loop round =
+   `review → group → repair → re-review`, with the CANONICAL repair-group
+   order declared once here and referenced everywhere else:
+   `plan_episode_script` → `storyboard_shotgrid` → `dialogue_audio_plan` →
+   `tie_in`. v1 shipped the first two; v2 adds `dialogue_audio_plan` as the
+   third group (density issues repairable in-loop) and, when tie-in QC is
+   enabled, `tie_in` as the fourth (§13.1 — rewrites scoped to
+   tie-in-carrying beats/lines/shots only);
+   - the loop repeats while the scorecard is below policy floors and rounds
+     remain; every round's artifacts are append-only and audited, and each
+     LLM call is credit-tracked with the estimate shown up-front for the
+     whole loop (rounds × per-round estimate);
+   - **regression guard**: if a round's re-review scores LOWER overall than
+     the pre-round review, the loop stops, the pre-round artifact version
+     stays the active candidate (repairs superseded, not deleted), and the
+     episode escalates to `needs_human_review` with both reports visible;
+   - after `maxAutoImproveRounds` without a pass the loop stops and
+     escalates the same way — auto-improvement never spins unbounded;
+   - the loop is LLM-only (plan_only class): it may never trigger paid
+     image/video/TTS generation;
+   - known v1 limitation becomes a v2 requirement: the storyboard repair
+     instruction must be composed against the CURRENT (post-script-repair)
+     review round, not the original review.
+5. **Gate semantics.** Expert mode keeps v1 behavior (advisory scorecard,
+   user decides). Guided/wizard mode (§8.8) treats a scorecard below policy
+   floors as BLOCKING for every PAID step downstream of the storyboard —
+   start frames first (the first paid stage), then video prompts and paid
+   generation — with the loop offered as the primary unblock CTA. The
+   scorecard itself requires script + storyboard (§6.8.1), so it can never
+   gate the storyboard step; the deterministic density gate (§7.7.2) covers
+   the script→storyboard transition instead. Tie-in gating additionally
+   follows §13.1.
+6. **Surfaces.** The scorecard panel shows: current scores vs policy floors,
+   deterministic density metrics, loop round history (round, action taken,
+   score delta), and escalation state. Every issue keeps a one-click
+   prefilled repair (existing pattern).
+
+#### Acceptance (quality loop)
+
+- running the loop on an episode below floor either reaches the floor within
+  `maxAutoImproveRounds` or escalates with both reports preserved;
+- a score regression never replaces the better version;
+- v1 artifacts remain readable after v2 ships;
+- the loop never issues a paid media call;
+- guided mode cannot reach paid video generation with a below-floor
+  scorecard, expert mode can (recorded as an explicit override).
+
+### 16.2 Season Dramaturgy Critic Workflow (added 2026-07-09, task #29)
+
+The skill contract, model resolution, and 10 finding kinds are defined in
+§6.8.2 — this subsection covers the review/apply WORKFLOW that surfaces it.
+
+- entry point: a "วิจารณ์ซีซั่นนี้" (critique this season) action on the
+  series Overview, available once at least one episode is deep-drafted
+  (§8.2.3); runs as an async story job (§8.2.3) and persists as
+  `lastCritique` on the series;
+- `applySeasonCritique` revises only the episodes a finding names, under the
+  SAME Story Lock guard (§16.3) as any other post-lock repair — a
+  season-critic revision may not restructure the approved story spine;
+- **regression guard**: after applying, `analyzeSeasonDramaturgy`'s 6
+  deterministic checks (kinds 2-7, §6.8.2) re-run; if the revision
+  introduces a NEW deterministic finding on an episode that was previously
+  passing, the revision is rejected rather than accepted with a worse
+  season than before;
+- this is a SEASON-granularity, on-demand pass — separate from, and never
+  invoked by, the per-episode §16.1 auto-improve loop or the §8.2.3 premium
+  multi-round judge; none of the three change each other's behavior.
+
+### 16.3 Story Lock (added 2026-07-08, task #19, flag F131V)
+
+> Once a story is finalized on the series Overview (a script/storyboard has
+> been approved), episode-level "improve"/"repair" actions — including the
+> §16.1 auto-improve loop, the §16.2 season critic's apply step, and manual
+> per-shot repairs — may change EXECUTION only (phrasing, delivery, pacing
+> polish, dialogue smoothing) and may never rewrite story content (beats,
+> reversals, hook, cliffhanger, plot events). This is mechanically enforced,
+> not merely a policy statement.
+
+- a deterministic post-repair guard computes similarity across beats,
+  reversal count/positions, and hook/cliffhanger overlap between the
+  pre-repair and post-repair script; a repair that drops the overlap below a
+  **0.6** similarity floor is rejected as a story-content violation rather
+  than silently accepted;
+- the §16.1/§14.1 quality scorecard UI is split into two zones: a
+  **story zone** (hook, reversals, escalation, cliffhanger — read-only once
+  locked, with a link back to the series Overview/season-critic surface,
+  which is the only place story content itself may change) and a
+  **delivery zone** (dialogue naturalness, pacing polish — repairable
+  in-place);
+- repair action copy was renamed from language implying rewriting to
+  "เกลี่ยบท / ปรับถ้อยคำ" (smooth the script / adjust phrasing) to make the
+  execution-only scope explicit to the user, not just to the guard;
+- flag `verticalDramaSeriesStoryLock` (F131V, §17; default off; fail-closed
+  — with it off, repairs behave exactly as documented in §16.1 with no
+  additional restriction).
+
 ---
 
 ## 17. Feature Flags And Rollout
@@ -2746,7 +4153,78 @@ verticalDramaSeriesQcRepair
 verticalDramaSeriesDialogueAudio
 verticalDramaSeriesSubtitles
 verticalDramaSeriesSubShots
+verticalDramaSeriesSpeechBudget        // §7.7 density-first planning + coverage gates (2026-07-07)
+verticalDramaSeriesArcReplan           // §7.7.3 arc drift detection + re-plan proposals (2026-07-07)
+verticalDramaSeriesQualityLoopV2       // §16.1 scorecard v2 + auto-improve loop control (2026-07-07)
+verticalDramaSeriesTieInQc             // §13.1 tie-in naturalness QC gates (2026-07-07)
+verticalDramaSeriesProductionWizard    // §8.8 guided production wizard (2026-07-07)
+verticalDramaSeriesPresetMixV2         // §8.2.2 preset visual identity + verifiable blending (2026-07-07)
+verticalDramaSeriesDeepStoryDrafts     // F131T — §8.2.3 deep story drafts (chunked, 9-shot, speakable-dialogue) (2026-07-08)
+verticalDramaSeriesVoiceChain          // F131U — §14.2 voice casting + whole-episode dialogue TTS + audio timeline handoff (2026-07-08)
+verticalDramaSeriesStoryLock           // F131V — §16.3 story lock: post-lock repairs are execution-only, mechanically enforced (2026-07-08)
+verticalDramaSeriesAdBannerOverlay     // F131W — §13.3 ad banner overlay: series banner studio + per-episode compositing (2026-07-08)
+verticalDramaSeriesFormatProfiles      // F131X — §7.8 length-aware format profiles (ultra_short/short/standard tiers) (2026-07-08)
+verticalDramaSeriesTieInReplan         // F131Y — §7.7.3/§13.1 tie-in defer -> real arc-replan proposal; also gates §13.2 (2026-07-09)
+verticalDramaSeriesCharacterRefV2      // F131Z — §9.3 second character reference image (best sheet) alongside the primary portrait (2026-07-08)
+verticalDramaSeriesShareLinks          // F131AA — §24 read-only series share links — RESERVED, NOT YET REGISTERED in shared/featureFlags.ts (2026-07-09, design-only)
 ```
+
+2026-07-07 flag semantics: the five 2026-07-07 flags default OFF and layer on
+top of shipped behavior without changing it — with them off, the shipped v1
+quality loop, post-hoc dialogue analyzer, tie-in machinery, and stage-grid UX
+behave exactly as today. `verticalDramaSeriesQualityLoopV2` requires
+`verticalDramaSeriesSpeechBudget` (deterministic metrics feed the report).
+`verticalDramaSeriesTieInQc` requires BOTH `verticalDramaSeriesSpeechBudget`
+AND `verticalDramaSeriesQualityLoopV2` — a failing tie-in report's repair
+path is the §16.1 loop, so tie-in QC without the loop would create blocked
+states with no defined unblock. `verticalDramaSeriesProductionWizard`
+requires `verticalDramaSeriesQualityLoopV2` for its gate steps.
+`verticalDramaSeriesPresetMixV2` (§8.2.2) is independent — it gates preset
+visual identity flow-through and synthesis v2 only, and with it off the
+shipped Mix and Match behavior is unchanged.
+
+2026-07-08/09 flag semantics (all fail-closed, default OFF, all additive over
+shipped behavior with the flag off): `verticalDramaSeriesFormatProfiles`
+(F131X) is read by real callers as a threaded `formatProfilesEnabled`
+boolean rather than a direct flag import (keeps §7.8's module
+server/client-import-free) — with it off, `analyzeSeasonDramaturgy` and the
+premium judge always use their original, non-tiered formulas/constants.
+`verticalDramaSeriesTieInReplan` (F131Y) gates BOTH the §7.7.3/§13.1 defer→
+replan mechanism AND §13.2's season-level tie-in bootstrap/chunk-prompt/
+shot-marking/critic-kind-9 behavior — with it off, tie-in placement stays
+fully reactive (`evaluateFatigue` looking backward only), exactly as before
+task #22/#31. `verticalDramaSeriesAdBannerOverlay` (F131W) and
+`verticalDramaSeriesCharacterRefV2` (F131Z) are independent of every other
+2026-07-07/08/09 flag — banners are a wholly separate layer (§13.3) and
+character-ref-v2 only changes which reference images are attached to
+generation (§9.3). `verticalDramaSeriesDeepStoryDrafts` (F131T) gates
+whether §8.2.3's actions exist at all; `verticalDramaSeriesVoiceChain`
+(F131U, §14.2) and `verticalDramaSeriesStoryLock` (F131V, §16.3) are each
+independent single-purpose gates.
+
+**Current tenant rollout** (verified directly against the `tenants` table,
+`featureFlags` column, 2026-07-09): `tenant-001` and `tenant-ZCSKEM9s` both
+have ENABLED — `verticalDramaSeriesAdBannerOverlay` (F131W),
+`verticalDramaSeriesFormatProfiles` (F131X),
+`verticalDramaSeriesTieInReplan` (F131Y),
+`verticalDramaSeriesCharacterRefV2` (F131Z),
+`verticalDramaSeriesDeepStoryDrafts` (F131T), and
+`verticalDramaSeriesVoiceChain` (F131U) — alongside every 2026-07-07 flag and
+all base-feature flags. **`verticalDramaSeriesStoryLock` (F131V) is NOT
+present in either tenant's `featureFlags` JSON** — the code shipped and the
+plan's progress log marks task #19 done, but the flag has not actually been
+turned on for any tenant, so Story Lock enforcement (§16.3) is not yet
+observable in production despite being deployed. `verticalDramaSeriesShareLinks`
+(F131AA) does not exist as a registerable flag at all yet (§24 — not
+implemented). Every flag DEFAULT in `shared/featureFlags.ts` itself remains
+`false`; the tenant values above are runtime overrides, not code defaults.
+
+Grandfathering rule (flags turned ON mid-series): enabling any of these
+flags never retro-locks existing work. Previously completed stages,
+artifacts, and approvals remain valid; gates evaluate only stage runs
+STARTED after enablement. An in-flight episode continues from its current
+stage — the next NEW run of a gated stage is the first thing gated. No
+historical scorecard/report is required for work that predates the flag.
 
 Rollout:
 
@@ -2916,6 +4394,13 @@ Required sections:
 7. `section-07-audio-dialogue-subtitles.md`
 8. `section-08-provider-qc-product-tie-in.md`
 9. `section-09-assembly-export-artifacts.md`
+10. `section-10-ui-redesign-genre-presets-story-generation.md` (implementation record, shipped 2026-07-04)
+11. `section-11-user-and-admin-preset-ownership.md`
+12. `section-12-production-wizard-guided-workflow.md` (§8.8)
+13. `section-13-story-dialogue-density-reform.md` (§7.7, §14.1 — added 2026-07-07)
+14. `section-14-script-quality-qc-auto-improve.md` (§16.1, §13.1 loop wiring — added 2026-07-07)
+15. `section-15-genre-preset-visual-identity-and-mix.md` (§8.2.2 — added 2026-07-07)
+16. `section-16-ad-banner-overlay.md` (§13.3, §6.8.3 — implementation record, shipped 2026-07-08/09)
 
 Each section must include goal, dependencies, files, test-first list, implementation tasks, acceptance, and verification commands.
 
@@ -2942,6 +4427,21 @@ Unit:
 - Storyboard Review handoff mapping
 - duplicate handoff prevention
 - media asset tenant/project ownership checks
+- speech-budget estimator determinism and coverage classification (§7.7.1: target/min/error bands per clip and per episode)
+- dialogue-complete script validation (underfilled script ends `needs_repair`; per-beat `dialogue_lines[]` + `estimated_speech_seconds` present)
+- per-shot speech budget derivation and persisted `sourceBeatIndexes` mapping
+- visual-only shot rules (`silenceIntent` required, max 2 of 9, excluded from clip gate but counted in episode floor)
+- arc drift detection triggers and `arc_replan_proposal` construction (future-episodes-only invariant)
+- breakdown versioning (append-only `breakdownVersions[]`, active pointer moves, produced episodes untouched)
+- quality scorecard v2 superset validation (v1 artifacts still parse; deterministic metrics embedded)
+- quality policy floors and gate semantics (guided blocks, expert advisory)
+- auto-improve loop: round counting, canonical repair-group order (script → storyboard → dialogue → tie_in when enabled), regression guard keeps best version, escalation after max rounds
+- flag grandfathering: enabling wizard/gate flags mid-series never invalidates completed stages; gates apply only to stage runs started after enablement
+- tie-in naturalness report: qualitative + deterministic merge, 0-100 mapping, pass threshold, ad-speak lexicon hits
+- tie-in defer fallback updates fatigue history and raises arc re-plan when schedule breaks
+- production wizard state derivation (per section-12 resolver test list, incl. new `script_qc` step and density gate reason codes)
+- preset visual identity flow-through (bible → character prompts → start-frame/contact-sheet prompts → motion prompts) and deterministic visual-identity merge rules (§8.2.2)
+- preset mix v2: weights, `facetAssignments` pre-pass, `blendReport` coverage per preset, deterministic blend QC gate with one corrective retry, v1 output still parseable
 
 Integration:
 
@@ -2952,12 +4452,16 @@ Integration:
 - native audio unsupported -> fallback requires visible approval
 - duplicate handoff key opens existing Storyboard Review project
 - final assembly manifest imports generated clips and creates pending memory update
+- underfilled episode 1 script -> quality loop runs -> reaches floor or escalates with both reports preserved -> wizard unblocks video prompts only on pass
+- episode with tie-in below naturalness threshold -> auto tie-in rewrite -> still failing -> defer removes placement, updates fatigue, and future planning re-places the product
+- dense episode consumes future beats -> `arc_replan_proposal` raised -> approval versions the breakdown -> episode N+1 plans from the new active version
 
 Browser/E2E:
 
 - Dashboard menu visible only when flag is on
 - create series wizard
 - episode builder approval checkpoints
+- production wizard: one primary CTA per state, gate steps show scorecard/coverage evidence, spot repair re-enters at earliest stale step (no full re-run)
 - Storyboard Review opens from episode handoff
 - mobile/tablet/desktop responsive checks for the workspace
 
@@ -2980,7 +4484,7 @@ MVP decisions:
 2. The first/last-frame bridge production allowlist is `VeoCompatibleVideoProvider` only, backed by tenant/provider config that proves 9:16, duration, first/last-frame input, and audio policy support. `MockVideoProvider` is allowed for dry-run/tests. `ExternalImageToVideoProvider` requires explicit tenant/provider configuration. `OpenAIVideoProvider` is prompt-only or capability-gated fallback for MVP, not the human-face bridge default.
 3. Product tie-in approval is mandatory for MVP and beta, including all regulated categories. Post-beta tenant configurability may be added only after audit logs, disclosure storage, and claim review metrics are stable.
 4. Long-series memory uses append-only events plus compact summaries for MVP. Search/vector memory is deferred until 30+ episode pilots show that summary retrieval is insufficient.
-5. Final MP4 assembly should use the existing SmartSpecPro/Storyboard Review render-export path when available. If unavailable, the run enters `assembly_ready` with `final_episode_assembly_manifest`, concat/subtitle/audio/export metadata, and no automatic memory mutation.
+5. ~~Final MP4 assembly should use the existing SmartSpecPro/Storyboard Review render-export path when available. If unavailable, the run enters `assembly_ready` with `final_episode_assembly_manifest`, concat/subtitle/audio/export metadata, and no automatic memory mutation.~~ **Superseded 2026-07-09 (task #21, spec §12.4):** rather than reusing an existing render-export path, a dedicated Node ffmpeg render graph (`verticalDramaFinalRenderGraph.ts`) was built for this feature — concat-only stays as the byte-identical regression-locked baseline, with dialogue-audio mixdown, subtitle burn-in, and ad-banner compositing added on top. `assembly_ready` (deterministic inputs present, render not yet executed) remains a valid intermediate state, but "final render is unavailable" is no longer the expected steady state — it is now available and shipped.
 
 Deferred choices must not block implementation. They become follow-up specs only after MVP acceptance passes.
 
@@ -3002,3 +4506,208 @@ MVP is acceptable when:
 - Provider capability gates prevent unsupported human-face/start-frame/native-audio behavior.
 - Product tie-in metadata is natural, auditable, removable, and disclosure-aware.
 - Tests prove skill loading, imported GitHub contract parity, schema validation, duration, routing, provider job lifecycle, run artifact ledger, final assembly, memory continuity, asset ownership, audio/subtitle handling, and Storyboard Review handoff.
+
+Production-grade upgrade acceptance (2026-07-07 — all six must hold with the
+§17 upgrade flags on):
+
+- A 60-second episode plans and passes with ~35-50 seconds of estimated
+  speech; no speaking clip sits below the error coverage floor; density is a
+  generation INPUT (bible `contentBudget`, dialogue-complete script,
+  duration-aware first-pass prompts), not only a post-hoc gate.
+- Adding story material to one episode cannot silently corrupt the season:
+  material drift raises an `arc_replan_proposal`, produced episodes stay
+  immutable, and the next episode plans from the approved active breakdown
+  version.
+- The guided production wizard is the primary episode path: one primary CTA,
+  quality/density gates as visible steps, per-target spot repair with stale
+  propagation only (never a full rebuild), expert stage surface still
+  reachable.
+- The quality loop measures intensity (hook, reversals, escalation,
+  cliffhanger, continuity) plus deterministic density metrics, auto-improves
+  up to policy rounds with a regression guard, and escalates with evidence
+  instead of spinning.
+- A tie-in episode ships only with a passing naturalness report (>= 70) or a
+  recorded human override (non-regulated only); failed placements defer with
+  fatigue/schedule bookkeeping instead of shipping forced ads.
+- A series created from a `sci_fi_mecha`-family preset carries its visual
+  identity to pixels (character refs, start frames, motion prompts), and a
+  mixed preset's `blendReport` proves every selected preset contributed to
+  at least `minFacetsPerPreset` facets (§8.2.2).
+
+---
+
+## 23. Production-Grade Upgrade Traceability (2026-07-07)
+
+Requirement-to-spec mapping for the five production-feedback requirements.
+The completeness audit for this upgrade lives in
+`reviews/production-grade-upgrade-audit-2026-07-07.md`.
+
+| # | Requirement (2026-07-07 feedback) | Spec sections | Section files | Key contracts |
+|---|---|---|---|---|
+| 1 | Dialogue continuity/density: eliminate silent gaps by reforming story planning top-down (bible → episode → shots), with safe cross-episode propagation | §7.7 (ladder, budget, arc re-plan), §6.1, §6.6, §14.1, §7.6 (new memory kinds) | section-13; section-04/07 interplay | `dialogueQuality.ts` constants, `VerticalDramaEpisodeContentBudget`, `VerticalDramaPerShotSpeechBudget`, `arc_replan_proposal`/`arc_replan_applied`, `breakdownVersions[]` |
+| 2 | Wizard-guided flow (no memorized step order) that still allows spot fixes without rebuilding | §8.8, §8.2 (series wizard, unchanged) | section-12 (updated), section-13/14 gates | `VerticalDramaProductionWizardStep` (+ `script_qc`), stale propagation table, `verticalDramaSeriesProductionWizard` |
+| 3 | Story intensity + better QC + automatic post-QC improvement | §16.1 (v1 record + v2 loop), §6.8.1 | section-14 | scorecard v2, `VerticalDramaQualityPolicy`, auto-improve loop w/ regression guard, `runEpisodeQualityReview` / `applyQualityReviewSuggestions` |
+| 4 | Production-grade tie-in seamlessness with measured script quality | §13.1, §16.1 (tie_in dimension), §6.7 | section-08 (updated), section-14 | `VerticalDramaTieInQualityReport`, naturalness >= 70 gate, defer fallback, visual grounding QC |
+| 5 | Sci-fi/mecha aesthetic presets that reproduce the look end-to-end + verifiably real preset blending (2026-07-07, with reference images) | §8.2.2, §17 | section-15 | `VerticalDramaPresetVisualIdentity`, flow-through rule, `sci_fi_mecha` seed family, mix v2 weights + `blendReport` + deterministic blend QC gate |
+
+Cross-requirement invariants:
+
+- every new gate is flag-layered (§17) and additive — shipped v1 behavior is
+  the flags-off baseline;
+- every automated rewrite is append-only, audited, credit-tracked, LLM-only;
+- every blocking state names its unblock repair and the wizard surfaces it.
+
+### 23.1 Post-Upgrade Deltas Traceability (2026-07-08 to 2026-07-09)
+
+Requirement-to-spec mapping for tasks shipped after the 2026-07-07 upgrade
+above. Ground truth for this table: `planning/vertical-drama-production-grade-upgrade/plan.md`
+progress log, `planning/vertical-drama-ad-banner-overlay/plan.md`,
+`planning/vertical-drama-tie-in-replan/plan.md`, and direct code/DB
+verification (feature flag file, schema.ts, tenant `featureFlags` rows).
+
+| Task | Delta | Spec sections | Flag | Status (2026-07-09) |
+|---|---|---|---|---|
+| #28 | Async story-job plumbing (submit/enqueue/poll) for the 4 story mutations | §8.2.3 | (mechanism only — gated by each action's own flag) | Deployed |
+| #10/W10-W11 | Deep story drafts + premium multi-round mode | §8.2.3 | `verticalDramaSeriesDeepStoryDrafts` (F131T) | Deployed, enabled both tenants |
+| #29 | Season dramaturgy critic skill + workflow, 10 finding kinds | §6.8.2, §16.2 | (rides `verticalDramaSeriesDeepStoryDrafts`, no dedicated flag) | Deployed |
+| #23 | Length-aware format profiles | §7.8 | `verticalDramaSeriesFormatProfiles` (F131X) | Deployed, enabled both tenants |
+| #22 | Tie-in aware deep story drafts | §13.2 | `verticalDramaSeriesTieInReplan` (F131Y) | Deployed, enabled both tenants |
+| #31 | Tie-in defer → real arc-replan proposal | §7.7.3, §13.1 (already updated in-flight) | `verticalDramaSeriesTieInReplan` (F131Y) | Deployed, enabled both tenants |
+| #30 | Ad banner overlay (studio + per-episode + compositing) | §6.8.3, §13.3, §12.4 | `verticalDramaSeriesAdBannerOverlay` (F131W) | Deployed, enabled both tenants |
+| #26 | Beyond-plan sanity | §11.8 | (no dedicated flag — always-on guard) | Deployed |
+| #21 | Final render suite (mixdown, subtitle burn-in, banner compositing, batch render) | §12.4 | (no dedicated flag — reads §14.2/§13.3 flags for optional inputs) | Deployed |
+| #27-A | Character reference resolution v2 | §9.3 | `verticalDramaSeriesCharacterRefV2` (F131Z) | Deployed, enabled both tenants |
+| #15/W12 | Voice casting + dialogue audio generation | §14.2 | `verticalDramaSeriesVoiceChain` (F131U) | Deployed, enabled both tenants |
+| #19 | Story Lock | §16.3 | `verticalDramaSeriesStoryLock` (F131V) | Deployed, **NOT enabled on any tenant** (verified against `tenants.featureFlags`) |
+| #20 | Editable draft dialogue | §8.2.3 (implicit — draft editing UI) | rides `verticalDramaSeriesDeepStoryDrafts` | Deployed |
+| #32 | Read-only series share links (Collab-lite L1) | §24 | `verticalDramaSeriesShareLinks` (F131AA) — reserved name only | **NOT implemented** — design-only |
+
+Known small debts closed in the same waves (not previously spec-documented
+at all, so nothing above needed correcting — noted here only so this spec
+now covers them going forward): the production wizard's `videoPrompts.stale`
+input is a real artifact-timestamp signal computed from
+`verticalDramaRunArtifacts` (storyboard newer than the motion-prompt pack =
+stale), not the internal placeholder it started as (that framing lived only
+in code comments / the implementation plan log, never in this spec);
+job-finish notifications exist for the async story jobs (§8.2.3); premium
+deep-draft mode is selectable at series bootstrap, not only after creation
+(§8.2.3).
+
+---
+
+## 24. Collaboration — Read-Only Series Share Links (Collab-lite L1) (proposed 2026-07-09; NOT YET IMPLEMENTED)
+
+> Status flag for this entire section: **PROPOSED / DESIGN-LOCKED, NOT ON
+> DISK.** Verified 2026-07-09: no `vertical_drama_series_share_links` table
+> in `apps/web/drizzle/schema.ts`, no `verticalDramaShare` router, no
+> `createSeriesShareLink`/`SeriesShareLink` symbol anywhere in
+> `apps/web`, and no `verticalDramaSeriesShareLinks` flag registered in
+> `shared/featureFlags.ts`. The only artifact that exists is the design
+> document this section summarizes: `planning/vertical-drama-share-links/plan.md`
+> (owner-approved 2026-07-09, "ทำให้เลย"). This section exists so a future
+> developer implementing task #32 has the agreed design in the spec, not
+> only in a planning doc, and so nobody mistakes the ABSENCE of code for an
+> undocumented gap.
+
+### 24.1 Scope And Principle
+
+Read-only, Google-Docs-view-only-style share links for a series — NOT
+real-time co-editing. Scoped down deliberately from a fuller "collaborator"
+model because ownership checks are currently scattered across ~40 call sites
+in the episodes router with no centralized authorization layer; rather than
+retrofit all 40, this design adds one narrow, easy-to-audit READ path:
+one new table, one public (unauthenticated) procedure, one viewer page. Full
+co-editing is an explicitly separate, later phase.
+
+Whitelist projection is the core safety property: a share-link viewer must
+see ONLY story content. Credits/pricing/cost, provider/model IDs, API
+config, any user's email/name, tenant settings, `forbiddenClaims`, and
+internal IDs beyond what the viewer UI needs are never included in the
+response shape — this is an allow-list projection (explicit fields listed
+in the DTO), not a deny-list redaction of a full row.
+
+### 24.2 Proposed Schema
+
+New table (would require the standard Database Safety Protocol backup/verify
+cycle at implementation time — not yet run):
+
+```text
+vertical_drama_series_share_links
+  id serial PK
+  tenantId varchar
+  seriesId int (FK -> vertical_drama_series, cascade)
+  createdByUserId int
+  tokenHash varchar(64) UNIQUE       -- SHA-256 of the raw token; raw token NEVER stored
+  scope varchar default 'series_read'
+  expiresAt timestamptz NOT NULL
+  revokedAt timestamptz NULL
+  createdAt timestamptz default now()
+  lastAccessedAt timestamptz NULL
+  accessCount int default 0
+  -- + index on tokenHash
+```
+
+Token handling follows the SAME pattern this codebase already uses for
+`opencode_api_keys.key_hash`: a 32-byte random token is base64url-encoded,
+shown to the creating user EXACTLY ONCE at creation time, and only its
+SHA-256 hash is ever persisted. A dead link (expired or revoked) and an
+unknown token both return the SAME generic error ("ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว")
+so the endpoint cannot be used to enumerate valid tokens.
+
+### 24.3 Proposed API
+
+Owner-side mutations (on the existing `verticalDramaSeries` router,
+ownership-scoped like every other mutation on that router):
+
+- `createSeriesShareLink({ seriesId, expiresInDays: 7 | 30 })` → generates
+  the token, stores only its hash, returns `{ url, expiresAt }` ONCE;
+- `listSeriesShareLinks({ seriesId })` → metadata only (created/expires/
+  access count/revoked state) — never the token or its hash;
+- `revokeSeriesShareLink({ seriesId, linkId })` → sets `revokedAt`;
+- hard cap: 5 active links per series.
+
+Public (unauthenticated) query, on a new `verticalDramaShare` router:
+
+- `verticalDramaShare.getSharedSeries({ token })` → hashes the token, looks
+  up the row, checks `expiresAt`/`revokedAt` server-side on EVERY request,
+  bumps `accessCount`/`lastAccessedAt`, applies the same rate limiter this
+  codebase already uses for other public/login endpoints, and returns the
+  whitelist DTO: series `{ title, genre, tone, plannedEpisodeCount }`,
+  overview `{ logline, mainPlot, seasonArc }`, `episodes[]` `{ episodeNumber,
+  title, status (coarse: draft/scripted/has-video), logline }`, with an
+  optional per-episode dialogue-text-only view (no image/video prompts ever
+  exposed).
+
+### 24.4 Proposed Client
+
+- series detail page: a "แชร์" (share) button opens a dialog to create a
+  link (choose 7 or 30-day expiry), shows the URL with a copy button and a
+  "this link will not be shown again" warning, and lists existing links with
+  a revoke action;
+- a new unauthenticated route `/share/vd/:token` (same "route bypasses auth"
+  pattern already used by `/login`/`/signup`) renders the read-only viewer:
+  title, overview, episode list, Thai status chips, a persistent "มุมมองผู้เยี่ยมชม
+  (อ่านอย่างเดียว)" banner, no action buttons of any kind, and a clear dead-link
+  error state.
+
+### 24.5 Rollout (proposed)
+
+Flag `verticalDramaSeriesShareLinks` (F131AA) would gate the owner-side
+share button; the public viewer route would itself check for the link row's
+existence rather than the flag (since a link can only be CREATED while the
+flag is on, this still fully controls exposure at the source). A dedicated
+read-only security review (token handling, projection leak surface, rate
+limiting, tenant isolation of the public path) is planned BEFORE deploy, per
+the design doc.
+
+### 24.6 Acceptance (once implemented)
+
+- creating a link never stores the raw token, only its hash;
+- an expired, revoked, or unknown token all produce the identical generic
+  error;
+- the public DTO contains none of the forbidden fields (asserted by an
+  explicit absence test list, not just "looks right");
+- at most 5 active links per series; revoking a link takes effect
+  immediately (no caching window);
+- owner-side mutations enforce series ownership identically to every other
+  mutation on `verticalDramaSeries`.

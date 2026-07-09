@@ -1,5 +1,5 @@
 import type { TenantFeatureFlagKey } from "@shared/featureFlags";
-import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags.ts";
+import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
 
 export interface TenantFlagInfo {
   key: TenantFeatureFlagKey;
@@ -147,6 +147,55 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
     ],
   },
   {
+    title: "Age Safety",
+    icon: "🛡️",
+    flags: [
+      { key: "ageSafetyPolicyEnabled", label: "Age Safety Policy", description: "Central age-aware safety policy master gate (F128)" },
+      { key: "ageSafetyObserveMode", label: "Observe Mode", description: "Audit would-block decisions without blocking" },
+      { key: "ageSafetyProfileCompletionGate", label: "Profile Completion Gate", description: "Require DOB/country completion after login" },
+      { key: "ageSafetyChatEnforcement", label: "Chat Enforcement", description: "Enforce age policy on chat prompt/output paths" },
+      { key: "ageSafetyMediaEnforcement", label: "Media Enforcement", description: "Enforce age policy on media prompt/job paths" },
+      { key: "ageSafetyProtectedSurfaceUnlock", label: "Protected Surface Unlock", description: "Security PIN protected-surface unlock" },
+      { key: "ageSafetyGeneratedAssetViewerPolicy", label: "Asset Viewer Policy", description: "Viewer-time generated asset policy" },
+      { key: "ageSafetyEmergencyChildSafeMode", label: "Emergency Child-Safe Mode", description: "Force child-safe behavior across protected surfaces" },
+    ],
+  },
+  {
+    title: "Vertical Drama Series",
+    icon: "🎬",
+    flags: [
+      { key: "verticalDramaSeries", label: "Vertical Drama Series", description: "Master gate for the Vertical Drama Series workspace (F131)" },
+      { key: "verticalDramaSeriesDashboardMenu", label: "Dashboard Menu", description: "Show the Vertical Drama Series menu entry" },
+      { key: "verticalDramaSeriesSkillChain", label: "Skill Chain", description: "Vertical drama skill-chain execution" },
+      { key: "verticalDramaSeriesCharacterStock", label: "Character Stock", description: "Series character stock + visual bible surfaces" },
+      { key: "verticalDramaSeriesMemory", label: "Series Memory", description: "Series memory summary/seed surfaces" },
+      { key: "verticalDramaSeriesProductTieIn", label: "Product Tie-in", description: "Product tie-in configuration surfaces" },
+      { key: "verticalDramaSeriesStartFrames", label: "Start Frames", description: "Start-frame render/plan surfaces" },
+      { key: "verticalDramaSeriesFirstLastFrameBridge", label: "First/Last Frame Bridge", description: "First/last frame bridge motion mode" },
+      { key: "verticalDramaSeriesStoryboardReviewHandoff", label: "Storyboard Review Handoff", description: "Storyboard Review project handoff" },
+      { key: "verticalDramaSeriesProviderRouting", label: "Provider Routing", description: "Provider routing selection for series stages" },
+      { key: "verticalDramaSeriesQcRepair", label: "QC + Repair", description: "QC + repair loop surfaces" },
+      { key: "verticalDramaSeriesDialogueAudio", label: "Dialogue Audio", description: "Dialogue/audio planning surfaces" },
+      { key: "verticalDramaSeriesSubtitles", label: "Subtitles", description: "Subtitle planning surfaces" },
+      { key: "verticalDramaSeriesSubShots", label: "Sub-Shots", description: "Opt-in sub-shot decomposition editor" },
+      { key: "verticalDramaSeriesSpeechBudget", label: "Speech Budget (density)", description: "Density-first planning + dialogue coverage gates (spec §7.7)" },
+      { key: "verticalDramaSeriesArcReplan", label: "Arc Re-plan", description: "Season arc drift detection + re-plan proposals (spec §7.7.3)" },
+      { key: "verticalDramaSeriesQualityLoopV2", label: "Quality Loop v2", description: "Scorecard v2 + bounded auto-improve loop (spec §16.1); requires Speech Budget" },
+      { key: "verticalDramaSeriesTieInQc", label: "Tie-in QC", description: "Tie-in naturalness QC gates (spec §13.1); requires Speech Budget + Quality Loop v2" },
+      { key: "verticalDramaSeriesProductionWizard", label: "Production Wizard", description: "Guided 11-step episode wizard (spec §8.8); requires Quality Loop v2" },
+      { key: "verticalDramaSeriesPresetMixV2", label: "Preset Mix v2", description: "Preset visual identity + verifiable blending (spec §8.2.2)" },
+      { key: "verticalDramaSeriesDeepStoryDrafts", label: "Deep Story Drafts", description: "สร้างร่าง 9 ช็อต + บทพูดทุกตอนตั้งแต่รอบเนื้อเรื่องเต็ม (F131T)" },
+      { key: "verticalDramaSeriesVoiceChain", label: "Voice Chain", description: "คัดเสียงต่อตัวละคร + สร้างเสียงพูดทั้งตอน + timeline เสียงเข้า assembly (F131U)" },
+      { key: "verticalDramaSeriesStoryLock", label: "Story Lock", description: "ล็อกเนื้อเรื่องไว้ที่หน้าภาพรวม — ซ่อม/ปรับระดับตอนแก้ได้เฉพาะการนำเสนอ ไม่แก้เนื้อเรื่อง (F131V)" },
+      { key: "verticalDramaSeriesAdBannerOverlay", label: "Ad Banner Overlay", description: "สตูดิโอออกแบบแบนเนอร์โฆษณาซ้อนวิดีโอระดับซีรีส์ — พรีเซ็ตสไตล์/ตำแหน่ง, สร้าง prompt + ภาพ (F131W)" },
+      { key: "verticalDramaSeriesFormatProfiles", label: "Format Profiles", description: "โปรไฟล์ความยาวซีรีส์ — ซีรีส์สั้นมาก (≤5 ตอน) ได้กติกาเฉพาะ: บทแน่นทุกตอน, hook 3 วิ, เกณฑ์นักวิจารณ์ตามสัดส่วน (F131X)" },
+      { key: "verticalDramaSeriesTieInReplan", label: "Tie-in Replan", description: "เลื่อนสินค้าออกจากตอน → สร้างข้อเสนอย้ายไปตอนอนาคตอัตโนมัติ ผ่านการอนุมัติแผนซีซั่น (F131Y)" },
+      { key: "verticalDramaSeriesCharacterRefV2", label: "Character Ref v2", description: "ส่งภาพอ้างอิงตัวละคร 2 ใบ (portrait + sheet) เข้าการสร้างภาพ เพื่อความนิ่งของหน้าตา (F131Z)" },
+      { key: "verticalDramaSeriesShareLinks", label: "Share Links", description: "ลิงก์แชร์ซีรีส์แบบอ่านอย่างเดียว มีวันหมดอายุ เพิกถอนได้ (F131AA)" },
+      { key: "verticalDramaSeriesNativeAudioPrompts", label: "Native Audio Prompts", description: "กำกับเสียง SFX+บรรยากาศในตัวคลิปผ่าน prompt วิดีโอ (โมเดลที่รองรับ) — ไม่มีเสียงพูด/เพลง (F131AC)" },
+    ],
+  },
+  {
     title: "Planner & Orchestrator",
     icon: "🎯",
     flags: [
@@ -233,6 +282,7 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "marketplaceHyperframesWorkerEnabled", label: "HyperFrames Worker Queue", description: "Allow this tenant to queue HyperFrames preview/render worker jobs" },
       { key: "marketplaceHyperframesLibrarySaveEnabled", label: "HyperFrames Library Save", description: "Allow completed HyperFrames renders to be saved to Library" },
       { key: "marketplaceHyperframesOperatorEnabled", label: "HyperFrames Operator Controls", description: "Allow delegated tenant operators to inspect, replay, and manage HyperFrames renders" },
+      { key: "hyperframesWorkerFinalComposite", label: "HyperFrames Final Composite", description: "Worker-only HyperFrames final composite rendering (F92A)" },
       { key: "storyboardPreviewMatchCaptureEnabled", label: "Preview Match Capture", description: "Use browser-captured Storyboard preview output instead of legacy final render" },
       { key: "storyboardPreviewMatchCaptureServerWorkerEnabled", label: "Preview Match Worker", description: "Enable STORYBOARD_PREVIEW_MATCH_CAPTURE_SERVER_WORKER_ENABLED for this tenant" },
       { key: "storyboardPreviewMatchCaptureHighEnabled", label: "Preview Match High Quality", description: "Allow high-quality browser capture jobs" },

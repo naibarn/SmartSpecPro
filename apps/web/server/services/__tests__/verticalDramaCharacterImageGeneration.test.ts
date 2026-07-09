@@ -43,7 +43,10 @@ import {
   getRoleTierNegativeTerms,
   extractAgeFromDescription,
   detectChildGenderHint,
+  readPresetVisualIdentityFromBible,
+  pickMatchingCharacterArchetype,
 } from "../verticalDramaCharacterImageGeneration";
+import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import {
@@ -781,5 +784,152 @@ describe("generateCharacterVisualPrompts", () => {
     );
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Preset visual identity flow-through (spec §8.2.2 flow-through rule,        */
+/* section-15 change D)                                                       */
+/* -------------------------------------------------------------------------- */
+
+function fullIdentity(overrides: Partial<VerticalDramaPresetVisualIdentity> = {}): VerticalDramaPresetVisualIdentity {
+  return {
+    styleName: "Neon Bio-Jungle Tech",
+    palette: ["Teal", "Bioluminescent Green", "Deep Jungle Black"],
+    lighting: "bioluminescent rim light",
+    environmentMotifs: ["glowing orchids"],
+    wardrobeGrammar: ["techwear scout suit", "tactical straps"],
+    signaturePropsAndCompanions: ["cyber tiger companion"],
+    cameraGrammar: "low-angle hero portrait, centered 9:16",
+    characterArchetypes: [
+      { role: "นางเอก/องครักษ์ป่า", look: "techwear scout with glowing seams" },
+      { role: "สหายสัตว์ประหลาด", look: "tiger-machine hybrid, glowing blue plating" },
+    ],
+    imagePromptFragments: {
+      positive: ["bioluminescent jungle glow", "neon teal-green rim light"],
+      negative: ["urban skyline", "daylight desert"],
+    },
+    ...overrides,
+  };
+}
+
+describe("readPresetVisualIdentityFromBible", () => {
+  it("returns undefined for a null/absent bible", () => {
+    expect(readPresetVisualIdentityFromBible(null)).toBeUndefined();
+    expect(readPresetVisualIdentityFromBible(undefined)).toBeUndefined();
+    expect(readPresetVisualIdentityFromBible({})).toBeUndefined();
+  });
+
+  it("returns undefined for a legacy bible with no presetVisualIdentity key (never throws)", () => {
+    expect(
+      readPresetVisualIdentityFromBible({ visualStyle: "some prose", logline: "x" }),
+    ).toBeUndefined();
+  });
+
+  it("returns undefined (never throws) for a malformed presetVisualIdentity value", () => {
+    expect(
+      readPresetVisualIdentityFromBible({ presetVisualIdentity: { styleName: "incomplete" } }),
+    ).toBeUndefined();
+  });
+
+  it("parses a valid presetVisualIdentity back out of the bible", () => {
+    const identity = fullIdentity();
+    expect(readPresetVisualIdentityFromBible({ presetVisualIdentity: identity })).toEqual(identity);
+  });
+});
+
+describe("pickMatchingCharacterArchetype", () => {
+  const identity = fullIdentity();
+
+  it("matches an archetype whose role overlaps the character's own role (compound role split on '/')", () => {
+    const archetype = pickMatchingCharacterArchetype(identity, "องครักษ์ป่า");
+    expect(archetype?.look).toBe("techwear scout with glowing seams");
+  });
+
+  it("matches via the character's description when role alone doesn't overlap", () => {
+    // The description embeds the archetype's compound role phrase
+    // ("สหายสัตว์ประหลาด") verbatim/contiguously — Thai has no mandatory
+    // inter-word spacing, so the match is contiguous-substring based (see
+    // the function's own doc comment); `role` here ("เพื่อนซี้") deliberately
+    // shares no substring with either archetype's role so only the
+    // description drives the match.
+    const archetype = pickMatchingCharacterArchetype(
+      identity,
+      "เพื่อนซี้",
+      "สัตว์เลี้ยงไซเบอร์ที่เป็นสหายสัตว์ประหลาดคู่ใจของตัวเอก",
+    );
+    expect(archetype?.look).toContain("tiger-machine hybrid");
+  });
+
+  it("falls back to the FIRST archetype when nothing matches", () => {
+    const archetype = pickMatchingCharacterArchetype(identity, "ตัวร้ายหลัก", "no overlap here");
+    expect(archetype).toBe(identity.characterArchetypes[0]);
+  });
+
+  it("returns undefined when the identity has no archetypes at all", () => {
+    const empty = fullIdentity({ characterArchetypes: [] });
+    expect(pickMatchingCharacterArchetype(empty, "any role")).toBeUndefined();
+  });
+});
+
+describe("generateCharacterVisualPrompts — preset visual identity flow-through", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+  });
+
+  it("weaves the archetype look + wardrobe + palette into the LLM user prompt when presetVisualIdentity is supplied", async () => {
+    const identity = fullIdentity();
+
+    await generateCharacterVisualPrompts(
+      baseParams({ role: "องครักษ์ป่า", presetVisualIdentity: identity }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain("Neon Bio-Jungle Tech");
+    expect(userMessage).toContain("Teal, Bioluminescent Green, Deep Jungle Black");
+    expect(userMessage).toContain("techwear scout suit, tactical straps");
+    expect(userMessage).toContain("techwear scout with glowing seams"); // matched archetype look
+  });
+
+  it("does NOT add any preset visual identity instruction when presetVisualIdentity is absent (legacy tolerant)", async () => {
+    await generateCharacterVisualPrompts(baseParams());
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).not.toContain("preset visual identity");
+  });
+
+  it("merges the preset identity's negative fragments into the returned negativePrompt", async () => {
+    const identity = fullIdentity();
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ presetVisualIdentity: identity }),
+    );
+
+    expect(result.negativePrompt).toContain("urban skyline");
+    expect(result.negativePrompt).toContain("daylight desert");
+    // Existing negative-prompt guarantees are still present (surgical addition).
+    expect(result.negativePrompt).toContain("no other people");
+  });
+
+  it("never contradicts the character's own description/age — instruction says the character description always wins", async () => {
+    const identity = fullIdentity();
+
+    await generateCharacterVisualPrompts(
+      baseParams({ presetVisualIdentity: identity, description: "เด็กชายวัยสิบสองปี" }),
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toMatch(/character's own description always wins/i);
   });
 });

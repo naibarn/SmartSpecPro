@@ -56,8 +56,13 @@ import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
   VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES,
 } from "@shared/verticalDramaSeries";
+import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 import { VD_PRODUCT_LOCK_VIDEO_INSTRUCTION } from "./verticalDramaProductTieIn";
 import { buildThaiAdComplianceInstruction } from "@shared/verticalDramaSeries/thaiAdCompliance";
+// Preset visual identity flow-through (spec §8.2.2 flow-through rule,
+// section-15 change D, Wave-4A completing the "motion prompts" leg of the
+// rule). Type-only — pure/shared, no runtime import needed here.
+import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -211,6 +216,16 @@ export interface VerticalDramaMotionPromptClipDialogueLine {
   emotion?: string;
   delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
   subtext?: string;
+  /**
+   * Additive (2026-07-07 unusable-dialogue fix) — set ONLY when this line
+   * came from `resolveShotDialogueLines`'s script-fallback branch
+   * (`server/routers/verticalDramaEpisodes.ts`'s `ShotDialogueLine.origin`),
+   * i.e. it was auto-recovered from the script's freeform scene dialogue and
+   * never reviewed by a dedicated dialogue-planning pass or a human edit.
+   * Lets the storyboard panel surface a subtle "from the script — check it
+   * sounds natural" hint. `undefined` everywhere else (default).
+   */
+  origin?: "script_fallback";
 }
 
 export interface VideoMotionPromptPackProjection {
@@ -240,6 +255,37 @@ export interface VideoMotionPromptPackProjection {
     /** Dialogue line(s) spoken during this clip (Phase 3.1) — optional, empty/omitted for silent clips. */
     dialogue?: VerticalDramaMotionPromptClipDialogueLine[];
   }>;
+}
+
+/**
+ * Preset visual identity flow-through for motion prompts (spec §8.2.2
+ * flow-through rule, section-15 change D; flag `verticalDramaSeriesPresetMixV2`,
+ * resolved/gated by the CALLER — this function never re-decides the flag,
+ * same convention `verticalDramaCharacterImageGeneration.ts`'s
+ * `buildPresetVisualIdentityInstruction` established for character prompts).
+ * Deterministically appends the preset's `styleName`/`lighting` as short
+ * style tokens onto a clip's final motion-prompt text — a CODE-level append
+ * (not just an LLM instruction), mirroring `projectMotionPromptPack`'s own
+ * `dialogueNote` append pattern below, so the tokens are guaranteed present
+ * regardless of what the LLM's own prose happened to include (spec §8.2.2's
+ * "verifiably real" blending philosophy — a mecha preset must not silently
+ * degrade back to a generic-looking clip prompt).
+ *
+ * No-op (returns `prompt` unchanged) when `identity` is absent (flag off, or
+ * the series carries no preset visual identity).
+ */
+export function appendPresetVisualIdentityStyleTokensToMotionPrompt(
+  prompt: string,
+  identity: Pick<VerticalDramaPresetVisualIdentity, "styleName" | "lighting"> | undefined,
+): string {
+  if (!identity?.styleName && !identity?.lighting) return prompt;
+  const tokens = [
+    identity.styleName ? `visual style: ${identity.styleName}` : null,
+    identity.lighting ? `lighting: ${identity.lighting}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+  return `${prompt} Preset style tokens (${tokens}).`;
 }
 
 /** Project the raw skill output onto the pipeline's typed stage-payload shape. */
@@ -766,6 +812,15 @@ const shotVideoPromptOutputSchema = z
      * non-tie-in shots, or categories with no mandated line.
      */
     requiredDisclosure: z.string().optional(),
+    /**
+     * Vertical Drama task #36 — model-directed ambient bed + SFX cues for
+     * this shot; the skill only produces this when the caller's payload
+     * stated `native_audio: true` (see `buildShotVideoPromptUserPrompt`'s
+     * `nativeAudioEnabled` branch below). Optional/additive — every
+     * pre-existing response (and every model that ignores the instruction)
+     * validates unchanged.
+     */
+    audio_direction: z.string().optional(),
   })
   .passthrough();
 
@@ -850,6 +905,42 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * in `@shared/verticalDramaSeries`.
    */
   thaiAccent?: VerticalDramaThaiAccent;
+  /**
+   * Story-density reform (spec §7.7.2 Layer 4, section-13, added
+   * 2026-07-07) — this shot's resolved clip duration in seconds. Optional
+   * so callers/tests that predate this field (or the
+   * `verticalDramaSeriesSpeechBudget` flag being off) are byte-identical;
+   * only rendered into the prompt when BOTH this and `targetSpeechSeconds`
+   * are provided. First-pass duration awareness — previously only
+   * `generateVerticalDramaClipDialogue`'s regeneration path
+   * (`buildClipDialogueUserPrompt`, this file) stated a duration/target-
+   * speech band; this brings the FIRST-pass video prompt builder to parity.
+   */
+  shotDurationSeconds?: number;
+  /**
+   * This shot's target spoken-dialogue seconds — the caller resolves this
+   * via the canonical `targetVerticalDramaSpeechSeconds(shotDurationSeconds)`
+   * (never a second speech-rate model, spec §7.7.1 hard rule 1). Optional,
+   * same flag-off/byte-identical rationale as `shotDurationSeconds`.
+   */
+  targetSpeechSeconds?: number;
+  /**
+   * Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt option,
+   * added 2026-07-09) — the CALLER's already-resolved decision of whether
+   * this generation should request native ambient bed + SFX prompt
+   * direction, i.e. the user's persisted `pack.nativeAudioEnabled`
+   * preference ANDed with the rollout gate (`VD_NATIVE_AUDIO_PROMPTS_ROLLOUT`
+   * in `@shared/verticalDramaSeries/nativeAudioPrompts`) — the router
+   * resolves BOTH before calling this function. This function still ANDs its
+   * own model-CAPABILITY check on top (`capabilities.supportsNativeAudio`,
+   * resolved from `selectedVideoModel` below) before actually activating the
+   * skill's NATIVE AUDIO DIRECTION section, mirroring exactly how
+   * `nativeAudioDialogue` is resolved internally rather than pre-computed by
+   * the caller. Optional/omitted (falsy) preserves today's byte-identical
+   * prompt output — no new instruction text, no `audioDirection` on the
+   * result.
+   */
+  nativeAudioEnabled?: boolean;
   idempotencyKey?: string;
 }
 
@@ -869,11 +960,24 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
   usedVision: boolean;
   /** Category-mandated Thai-law disclosure line, see `ShotVideoPromptOutput.requiredDisclosure`. */
   requiredDisclosure?: string;
+  /**
+   * Vertical Drama task #36 — this shot's model-directed ambient bed + SFX
+   * cues (SFX cues tied to visible on-screen actions first, ambient
+   * soundscape second — see the skill's "NATIVE AUDIO DIRECTION" section).
+   * Only ever set when `params.nativeAudioEnabled` AND the resolved model's
+   * `supportsNativeAudio` capability were BOTH true for this call — always
+   * `undefined` otherwise, so callers that never opt in see byte-identical
+   * results. A SEPARATE field, never inlined into `prompt` here — see
+   * `VerticalDramaMotionPromptPack["clips"][number].audioDirection`'s own
+   * doc comment (`@shared/verticalDramaSeries/contracts`) for why.
+   */
+  audioDirection?: string;
 }
 
 function buildShotVideoPromptUserPrompt(
   params: GenerateVerticalDramaShotVideoPromptParams,
   nativeAudioDialogue: boolean,
+  nativeAudioDirectionEnabled: boolean,
 ): string {
   const { shotContext } = params;
   const promptLanguage = params.promptLanguage ?? "en";
@@ -898,6 +1002,16 @@ function buildShotVideoPromptUserPrompt(
 
   return [
     `Shot number: ${params.shotNumber}`,
+    typeof params.shotDurationSeconds === "number"
+      ? `Clip duration: ${params.shotDurationSeconds}s`
+      : null,
+    // Story-density reform (spec §7.7.2 Layer 4, section-13, added
+    // 2026-07-07) — mirrors `buildClipDialogueUserPrompt`'s identical
+    // duration/target-speech phrasing above so both the FIRST-pass prompt
+    // (this function) and the regeneration path state the band consistently.
+    typeof params.shotDurationSeconds === "number" && typeof params.targetSpeechSeconds === "number"
+      ? `Target spoken-dialogue duration: about ${params.targetSpeechSeconds.toFixed(1)}s total across all returned lines. Avoid one-line dialogue that only fills 1-2 seconds of an 8-second clip unless the user explicitly requests silence.`
+      : null,
     shotContext.description ? `Shot description: ${shotContext.description}` : null,
     shotContext.camera ? `Camera setup: ${shotContext.camera}` : null,
     shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
@@ -926,6 +1040,16 @@ function buildShotVideoPromptUserPrompt(
     nativeAudioDialogue
       ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — when dialogue is present, embed the ${dialogueLanguageName} line(s) VERBATIM in the prompt (written in ${promptLanguageName} elsewhere, but the quoted spoken line itself stays in ${dialogueLanguageName}) with matching mouth/lip movement and delivery direction, and return them again in the "dialogue" array.`
       : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — when dialogue is present, describe mouth movement + acting direction only (in ${promptLanguageName}, no literal transcript in the prompt), and return the resolved ${dialogueLanguageName} lines in the "dialogue" array so the caller can route them to text-to-speech.`,
+    // Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt
+    // option) — states `native_audio: true` verbatim so the skill's
+    // conditional NATIVE AUDIO DIRECTION section activates (see
+    // skill.md's own trigger-condition wording). Omitted entirely
+    // (`null`, filtered out below) when the caller/capability didn't
+    // resolve to true — the user prompt text is then byte-identical to
+    // before this task.
+    nativeAudioDirectionEnabled
+      ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot: SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
+      : null,
     `Locale: ${params.locale}`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -993,13 +1117,23 @@ export async function generateVerticalDramaShotVideoPrompt(
     configJson: params.selectedVideoModel.configJson,
   });
   const nativeAudioDialogue = capabilities.nativeAudioDialogue === true;
+  // Vertical Drama task #36 — the caller (router) already resolved the
+  // rollout gate + the user's persisted preference into
+  // `params.nativeAudioEnabled`; this function ANDs its own model-capability
+  // check on top, mirroring `nativeAudioDialogue` immediately above.
+  const nativeAudioDirectionEnabled =
+    params.nativeAudioEnabled === true && capabilities.supportsNativeAudio === true;
   // Kept for parity with `verticalDramaVideoPromptFormatter.ts`'s own family
   // detection (not otherwise used here — the formatter is the single place
   // that builds the final provider-submitted prompt/payload; this function
   // only produces the base motion prompt + dialogue for it to format).
   void detectProviderFamily;
 
-  const userPromptText = buildShotVideoPromptUserPrompt(params, nativeAudioDialogue);
+  const userPromptText = buildShotVideoPromptUserPrompt(
+    params,
+    nativeAudioDialogue,
+    nativeAudioDirectionEnabled,
+  );
 
   const userContent = hasVision
     ? [
@@ -1142,5 +1276,216 @@ export async function generateVerticalDramaShotVideoPrompt(
     model,
     usedVision: hasVision,
     requiredDisclosure: data.requiredDisclosure || undefined,
+    // Vertical Drama task #36 — only ever copied from the model's response
+    // when the option was actually requested this call (never trust an
+    // unprompted field the model produced on its own), guaranteeing
+    // byte-identical results whenever the option is off/unsupported.
+    audioDirection: nativeAudioDirectionEnabled
+      ? data.audio_direction || undefined
+      : undefined,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Per-shot dialogue REGENERATION (`regenerateClipDialogue`, 2026-07-07 fix)   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Root cause of the "unusable dialogue" bug report (e.g.
+ * `เสียง…ชา…อืม…ใครมาฝากอีกแล้วหรือเปล่า`): `resolveShotDialogueLines`'s
+ * script-fallback path recovers a scene's freeform `dialogue_lines[]` strings
+ * verbatim — when the script itself contains a stage-direction fragment
+ * (sound cue, half-formed murmur) that was never meant to be a spoken line,
+ * that fragment becomes "the dialogue" for the shot with no way to fix it
+ * short of a full episode/script regeneration (which `generateShotVideoPrompt`
+ * deliberately never triggers — see this module's other doc comments on
+ * "ground truth over free-text LLM claim").
+ *
+ * `regenerateClipDialogue` is the explicit, user-triggered escape hatch: it
+ * asks the LLM to WRITE a fresh, natural 2-4 line spoken exchange for this one
+ * shot from its storyboard/script CONTEXT (description, emotion, characters,
+ * scene dialogue for tone) — never by "fixing" the old fragment text — and
+ * the caller (router) OVERWRITES `clip.dialogue` with the result. Credit-gated
+ * (same check-credits -> call -> deduct convention as every other real LLM
+ * call in this file) and idempotency-keyed.
+ */
+const clipDialogueLineOutputSchema = z.object({
+  characterKey: z.string().optional(),
+  lineTh: z.string().min(1),
+  emotion: z.string().optional(),
+  delivery: z
+    .object({
+      tone: z.string().optional(),
+      pace: z.string().optional(),
+      pauses: z.string().optional(),
+      texture: z.string().optional(),
+    })
+    .optional(),
+  subtext: z.string().optional(),
+});
+
+const clipDialogueOutputSchema = z
+  .object({
+    dialogue: z.array(clipDialogueLineOutputSchema).min(1).max(4),
+  })
+  .passthrough();
+
+export type ClipDialogueOutput = z.infer<typeof clipDialogueOutputSchema>;
+
+const CLIP_DIALOGUE_SYSTEM_PROMPT = [
+  "You are a Thai vertical-drama dialogue writer. Given a single shot's visual/emotional context, write a natural, duration-aware spoken exchange for that shot.",
+  "Rules (MANDATORY):",
+  "- Write 2 to 4 dialogue lines maximum for this one shot — never more, but make the total spoken content fit the supplied target speech duration.",
+  "- Every line must be REAL, grammatically complete, natural spoken dialogue a person would actually say out loud — never a sound effect, stage direction, murmur, or sentence fragment (e.g. never output something like \"เสียง…ชา…อืม…\").",
+  "- Every line must be attributed to one of the characters explicitly listed in the shot context (by their exact character key). Never invent a new character or attribute a line to a generic label like \"narrator\" or \"voice\" unless that exact label is one of the listed characters.",
+  "- If the caller supplies an optional creative instruction, follow it while still obeying every rule above.",
+  "- Match the scene's established tone/emotion and any prior scene dialogue given as context — do not contradict the story.",
+  'Return ONLY a single JSON object of the shape {"dialogue":[{"characterKey":"...","lineTh":"...","emotion":"...","delivery":{"tone":"...","pace":"...","pauses":"...","texture":"..."},"subtext":"..."}]} — "characterKey" and "lineTh" are required on every line, all other fields optional.',
+  VD_COMPACT_JSON_INSTRUCTION,
+].join("\n");
+
+export interface GenerateVerticalDramaClipDialogueParams {
+  userId: number;
+  tenantId?: string;
+  seriesId: number;
+  episodeId: number;
+  shotNumber: number;
+  shotContext: {
+    description?: string;
+    camera?: string;
+    emotion?: string;
+    durationSeconds?: number;
+    /** Compact "key = name (role): descriptor" character identity map — see `buildCharacterIdentityMapBlock`. */
+    characterIdentityMap?: string;
+    /** Existing dialogue lines for nearby/this shot's scene, for tone/continuity context only — never copied verbatim into the rewrite. */
+    sceneDialogueContext?: string[];
+  };
+  /** Optional free-text creative instruction from the user (e.g. "สั้นลง", "ทางการน้อยลง"). Capped by the router's Zod schema at 500 chars. */
+  instruction?: string;
+  dialogueLanguage?: VerticalDramaDialogueLanguage;
+  thaiAccent?: VerticalDramaThaiAccent;
+  idempotencyKey?: string;
+}
+
+export interface GenerateVerticalDramaClipDialogueResult {
+  dialogue: Array<{
+    characterKey?: string;
+    lineTh: string;
+    emotion?: string;
+    delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
+    subtext?: string;
+  }>;
+  creditsUsed: number;
+  model: string;
+}
+
+function buildClipDialogueUserPrompt(params: GenerateVerticalDramaClipDialogueParams): string {
+  const { shotContext } = params;
+  const dialogueLanguage = params.dialogueLanguage ?? "th";
+  const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
+  const sceneContext = shotContext.sceneDialogueContext?.length
+    ? shotContext.sceneDialogueContext.map((l) => `- ${l}`).join("\n")
+    : null;
+  const targetSpeechSeconds =
+    typeof shotContext.durationSeconds === "number"
+      ? targetVerticalDramaSpeechSeconds(shotContext.durationSeconds)
+      : undefined;
+
+  return [
+    `Shot number: ${params.shotNumber}`,
+    typeof shotContext.durationSeconds === "number"
+      ? `Clip duration: ${shotContext.durationSeconds}s`
+      : null,
+    targetSpeechSeconds
+      ? `Target spoken-dialogue duration: about ${targetSpeechSeconds.toFixed(1)}s total across all returned lines. Avoid one-line dialogue that only fills 1-2 seconds of an 8-second clip unless the user explicitly requests silence.`
+      : null,
+    shotContext.description ? `Shot description: ${shotContext.description}` : null,
+    shotContext.camera ? `Camera setup: ${shotContext.camera}` : null,
+    shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
+    shotContext.characterIdentityMap ?? null,
+    sceneContext
+      ? `Nearby scene dialogue (context/tone only — do NOT copy these lines verbatim, do NOT reuse a broken/fragment line as-is):\n${sceneContext}`
+      : null,
+    params.instruction
+      ? `Additional creative instruction from the user (MANDATORY to follow): ${params.instruction}`
+      : null,
+    `SPEECH LANGUAGE (MANDATORY): every line's "lineTh" must be written in ${dialogueLanguageName}.`,
+    params.dialogueLanguage === undefined || params.dialogueLanguage === "th"
+      ? params.thaiAccent
+        ? `SPEECH ACCENT (MANDATORY): ${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every line.`
+        : null
+      : null,
+    VD_COMPACT_JSON_INSTRUCTION,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Generate a fresh 2-4 line spoken exchange for ONE shot, replacing whatever
+ * (possibly broken) dialogue currently exists on that shot's clip. The
+ * caller (router mutation) is responsible for OVERWRITING
+ * `motionPromptPack.clips[j].dialogue` with the result — this function is
+ * pure generation, no persistence. Credit-gated + idempotency-keyed exactly
+ * like `generateVerticalDramaShotVideoPrompt`.
+ */
+export async function generateVerticalDramaClipDialogue(
+  params: GenerateVerticalDramaClipDialogueParams,
+): Promise<GenerateVerticalDramaClipDialogueResult> {
+  const rateLimitKey = `user:${params.userId}`;
+  if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+    throw new RateLimitExceededError(mediaGenerationLimiter.getResetTime(rateLimitKey));
+  }
+
+  const hasCredits = await hasEnoughCredits(params.userId, 1);
+  if (!hasCredits) {
+    throw new InsufficientCreditsError();
+  }
+
+  const model = await resolveStoryBibleModel();
+  const userPrompt = buildClipDialogueUserPrompt(params);
+
+  const { data, response } = await executeJsonPlanningCallWithRetry({
+    model,
+    systemPrompt: CLIP_DIALOGUE_SYSTEM_PROMPT,
+    userPrompt,
+    temperature: 0.8,
+    userId: params.userId,
+    maxTokens: 1200,
+    schema: clipDialogueOutputSchema,
+    label: "Clip dialogue regeneration",
+  });
+
+  const usage = response.usage;
+  const creditsUsed = calculateCreditsForLLM(
+    usage?.prompt_tokens ?? 0,
+    usage?.completion_tokens ?? 0,
+    model,
+  );
+
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    description: `Vertical Drama — regenerate clip dialogue (episode #${params.episodeId}, shot #${params.shotNumber})`,
+    sourceType: "skill",
+    idempotencyKey: params.idempotencyKey,
+    metadata: {
+      model,
+      llmModel: model,
+      feature: "vertical_drama_series",
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      shotNumber: params.shotNumber,
+      hadInstruction: Boolean(params.instruction?.trim()),
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+    },
+  });
+
+  return {
+    dialogue: data.dialogue,
+    creditsUsed,
+    model,
   };
 }

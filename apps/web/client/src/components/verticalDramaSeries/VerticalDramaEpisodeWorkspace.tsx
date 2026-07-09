@@ -19,22 +19,53 @@
  * `verticalDramaEpisodes` tRPC router at the call site.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Loader2, RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link } from "wouter";
+import { AlertTriangle, ChevronDown, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+/**
+ * Ad Banner Overlay — per-episode banner SELECTION (F131W, task #30-A2,
+ * plan.md §6 episode side). `@shared/verticalDramaSeries/adBannerPresets` is
+ * a pure, isomorphic (client+server) module (see its own header doc
+ * comment) — safe as a normal static import, same as the A1 series-studio
+ * component (`VerticalDramaAdBannerStudio.tsx`) already does. Only the
+ * `VD_AD_BANNER_MAX_PER_SERIES` cap constant + the placement id TYPE are
+ * needed here — placement/style NAMES are this file's own copy keys (see
+ * `adBannerPlacementLabel` below), not `adBannerPresets.ts`'s `nameTh`
+ * (which has no English counterpart, unlike the style presets).
+ */
+import {
+  VD_AD_BANNER_MAX_PER_SERIES,
+  type VdAdBannerPlacementId,
+} from "@shared/verticalDramaSeries/adBannerPresets";
 import {
   VD_PHASES,
+  VD_FINAL_RENDER_SUBTITLE_PRESET_IDS,
+  vdAdBannerExclusionReasonLabel,
   vdCopy,
+  vdCopyWithParams,
+  vdFinalRenderSubtitlePresetLabel,
   vdPhaseLabel,
   vdStageLabel,
+  type VdFinalRenderSubtitlePresetValue,
   type VdLocale,
   type VdPhase,
 } from "./verticalDramaWorkspaceCopy";
@@ -55,9 +86,14 @@ import {
   type VdRunDetail,
   type VdRunSummary,
 } from "./VerticalDramaRunDetailView";
-import { VerticalDramaDialogueAudioPanel } from "./VerticalDramaDialogueAudioPanel";
+import {
+  VerticalDramaDialogueAudioPanel,
+  type VerticalDramaDialogueAudioBatchData,
+} from "./VerticalDramaDialogueAudioPanel";
 import {
   VerticalDramaStoryboardPanel,
+  formatVerticalDramaQualityLoopCtaLabel,
+  VD_STORYBOARD_SHOT_GRID_ANCHOR_ID,
   type VerticalDramaAssetUrlMap,
   type VerticalDramaAvailableProductImageView,
   type VerticalDramaCapableModel,
@@ -65,17 +101,32 @@ import {
   type VerticalDramaClipDialogueLineView,
   type VerticalDramaCompiledVideoView,
   type VerticalDramaMotionPromptPackView,
+  type VerticalDramaQualityLoopStateView,
+  type VerticalDramaQualityPolicyView,
   type VerticalDramaQualityReviewView,
   type VerticalDramaShotProductTieInView,
   type VerticalDramaShotReferenceView,
   type VerticalDramaStartFramePlanView,
   type VerticalDramaStoryboardView,
 } from "./VerticalDramaStoryboardPanel";
+import type {
+  VerticalDramaTieInReportView,
+  VerticalDramaSeasonTieInPlacementView,
+} from "./VerticalDramaTieInReportCard";
+import {
+  VerticalDramaProductionWizard,
+  type VdWizardPerShotDialoguePreviewShot,
+} from "./VerticalDramaProductionWizard";
 import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 import type {
   RunResult,
   VerticalDramaPipelineStage,
 } from "@shared/verticalDramaSeries";
+import type {
+  VerticalDramaProductionWizardPrimaryAction,
+  VerticalDramaProductionWizardState,
+  VerticalDramaProductionWizardStepId,
+} from "@shared/verticalDramaSeries/productionWizard";
 
 /** Data needed to render the generic "view this stage's runs" fallback panel. */
 export interface VerticalDramaStageRunDetailData {
@@ -93,6 +144,93 @@ export interface VerticalDramaDialogueAudioPanelData {
   loading?: boolean;
   error?: string | null;
   onGenerate?: () => void;
+  /** W12-B voice chain wave — whole-episode dialogue TTS batch. `undefined`
+   *  when `verticalDramaSeriesVoiceChain` is off; threaded straight through
+   *  to `VerticalDramaDialogueAudioPanel`'s own prop of the same name. */
+  batch?: VerticalDramaDialogueAudioBatchData;
+}
+
+/**
+ * Ad Banner Overlay — per-episode banner SELECTION (F131W, task #30-A2,
+ * plan.md §2 "ชั้นการใช้" + §6 episode side). Mirrors the server's
+ * `VdEpisodeAdBannerDesignSummary`/`VdEpisodeAdBannerPlan` shapes
+ * (`server/routers/verticalDramaEpisodes.ts`) — kept as independent client
+ * view types (this component never imports server code) rather than
+ * importing them, same convention as every other `*View` type in this file.
+ */
+export interface VerticalDramaAdBannerDesignSummaryView {
+  id: string;
+  placementId: VdAdBannerPlacementId;
+  status: "draft" | "prompt_ready" | "generating" | "ready" | "failed";
+  imageUrl?: string;
+  label: string;
+  defaultTiming: {
+    mode: "entire" | "window";
+    startSec?: number;
+    durationSec?: number;
+  };
+  excludedByApproval: boolean;
+}
+
+export interface VerticalDramaAdBannerTimingView {
+  mode: "entire" | "window";
+  startSec: number;
+  durationSec: number;
+}
+
+export interface VerticalDramaAdBannerSelectionView {
+  bannerId: string;
+  timing?: VerticalDramaAdBannerTimingView;
+}
+
+export interface VerticalDramaAdBannerPlanView {
+  enabled: boolean;
+  selections: VerticalDramaAdBannerSelectionView[];
+}
+
+/** Data needed to render the "แบนเนอร์ในวิดีโอนี้" section. */
+export interface VerticalDramaAdBannerPlanPanelData {
+  designs: VerticalDramaAdBannerDesignSummaryView[];
+  plan?: VerticalDramaAdBannerPlanView | null;
+  saving?: boolean;
+  error?: string | null;
+  onSave?: (plan: VerticalDramaAdBannerPlanView) => void;
+}
+
+/**
+ * Task #21 / W12.5 "Final Render Suite" phase B (2026-07-09) — the whole-
+ * episode compiled video's dialogue-audio + subtitle OPTION VALUES. A single
+ * controlled `{includeDialogueAudio, loudnessNormalize, subtitlePreset}`
+ * object (not three separate value/onChange pairs) so the page-level caller
+ * always has the full shape to merge straight into its `assembleEpisodeVideo`
+ * mutate payload — same "one object in, one object out" convention as the
+ * ad banner plan's `onSave` payload.
+ */
+export interface VerticalDramaFinalRenderOptionsView {
+  includeDialogueAudio: boolean;
+  loudnessNormalize: boolean;
+  subtitlePreset: VdFinalRenderSubtitlePresetValue;
+}
+
+/** Mirrors `VdEpisodeAdBannerExclusion` (`server/routers/verticalDramaEpisodes.ts`) as this file's own independent client view type. */
+export interface VerticalDramaFinalRenderExclusionView {
+  bannerId: string;
+  code: string;
+}
+
+/** `assembleEpisodeVideo`'s response, minus the fields the workspace already tracks elsewhere (`compiledVideo`/`jobId`/etc.). */
+export interface VerticalDramaFinalRenderResultView {
+  dialogueAudioSegmentsIncluded: number;
+  subtitleLinesIncluded: number;
+  excludedAdBanners?: VerticalDramaFinalRenderExclusionView[];
+}
+
+/** Data needed to render the "ตัวเลือกการเรนเดอร์วิดีโอ" section. */
+export interface VerticalDramaFinalRenderOptionsPanelData {
+  value?: VerticalDramaFinalRenderOptionsView | null;
+  onChange?: (value: VerticalDramaFinalRenderOptionsView) => void;
+  /** Durable (non-toast) proof of what the most recent successful `assembleEpisodeVideo` call actually included — same "durable card, not just a toast" convention as `scriptSummary`. `null`/absent before any render has completed this session. */
+  lastResult?: VerticalDramaFinalRenderResultView | null;
 }
 
 /** Data needed to render the storyboard_shotgrid stage's dedicated panel. */
@@ -146,9 +284,15 @@ export interface VerticalDramaStoryboardPanelData {
   onGenerateAngleVariations?: (shotNumber: number) => void;
   generatingAngleVariationsForShot?: number | null;
   angleVariationGridUrlByShot?: Record<number, string>;
-  onPickAngleVariationCandidate?: (shotNumber: number, candidateDataUrl: string) => void;
+  onPickAngleVariationCandidate?: (
+    shotNumber: number,
+    candidateDataUrl: string
+  ) => void;
   onDismissAngleVariations?: (shotNumber: number) => void;
-  onDeleteAngleVariationCandidate?: (shotNumber: number, originalIndex: number) => void;
+  onDeleteAngleVariationCandidate?: (
+    shotNumber: number,
+    originalIndex: number
+  ) => void;
 
   /* ---- Phase 1.3 — episode-level model selection ---- */
   imageModels?: VerticalDramaCapableModel[];
@@ -177,6 +321,10 @@ export interface VerticalDramaStoryboardPanelData {
   selectedThaiAccent?: string | null;
   onSelectThaiAccent?: (value: string) => void;
 
+  /* ---- Native audio direction toggle (task #36, added 2026-07-09) ---- */
+  nativeAudioEnabled?: boolean;
+  onSelectNativeAudioEnabled?: (enabled: boolean) => void;
+
   /* ---- Phase 2.5 — per-shot reference strip ---- */
   shotReferencesByShot?: Record<number, VerticalDramaShotReferenceView[]>;
   onAddShotReference?: (
@@ -194,6 +342,8 @@ export interface VerticalDramaStoryboardPanelData {
     dialogue: VerticalDramaClipDialogueLineView[]
   ) => void;
   savingDialogueForClip?: number | null;
+  onRegenerateClipDialogue?: (shotNumber: number, instruction: string) => void;
+  regeneratingDialogueForShot?: ReadonlySet<number>;
 
   /* ---- Video clip generation (`generateVideoClip`) ---- */
   onGenerateVideoClip?: (clipNumber: number) => void;
@@ -202,7 +352,11 @@ export interface VerticalDramaStoryboardPanelData {
   trimmedReferenceCountByClip?: Record<number, number>;
   /** Upload video file per shot (2026-07-07 upgrade) — see the same-named
    *  prop on `VerticalDramaStoryboardPanel`. */
-  onUploadVideoClip?: (clipNumber: number, file: File, sourceShotNumber: number) => void;
+  onUploadVideoClip?: (
+    clipNumber: number,
+    file: File,
+    sourceShotNumber: number
+  ) => void;
   uploadingVideoClipForClip?: ReadonlySet<number>;
 
   /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
@@ -232,7 +386,10 @@ export interface VerticalDramaStoryboardPanelData {
   /* ---- Phase 6.5 — image-to-image repair dialog ---- */
   onSubmitRepairImage?: (shotNumber: number, instruction: string) => void;
   repairImageSubmittingForShot?: number | null;
-  repairImageResultByShot?: Record<number, { beforeUrl: string; afterUrl: string }>;
+  repairImageResultByShot?: Record<
+    number,
+    { beforeUrl: string; afterUrl: string }
+  >;
   repairImageErrorByShot?: Record<number, string>;
   onAcceptRepairImage?: (shotNumber: number) => void;
   onDiscardRepairImage?: (shotNumber: number) => void;
@@ -251,6 +408,26 @@ export interface VerticalDramaStoryboardPanelData {
   assemblingCompiledVideo?: boolean;
   totalClipCount?: number;
   readyClipNumbers?: number[];
+
+  /* ---- Wave-5A (2026-07-07 production-grade upgrade) — density meter,
+     scorecard v2, tie-in report. Mirrors the same-named
+     `VerticalDramaStoryboardPanelProps` additions verbatim; see that file
+     for full field documentation. ---- */
+  speechBudgetEnabled?: boolean;
+  onRepairWholeEpisodeScript?: () => void;
+  qualityLoopV2Enabled?: boolean;
+  tieInQcEnabled?: boolean;
+  qualityPolicy?: VerticalDramaQualityPolicyView | null;
+  qualityLoopState?: VerticalDramaQualityLoopStateView | null;
+  onRunQualityImproveLoop?: () => void;
+  runningQualityImproveLoop?: boolean;
+  tieInEnabled?: boolean;
+  tieInQualityReport?: VerticalDramaTieInReportView | null;
+  onDeferTieIn?: () => void;
+  deferringTieIn?: boolean;
+  tieInDeferScheduleAtRisk?: boolean;
+  /** `getEpisodeDetail.seasonTieInPlacement` (task #31, spec §7.7.2/§7.7.3) — season-plan status line, threaded straight through to `VerticalDramaStoryboardPanel`'s prop of the same name. */
+  seasonTieInPlacement?: VerticalDramaSeasonTieInPlacementView | null;
 }
 
 /** Minimal per-stage state the workspace needs to render progress + CTA. */
@@ -318,7 +495,10 @@ export interface VerticalDramaEpisodeWorkspaceProps {
    *  progress text ("กำลังสร้างบท…"). */
   generatingEpisodeStage?: VerticalDramaPipelineStage | null;
   /** Set when the chain stopped early due to a failed stage. */
-  generateEpisodeFailure?: { stage: VerticalDramaPipelineStage; message: string } | null;
+  generateEpisodeFailure?: {
+    stage: VerticalDramaPipelineStage;
+    message: string;
+  } | null;
   /** Deletes this stage's prior run(s) (cascades checkpoints + artifacts)
    *  and immediately regenerates in "full" mode — distinct from `onRepair`,
    *  which never deletes. Shown in the focused-stage detail panel below,
@@ -350,6 +530,61 @@ export interface VerticalDramaEpisodeWorkspaceProps {
    *  succeeds and the "current" stage has already moved on to the next one. */
   storyboardReviewId?: string | null;
   onOpenStoryboardReview?: () => void;
+
+  /* ---- Production Wizard (section-12, 2026-07-07 production-grade
+     upgrade). `wizard`/`productionWizardEnabled` mirror
+     `getEpisodeDetail.wizard` / `detail.flags.productionWizard` verbatim —
+     feature-detected on the PAYLOAD, never by importing server flag logic.
+     `seriesId` (distinct from `storyboardPanel.seriesId`, which is used only
+     for download filenames) keys the "Advanced stages" disclosure's
+     localStorage-persisted open state. ---- */
+  wizard?: VerticalDramaProductionWizardState | null;
+  productionWizardEnabled?: boolean;
+  seriesId?: string;
+  /** `getEpisodeDetail`'s top-level `perShotDialoguePreview` (2026-07-08
+   *  W9-C wiring) — threaded straight through to
+   *  `VerticalDramaProductionWizard`'s own prop of the same name (see that
+   *  component's header comment). `undefined`/`null` while the wizard flag
+   *  is off or the episode detail hasn't loaded yet, mirroring `wizard`'s
+   *  own convention. */
+  perShotDialoguePreview?: VdWizardPerShotDialoguePreviewShot[] | null;
+
+  /* ---- Task #26 (data sanity — episode number beyond the planned season
+     size, e.g. episode 11 while the plan only covers 10) —
+     `getEpisodeBreakdownStatus`'s result (a STANDALONE query, deliberately
+     kept off `getEpisodeDetail` — see that new procedure's doc comment).
+     `undefined`/`"matched"`/`"no_plan"` (query not loaded yet / within plan
+     / legacy series with no plan at all) render nothing — only
+     `"beyond_plan"` shows the compact warning banner below. ---- */
+  breakdownStatus?: "matched" | "beyond_plan" | "no_plan";
+  /** Only meaningful when `breakdownStatus === "beyond_plan"` — the season plan's episode count, interpolated into the banner title. */
+  plannedEpisodeCount?: number;
+  /** `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=overview` — built by the page (same convention as `dialogueAudioPanel.castingTabHref`), so this component stays decoupled from route construction. */
+  seasonPlanTabHref?: string;
+
+  /* ---- Ad Banner Overlay — per-episode banner selection (F131W, task
+     #30-A2, plan.md §6 episode side). Feature-detected on the PAYLOAD
+     (`adBannerOverlayEnabled`, mirroring `detail.flags.adBannerOverlay`
+     verbatim), never by importing server flag logic — same convention as
+     `productionWizardEnabled`/`wizard` above. Flag-off (the default):
+     nothing renders here at all. ---- */
+  adBannerOverlayEnabled?: boolean;
+  adBannerPlanPanel?: VerticalDramaAdBannerPlanPanelData;
+
+  /* ---- Task #21 / W12.5 "Final Render Suite" phase B (2026-07-09) —
+     dialogue-audio + subtitle options for the whole-episode compiled video.
+     `voiceChainEnabled` mirrors `adBannerOverlayEnabled`'s own "feature-
+     detected on a boolean prop from the page" convention — gates ONLY the
+     dialogue-audio checkbox (+ its nested loudness sub-checkbox); the
+     subtitle preset picker always renders whenever this section renders at
+     all (subtitles are derived from the episode's SCRIPT text, not from any
+     generated audio — see `assembleEpisodeVideo`'s own doc comment,
+     `server/routers/verticalDramaEpisodes.ts`). The page already resolves
+     this exact value as `voiceChainFlagEnabled`
+     (`VerticalDramaEpisodePage.tsx`'s `resolveVoiceChainFlagEnabled`). ---- */
+  voiceChainEnabled?: boolean;
+  finalRenderOptionsPanel?: VerticalDramaFinalRenderOptionsPanelData;
+
   className?: string;
 }
 
@@ -408,6 +643,25 @@ const SETUP_STAGES = new Set<VerticalDramaPipelineStage>([
   "storyboard_shotgrid",
 ]);
 
+/**
+ * Wizard steps whose detail now lives in the ALWAYS-VISIBLE per-shot
+ * production grid (2026-07-08 meta/shot-grid disclosure split), not behind
+ * the "ขั้นสูง" disclosure — `handleViewWizardStepDetails`'s "ดูรายละเอียด"
+ * scrolls to the grid for these instead of opening the disclosure (there is
+ * nothing left to reveal there for them). `series_setup` / `episode_script` /
+ * `script_qc` / `dialogue_audio` / `dialogue_qc` / `shot_repair` are
+ * deliberately NOT included — their detail (script summary, quality-review
+ * card, dialogue-audio panel, QC layers) still lives behind the disclosure,
+ * so "ดูรายละเอียด" for those keeps opening it exactly as before.
+ */
+const SHOT_LEVEL_WIZARD_STEPS = new Set<VerticalDramaProductionWizardStepId>([
+  "storyboard_shots",
+  "start_frames",
+  "video_prompts",
+  "video_clips",
+  "final_episode",
+]);
+
 /** Map a stage's next_action to the single primary CTA label. */
 function ctaLabel(
   t: ReturnType<typeof vdCopy>,
@@ -462,6 +716,17 @@ export function VerticalDramaEpisodeWorkspace({
   scriptSummary,
   storyboardReviewId,
   onOpenStoryboardReview,
+  wizard = null,
+  productionWizardEnabled = false,
+  seriesId,
+  perShotDialoguePreview,
+  breakdownStatus,
+  plannedEpisodeCount,
+  seasonPlanTabHref,
+  adBannerOverlayEnabled = false,
+  adBannerPlanPanel,
+  voiceChainEnabled = false,
+  finalRenderOptionsPanel,
   className,
 }: VerticalDramaEpisodeWorkspaceProps) {
   const t = useMemo(() => vdCopy(locale), [locale]);
@@ -518,7 +783,8 @@ export function VerticalDramaEpisodeWorkspace({
   };
   const [confirmingRegenerateStage, setConfirmingRegenerateStage] =
     useState<VerticalDramaPipelineStage | null>(null);
-  const [confirmingGenerateEpisode, setConfirmingGenerateEpisode] = useState(false);
+  const [confirmingGenerateEpisode, setConfirmingGenerateEpisode] =
+    useState(false);
 
   useEffect(() => {
     if (
@@ -537,6 +803,194 @@ export function VerticalDramaEpisodeWorkspace({
     onFocusStage?.(stage);
     onOpenStageDetail?.(stage);
   }
+
+  /**
+   * Production Wizard (section-12) — "Advanced stages" disclosure open state,
+   * default collapsed, persisted in localStorage per series (UX Rules: the
+   * wizard state must survive refresh; the same applies to whether the user
+   * had this section open). Read on mount/`seriesId` change rather than a
+   * lazy `useState` initializer, since `seriesId` can arrive after the first
+   * render (async episode-detail fetch upstream of this presentational
+   * component).
+   */
+  const advancedStagesStorageKey = seriesId
+    ? `vd-advanced-stages-open:${seriesId}`
+    : null;
+  const [advancedStagesOpen, setAdvancedStagesOpen] = useState(false);
+  useEffect(() => {
+    if (
+      !productionWizardEnabled ||
+      !advancedStagesStorageKey ||
+      typeof window === "undefined"
+    )
+      return;
+    setAdvancedStagesOpen(
+      window.localStorage.getItem(advancedStagesStorageKey) === "true"
+    );
+  }, [productionWizardEnabled, advancedStagesStorageKey]);
+
+  function handleAdvancedStagesOpenChange(next: boolean) {
+    setAdvancedStagesOpen(next);
+    if (advancedStagesStorageKey && typeof window !== "undefined") {
+      window.localStorage.setItem(advancedStagesStorageKey, String(next));
+    }
+  }
+
+  /** "ดูรายละเอียด" (section-12) — focuses the wizard step's closest existing
+   *  advanced-panel section and ensures that section is actually visible.
+   *  Steps with no 1:1 pipeline-stage counterpart (`series_setup`,
+   *  `script_qc`, `dialogue_qc`, `shot_repair` — QC layers, not pipeline
+   *  stages) still open the Advanced-stages section so the user can find the
+   *  storyboard panel's scorecard/tie-in cards manually. */
+  const WIZARD_STEP_TO_PIPELINE_STAGE: Partial<
+    Record<VerticalDramaProductionWizardStepId, VerticalDramaPipelineStage>
+  > = {
+    episode_script: "plan_episode_script",
+    storyboard_shots: "storyboard_shotgrid",
+    start_frames: "start_frame_render_plan",
+    dialogue_audio: "dialogue_audio_plan",
+    video_prompts: "video_motion_prompt_pack",
+    video_clips: "render_or_import_video_clips",
+    final_episode: "assemble_episode_manifest",
+  };
+
+  function handleViewWizardStepDetails(
+    stepId: VerticalDramaProductionWizardStepId
+  ) {
+    const mappedStage = WIZARD_STEP_TO_PIPELINE_STAGE[stepId];
+    if (mappedStage) handleFocusStage(mappedStage);
+
+    // 2026-07-08 meta/shot-grid disclosure split: the storyboard panel's
+    // per-shot production grid is now ALWAYS visible (no longer behind the
+    // "ขั้นสูง" disclosure), so shot-level steps have nothing left to reveal
+    // by opening it — scroll the always-visible grid into view instead.
+    // Falls through to the original open-disclosure behavior whenever the
+    // grid doesn't exist yet (no storyboard shots), matching today's
+    // behavior for that case exactly.
+    if (SHOT_LEVEL_WIZARD_STEPS.has(stepId) && hasStoryboardShots) {
+      if (typeof document !== "undefined") {
+        document
+          .getElementById(VD_STORYBOARD_SHOT_GRID_ANCHOR_ID)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      return;
+    }
+
+    handleAdvancedStagesOpenChange(true);
+  }
+
+  /**
+   * Wizard primary-CTA -> existing-handler map (section-12 "Recommended
+   * Implementation / Client": "the wizard adds no new generation paths — it
+   * sequences the developed system"). Every entry below dispatches an
+   * ALREADY-EXISTING mutation handler already threaded into this workspace
+   * via `onGenerateRealScript` / `storyboardPanel` / `dialogueAudioPanel` /
+   * `onRepair` — this map never calls a tRPC procedure itself.
+   *
+   *  - `approve_start_frames` / `generate_video_clips` batch-call an
+   *    existing PER-SHOT/PER-CLIP handler for every shot/clip still missing
+   *    an approved image / completed render — the same "call the singular
+   *    handler once per missing target" pattern
+   *    `onGenerateAllStartFrameImages` itself already represents one layer
+   *    up (that one happens to be pre-batched by the page; video clips has
+   *    no pre-batched equivalent yet, so it is batched here instead).
+   *  - `repair_dialogue` opens the existing generic repair dialog
+   *    (`onRepair("dialogue_audio_plan")`) rather than auto-submitting, same
+   *    as every other "ซ่อม" entry point in this workspace.
+   *  - `complete_series_setup` / `repair_shots` / `none` have no mapping —
+   *    `complete_series_setup` never actually renders here (an episode can
+   *    only exist after series setup completes, see `productionWizard.ts`'s
+   *    own doc comment), and `repair_shots` is never the wizard's overall
+   *    `primaryCta` (always secondary, see that resolver's `active`
+   *    computation) — both fall through to "no primary CTA" harmlessly.
+   */
+  const wizardPrimaryHandlers: Partial<
+    Record<
+      VerticalDramaProductionWizardPrimaryAction,
+      { onClick: () => void; pending: boolean }
+    >
+  > = {
+    generate_script: onGenerateRealScript
+      ? { onClick: onGenerateRealScript, pending: generatingRealScript }
+      : undefined,
+    run_quality_review: storyboardPanel?.onRunQualityReview
+      ? {
+          onClick: storyboardPanel.onRunQualityReview,
+          pending: Boolean(storyboardPanel.runningQualityReview),
+        }
+      : undefined,
+    run_quality_improve_loop: storyboardPanel?.onRunQualityImproveLoop
+      ? {
+          onClick: storyboardPanel.onRunQualityImproveLoop,
+          pending: Boolean(storyboardPanel.runningQualityImproveLoop),
+        }
+      : undefined,
+    generate_storyboard: storyboardPanel?.onGenerateReal
+      ? {
+          onClick: storyboardPanel.onGenerateReal,
+          pending: Boolean(storyboardPanel.generating),
+        }
+      : undefined,
+    approve_start_frames: storyboardPanel?.onGenerateAllStartFrameImages
+      ? {
+          onClick: () => {
+            const missingShotNumbers = (
+              storyboardPanel.startFramePlan?.frames ?? []
+            )
+              .filter(f => !f.approvedMediaAssetId)
+              .map(f => f.shotNumber);
+            storyboardPanel.onGenerateAllStartFrameImages?.(missingShotNumbers);
+          },
+          pending: Boolean(
+            storyboardPanel.generatingStartFrameImageForShot &&
+            storyboardPanel.generatingStartFrameImageForShot.size > 0
+          ),
+        }
+      : undefined,
+    generate_dialogue_plan: dialogueAudioPanel?.onGenerate
+      ? {
+          onClick: dialogueAudioPanel.onGenerate,
+          pending: Boolean(dialogueAudioPanel.loading),
+        }
+      : undefined,
+    repair_dialogue: onRepair
+      ? { onClick: () => onRepair("dialogue_audio_plan"), pending: false }
+      : undefined,
+    generate_video_prompts: storyboardPanel?.onGenerateVideoPromptPack
+      ? {
+          onClick: storyboardPanel.onGenerateVideoPromptPack,
+          pending: Boolean(storyboardPanel.generatingVideoPromptPack),
+        }
+      : undefined,
+    generate_video_clips: storyboardPanel?.onGenerateVideoClip
+      ? {
+          onClick: () => {
+            const total = storyboardPanel.totalClipCount ?? 0;
+            const ready = new Set(storyboardPanel.readyClipNumbers ?? []);
+            for (let clipNumber = 1; clipNumber <= total; clipNumber += 1) {
+              if (!ready.has(clipNumber))
+                storyboardPanel.onGenerateVideoClip?.(clipNumber);
+            }
+          },
+          pending: Boolean(
+            storyboardPanel.generatingVideoClipForClip &&
+            storyboardPanel.generatingVideoClipForClip.size > 0
+          ),
+        }
+      : undefined,
+    assemble_episode: storyboardPanel?.onAssembleCompiledVideo
+      ? {
+          onClick: () => storyboardPanel.onAssembleCompiledVideo?.(),
+          pending: Boolean(storyboardPanel.assemblingCompiledVideo),
+        }
+      : undefined,
+  };
+  const wizardPrimaryEntry = wizard
+    ? wizardPrimaryHandlers[wizard.primaryCta]
+    : undefined;
+  const wizardLoopCtaLabel = storyboardPanel?.qualityPolicy
+    ? formatVerticalDramaQualityLoopCtaLabel(t, storyboardPanel.qualityPolicy)
+    : undefined;
 
   // Loading state.
   if (loading) {
@@ -573,7 +1027,8 @@ export function VerticalDramaEpisodeWorkspace({
     );
   }
 
-  const hasStoryboardShots = (storyboardPanel?.storyboard?.shots?.length ?? 0) > 0;
+  const hasStoryboardShots =
+    (storyboardPanel?.storyboard?.shots?.length ?? 0) > 0;
 
   return (
     <div className={cn("space-y-4", className)} data-testid="vd-workspace">
@@ -604,22 +1059,91 @@ export function VerticalDramaEpisodeWorkspace({
         </div>
       </section>
 
-      {scriptSummary ? (
-        <section
-          className="rounded-lg border border-emerald-500/40 bg-emerald-50 p-3 text-sm dark:bg-emerald-950/20"
-          aria-label="script"
-          data-testid="vd-script-summary"
+      {/* Task #26 (data sanity — episode number beyond the planned season
+          size) — compact, always-visible warning when `getEpisodeBreakdown
+          Status` reports this episode as `"beyond_plan"`. Mirrors
+          `VerticalDramaDialogueAudioPanel`'s missing-casting banner exactly
+          (same amber box + Link-to-series-tab shape). Renders nothing for
+          `"matched"`/`"no_plan"` (grandfathered legacy series) or while the
+          query hasn't resolved yet — placed above the Production Wizard so
+          it is visible regardless of that flag. */}
+      {breakdownStatus === "beyond_plan" ? (
+        <div
+          className="flex flex-col gap-1 rounded-md border border-amber-400/50 bg-amber-50 p-2.5 text-xs dark:bg-amber-950/30"
+          data-testid="vd-episode-beyond-plan-banner"
         >
-          <p className="font-medium">{scriptSummary.episodeTitle}</p>
-          <p className="text-muted-foreground">{scriptSummary.hook}</p>
-        </section>
+          <p className="flex items-center gap-1.5 font-medium">
+            <AlertTriangle
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0"
+            />
+            {vdCopyWithParams(t.episodeBeyondPlanTitle, {
+              count: plannedEpisodeCount ?? 0,
+            })}
+          </p>
+          <p className="text-muted-foreground">{t.episodeBeyondPlanBody}</p>
+          {seasonPlanTabHref ? (
+            <Link
+              href={seasonPlanTabHref}
+              className="w-fit font-medium text-primary underline-offset-2 hover:underline"
+              data-testid="vd-episode-beyond-plan-link"
+            >
+              {t.episodeBeyondPlanLink}
+            </Link>
+          ) : null}
+        </div>
       ) : null}
 
+      {/* Production Wizard (section-12, flags.productionWizard) — rendered
+          ABOVE the stage surface. Feature-detected on the payload
+          (`productionWizardEnabled`/`wizard`, mirroring
+          `detail.flags.productionWizard`/`detail.wizard` verbatim), never by
+          importing server flag logic. Flag-off (the default): nothing
+          renders here at all — layout is exactly today's. */}
+      {productionWizardEnabled && wizard ? (
+        <VerticalDramaProductionWizard
+          locale={locale}
+          activeStepId={wizard.activeStepId}
+          steps={wizard.steps}
+          primaryCta={wizard.primaryCta}
+          onPrimaryAction={wizardPrimaryEntry?.onClick}
+          primaryActionPending={wizardPrimaryEntry?.pending ?? false}
+          loopCtaLabel={wizardLoopCtaLabel}
+          onViewStepDetails={handleViewWizardStepDetails}
+          perShotDialoguePreview={perShotDialoguePreview}
+        />
+      ) : null}
+
+      <AdvancedStagesDisclosure
+        enabled={productionWizardEnabled}
+        open={advancedStagesOpen}
+        onOpenChange={handleAdvancedStagesOpenChange}
+        locale={locale}
+      >
+        {scriptSummary ? (
+          <section
+            className="rounded-lg border border-emerald-500/40 bg-emerald-50 p-3 text-sm dark:bg-emerald-950/20"
+            aria-label="script"
+            data-testid="vd-script-summary"
+          >
+            <p className="font-medium">{scriptSummary.episodeTitle}</p>
+            <p className="text-muted-foreground">{scriptSummary.hook}</p>
+          </section>
+        ) : null}
+      </AdvancedStagesDisclosure>
+
       {/* Primary content: the shot list once a storyboard exists (matches
-          the Storyboard Review page's shot-list UX so this page and that one
-          feel like the same product) — otherwise a single compact
-          action row for whatever stage is next (script/characters/storyboard
-          generation), no stage-card grid clutter. */}
+        the Storyboard Review page's shot-list UX so this page and that one
+        feel like the same product) — otherwise a single compact
+        action row for whatever stage is next (script/characters/storyboard
+        generation), no stage-card grid clutter.
+
+        2026-07-08 meta/shot-grid disclosure split: `VerticalDramaStoryboardPanel`
+        now renders OUTSIDE `AdvancedStagesDisclosure` — it handles its OWN
+        internal meta-section disclosure (`productionWizardEnabled`/
+        `advancedMetaOpen`, kept in sync with the SAME toggle/localStorage
+        state below) so the per-shot production grid stays always visible,
+        exactly as when the wizard flag is off. */}
       {hasStoryboardShots ? (
         <VerticalDramaStoryboardPanel
           locale={locale}
@@ -641,23 +1165,41 @@ export function VerticalDramaEpisodeWorkspace({
           onGenerateVideoPromptPack={storyboardPanel?.onGenerateVideoPromptPack}
           generatingVideoPromptPack={storyboardPanel?.generatingVideoPromptPack}
           onGenerateStartFrameImage={storyboardPanel?.onGenerateStartFrameImage}
-          generatingStartFrameImageForShot={storyboardPanel?.generatingStartFrameImageForShot}
-          onGenerateAllStartFrameImages={storyboardPanel?.onGenerateAllStartFrameImages}
+          generatingStartFrameImageForShot={
+            storyboardPanel?.generatingStartFrameImageForShot
+          }
+          onGenerateAllStartFrameImages={
+            storyboardPanel?.onGenerateAllStartFrameImages
+          }
           characterPortraits={storyboardPanel?.characterPortraits}
           productTieInByShot={storyboardPanel?.productTieInByShot}
           productImages={storyboardPanel?.productImages}
           productImagesLoading={storyboardPanel?.productImagesLoading}
-          onSaveShotProductReferences={storyboardPanel?.onSaveShotProductReferences}
-          savingProductReferencesForShot={storyboardPanel?.savingProductReferencesForShot}
-          onChangeCharacterReference={storyboardPanel?.onChangeCharacterReference}
+          onSaveShotProductReferences={
+            storyboardPanel?.onSaveShotProductReferences
+          }
+          savingProductReferencesForShot={
+            storyboardPanel?.savingProductReferencesForShot
+          }
+          onChangeCharacterReference={
+            storyboardPanel?.onChangeCharacterReference
+          }
           onDropCharacterReference={storyboardPanel?.onDropCharacterReference}
           onDropStartFrame={storyboardPanel?.onDropStartFrame}
           onGenerateAngleVariations={storyboardPanel?.onGenerateAngleVariations}
-          generatingAngleVariationsForShot={storyboardPanel?.generatingAngleVariationsForShot}
-          angleVariationGridUrlByShot={storyboardPanel?.angleVariationGridUrlByShot}
-          onPickAngleVariationCandidate={storyboardPanel?.onPickAngleVariationCandidate}
+          generatingAngleVariationsForShot={
+            storyboardPanel?.generatingAngleVariationsForShot
+          }
+          angleVariationGridUrlByShot={
+            storyboardPanel?.angleVariationGridUrlByShot
+          }
+          onPickAngleVariationCandidate={
+            storyboardPanel?.onPickAngleVariationCandidate
+          }
           onDismissAngleVariations={storyboardPanel?.onDismissAngleVariations}
-          onDeleteAngleVariationCandidate={storyboardPanel?.onDeleteAngleVariationCandidate}
+          onDeleteAngleVariationCandidate={
+            storyboardPanel?.onDeleteAngleVariationCandidate
+          }
           imageModels={storyboardPanel?.imageModels}
           videoModels={storyboardPanel?.videoModels}
           selectedImageModelId={storyboardPanel?.selectedImageModelId}
@@ -677,37 +1219,71 @@ export function VerticalDramaEpisodeWorkspace({
           onSelectDialogueLanguage={storyboardPanel?.onSelectDialogueLanguage}
           selectedThaiAccent={storyboardPanel?.selectedThaiAccent}
           onSelectThaiAccent={storyboardPanel?.onSelectThaiAccent}
+          nativeAudioEnabled={storyboardPanel?.nativeAudioEnabled}
+          onSelectNativeAudioEnabled={
+            storyboardPanel?.onSelectNativeAudioEnabled
+          }
           shotReferencesByShot={storyboardPanel?.shotReferencesByShot}
           onAddShotReference={storyboardPanel?.onAddShotReference}
           onRemoveShotReference={storyboardPanel?.onRemoveShotReference}
-          addingShotReferenceForShot={storyboardPanel?.addingShotReferenceForShot}
+          addingShotReferenceForShot={
+            storyboardPanel?.addingShotReferenceForShot
+          }
           onUseShotReferenceAsMain={storyboardPanel?.onUseShotReferenceAsMain}
-          usingShotReferenceAsMainForShot={storyboardPanel?.usingShotReferenceAsMainForShot}
+          usingShotReferenceAsMainForShot={
+            storyboardPanel?.usingShotReferenceAsMainForShot
+          }
           onSaveClipDialogue={storyboardPanel?.onSaveClipDialogue}
           savingDialogueForClip={storyboardPanel?.savingDialogueForClip}
+          onRegenerateClipDialogue={storyboardPanel?.onRegenerateClipDialogue}
+          regeneratingDialogueForShot={
+            storyboardPanel?.regeneratingDialogueForShot
+          }
           onGenerateVideoClip={storyboardPanel?.onGenerateVideoClip}
-          generatingVideoClipForClip={storyboardPanel?.generatingVideoClipForClip}
+          generatingVideoClipForClip={
+            storyboardPanel?.generatingVideoClipForClip
+          }
           ttsFallbackByClip={storyboardPanel?.ttsFallbackByClip}
-          trimmedReferenceCountByClip={storyboardPanel?.trimmedReferenceCountByClip}
+          trimmedReferenceCountByClip={
+            storyboardPanel?.trimmedReferenceCountByClip
+          }
           onUploadVideoClip={storyboardPanel?.onUploadVideoClip}
           uploadingVideoClipForClip={storyboardPanel?.uploadingVideoClipForClip}
           onSaveStartFramePrompt={storyboardPanel?.onSaveStartFramePrompt}
           onSaveVideoPrompt={storyboardPanel?.onSaveVideoPrompt}
           onGeneratePromptAndImage={storyboardPanel?.onGeneratePromptAndImage}
-          generatingPromptAndImageForShot={storyboardPanel?.generatingPromptAndImageForShot}
+          generatingPromptAndImageForShot={
+            storyboardPanel?.generatingPromptAndImageForShot
+          }
           qualityReview={storyboardPanel?.qualityReview}
           onRunQualityReview={storyboardPanel?.onRunQualityReview}
           runningQualityReview={storyboardPanel?.runningQualityReview}
           onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
-          onApplyQualityReviewSuggestions={storyboardPanel?.onApplyQualityReviewSuggestions}
-          applyingQualityReviewSuggestions={storyboardPanel?.applyingQualityReviewSuggestions}
-          onRequestAlternativeQualityReview={storyboardPanel?.onRequestAlternativeQualityReview}
-          requestingAlternativeQualityReview={storyboardPanel?.requestingAlternativeQualityReview}
-          onSummarizeEpisodeToMemory={storyboardPanel?.onSummarizeEpisodeToMemory}
-          summarizingEpisodeToMemory={storyboardPanel?.summarizingEpisodeToMemory}
-          episodeAlreadySummarizedToMemory={storyboardPanel?.episodeAlreadySummarizedToMemory}
+          onApplyQualityReviewSuggestions={
+            storyboardPanel?.onApplyQualityReviewSuggestions
+          }
+          applyingQualityReviewSuggestions={
+            storyboardPanel?.applyingQualityReviewSuggestions
+          }
+          onRequestAlternativeQualityReview={
+            storyboardPanel?.onRequestAlternativeQualityReview
+          }
+          requestingAlternativeQualityReview={
+            storyboardPanel?.requestingAlternativeQualityReview
+          }
+          onSummarizeEpisodeToMemory={
+            storyboardPanel?.onSummarizeEpisodeToMemory
+          }
+          summarizingEpisodeToMemory={
+            storyboardPanel?.summarizingEpisodeToMemory
+          }
+          episodeAlreadySummarizedToMemory={
+            storyboardPanel?.episodeAlreadySummarizedToMemory
+          }
           onSubmitRepairImage={storyboardPanel?.onSubmitRepairImage}
-          repairImageSubmittingForShot={storyboardPanel?.repairImageSubmittingForShot}
+          repairImageSubmittingForShot={
+            storyboardPanel?.repairImageSubmittingForShot
+          }
           repairImageResultByShot={storyboardPanel?.repairImageResultByShot}
           repairImageErrorByShot={storyboardPanel?.repairImageErrorByShot}
           onAcceptRepairImage={storyboardPanel?.onAcceptRepairImage}
@@ -716,490 +1292,1256 @@ export function VerticalDramaEpisodeWorkspace({
           onOpenRepairImageDialog={storyboardPanel?.onOpenRepairImageDialog}
           onCloseRepairImageDialog={storyboardPanel?.onCloseRepairImageDialog}
           onGenerateShotVideoPrompt={storyboardPanel?.onGenerateShotVideoPrompt}
-          generatingShotVideoPromptForShot={storyboardPanel?.generatingShotVideoPromptForShot}
+          generatingShotVideoPromptForShot={
+            storyboardPanel?.generatingShotVideoPromptForShot
+          }
           usedVisionByShot={storyboardPanel?.usedVisionByShot}
           compiledVideo={storyboardPanel?.compiledVideo}
           onAssembleCompiledVideo={storyboardPanel?.onAssembleCompiledVideo}
           assemblingCompiledVideo={storyboardPanel?.assemblingCompiledVideo}
           totalClipCount={storyboardPanel?.totalClipCount}
           readyClipNumbers={storyboardPanel?.readyClipNumbers}
+          speechBudgetEnabled={storyboardPanel?.speechBudgetEnabled}
+          onRepairWholeEpisodeScript={
+            storyboardPanel?.onRepairWholeEpisodeScript
+          }
+          qualityLoopV2Enabled={storyboardPanel?.qualityLoopV2Enabled}
+          tieInQcEnabled={storyboardPanel?.tieInQcEnabled}
+          qualityPolicy={storyboardPanel?.qualityPolicy}
+          qualityLoopState={storyboardPanel?.qualityLoopState}
+          onRunQualityImproveLoop={storyboardPanel?.onRunQualityImproveLoop}
+          runningQualityImproveLoop={storyboardPanel?.runningQualityImproveLoop}
+          tieInEnabled={storyboardPanel?.tieInEnabled}
+          tieInQualityReport={storyboardPanel?.tieInQualityReport}
+          onDeferTieIn={storyboardPanel?.onDeferTieIn}
+          deferringTieIn={storyboardPanel?.deferringTieIn}
+          tieInDeferScheduleAtRisk={storyboardPanel?.tieInDeferScheduleAtRisk}
+          seasonTieInPlacement={storyboardPanel?.seasonTieInPlacement}
+          productionWizardEnabled={productionWizardEnabled}
+          advancedMetaOpen={advancedStagesOpen}
         />
-      ) : !completed && current && SETUP_STAGES.has(current.stage) ? (
-        <section className="rounded-lg border bg-card p-4" aria-label={t.generateEpisode}>
-          {episode?.title ? (
-            <h2 className="mb-1 text-sm font-medium">{episode.title}</h2>
-          ) : null}
-          <p className="mb-3 text-sm text-muted-foreground">{t.generateEpisodeExplain}</p>
-          {generateEpisodeFailure ? (
-            <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
-              <p className="font-medium text-destructive">
-                {t.generateEpisodeFailedAt} {vdStageLabel(generateEpisodeFailure.stage, locale)}
-              </p>
-              <p className="text-muted-foreground">{generateEpisodeFailure.message}</p>
-            </div>
-          ) : null}
-          {generatingEpisodeStage ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-              {t.generateEpisodeProgress} {vdStageLabel(generatingEpisodeStage, locale)}…
-            </div>
-          ) : confirmingGenerateEpisode ? (
-            <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
-              <p className="font-medium">{t.generateRealScriptConfirmWarning}</p>
-              <p className="text-muted-foreground">{t.generateEpisodeConfirmNote}</p>
-              <div className="mt-2 flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setConfirmingGenerateEpisode(false)}
-                >
-                  {t.cancel}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setConfirmingGenerateEpisode(false);
-                    onGenerateEpisodeStoryboard?.();
-                  }}
-                  data-testid="vd-confirm-generate-episode"
-                >
-                  {t.generateEpisodeConfirmButton}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              onClick={() => setConfirmingGenerateEpisode(true)}
-              data-testid="vd-generate-episode"
-            >
-              {generateEpisodeFailure ? t.generateEpisodeRetry : t.generateEpisode}
-            </Button>
-          )}
-        </section>
-      ) : !completed && current ? (
-        <section className="rounded-lg border bg-card p-3" aria-label={t.nextAction}>
-          <div className="mb-2 flex items-center gap-2">
-            <span className="text-xs uppercase text-muted-foreground">{t.nextAction}</span>
-            <Badge variant="outline">{vdStageLabel(current.stage, locale)}</Badge>
-            {current.status === "failed" ? (
-              <Badge variant="destructive">{t.failed}</Badge>
-            ) : null}
-          </div>
-
-          {(() => {
-            const action = realGenerationByStage[current.stage];
-            if (!action) return null;
-            const stageLabel = vdStageLabel(current.stage, locale);
-            const generateLabel =
-              locale === "th"
-                ? `สร้าง${stageLabel}จริง (มีค่าใช้จ่าย)`
-                : `Generate real ${stageLabel} (paid)`;
-            return (
-              <div className="mb-3">
-                {confirmingRealGenerationStage === current.stage ? (
-                  <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
-                    <p className="font-medium">{t.generateRealScriptConfirmWarning}</p>
-                    <p className="text-muted-foreground">{t.generateRealScriptConfirmNote}</p>
-                    <div className="mt-2 flex gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setConfirmingRealGenerationStage(null)}
-                        disabled={action.generating}
-                      >
-                        {t.cancel}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={() => {
-                          setConfirmingRealGenerationStage(null);
-                          action.onGenerate();
-                        }}
-                        disabled={action.generating}
-                        data-testid={`vd-confirm-generate-real-${action.testId}`}
-                      >
-                        {action.generating ? t.generatingRealScript : generateLabel}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setConfirmingRealGenerationStage(current.stage)}
-                    disabled={action.generating}
-                    data-testid={`vd-generate-real-${action.testId}`}
-                  >
-                    {action.generating ? t.generatingRealScript : generateLabel}
-                  </Button>
-                )}
-              </div>
-            );
-          })()}
-
-          {current.nextAction === "approve" ? (
-            <VerticalDramaApprovalBar
-              locale={locale}
-              state={approvalBarState}
-              rejectionReason={rejectionReason}
-              onApprove={() => onApprove?.(current.checkpointId)}
-              onReject={() => onReject?.(current.checkpointId)}
-              onRepair={() => onRepair?.(current.stage)}
-            />
-          ) : realGenerationByStage[current.stage] ? (
-            // This stage already has its own dedicated "generate real X"
-            // action rendered above — showing the generic "รันแบบทดสอบ" (test
-            // run) button here too was confusing (two buttons, only one of
-            // which actually does anything useful), and is exactly what
-            // prompted the "makes me click a test step first" complaint.
-            // Only keep a repair affordance for the failed case.
-            current.status === "failed" ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onRepair?.(current.stage)}
-                data-testid="vd-cta-repair"
-              >
-                {t.repair}
-              </Button>
-            ) : null
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                onClick={() =>
-                  onPrimaryCta?.({
-                    stage: current.stage,
-                    nextAction: current.nextAction,
-                  })
-                }
-                data-testid="vd-primary-cta"
-              >
-                {current.stage === "update_character_visual_bible" ||
-                current.stage === "generate_or_import_character_refs"
-                  ? t.syncCharacterData
-                  : ctaLabel(t, current.nextAction)}
-              </Button>
-              {current.status === "failed" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onRepair?.(current.stage)}
-                  data-testid="vd-cta-repair"
-                >
-                  {t.repair}
-                </Button>
-              ) : null}
-              {/* "Free, no paid generation" is only true of the actual
-                  dry-run placeholder path — `update_character_visual_bible`
-                  and `generate_or_import_character_refs` both always run a
-                  real (free) sync now, so the dry-run note would be
-                  misleading there (see decisions.md). */}
-              {current.stage !== "update_character_visual_bible" &&
-              current.stage !== "generate_or_import_character_refs" ? (
-                <span className="text-xs text-muted-foreground">{t.dryRunNote}</span>
-              ) : null}
-            </div>
-          )}
-
-          {current.errors && current.errors.length > 0 ? (
-            <ul className="mt-2 space-y-1">
-              {current.errors.map((e, i) => (
-                <li key={i} className="text-xs text-destructive">
-                  [{e.code}] {e.message}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </section>
-      ) : completed ? (
-        <div className="rounded-lg border px-3 py-2 text-sm font-medium">
-          {t.readOnlyCompleted}
-        </div>
       ) : null}
 
-      {/* Everything else (per-stage grid, run ledger, memory timeline) still
-          exists — approval/repair on stages the compact view above doesn't
-          cover, and debugging a specific past run, both still need it — but
-          it's demoted to an explicitly-opened "advanced" section instead of
-          always-visible clutter. Collapsed by default. */}
-      <Collapsible>
-        <CollapsibleTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="group flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent/50"
-            data-testid="vd-advanced-toggle"
-          >
-            <span>{t.advancedPipelineDetail}</span>
-            <ChevronDown
-              aria-hidden="true"
-              className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180"
-            />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-4 pt-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="space-y-4">
-              {/* Phase progress indicator (reduced-motion safe: static bars, no pulse). */}
-              <section aria-label={t.phaseProgress} className="rounded-lg border p-3">
-                <ol className="flex flex-wrap gap-2">
-                  {VD_PHASES.map(phase => {
-                    const status = phaseStatus(phase, stageStates);
-                    return (
-                      <li
-                        key={phase.id}
-                        className={cn(
-                          "flex min-w-[120px] flex-1 flex-col gap-1 rounded-md border p-2 motion-reduce:animate-none",
-                          status === "complete" &&
-                            "border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20",
-                          status === "active" && "border-primary/50 bg-primary/5",
-                          status === "waiting" &&
-                            "border-amber-500/50 bg-amber-50 dark:bg-amber-950/20",
-                          status === "blocked" &&
-                            "border-destructive/50 bg-destructive/5"
-                        )}
-                        data-phase={phase.id}
-                        data-status={status}
-                      >
-                        <span className="text-xs font-medium">
-                          {vdPhaseLabel(phase, locale)}
-                        </span>
-                        <span className="text-[10px] uppercase text-muted-foreground">
-                          {status === "complete"
-                            ? t.completed
-                            : status === "waiting"
-                              ? t.waitingForApproval
-                              : status === "blocked"
-                                ? t.failed
-                                : status === "active"
-                                  ? t.running
-                                  : "—"}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </section>
+      {/* Task #21 / W12.5 "Final Render Suite" phase B (2026-07-09) — dialogue-
+          audio + subtitle options for the SAME `assembleEpisodeVideo` call the
+          storyboard panel's own "Assemble full episode video" button above
+          triggers. Same `hasStoryboardShots` gate as the ad banner section
+          right below: nothing to render options FOR until a storyboard/clips
+          exist. Rendered BEFORE the ad banner section so the assembly-related
+          controls read top-to-bottom in the order they affect the same
+          render. */}
+      {hasStoryboardShots ? (
+        <VerticalDramaFinalRenderOptionsSection
+          locale={locale}
+          voiceChainEnabled={voiceChainEnabled}
+          value={finalRenderOptionsPanel?.value}
+          onChange={finalRenderOptionsPanel?.onChange}
+          lastResult={finalRenderOptionsPanel?.lastResult}
+          adBannerDesigns={adBannerPlanPanel?.designs}
+        />
+      ) : null}
 
-              {/* Stage-card grid — every stage is always clickable, grouped by phase. */}
-              <section className="space-y-3" aria-label="stages">
-                {VD_PHASES.map(phase => (
-                  <div key={phase.id} className="rounded-lg border p-3">
-                    <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-                      {vdPhaseLabel(phase, locale)}
-                    </h3>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                      {phase.stages.map(stage => {
-                        const s = stageStatusFor(stageStates, stage);
-                        const isFocused = stage === focusedStage;
-                        return (
-                          <button
-                            key={stage}
-                            type="button"
-                            onClick={() => handleFocusStage(stage)}
-                            aria-current={isFocused ? "true" : undefined}
-                            className={cn(
-                              "flex flex-col gap-1.5 rounded-md border p-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                              isFocused
-                                ? "border-primary bg-primary/5"
-                                : "bg-card hover:bg-accent/50"
-                            )}
-                            data-testid={`vd-stage-${stage}`}
-                          >
-                            <span className="font-medium">
-                              {vdStageLabel(stage, locale)}
-                            </span>
-                            <span className="flex items-center gap-2">
-                              <Badge
-                                variant={
-                                  s.status === "failed"
-                                    ? "destructive"
-                                    : s.status === "succeeded"
-                                      ? "secondary"
-                                      : s.status === "approval_required"
-                                        ? "outline"
-                                        : "default"
-                                }
-                                className="text-[10px]"
-                              >
-                                {s.status}
-                              </Badge>
-                              {!completed && s.status === "failed" ? (
-                                <span
-                                  role="button"
-                                  tabIndex={0}
-                                  className="text-xs text-muted-foreground underline hover:text-foreground"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    onRepair?.(stage);
-                                  }}
-                                  onKeyDown={e => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.stopPropagation();
-                                      onRepair?.(stage);
-                                    }
-                                  }}
-                                >
-                                  {t.repair}
-                                </span>
-                              ) : null}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+      {/* Ad Banner Overlay (F131W, task #30-A2, plan.md §6) — near the
+          assembly controls above (same `hasStoryboardShots` gate: nothing to
+          composite banners onto until a storyboard/clips exist). */}
+      {hasStoryboardShots && adBannerOverlayEnabled ? (
+        <VerticalDramaAdBannerPlanSection
+          locale={locale}
+          designs={adBannerPlanPanel?.designs ?? []}
+          plan={adBannerPlanPanel?.plan ?? null}
+          saving={adBannerPlanPanel?.saving}
+          error={adBannerPlanPanel?.error}
+          onSave={adBannerPlanPanel?.onSave}
+        />
+      ) : null}
+
+      <AdvancedStagesDisclosure
+        enabled={productionWizardEnabled}
+        open={advancedStagesOpen}
+        onOpenChange={handleAdvancedStagesOpenChange}
+        locale={locale}
+        hideTrigger
+      >
+        {!hasStoryboardShots ? (
+          !completed && current && SETUP_STAGES.has(current.stage) ? (
+            <section
+              className="rounded-lg border bg-card p-4"
+              aria-label={t.generateEpisode}
+            >
+              {episode?.title ? (
+                <h2 className="mb-1 text-sm font-medium">{episode.title}</h2>
+              ) : null}
+              <p className="mb-3 text-sm text-muted-foreground">
+                {t.generateEpisodeExplain}
+              </p>
+              {generateEpisodeFailure ? (
+                <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+                  <p className="font-medium text-destructive">
+                    {t.generateEpisodeFailedAt}{" "}
+                    {vdStageLabel(generateEpisodeFailure.stage, locale)}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {generateEpisodeFailure.message}
+                  </p>
+                </div>
+              ) : null}
+              {generatingEpisodeStage ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                  {t.generateEpisodeProgress}{" "}
+                  {vdStageLabel(generatingEpisodeStage, locale)}…
+                </div>
+              ) : confirmingGenerateEpisode ? (
+                <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+                  <p className="font-medium">
+                    {t.generateRealScriptConfirmWarning}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {t.generateEpisodeConfirmNote}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setConfirmingGenerateEpisode(false)}
+                    >
+                      {t.cancel}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => {
+                        setConfirmingGenerateEpisode(false);
+                        onGenerateEpisodeStoryboard?.();
+                      }}
+                      data-testid="vd-confirm-generate-episode"
+                    >
+                      {t.generateEpisodeConfirmButton}
+                    </Button>
                   </div>
-                ))}
-              </section>
-
-              {/* Focused-stage detail — independent of the primary CTA above. */}
-              {focusedStage ? (
-                <section
-                  className="rounded-lg border p-3"
-                  aria-label={vdStageLabel(focusedStage, locale)}
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => setConfirmingGenerateEpisode(true)}
+                  data-testid="vd-generate-episode"
                 >
-                  <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-medium">
-                      {vdStageLabel(focusedStage, locale)}
-                    </h3>
-                    {stageStatusFor(stageStates, focusedStage).status !==
-                      "queued" && onRegenerateStage ? (
-                      confirmingRegenerateStage === focusedStage ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground">
-                            {t.regenerateConfirm}
-                          </span>
+                  {generateEpisodeFailure
+                    ? t.generateEpisodeRetry
+                    : t.generateEpisode}
+                </Button>
+              )}
+            </section>
+          ) : !completed && current ? (
+            <section
+              className="rounded-lg border bg-card p-3"
+              aria-label={t.nextAction}
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-xs uppercase text-muted-foreground">
+                  {t.nextAction}
+                </span>
+                <Badge variant="outline">
+                  {vdStageLabel(current.stage, locale)}
+                </Badge>
+                {current.status === "failed" ? (
+                  <Badge variant="destructive">{t.failed}</Badge>
+                ) : null}
+              </div>
+
+              {(() => {
+                const action = realGenerationByStage[current.stage];
+                if (!action) return null;
+                const stageLabel = vdStageLabel(current.stage, locale);
+                const generateLabel =
+                  locale === "th"
+                    ? `สร้าง${stageLabel}จริง (มีค่าใช้จ่าย)`
+                    : `Generate real ${stageLabel} (paid)`;
+                return (
+                  <div className="mb-3">
+                    {confirmingRealGenerationStage === current.stage ? (
+                      <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+                        <p className="font-medium">
+                          {t.generateRealScriptConfirmWarning}
+                        </p>
+                        <p className="text-muted-foreground">
+                          {t.generateRealScriptConfirmNote}
+                        </p>
+                        <div className="mt-2 flex gap-2">
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => setConfirmingRegenerateStage(null)}
-                            disabled={regeneratingStage === focusedStage}
+                            onClick={() =>
+                              setConfirmingRealGenerationStage(null)
+                            }
+                            disabled={action.generating}
                           >
                             {t.cancel}
                           </Button>
                           <Button
                             type="button"
                             size="sm"
-                            variant="destructive"
-                            className="h-6 px-2 text-xs"
                             onClick={() => {
-                              setConfirmingRegenerateStage(null);
-                              onRegenerateStage(focusedStage);
+                              setConfirmingRealGenerationStage(null);
+                              action.onGenerate();
                             }}
-                            disabled={regeneratingStage === focusedStage}
-                            data-testid="vd-confirm-regenerate-stage"
+                            disabled={action.generating}
+                            data-testid={`vd-confirm-generate-real-${action.testId}`}
                           >
-                            {regeneratingStage === focusedStage ? (
-                              <>
-                                <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin" />
-                                {t.regenerating}
-                              </>
-                            ) : (
-                              t.regenerateConfirmButton
-                            )}
+                            {action.generating
+                              ? t.generatingRealScript
+                              : generateLabel}
                           </Button>
                         </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
-                          onClick={() => setConfirmingRegenerateStage(focusedStage)}
-                          data-testid="vd-regenerate-stage"
-                        >
-                          <RotateCcw aria-hidden="true" className="h-3 w-3" />
-                          {t.regenerateStage}
-                        </Button>
-                      )
-                    ) : null}
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setConfirmingRealGenerationStage(current.stage)
+                        }
+                        disabled={action.generating}
+                        data-testid={`vd-generate-real-${action.testId}`}
+                      >
+                        {action.generating
+                          ? t.generatingRealScript
+                          : generateLabel}
+                      </Button>
+                    )}
                   </div>
-                  {focusedStage === "dialogue_audio_plan" ? (
-                    <VerticalDramaDialogueAudioPanel
-                      plan={dialogueAudioPanel?.plan}
-                      loading={dialogueAudioPanel?.loading}
-                      error={dialogueAudioPanel?.error}
-                      onGenerate={dialogueAudioPanel?.onGenerate}
-                    />
-                  ) : focusedStage === "storyboard_shotgrid" && !hasStoryboardShots ? (
-                    <VerticalDramaStoryboardPanel
-                      locale={locale}
-                      storyboard={storyboardPanel?.storyboard}
-                      startFramePlan={storyboardPanel?.startFramePlan}
-                      motionPromptPack={storyboardPanel?.motionPromptPack}
-                      assetUrls={storyboardPanel?.assetUrls}
-                      loading={storyboardPanel?.loading}
-                      error={storyboardPanel?.error}
-                      generating={storyboardPanel?.generating}
-                      onGenerateReal={storyboardPanel?.onGenerateReal}
-                      onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
-                      onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
-                      productTieInByShot={storyboardPanel?.productTieInByShot}
-                      productImages={storyboardPanel?.productImages}
-                      productImagesLoading={storyboardPanel?.productImagesLoading}
-                      onSaveShotProductReferences={storyboardPanel?.onSaveShotProductReferences}
-                      savingProductReferencesForShot={storyboardPanel?.savingProductReferencesForShot}
-                      imageModels={storyboardPanel?.imageModels}
-                      videoModels={storyboardPanel?.videoModels}
-                      selectedImageModelId={storyboardPanel?.selectedImageModelId}
-                      selectedVideoModelId={storyboardPanel?.selectedVideoModelId}
-                      onSelectImageModel={storyboardPanel?.onSelectImageModel}
-                      onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
-                      modelsLoading={storyboardPanel?.modelsLoading}
-                      mcpConnectionId={storyboardPanel?.mcpConnectionId}
-                      onSelectMcpConnection={storyboardPanel?.onSelectMcpConnection}
-                      qualityReview={storyboardPanel?.qualityReview}
-                      onRunQualityReview={storyboardPanel?.onRunQualityReview}
-                      runningQualityReview={storyboardPanel?.runningQualityReview}
-                      onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
-          onApplyQualityReviewSuggestions={storyboardPanel?.onApplyQualityReviewSuggestions}
-          applyingQualityReviewSuggestions={storyboardPanel?.applyingQualityReviewSuggestions}
-          onRequestAlternativeQualityReview={storyboardPanel?.onRequestAlternativeQualityReview}
-          requestingAlternativeQualityReview={storyboardPanel?.requestingAlternativeQualityReview}
-                      onSummarizeEpisodeToMemory={storyboardPanel?.onSummarizeEpisodeToMemory}
-                      summarizingEpisodeToMemory={storyboardPanel?.summarizingEpisodeToMemory}
-                      episodeAlreadySummarizedToMemory={storyboardPanel?.episodeAlreadySummarizedToMemory}
-                    />
-                  ) : (
-                    <VerticalDramaRunDetailView
-                      locale={locale}
-                      runs={stageRunDetail?.runs ?? []}
-                      detail={stageRunDetail?.detail ?? null}
-                      selectedRunId={stageRunDetail?.selectedRunId}
-                      onSelectRun={stageRunDetail?.onSelectRun}
-                      loading={stageRunDetail?.loading}
-                      error={stageRunDetail?.error}
-                    />
-                  )}
-                </section>
-              ) : null}
-            </div>
+                );
+              })()}
 
-            <aside className="space-y-4">
-              <VerticalDramaRunsList
-                locale={locale}
-                runs={runs}
-                loading={runsLoading}
-                onOpenRun={onOpenRun}
-              />
-              {memory ? (
-                <VerticalDramaMemoryTimeline locale={locale} {...memory} />
+              {current.nextAction === "approve" ? (
+                <VerticalDramaApprovalBar
+                  locale={locale}
+                  state={approvalBarState}
+                  rejectionReason={rejectionReason}
+                  onApprove={() => onApprove?.(current.checkpointId)}
+                  onReject={() => onReject?.(current.checkpointId)}
+                  onRepair={() => onRepair?.(current.stage)}
+                />
+              ) : realGenerationByStage[current.stage] ? (
+                // This stage already has its own dedicated "generate real X"
+                // action rendered above — showing the generic "รันแบบทดสอบ" (test
+                // run) button here too was confusing (two buttons, only one of
+                // which actually does anything useful), and is exactly what
+                // prompted the "makes me click a test step first" complaint.
+                // Only keep a repair affordance for the failed case.
+                current.status === "failed" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onRepair?.(current.stage)}
+                    data-testid="vd-cta-repair"
+                  >
+                    {t.repair}
+                  </Button>
+                ) : null
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      onPrimaryCta?.({
+                        stage: current.stage,
+                        nextAction: current.nextAction,
+                      })
+                    }
+                    data-testid="vd-primary-cta"
+                  >
+                    {current.stage === "update_character_visual_bible" ||
+                    current.stage === "generate_or_import_character_refs"
+                      ? t.syncCharacterData
+                      : ctaLabel(t, current.nextAction)}
+                  </Button>
+                  {current.status === "failed" ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onRepair?.(current.stage)}
+                      data-testid="vd-cta-repair"
+                    >
+                      {t.repair}
+                    </Button>
+                  ) : null}
+                  {/* "Free, no paid generation" is only true of the actual
+                  dry-run placeholder path — `update_character_visual_bible`
+                  and `generate_or_import_character_refs` both always run a
+                  real (free) sync now, so the dry-run note would be
+                  misleading there (see decisions.md). */}
+                  {current.stage !== "update_character_visual_bible" &&
+                  current.stage !== "generate_or_import_character_refs" ? (
+                    <span className="text-xs text-muted-foreground">
+                      {t.dryRunNote}
+                    </span>
+                  ) : null}
+                </div>
+              )}
+
+              {current.errors && current.errors.length > 0 ? (
+                <ul className="mt-2 space-y-1">
+                  {current.errors.map((e, i) => (
+                    <li key={i} className="text-xs text-destructive">
+                      [{e.code}] {e.message}
+                    </li>
+                  ))}
+                </ul>
               ) : null}
-            </aside>
-          </div>
+            </section>
+          ) : completed ? (
+            <div className="rounded-lg border px-3 py-2 text-sm font-medium">
+              {t.readOnlyCompleted}
+            </div>
+          ) : null
+        ) : null}
+
+        {/* Everything else (per-stage grid, run ledger, memory timeline) still
+          exists — approval/repair on stages the compact view above doesn't
+          cover, and debugging a specific past run, both still need it — but
+          it's demoted to an explicitly-opened "advanced" section instead of
+          always-visible clutter. Collapsed by default. */}
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="group flex w-full items-center justify-between rounded-lg border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent/50"
+              data-testid="vd-advanced-toggle"
+            >
+              <span>{t.advancedPipelineDetail}</span>
+              <ChevronDown
+                aria-hidden="true"
+                className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180"
+              />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 pt-4">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="space-y-4">
+                {/* Phase progress indicator (reduced-motion safe: static bars, no pulse). */}
+                <section
+                  aria-label={t.phaseProgress}
+                  className="rounded-lg border p-3"
+                >
+                  <ol className="flex flex-wrap gap-2">
+                    {VD_PHASES.map(phase => {
+                      const status = phaseStatus(phase, stageStates);
+                      return (
+                        <li
+                          key={phase.id}
+                          className={cn(
+                            "flex min-w-[120px] flex-1 flex-col gap-1 rounded-md border p-2 motion-reduce:animate-none",
+                            status === "complete" &&
+                              "border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/20",
+                            status === "active" &&
+                              "border-primary/50 bg-primary/5",
+                            status === "waiting" &&
+                              "border-amber-500/50 bg-amber-50 dark:bg-amber-950/20",
+                            status === "blocked" &&
+                              "border-destructive/50 bg-destructive/5"
+                          )}
+                          data-phase={phase.id}
+                          data-status={status}
+                        >
+                          <span className="text-xs font-medium">
+                            {vdPhaseLabel(phase, locale)}
+                          </span>
+                          <span className="text-[10px] uppercase text-muted-foreground">
+                            {status === "complete"
+                              ? t.completed
+                              : status === "waiting"
+                                ? t.waitingForApproval
+                                : status === "blocked"
+                                  ? t.failed
+                                  : status === "active"
+                                    ? t.running
+                                    : "—"}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </section>
+
+                {/* Stage-card grid — every stage is always clickable, grouped by phase. */}
+                <section className="space-y-3" aria-label="stages">
+                  {VD_PHASES.map(phase => (
+                    <div key={phase.id} className="rounded-lg border p-3">
+                      <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+                        {vdPhaseLabel(phase, locale)}
+                      </h3>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        {phase.stages.map(stage => {
+                          const s = stageStatusFor(stageStates, stage);
+                          const isFocused = stage === focusedStage;
+                          return (
+                            <button
+                              key={stage}
+                              type="button"
+                              onClick={() => handleFocusStage(stage)}
+                              aria-current={isFocused ? "true" : undefined}
+                              className={cn(
+                                "flex flex-col gap-1.5 rounded-md border p-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                isFocused
+                                  ? "border-primary bg-primary/5"
+                                  : "bg-card hover:bg-accent/50"
+                              )}
+                              data-testid={`vd-stage-${stage}`}
+                            >
+                              <span className="font-medium">
+                                {vdStageLabel(stage, locale)}
+                              </span>
+                              <span className="flex items-center gap-2">
+                                <Badge
+                                  variant={
+                                    s.status === "failed"
+                                      ? "destructive"
+                                      : s.status === "succeeded"
+                                        ? "secondary"
+                                        : s.status === "approval_required"
+                                          ? "outline"
+                                          : "default"
+                                  }
+                                  className="text-[10px]"
+                                >
+                                  {s.status}
+                                </Badge>
+                                {!completed && s.status === "failed" ? (
+                                  <span
+                                    role="button"
+                                    tabIndex={0}
+                                    className="text-xs text-muted-foreground underline hover:text-foreground"
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      onRepair?.(stage);
+                                    }}
+                                    onKeyDown={e => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.stopPropagation();
+                                        onRepair?.(stage);
+                                      }
+                                    }}
+                                  >
+                                    {t.repair}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </section>
+
+                {/* Focused-stage detail — independent of the primary CTA above. */}
+                {focusedStage ? (
+                  <section
+                    className="rounded-lg border p-3"
+                    aria-label={vdStageLabel(focusedStage, locale)}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-medium">
+                        {vdStageLabel(focusedStage, locale)}
+                      </h3>
+                      {stageStatusFor(stageStates, focusedStage).status !==
+                        "queued" && onRegenerateStage ? (
+                        confirmingRegenerateStage === focusedStage ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">
+                              {t.regenerateConfirm}
+                            </span>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => setConfirmingRegenerateStage(null)}
+                              disabled={regeneratingStage === focusedStage}
+                            >
+                              {t.cancel}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="destructive"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                setConfirmingRegenerateStage(null);
+                                onRegenerateStage(focusedStage);
+                              }}
+                              disabled={regeneratingStage === focusedStage}
+                              data-testid="vd-confirm-regenerate-stage"
+                            >
+                              {regeneratingStage === focusedStage ? (
+                                <>
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3 w-3 animate-spin"
+                                  />
+                                  {t.regenerating}
+                                </>
+                              ) : (
+                                t.regenerateConfirmButton
+                              )}
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              setConfirmingRegenerateStage(focusedStage)
+                            }
+                            data-testid="vd-regenerate-stage"
+                          >
+                            <RotateCcw aria-hidden="true" className="h-3 w-3" />
+                            {t.regenerateStage}
+                          </Button>
+                        )
+                      ) : null}
+                    </div>
+                    {focusedStage === "dialogue_audio_plan" ? (
+                      <VerticalDramaDialogueAudioPanel
+                        locale={locale}
+                        plan={dialogueAudioPanel?.plan}
+                        loading={dialogueAudioPanel?.loading}
+                        error={dialogueAudioPanel?.error}
+                        onGenerate={dialogueAudioPanel?.onGenerate}
+                        batch={dialogueAudioPanel?.batch}
+                      />
+                    ) : focusedStage === "storyboard_shotgrid" &&
+                      !hasStoryboardShots ? (
+                      <VerticalDramaStoryboardPanel
+                        locale={locale}
+                        storyboard={storyboardPanel?.storyboard}
+                        startFramePlan={storyboardPanel?.startFramePlan}
+                        motionPromptPack={storyboardPanel?.motionPromptPack}
+                        assetUrls={storyboardPanel?.assetUrls}
+                        loading={storyboardPanel?.loading}
+                        error={storyboardPanel?.error}
+                        generating={storyboardPanel?.generating}
+                        onGenerateReal={storyboardPanel?.onGenerateReal}
+                        onEditVideoPrompt={storyboardPanel?.onEditVideoPrompt}
+                        onChangeStartFrame={storyboardPanel?.onChangeStartFrame}
+                        productTieInByShot={storyboardPanel?.productTieInByShot}
+                        productImages={storyboardPanel?.productImages}
+                        productImagesLoading={
+                          storyboardPanel?.productImagesLoading
+                        }
+                        onSaveShotProductReferences={
+                          storyboardPanel?.onSaveShotProductReferences
+                        }
+                        savingProductReferencesForShot={
+                          storyboardPanel?.savingProductReferencesForShot
+                        }
+                        imageModels={storyboardPanel?.imageModels}
+                        videoModels={storyboardPanel?.videoModels}
+                        selectedImageModelId={
+                          storyboardPanel?.selectedImageModelId
+                        }
+                        selectedVideoModelId={
+                          storyboardPanel?.selectedVideoModelId
+                        }
+                        onSelectImageModel={storyboardPanel?.onSelectImageModel}
+                        onSelectVideoModel={storyboardPanel?.onSelectVideoModel}
+                        modelsLoading={storyboardPanel?.modelsLoading}
+                        mcpConnectionId={storyboardPanel?.mcpConnectionId}
+                        onSelectMcpConnection={
+                          storyboardPanel?.onSelectMcpConnection
+                        }
+                        qualityReview={storyboardPanel?.qualityReview}
+                        onRunQualityReview={storyboardPanel?.onRunQualityReview}
+                        runningQualityReview={
+                          storyboardPanel?.runningQualityReview
+                        }
+                        onCopySuggestedFix={storyboardPanel?.onCopySuggestedFix}
+                        onApplyQualityReviewSuggestions={
+                          storyboardPanel?.onApplyQualityReviewSuggestions
+                        }
+                        applyingQualityReviewSuggestions={
+                          storyboardPanel?.applyingQualityReviewSuggestions
+                        }
+                        onRequestAlternativeQualityReview={
+                          storyboardPanel?.onRequestAlternativeQualityReview
+                        }
+                        requestingAlternativeQualityReview={
+                          storyboardPanel?.requestingAlternativeQualityReview
+                        }
+                        onSummarizeEpisodeToMemory={
+                          storyboardPanel?.onSummarizeEpisodeToMemory
+                        }
+                        summarizingEpisodeToMemory={
+                          storyboardPanel?.summarizingEpisodeToMemory
+                        }
+                        episodeAlreadySummarizedToMemory={
+                          storyboardPanel?.episodeAlreadySummarizedToMemory
+                        }
+                        speechBudgetEnabled={
+                          storyboardPanel?.speechBudgetEnabled
+                        }
+                        onRepairWholeEpisodeScript={
+                          storyboardPanel?.onRepairWholeEpisodeScript
+                        }
+                        qualityLoopV2Enabled={
+                          storyboardPanel?.qualityLoopV2Enabled
+                        }
+                        tieInQcEnabled={storyboardPanel?.tieInQcEnabled}
+                        qualityPolicy={storyboardPanel?.qualityPolicy}
+                        qualityLoopState={storyboardPanel?.qualityLoopState}
+                        onRunQualityImproveLoop={
+                          storyboardPanel?.onRunQualityImproveLoop
+                        }
+                        runningQualityImproveLoop={
+                          storyboardPanel?.runningQualityImproveLoop
+                        }
+                        tieInEnabled={storyboardPanel?.tieInEnabled}
+                        tieInQualityReport={storyboardPanel?.tieInQualityReport}
+                        onDeferTieIn={storyboardPanel?.onDeferTieIn}
+                        deferringTieIn={storyboardPanel?.deferringTieIn}
+                        tieInDeferScheduleAtRisk={
+                          storyboardPanel?.tieInDeferScheduleAtRisk
+                        }
+                        seasonTieInPlacement={
+                          storyboardPanel?.seasonTieInPlacement
+                        }
+                      />
+                    ) : (
+                      <VerticalDramaRunDetailView
+                        locale={locale}
+                        runs={stageRunDetail?.runs ?? []}
+                        detail={stageRunDetail?.detail ?? null}
+                        selectedRunId={stageRunDetail?.selectedRunId}
+                        onSelectRun={stageRunDetail?.onSelectRun}
+                        loading={stageRunDetail?.loading}
+                        error={stageRunDetail?.error}
+                      />
+                    )}
+                  </section>
+                ) : null}
+              </div>
+
+              <aside className="space-y-4">
+                <VerticalDramaRunsList
+                  locale={locale}
+                  runs={runs}
+                  loading={runsLoading}
+                  onOpenRun={onOpenRun}
+                />
+                {memory ? (
+                  <VerticalDramaMemoryTimeline locale={locale} {...memory} />
+                ) : null}
+              </aside>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </AdvancedStagesDisclosure>
+    </div>
+  );
+}
+
+/**
+ * "Advanced stages" (ขั้นสูง) disclosure (section-12 Rollout step 4) — wraps
+ * the workspace's existing primary-content + advanced-pipeline-detail block
+ * (everything from `scriptSummary` through the pre-existing
+ * `advancedPipelineDetail` collapsible) once `flags.productionWizard` is on,
+ * so the newly-primary wizard above does not have to visually compete with
+ * the full expert surface. `enabled={false}` (the default — flag off)
+ * returns `children` completely unwrapped, so flags-off markup is BYTE-
+ * IDENTICAL to before this component existed — no extra DOM node, no extra
+ * className, nothing.
+ *
+ * `hideTrigger` (2026-07-08 meta/shot-grid disclosure split) — renders a
+ * SECOND, trigger-less content region bound to the SAME `open` boolean/
+ * `vd-advanced-stages-toggle` button rendered by the FIRST (default)
+ * instance elsewhere in the tree, so the per-shot production grid
+ * (`VerticalDramaStoryboardPanel`, always visible, rendered BETWEEN the two
+ * instances) never has to sit inside either region while everything that
+ * still SHOULD collapse together (the pre-existing `advancedPipelineDetail`
+ * block) keeps doing so, driven by one single visible toggle.
+ */
+function AdvancedStagesDisclosure({
+  enabled,
+  open,
+  onOpenChange,
+  locale,
+  hideTrigger = false,
+  children,
+}: {
+  enabled: boolean;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  locale: VdLocale;
+  hideTrigger?: boolean;
+  children: ReactNode;
+}) {
+  if (!enabled) return <>{children}</>;
+
+  if (hideTrigger) {
+    return (
+      <Collapsible open={open} onOpenChange={onOpenChange}>
+        <CollapsibleContent className="space-y-4 pt-3">
+          {children}
         </CollapsibleContent>
       </Collapsible>
-    </div>
+    );
+  }
+
+  const t = vdCopy(locale);
+  return (
+    <Collapsible open={open} onOpenChange={onOpenChange}>
+      <CollapsibleTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="group flex min-h-11 w-full items-center justify-between rounded-lg border px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-accent/50"
+          data-testid="vd-advanced-stages-toggle"
+        >
+          <span>{t.wizardAdvancedStagesDisclosure}</span>
+          <ChevronDown
+            aria-hidden="true"
+            className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180"
+          />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-4 pt-3">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Ad Banner Overlay — per-episode banner selection (F131W, task #30-A2)      */
+/* -------------------------------------------------------------------------- */
+
+/** English label for a placement id — `adBannerPresets.ts`'s placement presets only carry a Thai `nameTh` (no English counterpart, unlike the style presets), so this file owns both languages via its own copy keys instead of mixing two i18n sources for one label. */
+function adBannerPlacementLabel(
+  placementId: VdAdBannerPlacementId,
+  t: ReturnType<typeof vdCopy>
+): string {
+  switch (placementId) {
+    case "bottom_band":
+      return t.adBannerPlacementBottomBand;
+    case "side_vertical":
+      return t.adBannerPlacementSideVertical;
+    case "fullscreen":
+      return t.adBannerPlacementFullscreen;
+    default:
+      return placementId;
+  }
+}
+
+/** Seed a fresh draft timing from a design's own `defaultTiming` — same "explicit timing, else the design's defaultTiming" resolution order the server's `resolveEpisodeAdBannerEffectiveWindow` uses, just always producing CONCRETE numbers (this editor never leaves `startSec`/`durationSec` undefined, even for `"entire"` mode, where they are simply ignored by the server). */
+function defaultAdBannerDraftTiming(
+  design: VerticalDramaAdBannerDesignSummaryView
+): VerticalDramaAdBannerTimingView {
+  const timing = design.defaultTiming;
+  return {
+    mode: timing?.mode ?? "entire",
+    startSec: timing?.startSec ?? 0,
+    durationSec: timing?.durationSec ?? 3,
+  };
+}
+
+/**
+ * Client-side mirror of the server's `validateEpisodeAdBannerPlan`
+ * (`server/routers/verticalDramaEpisodes.ts`) — same two checks the server
+ * treats as hard errors (≤`VD_AD_BANNER_MAX_PER_SERIES` selections, no
+ * overlapping fullscreen selections), duplicated rather than imported (this
+ * component never imports server code). Deliberately does NOT duplicate the
+ * unknown-design/not-ready checks — this editor only ever lets the user pick
+ * from the `designs` list it was given, so those states are unreachable from
+ * the UI itself. Pure — returns user-facing message strings, already
+ * localized via `t`.
+ */
+function validateAdBannerSelectionsClientSide(
+  selections: VerticalDramaAdBannerSelectionView[],
+  designs: VerticalDramaAdBannerDesignSummaryView[],
+  t: ReturnType<typeof vdCopy>
+): string[] {
+  const messages: string[] = [];
+  if (selections.length > VD_AD_BANNER_MAX_PER_SERIES) {
+    messages.push(
+      vdCopyWithParams(t.adBannerTooManyError, {
+        n: VD_AD_BANNER_MAX_PER_SERIES,
+      })
+    );
+  }
+
+  const designsById = new Map(designs.map(d => [d.id, d]));
+  const fullscreenWindows: Array<{ startSec: number; endSec: number }> = [];
+  for (const selection of selections) {
+    const design = designsById.get(selection.bannerId);
+    if (!design || design.placementId !== "fullscreen") continue;
+    const timing = selection.timing ?? defaultAdBannerDraftTiming(design);
+    fullscreenWindows.push(
+      timing.mode === "window"
+        ? {
+            startSec: timing.startSec,
+            endSec: timing.startSec + timing.durationSec,
+          }
+        : { startSec: 0, endSec: Number.POSITIVE_INFINITY }
+    );
+  }
+  outer: for (let i = 0; i < fullscreenWindows.length; i += 1) {
+    for (let j = i + 1; j < fullscreenWindows.length; j += 1) {
+      const a = fullscreenWindows[i]!;
+      const b = fullscreenWindows[j]!;
+      if (a.startSec < b.endSec && b.startSec < a.endSec) {
+        messages.push(t.adBannerFullscreenOverlapError);
+        break outer; // one message is enough for this compact UI
+      }
+    }
+  }
+  return messages;
+}
+
+/**
+ * The "แบนเนอร์ในวิดีโอนี้" section (plan.md §6 episode side) — lets the user
+ * pick which of the series' READY banner designs appear in this episode's
+ * video, with an optional per-selection timing override. Local draft state
+ * (seeded from `plan`, re-seeded whenever `plan` itself changes — e.g. after
+ * a successful save + `getEpisodeDetail` refetch, or navigating to a
+ * different episode) with an explicit "บันทึกแบนเนอร์" save button, rather
+ * than saving on every checkbox/input change — this mutation is a full
+ * read-validate-write round trip, not a cheap per-keystroke autosave.
+ */
+function VerticalDramaAdBannerPlanSection({
+  locale,
+  designs,
+  plan,
+  saving = false,
+  error = null,
+  onSave,
+}: {
+  locale: VdLocale;
+  designs: VerticalDramaAdBannerDesignSummaryView[];
+  plan: VerticalDramaAdBannerPlanView | null;
+  saving?: boolean;
+  error?: string | null;
+  onSave?: (plan: VerticalDramaAdBannerPlanView) => void;
+}) {
+  const t = useMemo(() => vdCopy(locale), [locale]);
+  const readyDesigns = useMemo(
+    () => designs.filter(d => d.status === "ready" && d.imageUrl),
+    [designs]
+  );
+
+  const [enabled, setEnabled] = useState(plan?.enabled ?? false);
+  const [selections, setSelections] = useState<
+    VerticalDramaAdBannerSelectionView[]
+  >(plan?.selections ?? []);
+
+  useEffect(() => {
+    setEnabled(plan?.enabled ?? false);
+    setSelections(plan?.selections ?? []);
+  }, [plan]);
+
+  function toggleDesign(
+    design: VerticalDramaAdBannerDesignSummaryView,
+    checked: boolean
+  ) {
+    setSelections(prev => {
+      if (checked) {
+        if (prev.some(s => s.bannerId === design.id)) return prev;
+        return [
+          ...prev,
+          { bannerId: design.id, timing: defaultAdBannerDraftTiming(design) },
+        ];
+      }
+      return prev.filter(s => s.bannerId !== design.id);
+    });
+  }
+
+  function updateTiming(
+    bannerId: string,
+    patch: Partial<VerticalDramaAdBannerTimingView>
+  ) {
+    setSelections(prev =>
+      prev.map(s =>
+        s.bannerId === bannerId
+          ? {
+              ...s,
+              timing: {
+                ...(s.timing ?? {
+                  mode: "entire",
+                  startSec: 0,
+                  durationSec: 3,
+                }),
+                ...patch,
+              },
+            }
+          : s
+      )
+    );
+  }
+
+  const validationMessages = useMemo(
+    () => validateAdBannerSelectionsClientSide(selections, readyDesigns, t),
+    [selections, readyDesigns, t]
+  );
+  const hasBlockingIssue = validationMessages.length > 0;
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={t.adBannerSectionTitle}
+      data-testid="vd-ad-banner-plan-section"
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">{t.adBannerSectionTitle}</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {t.adBannerEnableLabel}
+          </span>
+          <Switch
+            checked={enabled}
+            onCheckedChange={next => setEnabled(Boolean(next))}
+            data-testid="vd-ad-banner-enabled-toggle"
+          />
+        </div>
+      </div>
+
+      {enabled ? (
+        readyDesigns.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{t.adBannerNoDesigns}</p>
+        ) : (
+          <div className="space-y-2">
+            {readyDesigns.map(design => {
+              const selection = selections.find(s => s.bannerId === design.id);
+              const selected = Boolean(selection);
+              const disabled = design.excludedByApproval;
+              const timing =
+                selection?.timing ?? defaultAdBannerDraftTiming(design);
+              return (
+                <div
+                  key={design.id}
+                  className="flex flex-col gap-2 rounded-md border p-2"
+                  data-testid={`vd-ad-banner-row-${design.id}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selected}
+                      disabled={disabled}
+                      onCheckedChange={checked =>
+                        toggleDesign(design, Boolean(checked))
+                      }
+                      data-testid={`vd-ad-banner-checkbox-${design.id}`}
+                    />
+                    {design.imageUrl ? (
+                      <img
+                        src={design.imageUrl}
+                        alt={design.label}
+                        className="h-10 w-10 rounded object-cover"
+                      />
+                    ) : null}
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium">
+                        {design.label}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {adBannerPlacementLabel(design.placementId, t)}
+                      </span>
+                    </div>
+                    {disabled ? (
+                      <Badge variant="outline" className="ml-auto text-[10px]">
+                        {t.adBannerApprovalRequiredBadge}
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  {selected && !disabled ? (
+                    <div className="flex flex-wrap items-center gap-2 pl-6">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                          timing.mode === "entire" ? "default" : "outline"
+                        }
+                        onClick={() =>
+                          updateTiming(design.id, { mode: "entire" })
+                        }
+                        data-testid={`vd-ad-banner-mode-entire-${design.id}`}
+                      >
+                        {t.adBannerTimingEntire}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                          timing.mode === "window" ? "default" : "outline"
+                        }
+                        onClick={() =>
+                          updateTiming(design.id, { mode: "window" })
+                        }
+                        data-testid={`vd-ad-banner-mode-window-${design.id}`}
+                      >
+                        {t.adBannerTimingWindow}
+                      </Button>
+                      {timing.mode === "window" ? (
+                        <>
+                          <label className="flex items-center gap-1 text-[11px]">
+                            {t.adBannerStartSecLabel}
+                            <Input
+                              type="number"
+                              min={0}
+                              className="h-7 w-16"
+                              value={timing.startSec}
+                              onChange={e =>
+                                updateTiming(design.id, {
+                                  startSec: Number(e.target.value),
+                                })
+                              }
+                              data-testid={`vd-ad-banner-start-${design.id}`}
+                            />
+                          </label>
+                          <label className="flex items-center gap-1 text-[11px]">
+                            {t.adBannerDurationSecLabel}
+                            <Input
+                              type="number"
+                              min={0.1}
+                              step={0.1}
+                              className="h-7 w-16"
+                              value={timing.durationSec}
+                              onChange={e =>
+                                updateTiming(design.id, {
+                                  durationSec: Number(e.target.value),
+                                })
+                              }
+                              data-testid={`vd-ad-banner-duration-${design.id}`}
+                            />
+                          </label>
+                        </>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : null}
+
+      {validationMessages.length > 0 ? (
+        <ul
+          className="space-y-0.5 text-xs text-destructive"
+          data-testid="vd-ad-banner-validation-errors"
+        >
+          {validationMessages.map(message => (
+            <li key={message}>{message}</li>
+          ))}
+        </ul>
+      ) : null}
+
+      {error ? (
+        <p
+          className="text-xs text-destructive"
+          data-testid="vd-ad-banner-save-error"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <Button
+        type="button"
+        size="sm"
+        disabled={saving || hasBlockingIssue}
+        onClick={() =>
+          onSave?.({
+            enabled,
+            selections: selections.filter(s =>
+              readyDesigns.some(d => d.id === s.bannerId)
+            ),
+          })
+        }
+        data-testid="vd-ad-banner-save"
+      >
+        {saving ? t.adBannerSaving : t.adBannerSave}
+      </Button>
+    </section>
+  );
+}
+
+/**
+ * Task #21 / W12.5 "Final Render Suite" phase B (2026-07-09) — dialogue-
+ * audio + subtitle options for the whole-episode compiled video. This
+ * section only owns the OPTION VALUES (a single controlled `value`/`onChange`
+ * object, mirroring the ad banner section's `onSave` payload-shape
+ * convention just without a separate draft/save step, since these are plain
+ * flags with no per-item list) and the read-only "last render result"
+ * summary — the actual "Assemble full episode video" button lives in
+ * `VerticalDramaStoryboardPanel.tsx` (a sibling file, not touched by this
+ * wave); the page-level caller merges this section's current `value` into
+ * its `assembleEpisodeVideo` mutate payload whenever that button fires (see
+ * `VerticalDramaEpisodePage.tsx`'s `handleAssembleCompiledVideo`).
+ *
+ * `voiceChainEnabled` gates ONLY the dialogue-audio checkbox (+ nested
+ * loudness sub-checkbox) — same "feature-detected prop, off -> that part
+ * renders nothing" convention as `adBannerOverlayEnabled`. The subtitle
+ * preset picker is ALWAYS visible whenever this section renders at all:
+ * subtitles are derived from the episode's SCRIPT text, not from any
+ * generated audio (see `assembleEpisodeVideo`'s own doc comment,
+ * `server/routers/verticalDramaEpisodes.ts`).
+ */
+function VerticalDramaFinalRenderOptionsSection({
+  locale,
+  voiceChainEnabled = false,
+  value,
+  onChange,
+  lastResult,
+  adBannerDesigns = [],
+}: {
+  locale: VdLocale;
+  voiceChainEnabled?: boolean;
+  value?: VerticalDramaFinalRenderOptionsView | null;
+  onChange?: (value: VerticalDramaFinalRenderOptionsView) => void;
+  lastResult?: VerticalDramaFinalRenderResultView | null;
+  adBannerDesigns?: VerticalDramaAdBannerDesignSummaryView[];
+}) {
+  const t = useMemo(() => vdCopy(locale), [locale]);
+  const includeDialogueAudio = value?.includeDialogueAudio ?? false;
+  const loudnessNormalize = value?.loudnessNormalize ?? false;
+  const subtitlePreset = value?.subtitlePreset ?? "classic_box";
+
+  function emit(patch: Partial<VerticalDramaFinalRenderOptionsView>) {
+    onChange?.({
+      includeDialogueAudio,
+      loudnessNormalize,
+      subtitlePreset,
+      ...patch,
+    });
+  }
+
+  const excludedAdBanners = lastResult?.excludedAdBanners ?? [];
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={t.finalRenderOptionsTitle}
+      data-testid="vd-final-render-options-section"
+    >
+      <h3 className="text-sm font-medium">{t.finalRenderOptionsTitle}</h3>
+
+      {voiceChainEnabled ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="vd-final-render-include-audio"
+              checked={includeDialogueAudio}
+              onCheckedChange={checked =>
+                emit({ includeDialogueAudio: Boolean(checked) })
+              }
+              data-testid="vd-final-render-include-audio"
+            />
+            <label htmlFor="vd-final-render-include-audio" className="text-sm">
+              {t.finalRenderIncludeDialogueAudioLabel}
+            </label>
+          </div>
+          <div className="flex items-center gap-2 pl-6">
+            <Checkbox
+              id="vd-final-render-loudness-normalize"
+              checked={loudnessNormalize}
+              disabled={!includeDialogueAudio}
+              onCheckedChange={checked =>
+                emit({ loudnessNormalize: Boolean(checked) })
+              }
+              data-testid="vd-final-render-loudness-normalize"
+            />
+            <label
+              htmlFor="vd-final-render-loudness-normalize"
+              className="text-sm text-muted-foreground"
+            >
+              {t.finalRenderLoudnessNormalizeLabel}
+            </label>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="vd-final-render-subtitle-preset"
+          className="text-xs font-medium text-muted-foreground"
+        >
+          {t.finalRenderSubtitlePresetLabel}
+        </label>
+        <Select
+          value={subtitlePreset}
+          onValueChange={v =>
+            emit({ subtitlePreset: v as VdFinalRenderSubtitlePresetValue })
+          }
+        >
+          <SelectTrigger
+            id="vd-final-render-subtitle-preset"
+            data-testid="vd-final-render-subtitle-preset"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">{t.finalRenderSubtitlePresetNone}</SelectItem>
+            {VD_FINAL_RENDER_SUBTITLE_PRESET_IDS.map(id => (
+              <SelectItem key={id} value={id}>
+                {vdFinalRenderSubtitlePresetLabel(id, locale)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {lastResult ? (
+        <div
+          className="space-y-1 rounded-md border bg-muted/30 p-2 text-xs"
+          data-testid="vd-final-render-result"
+        >
+          <p className="font-medium">{t.finalRenderResultTitle}</p>
+          <p data-testid="vd-final-render-result-subtitle-lines">
+            {vdCopyWithParams(t.finalRenderResultSubtitleLinesTemplate, {
+              n: lastResult.subtitleLinesIncluded,
+            })}
+          </p>
+          <p data-testid="vd-final-render-result-audio-segments">
+            {vdCopyWithParams(t.finalRenderResultAudioSegmentsTemplate, {
+              n: lastResult.dialogueAudioSegmentsIncluded,
+            })}
+          </p>
+          {excludedAdBanners.length > 0 ? (
+            <div data-testid="vd-final-render-excluded-banners">
+              <p className="font-medium text-destructive">
+                {t.finalRenderResultExcludedBannersTitle}
+              </p>
+              <ul className="list-disc pl-4">
+                {excludedAdBanners.map(exclusion => {
+                  const label =
+                    adBannerDesigns.find(d => d.id === exclusion.bannerId)
+                      ?.label ?? exclusion.bannerId;
+                  const reason = vdAdBannerExclusionReasonLabel(
+                    exclusion.code,
+                    locale
+                  );
+                  return (
+                    <li key={exclusion.bannerId}>
+                      {label} — {reason}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

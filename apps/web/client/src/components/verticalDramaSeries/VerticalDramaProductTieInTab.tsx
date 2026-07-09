@@ -36,6 +36,14 @@ import {
   VERTICAL_DRAMA_PRODUCT_CATEGORY_LABELS_EN,
   type VerticalDramaProductCategory,
 } from "@shared/verticalDramaSeries/thaiAdCompliance";
+/**
+ * Ad Banner Overlay (F131W, #30-A) — series-level banner design studio,
+ * rendered below the existing tie-in config behind its own tenant flag. Own
+ * import block (new feature, keeps this tab's diff scoped) — see
+ * `VerticalDramaAdBannerStudio.tsx`'s own header doc comment.
+ */
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
+import { VerticalDramaAdBannerStudio } from "@/components/verticalDramaSeries/VerticalDramaAdBannerStudio";
 
 /**
  * Loose shape for the `productTieIn` JSON column — wider than the parent
@@ -163,7 +171,12 @@ export function VerticalDramaProductTieInTab({
     videoNarrationCaption !== (productTieIn?.videoNarrationCaption ?? "") ||
     productCategory !== (productTieIn?.productCategory ?? "");
 
+  // Ad Banner Overlay (F131W, #30-A) — series-level banner design studio,
+  // rendered as its own section below this tab's existing tie-in config.
+  const adBannerOverlayEnabled = useTenantFeatureFlag("verticalDramaSeriesAdBannerOverlay");
+
   return (
+    <div className="grid gap-4">
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{pickCopy(lang, verticalDramaCopy.productTieIn)}</CardTitle>
@@ -420,5 +433,17 @@ export function VerticalDramaProductTieInTab({
         )}
       </CardContent>
     </Card>
+
+    {adBannerOverlayEnabled && (
+      <VerticalDramaAdBannerStudio
+        lang={lang}
+        seriesId={seriesId}
+        readOnly={readOnly}
+        productTieIn={productTieIn ?? null}
+        productCategory={productCategory || undefined}
+        onSaved={onSaved}
+      />
+    )}
+    </div>
   );
 }

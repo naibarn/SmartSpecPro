@@ -145,6 +145,62 @@ Provenance:
 - Tie-in config carries a `productSource` enum (`manual` | `marketplace` | `library` | `uploaded_reference`).
 - Product provenance is retained for audit and later Library/marketplace workflows.
 
+### Production-Grade Tie-In Naturalness QC (spec §13.1, added 2026-07-07)
+
+Feature flag: `verticalDramaSeriesTieInQc` (requires BOTH
+`verticalDramaSeriesSpeechBudget` AND `verticalDramaSeriesQualityLoopV2` —
+the tie-in repair path is the §16.1 loop, spec §17). Flags-off keeps today's
+shipped placement machinery unchanged (`product_tie_in_plan.tie_ins[]` with `shot_numbers[]`,
+`story_function`, `placement_style ∈ {hero_prop, background, in_use_moment}`,
+`benefit_talking_point`; `screenClaims`; fatigue window 10;
+`sanitizeBrandMentionsInPrompt`; `thaiAdCompliance.ts`; product reference cap
+3 — see `server/services/verticalDramaProductTieIn.ts`).
+
+Additions on top (measurement + loop, never replacing the shipped machinery):
+
+- Every tie-in episode produces a `VerticalDramaTieInQualityReport` (spec
+  §13.1) BEFORE paid generation: qualitative dimensions
+  (`storyIntegration`, `characterMotivation`, `toneMatch`, 1-5) judged via
+  the quality-review skill's v2 `tie_in_naturalness` dimension
+  (section-14), deterministic checks computed in code
+  (`spokenMentionCount` max 2, `visualShotCount` max 3 of 9, ad-speak
+  lexicon hits, `screenClaims` violations, `isDisclosureSeparateFromPrompt`,
+  `evaluateFatigue`).
+- `placementNaturalnessScore` (spec §13 usage type) is DEFINED as the
+  report's `naturalnessScore` (0-100). Pass floor default 70 via
+  `VerticalDramaQualityPolicy.tieInMinNaturalnessScore`; regulated
+  categories may only raise it.
+- Failing report BLOCKS paid generation for tie-in shots (guided mode) and
+  episode handoff until repaired, removed, or explicitly overridden
+  (non-regulated only; override recorded with `approvedByUserId` + failing
+  report id + audit event).
+- Tie-in issues join the section-14 auto-improve loop as the `tie_in` repair
+  group — FOURTH in the spec §16.1 canonical order (script → storyboard →
+  dialogue → tie_in): rewrites touch ONLY tie-in-carrying beats/lines/shots
+  and preserve the story spine. After `maxAutoImproveRounds` still failing →
+  recommended repair `remove_or_rewrite_tie_in` with default action
+  **defer**: strip
+  placement from the episode, record deferral in fatigue history, and
+  (task #31, added 2026-07-09, flag `verticalDramaSeriesTieInReplan`) raise
+  a REAL `arc_replan_proposal` (spec §7.7.3, section-13,
+  `driftReasons: ["VD_ARC_TIE_IN_DEFERRED"]`) that re-places the product on
+  the nearest eligible future episode — reviewed/approved on the same arc
+  re-plan card as a detected-drift proposal. `scheduleAtRisk: true` is the
+  fallback (no eligible future episode, fatigue cap exhausted everywhere,
+  or the flag is off).
+- Visual grounding QC: a tie-in shot must attach at least one APPROVED
+  product reference when references exist; start-frame QC for tie-in shots
+  adds a product-fidelity checklist (visible per `placement_style`,
+  label/branding not warped/hallucinated, plausible scale) with a prefilled
+  `regenerate_start_frame` repair enforcing the product-lock instruction.
+- Ad-speak lexicon: per-locale banned phrasing in dialogue (superlatives,
+  CTA wording) outside an allowed `soft_cta` story function; hits are
+  deterministic report entries, not LLM judgments.
+- Telemetry: tie-in reports persist as append-only run artifacts; the
+  Product Tie-in tab shows placements used vs
+  `maxEpisodesWithTieInPerTenEpisodes`, average naturalness, deferral count,
+  violation counts, per-episode pass/fail history.
+
 ## QC Requirements
 
 QC runs at:
@@ -184,7 +240,7 @@ Required checks (every stage evaluates the relevant subset):
 
 ### Interactive QC Repair Queue
 
-QC results must be actionable, not just informational (see spec §16 L2508–2533, §11.6). Each QC result carries a `recommendedRepairs[]` list, and every entry renders as a CLICKABLE repair action rather than static display copy:
+QC results must be actionable, not just informational (see spec §16, §11.6). Each QC result carries a `recommendedRepairs[]` list, and every entry renders as a CLICKABLE repair action rather than static display copy:
 
 - Each `recommendedRepairs[]` entry carries `action` (repair verb/type), `instruction` (human-readable + payload seed for the repair), `autoRunnable` (boolean), and a concrete target (`stage` plus one of `artifactId` / `shot` / `clip` as applicable).
 - In the QC panel, warnings/blocks and their recommended repairs are NOT display-only. Clicking a recommended repair opens a repair dialog PRE-FILLED with that entry's `action`, `instruction`, and target (stage / artifactId / shot / clip), so the user submits an already-scoped repair to the repair route without re-entering context.
@@ -193,7 +249,7 @@ QC results must be actionable, not just informational (see spec §16 L2508–253
 
 ### Repair Job Status And Credit Confirmation
 
-Repairs are jobs with observable outcomes and an explicit paid/free distinction (see spec §16 L2508–2533, §11.6):
+Repairs are jobs with observable outcomes and an explicit paid/free distinction (see spec §16, §11.6):
 
 - A repair-specific status/result surface renders on the repaired target. Repair job status values reuse the provider job lifecycle vocabulary — `queued`, `running`, `succeeded`, `failed`, `timed_out` — shown against the stage/artifactId/shot/clip the repair targeted, so the user sees repair progress in place rather than only a global toast.
 - Repair outcomes (succeeded/failed/timed_out) surface the resulting artifact reference or the mapped stable `errorCode` on the target, and a failed/timed_out repair remains repairable.
@@ -313,6 +369,12 @@ Capture compatible model, blocked model, QC failure, and tie-in warning states.
 - Test: regulated-category tie-in requires human approval before paid generation is allowed.
 - Test: tie-in disclosure text is stored separately from the video prompt payload.
 - Test: tie-in can be approved, removed, or repaired before Storyboard Review creation, and `productSource` provenance is retained.
+- Test (§13.1): tie-in report merges qualitative scores with deterministic checks; `naturalnessScore` maps to 0-100 and `passed` requires >= floor AND zero deterministic violations.
+- Test (§13.1): spoken mentions > 2 or visual shots > 3 or an ad-speak lexicon hit outside `soft_cta` fails the report deterministically.
+- Test (§13.1): failing report blocks paid generation for tie-in shots in guided mode; non-regulated override records approver + report id + audit event; regulated categories cannot override.
+- Test (§13.1): exhausted improve rounds → defer strips the placement, records fatigue/deferral, and (task #31, flag on) raises a real `VD_ARC_TIE_IN_DEFERRED` arc re-plan proposal moving the placement to the nearest eligible future episode; flag off, or no eligible future episode / fatigue cap exhausted → falls back to `scheduleAtRisk: true`.
+- Test (§13.1): tie-in shot without its approved product reference (when references exist) is a QC error with a prefilled `regenerate_start_frame` repair; product-fidelity checklist failure likewise.
+- Test (§13.1): with `verticalDramaSeriesTieInQc` off, shipped tie-in behavior is unchanged (no report, no gate).
 - Test: beta defaults resolve to `default_mode = "dry_run"`, `auto_approve_generated_character_refs = false`, and `auto_approve_start_frames = false` for human/product scenes.
 - Test: tenant-admin restrictions (allowed providers, max episodes, native audio, regulated categories, prompt-only fallback) are enforced and policy changes are audit logged.
 - Test: QC result exposes `score` and `passed`, and a repair queue exists for every failed stage.
@@ -330,6 +392,7 @@ Capture compatible model, blocked model, QC failure, and tie-in warning states.
 7. Add product tie-in planner service and compliance checks.
 8. Add policy/audit logging for provider policy, auto-approval, fallback, and product approval changes.
 9. Add tests for alias mapping, capability gates, redaction, tie-in compliance, provider lifecycle, and QC stale propagation.
+10. (2026-07-07, after section-13/14 land; flag `verticalDramaSeriesTieInQc`) Add the §13.1 tie-in naturalness report (qualitative via section-14 scorecard v2 + deterministic checks incl. ad-speak lexicon), pass-floor gating with recorded overrides, defer fallback with fatigue/arc-replan bookkeeping, product-fidelity start-frame checklist, and tie-in telemetry tab fields.
 
 ## Acceptance
 

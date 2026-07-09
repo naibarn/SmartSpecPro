@@ -46,6 +46,28 @@ Define:
   - `silent` — internal fallback or visual-only planning state.
 - `mode` and `audioStrategy` are independent axes: e.g. `mode: "narrator"` may pair with `separate_tts_voiceover`, while `mode: "dialogue"` may pair with `dialogue_tts` or `native_video_audio`.
 
+## Dialogue Source Of Truth And Density (added 2026-07-07 — spec §7.7.2/§14.1, implemented with section-13)
+
+The density reform changes this section's planner contract; an implementer
+following this section alone must still honor these rules:
+
+- The dialogue-complete SCRIPT (spec §7.7.2) is the source of truth for
+  lines. `verticalDramaDialogueAudioService` / the
+  `vertical-drama-dialogue-audio-planner` skill DISTRIBUTE and ENRICH script
+  lines (timing, voice continuity, per-line `delivery`/`subtext`,
+  spoken-register Thai) — inventing new story content at this stage is a
+  contract violation.
+- The legacy `script_fallback` path (parsing freeform scene summaries with
+  positional shot mapping) always tags its output
+  `origin: "script_fallback"` and carries a warning until reviewed or
+  regenerated (`VD_DIALOGUE_SCRIPT_FALLBACK`).
+- All coverage/silence math comes from the canonical module
+  `shared/verticalDramaSeries/dialogueQuality.ts` (spec §7.7.1) — this
+  section must not declare its own speech-rate numbers.
+- After separate-TTS rendering, actual audio durations reconcile against
+  estimates; per-clip drift > 15% raises an `adjust_audio_subtitle` repair
+  suggestion instead of silently stretching or truncating (spec §14.1 rule 7).
+
 ## Audio Strategy Rules
 
 - Separate TTS is the safe default when video model native audio is missing or language support is uncertain.

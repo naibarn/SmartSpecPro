@@ -37,13 +37,35 @@ Create:
 
 ## Start-Frame Plan Builder Outputs
 
-The start-frame plan builder in `verticalDramaStartFrameService` (backing the `vertical-drama-shot-start-frame-render` skill, spec §6.4 / spec lines 233-248) must emit, in addition to the 9 render requests, the following per-plan outputs:
+The start-frame plan builder in `verticalDramaStartFrameService` (backing the `vertical-drama-shot-start-frame-render` skill, spec §6.4) must emit, in addition to the 9 render requests, the following per-plan outputs:
 
 - **Per-frame QC checklist** — for each of the 9 start frames, a structured checklist covering identity match, aspect ratio (9:16), required character/product references present, and continuity notes satisfied.
 - **Per-frame repair-prompt template** — for each frame, a reusable repair-prompt template (image prompt + negative prompt scaffold) so a failed/`needs_repair` frame can be regenerated without re-deriving the prompt.
 - **Downstream video-input manifest** — a manifest that maps each approved start frame to its downstream video shot input (shot number, selected media asset ID, first/last-frame vs first-frame-only role), consumable by the motion-prompt/video stage.
 
 These outputs stay linked to the shot number and `promptSetId` so QC results and repairs can be traced back to the originating render request.
+
+## Character Reference Resolution V2 (added 2026-07-08, task #27-A, spec §9.3)
+
+Behind flag `verticalDramaSeriesCharacterRefV2` (F131Z): shipped generation
+sent exactly ONE reference image per character — `getPrimaryPortraitUrl`
+(`server/services/verticalDramaCharacterStock.ts`) reading only the
+`primary_portrait` role — even though the character stock already persists
+`character_sheet_turnaround`/`character_sheet_full` assets that were
+generated but never read back. `getCharacterReferenceUrls` (new resolver,
+same file) additionally returns the best available sheet, chosen by
+`pickBestCharacterSheetAsset`'s priority order **approved > turnaround >
+full > most-recently-updated**. `resolveShotCharacterReferenceUrls`
+(`server/routers/verticalDramaEpisodes.ts`, call sites at the start-frame
+and video-clip generation paths) orders the merged multi-character list as
+**all portraits, then all sheets**, so reference-budget trimming against a
+provider's `maxReferenceImages` always drops sheets before it would ever
+drop a primary portrait. `getPrimaryPortraitUrl` itself stays byte-identical
+for callers that only need the portrait; with the flag off,
+`getCharacterReferenceUrls`'s behavior is a literal duplicate of the
+pre-#27-A single-reference path (not merely gated) so existing narrow test
+mocks are unaffected. Zero additional provider cost — this reuses assets
+already generated and stored, it does not generate anything new.
 
 ## Contact-Sheet Behavior
 
@@ -60,7 +82,7 @@ These outputs stay linked to the shot number and `promptSetId` so QC results and
 
 ## Start-Frame Generation Modes
 
-Per spec §7.5 (spec lines 1251-1254), `verticalDramaStartFrameService` must support **two** start-frame generation modes, not just contact sheets:
+Per spec §7.5, `verticalDramaStartFrameService` must support **two** start-frame generation modes, not just contact sheets:
 
 1. `single_frame_per_shot` — generate or import exactly **one** start-frame asset per shot (9 shots -> 9 frames). No 3x3 sheet, no cropping, one prompt set per shot, one media asset per shot. Selection is implicit: the single generated/imported frame becomes the candidate for that shot and still requires explicit approval before Storyboard Review handoff.
 2. `contact_sheet_3x3_batch` — default MVP mode; generate one or more 3x3 contact-sheet images, crop each sheet into 9 candidate frames, then let the user select the best frame per shot.
@@ -74,7 +96,7 @@ Mode-selection UI note:
 
 ## Image Model Dropdown And Incompatibility Reason Codes
 
-Per spec §7.5 (spec lines 1260-1261), the image-model dropdown is **not** a filter. It must list every enabled `type = "image"` model from the current model registry, and models that cannot directly produce 9:16-compatible images stay **visible and selectable** rather than being removed.
+Per spec §7.5, the image-model dropdown is **not** a filter. It must list every enabled `type = "image"` model from the current model registry, and models that cannot directly produce 9:16-compatible images stay **visible and selectable** rather than being removed.
 
 - Every enabled `type = "image"` model is listed; none are hidden or filtered out.
 - A model that cannot directly produce a 9:16-compatible image but can still yield valid 9:16 candidates through the contact-sheet crop/pad/resize path remains selectable, annotated with the path that makes it valid.
@@ -84,7 +106,7 @@ Per spec §7.5 (spec lines 1260-1261), the image-model dropdown is **not** a fil
 
 ## Regeneration And Frame-Replace Controls
 
-Per spec §7.5 (spec line 1358), the candidate picker must expose **three distinct** regeneration/replace controls after generation:
+Per spec §7.5, the candidate picker must expose **three distinct** regeneration/replace controls after generation:
 
 1. **Regenerate whole sheet** — re-run generation for one full contact sheet (all 9 cells / one `promptSetId` -> new `fullSheetMediaAssetId` and 9 new cropped candidates), scoped to a single `sheetIndex`.
 2. **Regenerate single prompt set** — re-run one prompt set's generation (`promptSetId`) without touching other sheets in the job group.
@@ -94,7 +116,7 @@ Each control must show its own credit estimate and stay behind the prompt/model 
 
 ## Repair-Without-Deletion Rule
 
-Per spec §7.5 (spec line 1367), a failed crop or a wrong-frame QC result must create a **repair request** that does **not** delete the full contact sheet:
+Per spec §7.5, a failed crop or a wrong-frame QC result must create a **repair request** that does **not** delete the full contact sheet:
 
 - The `fullSheetMediaAssetId` and its `VerticalDramaContactSheetAsset` record are preserved when a crop fails or a candidate frame is marked `qcStatus: "failed"` / `"needs_repair"`.
 - Repair operates on the affected `candidateFrameId` (re-crop or replace), leaving the source sheet and all sibling candidate frames intact and still linked for audit and later prompt tuning.
@@ -102,7 +124,7 @@ Per spec §7.5 (spec line 1367), a failed crop or a wrong-frame QC result must c
 
 ## Candidate-Frame Repair And Version Lineage
 
-Per spec §7.5 (spec lines 1358, 1367, 1406-1413), §11.6 (repair route, spec lines 2162-2175), §16 (QC And Repair, spec lines 2453-2489), and the supersede semantics of §11.2 (spec line 2033), the picker must let the user actually **fix a bad frame** and **review old ones**, not merely approve/select. The following controls are additive to the three regeneration/replace controls above.
+Per spec §7.5, §11.6 (repair route), §16 (QC And Repair), and the supersede semantics of §11.2, the picker must let the user actually **fix a bad frame** and **review old ones**, not merely approve/select. The following controls are additive to the three regeneration/replace controls above.
 
 ### Per-candidate-frame reject/flag with reason
 

@@ -47,6 +47,8 @@ import {
   normalizeVerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
+// Type-only (erased at runtime — no import-chain side effects in tests).
+import type { VerticalDramaEpisodeTieInPlacement } from "@shared/verticalDramaSeries/contentBudget";
 import {
   verticalDramaSeriesMemoryService,
   type VerticalDramaSeriesMemoryService,
@@ -63,6 +65,19 @@ import {
   VdSchemaValidationError as StoryboardVdSchemaValidationError,
   type StoryboardShotgridOutput,
 } from "./verticalDramaStoryboardGeneration";
+// Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
+// at compile time, zero runtime import). The VALUES (`getActiveBreakdown`/
+// `readItemShotDrafts`/`readItemCliffhangerLine`) are loaded via a runtime
+// `import()` inside `resolveEpisodeDraftHydration` below instead of a static
+// import here — see that function's doc comment: `verticalDramaStoryBible.ts`
+// transitively imports `enabledLlmModels.ts` -> `../routers/llmProviders.ts`'s
+// `adminProcedure`, which this file's OWN test suite
+// (`verticalDramaEpisodePipeline.memoryWiring.test.ts`) does not mock — a
+// static VALUE import here would load that whole chain, unmocked, at
+// test-import time for every test in that file, not just the ones exercising
+// this feature. Mirrors `verticalDramaEpisodes.ts`'s established
+// `runArcDriftCheckAndProposeIfNeeded` convention for the identical problem.
+import type { VdDeepDraftShotDraft } from "./verticalDramaStoryBible";
 import {
   generateStartFrameRenderPlan,
   InsufficientCreditsError as StartFrameInsufficientCreditsError,
@@ -89,6 +104,17 @@ import {
   type SeriesMemoryPlannerOutput,
 } from "./verticalDramaSeriesMemoryPlanning";
 import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
+import {
+  generateEpisodeDialogueAudioPlan,
+  buildDialogueAudioPlan,
+  InsufficientCreditsError as DialogueAudioPlanInsufficientCreditsError,
+  VdSchemaValidationError as DialogueAudioPlanVdSchemaValidationError,
+  type DialogueBeatInput,
+  type ShotTimingInput,
+  type SeriesVoiceBinding,
+} from "./verticalDramaDialogueAudio";
+import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
+import { estimateVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 import {
   findMissingCharacterIdentityWarnings,
   type VerticalDramaCharacterDescriptorSource,
@@ -297,6 +323,37 @@ function mapStoryboardGenerationError(
   }
   return {
     code: "VD_STORYBOARD_GENERATION_FAILED",
+    message: error instanceof Error ? error.message : String(error),
+    repairable: true,
+  };
+}
+
+/**
+ * Map a `generateEpisodeDialogueAudioPlan` failure to a `RunResult` error —
+ * mirrors `mapStoryboardGenerationError` exactly. Never throws. Only ever
+ * invoked from `repairStage`'s `dialogue_audio_plan` real-repair branch —
+ * `runStage` has no real-generation path for this stage (see
+ * `generateRealDialogueAudioPlan`'s doc comment).
+ */
+function mapDialogueAudioPlanGenerationError(
+  error: unknown
+): RunResult["errors"][number] {
+  if (error instanceof DialogueAudioPlanInsufficientCreditsError) {
+    return {
+      code: "VD_INSUFFICIENT_CREDITS",
+      message: error.message,
+      repairable: false,
+    };
+  }
+  if (error instanceof DialogueAudioPlanVdSchemaValidationError) {
+    return {
+      code: VD_SCHEMA_VALIDATION_FAILED,
+      message: error.message,
+      repairable: true,
+    };
+  }
+  return {
+    code: "VD_DIALOGUE_AUDIO_PLAN_GENERATION_FAILED",
     message: error instanceof Error ? error.message : String(error),
     repairable: true,
   };
@@ -1013,6 +1070,33 @@ export interface RunStageOptions {
   subShotFlagOn?: boolean;
   subShotPolicy?: VerticalDramaSubShotPolicy;
   idempotencyKey?: string;
+  /**
+   * Deep story drafts hydration (W10-B, tenant flag
+   * `verticalDramaSeriesDeepStoryDrafts`, added 2026-07-08) — when true,
+   * `plan_episode_script`/`storyboard_shotgrid`'s real-generation calls
+   * hydrate their prompt with the episode's active-breakdown
+   * `shotDrafts`/`cliffhanger_line` (W10-A) as a REFINE base, when present
+   * (see `resolveEpisodeDraftHydration`). Resolved by the router — same
+   * "router resolves the tenant flag, the pipeline stays flag-agnostic
+   * beyond this bag" convention already used for `subShotFlagOn`. Defaults
+   * to off when omitted, so every existing caller/test is byte-identical.
+   * This never skips or shortcuts generation — the stage still runs and
+   * every existing gate (schema validation, coverage) still gates; a draft
+   * only changes the prompt's starting material (owner intent:
+   * "การปรับแต่งภายหลังเป็นเพียงปรับให้คุณภาพดีขึ้น").
+   */
+  deepStoryDraftsFlagOn?: boolean;
+  /**
+   * F131Y `verticalDramaSeriesTieInReplan` (task #31) — same "router
+   * resolves the tenant flag, the pipeline stays flag-agnostic beyond this
+   * bag" convention as `deepStoryDraftsFlagOn` above. When on,
+   * `plan_episode_script` reads the episode's ACTIVE breakdown item's
+   * `tieIn` season placement and passes it to `generateEpisodeScript` as
+   * `episodeTieInPlacement` (force-include / force-exclude / grandfather —
+   * see that param's doc in `verticalDramaScriptGeneration.ts`). Defaults
+   * off → byte-identical legacy behavior.
+   */
+  tieInReplanFlagOn?: boolean;
 }
 
 export interface RunStageOutcome {
@@ -1027,6 +1111,63 @@ export interface RunStageOutcome {
    * `"approval_required"` anymore.
    */
   checkpointId?: number;
+}
+
+/**
+ * Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
+ * 2026-07-08) — resolve the episode's active breakdown item's
+ * `shotDrafts`/`cliffhanger_line` (W10-A), when `flagOn` and a draft is
+ * actually present, for use as `plan_episode_script`/`storyboard_shotgrid`'s
+ * REFINE base. Shared by `generateRealScript` and `generateRealStoryboard`
+ * below so the active-breakdown lookup is resolved via ONE helper, not
+ * duplicated inline in each. Takes the ALREADY-LOADED `bible` — both call
+ * sites already query the series row for other fields (locale/tone/
+ * productTieIn/etc.), so this never adds a second DB round trip.
+ *
+ * Dynamic `import()` of `verticalDramaStoryBible.ts`'s VALUES — see the
+ * `VdDeepDraftShotDraft` type-import doc comment near the top of this file
+ * for why: a static VALUE import here would load that module's
+ * `enabledLlmModels.ts` -> `../routers/llmProviders.ts` -> `adminProcedure`
+ * chain, unmocked, in this file's own test suite. Short-circuits BEFORE the
+ * import when `flagOn` is false, so the lazy import only ever executes when
+ * the `verticalDramaSeriesDeepStoryDrafts` flag is actually on — no
+ * pre-existing test enables it.
+ */
+async function resolveEpisodeDraftHydration(
+  bible: Record<string, unknown> | null,
+  episodeNumber: number,
+  flagOn: boolean,
+): Promise<{ shots: VdDeepDraftShotDraft[]; cliffhanger_line?: string } | null> {
+  if (!flagOn) return null;
+  const { getActiveBreakdown, readItemShotDrafts, readItemCliffhangerLine } = await import(
+    "./verticalDramaStoryBible"
+  );
+  const item = getActiveBreakdown(bible).find(i => i.episodeNumber === episodeNumber);
+  if (!item) return null;
+  const shots = readItemShotDrafts(item);
+  if (!shots) return null;
+  return { shots, cliffhanger_line: readItemCliffhangerLine(item) };
+}
+
+/**
+ * Season tie-in placement lookup (task #31, F131Y) — reads the episode's
+ * ACTIVE breakdown item's `tieIn` (NOT the legacy top-level
+ * `bible.episodeBreakdown` array, which can be stale after an approved arc
+ * re-plan moved a placement). Mirrors `resolveEpisodeDraftHydration` above:
+ * same already-loaded `bible`, same flag short-circuit BEFORE the dynamic
+ * import (see that helper's doc comment for the import-chain rationale).
+ * `undefined` = no season plan for this episode → grandfathered legacy
+ * fatigue behavior inside `generateEpisodeScript`.
+ */
+async function resolveEpisodeTieInPlacement(
+  bible: Record<string, unknown> | null,
+  episodeNumber: number,
+  flagOn: boolean,
+): Promise<VerticalDramaEpisodeTieInPlacement | undefined> {
+  if (!flagOn) return undefined;
+  const { getActiveBreakdown } = await import("./verticalDramaStoryBible");
+  const item = getActiveBreakdown(bible).find(i => i.episodeNumber === episodeNumber);
+  return item?.tieIn ?? undefined;
 }
 
 export class VerticalDramaEpisodePipeline {
@@ -1120,12 +1261,24 @@ export class VerticalDramaEpisodePipeline {
    * bible/locale/tone + the character roster — same lookups as
    * `generateRealStoryboard` below, minus the reference-image identity-lock
    * plumbing, which the script builder skill has no use for) and invoke it.
-   * Only called from `runStage` for `plan_episode_script` when the mode is
-   * not dry_run/plan_only.
+   * Called from `runStage` for `plan_episode_script` when the mode is not
+   * dry_run/plan_only, and from `repairStage` (real-repair wiring) for the
+   * same stage.
+   *
+   * `repairInstruction` (optional, added for `repairStage`) — when present,
+   * threads `episode.script` (the CURRENT persisted script) + the
+   * instruction into `generateEpisodeScript`'s `repairContext`, reframing
+   * the call as a targeted REPAIR instead of a fresh generation (see that
+   * param's doc comment in `verticalDramaScriptGeneration.ts`). Omitted for
+   * every `runStage` call site, which is byte-identical to before this
+   * parameter existed.
    */
   private async generateRealScript(
     owner: EpisodeRunOwner,
-    episode: VerticalDramaEpisodeRow
+    episode: VerticalDramaEpisodeRow,
+    deepStoryDraftsFlagOn: boolean = false,
+    repairInstruction?: string,
+    tieInReplanFlagOn: boolean = false
   ): Promise<{
     script: ScriptBuilderOutput;
     creditsUsed: number;
@@ -1206,6 +1359,26 @@ export class VerticalDramaEpisodePipeline {
           }
         : undefined;
 
+    // Deep story drafts hydration (W10-B) — resolved from the SAME `bible`
+    // already loaded above (no extra DB round trip). `null` whenever the
+    // flag is off or the episode's active breakdown item carries no
+    // `shotDrafts`, in which case `episodeDraft`/`opts.episodeDraftHydrationEnabled`
+    // below are both omitted/false and the prompt stays byte-identical to
+    // before this change.
+    const episodeDraft = await resolveEpisodeDraftHydration(
+      bible,
+      episode.episodeNumber,
+      deepStoryDraftsFlagOn
+    );
+
+    // Season tie-in placement (task #31, F131Y) — active-version read; see
+    // `resolveEpisodeTieInPlacement`'s doc comment.
+    const episodeTieInPlacement = await resolveEpisodeTieInPlacement(
+      bible,
+      episode.episodeNumber,
+      tieInReplanFlagOn
+    );
+
     return generateEpisodeScript({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -1216,6 +1389,9 @@ export class VerticalDramaEpisodePipeline {
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
       productTieIn,
+      episodeDraft: episodeDraft ?? undefined,
+      episodeTieInPlacement,
+      opts: { episodeDraftHydrationEnabled: episodeDraft !== null },
       storySource: {
         logline:
           typeof matchingBreakdown?.logline === "string"
@@ -1244,6 +1420,12 @@ export class VerticalDramaEpisodePipeline {
         })
       ),
       memoryBundle,
+      repairContext: repairInstruction
+        ? {
+            currentScript: (episode.script as Record<string, unknown> | null) ?? {},
+            instruction: repairInstruction,
+          }
+        : undefined,
     });
   }
 
@@ -1373,13 +1555,24 @@ export class VerticalDramaEpisodePipeline {
 
   /**
    * Build the `generateStoryboardShotgrid` params from real DB context
-   * (series bible/locale/tone + the character roster) and invoke it. Only
-   * called from `runStage` for `storyboard_shotgrid` when the mode is not
-   * dry_run/plan_only.
+   * (series bible/locale/tone + the character roster) and invoke it. Called
+   * from `runStage` for `storyboard_shotgrid` when the mode is not
+   * dry_run/plan_only, and from `repairStage` (real-repair wiring) for the
+   * same stage.
+   *
+   * `repairInstruction` (optional, added for `repairStage`) — same
+   * decoupled convention as `generateRealScript`'s identical parameter
+   * above: when present, threads `episode.storyboard` (the CURRENT
+   * persisted storyboard) + the instruction into
+   * `generateStoryboardShotgrid`'s `repairContext`. Omitted for every
+   * `runStage` call site, which is byte-identical to before this parameter
+   * existed.
    */
   private async generateRealStoryboard(
     owner: EpisodeRunOwner,
-    episode: VerticalDramaEpisodeRow
+    episode: VerticalDramaEpisodeRow,
+    deepStoryDraftsFlagOn: boolean = false,
+    repairInstruction?: string
   ): Promise<{
     storyboard: StoryboardShotgridOutput;
     creditsUsed: number;
@@ -1460,6 +1653,18 @@ export class VerticalDramaEpisodePipeline {
       }))
       .filter(s => s.summary);
 
+    // Deep story drafts hydration (W10-B) — resolved from the SAME `bible`
+    // already loaded above (no extra DB round trip). `null` whenever the
+    // flag is off or the episode's active breakdown item carries no
+    // `shotDrafts`, in which case `episodeDraft`/`opts.episodeDraftHydrationEnabled`
+    // below are both omitted/false and the prompt stays byte-identical to
+    // before this change.
+    const episodeDraft = await resolveEpisodeDraftHydration(
+      bible,
+      episode.episodeNumber,
+      deepStoryDraftsFlagOn
+    );
+
     return generateStoryboardShotgrid({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -1469,6 +1674,8 @@ export class VerticalDramaEpisodePipeline {
       episodeNumber: episode.episodeNumber,
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
+      episodeDraft: episodeDraft ?? undefined,
+      opts: { episodeDraftHydrationEnabled: episodeDraft !== null },
       storySource: {
         logline:
           typeof matchingBreakdown?.logline === "string"
@@ -1501,7 +1708,188 @@ export class VerticalDramaEpisodePipeline {
           referenceImageUrl: referenceImageUrls[i],
         })
       ),
+      repairContext: repairInstruction
+        ? {
+            currentStoryboard: (episode.storyboard as Record<string, unknown> | null) ?? {},
+            instruction: repairInstruction,
+          }
+        : undefined,
     });
+  }
+
+  /**
+   * Build the `generateEpisodeDialogueAudioPlan` params from real DB context
+   * (episode script/storyboard/current dialogue plan + the character
+   * roster), invoke the previously-orphaned `vertical-drama-dialogue-audio-planner`
+   * skill (see that function's own doc comment in
+   * `verticalDramaDialogueAudio.ts` for why it existed on disk but was never
+   * called) for the repaired dialogue TEXT, then feed the result through the
+   * SAME canonical `buildDialogueAudioPlan` pure builder the dedicated
+   * Dialogue & Audio workspace tab's `planDialogueAudio`/`repairAudio`
+   * mutations already use — so the persisted plan is byte-shape-identical to
+   * one produced by that tab (every other reader of
+   * `vertical_drama_episodes.dialogueAudioPlan` elsewhere in the codebase,
+   * e.g. the separate-TTS submission flow and the dialogue timeline builder
+   * in `verticalDramaEpisodes.ts`, keeps working unchanged) — only the
+   * dialogue TEXT differs. Voice casting (`speakerVoiceMap`) and the
+   * narration/dialogue `mode`/`audioStrategy` axis are carried forward from
+   * the CURRENT persisted plan when one exists, so a targeted text repair
+   * never discards already-resolved voice continuity.
+   *
+   * Only called from `repairStage` — `runStage` has NO real-generation path
+   * for `dialogue_audio_plan` (unlike `plan_episode_script`/
+   * `storyboard_shotgrid`, whose `runStage` overrides this mirrors in
+   * spirit): the dedicated Dialogue & Audio tab already owns the "fresh
+   * plan" and "structured repair action" cases for real, client-driven
+   * production use — this method exists specifically to make a free-text
+   * quality-review/loop `instruction`, routed through the 15-stage
+   * pipeline's `repairStage`, actually change the episode's dialogue
+   * content instead of a no-op placeholder. Wiring real generation into
+   * `runStage`'s fresh-generation path for this stage too is a documented,
+   * separate follow-up — out of this fix's scope (this fix targets
+   * `repairStage` specifically).
+   */
+  private async generateRealDialogueAudioPlan(
+    owner: EpisodeRunOwner,
+    episode: VerticalDramaEpisodeRow,
+    instruction: string
+  ): Promise<{
+    plan: VerticalDramaDialogueAudioPlan;
+    creditsUsed: number;
+    model: string;
+  }> {
+    const [seriesRow] = await db
+      .select({ locale: verticalDramaSeries.locale })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId)
+        )
+      )
+      .limit(1);
+
+    const characterRows = await db
+      .select({
+        characterKey: verticalDramaCharacters.characterKey,
+        name: verticalDramaCharacters.name,
+        role: verticalDramaCharacters.role,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, owner.tenantId),
+          eq(verticalDramaCharacters.seriesId, owner.seriesId)
+        )
+      );
+
+    const locale = normalizeVerticalDramaSeriesLocale(seriesRow?.locale);
+    const durationSeconds = episode.targetDurationSeconds ?? 60;
+    const currentPlan =
+      (episode.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null) ?? null;
+    const storyboard = (episode.storyboard as Record<string, unknown> | null) ?? null;
+    const storyboardShotsRaw = Array.isArray(storyboard?.shots)
+      ? (storyboard!.shots as Array<Record<string, unknown>>)
+      : [];
+
+    const shots: ShotTimingInput[] = storyboardShotsRaw
+      .map(s => ({
+        shotNumber: Number(s.shot_number),
+        shotDurationSeconds: Number(s.duration_seconds) || 0,
+      }))
+      .filter(s => Number.isFinite(s.shotNumber) && s.shotNumber > 0);
+
+    const generated = await generateEpisodeDialogueAudioPlan({
+      userId: owner.userId,
+      tenantId: owner.tenantId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      locale,
+      durationSeconds,
+      episodeScript: (episode.script as Record<string, unknown> | null) ?? {},
+      audioStrategy: currentPlan?.audioStrategy,
+      characters: characterRows.map(
+        (c: { characterKey: string; name: string; role: string | null }) => ({
+          characterId: c.characterKey,
+          name: c.name,
+          role: c.role,
+        })
+      ),
+      shotClipTiming: shots.map(s => ({
+        shotNumber: s.shotNumber,
+        durationSeconds: s.shotDurationSeconds,
+      })),
+      repairContext: {
+        currentPlan: currentPlan as unknown as Record<string, unknown> | null,
+        instruction,
+      },
+    });
+
+    // Map the skill's raw (validated, snake_case) `dialogue_lines[]` TEXT
+    // content into `DialogueBeatInput[]` — the canonical builder's own input
+    // shape — resolving each line's speaker NAME from the character roster
+    // (the skill only emits `speaker_character_id`) and falling back to the
+    // canonical speech-seconds estimator when the LLM omits/zeroes a line's
+    // `estimated_seconds` (same estimator `verticalDramaScriptGeneration.ts`
+    // falls back to — never a second speech-rate model).
+    const characterNameById = new Map<string, string>(
+      characterRows.map(
+        (c: { characterKey: string; name: string }): [string, string] => [c.characterKey, c.name]
+      )
+    );
+    const fallbackShotNumber = shots[0]?.shotNumber ?? 1;
+    const beats: DialogueBeatInput[] = generated.plan.dialogue_lines.map(line => {
+      const speakerCharacterId = line.speaker_character_id;
+      const shotNumber = Number(line.shot_number);
+      const estimatedSeconds =
+        typeof line.estimated_seconds === "number" && line.estimated_seconds > 0
+          ? line.estimated_seconds
+          : estimateVerticalDramaSpeechSeconds(line.dialogue_line);
+      return {
+        shotNumber: Number.isFinite(shotNumber) && shotNumber > 0 ? shotNumber : fallbackShotNumber,
+        clipNumber: typeof line.clip_number === "number" ? line.clip_number : undefined,
+        speakerName: characterNameById.get(speakerCharacterId) ?? speakerCharacterId,
+        speakerCharacterId,
+        isNarration: false,
+        text: line.dialogue_line,
+        estimatedSeconds,
+      };
+    });
+
+    // Preserve series-scoped voice continuity across a text-only repair —
+    // `buildSpeakerVoiceMap` re-derives `speakerVoiceMap` from these
+    // bindings, so an already-cast voice is never silently dropped just
+    // because this repair only touched dialogue wording.
+    const currentVoiceMapEntries = currentPlan?.speakerVoiceMap?.entries ?? [];
+    const voiceBindings: SeriesVoiceBinding[] | undefined =
+      currentVoiceMapEntries.length > 0
+        ? currentVoiceMapEntries.map(e => ({
+            speakerName: e.speakerName,
+            characterId: e.characterId,
+            voiceProvider: e.voiceProvider,
+            voiceModelId: e.voiceModelId,
+            voiceId: e.voiceId,
+            fallbackVoiceId: e.fallbackVoiceId,
+            locked: e.locked,
+          }))
+        : undefined;
+
+    const plan = buildDialogueAudioPlan({
+      seriesId: String(owner.seriesId),
+      episodeId: String(owner.episodeId),
+      language: locale,
+      mode: currentPlan?.mode ?? "dialogue",
+      requestedStrategy: currentPlan?.audioStrategy,
+      episodeTargetSeconds: durationSeconds,
+      beats,
+      shots,
+      voiceBindings,
+      subtitleSafeArea: currentPlan?.subtitleSafeArea,
+      subShotsEnabled: currentPlan?.subShotsEnabled,
+    });
+
+    return { plan, creditsUsed: generated.creditsUsed, model: generated.model };
   }
 
   /**
@@ -1910,7 +2298,13 @@ export class VerticalDramaEpisodePipeline {
     // override in this file.
     if (stage === "plan_episode_script" && paidModeAllowed) {
       try {
-        const generated = await this.generateRealScript(owner, episode);
+        const generated = await this.generateRealScript(
+          owner,
+          episode,
+          opts.deepStoryDraftsFlagOn ?? false,
+          undefined,
+          opts.tieInReplanFlagOn ?? false
+        );
         payload = { stage, ...generated.script };
         // Persist to the episode's own `script` jsonb column.
         await db
@@ -2007,7 +2401,11 @@ export class VerticalDramaEpisodePipeline {
     // existing schema-validation-gate failure path just below.
     if (stage === "storyboard_shotgrid" && paidModeAllowed) {
       try {
-        const generated = await this.generateRealStoryboard(owner, episode);
+        const generated = await this.generateRealStoryboard(
+          owner,
+          episode,
+          opts.deepStoryDraftsFlagOn ?? false
+        );
         payload = { stage, ...generated.storyboard };
         // Persist to the episode's own `storyboard` jsonb column (not
         // `script`), same tenant/user/series-scoped update pattern used by
@@ -2706,6 +3104,67 @@ export class VerticalDramaEpisodePipeline {
    * Repair a stage: writes a NEW superseding artifact/version (never mutating
    * the prior candidate), records the instruction, and returns the downstream
    * stages that are now stale (spec §11.2 immutable repair semantics).
+   *
+   * REAL repair (2026-07-08 critical fix — placebo-repair bug): for exactly
+   * THREE stages — `plan_episode_script`,
+   * `storyboard_shotgrid`, `dialogue_audio_plan` — this now invokes the same
+   * real LLM generation paths `runStage` uses for the first two
+   * (`generateRealScript`/`generateRealStoryboard`), and a newly-wired
+   * generator for the third (`generateRealDialogueAudioPlan` — see its doc
+   * comment: `runStage` never had a real path for this stage), reframed as a
+   * REPAIR: the CURRENT persisted content is passed as the base and
+   * `args.instruction` (which already carries the W11.6 "Story Lock"
+   * execution-only constraint when that flag is on — see
+   * `verticalDramaQualityReviewApply.ts`'s
+   * `appendVerticalDramaStoryLockRepairConstraint`) is threaded through as
+   * an explicit "apply only this targeted change, preserve everything else"
+   * instruction. Before this change, EVERY `repairStage` call — regardless
+   * of stage — returned only `buildStagePayload`'s deterministic,
+   * no-provider-call placeholder (`mode: "repair"` never altered its
+   * output), so a "repair" never actually changed the episode's live
+   * `script`/`storyboard`/`dialogueAudioPlan` content; it only wrote a
+   * decorative `_repair`-tagged artifact wrapped around the SAME placeholder
+   * a dry-run already produces. This is what every consumer funnels
+   * through: the manual `repairStageOutput` mutation, the v1
+   * `applyQualityReviewSuggestions` single-apply path, and the v2 bounded
+   * auto-improve loop (`verticalDramaQualityLoop.ts`'s `effects.repairStage`,
+   * including its `tie_in` group, which maps onto a `plan_episode_script`
+   * repair call — see `verticalDramaEpisodes.ts`'s
+   * `repairVerticalDramaStageWithStoryLockGuard`, which wraps this method
+   * for the two story-carrying stages and needs no changes: it only
+   * snapshots/re-reads the live `script`/`storyboard` columns before and
+   * after calling this method, so it automatically observes REAL repaired
+   * content now that this method persists it).
+   *
+   * Every OTHER stage intentionally KEEPS the deterministic placeholder —
+   * they have no real regeneration path plugged in here, either because a
+   * targeted free-text-instruction repair does not map cleanly onto that
+   * stage's real generation call (e.g. the paid image/video render stages,
+   * `start_frame_render_plan`'s planning call, `video_motion_prompt_pack`)
+   * or because that stage's real content is authored entirely through its
+   * own dedicated UI/mutations, not a free-text instruction. Repairing them
+   * for real is out of this fix's scope and left as a documented,
+   * per-stage follow-up — not silently reinterpreted here.
+   *
+   * A real-generation failure (insufficient credits, malformed LLM output, a
+   * critically underfilled script — `VdEpisodeUnderfilledError`, a
+   * transient provider error) NEVER throws out of `repairStage` — mirrors
+   * `runStage`'s catch-and-map convention exactly: the live episode column
+   * is left untouched (nothing persisted), a normal `failed`/`repair`
+   * `RunResult` is written and returned, and the stage's approval checkpoint
+   * / `staleStages` are left alone (nothing was actually repaired). This is
+   * what lets `verticalDramaQualityLoop.ts`'s bounded auto-improve loop
+   * treat a failed repair as "this round did not help" (it composes the
+   * SAME unresolved issues again next round, eventually escalating on
+   * `maxAutoImproveRounds`) instead of crashing the whole apply-suggestions
+   * mutation — `effects.repairStage`'s contract is `Promise<{
+   * storyLockViolated?: boolean } | void>`, which a normal (non-throwing)
+   * return always satisfies.
+   *
+   * `repairStage` always runs in a fixed "repair" runner mode — the method
+   * accepts no `mode` argument, so there is no dry_run/plan_only variant of
+   * a repair call today; real generation is unconditionally attempted for
+   * these 3 stages.
    */
   async repairStage(
     owner: EpisodeRunOwner,
@@ -2726,20 +3185,113 @@ export class VerticalDramaEpisodePipeline {
     const subShotPolicy =
       args.subShotPolicy ?? VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT;
 
-    const payload = buildStagePayload(stage, {
+    let payload = buildStagePayload(stage, {
       episode,
       mode: "repair",
       subShotFlagOn: args.subShotFlagOn ?? false,
       subShotPolicy,
     });
-    // Record the repair instruction + target + supersession lineage on the new
-    // version's payload so the prior candidate is preserved and superseded.
-    payload._repair = {
+
+    const buildRepairMetadata = () => ({
       instruction: args.instruction,
       target: args.target ?? null,
       supersedesArtifactId: args.sourceArtifactId ?? null,
       repairedAt: new Date().toISOString(),
-    };
+    });
+
+    const episodeWhereClause = and(
+      eq(verticalDramaEpisodes.id, owner.episodeId),
+      eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+      eq(verticalDramaEpisodes.userId, owner.userId),
+      eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+    );
+
+    if (
+      stage === "plan_episode_script" ||
+      stage === "storyboard_shotgrid" ||
+      stage === "dialogue_audio_plan"
+    ) {
+      try {
+        if (stage === "plan_episode_script") {
+          const generated = await this.generateRealScript(
+            owner,
+            episode,
+            false,
+            args.instruction
+          );
+          payload = { stage, ...generated.script };
+          await db
+            .update(verticalDramaEpisodes)
+            .set({ script: generated.script, updatedAt: new Date() })
+            .where(episodeWhereClause);
+        } else if (stage === "storyboard_shotgrid") {
+          const generated = await this.generateRealStoryboard(
+            owner,
+            episode,
+            false,
+            args.instruction
+          );
+          payload = { stage, ...generated.storyboard };
+          await db
+            .update(verticalDramaEpisodes)
+            .set({ storyboard: generated.storyboard, updatedAt: new Date() })
+            .where(episodeWhereClause);
+        } else {
+          const generated = await this.generateRealDialogueAudioPlan(
+            owner,
+            episode,
+            args.instruction
+          );
+          payload = { stage, ...generated.plan };
+          await db
+            .update(verticalDramaEpisodes)
+            .set({ dialogueAudioPlan: generated.plan, updatedAt: new Date() })
+            .where(episodeWhereClause);
+        }
+      } catch (error) {
+        const genError =
+          stage === "plan_episode_script"
+            ? mapScriptGenerationError(error)
+            : stage === "storyboard_shotgrid"
+              ? mapStoryboardGenerationError(error)
+              : mapDialogueAudioPlanGenerationError(error);
+        const runId = await this.writeRun(owner, stage, "repair", {
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [],
+          warnings: [],
+          errors: [genError],
+        });
+        const failurePayload = { ...payload, _repair: buildRepairMetadata() };
+        const artifact = await this.writeArtifact(
+          owner,
+          runId,
+          stage,
+          failurePayload,
+          []
+        );
+        await db
+          .update(verticalDramaEpisodeRuns)
+          .set({ artifactIds: [String(artifact.id)] })
+          .where(eq(verticalDramaEpisodeRuns.id, runId));
+        const result: RunResult = {
+          runId: String(runId),
+          seriesId: String(owner.seriesId),
+          episodeId: String(owner.episodeId),
+          stage,
+          status: "failed",
+          next_action: "repair",
+          artifactIds: [String(artifact.id)],
+          errors: [genError],
+          warnings: [],
+        };
+        return { runId, result, staleStages: [] };
+      }
+    }
+
+    // Record the repair instruction + target + supersession lineage on the new
+    // version's payload so the prior candidate is preserved and superseded.
+    payload._repair = buildRepairMetadata();
 
     const validation = validateStagePayload(stage, payload);
     const errors = validation.errors;

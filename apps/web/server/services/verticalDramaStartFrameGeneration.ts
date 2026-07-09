@@ -41,6 +41,14 @@ import {
   buildCharacterIdentityMapBlock,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
+// Preset visual identity flow-through (spec §8.2.2 flow-through rule,
+// section-15 change D, Wave-4A completing the "start frames" leg of the
+// rule — character refs were already wired by
+// `verticalDramaCharacterImageGeneration.ts`). Type-only import here (pure/
+// shared) — the two fragment-merge functions below are pure and take the
+// identity object directly, so this file never needs the router's bible-
+// reading logic.
+import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -383,4 +391,51 @@ export async function generateStartFrameRenderPlan(
   );
 
   return { plan, raw: validatedData, creditsUsed, model };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Preset visual identity flow-through (spec §8.2.2 flow-through rule,        */
+/* section-15 change D, Wave-4A completing the "start frames" leg of the      */
+/* rule — character refs were already wired by                               */
+/* `verticalDramaCharacterImageGeneration.ts`; motion prompts are the sibling */
+/* leg in `verticalDramaVideoMotionPromptGeneration.ts`).                     */
+/*                                                                            */
+/* Applied at GENERATION TIME (the router's `generateStartFrameImage`, not    */
+/* the render-PLAN LLM call above) — the SAME "deterministic append at the    */
+/* actual generation call" convention `verticalDramaProductTieIn.ts`'s        */
+/* product-lock functions (`mergeProductLockNegativePrompt`,                  */
+/* `appendProductPresenceDirective`) already use, so the fragments are        */
+/* guaranteed present on every render (including repairs/retries) regardless  */
+/* of what the one-time render-plan LLM call happened to produce for a given  */
+/* shot's stored `imagePrompt`. Pure — no DB/LLM — and both are no-ops when   */
+/* `identity` is absent (flag off, or the series carries no preset identity). */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Deterministically append the preset's `imagePromptFragments.positive`
+ * tokens onto a start-frame image prompt.
+ */
+export function appendPresetVisualIdentityFragmentsToImagePrompt(
+  imagePrompt: string,
+  identity: Pick<VerticalDramaPresetVisualIdentity, "imagePromptFragments"> | undefined,
+): string {
+  const positive = identity?.imagePromptFragments?.positive ?? [];
+  if (positive.length === 0) return imagePrompt;
+  return `${imagePrompt}, ${positive.join(", ")}`;
+}
+
+/**
+ * Merge the preset's `imagePromptFragments.negative` tokens into an existing
+ * negative prompt string (never replaces it) — same "merge, never overwrite"
+ * convention as `mergeProductLockNegativePrompt`.
+ */
+export function mergePresetVisualIdentityNegativeFragments(
+  negativePrompt: string | undefined,
+  identity: Pick<VerticalDramaPresetVisualIdentity, "imagePromptFragments"> | undefined,
+): string | undefined {
+  const negative = identity?.imagePromptFragments?.negative ?? [];
+  if (negative.length === 0) return negativePrompt;
+  const fragment = negative.join(", ");
+  const existing = negativePrompt?.trim();
+  return existing ? `${existing}, ${fragment}` : fragment;
 }

@@ -25,14 +25,23 @@ vi.mock("../../db", () => ({
   },
 }));
 
-vi.mock("../../_core/trpc", () => ({
-  router: (routes: unknown) => routes,
-  protectedProcedure: {
-    use: () => ({
-      input: () => ({ mutation: () => vi.fn(), query: () => vi.fn() }),
-    }),
-  },
-}));
+vi.mock("../../_core/trpc", () => {
+  // Self-referential so `.use()` can be chained an arbitrary number of times
+  // (the router now builds `verticalDramaVoiceChainProcedure` by chaining a
+  // SECOND `.use()` off the base `verticalDramaProcedure` — W12-A voice
+  // chain wave — same chainable-proc convention as
+  // `verticalDramaCharacters.modelSelection.test.ts`'s `createProcedure()`).
+  const proc: any = {
+    use: () => proc,
+    input: () => proc,
+    mutation: () => vi.fn(),
+    query: () => vi.fn(),
+  };
+  return {
+    router: (routes: unknown) => routes,
+    protectedProcedure: proc,
+  };
+});
 
 vi.mock("../../middleware/requireFeatureFlag", () => ({
   requireFeatureFlag: () => (opts: unknown) => opts,

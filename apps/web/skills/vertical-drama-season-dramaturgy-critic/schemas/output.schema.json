@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-season-dramaturgy-critic/output",
+  "title": "Vertical Drama Season Dramaturgy Critic Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "overallScore",
+    "strengths",
+    "findings"
+  ],
+  "properties": {
+    "overallScore": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "strengths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["kind", "evidenceEpisodes", "problem", "fixInstruction"],
+        "properties": {
+          "kind": {
+            "description": "6 of these 9 kinds are ALSO independently checked deterministically in code by analyzeSeasonDramaturgy (world_rules_undefined, key_character_late_intro, character_agency_zero_decisions, antagonist_tactic_repetition, finale_no_price_paid, on_the_nose_dialogue); protagonist_no_stake and info_heavy_low_action are LLM-only judgment; other is the fallback.",
+            "type": "string",
+            "enum": [
+              "protagonist_no_stake",
+              "world_rules_undefined",
+              "key_character_late_intro",
+              "character_agency_zero_decisions",
+              "antagonist_tactic_repetition",
+              "finale_no_price_paid",
+              "on_the_nose_dialogue",
+              "info_heavy_low_action",
+              "other"
+            ]
+          },
+          "evidenceEpisodes": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 }
+          },
+          "problem": {
+            "description": "The problem, described in Thai.",
+            "type": "string",
+            "minLength": 1
+          },
+          "fixInstruction": {
+            "description": "A concrete fix instruction that PRESERVES the season's existing premise, characters, and already-resolved plot.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

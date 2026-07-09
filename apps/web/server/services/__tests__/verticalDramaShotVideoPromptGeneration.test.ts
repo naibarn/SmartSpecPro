@@ -645,3 +645,191 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * Story-density reform (spec §7.7.2 Layer 4, section-13, added 2026-07-07)
+ * — `buildShotVideoPromptUserPrompt` (the FIRST-pass video-prompt builder)
+ * gains duration/target-speech-seconds awareness, mirroring the phrasing
+ * `generateVerticalDramaClipDialogue`'s `buildClipDialogueUserPrompt`
+ * already uses on its (regeneration-only) path.
+ */
+describe("generateVerticalDramaShotVideoPrompt — duration-aware prompt (spec §7.7.2 Layer 4)", () => {
+  // `beforeEach` is scoped to its enclosing `describe` block (vitest/jest
+  // semantics) — this sibling block needs its OWN copy of the parent
+  // `describe("generateVerticalDramaShotVideoPrompt", ...)` block's setup
+  // above, otherwise every mock here (`mockExecute` included) silently
+  // retains whatever state the LAST test of that other block left behind.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(5);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockIsAllowed.mockReturnValue(true);
+    mockResolveSkillDirCandidates.mockReturnValue([
+      "/fake/skills/vertical-drama-shot-video-prompt",
+    ]);
+    mockResolveSkillManifestPath.mockReturnValue(
+      "/fake/skills/vertical-drama-shot-video-prompt/skill.md",
+    );
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({
+      metadata: {} as any,
+      content: "System prompt body",
+    });
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "vision-model-1" } as any,
+    ]);
+    mockSelectBestLlmModel.mockReturnValue("vision-model-1");
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+  });
+
+  it("embeds clip duration + target spoken-dialogue seconds when both params are provided", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseParams({ shotDurationSeconds: 8, targetSpeechSeconds: 5.44 }),
+    );
+
+    const call = mockExecute.mock.calls[0][0];
+    const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+    expect(textPart.text).toContain("Clip duration: 8s");
+    expect(textPart.text).toContain("Target spoken-dialogue duration: about 5.4s total across all returned lines.");
+  });
+
+  it("omits both duration lines when neither param is provided (flag-off byte-identical to before)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(baseParams());
+
+    const call = mockExecute.mock.calls[0][0];
+    const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+    expect(textPart.text).not.toContain("Clip duration:");
+    expect(textPart.text).not.toContain("Target spoken-dialogue duration:");
+  });
+
+  it("states clip duration without a target-speech line when only shotDurationSeconds is provided", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+    );
+
+    await generateVerticalDramaShotVideoPrompt(baseParams({ shotDurationSeconds: 4 }));
+
+    const call = mockExecute.mock.calls[0][0];
+    const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+    expect(textPart.text).toContain("Clip duration: 4s");
+    expect(textPart.text).not.toContain("Target spoken-dialogue duration:");
+  });
+
+  describe("nativeAudioEnabled (task #36 — optional NATIVE AUDIO DIRECTION prompt option)", () => {
+    it("omits the NATIVE AUDIO DIRECTION instruction and audioDirection result when nativeAudioEnabled is not set (byte-identical default)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(baseParams());
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).not.toContain("NATIVE AUDIO DIRECTION");
+      expect(textPart.text).not.toContain("native_audio: true");
+      expect(result.audioDirection).toBeUndefined();
+    });
+
+    it("omits the instruction and result field when nativeAudioEnabled is true but the model does NOT support native audio", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: false,
+        supportsNativeAudio: false,
+        verticalDramaReady: true,
+      });
+      mockExecute.mockResolvedValue(
+        successResponse({
+          prompt: "Camera holds steady.",
+          dialogue: [],
+          audio_direction: "rain on the window; door creaks open",
+        }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseParams({ nativeAudioEnabled: true }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).not.toContain("NATIVE AUDIO DIRECTION");
+      // Even though the (mocked) model returned an audio_direction field
+      // unprompted, the result never surfaces it when the option didn't
+      // actually activate — guards against trusting an unprompted field.
+      expect(result.audioDirection).toBeUndefined();
+    });
+
+    it("includes the NATIVE AUDIO DIRECTION instruction (SFX-primary, ambience-secondary, hard prohibitions) and returns audioDirection when enabled + supported", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        supportsNativeAudio: true,
+        verticalDramaReady: true,
+      });
+      mockExecute.mockResolvedValue(
+        successResponse({
+          prompt: "Camera holds steady.",
+          dialogue: [],
+          audio_direction: "Door slams shut; distant rain patters against the window.",
+        }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseParams({ nativeAudioEnabled: true }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).toContain("NATIVE AUDIO DIRECTION (native_audio: true)");
+      expect(textPart.text).toContain("SFX cues");
+      expect(textPart.text).toContain("ambient soundscape");
+      expect(textPart.text).toContain("NEVER include speech/dialogue/voices/vocals");
+      expect(textPart.text).toContain("NEVER include music/melody/lyrics/score");
+      expect(result.audioDirection).toBe(
+        "Door slams shut; distant rain patters against the window.",
+      );
+    });
+
+    it("leaves audioDirection undefined when enabled + supported but the model's response has no audio_direction field", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        supportsNativeAudio: true,
+        verticalDramaReady: true,
+      });
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseParams({ nativeAudioEnabled: true }),
+      );
+
+      expect(result.audioDirection).toBeUndefined();
+    });
+  });
+});

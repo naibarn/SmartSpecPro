@@ -46,6 +46,24 @@ Add rollout-sensitive flags defaulted off:
 
 If existing app naming conventions require aliases such as `verticalDramaSeriesEnabled`, keep the source-spec names as canonical and add a tested one-way mapping so permissions, menu state, router guards, and rollout docs cannot drift. `verticalDramaSeriesSubShots` follows the same canonical-name + one-way-alias rule as every other flag above.
 
+> **Shipped since this section was written (spec §17 is the authoritative,
+> currently-accurate flag table — verified 2026-07-09 against
+> `shared/featureFlags.ts`):** `verticalDramaSeriesSpeechBudget`,
+> `verticalDramaSeriesArcReplan`, `verticalDramaSeriesQualityLoopV2`,
+> `verticalDramaSeriesTieInQc`, `verticalDramaSeriesProductionWizard`,
+> `verticalDramaSeriesPresetMixV2` (all 2026-07-07), then
+> `verticalDramaSeriesDeepStoryDrafts` (F131T),
+> `verticalDramaSeriesVoiceChain` (F131U),
+> `verticalDramaSeriesStoryLock` (F131V),
+> `verticalDramaSeriesAdBannerOverlay` (F131W),
+> `verticalDramaSeriesFormatProfiles` (F131X),
+> `verticalDramaSeriesTieInReplan` (F131Y), and
+> `verticalDramaSeriesCharacterRefV2` (F131Z) (2026-07-08/09). All follow
+> the identical registration pattern this section already describes (default
+> off, canonical name, no aliasing needed). `verticalDramaSeriesShareLinks`
+> (F131AA, spec §24) is reserved in naming only — NOT yet registered in
+> `shared/featureFlags.ts` (task #32 is design-only, not implemented).
+
 ## Routes
 
 **Updated 2026-07-04:** the `/dashboard` prefix was dropped after initial launch.

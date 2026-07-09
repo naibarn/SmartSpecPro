@@ -15,6 +15,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import {
   AlertTriangle,
+  Clapperboard,
   Search,
   ShoppingBag,
   Sparkles,
@@ -209,6 +210,7 @@ interface SeriesListItem {
   episodeCount: number;
   pendingApprovalCount: number;
   productTieInEnabled: boolean;
+  thumbnailUrl?: string | null;
   updatedAt?: Date | string | null;
 }
 
@@ -227,36 +229,53 @@ function SeriesCard({ lang, series }: { lang: "th" | "en"; series: SeriesListIte
             <Badge variant={statusBadgeVariant(series.status)}>{statusLabel}</Badge>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
-          <dl className="grid grid-cols-2 gap-2 text-muted-foreground">
-            <div>
-              <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.nextEpisode)}</dt>
-              <dd className="font-medium text-foreground">EP {series.nextEpisodeNumber}</dd>
+        <CardContent className="flex gap-3 text-sm">
+          {series.thumbnailUrl ? (
+            <img
+              src={series.thumbnailUrl}
+              alt=""
+              aria-hidden="true"
+              className="aspect-[9/16] w-16 shrink-0 rounded-md border border-border object-cover"
+            />
+          ) : (
+            <div
+              aria-hidden="true"
+              className="flex aspect-[9/16] w-16 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40"
+            >
+              <Clapperboard className="h-5 w-5 text-muted-foreground/60" aria-hidden="true" />
             </div>
-            <div>
-              <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.episodes)}</dt>
-              <dd className="font-medium text-foreground">{series.episodeCount}</dd>
+          )}
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <dl className="grid grid-cols-2 gap-2 text-muted-foreground">
+              <div>
+                <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.nextEpisode)}</dt>
+                <dd className="font-medium text-foreground">EP {series.nextEpisodeNumber}</dd>
+              </div>
+              <div>
+                <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.episodes)}</dt>
+                <dd className="font-medium text-foreground">{series.episodeCount}</dd>
+              </div>
+              <div className="col-span-2">
+                <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.lastEdited)}</dt>
+                <dd className="font-medium text-foreground">
+                  {formatRelative(series.updatedAt, lang)}
+                </dd>
+              </div>
+            </dl>
+            <div className="flex flex-wrap gap-1.5">
+              {series.pendingApprovalCount > 0 && (
+                <Badge variant="destructive" className="gap-1">
+                  <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                  {pickCopy(lang, verticalDramaCopy.missingApproval)} ({series.pendingApprovalCount})
+                </Badge>
+              )}
+              {series.productTieInEnabled && (
+                <Badge variant="outline" className="gap-1">
+                  <ShoppingBag className="h-3 w-3" aria-hidden="true" />
+                  {pickCopy(lang, verticalDramaCopy.productTieIn)}
+                </Badge>
+              )}
             </div>
-            <div className="col-span-2">
-              <dt className="text-xs">{pickCopy(lang, verticalDramaCopy.lastEdited)}</dt>
-              <dd className="font-medium text-foreground">
-                {formatRelative(series.updatedAt, lang)}
-              </dd>
-            </div>
-          </dl>
-          <div className="flex flex-wrap gap-1.5">
-            {series.pendingApprovalCount > 0 && (
-              <Badge variant="destructive" className="gap-1">
-                <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                {pickCopy(lang, verticalDramaCopy.missingApproval)} ({series.pendingApprovalCount})
-              </Badge>
-            )}
-            {series.productTieInEnabled && (
-              <Badge variant="outline" className="gap-1">
-                <ShoppingBag className="h-3 w-3" aria-hidden="true" />
-                {pickCopy(lang, verticalDramaCopy.productTieIn)}
-              </Badge>
-            )}
           </div>
         </CardContent>
       </Card>

@@ -22,6 +22,17 @@ Create:
 - `apps/web/skills/vertical-drama-product-tie-in-planner/`
 - `apps/web/skills/vertical-drama-dialogue-audio-planner/`
 
+> **Shipped later (verified on disk 2026-07-09, out of this section's
+> original MVP scope but listed here so this file stays a trustworthy skill
+> inventory):** `apps/web/skills/vertical-drama-episode-quality-review/`
+> (spec §6.8.1), `apps/web/skills/vertical-drama-season-dramaturgy-critic/`
+> (spec §6.8.2, task #29), `apps/web/skills/vertical-drama-ad-banner-prompt/`
+> (spec §6.8.3, section-16, task #30), plus
+> `apps/web/skills/vertical-drama-preset-synthesizer/` and
+> `apps/web/skills/vertical-drama-shot-video-prompt/` (both predate this
+> spec sync pass). 13 skill folders exist on disk in total as of this
+> version.
+
 Modify only if compatibility gaps are found:
 
 - `apps/web/server/services/skillRegistry.ts`

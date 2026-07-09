@@ -207,11 +207,102 @@ describe("resolveShotDialogueLines", () => {
         ],
       },
       storyboardShotCount: 9,
+      knownSpeakerKeys: new Set(["หนูนา", "ยายทวดจัน"]),
     });
 
     expect(result).toEqual([
-      { characterKey: "หนูนา", lineTh: "ยายทวดจัน…วันนี้อย่าหลงนะ" },
-      { characterKey: "ยายทวดจัน", lineTh: "เสียง…ชา…อืม" },
+      { characterKey: "หนูนา", lineTh: "ยายทวดจัน…วันนี้อย่าหลงนะ", origin: "script_fallback" },
+    ]);
+  });
+
+  it("drops an unattributed sound-cue fragment from the script fallback (2026-07-07 unusable-dialogue fix): the exact user repro string with no recognized speaker", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: {
+        scene_dialogue_summary: [
+          {
+            scene: 1,
+            dialogue_lines: [
+              "หนูนา: \"อย่าไปไหนนะยาย\"",
+              "เสียง…ชา…อืม…ใครมาฝากอีกแล้วหรือเปล่า",
+            ],
+          },
+        ],
+      },
+      storyboardShotCount: 9,
+      knownSpeakerKeys: new Set(["หนูนา"]),
+    });
+
+    expect(result).toEqual([
+      { characterKey: "หนูนา", lineTh: "อย่าไปไหนนะยาย", origin: "script_fallback" },
+    ]);
+  });
+
+  it("drops sound-cue speaker labels such as 'เสียงชานไม้' when they are not known characters", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: {
+        scene_dialogue_summary: [
+          {
+            scene: 1,
+            dialogue_lines: [
+              "หนูนา: \"อย่าไปไหนนะยาย\"",
+              "เสียงชานไม้: \"อืม...ใครมาฝากอีกแล้วหรือเปล่า\"",
+            ],
+          },
+        ],
+      },
+      storyboardShotCount: 9,
+      knownSpeakerKeys: new Set(["หนูนา"]),
+    });
+
+    expect(result).toEqual([
+      { characterKey: "หนูนา", lineTh: "อย่าไปไหนนะยาย", origin: "script_fallback" },
+    ]);
+  });
+
+  it("keeps a line whose speaker matches a known character even when the speaker label itself looks unusual (e.g. a real 'voice' character like เสียงในขวด)", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: {
+        scene_dialogue_summary: [
+          {
+            scene: 1,
+            dialogue_lines: ["เสียงในขวด: \"ปล่อยฉันออกไปที\""],
+          },
+        ],
+      },
+      storyboardShotCount: 9,
+      knownSpeakerKeys: new Set(["เสียงในขวด"]),
+    });
+
+    expect(result).toEqual([
+      { characterKey: "เสียงในขวด", lineTh: "ปล่อยฉันออกไปที", origin: "script_fallback" },
+    ]);
+  });
+
+  it("drops a bare ellipsis-only fragment with no speaker label at all", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: {
+        scene_dialogue_summary: [
+          { scene: 1, dialogue_lines: ["หนูนา: \"สวัสดีค่ะ\"", "…"] },
+        ],
+      },
+      storyboardShotCount: 9,
+      knownSpeakerKeys: new Set(["หนูนา"]),
+    });
+
+    expect(result).toEqual([
+      { characterKey: "หนูนา", lineTh: "สวัสดีค่ะ", origin: "script_fallback" },
     ]);
   });
 
@@ -233,7 +324,9 @@ describe("resolveShotDialogueLines", () => {
       script,
       storyboardShotCount: 9,
     });
-    expect(shot9).toEqual([{ characterKey: "E", lineTh: "scene five" }]);
+    expect(shot9).toEqual([
+      { characterKey: "E", lineTh: "scene five", origin: "script_fallback" },
+    ]);
 
     const shot1 = resolveShotDialogueLines({
       shotNumber: 1,
@@ -242,7 +335,9 @@ describe("resolveShotDialogueLines", () => {
       script,
       storyboardShotCount: 9,
     });
-    expect(shot1).toEqual([{ characterKey: "A", lineTh: "scene one" }]);
+    expect(shot1).toEqual([
+      { characterKey: "A", lineTh: "scene one", origin: "script_fallback" },
+    ]);
   });
 
   it("returns [] (never throws) when no source has any dialogue for this shot — a genuinely silent shot stays silent", () => {
@@ -269,5 +364,135 @@ describe("resolveShotDialogueLines", () => {
     });
 
     expect(result).toEqual([]);
+  });
+});
+
+/**
+ * Story-density reform (spec §7.7.2 Layer 3/4, section-13, added
+ * 2026-07-07) — source 3a: deterministic beat-index mapping, preferred over
+ * the positional guess (3b) whenever the shot carries `sourceBeatIndexes`
+ * and the referenced beat(s) have dialogue-complete `dialogue_lines[]`.
+ */
+describe("resolveShotDialogueLines — source 3a beat-index mapping", () => {
+  const scriptWithDialogueCompleteBeats = {
+    structure: {
+      beats: [
+        { beat: 1, summary: "beat zero", dialogue_lines: [{ speaker: "หนูนา", line: "สวัสดีค่ะ" }] },
+        {
+          beat: 2,
+          summary: "beat one",
+          dialogue_lines: [
+            { speaker: "ยายทวดจัน", line: "อย่าไปไหนนะยาย", delivery: "urgent whisper", subtext: "ห่วงใย" },
+            { speaker: "หนูนา", line: "ค่ะยาย" },
+          ],
+        },
+      ],
+    },
+    // Legacy freeform fallback data too, to prove 3a wins over 3b when both
+    // are present.
+    scene_dialogue_summary: [{ scene: 1, dialogue_lines: ["ป้าตา: \"จากฉากเก่า\""] }],
+  };
+
+  it("maps to the referenced beat's dialogue_lines by 0-based index, ignoring the positional/scene fallback entirely", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: scriptWithDialogueCompleteBeats,
+      storyboardShotCount: 9,
+      sourceBeatIndexes: [0],
+    });
+
+    expect(result).toEqual([{ characterKey: "หนูนา", lineTh: "สวัสดีค่ะ" }]);
+  });
+
+  it("combines lines from multiple referenced beat indexes, in order", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 2,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: scriptWithDialogueCompleteBeats,
+      storyboardShotCount: 9,
+      sourceBeatIndexes: [0, 1],
+    });
+
+    expect(result).toEqual([
+      { characterKey: "หนูนา", lineTh: "สวัสดีค่ะ" },
+      {
+        characterKey: "ยายทวดจัน",
+        lineTh: "อย่าไปไหนนะยาย",
+        delivery: { tone: "urgent whisper" },
+        subtext: "ห่วงใย",
+      },
+      { characterKey: "หนูนา", lineTh: "ค่ะยาย" },
+    ]);
+  });
+
+  it("never tags a beat-mapped line with origin: script_fallback (it is script-stage-authored, not a freeform guess)", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: scriptWithDialogueCompleteBeats,
+      storyboardShotCount: 9,
+      sourceBeatIndexes: [1],
+    });
+
+    expect(result.every((l) => l.origin === undefined)).toBe(true);
+  });
+
+  it("falls back to the positional guess (source 3b, keeping its script_fallback tag) when sourceBeatIndexes is omitted", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: scriptWithDialogueCompleteBeats,
+      storyboardShotCount: 9,
+      // sourceBeatIndexes intentionally omitted.
+    });
+
+    expect(result).toEqual([{ characterKey: "ป้าตา", lineTh: "จากฉากเก่า", origin: "script_fallback" }]);
+  });
+
+  it("falls back to the positional guess when sourceBeatIndexes is an empty array", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: scriptWithDialogueCompleteBeats,
+      storyboardShotCount: 9,
+      sourceBeatIndexes: [],
+    });
+
+    expect(result).toEqual([{ characterKey: "ป้าตา", lineTh: "จากฉากเก่า", origin: "script_fallback" }]);
+  });
+
+  it("falls back to the positional guess when the referenced beat index is out of range / has no dialogue_lines", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: scriptWithDialogueCompleteBeats,
+      storyboardShotCount: 9,
+      sourceBeatIndexes: [99],
+    });
+
+    expect(result).toEqual([{ characterKey: "ป้าตา", lineTh: "จากฉากเก่า", origin: "script_fallback" }]);
+  });
+
+  it("never runs beat-index mapping for sources 1/2 — already-synced clip dialogue still wins outright", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: {
+        clipNumber: 1,
+        dialogue: [{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }],
+      },
+      dialogueAudioPlan: null,
+      script: scriptWithDialogueCompleteBeats,
+      storyboardShotCount: 9,
+      sourceBeatIndexes: [0],
+    });
+
+    expect(result).toEqual([{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }]);
   });
 });

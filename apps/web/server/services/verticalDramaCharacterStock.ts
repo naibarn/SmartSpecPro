@@ -181,6 +181,72 @@ export function characterRefChangeStaleTargets(): {
   return stagesInvalidatedByCharacterRefChange();
 }
 
+/** The two character-sheet asset `role`s considered as a SECOND reference image (F131Z). */
+const CHARACTER_SHEET_ROLES = [
+  "character_sheet_turnaround",
+  "character_sheet_full",
+];
+
+/** Shape `pickBestCharacterSheetAsset` needs from a candidate row — deliberately minimal/duck-typed. */
+export interface CharacterSheetAssetCandidate {
+  url: string;
+  role: string | null;
+  approved: boolean;
+  updatedAt: Date | string;
+}
+
+/** Raw row shape of `getCharacterReferenceUrls`'s sheet-asset query, before the non-null `url` filter. */
+interface CharacterSheetAssetRow {
+  url: string | null;
+  role: string | null;
+  approved: boolean;
+  updatedAt: Date;
+}
+
+/**
+ * Pick the single best `character_sheet_*` asset to send as the SECOND
+ * identity-lock reference image (F131Z `verticalDramaSeriesCharacterRefV2`,
+ * option A from `planning/vertical-drama-character-consistency/
+ * research-2026-07-09.md` — "send ref #2/character (turnaround sheet already
+ * stored)"). Preference order:
+ *   1. approved beats unapproved, outright (regardless of role/recency).
+ *   2. when approved status TIES, `character_sheet_turnaround` beats
+ *      `character_sheet_full` — a turnaround shows more angles of the face
+ *      per reference slot, so it carries more identity signal.
+ *   3. any remaining tie breaks on newest `updatedAt`.
+ * Pure/DB-free (same "pure helpers at module scope, unit-testable without a
+ * database" convention as `buildCharacterAssetManifest` above) — the
+ * DB-backed `getCharacterReferenceUrls` below fetches the candidate rows
+ * (role IN character_sheet_turnaround/character_sheet_full, scoped by
+ * owner+characterId) and hands them to this function rather than expressing
+ * the 3-key tie-break as a SQL ORDER BY. Returns `null` for an empty
+ * candidate list — the caller falls back to portrait-only, which is
+ * documented risk (not a bug): older characters may predate the sheet flow.
+ */
+export function pickBestCharacterSheetAsset<T extends CharacterSheetAssetCandidate>(
+  candidates: readonly T[],
+): T | null {
+  if (candidates.length === 0) return null;
+  let best = candidates[0];
+  for (let i = 1; i < candidates.length; i++) {
+    if (compareCharacterSheetCandidates(candidates[i], best) < 0) {
+      best = candidates[i];
+    }
+  }
+  return best;
+}
+
+function compareCharacterSheetCandidates(
+  a: CharacterSheetAssetCandidate,
+  b: CharacterSheetAssetCandidate,
+): number {
+  if (a.approved !== b.approved) return a.approved ? -1 : 1;
+  const aTurnaround = a.role === "character_sheet_turnaround" ? 0 : 1;
+  const bTurnaround = b.role === "character_sheet_turnaround" ? 0 : 1;
+  if (aTurnaround !== bTurnaround) return aTurnaround - bTurnaround;
+  return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(); // newest first
+}
+
 /* -------------------------------------------------------------------------- */
 /* Service (DB-backed)                                                         */
 /* -------------------------------------------------------------------------- */
@@ -300,6 +366,66 @@ export class VerticalDramaCharacterStockService {
       .orderBy(desc(verticalDramaCharacterAssets.approved), desc(verticalDramaCharacterAssets.updatedAt))
       .limit(1);
     return row?.url ?? null;
+  }
+
+  /**
+   * The character's identity-lock reference SET for image generation (F131Z
+   * `verticalDramaSeriesCharacterRefV2`, option A —
+   * `planning/vertical-drama-character-consistency/research-2026-07-09.md`):
+   * the primary portrait (via `getPrimaryPortraitUrl` — reused verbatim, so
+   * its ordering/selection semantics are NOT duplicated or reimplemented
+   * here) and, when `opts.includeSheet` is true, the best available
+   * `character_sheet_turnaround`/`character_sheet_full` asset
+   * (`pickBestCharacterSheetAsset`) appended after it — a second,
+   * differently-posed reference of the SAME character that gives the image
+   * model more identity signal than a single portrait alone (zero provider
+   * cost; reuses stock the character-sheet flow already generates/imports).
+   *
+   * Order is always [portrait, sheet] — never [sheet, portrait] — never more
+   * than 2 entries. A caller merging several characters' reference sets
+   * relies on this fixed per-character order to re-interleave into
+   * "all portraits, then all sheets" (see `resolveShotCharacterReferenceUrls`
+   * in `verticalDramaEpisodes.ts`).
+   *
+   * Falls back to portrait-only when the character has no sheet asset yet
+   * (older characters predating the sheet flow, or `opts.includeSheet` is
+   * false) — documented risk, not a bug (research doc's option-A risk
+   * column). Falls back to an empty array when neither exists.
+   */
+  async getCharacterReferenceUrls(
+    owner: VerticalDramaCharacterStockOwner,
+    characterId: number,
+    opts: { includeSheet: boolean },
+  ): Promise<string[]> {
+    const portraitUrl = await this.getPrimaryPortraitUrl(owner, characterId);
+    const urls: string[] = portraitUrl ? [portraitUrl] : [];
+    if (!opts.includeSheet) return urls;
+
+    const sheetRows: CharacterSheetAssetRow[] = await db
+      .select({
+        url: mediaAssets.originalUrl,
+        role: verticalDramaCharacterAssets.role,
+        approved: verticalDramaCharacterAssets.approved,
+        updatedAt: verticalDramaCharacterAssets.updatedAt,
+      })
+      .from(verticalDramaCharacterAssets)
+      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .where(
+        and(
+          eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAssets.userId, owner.userId),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+          eq(verticalDramaCharacterAssets.characterId, characterId),
+          inArray(verticalDramaCharacterAssets.role, CHARACTER_SHEET_ROLES),
+        ),
+      );
+    const bestSheet = pickBestCharacterSheetAsset(
+      sheetRows.filter(
+        (row): row is CharacterSheetAssetRow & { url: string } => Boolean(row.url),
+      ),
+    );
+    if (bestSheet && !urls.includes(bestSheet.url)) urls.push(bestSheet.url);
+    return urls;
   }
 
   /**

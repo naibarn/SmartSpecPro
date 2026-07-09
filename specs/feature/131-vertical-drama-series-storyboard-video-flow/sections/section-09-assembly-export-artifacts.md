@@ -78,6 +78,41 @@ If final rendering cannot run, mark the run `assembly_ready` and keep all determ
 - `export_settings`
 - final output metadata or media asset ID
 
+> **Final Render Suite (added 2026-07-09, task #21, spec §12.4):** `ffmpeg_concat_plan`
+> above described the ORIGINAL concat-only assumption. The shipped render
+> path (`server/services/verticalDramaFinalRenderGraph.ts`,
+> `buildFinalRenderFfmpegArgs`) extends the SAME manifest additively into a
+> full filter-graph builder — the plain-concat path stays byte-identical
+> and regression-locked, and every capability below is gated by whether its
+> inputs are present:
+>
+> - **dialogue-audio mixdown** — `dialogueAudioTimeline.ts` resolves each
+>   dialogue line's shot-local timing to the episode's absolute timeline
+>   (speech-estimator fallback for lines with no real audio render yet), then
+>   `amix`/`adelay`/`volume`/`loudnorm` lay it over the clip audio; gated by
+>   `verticalDramaSeriesVoiceChain` (F131U) supplying real per-line audio;
+> - **ASS subtitle burn-in** — reuses the SAME 10 HyperFrames caption
+>   presets 1:1 (`classic_box` … `review_bubble`, plus `no_subtitle_style` as
+>   the 10th "no burn-in" option), with speaker name as an inline Dialogue-line
+>   override rather than a separate drawtext filter per name;
+> - **banner overlay compositing** — when an episode has an `adBannerPlan`
+>   (section-16 / spec §13.3), resolved banners composite into the SAME
+>   graph: scale+crop to the placement box, 0.3s fade, `enable='between(t,S,E)'`
+>   windowing, z-order video → band/side → subtitles → fullscreen; an
+>   "entire"-duration banner's window resolves AFTER the clip is ffprobe'd
+>   (fixed in task #21-B — resolving before probe could fail validation on a
+>   shorter-than-target clip);
+> - **per-episode render options** (`assembleEpisodeVideo`):
+>   `includeDialogueAudio` (F131U-gated), `loudnessNormalize`, `subtitlePreset`
+>   (one of the 10 presets, or omitted) — response includes clip
+>   included/excluded counts and `excludedAdBanners` with reasons;
+> - **batch season render** (`assembleSeasonVideos`) — mints every episode's
+>   job ID up front, executes strictly sequentially, continue-on-failure;
+>   **ad banners are excluded from batch render in v1** (per-episode only,
+>   pending the banner-input resolver being promoted to a shared service);
+> - explicitly **NOT** in scope: upload, publish, or scheduling to any
+>   platform.
+
 Export completion writes:
 
 - a searchable `vertical_drama_qc_reports` row for export/assembly QC.

@@ -30,6 +30,12 @@ import {
   resolveRequiredDisclosureForCategory,
   screenThaiAdCompliance,
 } from "@shared/verticalDramaSeries/thaiAdCompliance";
+// Wave-4A (spec §13.1 / §16.1, section-08 extension, added 2026-07-07) —
+// `buildTieInQualityReport` below needs the resolved policy's
+// `tieInMinNaturalnessScore` floor to compute `passed`; import type-only
+// (pure/shared, no server/db imports) from the already-shipped policy
+// module rather than reimplementing floor resolution here.
+import type { VerticalDramaQualityPolicy } from "@shared/verticalDramaSeries/qualityPolicy";
 
 // Re-exported so callers of this service don't need a second import for the
 // Thai-law-specific compliance screen alongside the generic `screenClaims`
@@ -887,5 +893,261 @@ export function mergeAndTrimReferenceImageUrls(
   return {
     urls: merged.slice(0, maxReferenceImages),
     trimmedCount: merged.length - maxReferenceImages,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Tie-in naturalness quality report (spec §13.1 / §16.1, section-08          */
+/* extension "Production-Grade Tie-In Naturalness QC", added 2026-07-07)      */
+/*                                                                            */
+/* Measurement + repair-loop layer ON TOP of the shipped placement machinery  */
+/* above — never replaces it. Pure/DB-free (mirrors `planTieIn`'s convention) */
+/* so it is cheaply unit-testable; the caller (router) is responsible for     */
+/* resolving `script`/`storyboard`/dialogue lines/policy and persisting the   */
+/* result as a run artifact.                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Max spoken (dialogue) mentions of the product name/benefit per episode (spec §13.1). */
+export const VD_TIE_IN_MAX_SPOKEN_MENTIONS = 2 as const;
+
+/** Max shots (of 9) a tie-in may visually occupy per episode (spec §13.1). */
+export const VD_TIE_IN_MAX_VISUAL_SHOTS = 3 as const;
+
+/**
+ * Small th/en ad-speak lexicon (spec §13.1) — superlative/CTA phrasing that
+ * reads as a hard advertisement rather than natural in-story dialogue. A hit
+ * is a deterministic report violation UNLESS the carrying shot's placement
+ * story function is an explicit `soft_cta` beat (see `isSoftCtaStoryFunction`
+ * below) — a soft CTA moment is exactly where this kind of phrasing is
+ * intentionally allowed. Case-insensitive substring match, same matching
+ * style as `screenThaiAdCompliance`/`screenClaims`. Deliberately SMALL and
+ * SEPARATE from `VERTICAL_DRAMA_THAI_PROHIBITED_CLAIM_PATTERNS` (legal claim
+ * compliance) and `VERTICAL_DRAMA_REGULATED_CLAIM_PATTERNS` (regulated
+ * unsupported claims) — this lexicon is about marketing TONE, not legality.
+ */
+export const VERTICAL_DRAMA_AD_SPEAK_LEXICON: readonly string[] = [
+  // Thai superlative / CTA phrasing.
+  "ดีที่สุด",
+  "ซื้อเลย",
+  "สั่งซื้อ",
+  "โปรโมชั่น",
+  "ลดราคา",
+  "ห้ามพลาด",
+  // English superlative / CTA phrasing.
+  "best ever",
+  "buy now",
+  "order now",
+  "shop now",
+  "limited time offer",
+  "act now",
+  "don't miss out",
+];
+
+/**
+ * True when a placement's (freeform, LLM-authored) `storyFunction` text
+ * reads as the `soft_cta` allowed story function (spec `allowedStoryFunctions`
+ * enum) — normalizes whitespace/underscores/hyphens before matching so both
+ * `"soft_cta"` and prose like `"a soft CTA moment"` match. Ad-speak lexicon
+ * hits are TOLERATED only in a shot classified this way.
+ */
+export function isSoftCtaStoryFunction(storyFunction: string | undefined): boolean {
+  if (!storyFunction) return false;
+  return storyFunction.toLowerCase().replace(/[\s_-]+/g, "").includes("softcta");
+}
+
+/**
+ * Qualitative dimensions expected from the section-14 quality-review skill's
+ * v2 scorecard (`server/services/verticalDramaEpisodeQualityReview.ts`) —
+ * narrow slice, only the tie-in-relevant fields.
+ */
+export interface TieInQualityScorecardV2 {
+  /** 1-5, or null/undefined when tie-in was not judged (flag off / disabled). */
+  tie_in_naturalness?: number | null;
+  /** Short qualitative note supporting the score — echoed onto the report as `tieInAssessment`. */
+  tie_in_assessment?: string;
+}
+
+/**
+ * The report's core computed fields (spec §13.1 `VerticalDramaTieInQualityReport`,
+ * minus the persistence-layer identifiers `reportId`/`episodeId`/`runId` —
+ * this function is pure/DB-free, so those are stamped by the caller at
+ * persist time, same convention as `planTieIn`'s `TieInPlanResult` never
+ * assigning its own DB ids).
+ *
+ * ADAPTATION (documented per this wave's brief): spec §13.1 names THREE
+ * separate qualitative sub-dimensions (`storyIntegration`,
+ * `characterMotivation`, `toneMatch`, each 1-5, independently judged).
+ * The shipped section-14 scorecard v2 (already shipped, not reimplemented
+ * here) carries a single judged `tie_in_naturalness` (1-5) dimension plus a
+ * free-text `tie_in_assessment` note — it does not carry three independent
+ * numbers. This report folds all three spec sub-dimensions onto that ONE
+ * shipped judged value (`storyIntegration === characterMotivation ===
+ * toneMatch === tie_in_naturalness`), which keeps `naturalnessScore`'s spec
+ * formula (`round(mean(...) / 5 * 100)`) numerically IDENTICAL to
+ * `round(tie_in_naturalness / 5 * 100)` — the mean of three equal numbers is
+ * that number. `tieInAssessment` carries the skill's own qualitative note
+ * for the UI. A future skill-schema upgrade that splits the single dimension
+ * into three real ones can drop this fold-in without changing this
+ * function's return shape.
+ */
+export interface VerticalDramaTieInQualityReport {
+  // qualitative (LLM-judged, 1-5) — see ADAPTATION doc comment above.
+  storyIntegration: number;
+  characterMotivation: number;
+  toneMatch: number;
+  tieInAssessment?: string;
+  // deterministic (computed, not judged)
+  spokenMentionCount: number;
+  visualShotCount: number;
+  adSpeakViolations: string[];
+  claimViolations: string[];
+  disclosureSeparated: boolean;
+  fatigueOk: boolean;
+  // verdict
+  naturalnessScore: number;
+  passed: boolean;
+}
+
+export interface BuildTieInQualityReportParams {
+  /** Raw (or relevant-subset) `vertical-drama-script-builder` output — only `product_tie_in_plan` is consulted. */
+  script?: Record<string, unknown> | null;
+  /**
+   * Raw (or relevant-subset) storyboard — consulted ONLY as a disclosure-
+   * separation cross-check candidate (alongside `script`); the primary
+   * `visualShotCount` deterministic check reads `product_tie_in_plan.
+   * shot_numbers` directly (spec §13.1), not the storyboard.
+   */
+  storyboard?: Record<string, unknown> | null;
+  /** Every shot's spoken dialogue line texts, keyed by shot number (script/dialogue-plan sourced). */
+  dialogueLinesByShot?: Map<number, string[]>;
+  tieInConfig: VerticalDramaProductTieInConfig;
+  scorecardV2: TieInQualityScorecardV2;
+  /** Result of `evaluateFatigue(...)` for this episode — `fatigueOk = !fatigueContext.exceeded`. */
+  fatigueContext: { exceeded: boolean };
+  /**
+   * Resolved quality policy (spec §16.1, `resolveQualityPolicy`) — supplies
+   * `tieInMinNaturalnessScore`, the pass floor `naturalnessScore` must clear.
+   * Not part of this file's own contracts; caller resolves it via the
+   * already-shipped `@shared/verticalDramaSeries/qualityPolicy` module.
+   */
+  policy: Pick<VerticalDramaQualityPolicy, "tieInMinNaturalnessScore">;
+}
+
+/**
+ * Build the hybrid (deterministic + qualitative) tie-in naturalness report
+ * for one episode (spec §13.1). Pure — no DB, no LLM call (the qualitative
+ * score is supplied already-judged via `scorecardV2`, produced by the
+ * section-14 quality-review skill). Never throws: a missing/malformed
+ * `product_tie_in_plan` simply yields zero deterministic violations.
+ *
+ * `naturalnessScore` formula (spec §13.1, exact): `round(tie_in_naturalness /
+ * 5 * 100)` (see the ADAPTATION doc comment on
+ * `VerticalDramaTieInQualityReport` for why this is numerically identical to
+ * the spec's `round(mean(storyIntegration, characterMotivation, toneMatch) /
+ * 5 * 100)`); when ANY deterministic violation exists, the stored score is
+ * capped at `min(score, 69)` — one point below the default pass floor — so a
+ * violation can never be masked by a high qualitative score.
+ * `passed = naturalnessScore >= policy.tieInMinNaturalnessScore AND zero
+ * deterministic violations`.
+ */
+export function buildTieInQualityReport(
+  params: BuildTieInQualityReportParams,
+): VerticalDramaTieInQualityReport {
+  const { tieInConfig, scorecardV2, fatigueContext, policy } = params;
+
+  const placements = extractShotProductPlacements(
+    (params.script as { product_tie_in_plan?: unknown } | null | undefined)?.product_tie_in_plan,
+  );
+  const tieInShotNumbers = tieInShotNumberSet(placements);
+  const visualShotCount = tieInShotNumbers.size;
+
+  const dialogueLinesByShot = params.dialogueLinesByShot ?? new Map<number, string[]>();
+  const tieInShotDialogueLines: string[] = [];
+  for (const shotNumber of tieInShotNumbers) {
+    tieInShotDialogueLines.push(...(dialogueLinesByShot.get(shotNumber) ?? []));
+  }
+
+  // Deterministic check 1: spoken product-name/benefit mentions (max 2).
+  const productNameLower = tieInConfig.productName?.trim().toLowerCase();
+  const benefitPhrasesLower = placements
+    .map((p) => p.benefitTalkingPoint?.trim().toLowerCase())
+    .filter((b): b is string => Boolean(b));
+  const spokenMentionCount = tieInShotDialogueLines.filter((line) => {
+    const lower = line.toLowerCase();
+    if (productNameLower && lower.includes(productNameLower)) return true;
+    return benefitPhrasesLower.some((benefit) => lower.includes(benefit));
+  }).length;
+
+  // Deterministic check 2: ad-speak lexicon hits outside an allowed soft_cta shot.
+  const adSpeakViolations: string[] = [];
+  for (const shotNumber of tieInShotNumbers) {
+    const placement = findPlacementForShot(placements, shotNumber);
+    if (isSoftCtaStoryFunction(placement?.storyFunction)) continue;
+    for (const line of dialogueLinesByShot.get(shotNumber) ?? []) {
+      const lower = line.toLowerCase();
+      const hit = VERTICAL_DRAMA_AD_SPEAK_LEXICON.find((phrase) => lower.includes(phrase.toLowerCase()));
+      if (hit) {
+        adSpeakViolations.push(`Ad-speak phrase "${hit}" in shot ${shotNumber} dialogue: "${line}"`);
+      }
+    }
+  }
+
+  // Deterministic check 3: forbidden/regulated claim screening (existing `screenClaims`),
+  // run over every tie-in-carrying shot's spoken lines.
+  const claimViolations = screenClaims(tieInConfig, tieInShotDialogueLines).warnings;
+
+  // Deterministic check 4: disclosure separation (existing `isDisclosureSeparateFromPrompt`).
+  // This pure function has no direct access to the actual outgoing prompt
+  // payloads (start-frame/motion prompts are assembled downstream, at
+  // generation time) — the category-mandated disclosure line (when the
+  // product category has one) is checked against the SCRIPT + STORYBOARD
+  // JSON instead, the closest available prompt-source proxy within this
+  // function's pure/DB-free signature. The generation-time prompt assembly
+  // path is the actual enforcement point for the video/image payload itself.
+  const requiredDisclosure = resolveRequiredDisclosureForCategory(tieInConfig.productCategory);
+  const disclosureSeparated = isDisclosureSeparateFromPrompt(
+    { script: params.script ?? null, storyboard: params.storyboard ?? null },
+    requiredDisclosure,
+  );
+
+  // Deterministic check 5: fatigue (existing `evaluateFatigue`, caller-computed).
+  const fatigueOk = !fatigueContext.exceeded;
+
+  const hasDeterministicViolation =
+    spokenMentionCount > VD_TIE_IN_MAX_SPOKEN_MENTIONS ||
+    visualShotCount > VD_TIE_IN_MAX_VISUAL_SHOTS ||
+    adSpeakViolations.length > 0 ||
+    claimViolations.length > 0 ||
+    !disclosureSeparated ||
+    !fatigueOk;
+
+  // Qualitative — see the ADAPTATION doc comment on
+  // `VerticalDramaTieInQualityReport` for why all three spec sub-dimensions
+  // fold onto the single shipped `tie_in_naturalness` value. `?? 0` is a
+  // conservative fallback for the (should-not-normally-happen-when-tie-in-
+  // enabled) case where the LLM omitted the dimension — a missing judgment
+  // scores as the worst case, never silently passes.
+  const tieInNaturalness = scorecardV2.tie_in_naturalness ?? 0;
+  const storyIntegration = tieInNaturalness;
+  const characterMotivation = tieInNaturalness;
+  const toneMatch = tieInNaturalness;
+
+  const rawScore = Math.round((tieInNaturalness / 5) * 100);
+  const naturalnessScore = hasDeterministicViolation ? Math.min(rawScore, 69) : rawScore;
+  const passed = naturalnessScore >= policy.tieInMinNaturalnessScore && !hasDeterministicViolation;
+
+  return {
+    storyIntegration,
+    characterMotivation,
+    toneMatch,
+    tieInAssessment: scorecardV2.tie_in_assessment,
+    spokenMentionCount,
+    visualShotCount,
+    adSpeakViolations,
+    claimViolations,
+    disclosureSeparated,
+    fatigueOk,
+    naturalnessScore,
+    passed,
   };
 }

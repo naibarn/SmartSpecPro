@@ -71,6 +71,18 @@ vi.mock("../verticalDramaStoryboardGeneration", () => ({
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
 }));
+// `repairStage`'s real-repair wiring (see
+// `verticalDramaEpisodePipeline.repairStage.test.ts`) added a static import
+// of this module's `generateEpisodeDialogueAudioPlan`/`buildDialogueAudioPlan`
+// — none of which are exercised by `approveRunCheckpoint`, so stubbed as
+// pass-throughs, same convention as the sibling generation-module mocks
+// above/below.
+vi.mock("../verticalDramaDialogueAudio", () => ({
+  generateEpisodeDialogueAudioPlan: vi.fn(),
+  buildDialogueAudioPlan: vi.fn(),
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+}));
 vi.mock("../verticalDramaStartFrameGeneration", () => ({
   generateStartFrameRenderPlan: vi.fn(),
   InsufficientCreditsError: class extends Error {},

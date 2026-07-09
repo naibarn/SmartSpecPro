@@ -57,7 +57,7 @@ vi.stubGlobal(
     ok: true,
     body: {},
     arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-  })),
+  }))
 );
 
 import {
@@ -66,17 +66,60 @@ import {
   compiledVideoFilename,
   extractClipSourcesFromMotionPromptPack,
   findMissingClips,
+  getJobStatus,
   resolveClipsForAssembly,
+  resolveEpisodeDialogueAudioAndSubtitlesRunInputs,
   runAssemblyJob,
   submitAssemblyJob,
+  submitSequentialAssemblyJobs,
   type EpisodeClipSource,
 } from "../verticalDramaEpisodeVideoAssembly";
 import { storagePutFromPath } from "../../storage";
+import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
+import type { VdDialogueTimelineClip } from "@shared/verticalDramaSeries/dialogueAudioTimeline";
 
 beforeEach(() => {
   dbState.episode.assemblyManifest = null;
   vi.clearAllMocks();
 });
+
+/**
+ * Poll-until-settled helper (task #25 flake fix — see the "flake fix" note on
+ * the fire-and-forget test below for the root cause this replaces). Waits for
+ * `predicate` to become true, checking every `intervalMs`, up to a generous
+ * `timeoutMs` ceiling — deterministic-by-design (waits exactly as long as
+ * needed) instead of gambling on a fixed sleep duration.
+ */
+async function waitForCondition(
+  predicate: () => boolean,
+  opts: { timeoutMs?: number; intervalMs?: number } = {}
+): Promise<void> {
+  const timeoutMs = opts.timeoutMs ?? 2000;
+  const intervalMs = opts.intervalMs ?? 5;
+  const deadline = Date.now() + timeoutMs;
+  while (!predicate()) {
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `waitForCondition: condition not met within ${timeoutMs}ms`
+      );
+    }
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+}
+
+/** Manually-resolvable promise — used by the `submitSequentialAssemblyJobs`
+ *  tests below to prove episode N+1's ffmpeg call is never made until
+ *  episode N's call has settled. */
+function createDeferred<T>(): {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+} {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(res => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 describe("findMissingClips / resolveClipsForAssembly", () => {
   const complete: EpisodeClipSource[] = [
@@ -95,7 +138,7 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
       { clipNumber: 1, videoUrl: "/api/storage/files/a.mp4" },
       { clipNumber: 3 },
     ];
-    expect(findMissingClips(clips).map((m) => m.clipNumber)).toEqual([2, 3]);
+    expect(findMissingClips(clips).map(m => m.clipNumber)).toEqual([2, 3]);
   });
 
   it("throws with the missing clip list when clips are incomplete and allowPartial is not set", () => {
@@ -113,16 +156,18 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
       { clipNumber: 1, videoUrl: "/a.mp4" },
       { clipNumber: 2 },
     ];
-    const { ordered, missing } = resolveClipsForAssembly(clips, { allowPartial: true });
-    expect(ordered.map((c) => c.clipNumber)).toEqual([1, 3]);
-    expect(missing.map((m) => m.clipNumber)).toEqual([2]);
+    const { ordered, missing } = resolveClipsForAssembly(clips, {
+      allowPartial: true,
+    });
+    expect(ordered.map(c => c.clipNumber)).toEqual([1, 3]);
+    expect(missing.map(m => m.clipNumber)).toEqual([2]);
   });
 
   it("throws when there are zero completed clips even with allowPartial", () => {
     const clips: EpisodeClipSource[] = [{ clipNumber: 1 }, { clipNumber: 2 }];
-    expect(() => resolveClipsForAssembly(clips, { allowPartial: true })).toThrowError(
-      /no_clips|no completed video/,
-    );
+    expect(() =>
+      resolveClipsForAssembly(clips, { allowPartial: true })
+    ).toThrowError(/no_clips|no completed video/);
   });
 
   it("succeeds with all clips complete and no missing", () => {
@@ -134,17 +179,27 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
 
 describe("compiledVideoFilename", () => {
   it("builds a series-ep-compiled.mp4 name", () => {
-    expect(compiledVideoFilename({ seriesId: 42, episodeNumber: 3, seriesTitle: "Midnight Vows" })).toBe(
-      "series-Midnight-Vows-ep-3-compiled.mp4",
-    );
+    expect(
+      compiledVideoFilename({
+        seriesId: 42,
+        episodeNumber: 3,
+        seriesTitle: "Midnight Vows",
+      })
+    ).toBe("series-Midnight-Vows-ep-3-compiled.mp4");
   });
 
   it("falls back to numeric ids when title is missing", () => {
-    expect(compiledVideoFilename({ seriesId: 7, episodeNumber: 2 })).toBe("series-series-7-ep-2-compiled.mp4");
+    expect(compiledVideoFilename({ seriesId: 7, episodeNumber: 2 })).toBe(
+      "series-series-7-ep-2-compiled.mp4"
+    );
   });
 
   it("sanitizes unsafe filename characters", () => {
-    const name = compiledVideoFilename({ seriesId: 1, episodeNumber: 1, seriesTitle: "Test/../../etc" });
+    const name = compiledVideoFilename({
+      seriesId: 1,
+      episodeNumber: 1,
+      seriesTitle: "Test/../../etc",
+    });
     expect(name).not.toMatch(/[\/\\]/);
   });
 });
@@ -224,7 +279,26 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
   ];
 
   it("submits a job, persists pendingJobId, then persists videoUrl on success", async () => {
+    // Flake fix (task #25) — root cause investigated and confirmed by
+    // reproduction: this test was intermittently failing EVEN STANDALONE
+    // (not just under a parallel batch), because (1) it awaited the
+    // fire-and-forget job via a FIXED 50ms `setTimeout`, racing against
+    // (2) an UNMOCKED `probeDurationSeconds(outputPath)` call inside
+    // `runAssemblyJob` that spawns a REAL `ffprobe` child process (this host
+    // has a real static ffprobe binary resolvable via `resolveFfBinary`) on a
+    // fake, non-existent `outputPath` — a real process spawn's OS-level
+    // latency is variable and can exceed 50ms under load, independent of any
+    // cross-test-file state leakage (module-level state here — `dbState`,
+    // the job service's own `jobs` Map — was checked and is NOT shared
+    // across test files under this project's default Vitest per-file
+    // isolation; `mkdtemp`-based temp dirs are OS-guaranteed-unique, so
+    // "shared tmp dir names" was investigated and ruled out too). Fixed two
+    // ways: (a) `probeDurationSecondsFn` now injects a fast synchronous fake
+    // so no real subprocess is ever spawned in this test, and (b) the fixed
+    // sleep is replaced with `waitForCondition`, which is correct by
+    // construction regardless of how long the async chain actually takes.
     const fakeRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
+    const fakeProbe = vi.fn(async () => undefined);
 
     const { jobId } = await submitAssemblyJob({
       owner,
@@ -232,16 +306,24 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
       internalBaseUrl: "http://localhost:3000",
       filename: "series-x-ep-1-compiled.mp4",
       ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
     });
 
     expect(jobId).toBeTruthy();
-    expect((dbState.episode.assemblyManifest as any)?.compiledVideo?.pendingJobId).toBe(jobId);
+    expect(
+      (dbState.episode.assemblyManifest as any)?.compiledVideo?.pendingJobId
+    ).toBe(jobId);
 
-    // submitAssemblyJob fires the job in the background — wait for the
-    // microtask/async chain (downloads + ffmpeg + upload) to settle.
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // submitAssemblyJob fires the job in the background — poll for the
+    // terminal state instead of guessing a fixed sleep duration.
+    await waitForCondition(
+      () =>
+        (dbState.episode.assemblyManifest as any)?.compiledVideo?.status !==
+        "pending"
+    );
 
     expect(fakeRunner).toHaveBeenCalled();
+    expect(fakeProbe).toHaveBeenCalled();
     expect(storagePutFromPath).toHaveBeenCalled();
     const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
     expect(compiled.status).toBe("completed");
@@ -265,5 +347,665 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
     const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
     expect(compiled.status).toBe("failed");
     expect(compiled.error).toMatch(/ffmpeg concat failed/);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Task #21 / W12.5 phase A — final render integration-lite                   */
+/* -------------------------------------------------------------------------- */
+
+describe("runAssemblyJob — final render integration-lite (banners/dialogueAudio/subtitles)", () => {
+  const owner = { tenantId: "t1", userId: 1, seriesId: 1, episodeId: 1 };
+  const clips: EpisodeClipSource[] = [
+    { clipNumber: 1, videoUrl: "/api/storage/files/a.mp4" },
+    { clipNumber: 2, videoUrl: "/api/storage/files/b.mp4" },
+  ];
+
+  it("stages banner + dialogue-audio downloads, generates a subtitle .ass, builds final-render ffmpeg args, and records an additive assemblyManifest.finalRender section", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    const fakeProbe = vi.fn(async () => 12); // 2 clips * 12s = 24s total duration.
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-final-render-1",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "series-x-ep-1-compiled.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      banners: [
+        {
+          imageUrl: "https://cdn.example.com/banner.png",
+          placementId: "bottom_band",
+          startSec: 0,
+          endSec: 24,
+          fadeSec: 0.3,
+        },
+      ],
+      dialogueAudio: {
+        segments: [
+          { audioUrl: "https://cdn.example.com/line1.mp3", startSec: 1.5 },
+        ],
+        loudnessNormalize: true,
+      },
+      subtitles: {
+        preset: "classic_box",
+        lines: [{ startSec: 0, endSec: 2, text: "สวัสดี" }],
+      },
+    });
+
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const ffArgs = capturedArgs[0]!;
+
+    // Staged banner + dialogue-audio inputs (mirrors clip staging convention).
+    expect(ffArgs.some(a => a.endsWith("banner-00.png"))).toBe(true);
+    expect(ffArgs.some(a => a.endsWith("dialogue-000.mp3"))).toBe(true);
+
+    // Final-render filter graph, not the legacy concat-only path.
+    const fcIndex = ffArgs.indexOf("-filter_complex");
+    expect(fcIndex).toBeGreaterThan(-1);
+    expect(ffArgs[fcIndex + 1]).toContain("subtitles=filename=");
+    expect(ffArgs[fcIndex + 1]).toContain("captions.ass");
+    expect(ffArgs[fcIndex + 1]).toContain("loudnorm=I=-16:TP=-1.5:LRA=11");
+    expect(ffArgs).toContain("-map");
+
+    // Downloads went through the same `fetch`-based staging path as clips.
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    const fetchedUrls = fetchMock.mock.calls.map(call => call[0]);
+    expect(fetchedUrls).toContain("https://cdn.example.com/banner.png");
+    expect(fetchedUrls).toContain("https://cdn.example.com/line1.mp3");
+
+    // `compiledVideo` behaves exactly as before; `finalRender` is a NEW,
+    // additive section alongside it.
+    const manifest = dbState.episode.assemblyManifest as any;
+    expect(manifest.compiledVideo.status).toBe("completed");
+    expect(manifest.finalRender).toEqual({
+      bannerCount: 1,
+      dialogueAudioSegmentCount: 1,
+      loudnessNormalize: true,
+      subtitlePreset: "classic_box",
+      subtitleLineCount: 1,
+      renderedAt: expect.any(String),
+    });
+  });
+
+  it("produces the legacy concat-only args (no -filter_complex/-map) and no finalRender section when all three new inputs are absent", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-legacy-path-1",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: vi.fn(async () => 12),
+    });
+
+    const ffArgs = capturedArgs[0]!;
+    expect(ffArgs).not.toContain("-filter_complex");
+    expect(ffArgs).not.toContain("-map");
+    expect(ffArgs).toContain("-vf");
+    const vfIndex = ffArgs.indexOf("-vf");
+    expect(ffArgs[vfIndex + 1]).toBe(
+      "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1"
+    );
+
+    const manifest = dbState.episode.assemblyManifest as any;
+    expect(manifest.compiledVideo.status).toBe("completed");
+    expect(manifest.finalRender).toBeUndefined();
+  });
+
+  it("throws (job persisted as failed) when a banner set fails validation, without ever invoking the ffmpeg runner", async () => {
+    const fakeRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-invalid-banners-1",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: vi.fn(async () => 12),
+      banners: [
+        // endSec (100) far exceeds the probed 24s total duration.
+        {
+          imageUrl: "https://cdn.example.com/banner.png",
+          placementId: "bottom_band",
+          startSec: 0,
+          endSec: 100,
+          fadeSec: 0.3,
+        },
+      ],
+    });
+
+    expect(fakeRunner).not.toHaveBeenCalled();
+    const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
+    expect(compiled.status).toBe("failed");
+    expect(compiled.error).toMatch(
+      /vertical_drama_final_render_invalid_banners/
+    );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Task #21 / W12.5 phase B — "entire" banner duration fix                    */
+/* -------------------------------------------------------------------------- */
+
+describe('runAssemblyJob — "entire" banner duration resolution (task #21 phase B)', () => {
+  const owner = { tenantId: "t1", userId: 1, seriesId: 1, episodeId: 1 };
+  const clips: EpisodeClipSource[] = [
+    { clipNumber: 1, videoUrl: "/api/storage/files/a.mp4" },
+    { clipNumber: 2, videoUrl: "/api/storage/files/b.mp4" },
+  ];
+
+  function extractFilterComplex(ffArgs: string[]): string {
+    const idx = ffArgs.indexOf("-filter_complex");
+    expect(idx).toBeGreaterThan(-1);
+    return ffArgs[idx + 1]!;
+  }
+
+  it("resolves entire:true to the REAL probed duration when it is SHORTER than the advisory endSec (previously threw VD_FINAL_RENDER_BANNER_OUT_OF_BOUNDS)", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    // 2 clips * 5s = 10s real probed duration — far shorter than the 999s
+    // advisory endSec a caller like `resolveEpisodeAdBannerRunInputs` would
+    // have supplied pre-probe (using `targetDurationSeconds` as a stand-in).
+    const fakeProbe = vi.fn(async () => 5);
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-entire-shorter",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      banners: [
+        {
+          imageUrl: "https://cdn.example.com/banner.png",
+          placementId: "bottom_band",
+          startSec: 0,
+          endSec: 999,
+          fadeSec: 0.3,
+          entire: true,
+        },
+      ],
+    });
+
+    // No throw, no failed job, ffmpeg actually ran.
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
+    expect(compiled.status).toBe("completed");
+
+    const filterComplex = extractFilterComplex(capturedArgs[0]!);
+    expect(filterComplex).toContain("between(t\\,0\\,10)");
+    expect(filterComplex).not.toContain("999");
+  });
+
+  it("resolves entire:true to the REAL probed duration when it is LONGER than the advisory endSec (the banner now covers the whole video instead of stopping early)", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    // 2 clips * 20s = 40s real probed duration — longer than the 5s advisory
+    // endSec.
+    const fakeProbe = vi.fn(async () => 20);
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-entire-longer",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      banners: [
+        {
+          imageUrl: "https://cdn.example.com/banner.png",
+          placementId: "bottom_band",
+          startSec: 0,
+          endSec: 5,
+          fadeSec: 0.3,
+          entire: true,
+        },
+      ],
+    });
+
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
+    expect(compiled.status).toBe("completed");
+
+    const filterComplex = extractFilterComplex(capturedArgs[0]!);
+    expect(filterComplex).toContain("between(t\\,0\\,40)");
+  });
+
+  it("leaves a banner WITHOUT entire:true untouched (window mode), even in the SAME render as an entire:true banner", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    const fakeProbe = vi.fn(async () => 12); // 2 clips * 12s = 24s total.
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-mixed-entire-window",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      banners: [
+        {
+          imageUrl: "https://cdn.example.com/entire-banner.png",
+          placementId: "bottom_band",
+          startSec: 0,
+          endSec: 60,
+          fadeSec: 0.3,
+          entire: true,
+        },
+        {
+          imageUrl: "https://cdn.example.com/window-banner.png",
+          placementId: "side_vertical",
+          sideAlign: "left",
+          startSec: 2,
+          endSec: 6,
+          fadeSec: 0.3,
+          // no `entire` — must stay exactly [2, 6) regardless of probe.
+        },
+      ],
+    });
+
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const filterComplex = extractFilterComplex(capturedArgs[0]!);
+    expect(filterComplex).toContain("between(t\\,0\\,24)"); // entire -> probed total
+    expect(filterComplex).toContain("between(t\\,2\\,6)"); // window -> unchanged
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Task #21 / W12.5 phase B — dialogue audio + subtitles render feed          */
+/* -------------------------------------------------------------------------- */
+
+describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
+  function dialogueLine(over: Record<string, unknown> = {}) {
+    return {
+      lineId: "line-1",
+      shotNumber: 1,
+      clipNumber: 1,
+      speakerName: "Aria",
+      isNarration: false,
+      text: "We are not done here.",
+      start: 0,
+      end: 2,
+      targetDurationSeconds: 2,
+      ...over,
+    };
+  }
+
+  function ttsItem(over: Record<string, unknown> = {}) {
+    return {
+      lineId: "line-1",
+      speakerName: "Aria",
+      text: "We are not done here.",
+      targetDurationSeconds: 2,
+      blocked: false,
+      ...over,
+    };
+  }
+
+  function plan(over: Record<string, unknown> = {}): VerticalDramaDialogueAudioPlan {
+    return {
+      planId: "dap-1",
+      seriesId: "10",
+      episodeId: "20",
+      mode: "dialogue",
+      audioStrategy: "separate_tts_voiceover",
+      language: "th",
+      dialogueLines: [dialogueLine() as any],
+      speakerVoiceMap: { entries: [] },
+      nativeAudioPolicy: {
+        requested: false,
+        modelSupportsNativeAudio: false,
+        modelSupportsRequestedLanguage: false,
+        userAcceptedRegenerationCost: false,
+        allowed: false,
+        blockingReasons: [],
+      },
+      separateTtsPlan: {
+        strategy: "separate_tts_voiceover",
+        items: [ttsItem() as any],
+        injectsIntoVideoPrompts: false,
+        blockedLineIds: [],
+      },
+      nativeAudioSnippets: [],
+      subtitleCues: [],
+      subtitleSafeArea: { position: "bottom_safe", maxLines: 2, avoidFaceArea: true },
+      timing: {
+        episodeTargetSeconds: 60,
+        totalDialogueSeconds: 2,
+        perShot: [],
+        overlongLineIds: [],
+        timingMismatch: false,
+      },
+      repairQueue: [],
+      warnings: [],
+      subShotsEnabled: false,
+      createdAt: "2026-07-08T00:00:00.000Z",
+      updatedAt: "2026-07-08T00:00:00.000Z",
+      ...over,
+    } as VerticalDramaDialogueAudioPlan;
+  }
+
+  const oneClip: VdDialogueTimelineClip[] = [
+    { clipNumber: 1, sourceShotNumbers: [1], durationSeconds: 8 },
+  ];
+
+  it("returns a no-op result for a null plan", () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: null,
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: true,
+      loudnessNormalize: true,
+      subtitlePreset: "classic_box",
+    });
+    expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
+  });
+
+  it("returns a no-op result when the plan has zero dialogue lines", () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan({ dialogueLines: [] }),
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: true,
+      subtitlePreset: "classic_box",
+      loudnessNormalize: false,
+    });
+    expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
+  });
+
+  it("returns a no-op result when neither includeDialogueAudio nor a real subtitlePreset is requested", () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan(),
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: false,
+      subtitlePreset: undefined,
+      loudnessNormalize: false,
+    });
+    expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
+  });
+
+  it('treats subtitlePreset "none" the same as omitted — no subtitles fed', () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan(),
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: false,
+      subtitlePreset: "none",
+      loudnessNormalize: false,
+    });
+    expect(result.subtitles).toBeUndefined();
+    expect(result.subtitleLinesIncluded).toBe(0);
+  });
+
+  it('treats subtitlePreset "no_subtitle_style" the same sentinel as "none"', () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan(),
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: false,
+      subtitlePreset: "no_subtitle_style",
+      loudnessNormalize: false,
+    });
+    expect(result.subtitles).toBeUndefined();
+  });
+
+  it("builds subtitles from dialogueLines when a real preset is requested, INDEPENDENT of includeDialogueAudio (subtitles work from script text)", () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan(),
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: false, // opted out of audio entirely
+      subtitlePreset: "classic_box",
+      loudnessNormalize: false,
+    });
+    expect(result.dialogueAudio).toBeUndefined();
+    expect(result.dialogueAudioSegmentsIncluded).toBe(0);
+    expect(result.subtitles).toEqual({
+      preset: "classic_box",
+      lines: [{ startSec: 0, endSec: 2, speakerName: "Aria", text: "We are not done here." }],
+    });
+    expect(result.subtitleLinesIncluded).toBe(1);
+  });
+
+  it("builds dialogueAudio.segments only for lines with a completed audioTask.audioUrl; a line with no completed audio is excluded from audio but STILL included in subtitles", () => {
+    const twoLinePlan = plan({
+      dialogueLines: [
+        dialogueLine({ lineId: "line-a", start: 0, end: 2, text: "Line A has audio." }),
+        dialogueLine({ lineId: "line-b", start: 2, end: 4, text: "Line B has no audio yet." }),
+      ],
+      separateTtsPlan: {
+        strategy: "separate_tts_voiceover",
+        items: [
+          ttsItem({
+            lineId: "line-a",
+            audioTask: { pendingTaskId: "t1", audioUrl: "https://cdn.example.com/a.mp3" },
+          }),
+          ttsItem({ lineId: "line-b", audioTask: { pendingTaskId: "t2" } }), // still pending, no audioUrl
+        ],
+        injectsIntoVideoPrompts: false,
+        blockedLineIds: [],
+      },
+    });
+
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: twoLinePlan,
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: true,
+      subtitlePreset: "classic_box",
+      loudnessNormalize: true,
+    });
+
+    expect(result.dialogueAudioSegmentsIncluded).toBe(1);
+    expect(result.dialogueAudio).toEqual({
+      segments: [{ audioUrl: "https://cdn.example.com/a.mp3", startSec: 0 }],
+      loudnessNormalize: true,
+    });
+    // Both lines still show up as subtitles — captions don't require audio.
+    expect(result.subtitleLinesIncluded).toBe(2);
+    expect(result.subtitles?.lines.map(l => l.text)).toEqual([
+      "Line A has audio.",
+      "Line B has no audio yet.",
+    ]);
+  });
+
+  it("omits the dialogueAudio key entirely when includeDialogueAudio is true but zero lines have completed audio (never silently normalizes the base track)", () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan({
+        separateTtsPlan: {
+          strategy: "separate_tts_voiceover",
+          items: [ttsItem({ audioTask: { pendingTaskId: "t1" } })], // no audioUrl yet
+          injectsIntoVideoPrompts: false,
+          blockedLineIds: [],
+        },
+      }),
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: true,
+      loudnessNormalize: true,
+      subtitlePreset: "none",
+    });
+    expect(result.dialogueAudio).toBeUndefined();
+    expect(result.dialogueAudioSegmentsIncluded).toBe(0);
+  });
+
+  it("narration lines omit the speakerName chip; named dialogue lines include it", () => {
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan({
+        dialogueLines: [
+          dialogueLine({ lineId: "narr", isNarration: true, speakerName: "Narrator", text: "Once upon a time." }),
+        ],
+      }),
+      motionClips: oneClip,
+      includedClipNumbers: [1],
+      includeDialogueAudio: false,
+      subtitlePreset: "classic_box",
+      loudnessNormalize: false,
+    });
+    expect(result.subtitles?.lines[0]).toEqual({
+      startSec: 0,
+      endSec: 2,
+      speakerName: undefined,
+      text: "Once upon a time.",
+    });
+  });
+
+  it("computes absolute startSec for dialogueAudio segments using the clip's planned duration, not shot-local time", () => {
+    const twoClips: VdDialogueTimelineClip[] = [
+      { clipNumber: 1, sourceShotNumbers: [1], durationSeconds: 8 },
+      { clipNumber: 2, sourceShotNumbers: [2], durationSeconds: 8 },
+    ];
+    const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+      plan: plan({
+        dialogueLines: [dialogueLine({ clipNumber: 2, shotNumber: 2, start: 1, end: 3 })],
+        separateTtsPlan: {
+          strategy: "separate_tts_voiceover",
+          items: [
+            ttsItem({
+              audioTask: { pendingTaskId: "t1", audioUrl: "https://cdn.example.com/l1.mp3" },
+            }),
+          ],
+          injectsIntoVideoPrompts: false,
+          blockedLineIds: [],
+        },
+      }),
+      motionClips: twoClips,
+      includedClipNumbers: [1, 2],
+      includeDialogueAudio: true,
+      subtitlePreset: "none",
+      loudnessNormalize: false,
+    });
+    // clip1's 8s duration + the line's own shot-local start (1s) = 9s absolute.
+    expect(result.dialogueAudio?.segments[0]?.startSec).toBe(9);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Task #21 / W12.5 phase B — season batch render sequential job chain        */
+/* -------------------------------------------------------------------------- */
+
+describe("submitSequentialAssemblyJobs", () => {
+  function spec(episodeId: number, filename: string) {
+    return {
+      owner: { tenantId: "t1", userId: 1, seriesId: 1, episodeId },
+      clips: [{ clipNumber: 1, videoUrl: `/api/storage/files/${filename}` }] as EpisodeClipSource[],
+      filename,
+    };
+  }
+
+  it("mints a distinct jobId per spec, returned in input order, tagged with the right episodeId", async () => {
+    const fakeRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
+    const fakeProbe = vi.fn(async () => 8);
+    const specs = [spec(201, "ep1.mp4"), spec(202, "ep2.mp4")];
+
+    const results = await submitSequentialAssemblyJobs(
+      specs,
+      "http://localhost:3000",
+      fakeRunner,
+      fakeProbe
+    );
+
+    expect(results).toHaveLength(2);
+    expect(results[0]!.episodeId).toBe(201);
+    expect(results[1]!.episodeId).toBe(202);
+    expect(results[0]!.jobId).not.toBe(results[1]!.jobId);
+
+    await waitForCondition(
+      () => getJobStatus(results[1]!.jobId)?.status !== "pending"
+    );
+    expect(getJobStatus(results[0]!.jobId)?.status).toBe("completed");
+    expect(getJobStatus(results[1]!.jobId)?.status).toBe("completed");
+  });
+
+  it("chains ffmpeg runs SEQUENTIALLY — episode 2's runner is never called until episode 1's has settled", async () => {
+    const firstCall = createDeferred<{ code: number; stderr: string }>();
+    const callTimestamps: number[] = [];
+    const fakeRunner = vi.fn(async () => {
+      callTimestamps.push(fakeRunner.mock.calls.length);
+      if (fakeRunner.mock.calls.length === 1) return firstCall.promise;
+      return { code: 0, stderr: "" };
+    });
+    const fakeProbe = vi.fn(async () => 8);
+    const specs = [spec(301, "ep1.mp4"), spec(302, "ep2.mp4")];
+
+    const results = await submitSequentialAssemblyJobs(
+      specs,
+      "http://localhost:3000",
+      fakeRunner,
+      fakeProbe
+    );
+
+    // Both jobs are immediately "queued" (pending), before either ffmpeg run
+    // has settled — mirrors `submitAssemblyJob`'s own synchronous-persist
+    // contract, now for every episode in the batch at once.
+    await waitForCondition(() => fakeRunner.mock.calls.length >= 1);
+    expect(getJobStatus(results[0]!.jobId)?.status).toBe("pending");
+    expect(getJobStatus(results[1]!.jobId)?.status).toBe("pending");
+
+    // Episode 1's ffmpeg call is in flight — episode 2's must NOT have
+    // started yet.
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+
+    firstCall.resolve({ code: 0, stderr: "" });
+
+    await waitForCondition(
+      () => getJobStatus(results[1]!.jobId)?.status !== "pending"
+    );
+    expect(fakeRunner).toHaveBeenCalledTimes(2);
+    expect(getJobStatus(results[0]!.jobId)?.status).toBe("completed");
+    expect(getJobStatus(results[1]!.jobId)?.status).toBe("completed");
+  });
+
+  it("continues the chain after a per-episode failure — the next episode still runs and completes", async () => {
+    const fakeRunner = vi.fn(async () => {
+      if (fakeRunner.mock.calls.length === 1) {
+        return { code: 1, stderr: "boom" }; // episode 1 fails
+      }
+      return { code: 0, stderr: "" };
+    });
+    const fakeProbe = vi.fn(async () => 8);
+    const specs = [spec(401, "ep1.mp4"), spec(402, "ep2.mp4")];
+
+    const results = await submitSequentialAssemblyJobs(
+      specs,
+      "http://localhost:3000",
+      fakeRunner,
+      fakeProbe
+    );
+
+    await waitForCondition(
+      () => getJobStatus(results[1]!.jobId)?.status !== "pending"
+    );
+
+    expect(getJobStatus(results[0]!.jobId)?.status).toBe("failed");
+    expect(getJobStatus(results[0]!.jobId)?.error).toMatch(/ffmpeg concat failed/);
+    expect(getJobStatus(results[1]!.jobId)?.status).toBe("completed");
+    expect(fakeRunner).toHaveBeenCalledTimes(2);
   });
 });
