@@ -3460,6 +3460,35 @@ export const verticalDramaSeriesRouter = router({
         createdByUserId: userId,
       });
 
+      // Sync the improved PLAN fields (ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง) into
+      // the legacy top-level `bible.episodeBreakdown` array too. The
+      // deep-story-drafts "plan" view (`VerticalDramaSeriesDetailPage.tsx` —
+      // `expanded.episodeBreakdown`) reads the logline/keyBeats/title from
+      // `episodeBreakdown`, NOT from the versioned items (which only feed the
+      // per-shot dialogue view). `appendBreakdownVersion` never touches
+      // `episodeBreakdown`, so without this sync a confirmed improvement
+      // updated the shots (read from the active version) but left the plan
+      // summary showing the pre-improvement text. Only the plan fields the
+      // view actually renders are overwritten; per-episode extras
+      // (contentBudget, etc.) and un-improved episodes are left untouched.
+      const legacyBreakdown = (nextBible as { episodeBreakdown?: unknown }).episodeBreakdown;
+      if (Array.isArray(legacyBreakdown)) {
+        (nextBible as { episodeBreakdown?: unknown }).episodeBreakdown = legacyBreakdown.map((entry) => {
+          if (!entry || typeof entry !== "object") return entry;
+          const epNum = (entry as { episodeNumber?: unknown }).episodeNumber;
+          const improved = typeof epNum === "number" ? improvedByEpisode.get(epNum) : undefined;
+          if (!improved) return entry;
+          const cliffhanger = (improved as { cliffhanger_line?: unknown }).cliffhanger_line;
+          return {
+            ...(entry as Record<string, unknown>),
+            workingTitle: improved.workingTitle,
+            logline: improved.logline,
+            keyBeats: improved.keyBeats,
+            ...(cliffhanger !== undefined ? { cliffhanger_line: cliffhanger } : {}),
+          };
+        });
+      }
+
       await db
         .update(verticalDramaSeries)
         .set({ bible: nextBible, updatedAt: new Date() })
