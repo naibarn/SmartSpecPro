@@ -471,11 +471,23 @@ export function parseStoryScriptEpisodeBlock(
         index += 1;
         continue;
       }
-      if (currentShot && trimmed.startsWith("- ")) {
-        const dialogueLine = parseDialogueLine(trimmed.slice(2));
-        if (dialogueLine) currentShot.dialogue_lines.push(dialogueLine);
-        index += 1;
-        continue;
+      if (currentShot) {
+        // Dialogue line. Tolerate a MISSING "- " bullet prefix — some model
+        // outputs write "ผู้พูด: บทพูด" without the leading dash (confirmed via
+        // real straggler output, 2026-07-10: episode 5's dialogue lines all
+        // dropped the "- " prefix, so the loop hit the "unrecognized line"
+        // break right after shot 1 and reported "พบ 1 ช็อต"). Only a line that
+        // parses as a real "speaker: line" pair is treated as dialogue —
+        // shot headers ("ช็อต N:") and the cliffhanger ("จุดค้าง:") are already
+        // matched ABOVE, so they can't be misread here; anything that isn't a
+        // valid speaker/line pair still falls through to the break below.
+        const dialogueBody = trimmed.startsWith("- ") ? trimmed.slice(2) : trimmed;
+        const dialogueLine = parseDialogueLine(dialogueBody);
+        if (dialogueLine) {
+          currentShot.dialogue_lines.push(dialogueLine);
+          index += 1;
+          continue;
+        }
       }
       // Unrecognized line inside the shots section — stop scanning rather
       // than looping forever or mis-attributing trailing prose to a shot.

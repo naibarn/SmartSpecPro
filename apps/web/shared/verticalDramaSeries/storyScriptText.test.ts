@@ -134,6 +134,32 @@ describe("formatStoryScriptEpisodePlanContext", () => {
     expect(text).not.toContain("สวัสดีจ้ะ");
   });
 
+  it("(parseStoryScriptEpisodeBlock) tolerates dialogue lines WITHOUT the leading '- ' bullet (episode 5 straggler incident)", () => {
+    // Real straggler output dropped the "- " prefix on every dialogue line
+    // ("ครูแพร: ..." instead of "- ครูแพร: ..."), which previously made the
+    // shots loop hit its "unrecognized line" break after shot 1 → "พบ 1 ช็อต".
+    const block = [
+      "ตอนที่ 5: ทดสอบ",
+      "เรื่องย่อ: เรื่องย่อ",
+      "บทพูดรายช็อต:",
+      "ช็อต 1: เปิดฉาก",
+      "ครูแพร: บรรทัดแรกไม่มีขีดนำหน้า", // no "- " prefix
+      "ช็อต 2: ปิดฉาก",
+      "- ฝ้าย: บรรทัดนี้มีขีดนำหน้า (ยิ้ม)", // mixed: with "- " prefix
+      "ใบข้าว: บรรทัดนี้ไม่มีขีด",
+      "จุดค้าง: ค้างไว้",
+    ].join("\n");
+    const parsed = parseStoryScriptEpisodeBlock("th", block, { expectedShotCount: 2 });
+    expect(parsed).not.toBeNull();
+    expect(parsed!.shots.map((s) => s.shot_number)).toEqual([1, 2]);
+    expect(parsed!.shots[0].dialogue_lines).toEqual([{ speaker: "ครูแพร", line: "บรรทัดแรกไม่มีขีดนำหน้า" }]);
+    expect(parsed!.shots[1].dialogue_lines).toEqual([
+      { speaker: "ฝ้าย", line: "บรรทัดนี้มีขีดนำหน้า", delivery: "ยิ้ม" },
+      { speaker: "ใบข้าว", line: "บรรทัดนี้ไม่มีขีด" },
+    ]);
+    expect(parsed!.cliffhangerLine).toBe("ค้างไว้");
+  });
+
   it("omits the จุดดำเนินเรื่อง section when keyBeats is empty", () => {
     const text = formatStoryScriptEpisodePlanContext("th", {
       episodeNumber: 1,
