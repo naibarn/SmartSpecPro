@@ -139,13 +139,19 @@ vi.mock("../../services/verticalDramaArcReplan", () => ({
   buildArcReplanProposal: mockBuildArcReplanProposal,
 }));
 
-const { mockGetActiveBreakdown, mockDeriveLegacyContentBudget } = vi.hoisted(() => ({
-  mockGetActiveBreakdown: vi.fn(),
-  mockDeriveLegacyContentBudget: vi.fn(),
-}));
+const { mockGetActiveBreakdown, mockDeriveLegacyContentBudget, mockReadItemCliffhangerLine } =
+  vi.hoisted(() => ({
+    mockGetActiveBreakdown: vi.fn(() => []),
+    mockDeriveLegacyContentBudget: vi.fn(),
+    // Part A1 (planning/`polished-toasting-gadget.md`) — `getEpisodeDetail`'s
+    // `resolveEpisodePlanForEpisode` also reads this export via the SAME
+    // dynamic import above.
+    mockReadItemCliffhangerLine: vi.fn(() => undefined),
+  }));
 vi.mock("../../services/verticalDramaStoryBible", () => ({
   getActiveBreakdown: mockGetActiveBreakdown,
   deriveLegacyContentBudget: mockDeriveLegacyContentBudget,
+  readItemCliffhangerLine: mockReadItemCliffhangerLine,
 }));
 
 const { mockEvaluateScriptSpeechCoverage } = vi.hoisted(() => ({

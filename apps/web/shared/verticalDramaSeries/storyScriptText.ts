@@ -110,6 +110,39 @@ export function formatStoryScriptEpisode(lang: StoryScriptLang, episode: StorySc
   return lines.join("\n");
 }
 
+/**
+ * Compact plan-only block (ตอนชื่อ / เรื่องย่อ / จุดดำเนินเรื่อง / จุดค้าง) — the
+ * SAME labels as `formatStoryScriptEpisode` but WITHOUT the per-shot dialogue
+ * section. Used to inject the episode's planned scene-setting context (esp.
+ * the enriched, scene-setting logline) into downstream generation prompts
+ * (storyboard / start-frame image / video motion prompts) as compact,
+ * reference-only context. Tolerates an empty `keyBeats` array (section
+ * omitted) and a missing/empty `cliffhangerLine` (line omitted).
+ */
+export function formatStoryScriptEpisodePlanContext(
+  lang: StoryScriptLang,
+  episode: Pick<StoryScriptEpisodeInput, "episodeNumber" | "workingTitle" | "logline" | "keyBeats" | "cliffhangerLine">,
+): string {
+  const lines: string[] = [];
+  const cliffhangerLine = compactText(episode.cliffhangerLine);
+
+  lines.push(
+    lang === "th"
+      ? `ตอนที่ ${episode.episodeNumber}: ${episode.workingTitle}`
+      : `Episode ${episode.episodeNumber}: ${episode.workingTitle}`,
+  );
+  lines.push(lang === "th" ? `เรื่องย่อ: ${episode.logline}` : `Summary: ${episode.logline}`);
+  if (episode.keyBeats.length > 0) {
+    lines.push(lang === "th" ? "จุดดำเนินเรื่อง:" : "Key beats:");
+    for (const beat of episode.keyBeats) lines.push(`- ${beat}`);
+  }
+  if (cliffhangerLine) {
+    lines.push(lang === "th" ? `จุดค้าง: ${cliffhangerLine}` : `Cliffhanger: ${cliffhangerLine}`);
+  }
+
+  return lines.join("\n");
+}
+
 export interface BuildStoryScriptTextResult {
   text: string;
   copiedEpisodeNumbers: number[];

@@ -15,6 +15,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatStoryScriptEpisode,
+  formatStoryScriptEpisodePlanContext,
   parseStoryScriptEpisodeBlock,
   splitStoryScriptTextIntoEpisodeBlocks,
   stripWrappingMarkdownEmphasis,
@@ -111,6 +112,75 @@ describe("splitStoryScriptTextIntoEpisodeBlocks", () => {
     const blocks = splitStoryScriptTextIntoEpisodeBlocks("th", baselineBlock);
     expect(blocks.has(2)).toBe(true);
     expect(blocks.get(2)).toBe(baselineBlock.trim());
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* formatStoryScriptEpisodePlanContext                                        */
+/* -------------------------------------------------------------------------- */
+
+describe("formatStoryScriptEpisodePlanContext", () => {
+  it("emits title/logline/keyBeats/cliffhanger but NOT shot dialogue", () => {
+    const episode = buildTwoShotEpisode(3);
+    const text = formatStoryScriptEpisodePlanContext("th", episode);
+
+    expect(text).toBe(
+      ["ตอนที่ 3: หัวใจเมือง", "เรื่องย่อ: เรื่องราวการเริ่มต้นใหม่", "จุดดำเนินเรื่อง:", "- จุดที่ 1", "- จุดที่ 2", "จุดค้าง: จะเกิดอะไรขึ้นต่อไป"].join(
+        "\n",
+      ),
+    );
+    expect(text).not.toContain("บทพูดรายช็อต");
+    expect(text).not.toContain("เปิดฉาก");
+    expect(text).not.toContain("สวัสดีจ้ะ");
+  });
+
+  it("omits the จุดดำเนินเรื่อง section when keyBeats is empty", () => {
+    const text = formatStoryScriptEpisodePlanContext("th", {
+      episodeNumber: 1,
+      workingTitle: "ตอนแรก",
+      logline: "เรื่องย่อของตอนแรก",
+      keyBeats: [],
+      cliffhangerLine: "ค้างไว้",
+    });
+
+    expect(text).not.toContain("จุดดำเนินเรื่อง");
+    expect(text).toBe(["ตอนที่ 1: ตอนแรก", "เรื่องย่อ: เรื่องย่อของตอนแรก", "จุดค้าง: ค้างไว้"].join("\n"));
+  });
+
+  it("omits the จุดค้าง line when cliffhangerLine is missing or blank", () => {
+    const withoutCliffhanger = formatStoryScriptEpisodePlanContext("th", {
+      episodeNumber: 1,
+      workingTitle: "ตอนแรก",
+      logline: "เรื่องย่อของตอนแรก",
+      keyBeats: ["จุด A"],
+      cliffhangerLine: undefined,
+    });
+    const withBlankCliffhanger = formatStoryScriptEpisodePlanContext("th", {
+      episodeNumber: 1,
+      workingTitle: "ตอนแรก",
+      logline: "เรื่องย่อของตอนแรก",
+      keyBeats: ["จุด A"],
+      cliffhangerLine: "   ",
+    });
+
+    expect(withoutCliffhanger).not.toContain("จุดค้าง");
+    expect(withBlankCliffhanger).not.toContain("จุดค้าง");
+  });
+
+  it("supports the English label set", () => {
+    const text = formatStoryScriptEpisodePlanContext("en", {
+      episodeNumber: 2,
+      workingTitle: "Heart of the City",
+      logline: "A fresh start",
+      keyBeats: ["Beat one"],
+      cliffhangerLine: "What happens next",
+    });
+
+    expect(text).toBe(
+      ["Episode 2: Heart of the City", "Summary: A fresh start", "Key beats:", "- Beat one", "Cliffhanger: What happens next"].join(
+        "\n",
+      ),
+    );
   });
 });
 

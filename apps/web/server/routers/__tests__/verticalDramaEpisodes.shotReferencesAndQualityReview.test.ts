@@ -194,15 +194,19 @@ vi.mock("../../services/verticalDramaScriptGeneration", () => ({
 // dynamically imports this exact module for `getActiveBreakdown` +
 // `deriveLegacyContentBudget`, mocked here too so that call site stays safe
 // even though no pre-existing test in this file enables `verticalDramaSeriesArcReplan`).
-const { mockGetActiveBreakdown, mockDeriveLegacyContentBudget } = vi.hoisted(
-  () => ({
+const { mockGetActiveBreakdown, mockDeriveLegacyContentBudget, mockReadItemCliffhangerLine } =
+  vi.hoisted(() => ({
     mockGetActiveBreakdown: vi.fn(() => [] as unknown[]),
     mockDeriveLegacyContentBudget: vi.fn(),
-  })
-);
+    // Part A1 (planning/`polished-toasting-gadget.md`) — `getEpisodeDetail`'s
+    // new `resolveEpisodePlanForEpisode` also reads this export via the SAME
+    // dynamic import above.
+    mockReadItemCliffhangerLine: vi.fn(() => undefined),
+  }));
 vi.mock("../../services/verticalDramaStoryBible", () => ({
   getActiveBreakdown: mockGetActiveBreakdown,
   deriveLegacyContentBudget: mockDeriveLegacyContentBudget,
+  readItemCliffhangerLine: mockReadItemCliffhangerLine,
 }));
 
 // Wave-7D (spec §8.2.2 flow-through rule) — `generateStartFrameAngleVariations`
@@ -1930,8 +1934,11 @@ describe("getEpisodeDetail — qualityReview field", () => {
     });
     // Pre-existing fields stay exactly as before — no extra db.select calls
     // beyond the original 3 (byte-identical flags-off proof; W10-B's own
-    // `resolveEpisodeDraftAvailable` select never runs when its flag is off).
-    expect(mockDb.select).toHaveBeenCalledTimes(3);
+    // `resolveEpisodeDraftAvailable` select never runs when its flag is off)
+    // plus 1 for Part A1's unconditional `episodePlan` lookup
+    // (planning/`polished-toasting-gadget.md`) — resolved as the LAST query
+    // of `getEpisodeDetail`, unaffected by any flag.
+    expect(mockDb.select).toHaveBeenCalledTimes(4);
   });
 
   it("Wave-4A: populates qualityPolicyResolved, latestQualityLoopState, and a derived wizard state when qualityLoopV2 + productionWizard are on", async () => {
@@ -2440,7 +2447,10 @@ describe("getEpisodeDetail — qualityReview field", () => {
         input: { seriesId: "10", episodeId: "100" },
       });
 
-      expect(mockDb.select).toHaveBeenCalledTimes(6);
+      // +1 for Part A1's unconditional `episodePlan` lookup
+      // (planning/`polished-toasting-gadget.md`), resolved as the LAST query
+      // of `getEpisodeDetail`.
+      expect(mockDb.select).toHaveBeenCalledTimes(7);
     });
 
     it("productionWizard flag off: perShotDialoguePreview stays null (flags-off byte-identical)", async () => {
@@ -2471,7 +2481,10 @@ describe("getEpisodeDetail — qualityReview field", () => {
       });
 
       expect((result as any).perShotDialoguePreview).toBeNull();
-      expect(mockDb.select).toHaveBeenCalledTimes(3);
+      // +1 for Part A1's unconditional `episodePlan` lookup
+      // (planning/`polished-toasting-gadget.md`), resolved as the LAST query
+      // of `getEpisodeDetail`.
+      expect(mockDb.select).toHaveBeenCalledTimes(4);
     });
   });
 });
@@ -2866,7 +2879,14 @@ describe("2026-07-08 acceptance-review fix #2 — video_clips real completedClip
 
       const videoPromptsStep = findVideoPromptsStep(result);
       expect(videoPromptsStep.evidence[0].value).toBe("Not generated");
-      expect(mockDb.select).toHaveBeenCalledTimes(7);
+      // +1 for Part A1's unconditional `episodePlan` lookup
+      // (planning/`polished-toasting-gadget.md`), resolved as the LAST query
+      // of `getEpisodeDetail` (the 8th call here — no `mockReturnValueOnce`
+      // queued for it, so the resulting `undefined` chain is caught by
+      // `resolveEpisodePlanForEpisode`'s own defensive try/catch and
+      // resolves to `episodePlan: null`, same fail-safe contract as every
+      // other best-effort lookup in this procedure).
+      expect(mockDb.select).toHaveBeenCalledTimes(8);
     });
   });
 });

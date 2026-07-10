@@ -789,6 +789,16 @@ export const VD_COPY = {
     seasonRenderNoneSubmittedToast: "No episodes were ready to render.",
     seasonRenderStartedToast: "Started the season render.",
     seasonRenderFailedToast: "Failed to start the season render.",
+
+    /* ---- Episode Plan panel (planning/`polished-toasting-gadget.md` Part
+       A2) — read-only ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง reference card,
+       replaces the Production Wizard mount. ---- */
+    episodePlanPanelTitle: "Episode plan",
+    episodePlanWorkingTitleLabel: "Episode title",
+    episodePlanLoglineLabel: "Logline",
+    episodePlanKeyBeatsLabel: "Key beats",
+    episodePlanCliffhangerLabel: "Cliffhanger",
+    episodePlanEmptyState: "This episode has no drafted story plan yet.",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
@@ -1352,6 +1362,16 @@ export const VD_COPY = {
     seasonRenderNoneSubmittedToast: "ไม่มีตอนไหนพร้อมเรนเดอร์",
     seasonRenderStartedToast: "เริ่มเรนเดอร์ทั้งซีซั่นแล้ว",
     seasonRenderFailedToast: "เริ่มเรนเดอร์ทั้งซีซั่นไม่สำเร็จ",
+
+    /* ---- Episode Plan panel (planning/`polished-toasting-gadget.md` Part
+       A2) — read-only ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง reference card,
+       replaces the Production Wizard mount. ---- */
+    episodePlanPanelTitle: "แผนเนื้อเรื่องของตอน",
+    episodePlanWorkingTitleLabel: "ชื่อตอน",
+    episodePlanLoglineLabel: "เรื่องย่อ",
+    episodePlanKeyBeatsLabel: "จุดดำเนินเรื่อง",
+    episodePlanCliffhangerLabel: "จุดค้าง",
+    episodePlanEmptyState: "ยังไม่มีแผนเนื้อเรื่องของตอนนี้",
   },
 } as const;
 

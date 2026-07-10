@@ -55,6 +55,11 @@ import {
   normalizeVerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
+// Part B2/B3 (planning/`polished-toasting-gadget.md`) — pure, shared
+// formatter for the compact episode plan-context block injected into the
+// start-frame + video motion prompt stages below. Safe as a static import
+// (no server/DB code, `@shared` module).
+import { formatStoryScriptEpisodePlanContext, type StoryScriptLang } from "@shared/verticalDramaSeries/storyScriptText";
 // Type-only (erased at runtime — no import-chain side effects in tests).
 import type { VerticalDramaEpisodeTieInPlacement } from "@shared/verticalDramaSeries/contentBudget";
 import {
@@ -1622,6 +1627,22 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
   return { ...pack, clips: updatedClips };
 }
 
+/**
+ * Part B2/B3 (planning/`polished-toasting-gadget.md`) — maps a stored series
+ * locale onto `StoryScriptLang`'s narrower `"th" | "en"` for
+ * `formatStoryScriptEpisodePlanContext`. Mirrors
+ * `verticalDramaImproveScript.ts`'s own (file-local, unexported)
+ * `resolveScriptLangFromLocale` exactly — duplicated locally rather than
+ * exporting/importing across files for one trivial ternary; this file does
+ * not otherwise depend on `verticalDramaImproveScript.ts` and the plan
+ * explicitly keeps that file untouched.
+ */
+function resolveStoryScriptLangFromLocale(
+  locale: string | null | undefined,
+): StoryScriptLang {
+  return locale === "th" ? "th" : "en";
+}
+
 export class VerticalDramaEpisodePipeline {
   constructor(
     private readonly providerPort: ProviderRoutingPort = createStubProviderRoutingPort(),
@@ -2075,11 +2096,20 @@ export class VerticalDramaEpisodePipeline {
     );
 
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
-    const episodeBreakdown = Array.isArray(bible?.episodeBreakdown)
-      ? (bible!.episodeBreakdown as Array<Record<string, unknown>>)
-      : [];
-    const matchingBreakdown = episodeBreakdown.find(
-      item => Number(item.episodeNumber) === episode.episodeNumber
+    // Part B1 (planning/`polished-toasting-gadget.md`) — resolve from the
+    // series bible's ACTIVE breakdown version via `getActiveBreakdown`
+    // (versioned `breakdownVersions[]`, falling back to the legacy
+    // top-level `bible.episodeBreakdown` when no versions exist), NOT the
+    // legacy top-level array directly — the improve-script flow's enriched,
+    // scene-setting logline lives in `breakdownVersions[]` and previously
+    // never reached this stage. Dynamic `import()` — see
+    // `resolveEpisodeDraftHydration`'s doc comment above for why a static
+    // VALUE import of `verticalDramaStoryBible.ts` is avoided in this file.
+    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+      "./verticalDramaStoryBible"
+    );
+    const matchingBreakdown = getActiveBreakdown(bible).find(
+      item => item.episodeNumber === episode.episodeNumber
     );
 
     // Ground the 9 shots in the episode's own scene-by-scene script (the
@@ -2137,12 +2167,13 @@ export class VerticalDramaEpisodePipeline {
         sceneContractsEnabled,
       },
       storySource: {
-        logline:
-          typeof matchingBreakdown?.logline === "string"
-            ? (matchingBreakdown.logline as string)
-            : undefined,
-        keyBeats: Array.isArray(matchingBreakdown?.keyBeats)
-          ? (matchingBreakdown.keyBeats as string[])
+        logline: matchingBreakdown?.logline,
+        keyBeats: matchingBreakdown?.keyBeats,
+        // Part B1 (planning/`polished-toasting-gadget.md`) — additive
+        // alongside logline/keyBeats above.
+        workingTitle: matchingBreakdown?.workingTitle,
+        cliffhanger: matchingBreakdown
+          ? readItemCliffhangerLine(matchingBreakdown)
           : undefined,
         mainPlot:
           typeof bible?.mainPlot === "string"
@@ -2395,7 +2426,7 @@ export class VerticalDramaEpisodePipeline {
     // rendered start-frame person defaults to the series' configured
     // region/ethnicity look unless a character's own description overrides it.
     const [seriesRow] = await db
-      .select({ bible: verticalDramaSeries.bible })
+      .select({ bible: verticalDramaSeries.bible, locale: verticalDramaSeries.locale })
       .from(verticalDramaSeries)
       .where(
         and(
@@ -2405,9 +2436,31 @@ export class VerticalDramaEpisodePipeline {
         )
       )
       .limit(1);
-    const targetAudienceRegion = readTargetAudienceRegionFromBible(
-      (seriesRow?.bible as Record<string, unknown> | null) ?? null
+    const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
+    const targetAudienceRegion = readTargetAudienceRegionFromBible(bible);
+
+    // Part B2 (planning/`polished-toasting-gadget.md`) — compact episode
+    // scene-setting plan context, resolved from the ALREADY-loaded `bible`
+    // above (no extra DB round trip). `undefined` when the active breakdown
+    // has no matching item for this episode yet.
+    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+      "./verticalDramaStoryBible"
     );
+    const episodePlanItem = getActiveBreakdown(bible).find(
+      item => item.episodeNumber === episode.episodeNumber
+    );
+    const episodePlanContext = episodePlanItem
+      ? formatStoryScriptEpisodePlanContext(
+          resolveStoryScriptLangFromLocale(seriesRow?.locale),
+          {
+            episodeNumber: episodePlanItem.episodeNumber,
+            workingTitle: episodePlanItem.workingTitle,
+            logline: episodePlanItem.logline,
+            keyBeats: episodePlanItem.keyBeats,
+            cliffhangerLine: readItemCliffhangerLine(episodePlanItem),
+          }
+        )
+      : undefined;
 
     // Character identity descriptors (2026-07-07 non-human-character-
     // vanishing fix) — `name`/`role` + the stored `data.description` (e.g.
@@ -2449,6 +2502,7 @@ export class VerticalDramaEpisodePipeline {
       durationSeconds: episode.targetDurationSeconds ?? 60,
       selectedImageModelId: existingSelectedImageModelId,
       targetAudienceRegion,
+      episodePlanContext,
       characters: characterIdentitySources,
       storyboardShots: shots.map(s => {
         // The real `storyboard_shotgrid` LLM output uses snake_case fields
@@ -2532,6 +2586,42 @@ export class VerticalDramaEpisodePipeline {
       thaiAccent?: VerticalDramaThaiAccent;
     } | null;
 
+    // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
+    // scene-setting plan context. No pre-existing bible read in this
+    // function (unlike `generateRealStoryboard`/`generateRealStartFramePlan`
+    // above), so this is a minimal, dedicated `bible`-only read — mirrors
+    // `resolveEpisodeDraftHydration`'s doc comment for why the
+    // `verticalDramaStoryBible.ts` VALUE import stays dynamic.
+    const [episodePlanSeriesRow] = await db
+      .select({ bible: verticalDramaSeries.bible, locale: verticalDramaSeries.locale })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId)
+        )
+      )
+      .limit(1);
+    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+      "./verticalDramaStoryBible"
+    );
+    const episodePlanItem = getActiveBreakdown(
+      (episodePlanSeriesRow?.bible as Record<string, unknown> | null) ?? null
+    ).find(item => item.episodeNumber === episode.episodeNumber);
+    const episodePlanContext = episodePlanItem
+      ? formatStoryScriptEpisodePlanContext(
+          resolveStoryScriptLangFromLocale(episodePlanSeriesRow?.locale),
+          {
+            episodeNumber: episodePlanItem.episodeNumber,
+            workingTitle: episodePlanItem.workingTitle,
+            logline: episodePlanItem.logline,
+            keyBeats: episodePlanItem.keyBeats,
+            cliffhangerLine: readItemCliffhangerLine(episodePlanItem),
+          }
+        )
+      : undefined;
+
     return generateVideoMotionPromptPack({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -2545,6 +2635,7 @@ export class VerticalDramaEpisodePipeline {
       promptLanguage: existingLanguagePlan?.promptLanguage,
       dialogueLanguage: existingLanguagePlan?.dialogueLanguage,
       thaiAccent: existingLanguagePlan?.thaiAccent,
+      episodePlanContext,
       storyboardShots: shots.map(s => ({
         shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
         description: String(s.description ?? s.visual_description ?? ""),

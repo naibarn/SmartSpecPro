@@ -173,6 +173,11 @@ beforeEach(() => {
     model: "gpt-x",
   });
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+  // Part B1 (planning/`polished-toasting-gadget.md`) — `generateRealStoryboard`
+  // now calls `getActiveBreakdown` unconditionally (not flag-gated), so give
+  // every test a safe empty-array default; tests exercising the plan-context
+  // injection itself override this per-case.
+  mockGetActiveBreakdown.mockReturnValue([]);
 });
 
 /* -------------------------------------------------------------------------- */

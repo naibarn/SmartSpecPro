@@ -581,6 +581,16 @@ export interface GenerateVideoMotionPromptPackParams {
    * in `@shared/verticalDramaSeries`.
    */
   thaiAccent?: VerticalDramaThaiAccent;
+  /**
+   * Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
+   * scene-setting plan context (ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง), built
+   * via `formatStoryScriptEpisodePlanContext`. Reference-only, same
+   * "do not copy verbatim" contract as `GenerateStartFrameRenderPlanParams
+   * .episodePlanContext` — keeps clip prompts consistent with the episode's
+   * planned scene without being pasted into any clip's own `prompt`.
+   * Optional — omitted when the active breakdown has no matching item.
+   */
+  episodePlanContext?: string;
 }
 
 function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
@@ -595,11 +605,18 @@ function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
     })
     .join("\n");
 
+  // Part B3 — reference-only episode scene-setting context, same
+  // "do not copy verbatim" contract as `buildStartFrameRenderPlanUserPrompt`.
+  const episodePlanContextBlock = params.episodePlanContext
+    ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
+    : null;
+
   return [
     `Episode title: ${params.episodeTitle}`,
     `Episode duration: ${params.durationSeconds} seconds`,
     `Duration profile: ${params.durationProfileId}`,
     params.selectedVideoModelId ? `Preferred video model: ${params.selectedVideoModelId}` : null,
+    episodePlanContextBlock,
     `Storyboard shots (bridge shots into motion clips per the skill's usual pairing strategy):\n${shotLines}`,
     `When a shot has a "dialogue" line, the resulting clip's "prompt" must explicitly mention the character speaking it and describe mouth/lip movement matching that line — do not produce a silent/mute description for a shot that has dialogue.`,
     `PROMPT LANGUAGE (MANDATORY): write every "video_clip_requests[].prompt" and "negative_motion_prompt" entirely in ${promptLanguageName} — all motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
@@ -1084,6 +1101,16 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    */
   nativeAudioEnabled?: boolean;
   idempotencyKey?: string;
+  /**
+   * Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
+   * scene-setting plan context, same shape/contract as
+   * `GenerateVideoMotionPromptPackParams.episodePlanContext` (this is the
+   * per-shot sibling builder). Episode-level (not shot-level), so it lives
+   * at the top of this params object alongside `locale`/`promptLanguage`
+   * rather than inside `shotContext`. Optional — omitted when the active
+   * breakdown has no matching item.
+   */
+  episodePlanContext?: string;
 }
 
 export interface GenerateVerticalDramaShotVideoPromptResult {
@@ -1157,6 +1184,11 @@ function buildShotVideoPromptUserPrompt(
     shotContext.description ? `Shot description: ${shotContext.description}` : null,
     shotContext.camera ? `Camera setup: ${shotContext.camera}` : null,
     shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
+    // Part B3 — reference-only episode scene-setting context, same
+    // "do not copy verbatim" contract as the start-frame/pack-level builders.
+    params.episodePlanContext
+      ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
+      : null,
     params.imagePrompt
       ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
       : null,

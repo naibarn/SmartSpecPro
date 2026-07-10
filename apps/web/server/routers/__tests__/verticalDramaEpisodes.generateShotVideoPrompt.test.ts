@@ -239,6 +239,21 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
   })),
 }));
 
+// Part B3 (planning/`polished-toasting-gadget.md`) — `generateShotVideoPrompt`
+// now resolves the episode plan-context block via a dynamic `import()` of
+// `verticalDramaStoryBible.ts`. Mocked directly (same "avoid the
+// `adminProcedure` chain" reasoning as every other mock in this file above)
+// with a safe empty-array default; tests exercising the plan-context
+// injection itself override `mockGetActiveBreakdown`'s return value per-case.
+const { mockGetActiveBreakdown, mockReadItemCliffhangerLine } = vi.hoisted(() => ({
+  mockGetActiveBreakdown: vi.fn(() => []),
+  mockReadItemCliffhangerLine: vi.fn(() => undefined),
+}));
+vi.mock("../../services/verticalDramaStoryBible", () => ({
+  getActiveBreakdown: mockGetActiveBreakdown,
+  readItemCliffhangerLine: mockReadItemCliffhangerLine,
+}));
+
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 

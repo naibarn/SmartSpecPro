@@ -241,6 +241,15 @@ export interface GenerateStoryboardShotgridParams {
     mainPlot?: string;
     seasonArc?: string;
     tone?: string;
+    /**
+     * Part B1 (planning/`polished-toasting-gadget.md`) — the ACTIVE
+     * breakdown item's own `workingTitle`/cliffhanger, additive alongside
+     * `logline`/`keyBeats` above. Distinct from `params.episodeTitle` (the
+     * persisted episode row's title, which may predate/differ from the
+     * bible's current working title) — both are emitted when present.
+     */
+    workingTitle?: string;
+    cliffhanger?: string;
   };
   /**
    * The episode's own scene-by-scene breakdown from the `plan_episode_script`
@@ -428,6 +437,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     `Episode number: ${params.episodeNumber}`,
     `Episode duration: ${params.durationSeconds} seconds`,
     langInstruction,
+    storySource.workingTitle ? `Working title: ${storySource.workingTitle}` : null,
     storySource.logline ? `Logline: ${storySource.logline}` : null,
     storySource.mainPlot ? `Main plot: ${storySource.mainPlot}` : null,
     storySource.seasonArc ? `Season arc: ${storySource.seasonArc}` : null,
@@ -435,6 +445,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     storySource.keyBeats?.length
       ? `Key beats:\n${storySource.keyBeats.map(b => `- ${b}`).join("\n")}`
       : null,
+    storySource.cliffhanger ? `Cliffhanger: ${storySource.cliffhanger}` : null,
     sceneBeatInstruction,
     `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,

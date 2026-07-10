@@ -99,8 +99,6 @@ import {
 } from "./VerticalDramaDialogueAudioPanel";
 import {
   VerticalDramaStoryboardPanel,
-  formatVerticalDramaQualityLoopCtaLabel,
-  VD_STORYBOARD_SHOT_GRID_ANCHOR_ID,
   type VerticalDramaAssetUrlMap,
   type VerticalDramaAvailableProductImageView,
   type VerticalDramaCapableModel,
@@ -120,20 +118,17 @@ import type {
   VerticalDramaTieInReportView,
   VerticalDramaSeasonTieInPlacementView,
 } from "./VerticalDramaTieInReportCard";
+import type { VdWizardPerShotDialoguePreviewShot } from "./VerticalDramaProductionWizard";
 import {
-  VerticalDramaProductionWizard,
-  type VdWizardPerShotDialoguePreviewShot,
-} from "./VerticalDramaProductionWizard";
+  VerticalDramaEpisodePlanPanel,
+  type VerticalDramaEpisodePlanSummaryView,
+} from "./VerticalDramaEpisodePlanPanel";
 import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 import type {
   RunResult,
   VerticalDramaPipelineStage,
 } from "@shared/verticalDramaSeries";
-import type {
-  VerticalDramaProductionWizardPrimaryAction,
-  VerticalDramaProductionWizardState,
-  VerticalDramaProductionWizardStepId,
-} from "@shared/verticalDramaSeries/productionWizard";
+import type { VerticalDramaProductionWizardState } from "@shared/verticalDramaSeries/productionWizard";
 
 /** Data needed to render the generic "view this stage's runs" fallback panel. */
 export interface VerticalDramaStageRunDetailData {
@@ -642,17 +637,26 @@ export interface VerticalDramaEpisodeWorkspaceProps {
      feature-detected on the PAYLOAD, never by importing server flag logic.
      `seriesId` (distinct from `storyboardPanel.seriesId`, which is used only
      for download filenames) keys the "Advanced stages" disclosure's
-     localStorage-persisted open state. ---- */
+     localStorage-persisted open state. `wizard`/`perShotDialoguePreview`
+     themselves are no longer rendered (planning/`polished-toasting-gadget.md`
+     Part A2 removed the `VerticalDramaProductionWizard` mount in favor of
+     `episodePlan` below) — kept here only so `productionWizardEnabled`'s
+     "Advanced stages" disclosure gate stays wired exactly as before; the
+     page may still pass them harmlessly. ---- */
   wizard?: VerticalDramaProductionWizardState | null;
   productionWizardEnabled?: boolean;
   seriesId?: string;
   /** `getEpisodeDetail`'s top-level `perShotDialoguePreview` (2026-07-08
-   *  W9-C wiring) — threaded straight through to
-   *  `VerticalDramaProductionWizard`'s own prop of the same name (see that
-   *  component's header comment). `undefined`/`null` while the wizard flag
-   *  is off or the episode detail hasn't loaded yet, mirroring `wizard`'s
-   *  own convention. */
+   *  W9-C wiring) — no longer consumed (only fed the now-removed
+   *  `VerticalDramaProductionWizard` mount, see `wizard` above). */
   perShotDialoguePreview?: VdWizardPerShotDialoguePreviewShot[] | null;
+  /** Part A2 (planning/`polished-toasting-gadget.md`) — `getEpisodeDetail`'s
+   *  top-level `episodePlan` (ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง), read
+   *  straight from the series bible's active breakdown item for this
+   *  episode. Rendered UNCONDITIONALLY (no flag gate, unlike the wizard
+   *  above) via `VerticalDramaEpisodePlanPanel` — pure read-only reference
+   *  data. `null`/`undefined` both render that panel's own empty state. */
+  episodePlan?: VerticalDramaEpisodePlanSummaryView | null;
 
   /* ---- Task #26 (data sanity — episode number beyond the planned season
      size, e.g. episode 11 while the plan only covers 10) —
@@ -760,25 +764,6 @@ const SETUP_STAGES = new Set<VerticalDramaPipelineStage>([
   "storyboard_shotgrid",
 ]);
 
-/**
- * Wizard steps whose detail now lives in the ALWAYS-VISIBLE per-shot
- * production grid (2026-07-08 meta/shot-grid disclosure split), not behind
- * the "ขั้นสูง" disclosure — `handleViewWizardStepDetails`'s "ดูรายละเอียด"
- * scrolls to the grid for these instead of opening the disclosure (there is
- * nothing left to reveal there for them). `series_setup` / `episode_script` /
- * `script_qc` / `dialogue_audio` / `dialogue_qc` / `shot_repair` are
- * deliberately NOT included — their detail (script summary, quality-review
- * card, dialogue-audio panel, QC layers) still lives behind the disclosure,
- * so "ดูรายละเอียด" for those keeps opening it exactly as before.
- */
-const SHOT_LEVEL_WIZARD_STEPS = new Set<VerticalDramaProductionWizardStepId>([
-  "storyboard_shots",
-  "start_frames",
-  "video_prompts",
-  "video_clips",
-  "final_episode",
-]);
-
 /** Map a stage's next_action to the single primary CTA label. */
 function ctaLabel(
   t: ReturnType<typeof vdCopy>,
@@ -837,6 +822,7 @@ export function VerticalDramaEpisodeWorkspace({
   productionWizardEnabled = false,
   seriesId,
   perShotDialoguePreview,
+  episodePlan = null,
   breakdownStatus,
   plannedEpisodeCount,
   seasonPlanTabHref,
@@ -956,162 +942,6 @@ export function VerticalDramaEpisodeWorkspace({
     }
   }
 
-  /** "ดูรายละเอียด" (section-12) — focuses the wizard step's closest existing
-   *  advanced-panel section and ensures that section is actually visible.
-   *  Steps with no 1:1 pipeline-stage counterpart (`series_setup`,
-   *  `script_qc`, `dialogue_qc`, `shot_repair` — QC layers, not pipeline
-   *  stages) still open the Advanced-stages section so the user can find the
-   *  storyboard panel's scorecard/tie-in cards manually. */
-  const WIZARD_STEP_TO_PIPELINE_STAGE: Partial<
-    Record<VerticalDramaProductionWizardStepId, VerticalDramaPipelineStage>
-  > = {
-    episode_script: "plan_episode_script",
-    storyboard_shots: "storyboard_shotgrid",
-    start_frames: "start_frame_render_plan",
-    dialogue_audio: "dialogue_audio_plan",
-    video_prompts: "video_motion_prompt_pack",
-    video_clips: "render_or_import_video_clips",
-    final_episode: "assemble_episode_manifest",
-  };
-
-  function handleViewWizardStepDetails(
-    stepId: VerticalDramaProductionWizardStepId
-  ) {
-    const mappedStage = WIZARD_STEP_TO_PIPELINE_STAGE[stepId];
-    if (mappedStage) handleFocusStage(mappedStage);
-
-    // 2026-07-08 meta/shot-grid disclosure split: the storyboard panel's
-    // per-shot production grid is now ALWAYS visible (no longer behind the
-    // "ขั้นสูง" disclosure), so shot-level steps have nothing left to reveal
-    // by opening it — scroll the always-visible grid into view instead.
-    // Falls through to the original open-disclosure behavior whenever the
-    // grid doesn't exist yet (no storyboard shots), matching today's
-    // behavior for that case exactly.
-    if (SHOT_LEVEL_WIZARD_STEPS.has(stepId) && hasStoryboardShots) {
-      if (typeof document !== "undefined") {
-        document
-          .getElementById(VD_STORYBOARD_SHOT_GRID_ANCHOR_ID)
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-      return;
-    }
-
-    handleAdvancedStagesOpenChange(true);
-  }
-
-  /**
-   * Wizard primary-CTA -> existing-handler map (section-12 "Recommended
-   * Implementation / Client": "the wizard adds no new generation paths — it
-   * sequences the developed system"). Every entry below dispatches an
-   * ALREADY-EXISTING mutation handler already threaded into this workspace
-   * via `onGenerateRealScript` / `storyboardPanel` / `dialogueAudioPanel` /
-   * `onRepair` — this map never calls a tRPC procedure itself.
-   *
-   *  - `approve_start_frames` / `generate_video_clips` batch-call an
-   *    existing PER-SHOT/PER-CLIP handler for every shot/clip still missing
-   *    an approved image / completed render — the same "call the singular
-   *    handler once per missing target" pattern
-   *    `onGenerateAllStartFrameImages` itself already represents one layer
-   *    up (that one happens to be pre-batched by the page; video clips has
-   *    no pre-batched equivalent yet, so it is batched here instead).
-   *  - `repair_dialogue` opens the existing generic repair dialog
-   *    (`onRepair("dialogue_audio_plan")`) rather than auto-submitting, same
-   *    as every other "ซ่อม" entry point in this workspace.
-   *  - `complete_series_setup` / `repair_shots` / `none` have no mapping —
-   *    `complete_series_setup` never actually renders here (an episode can
-   *    only exist after series setup completes, see `productionWizard.ts`'s
-   *    own doc comment), and `repair_shots` is never the wizard's overall
-   *    `primaryCta` (always secondary, see that resolver's `active`
-   *    computation) — both fall through to "no primary CTA" harmlessly.
-   */
-  const wizardPrimaryHandlers: Partial<
-    Record<
-      VerticalDramaProductionWizardPrimaryAction,
-      { onClick: () => void; pending: boolean }
-    >
-  > = {
-    generate_script: onGenerateRealScript
-      ? { onClick: onGenerateRealScript, pending: generatingRealScript }
-      : undefined,
-    run_quality_review: storyboardPanel?.onRunQualityReview
-      ? {
-          onClick: storyboardPanel.onRunQualityReview,
-          pending: Boolean(storyboardPanel.runningQualityReview),
-        }
-      : undefined,
-    run_quality_improve_loop: storyboardPanel?.onRunQualityImproveLoop
-      ? {
-          onClick: storyboardPanel.onRunQualityImproveLoop,
-          pending: Boolean(storyboardPanel.runningQualityImproveLoop),
-        }
-      : undefined,
-    generate_storyboard: storyboardPanel?.onGenerateReal
-      ? {
-          onClick: storyboardPanel.onGenerateReal,
-          pending: Boolean(storyboardPanel.generating),
-        }
-      : undefined,
-    approve_start_frames: storyboardPanel?.onGenerateAllStartFrameImages
-      ? {
-          onClick: () => {
-            const missingShotNumbers = (
-              storyboardPanel.startFramePlan?.frames ?? []
-            )
-              .filter(f => !f.approvedMediaAssetId)
-              .map(f => f.shotNumber);
-            storyboardPanel.onGenerateAllStartFrameImages?.(missingShotNumbers);
-          },
-          pending: Boolean(
-            storyboardPanel.generatingStartFrameImageForShot &&
-            storyboardPanel.generatingStartFrameImageForShot.size > 0
-          ),
-        }
-      : undefined,
-    generate_dialogue_plan: dialogueAudioPanel?.onGenerate
-      ? {
-          onClick: dialogueAudioPanel.onGenerate,
-          pending: Boolean(dialogueAudioPanel.loading),
-        }
-      : undefined,
-    repair_dialogue: onRepair
-      ? { onClick: () => onRepair("dialogue_audio_plan"), pending: false }
-      : undefined,
-    generate_video_prompts: storyboardPanel?.onGenerateVideoPromptPack
-      ? {
-          onClick: storyboardPanel.onGenerateVideoPromptPack,
-          pending: Boolean(storyboardPanel.generatingVideoPromptPack),
-        }
-      : undefined,
-    generate_video_clips: storyboardPanel?.onGenerateVideoClip
-      ? {
-          onClick: () => {
-            const total = storyboardPanel.totalClipCount ?? 0;
-            const ready = new Set(storyboardPanel.readyClipNumbers ?? []);
-            for (let clipNumber = 1; clipNumber <= total; clipNumber += 1) {
-              if (!ready.has(clipNumber))
-                storyboardPanel.onGenerateVideoClip?.(clipNumber);
-            }
-          },
-          pending: Boolean(
-            storyboardPanel.generatingVideoClipForClip &&
-            storyboardPanel.generatingVideoClipForClip.size > 0
-          ),
-        }
-      : undefined,
-    assemble_episode: storyboardPanel?.onAssembleCompiledVideo
-      ? {
-          onClick: () => storyboardPanel.onAssembleCompiledVideo?.(),
-          pending: Boolean(storyboardPanel.assemblingCompiledVideo),
-        }
-      : undefined,
-  };
-  const wizardPrimaryEntry = wizard
-    ? wizardPrimaryHandlers[wizard.primaryCta]
-    : undefined;
-  const wizardLoopCtaLabel = storyboardPanel?.qualityPolicy
-    ? formatVerticalDramaQualityLoopCtaLabel(t, storyboardPanel.qualityPolicy)
-    : undefined;
-
   // Loading state.
   if (loading) {
     return (
@@ -1214,25 +1044,12 @@ export function VerticalDramaEpisodeWorkspace({
         </div>
       ) : null}
 
-      {/* Production Wizard (section-12, flags.productionWizard) — rendered
-          ABOVE the stage surface. Feature-detected on the payload
-          (`productionWizardEnabled`/`wizard`, mirroring
-          `detail.flags.productionWizard`/`detail.wizard` verbatim), never by
-          importing server flag logic. Flag-off (the default): nothing
-          renders here at all — layout is exactly today's. */}
-      {productionWizardEnabled && wizard ? (
-        <VerticalDramaProductionWizard
-          locale={locale}
-          activeStepId={wizard.activeStepId}
-          steps={wizard.steps}
-          primaryCta={wizard.primaryCta}
-          onPrimaryAction={wizardPrimaryEntry?.onClick}
-          primaryActionPending={wizardPrimaryEntry?.pending ?? false}
-          loopCtaLabel={wizardLoopCtaLabel}
-          onViewStepDetails={handleViewWizardStepDetails}
-          perShotDialoguePreview={perShotDialoguePreview}
-        />
-      ) : null}
+      {/* Episode Plan panel (planning/`polished-toasting-gadget.md` Part
+          A2) — replaces the Production Wizard mount above the stage
+          surface. Read-only, rendered UNCONDITIONALLY (no
+          `productionWizardEnabled` gate — this is plain reference data, not
+          a wizard/flag-gated feature). */}
+      <VerticalDramaEpisodePlanPanel lang={locale} episodePlan={episodePlan} />
 
       <AdvancedStagesDisclosure
         enabled={productionWizardEnabled}

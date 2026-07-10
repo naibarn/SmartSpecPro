@@ -293,13 +293,20 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 // dynamically-imported module in this router — see
 // `verticalDramaEpisodes.ts`'s `runArcDriftCheckAndProposeIfNeeded` doc
 // comment).
-const { mockGetActiveBreakdown, mockReadItemShotDrafts } = vi.hoisted(() => ({
-  mockGetActiveBreakdown: vi.fn(),
-  mockReadItemShotDrafts: vi.fn(),
-}));
+const { mockGetActiveBreakdown, mockReadItemShotDrafts, mockReadItemCliffhangerLine } = vi.hoisted(
+  () => ({
+    mockGetActiveBreakdown: vi.fn(),
+    mockReadItemShotDrafts: vi.fn(),
+    // Part A1 (planning/`polished-toasting-gadget.md`) — `getEpisodeDetail`'s
+    // `resolveEpisodePlanForEpisode` also reads this export via the SAME
+    // dynamic import above.
+    mockReadItemCliffhangerLine: vi.fn(() => undefined),
+  }),
+);
 vi.mock("../../services/verticalDramaStoryBible", () => ({
   getActiveBreakdown: mockGetActiveBreakdown,
   readItemShotDrafts: mockReadItemShotDrafts,
+  readItemCliffhangerLine: mockReadItemCliffhangerLine,
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";

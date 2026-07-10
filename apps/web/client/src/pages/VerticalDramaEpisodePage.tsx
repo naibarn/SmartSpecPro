@@ -4521,6 +4521,13 @@ function EpisodeWorkspaceShell({
           perShotDialoguePreview={
             episodeDetailQuery.data?.perShotDialoguePreview
           }
+          // Part A2 (planning/`polished-toasting-gadget.md`) — read-only
+          // Episode Plan panel (ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง),
+          // sourced verbatim from `getEpisodeDetail.episodePlan`, replacing
+          // the Production Wizard mount above. Rendered unconditionally by
+          // the workspace (no flag gate) — `undefined`/`null` both render
+          // that panel's own empty state.
+          episodePlan={episodeDetailQuery.data?.episodePlan ?? null}
           // Task #26 (data sanity — episode number beyond the planned season
           // size) — sourced from the SEPARATE `episodeBreakdownStatusQuery`
           // (not `episodeDetailQuery`, see that hook's own doc comment).

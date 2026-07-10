@@ -228,6 +228,11 @@ import {
 // import here).
 import type { ArcDriftOpenHook } from "../services/verticalDramaArcReplan";
 import type { ScriptBuilderOutput } from "../services/verticalDramaScriptGeneration";
+// Part B3 (planning/`polished-toasting-gadget.md`) — pure, shared formatter
+// for the compact episode plan-context block injected into
+// `generateShotVideoPrompt`'s per-shot video-prompt call. Safe as a static
+// import (no server/DB code, `@shared` module).
+import { formatStoryScriptEpisodePlanContext, type StoryScriptLang } from "@shared/verticalDramaSeries/storyScriptText";
 import type {
   VerticalDramaMemoryKind,
   VerticalDramaPipelineStage,
@@ -3391,6 +3396,89 @@ async function resolveSeasonTieInPlacementForEpisode(
     );
     return null;
   }
+}
+
+/**
+ * Compact per-episode PLAN shape for `getEpisodeDetail`'s `episodePlan` field
+ * (planning/`polished-toasting-gadget.md` Part A1) — ชื่อตอน/เรื่องย่อ/
+ * จุดดำเนินเรื่อง/จุดค้าง read straight from the series bible's ACTIVE
+ * breakdown item for this episode. Unlike the Wave-4A `wizard`/flag-gated
+ * fields above, this is plain read-only reference data with no feature-flag
+ * gate — resolved unconditionally.
+ */
+export interface VerticalDramaEpisodePlanSummary {
+  workingTitle: string;
+  logline: string;
+  keyBeats: string[];
+  cliffhangerLine: string | null;
+}
+
+/**
+ * Best-effort read of the ACTIVE breakdown item's plan fields for one
+ * episode — backs `getEpisodeDetail`'s `episodePlan`. `null` when no
+ * matching drafted item exists yet (episode ahead of the breakdown, or a
+ * series that has never run "Generate story"), or on any read failure
+ * (never throws — display-only, same defensive contract as
+ * `resolveSeasonTieInPlacementForEpisode` above). Mirrors that function's
+ * own dynamic-import + series-row-read pattern (a static import of
+ * `verticalDramaStoryBible.ts` transitively pulls in `adminProcedure` and
+ * crashes every pre-existing test file for this router at import time).
+ */
+async function resolveEpisodePlanForEpisode(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  episodeNumber: number
+): Promise<VerticalDramaEpisodePlanSummary | null> {
+  try {
+    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+      "../services/verticalDramaStoryBible"
+    );
+    const [seriesRow] = await db
+      .select({ bible: verticalDramaSeries.bible })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, seriesId),
+          eq(verticalDramaSeries.tenantId, tenantId),
+          eq(verticalDramaSeries.userId, userId)
+        )
+      )
+      .limit(1);
+    const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
+    const activeItem = getActiveBreakdown(bible).find(
+      item => item.episodeNumber === episodeNumber
+    );
+    if (!activeItem) return null;
+    return {
+      workingTitle: activeItem.workingTitle,
+      logline: activeItem.logline,
+      keyBeats: activeItem.keyBeats,
+      cliffhangerLine: readItemCliffhangerLine(activeItem) ?? null,
+    };
+  } catch (err) {
+    debugError(
+      "verticalDramaEpisodes.getEpisodeDetail",
+      `episode plan lookup failed (episodeNumber=${episodeNumber})`,
+      err
+    );
+    return null;
+  }
+}
+
+/**
+ * Part B2/B3 (planning/`polished-toasting-gadget.md`) — maps a stored series
+ * locale onto `StoryScriptLang`'s narrower `"th" | "en"` for
+ * `formatStoryScriptEpisodePlanContext`. Mirrors
+ * `verticalDramaEpisodePipeline.ts`'s own identically-named local helper
+ * (itself mirroring `verticalDramaImproveScript.ts`'s file-local,
+ * unexported `resolveScriptLangFromLocale`) — duplicated locally rather than
+ * exporting/importing across files for one trivial ternary.
+ */
+function resolveStoryScriptLangFromLocale(
+  locale: string | null | undefined
+): StoryScriptLang {
+  return locale === "th" ? "th" : "en";
 }
 
 /** Non-pipeline stage tag for the tie-in quality-report artifact (spec §13.1), mirrors `VERTICAL_DRAMA_QUALITY_REVIEW_STAGE_TAG`'s doc comment. */
@@ -6837,6 +6925,21 @@ export const verticalDramaEpisodesRouter = router({
         wizard = deriveVerticalDramaProductionWizardState(wizardInput);
       }
 
+      // Part A1 (planning/`polished-toasting-gadget.md`) — read-only episode
+      // plan (ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง), unconditional (no
+      // feature-flag gate — pure reference data). Resolved as the LAST query
+      // of this procedure (not folded into the first `Promise.all` above) so
+      // it never shifts the `db.select` call ORDER/POSITION every other
+      // field in this large procedure already depends on — several
+      // pre-existing test suites for this procedure assert exact
+      // `mockDb.select` call sequences/counts.
+      const episodePlan = await resolveEpisodePlanForEpisode(
+        tenantId,
+        userId,
+        seriesId,
+        row.episodeNumber
+      );
+
       return {
         script: row.script as Record<string, unknown> | null,
         dialogueAudioPlan: row.dialogueAudioPlan as Record<
@@ -6856,6 +6959,10 @@ export const verticalDramaEpisodesRouter = router({
         qualityReview,
         assetUrls,
         characterPortraits,
+        // Part A1 (planning/`polished-toasting-gadget.md`) — read-only
+        // episode plan for the new plan panel; `null` when the series bible
+        // has no matching drafted breakdown item for this episode yet.
+        episodePlan,
         // Wave-4A additive keys (spec §16.1/§13.1/§7.7.3/§8.8) — flag-gated,
         // `null`/`0` when the corresponding flag is off.
         qualityPolicyResolved,
@@ -9501,7 +9608,7 @@ export const verticalDramaEpisodesRouter = router({
         : null;
 
       const [localeSeriesRow] = await db
-        .select({ locale: verticalDramaSeries.locale })
+        .select({ locale: verticalDramaSeries.locale, bible: verticalDramaSeries.bible })
         .from(verticalDramaSeries)
         .where(
           and(
@@ -9511,6 +9618,28 @@ export const verticalDramaEpisodesRouter = router({
           )
         )
         .limit(1);
+
+      // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
+      // scene-setting plan context, resolved from the ALREADY-loaded
+      // `localeSeriesRow.bible` above (no extra DB round trip).
+      const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+        "../services/verticalDramaStoryBible"
+      );
+      const shotEpisodePlanItem = getActiveBreakdown(
+        (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
+      ).find(item => item.episodeNumber === Number(row.episodeNumber));
+      const shotEpisodePlanContext = shotEpisodePlanItem
+        ? formatStoryScriptEpisodePlanContext(
+            resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
+            {
+              episodeNumber: shotEpisodePlanItem.episodeNumber,
+              workingTitle: shotEpisodePlanItem.workingTitle,
+              logline: shotEpisodePlanItem.logline,
+              keyBeats: shotEpisodePlanItem.keyBeats,
+              cliffhangerLine: readItemCliffhangerLine(shotEpisodePlanItem),
+            }
+          )
+        : undefined;
 
       if (subShotDecision?.needsSplit) {
         return generateAndPersistSplitShotVideoPrompt({
@@ -9589,6 +9718,9 @@ export const verticalDramaEpisodesRouter = router({
         // own model-capability check on top.
         nativeAudioEnabled: effectiveNativeAudioEnabled,
         idempotencyKey: input.idempotencyKey,
+        // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
+        // scene-setting plan context, resolved above.
+        episodePlanContext: shotEpisodePlanContext,
       });
 
       // Brand/public-figure sanitize pass (Thai ad-compliance + video-policy

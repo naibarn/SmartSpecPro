@@ -115,8 +115,12 @@ vi.mock("../../services/verticalDramaArcReplan", () => ({
 }));
 
 vi.mock("../../services/verticalDramaStoryBible", () => ({
-  getActiveBreakdown: vi.fn(),
+  getActiveBreakdown: vi.fn(() => []),
   deriveLegacyContentBudget: vi.fn(),
+  // Part A1 (planning/`polished-toasting-gadget.md`) — `getEpisodeDetail`'s
+  // `resolveEpisodePlanForEpisode` also reads this export via the SAME
+  // dynamic import above.
+  readItemCliffhangerLine: vi.fn(() => undefined),
 }));
 
 vi.mock("../../services/verticalDramaScriptGeneration", () => ({

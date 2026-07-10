@@ -282,6 +282,17 @@ export interface GenerateStartFrameRenderPlanParams {
    * bare-key behavior.
    */
   characters?: VerticalDramaCharacterDescriptorSource[];
+  /**
+   * Part B2 (planning/`polished-toasting-gadget.md`) — compact episode
+   * scene-setting plan context (ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง),
+   * built via `formatStoryScriptEpisodePlanContext`. Reference-only: keeps
+   * the rendered start-frame prompts consistent with the episode's planned
+   * scene/time/lighting/costume/props (esp. the improve-script flow's
+   * enriched, scene-setting logline) WITHOUT being copied verbatim into any
+   * shot's own `prompt`. Optional — omitted when the series bible has no
+   * matching active breakdown item for this episode yet.
+   */
+  episodePlanContext?: string;
 }
 
 const VD_CHARACTER_REF_INDEXING_INSTRUCTION =
@@ -303,10 +314,19 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
     params.characters ?? [],
   );
 
+  // Part B2 — reference-only episode scene-setting context, near the top of
+  // the prompt so the planning LLM reads it before the per-shot list.
+  // Explicitly labeled "do not copy verbatim" — it's grounding context, not
+  // content to paste into any shot's own `prompt`.
+  const episodePlanContextBlock = params.episodePlanContext
+    ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
+    : null;
+
   return [
     `Episode title: ${params.episodeTitle}`,
     renderCriteriaVersionMarker(),
     `Episode duration: ${params.durationSeconds} seconds`,
+    episodePlanContextBlock,
     params.selectedImageModelId
       ? `Preferred image model: ${params.selectedImageModelId}`
       : null,
