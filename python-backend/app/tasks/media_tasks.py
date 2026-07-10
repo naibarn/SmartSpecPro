@@ -1523,8 +1523,11 @@ def _extract_exception_debug_payload(error: Exception) -> dict[str, Any]:
 
 
 async def _send_failure_notifications(task_id: str, user_id: str, media_type: str, error: str):
-    """Send in-app + email notifications on final task failure."""
+    """Send in-app + email notifications on final task failure, and auto-file
+    an admin feedback ticket so the failure is triaged without manual digging."""
     async with AsyncSessionLocal() as db:
+        model_name = None
+        external_task_id = None
         try:
             from app.services.notification_service import notify_task_failed, notify_admin_task_alert
 
@@ -1544,6 +1547,39 @@ async def _send_failure_notifications(task_id: str, user_id: str, media_type: st
             )
         except Exception as notify_err:
             logger.warning("failure_notification_error", task_id=task_id, error=str(notify_err))
+
+        # Best-effort lookup of extra context for the auto-report. Runs even if
+        # the notification calls above failed — the auto-report must not be
+        # skipped just because in-app notifications had a problem.
+        try:
+            lookup_result = await db.execute(
+                select(MediaTask.model, MediaTask.task_id).filter(MediaTask.id == task_id)
+            )
+            lookup_row = lookup_result.first()
+            if lookup_row:
+                model_name, external_task_id = lookup_row[0], lookup_row[1]
+        except Exception as lookup_err:
+            logger.debug(
+                "failure_notification_task_lookup_failed", task_id=task_id, error=str(lookup_err)
+            )
+
+        # Auto-file an admin feedback ticket for this permanent failure.
+        # Fire-and-forget: report_system_failure() never raises and never
+        # affects Celery task retry/failure semantics.
+        from app.services.system_auto_report import report_system_failure
+
+        await report_system_failure(
+            source="python_media_tasks",
+            user_id=user_id,
+            title=f"Media generation failed ({media_type})",
+            error_message=error,
+            job_id=task_id,
+            extra={
+                "media_type": media_type,
+                "model": model_name,
+                "external_task_id": external_task_id,
+            },
+        )
 
 
 async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
@@ -2554,6 +2590,7 @@ async def _recover_stuck_tasks_async():
             failed_count = 0
 
             for task in stuck_tasks:
+                previous_status = task.status
                 try:
                     # If a task reached processing but never recorded a provider
                     # task id, there is nothing to poll. Fail it after a short
@@ -2986,6 +3023,34 @@ async def _recover_stuck_tasks_async():
                     )
                     # Don't mark as failed yet - will retry on next recovery cycle
                     continue
+                finally:
+                    # Auto-file an admin feedback ticket the moment recovery marks a
+                    # task as permanently failed. Runs regardless of which branch
+                    # above set the status (missing provider id, provider polling
+                    # failure, timeout, etc.) and even when a `continue` fired.
+                    # Fire-and-forget: never raises, never affects recovery flow.
+                    if task.status == TaskStatus.FAILED and previous_status != TaskStatus.FAILED:
+                        try:
+                            from app.services.system_auto_report import report_system_failure
+
+                            await report_system_failure(
+                                source="python_recover_stuck_tasks",
+                                user_id=getattr(task, "user_id", None),
+                                title=f"Media task recovery marked failed ({task.media_type or task.model})",
+                                error_message=str(task.error_message or "")[:2000],
+                                job_id=task.id,
+                                extra={
+                                    "media_type": task.media_type,
+                                    "model": task.model,
+                                    "external_task_id": task.task_id,
+                                },
+                            )
+                        except Exception as report_err:
+                            logger.debug(
+                                "recover_stuck_task_auto_report_failed",
+                                task_id=task.id,
+                                error=str(report_err),
+                            )
 
             await db.commit()
 

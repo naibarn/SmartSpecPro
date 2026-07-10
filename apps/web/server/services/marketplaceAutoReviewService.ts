@@ -1437,6 +1437,95 @@ function ensureMinorSafetyClothingLockInImagePrompt(
   return appended;
 }
 
+const MARKETPLACE_AUTO_REVIEW_REPAIR_REASON_CODE_DIRECTIVES: Array<{
+  pattern: RegExp;
+  sentence: string;
+}> = [
+  {
+    pattern: /grid|layout|columns|rows|frame_count|strict/i,
+    sentence:
+      "The previous grid layout was wrong: render one single 9:16 canvas as a strict 3x3 grid, exactly 3 equal-width columns and 3 equal-height rows, 9 cells, one panel per cell, clean narrow solid black gutter lines.",
+  },
+  {
+    pattern: /product/i,
+    sentence:
+      "The previous product did not match the reference: copy the exact product from @Image1 — same shape, proportions, countable parts, colors, materials, and surface texture; do not invent, add, remove, or restyle any part.",
+  },
+  {
+    pattern: /character|identity/i,
+    sentence:
+      "The previous presenter did not match the reference: preserve the exact identity from @Image2 — same face structure, age, hair, glasses, skin tone, and wardrobe in every panel where the presenter appears.",
+  },
+  {
+    pattern: /text|label/i,
+    sentence:
+      "Remove ALL rendered text: no labels, numbers, captions, watermarks, or UI in any panel.",
+  },
+  {
+    pattern: /minor_safety|clothing/i,
+    sentence:
+      "Any child shown must be fully dressed in age-appropriate clothing covering chest, torso, and underwear areas.",
+  },
+  {
+    pattern: /geometry/i,
+    sentence:
+      "Make the 3x3 cell boundaries unambiguous: straight, full-length, high-contrast solid black gutter lines between all cells.",
+  },
+];
+
+function buildTargetedRepairDirective(
+  unit: Pick<DirectImageUnit, "repairReasonCodes" | "repairInstruction">
+): string {
+  const repairInstruction = cleanText(unit.repairInstruction);
+  const reasonCodes = (unit.repairReasonCodes ?? [])
+    .map(code => cleanText(code))
+    .filter(Boolean);
+  if (!repairInstruction && reasonCodes.length === 0) return "";
+
+  const matchedSentences: string[] = [];
+  for (const directive of MARKETPLACE_AUTO_REVIEW_REPAIR_REASON_CODE_DIRECTIVES) {
+    if (matchedSentences.includes(directive.sentence)) continue;
+    if (reasonCodes.some(code => directive.pattern.test(code))) {
+      matchedSentences.push(directive.sentence);
+    }
+  }
+
+  const parts = [
+    "TARGETED REPAIR (previous attempt failed vision QA):",
+    ...matchedSentences,
+  ];
+  if (repairInstruction) {
+    parts.push(
+      `QA repair note: ${compactImagePromptText(repairInstruction, 500)}`
+    );
+  }
+  return parts.join(" ");
+}
+
+function ensureTargetedRepairDirectiveInImagePrompt(
+  prompt: string,
+  unit: Pick<DirectImageUnit, "repairReasonCodes" | "repairInstruction">
+): string {
+  const base = cleanText(prompt);
+  const directive = buildTargetedRepairDirective(unit);
+  if (!base || !directive || /TARGETED REPAIR/i.test(base)) return base;
+  const appended = `${base}\n\n${directive}`;
+  if (appended.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
+    return appended;
+  }
+  const compactDirective = compactImagePromptText(directive, 700);
+  const compactAppended = `${base}\n\n${compactDirective}`;
+  if (compactAppended.length <= MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS) {
+    return compactAppended;
+  }
+  const baseBudget =
+    MARKETPLACE_AUTO_REVIEW_IMAGE_PROMPT_MAX_CHARS - base.length - 2;
+  if (baseBudget > 200) {
+    return `${base}\n\n${compactImagePromptText(directive, baseBudget)}`;
+  }
+  return base;
+}
+
 type MarketplaceAutoReviewFinalImagePromptOptimizer =
   typeof optimizeProductReferenceStoryboardPrompt;
 
@@ -1509,7 +1598,7 @@ function ensureStoryboardGridLayoutContractInImagePrompt(prompt: string): {
     "exactly 3 equal-width columns",
     "exactly 3 equal-height rows",
     "no collage/masonry layout",
-    "clean narrow gutters between panels",
+    "clean narrow solid black gutter lines",
     "Each panel occupies exactly one cell",
     "Never split one panel into two cells",
     "wide field of view inside a vertical portrait panel",
@@ -1524,7 +1613,7 @@ function ensureStoryboardGridLayoutContractInImagePrompt(prompt: string): {
     return { prompt: base, applied: false };
   }
   const layoutLine =
-    "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.";
+    "LAYOUT LOCK: Create one single 9:16 image as a strict 3x3 grid with EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow solid black gutter lines, no collage/masonry layout, no labels, no numbers, and no text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.";
   const hasStoryboardHeader = /SHOT-BY-SHOT STORYBOARD PROMPT:/i.test(base);
   const next = hasStoryboardHeader
     ? base.replace(
@@ -2424,6 +2513,9 @@ function buildMarketplaceAutoReviewQualityModePolicy(
   const mode = ["fast_draft", "balanced", "premium_strict_qa"].includes(rawMode)
     ? rawMode
     : "balanced";
+  const visionQaModelOverride = cleanText(
+    asRecord(metadata).visionQaModelOverride
+  );
   const policyByMode: Record<string, Record<string, unknown>> = {
     fast_draft: {
       maxRepairAttemptsPerUnit: 1,
@@ -2455,6 +2547,12 @@ function buildMarketplaceAutoReviewQualityModePolicy(
     mode,
     status: "active",
     ...policyByMode[mode],
+    ...(visionQaModelOverride
+      ? {
+          visionQaModel: visionQaModelOverride,
+          visionQaModelSource: "user_override",
+        }
+      : { visionQaModelSource: "quality_mode" }),
     userBurdenPolicy:
       "auto-decide unless product/character/environment anchors, product facts, ad policy, credit authority, or safety blockers require user action",
     llmGatewayOnly: true,
@@ -2471,7 +2569,10 @@ function effectiveQualityModePolicy(
     storedMaxAttempts > 0
       ? Math.floor(storedMaxAttempts)
       : MAX_DIRECT_MEDIA_REPAIR_ATTEMPTS + 1;
-  const visionQaModel = cleanText(stored.visionQaModel) || DEFAULT_VISION_QA_MODEL;
+  const visionQaModel =
+    cleanText(asRecord(metadata).visionQaModelOverride) ||
+    cleanText(stored.visionQaModel) ||
+    DEFAULT_VISION_QA_MODEL;
   return { maxRepairAttemptsPerUnit, visionQaModel };
 }
 
@@ -8434,7 +8535,11 @@ function validateMarketplaceAutoReviewImagePromptPreflight(input: {
       ],
       [
         "panel_gutter_lock_missing",
-        ["clean narrow gutters", "narrow gutters between panels"],
+        [
+          "clean narrow solid black gutter lines",
+          "clean narrow gutters",
+          "narrow gutters between panels",
+        ],
         true,
       ],
       [
@@ -8743,7 +8848,7 @@ function buildProductReferenceStoryboardPromptPreflightFeedback(params: {
       `Previous product-reference-storyboard output failed prompt preflight on skill attempt ${params.promptSkillAttempt}.`,
       `Fix blockers: ${blockerText}.`,
       "Regenerate the final prompt through the same skill contract. Do not patch or summarize the previous output.",
-      "The returned prompt should explicitly include LAYOUT LOCK at the top and after SHOT-BY-SHOT STORYBOARD PROMPT: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, no text, each panel occupies exactly one cell, never split one panel into two cells, and wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. Keep cinematic realism lock, product reference lock, text rendering policy, Frame 1 through Frame 9 with visual-only prose, plus one shared CAMERA/LIGHT/DEPTH block and one shared PRODUCT VERIFY block. Do not use VISUAL, STORY MATCH, HUMAN REALISM, ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, or storyboard_grid as renderable frame text.",
+      "The returned prompt should explicitly include LAYOUT LOCK at the top and after SHOT-BY-SHOT STORYBOARD PROMPT: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow solid black gutter lines between panels, no collage/masonry layout, no labels, no numbers, no text, each panel occupies exactly one cell, never split one panel into two cells, and wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel. Keep cinematic realism lock, product reference lock, text rendering policy, Frame 1 through Frame 9 with visual-only prose, plus one shared CAMERA/LIGHT/DEPTH block and one shared PRODUCT VERIFY block. Do not use VISUAL, STORY MATCH, HUMAN REALISM, ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, or storyboard_grid as renderable frame text.",
     ].join(" "),
   };
 }
@@ -8766,7 +8871,7 @@ function buildProductReferenceStoryboardIncompleteOutputFeedback(params: {
       `Fix blockers: ${blockerText}.`,
       "Regenerate a complete final prompt through the same skill contract. Do not patch, summarize, reuse, or fallback to the previous output.",
       "The returned prompt must include OUTPUT FORMAT LOCK, CINEMATIC REALISM LOCK, PRODUCT REFERENCE LOCK, TEXT RENDERING POLICY, CAMERA/LIGHT/DEPTH, PRODUCT VERIFY, SHOT-BY-SHOT STORYBOARD PROMPT, and complete Frame 1 through Frame 9 with non-empty visual-only prose.",
-      "For the storyboard grid, include the exact quality anchors at the top and repeat them after SHOT-BY-SHOT STORYBOARD PROMPT: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels, no numbers, no text, each panel occupies exactly one cell, never split one panel into two cells, and wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.",
+      "For the storyboard grid, include the exact quality anchors at the top and repeat them after SHOT-BY-SHOT STORYBOARD PROMPT: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow solid black gutter lines between panels, no collage/masonry layout, no labels, no numbers, no text, each panel occupies exactly one cell, never split one panel into two cells, and wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.",
       "In no-text mode, do not include renderable camera labels or technical text such as ECU, CU, MCU, MS, WS, ELS, LS, OS, HA, LA, storyboard_grid, panel names, corner labels, captions, subtitles, or random glyphs.",
     ].join(" "),
   };
@@ -9130,13 +9235,17 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
         attempt: input.attempt,
         sourcePrompt,
       });
+    const repairDirectedPrompt = ensureTargetedRepairDirectiveInImagePrompt(
+      finalPrompt.prompt,
+      input.unit
+    );
     const skillRuntime = finalPrompt.audit
       ? {
           finalPromptOptimizer: finalPrompt.audit,
         }
       : null;
     const result = validateMarketplaceAutoReviewImagePromptPreflight({
-      prompt: finalPrompt.prompt,
+      prompt: repairDirectedPrompt,
       unit: input.unit,
       plan: input.plan,
       overlayTextMode: input.overlayTextMode,
@@ -9145,13 +9254,13 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
     if (result.status === "failed") {
       throw new MarketplaceAutoReviewImagePromptPreflightError({
         unit: input.unit,
-        prompt: finalPrompt.prompt,
+        prompt: repairDirectedPrompt,
         preflight: result,
         skillRuntime,
       });
     }
     return {
-      prompt: finalPrompt.prompt,
+      prompt: repairDirectedPrompt,
       preflight: result,
       skillRun: null,
       skillRuntime,
@@ -9277,7 +9386,10 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
         promptAttempt: promptSkillAttempt,
         sourcePrompt: postProcessedPrompt,
       });
-    const prompt = finalPrompt.prompt;
+    const prompt = ensureTargetedRepairDirectiveInImagePrompt(
+      finalPrompt.prompt,
+      input.unit
+    );
     const promptSafetyPatchApplied =
       safetyPrompt !== cleanText(skillRun.prompt);
     const promptPostProcessPreservedRawFrames =
@@ -9425,6 +9537,19 @@ export function ensureMinorSafetyClothingLockInImagePromptForTest(input: {
   plan: AutoReviewPlan;
 }): string {
   return ensureMinorSafetyClothingLockInImagePrompt(input.prompt, input.plan);
+}
+
+export function buildTargetedRepairDirectiveForTest(
+  unit: Pick<DirectImageUnit, "repairReasonCodes" | "repairInstruction">
+): string {
+  return buildTargetedRepairDirective(unit);
+}
+
+export function ensureTargetedRepairDirectiveInImagePromptForTest(
+  prompt: string,
+  unit: Pick<DirectImageUnit, "repairReasonCodes" | "repairInstruction">
+): string {
+  return ensureTargetedRepairDirectiveInImagePrompt(prompt, unit);
 }
 
 export function optimizeMarketplaceAutoReviewFinalImagePromptForProviderForTest(input: {
@@ -9703,7 +9828,7 @@ function buildStoryboardGridRepairUnit(params: {
 }): DirectImageUnit {
   const instruction = [
     "Repair scope lock: regenerate the entire storyboard as one single 9:16 final canvas containing EXACTLY 9 PANELS / 9 CELLS ONLY in a strict 3x3 grid. Never output one standalone lifestyle/product image. Never repair only one panel as a separate image.",
-    "Grid lock: exactly 3 equal-width columns and 3 equal-height rows, every cell identical size, clean narrow gutters between panels, no collage/masonry layout, no merged cells, no variable panel sizes, no labels, no numbers, no text, and no measurement overlays. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.",
+    "Grid lock: exactly 3 equal-width columns and 3 equal-height rows, every cell identical size, clean narrow solid black gutter lines between panels, no collage/masonry layout, no merged cells, no variable panel sizes, no labels, no numbers, no text, and no measurement overlays. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.",
     "Product reference lock: use the supplied product reference image as the strict visual source of truth for product shape, proportions, construction, countable parts, materials, colors, and scale. Do not approximate, redesign, simplify, or substitute the product.",
     params.repairInstruction,
   ]
@@ -14775,7 +14900,7 @@ function build3x3StoryboardPrompt(
   );
   const frameLines = [...storyFrameLines, ...unusedFrameLines].join("\n");
   const storyboardLayoutLock =
-    "LAYOUT LOCK: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow gutters between panels, no collage/masonry layout, no labels/numbers/text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.";
+    "LAYOUT LOCK: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow solid black gutter lines, no collage/masonry layout, no labels/numbers/text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.";
   const outputFormat =
     overlayTextMode === "allow_text"
       ? "OUTPUT FORMAT LOCK: Plain prompt text only. One final 9:16 storyboard image, not separate images. Optional short text only under TEXT POLICY; no video seconds/timecodes."
@@ -14820,10 +14945,10 @@ function build3x3StoryboardPrompt(
     storyboardLayoutLock,
     frameLines,
     "",
-    "FINAL GRID/TEXT LOCK: strict 3x3, nine-cell grid, clean narrow gutters, one panel per cell, never 2x5/5x2/10 panels, no captions/frame labels/seconds/timecodes/measurements.",
+    "FINAL GRID/TEXT LOCK: strict 3x3, nine-cell grid, clean narrow solid black gutter lines, one panel per cell, never 2x5/5x2/10 panels, no captions/frame labels/seconds/timecodes/measurements.",
     "REPAIR SCOPE LOCK: if this is a repair attempt, still regenerate the full 3x3 storyboard grid as one 9:16 canvas with all 9 panels; never output a single standalone scene.",
     repairInstruction
-      ? `TARGETED GRID REPAIR: ${compactImagePromptText(repairInstruction, 90)}. Keep full 3x3 grid, all 9 panels, exact product reference match.`
+      ? `TARGETED GRID REPAIR: ${compactImagePromptText(repairInstruction, 500)}. Keep full 3x3 grid, all 9 panels, exact product reference match.`
       : "",
   ].join("\n");
 }
@@ -17035,6 +17160,7 @@ export async function startMarketplaceAutoReviewRun(
     speechLanguage?: HyperframesSpokenLanguage | null;
     creativeBrief?: string | null;
     qualityMode?: MarketplaceAutoReviewQualityModeInput | null;
+    visionQaModel?: string | null;
     referenceAnchors?: MarketplaceAutoReviewReferenceAnchorsInput | null;
     transportMetadata?: Record<string, unknown> | null;
   },
@@ -17081,6 +17207,7 @@ export async function startMarketplaceAutoReviewRun(
   });
   const qualityMode: MarketplaceAutoReviewQualityModeInput =
     input.qualityMode ?? "balanced";
+  const visionQaModelOverride = cleanText(input.visionQaModel);
   const stages = stageKeysForMode(outputMode);
   const tenantId = autoTenantId(auth);
   const transportMetadata = normalizeMarketplaceMcpTransportMetadata(
@@ -17215,6 +17342,7 @@ export async function startMarketplaceAutoReviewRun(
       creativeBrief,
       requestedShotCount: shotCountForPlan(currentPlan),
       qualityMode,
+      visionQaModelOverride: visionQaModelOverride || null,
       referenceAnchors,
       transportMetadata,
       expectedNativeAudio: resolvedAudioStrategy === "native_video_audio",
@@ -17806,6 +17934,9 @@ async function scheduleImageAttempt(params: {
   ).maxRepairAttemptsPerUnit;
   for (const unit of cappedUnits) {
     const attempt = nextDirectAttempt(existingRefs, unit.unitId);
+    // Repair attempts intentionally reuse the user-selected image model —
+    // model choice belongs to the user via the UI model picker.
+    const effectiveImageModel = imageModel;
     if (attempt > effectiveMaxRepairAttemptsPerUnit) {
       console.warn("[marketplaceAutoReview] image_repair_max_attempts", {
         runId: params.run.id,
@@ -17980,7 +18111,7 @@ async function scheduleImageAttempt(params: {
         mediaType: "image",
         unitId: unit.unitId,
         attempt,
-        model: imageModel,
+        model: effectiveImageModel,
         selections: {
           numImages: 1,
           resolution: "2K",
@@ -17993,7 +18124,7 @@ async function scheduleImageAttempt(params: {
           shotOrder: unit.shotOrder,
           repairReasonCodes: unit.repairReasonCodes,
           overlayTextMode,
-          imageModel,
+          imageModel: effectiveImageModel,
           promptPreflight: promptPackage.preflight,
         },
       });
@@ -18003,7 +18134,7 @@ async function scheduleImageAttempt(params: {
         stageKey: "image_generation",
         unit,
         attempt,
-        model: imageModel,
+        model: effectiveImageModel,
         credit,
         referenceImageUrls: productReferenceUrls,
         referenceImageManifest: providerReferenceImageManifest,
@@ -18033,12 +18164,12 @@ async function scheduleImageAttempt(params: {
           db: params.db,
           metadata: params.metadata,
           mediaType: "image",
-          modelId: imageModel,
+          modelId: effectiveImageModel,
         });
       const task = await mediaGenerationService.generateImageAsync(
         {
           prompt,
-          model: imageModel,
+          model: effectiveImageModel,
           aspectRatio: "9:16",
           resolution: "2K",
           outputFormat: "png",
@@ -18089,7 +18220,7 @@ async function scheduleImageAttempt(params: {
         attempt,
         taskId: task.id,
         providerTaskId: task.taskId,
-        model: task.model || imageModel,
+        model: task.model || effectiveImageModel,
         status: task.status,
         creditAmount: credit.amount,
         creditTransactionId: credit.transactionId,
@@ -18132,7 +18263,7 @@ async function scheduleImageAttempt(params: {
           shotOrder: unit.shotOrder,
           attempt,
           taskId: `submit-failed:${unit.unitId}:${attempt}`,
-          model: imageModel,
+          model: effectiveImageModel,
           status: "failed",
           creditAmount: credit.amount,
           creditTransactionId: credit.transactionId,
@@ -18637,9 +18768,12 @@ async function runStoryboardGridLayoutVisionQa(params: {
       ? ["storyboard_grid_geometry_uncertain"]
       : []),
   ]);
+  // Note: a local pixel-based geometry fallback alone must not veto a vision-
+  // model pass. `storyboardGridGeometryUncertain` stays in reasonCodes above
+  // for observability, but real broken grids are still caught by the vision
+  // model's own isStrict3x3/columns/rows/frameCount checks below.
   const verdict =
     cleanText(parsed.verdict) === "pass" &&
-    !storyboardGridGeometryUncertain &&
     parsed.isStrict3x3 === true &&
     gridColumns === 3 &&
     gridRows === 3 &&
@@ -20003,7 +20137,7 @@ async function runVideoClipContinuityQa(params: {
 }): Promise<Record<string, unknown>> {
   const model =
     cleanText(process.env.MARKETPLACE_AUTO_REVIEW_VISION_MODEL) ||
-    DEFAULT_VISION_QA_MODEL;
+    effectiveQualityModePolicy(params.metadata).visionQaModel;
   const referenceFrameUrls = videoReferenceFrameUrlsForShot(
     params.metadata,
     params.shot

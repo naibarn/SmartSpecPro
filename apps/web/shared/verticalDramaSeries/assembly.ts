@@ -142,6 +142,45 @@ export type VerticalDramaAssemblyManifest = {
    *  describe the `assemble_episode_manifest` STAGE's plan-only output, not
    *  this feature's real ffmpeg concat job). */
   compiledVideo?: VerticalDramaCompiledVideoState;
+  /**
+   * Per-line dialogue-audio timeline (W12-A voice chain wave), populated by
+   * `verticalDramaEpisodes.assembleEpisodeVideo` (flag-gated on
+   * `verticalDramaSeriesVoiceChain`) from the episode's persisted
+   * `dialogueAudioPlan.separateTtsPlan.items[]` whenever a line carries a
+   * completed audio task (`audioTask.audioUrl`/`mediaAssetId`).
+   *
+   * IMPORTANT — this manifest is presently MANIFEST-ONLY / plan-level for
+   * the `assemble_episode_manifest` stage fields above (`clips`/
+   * `ffmpegConcatPlan`/`subtitlePlan`/`audioBgmPlan`): no server-side render
+   * ever consumes them (see `server/services/verticalDramaAssembly.ts`'s own
+   * doc comment). The REAL, currently-functioning whole-episode render
+   * (`compiledVideo` above, via `server/services/verticalDramaEpisodeVideoAssembly.ts`)
+   * is a pure video-clip ffmpeg concat and does NOT mix in a separate audio
+   * track today. `dialogueAudioTimeline` is therefore a forward-compatible
+   * DATA CONTRACT for a future render wave (or the Python
+   * `media_job_worker.py` VideoStudio-shaped compositor) to consume — this
+   * wave deliberately does not wire it into any ffmpeg invocation (no new
+   * ffmpeg infra built here).
+   */
+  dialogueAudioTimeline?: Array<{
+    lineId: string;
+    shotNumber: number;
+    clipNumber?: number;
+    /** Canonical `media_assets` id when resolved, else the raw `audioUrl` —
+     *  see `VerticalDramaSeparateTtsPlanItem.audioTask` in `audio.ts`. Today
+     *  this is virtually always the raw URL, since nothing resolves TTS
+     *  output into a canonical asset yet (mirrors `clip.videoTask.videoUrl`,
+     *  which is never resolved to a `media_assets` id either). */
+    audioAssetId: string;
+    startSeconds: number;
+    durationSeconds?: number;
+  }>;
+  /** Paired with `dialogueAudioTimeline` — signals that a future renderer
+   *  should loudness-normalize the per-line dialogue tracks before mixing
+   *  (different TTS providers/voices can differ significantly in output
+   *  level). Always `true` when `dialogueAudioTimeline` is non-empty;
+   *  omitted otherwise. */
+  loudnessNormalize?: true;
 };
 
 /**
@@ -169,4 +208,31 @@ export type VerticalDramaCompiledVideoState = {
   assembledAt?: string;
   status?: "pending" | "completed" | "failed";
   error?: string;
+};
+
+/**
+ * Durable status for the series-level narrated trailer (Bible tab, series
+ * trailer feature, 2026-07-07) — persisted onto `verticalDramaSeries.trailer`
+ * (a dedicated nullable JSONB column, NOT nested under an episode's
+ * `assemblyManifest`, since a trailer is a whole-series artifact). Same
+ * submit -> background-job -> poll convention as
+ * `VerticalDramaCompiledVideoState`: a non-null value with `status:
+ * "processing"` and a `jobId` means "still running, resume polling on load."
+ */
+export type VerticalDramaSeriesTrailerState = {
+  status: "processing" | "completed" | "failed";
+  /** Present while `status === "processing"`; cleared on terminal states. */
+  jobId?: string;
+  /** Narration voice-over audio the trailer was muxed against (as supplied by
+   *  the caller to `generateTrailer` — usually a `media.generateAudio` result). */
+  narrationAudioUrl?: string;
+  narrationDurationSeconds?: number;
+  /** Same-origin `/api/storage/...` path or absolute storage URL for the
+   *  finished 1080x1920 mp4. Present only when `status === "completed"`. */
+  videoUrl?: string;
+  durationSeconds?: number;
+  sourceCounts?: { images: number; videoClips: number };
+  /** Present only when `status === "failed"`; capped length (see assembly service). */
+  error?: string;
+  updatedAt: string;
 };

@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { trpc } from '../lib/trpc';
-import { useScopedTranslation } from '@/i18n/useScopedTranslation';
+import { useTranslation } from 'react-i18next';
 import {
   Mail,
   Lock,
@@ -73,7 +73,10 @@ const plans: Plan[] = [
 ];
 
 export default function Signup() {
-  const { t } = useScopedTranslation('auth');
+  // Pre-auth pages have no language selector, so they always render English
+  // and translate="no" keeps browser auto-translate from mutating the DOM.
+  const { i18n } = useTranslation('auth');
+  const t = i18n.getFixedT('en', 'auth');
   const [, navigate] = useLocation();
   const { user, loading: authLoading } = useAuth();
   const [step, setStep] = useState<1 | 2>(1);
@@ -231,7 +234,10 @@ export default function Signup() {
   // Show loading while checking auth or redirecting
   if (authLoading || user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
+      <div
+        translate="no"
+        className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center"
+      >
         <div className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center animate-pulse">
             <Sparkles className="w-6 h-6 text-white" />
@@ -243,7 +249,10 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex">
+    <div
+      translate="no"
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex"
+    >
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Background Pattern */}

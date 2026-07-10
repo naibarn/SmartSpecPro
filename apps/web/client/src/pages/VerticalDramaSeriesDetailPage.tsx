@@ -14,7 +14,7 @@
 import { useMemo, useState } from "react";
 import { Link, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Clapperboard, Loader2, Plus, Save, Sparkles } from "lucide-react";
+import { Clapperboard, Copy, Loader2, Plus, Save, Sparkles, Trash2 } from "lucide-react";
 
 import { AppPage, type AppPageState } from "@/components/AppPage";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +52,11 @@ import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/Vertica
 import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
 import { VerticalDramaSeriesShareDialog } from "@/components/verticalDramaSeries/VerticalDramaSeriesShareDialog";
 import { getActiveBreakdownItemsForDisplay } from "@/components/verticalDramaSeries/VerticalDramaArcReplanCard";
+import {
+  buildStoryScriptText,
+  STORY_SCRIPT_TEXT_CHAR_LIMIT,
+  type StoryScriptEpisodeInput,
+} from "@shared/verticalDramaSeries/storyScriptText";
 import {
   VerticalDramaDeepStoryDraftEpisodeDetail,
   VerticalDramaDeepStoryDraftsActions,
@@ -98,6 +103,9 @@ import {
   vdSeasonRenderSkipReasonLabel,
   type VdFinalRenderSubtitlePresetValue,
 } from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
+// Text Overlay Suite (F131AB, task #34) — same "import from BOTH copy
+// modules" precedent this file's own doc comment above already establishes.
+import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDramaTextOverlayCopy";
 
 type TabId =
   | "overview"
@@ -171,6 +179,16 @@ export default function VerticalDramaSeriesDetailPage() {
   // route (`/share/vd/:token`) is intentionally NOT gated by this flag —
   // see `routers/verticalDramaShare.ts`'s own doc comment for why.
   const shareLinksEnabled = useTenantFeatureFlag("verticalDramaSeriesShareLinks");
+  // Text Overlay Suite (F131AB, task #34) — gates the Settings tab's series
+  // watermark card + the season batch render dialog's text-overlay/watermark
+  // toggles below. Same fail-closed convention as `deepDraftsFlagEnabled`.
+  const textOverlaySuiteEnabled = useTenantFeatureFlag("verticalDramaSeriesTextOverlaySuite");
+  // F132F (spec 132 §7.3/§10.1, added 2026-07-09) — gates the Characters
+  // tab's speech-profile editing sub-section
+  // (`VerticalDramaCharacterStockPanel.tsx`) and the voice-casting card's
+  // "prefill from speech profile" suggestion action. Same fail-closed
+  // convention as `voiceChainEnabled` above.
+  const characterProfilesEnabled = useTenantFeatureFlag("verticalDramaCharacterProfiles");
 
   const detailQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
@@ -200,6 +218,10 @@ export default function VerticalDramaSeriesDetailPage() {
         } | null;
         /** W10-C (spec F131T) — additive, `null` when no episode has a deep draft yet. */
         deepDraftSummary?: VerticalDramaDeepDraftSummary | null;
+        /** Text Overlay Suite (F131AB, task #34) — `null` when no watermark
+         *  has been configured yet. Passed through `get`'s full-row spread
+         *  (`...row`), no server-side change needed for this new column. */
+        watermark?: unknown;
       }
     | undefined;
   const episodes = (detailQuery.data?.episodes ?? []) as Array<{
@@ -317,6 +339,7 @@ export default function VerticalDramaSeriesDetailPage() {
                 <StoryBibleOverviewCard
                   lang={lang}
                   seriesId={seriesId}
+                  seriesTitle={series.title}
                   bible={series.bible}
                   genre={series.genre}
                   tone={series.tone}
@@ -324,6 +347,7 @@ export default function VerticalDramaSeriesDetailPage() {
                   readOnly={isArchived}
                   onViewEpisodes={() => setActiveTab("episodes")}
                   onEpisodesGenerated={() => detailQuery.refetch()}
+                  onEditPremiseClick={() => setActiveTab("settings")}
                   deepDraftsFlagEnabled={deepDraftsFlagEnabled}
                   deepDraftSummary={series.deepDraftSummary}
                   createdEpisodeNumbers={episodes.map((episode) => episode.episodeNumber)}
@@ -345,6 +369,7 @@ export default function VerticalDramaSeriesDetailPage() {
                       seriesId={seriesId}
                       readOnly={isArchived}
                       voiceChainEnabled={voiceChainEnabled}
+                      characterProfilesEnabled={characterProfilesEnabled}
                     />
                   ) : tab === "bible" ? (
                     <StoryBibleTab
@@ -375,6 +400,8 @@ export default function VerticalDramaSeriesDetailPage() {
                       bible={series.bible}
                       readOnly={isArchived}
                       onSaved={() => detailQuery.refetch()}
+                      textOverlaySuiteEnabled={textOverlaySuiteEnabled}
+                      watermark={series.watermark}
                     />
                   ) : tab === "product" ? (
                     <VerticalDramaProductTieInTab
@@ -433,6 +460,13 @@ export function EpisodesTab({
   const seasonVoiceChainEnabled = useTenantFeatureFlag(
     "verticalDramaSeriesVoiceChain",
   );
+  // Text Overlay Suite (F131AB, task #34) — same direct `useTenantFeatureFlag`
+  // gate convention as `seasonVoiceChainEnabled` above; gates ONLY the
+  // dialog's two toggles (batch render itself is never gated on this flag).
+  const seasonTextOverlaySuiteEnabled = useTenantFeatureFlag(
+    "verticalDramaSeriesTextOverlaySuite",
+  );
+  const tOverlay = vdTextOverlayCopy(lang);
   const episodeNumberById = useMemo(
     () => new Map(episodes.map((ep) => [ep.id, ep.episodeNumber])),
     [episodes],
@@ -444,6 +478,18 @@ export function EpisodesTab({
     useState(false);
   const [seasonRenderSubtitlePreset, setSeasonRenderSubtitlePreset] =
     useState<VdFinalRenderSubtitlePresetValue>("classic_box");
+  // Text Overlay Suite (F131AB, task #34, plan.md v2 "batch season render:
+  // toggle รวม") — default ON (each toggle represents "include", checked by
+  // default), mirroring the server's own `!== false` default-on semantics.
+  const [seasonRenderApplyTextOverlays, setSeasonRenderApplyTextOverlays] =
+    useState(true);
+  const [seasonRenderApplyWatermark, setSeasonRenderApplyWatermark] =
+    useState(true);
+  const [episodeToDelete, setEpisodeToDelete] = useState<{
+    id: string;
+    episodeNumber: number;
+    title?: string | null;
+  } | null>(null);
   /** Durable inline result (not just a toast) — mirrors the episode
    *  workspace's own `finalRenderOptionsPanel.lastResult` convention.
    *  `null` until the first successful `assembleSeasonVideos` call. */
@@ -486,6 +532,15 @@ export function EpisodesTab({
           seasonVoiceChainEnabled && seasonRenderIncludeDialogueAudio,
         loudnessNormalize: seasonRenderLoudnessNormalize,
         subtitlePreset: seasonRenderSubtitlePreset,
+        // Text Overlay Suite (F131AB, task #34) — the toggles themselves only
+        // render/change while `seasonTextOverlaySuiteEnabled` is true (JSX
+        // below), so this is sent as-is (unlike `includeDialogueAudio`, ANDing
+        // this against the client-side flag read is unnecessary — the server
+        // independently re-checks its OWN tenant flag before honoring either
+        // value, so a stale client flag can never leak the feature past the
+        // server's own gate either way).
+        applyTextOverlays: seasonRenderApplyTextOverlays,
+        applyWatermark: seasonRenderApplyWatermark,
       },
     });
   }
@@ -497,11 +552,19 @@ export function EpisodesTab({
       source: "breakdown" | "generated" | "mixed";
     }) => {
       const credited = data.creditsUsed > 0;
-      toast.success(
-        lang === "th"
-          ? `เพิ่ม ${data.episodes.length} ตอนแล้ว${credited ? ` (ใช้ ${data.creditsUsed} เครดิต)` : ""}`
-          : `Added ${data.episodes.length} episode(s)${credited ? ` (${data.creditsUsed} credits used)` : ""}`,
-      );
+      if (data.episodes.length > 0) {
+        toast.success(
+          lang === "th"
+            ? `เพิ่ม ${data.episodes.length} ตอนแล้ว${credited ? ` (ใช้ ${data.creditsUsed} เครดิต)` : ""}`
+            : `Added ${data.episodes.length} episode(s)${credited ? ` (${data.creditsUsed} credits used)` : ""}`,
+        );
+      } else {
+        toast.warning(
+          lang === "th"
+            ? "ยังไม่ได้เพิ่มตอนใหม่ เพราะซีรีย์นี้ครบจำนวนตอนเป้าหมายแล้ว"
+            : "No new episodes were added because this series is already at its target episode count.",
+        );
+      }
       void utils.verticalDramaSeries.get.invalidate();
     },
     onError: (err: { message?: string }) => {
@@ -510,10 +573,32 @@ export function EpisodesTab({
       );
     },
   });
+  const deleteEpisodeMutation = trpc.verticalDramaEpisodes.deleteEpisode.useMutation({
+    onSuccess: (data: { episode: { episodeNumber: number; title?: string | null } }) => {
+      setEpisodeToDelete(null);
+      toast.success(
+        lang === "th"
+          ? `ลบตอนที่ ${data.episode.episodeNumber} แล้ว`
+          : `Deleted episode ${data.episode.episodeNumber}`,
+      );
+      void utils.verticalDramaSeries.get.invalidate();
+    },
+    onError: (err: { message?: string }) => {
+      toast.error(
+        err?.message || (lang === "th" ? "ลบตอนไม่สำเร็จ" : "Failed to delete episode"),
+      );
+    },
+  });
 
   const isAdding = generateNextEpisodesMutation.isPending;
+  const isDeleting = deleteEpisodeMutation.isPending;
+  const [episodeAddCount, setEpisodeAddCount] = useState("1");
   const handleAddEpisode = () => {
-    generateNextEpisodesMutation.mutate({ seriesId, count: 1 });
+    generateNextEpisodesMutation.mutate({ seriesId, count: Number(episodeAddCount) || 1 });
+  };
+  const handleConfirmDeleteEpisode = () => {
+    if (!episodeToDelete) return;
+    deleteEpisodeMutation.mutate({ seriesId, episodeId: episodeToDelete.id });
   };
 
   if (episodes.length === 0) {
@@ -548,9 +633,12 @@ export function EpisodesTab({
       <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {episodes.map((ep) => (
           <li key={ep.id}>
-            <Link href={verticalDramaRoutes.episode(seriesId, ep.id)}>
-              <Card className="cursor-pointer transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
-                <CardContent className="flex items-center justify-between gap-3 p-4">
+            <Card className="transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
+              <CardContent className="flex items-center justify-between gap-3 p-4">
+                <Link
+                  href={verticalDramaRoutes.episode(seriesId, ep.id)}
+                  className="min-w-0 flex-1"
+                >
                   <div className="flex min-w-0 items-center gap-3">
                     {ep.thumbnailUrl ? (
                       <img
@@ -575,29 +663,72 @@ export function EpisodesTab({
                       <p className="text-xs text-muted-foreground">{ep.status}</p>
                     </div>
                   </div>
+                </Link>
+                <div className="flex shrink-0 items-center gap-2">
                   <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.open)}</Badge>
-                </CardContent>
-              </Card>
-            </Link>
+                  {!readOnly && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      disabled={isDeleting}
+                      onClick={() =>
+                        setEpisodeToDelete({
+                          id: ep.id,
+                          episodeNumber: ep.episodeNumber,
+                          title: ep.title,
+                        })
+                      }
+                      title={lang === "th" ? "ลบตอนนี้" : "Delete episode"}
+                      aria-label={
+                        lang === "th"
+                          ? `ลบตอนที่ ${ep.episodeNumber}`
+                          : `Delete episode ${ep.episodeNumber}`
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </li>
         ))}
       </ul>
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            disabled={isAdding}
-            onClick={handleAddEpisode}
-          >
-            {isAdding ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Plus className="h-4 w-4" aria-hidden="true" />
-            )}
-            {lang === "th" ? "เพิ่มตอน" : "Add episode"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="vd-add-episodes-count" className="text-xs text-muted-foreground">
+              {lang === "th" ? "เพิ่มตอนใหม่" : "Add new episodes"}
+            </Label>
+            <Select value={episodeAddCount} onValueChange={setEpisodeAddCount}>
+              <SelectTrigger id="vd-add-episodes-count" className="h-9 w-[104px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5].map((count) => (
+                  <SelectItem key={count} value={String(count)}>
+                    {lang === "th" ? `${count} ตอน` : `${count} ep`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              disabled={isAdding}
+              onClick={handleAddEpisode}
+            >
+              {isAdding ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              )}
+              {lang === "th" ? "สร้างตอนใหม่" : "Generate new episodes"}
+            </Button>
+          </div>
         )}
         {/* Task #21 / W12.5 "Final Render Suite" phase B — season batch
             render (2026-07-09). NOT gated on `readOnly`: rendering already-
@@ -652,6 +783,49 @@ export function EpisodesTab({
           ) : null}
         </div>
       ) : null}
+
+      <Dialog
+        open={Boolean(episodeToDelete)}
+        onOpenChange={(open) => !open && setEpisodeToDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {lang === "th" ? "ยืนยันการลบตอน" : "Confirm episode deletion"}
+            </DialogTitle>
+            <DialogDescription>
+              {episodeToDelete
+                ? lang === "th"
+                  ? `ลบตอนที่ ${episodeToDelete.episodeNumber}${episodeToDelete.title ? ` · ${episodeToDelete.title}` : ""} ออกจากซีรีย์นี้ การลบจะลบงานรันและอาร์ติแฟกต์ของตอนนี้ด้วย แต่ไฟล์ในคลังสื่อจะยังอยู่`
+                  : `Delete episode ${episodeToDelete.episodeNumber}${episodeToDelete.title ? ` · ${episodeToDelete.title}` : ""} from this series. This also removes this episode's runs and artifacts, but media library files remain.`
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isDeleting}
+              onClick={() => setEpisodeToDelete(null)}
+            >
+              {lang === "th" ? "ยกเลิก" : "Cancel"}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDeleting || !episodeToDelete}
+              onClick={handleConfirmDeleteEpisode}
+            >
+              {isDeleting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
+              )}
+              {lang === "th" ? "ลบตอน" : "Delete episode"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={seasonRenderDialogOpen}
@@ -731,6 +905,43 @@ export function EpisodesTab({
                 </SelectContent>
               </Select>
             </div>
+
+            {seasonTextOverlaySuiteEnabled ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="season-render-apply-text-overlays"
+                    checked={seasonRenderApplyTextOverlays}
+                    onCheckedChange={(checked) =>
+                      setSeasonRenderApplyTextOverlays(checked === true)
+                    }
+                    data-testid="vd-season-render-apply-text-overlays"
+                  />
+                  <Label
+                    htmlFor="season-render-apply-text-overlays"
+                    className="text-sm font-medium"
+                  >
+                    {tOverlay.batchApplyTextOverlaysLabel}
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="season-render-apply-watermark"
+                    checked={seasonRenderApplyWatermark}
+                    onCheckedChange={(checked) =>
+                      setSeasonRenderApplyWatermark(checked === true)
+                    }
+                    data-testid="vd-season-render-apply-watermark"
+                  />
+                  <Label
+                    htmlFor="season-render-apply-watermark"
+                    className="text-sm font-medium"
+                  >
+                    {tOverlay.batchApplyWatermarkLabel}
+                  </Label>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <DialogFooter>
@@ -791,6 +1002,9 @@ function PlaceholderTab({
 
 interface ExpandedStoryBible {
   // Wizard-input fields, present before generation.
+  // Feature 132 §4 (F132A) — "โจทย์เรื่องที่อยากได้" (user premise), persisted
+  // into this same jsonb bible (no migration). Read-only here.
+  userPremise?: string;
   logline?: string;
   mainPlot?: string;
   seasonArc?: string;
@@ -807,6 +1021,63 @@ interface ExpandedStoryBible {
     keyBeats: string[];
   }>;
   expandedAt?: string;
+}
+
+/** Re-exported from the shared module (was a locally-declared constant) — see `storyScriptText.ts`'s own doc comment. */
+export const VD_STORY_COPY_CLIPBOARD_CHAR_LIMIT = STORY_SCRIPT_TEXT_CHAR_LIMIT;
+
+type StoryCopyEpisodePlan = NonNullable<ExpandedStoryBible["episodeBreakdown"]>[number];
+type StoryCopyDeepDraftItem = ReturnType<typeof getActiveBreakdownItemsForDisplay>[number];
+
+/**
+ * Thin adapter — maps this page's own two-source data (the episode plan +
+ * the active `deepDraftItem`, when any) onto the shared `StoryScriptEpisodeInput`
+ * shape and delegates to `buildStoryScriptText` (`@shared/verticalDramaSeries/storyScriptText`).
+ * Zero behavior change vs. the former locally-owned formatter — see that
+ * module's own doc comment for the extraction history.
+ */
+export function buildVerticalDramaStoryCopyText(params: {
+  lang: "th" | "en";
+  title?: string | null;
+  genre?: string | null;
+  tone?: string | null;
+  seasonArc?: string | null;
+  episodes: StoryCopyEpisodePlan[];
+  activeItems: StoryCopyDeepDraftItem[];
+  fromEpisode: number;
+  toEpisode: number;
+  maxChars?: number;
+}): {
+  text: string;
+  copiedEpisodeNumbers: number[];
+  omittedEpisodeNumbers: number[];
+  truncated: boolean;
+} {
+  const activeItemByEpisode = new Map(params.activeItems.map((item) => [item.episodeNumber, item]));
+  const episodes: StoryScriptEpisodeInput[] = params.episodes.map((episode) => {
+    const deepDraftItem = activeItemByEpisode.get(episode.episodeNumber);
+    const cliffhangerLine = (deepDraftItem as { cliffhanger_line?: unknown } | undefined)?.cliffhanger_line;
+    return {
+      episodeNumber: episode.episodeNumber,
+      workingTitle: episode.workingTitle,
+      logline: episode.logline,
+      keyBeats: episode.keyBeats,
+      shotDrafts: deepDraftItem ? readDeepDraftShotDrafts(deepDraftItem) : null,
+      cliffhangerLine: typeof cliffhangerLine === "string" ? cliffhangerLine : undefined,
+    };
+  });
+
+  return buildStoryScriptText({
+    lang: params.lang,
+    title: params.title,
+    genre: params.genre,
+    tone: params.tone,
+    seasonArc: params.seasonArc,
+    episodes,
+    fromEpisode: params.fromEpisode,
+    toEpisode: params.toEpisode,
+    maxChars: params.maxChars,
+  });
 }
 
 /**
@@ -923,6 +1194,7 @@ function StoryBibleTab({
 export function StoryBibleOverviewCard({
   lang,
   seriesId,
+  seriesTitle,
   bible,
   genre,
   tone,
@@ -930,12 +1202,14 @@ export function StoryBibleOverviewCard({
   readOnly,
   onViewEpisodes,
   onEpisodesGenerated,
+  onEditPremiseClick,
   deepDraftsFlagEnabled = false,
   deepDraftSummary,
   createdEpisodeNumbers = [],
 }: {
   lang: "th" | "en";
   seriesId: string;
+  seriesTitle?: string | null;
   bible: unknown;
   genre?: string | null;
   tone?: string | null;
@@ -943,6 +1217,12 @@ export function StoryBibleOverviewCard({
   readOnly: boolean;
   onViewEpisodes?: () => void;
   onEpisodesGenerated?: () => void;
+  /**
+   * Feature 132 §4.4 (F132A) — edit-affordance for `VerticalDramaDeepStoryDraftsActions`'s
+   * read-only premise preview; navigates to the series settings tab where the
+   * premise can actually be edited (this card builds no new settings UI).
+   */
+  onEditPremiseClick?: () => void;
   /** W10-C (spec F131T) — flag off (default) keeps this card byte-identical to before. */
   deepDraftsFlagEnabled?: boolean;
   deepDraftSummary?: VerticalDramaDeepDraftSummary | null;
@@ -957,9 +1237,17 @@ export function StoryBibleOverviewCard({
   createdEpisodeNumbers?: number[];
 }) {
   const utils = trpc.useUtils();
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyFromEpisode, setCopyFromEpisode] = useState<number | null>(null);
+  const [copyToEpisode, setCopyToEpisode] = useState<number | null>(null);
   const expanded = (bible ?? {}) as ExpandedStoryBible;
   const createdEpisodeNumberSet = useMemo(() => new Set(createdEpisodeNumbers), [createdEpisodeNumbers]);
   const hasStory = Boolean(expanded.episodeBreakdown && expanded.episodeBreakdown.length > 0);
+  const episodePlans = useMemo(
+    () => [...(expanded.episodeBreakdown ?? [])].sort((a, b) => a.episodeNumber - b.episodeNumber),
+    [expanded.episodeBreakdown],
+  );
+  const activeBreakdownItems = useMemo(() => getActiveBreakdownItemsForDisplay(bible), [bible]);
   // W10-C — resolves the SAME active-breakdown-version the server uses for
   // deep drafts (`getActiveBreakdown` in the server-only
   // `verticalDramaStoryBible.ts`), so per-episode shot drafts/cliffhanger
@@ -969,8 +1257,8 @@ export function StoryBibleOverviewCard({
   // when the flag is off.
   const activeBreakdownByEpisode = useMemo(() => {
     if (!deepDraftsFlagEnabled) return new Map<number, ReturnType<typeof getActiveBreakdownItemsForDisplay>[number]>();
-    return new Map(getActiveBreakdownItemsForDisplay(bible).map((item) => [item.episodeNumber, item]));
-  }, [deepDraftsFlagEnabled, bible]);
+    return new Map(activeBreakdownItems.map((item) => [item.episodeNumber, item]));
+  }, [deepDraftsFlagEnabled, activeBreakdownItems]);
   // Task #31 (spec §7.7.2/§7.7.3, added 2026-07-09) — season-plan tie-in
   // badge, computed INDEPENDENTLY of `deepDraftsFlagEnabled` above (an
   // unrelated feature's gate) so the badge works regardless of that flag.
@@ -991,7 +1279,7 @@ export function StoryBibleOverviewCard({
       number,
       { planned: boolean; isDrafted: boolean; hasMarkedShot: boolean }
     >();
-    for (const item of getActiveBreakdownItemsForDisplay(bible)) {
+    for (const item of activeBreakdownItems) {
       if (!item.tieIn) continue;
       const shotDrafts = readDeepDraftShotDrafts(item);
       map.set(item.episodeNumber, {
@@ -1001,7 +1289,89 @@ export function StoryBibleOverviewCard({
       });
     }
     return map;
-  }, [bible]);
+  }, [activeBreakdownItems]);
+
+  const firstEpisodeNumber = episodePlans[0]?.episodeNumber ?? 1;
+  const lastEpisodeNumber = episodePlans[episodePlans.length - 1]?.episodeNumber ?? firstEpisodeNumber;
+  const effectiveCopyFrom = copyFromEpisode ?? firstEpisodeNumber;
+  const effectiveCopyTo = copyToEpisode ?? lastEpisodeNumber;
+  const selectedCopy = useMemo(
+    () =>
+      buildVerticalDramaStoryCopyText({
+        lang,
+        title: seriesTitle,
+        genre,
+        tone,
+        seasonArc: expanded.expandedSeasonArc,
+        episodes: episodePlans,
+        activeItems: activeBreakdownItems,
+        fromEpisode: Math.min(effectiveCopyFrom, effectiveCopyTo),
+        toEpisode: Math.max(effectiveCopyFrom, effectiveCopyTo),
+      }),
+    [
+      lang,
+      seriesTitle,
+      genre,
+      tone,
+      expanded.expandedSeasonArc,
+      episodePlans,
+      activeBreakdownItems,
+      effectiveCopyFrom,
+      effectiveCopyTo,
+    ],
+  );
+  const draftedEpisodeNumbers = useMemo(
+    () =>
+      activeBreakdownItems
+        .filter((item) => readDeepDraftShotDrafts(item) !== null)
+        .map((item) => item.episodeNumber)
+        .sort((a, b) => a - b),
+    [activeBreakdownItems],
+  );
+
+  function openCopyDialog() {
+    setCopyFromEpisode(firstEpisodeNumber);
+    setCopyToEpisode(lastEpisodeNumber);
+    setCopyDialogOpen(true);
+  }
+
+  async function writeTextToClipboard(text: string) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  }
+
+  async function copySelectedStory() {
+    try {
+      await writeTextToClipboard(selectedCopy.text);
+      const rangeLabel =
+        selectedCopy.copiedEpisodeNumbers.length > 0
+          ? `${selectedCopy.copiedEpisodeNumbers[0]}-${selectedCopy.copiedEpisodeNumbers[selectedCopy.copiedEpisodeNumbers.length - 1]}`
+          : "-";
+      toast.success(
+        selectedCopy.truncated || selectedCopy.omittedEpisodeNumbers.length > 0
+          ? lang === "th"
+            ? `คัดลอกได้ถึงตอน ${rangeLabel} (ข้อความยาวเกิน จึงตัดตอนที่เหลือออก)`
+            : `Copied through episode ${rangeLabel} (remaining episodes were too long for clipboard)`
+          : lang === "th"
+            ? `คัดลอกเนื้อเรื่องตอน ${rangeLabel} แล้ว`
+            : `Copied story episodes ${rangeLabel}`,
+      );
+      setCopyDialogOpen(false);
+    } catch {
+      toast.error(lang === "th" ? "คัดลอกไม่สำเร็จ" : "Copy failed");
+    }
+  }
 
   // After a full story is (re)generated, materialize the newly-planned
   // episodes into real episode rows for free — this only ever hits Mode A
@@ -1039,8 +1409,17 @@ export function StoryBibleOverviewCard({
           : `Full story generated (${data.creditsUsed} credits used)`,
       );
       void utils.verticalDramaSeries.get.invalidate();
-      // Materialize the plan into real episode rows (free Mode A path).
-      generateNextEpisodesMutation.mutate({ seriesId, count: 5 });
+      // Materialize only the remaining planned episodes. Never let the
+      // overview "Generate story" action spill into the separate "add new
+      // episodes" continuation flow.
+      const targetCount = targetEpisodeCount ?? expanded.episodeBreakdown?.length ?? 0;
+      const remainingPlannedEpisodes = Math.max(0, targetCount - createdEpisodeNumberSet.size);
+      if (remainingPlannedEpisodes > 0) {
+        generateNextEpisodesMutation.mutate({
+          seriesId,
+          count: Math.min(5, remainingPlannedEpisodes),
+        });
+      }
     },
     onError: (err: { message?: string }) => {
       toast.error(err?.message || (lang === "th" ? "สร้างเนื้อเรื่องเต็มไม่สำเร็จ" : "Story generation failed"));
@@ -1068,11 +1447,17 @@ export function StoryBibleOverviewCard({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="flex items-center gap-2 text-base">
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           {lang === "th" ? "เนื้อเรื่องเต็ม" : "Full story"}
         </CardTitle>
+        {hasStory && (
+          <Button variant="outline" size="sm" className="gap-2 self-start" onClick={openCopyDialog}>
+            <Copy className="h-4 w-4" aria-hidden="true" />
+            {lang === "th" ? "คัดลอกเนื้อเรื่อง" : "Copy story"}
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {contextParts.length > 0 && (
@@ -1097,6 +1482,8 @@ export function StoryBibleOverviewCard({
                   targetEpisodeCount={targetEpisodeCount}
                   hasPlan={false}
                   onGenerateStoryBible={runGenerateStoryBible}
+                  userPremise={expanded.userPremise}
+                  onEditPremiseClick={onEditPremiseClick}
                 />
               ) : (
                 <Button
@@ -1215,11 +1602,121 @@ export function StoryBibleOverviewCard({
                 deepDraftSummary={deepDraftSummary}
                 hasPlan={true}
                 onGenerateStoryBible={runGenerateStoryBible}
+                userPremise={expanded.userPremise}
+                onEditPremiseClick={onEditPremiseClick}
               />
             )}
           </>
         )}
       </CardContent>
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{lang === "th" ? "คัดลอกเนื้อเรื่องพร้อมบทพูด" : "Copy story with dialogue"}</DialogTitle>
+            <DialogDescription>
+              {lang === "th"
+                ? "เลือกช่วงตอนที่ต้องการคัดลอก ระบบจะใส่เรื่องย่อรายตอนและบทพูดครบทุกช็อตเท่าที่ clipboard รองรับ"
+                : "Choose an episode range. The copied text includes each episode summary and every shot's dialogue, capped to what the clipboard can handle."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCopyFromEpisode(firstEpisodeNumber);
+                  setCopyToEpisode(lastEpisodeNumber);
+                }}
+              >
+                {lang === "th" ? "ทั้งหมด" : "All"}
+              </Button>
+              {draftedEpisodeNumbers.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setCopyFromEpisode(draftedEpisodeNumbers[0]);
+                    setCopyToEpisode(draftedEpisodeNumbers[draftedEpisodeNumbers.length - 1]);
+                  }}
+                >
+                  {lang === "th" ? "ตอนที่ร่างละเอียดแล้ว" : "Detailed drafts"}
+                </Button>
+              )}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {lang === "th" ? "จากตอนที่" : "From episode"}
+                </Label>
+                <Select
+                  value={String(effectiveCopyFrom)}
+                  onValueChange={(value) => setCopyFromEpisode(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {episodePlans.map((episode) => (
+                      <SelectItem key={episode.episodeNumber} value={String(episode.episodeNumber)}>
+                        {lang === "th" ? `ตอนที่ ${episode.episodeNumber}` : `Episode ${episode.episodeNumber}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {lang === "th" ? "ถึงตอนที่" : "To episode"}
+                </Label>
+                <Select
+                  value={String(effectiveCopyTo)}
+                  onValueChange={(value) => setCopyToEpisode(Number(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {episodePlans.map((episode) => (
+                      <SelectItem key={episode.episodeNumber} value={String(episode.episodeNumber)}>
+                        {lang === "th" ? `ตอนที่ ${episode.episodeNumber}` : `Episode ${episode.episodeNumber}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+              {lang === "th"
+                ? `พร้อมคัดลอก ${selectedCopy.copiedEpisodeNumbers.length} ตอน · ประมาณ ${selectedCopy.text.length.toLocaleString("th-TH")} ตัวอักษร`
+                : `Ready to copy ${selectedCopy.copiedEpisodeNumbers.length} episode(s) · about ${selectedCopy.text.length.toLocaleString("en-US")} characters`}
+              {selectedCopy.omittedEpisodeNumbers.length > 0 && (
+                <span className="block pt-1 text-amber-600">
+                  {lang === "th"
+                    ? `ข้อความยาวเกิน จึงจะเว้นตอนที่ ${selectedCopy.omittedEpisodeNumbers.join(", ")}`
+                    : `Too long; episode(s) ${selectedCopy.omittedEpisodeNumbers.join(", ")} will be omitted.`}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCopyDialogOpen(false)}>
+              {lang === "th" ? "ยกเลิก" : "Cancel"}
+            </Button>
+            <Button onClick={copySelectedStory} className="gap-2" disabled={selectedCopy.text.trim().length === 0}>
+              <Copy className="h-4 w-4" aria-hidden="true" />
+              {lang === "th" ? "คัดลอกช่วงที่เลือก" : "Copy selected range"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

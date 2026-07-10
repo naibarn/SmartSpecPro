@@ -65,6 +65,14 @@
           "subtext": {
             "description": "What the character is really thinking/feeling underneath the literal words.",
             "type": "string"
+          },
+          "origin": {
+            "description": "Optional superset (added 2026-07-07, story-density reform): traces where this line's text came from. 'script' = copied/distributed from a dialogue-complete script beat's dialogue_lines[] (the expected case). 'script_fallback' = the legacy path — no dialogue-complete beats were available, so this line was reconstructed from a freeform scene/dialogue summary or positional guesswork; this value always pairs with a matching entry in warnings. See skill.md 'HARD RULE — dialogue-complete script is the source of truth'.",
+            "type": "string",
+            "enum": [
+              "script",
+              "script_fallback"
+            ]
           }
         }
       }

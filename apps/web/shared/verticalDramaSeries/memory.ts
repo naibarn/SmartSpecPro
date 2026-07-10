@@ -8,7 +8,14 @@
 
 /**
  * Append-only memory event kinds. The full enum must be represented verbatim,
- * including `retcon_proposal` (spec §7.6).
+ * including `retcon_proposal` (spec §7.6). `arc_replan_proposal` /
+ * `arc_replan_applied` (added 2026-07-07, spec §7.7.3/section-13) are the
+ * FORWARD-facing mirror of `retcon_proposal`: a retcon corrects the recorded
+ * past, an arc re-plan proposes changing the planned future (future,
+ * non-produced `episodeBreakdown` entries only). See
+ * `server/services/verticalDramaArcReplan.ts` for the deterministic drift
+ * detector + proposal builder that produces these events' payload shape
+ * (`VerticalDramaArcReplanProposal`, `@shared/verticalDramaSeries/contentBudget`).
  */
 export type VerticalDramaMemoryKind =
   | "canonical_fact"
@@ -19,9 +26,20 @@ export type VerticalDramaMemoryKind =
   | "hook_resolved"
   | "product_tie_in_usage"
   | "continuity_warning"
-  | "retcon_proposal";
+  | "retcon_proposal"
+  | "arc_replan_proposal"
+  | "arc_replan_applied"
+  /**
+   * Feature 132 §5.3 (F132B, ledgers-and-story-state, added 2026-07-09) —
+   * a typed per-episode story-state snapshot (spec §5.3), gated by the
+   * `verticalDramaQualityLedgers` tenant flag. TypeScript-level addition
+   * only — `vertical_drama_memory_events.memoryKind` is a free-form
+   * `varchar(40)`, not a DB enum, so this requires zero migration (see
+   * `server/services/verticalDramaSeriesMemoryPlanning.ts`'s doc comment).
+   */
+  | "story_state";
 
-/** All nine memory kinds, ordered, for validation and UI enumeration. */
+/** All twelve memory kinds, ordered, for validation and UI enumeration. */
 export const VERTICAL_DRAMA_MEMORY_KINDS: readonly VerticalDramaMemoryKind[] = [
   "canonical_fact",
   "episode_summary",
@@ -32,6 +50,9 @@ export const VERTICAL_DRAMA_MEMORY_KINDS: readonly VerticalDramaMemoryKind[] = [
   "product_tie_in_usage",
   "continuity_warning",
   "retcon_proposal",
+  "arc_replan_proposal",
+  "arc_replan_applied",
+  "story_state",
 ] as const;
 
 /**

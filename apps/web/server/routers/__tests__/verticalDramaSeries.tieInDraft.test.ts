@@ -131,6 +131,10 @@ vi.mock("../../services/verticalDramaStoryJobs", () => ({
   enqueueVerticalDramaStoryJob: mockEnqueueVerticalDramaStoryJob,
   getVerticalDramaStoryJobStatus: vi.fn(),
   getActiveVerticalDramaStoryJob: vi.fn(),
+  // Phase F (added 2026-07-09) — the router now statically imports this for
+  // the partial-system-failure feedback bridge; every fixture in this file
+  // uses `partial: false`, so it's never actually invoked here.
+  submitVerticalDramaSystemFeedback: vi.fn(),
 }));
 
 /**

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/drama-script-evaluate-improve/input.schema.json",
+  "title": "Drama Script Evaluate & Improve Input",
+  "description": "Input for a unified skill that evaluates a drama script, internally improves it through loop engineering, and returns only the best revised script with final score. The skill preserves original structure, applies user revision constraints, and uses compact scene/visual anchors to reduce output tokens.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "original_script"
+  ],
+  "properties": {
+    "original_script": {
+      "type": "string",
+      "title": "Original Drama Script",
+      "description": "Paste the original drama content before revision. It may include synopsis, episode outline, shot list, dialogue, product tie-in details, educational content, cliffhangers, scene details, or any structured drama plan. The skill will evaluate and improve this text while preserving its original format.",
+      "minLength": 1,
+      "examples": [
+        "ซีรีส์: หนูน้อยช่างสงสัย\nแนว: แม่ลูกหาคำตอบในร้านสะดวกซื้อ\nโทน: อบอุ่นสดใส..."
+      ]
+    },
+    "user_revision_request": {
+      "type": "string",
+      "title": "User Revision Request",
+      "description": "Optional high-priority instructions describing what the user wants improved or added. Use this for desired setting, atmosphere, era, costume, relationship emphasis, product focus, visual continuity, face/costume clarity for image-video generation, dialogue simplification, or any specific changes. The skill must pay special attention to this field.",
+      "default": "",
+      "examples": [
+        "ต้องการบรรยากาศอยู่ในเรือนไม้ทรงไทย บรรยากาศห้องสมัย ร. 5 คุณแม่ยังสาว แต่งตัวชุดจูงกระเบนโบราณ",
+        "เพิ่มฉากโรแมนติกระหว่างพระเอกและนางเอกมากขึ้น แต่ไม่โจ่งแจ้ง",
+        "ขอบรรยากาศริมทะเล มองเห็นเกาะอยู่ไกล ๆ ชายทะเลมีชาวต่างชาติเต็มไปหมด",
+        "ทุกช็อตที่ตัวละครพูดต้องเห็นหน้าผู้พูดและเสื้อผ้าชัด เพื่อใช้ทำ start frame และ video generation"
+      ]
+    }
+  }
+}

@@ -520,9 +520,9 @@ export const VD_COPY = {
     videoPromptLanguageSaved: "Language settings saved.",
 
     /* ---- Native audio direction toggle (task #36, added 2026-07-09) ---- */
-    nativeAudioToggleLabel: "Built-in audio (ambience + SFX from the model)",
+    nativeAudioToggleLabel: "Include SFX & ambient sound cues in video prompts (entire episode)",
     nativeAudioToggleHint:
-      "No speech/music — dialogue comes from the voice system, music is a separate option.",
+      "When enabled, 'Generate Video Prompt' integrates SFX & ambient soundscape cues directly inside every shot's prompt across the episode.",
     nativeAudioDirectionChipLabel: "AUDIO:",
 
     /* ---- Product reference image picker (2026-07-06 product tie-in upgrade) ---- */
@@ -1107,9 +1107,9 @@ export const VD_COPY = {
     videoPromptLanguageSaved: "บันทึกการตั้งค่าภาษาแล้ว",
 
     /* ---- Native audio direction toggle (task #36, added 2026-07-09) ---- */
-    nativeAudioToggleLabel: "เสียงประกอบในตัว (บรรยากาศ+SFX จากโมเดล)",
+    nativeAudioToggleLabel: "รวมเสียงประกอบในพรอมต์วิดีโอทั้งตอน (SFX + บรรยากาศ)",
     nativeAudioToggleHint:
-      "ไม่มีเสียงพูด/เพลง — เสียงพูดมาจากระบบพากย์ เพลงเป็นตัวเลือกแยก",
+      "เมื่อเปิดใช้งาน ปุ่ม 'สร้างพรอมต์วีดีโอ' จะรวมคำสั่งเสียงประกอบ (SFX/บรรยากาศ) เข้าไปในพรอมต์วิดีโอของทุกช็อตในตอนทันที ไม่ต้องตั้งค่าทีละช็อต",
     nativeAudioDirectionChipLabel: "เสียง:",
 
     /* ---- Product reference image picker (2026-07-06 product tie-in upgrade) ---- */

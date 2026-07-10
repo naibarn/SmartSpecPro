@@ -16,10 +16,15 @@ import {
   buildAssSubtitleFile,
   buildBannerInputArgs,
   buildFinalRenderFfmpegArgs,
+  buildWatermarkInputArgs,
   escapeFfmpegFilterPath,
   resolveBannerOverlayChain,
+  resolveWatermarkOverlayFragment,
   validateResolvedBanners,
+  VD_TEXT_OVERLAY_ASS_KINDS,
   type ResolvedBanner,
+  type ResolvedWatermarkImage,
+  type VdTextOverlayAssEvent,
 } from "../verticalDramaFinalRenderGraph";
 
 const CONCAT_LIST_PATH = "/tmp/concat.txt";
@@ -750,5 +755,314 @@ describe("buildAssSubtitleFile", () => {
     );
     // No spaces -> chunks of 5 chars: "abcde", "fghij". 2s*100=200cs / 2 chunks = 100 each.
     expect(ass).toContain("{\\k100}abcde {\\k100}fghij");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Text Overlay Suite (task #34)                                              */
+/* -------------------------------------------------------------------------- */
+
+describe("buildAssSubtitleFile — text overlay events (task #34)", () => {
+  it("is byte-identical to the pre-task-#34 call shape when overlays is omitted", () => {
+    const withoutOverlaysArg = buildAssSubtitleFile(
+      [{ startSec: 0, endSec: 2, text: "hi" }],
+      "classic_box",
+      { playResX: 1080, playResY: 1920 }
+    );
+    const withEmptyOverlays = buildAssSubtitleFile(
+      [{ startSec: 0, endSec: 2, text: "hi" }],
+      "classic_box",
+      { playResX: 1080, playResY: 1920 },
+      []
+    );
+    expect(withEmptyOverlays).toBe(withoutOverlaysArg);
+  });
+
+  it("renders overlay styles/events even when preset is no_subtitle_style (subtitlePreset 'none')", () => {
+    const ass = buildAssSubtitleFile([], "no_subtitle_style", {
+      playResX: 1080,
+      playResY: 1920,
+    }, [
+      { kind: "end_card", startSec: 57, endSec: 60, text: "ติดตามตอนต่อไป" },
+    ]);
+    expect(ass).toContain("Style: VdEndCardTeaser");
+    expect(ass).toContain("Dialogue:");
+    expect(ass).toContain("ติดตามตอนต่อไป");
+    // No dialogue captions when preset itself is the sentinel.
+    expect(ass).not.toContain("Style: VdClassicBox");
+  });
+
+  it("only emits [V4+ Styles] entries for overlay kinds actually present", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      { kind: "episode_indicator", startSec: 0, endSec: 60, text: "EP 3/10" },
+    ]);
+    expect(ass).toContain("Style: VdEpIndicator");
+    for (const kind of VD_TEXT_OVERLAY_ASS_KINDS) {
+      if (kind === "episode_indicator") continue;
+      // None of the other 7 overlay style names should appear.
+      expect(ass).not.toContain(`Style: Vd${kind}`);
+    }
+  });
+
+  it("drops a degenerate overlay event (endSec <= startSec) without throwing", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      { kind: "end_card", startSec: 10, endSec: 10, text: "should be dropped" },
+    ]);
+    expect(ass).not.toContain("Style: VdEndCardTeaser");
+    expect(ass).not.toContain("should be dropped");
+  });
+
+  it("drops an overlay event with blank text without throwing", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      { kind: "end_card", startSec: 0, endSec: 3, text: "   " },
+    ]);
+    expect(ass).not.toContain("Style: VdEndCardTeaser");
+  });
+
+  it("applies the end_card lower_band variant as an inline \\an2\\pos() override", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      { kind: "end_card", startSec: 0, endSec: 3, text: "แบนด์ล่าง", variant: "lower_band" },
+    ]);
+    expect(ass).toContain("\\an2\\pos(540,1650)");
+  });
+
+  it("center_card (default/omitted variant) does NOT add a position override", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      { kind: "end_card", startSec: 0, endSec: 3, text: "กลางจอ" },
+    ]);
+    expect(ass).not.toContain("\\pos(540,1650)");
+  });
+
+  it("applies the episode_indicator top_left variant as an inline \\an7 override", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      { kind: "episode_indicator", startSec: 0, endSec: 60, text: "EP 1", variant: "top_left" },
+    ]);
+    expect(ass).toContain("\\an7");
+  });
+
+  it("renders watermark_text with a \\pos() computed from its corner + marginPx, and an \\1a alpha override from opacity", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      {
+        kind: "watermark_text",
+        startSec: 0,
+        endSec: 60,
+        text: "@mychannel",
+        variant: "bottom_left",
+        marginPx: 40,
+        opacity: 0.5,
+      },
+    ]);
+    // bottom_left => x=marginPx, y=1920-marginPx.
+    expect(ass).toContain("\\an1\\pos(40,1880)");
+    // opacity 0.5 -> alpha byte round((1-0.5)*255)=128=0x80.
+    expect(ass).toContain("\\1a&H80&");
+  });
+
+  it("renders a secondaryText line via \\N with a smaller font-size override", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      {
+        kind: "character_intro",
+        startSec: 0,
+        endSec: 2.5,
+        text: "มาลี",
+        secondaryText: "นางเอก",
+      },
+    ]);
+    expect(ass).toContain("มาลี\\N{\\fs");
+    expect(ass).toContain("นางเอก");
+  });
+
+  it("fades every overlay kind in/out via \\fad(...)", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      { kind: "title_bumper", startSec: 0, endSec: 1.2, text: "ชื่อเรื่อง" },
+    ]);
+    expect(ass).toMatch(/\\fad\(\d+,\d+\)/);
+  });
+
+  it("renders multiple distinct overlay kinds together in one file, each with its own style", () => {
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, [
+      { kind: "title_bumper", startSec: 0, endSec: 1.2, text: "ชื่อเรื่อง" },
+      { kind: "opener_recap", startSec: 1.2, endSec: 5.2, text: "ความเดิม" },
+      { kind: "time_setting", startSec: 10, endSec: 12.5, text: "ปี 1980" },
+      { kind: "narrative_hook", startSec: 15, endSec: 18, text: "จะเกิดอะไรขึ้น" },
+    ]);
+    expect(ass).toContain("Style: VdTitleBumper");
+    expect(ass).toContain("Style: VdOpenerRecap");
+    expect(ass).toContain("Style: VdTimeSetting");
+    expect(ass).toContain("Style: VdNarrativeHook");
+  });
+
+  it("covers all 8 overlay kinds without throwing and emits a style line for each", () => {
+    const events: VdTextOverlayAssEvent[] = VD_TEXT_OVERLAY_ASS_KINDS.map((kind, i) => ({
+      kind,
+      startSec: i * 10,
+      endSec: i * 10 + 2,
+      text: `event ${kind}`,
+    }));
+    const ass = buildAssSubtitleFile([], "classic_box", { playResX: 1080, playResY: 1920 }, events);
+    for (const kind of VD_TEXT_OVERLAY_ASS_KINDS) {
+      expect(ass).toContain(`event ${kind}`);
+    }
+  });
+});
+
+describe("buildFinalRenderFfmpegArgs — watermark image (task #34)", () => {
+  const watermark: ResolvedWatermarkImage = {
+    localPngPath: "/tmp/watermark.png",
+    position: "top_right",
+    opacity: 0.45,
+    scalePct: 10,
+    marginPx: 32,
+  };
+
+  it("takes the complex-graph path (not the legacy concat shortcut) when only a watermark is supplied", () => {
+    const args = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      watermarkImage: watermark,
+    });
+    expect(args).toContain("-filter_complex");
+    expect(extractFilterComplex(args)).toContain("colorchannelmixer=aa=0.45");
+  });
+
+  it("appends the watermark input AFTER concat + banners + dialogue audio, leaving their indices unchanged", () => {
+    const banner: ResolvedBanner = {
+      localPngPath: "/tmp/banner.png",
+      placementId: "bottom_band",
+      startSec: 0,
+      endSec: 5,
+      fadeSec: 0.3,
+    };
+    const withoutWatermark = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      banners: [banner],
+    });
+    const withWatermark = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      banners: [banner],
+      watermarkImage: watermark,
+    });
+    // Same [1:v] banner reference in both — banner input index unchanged.
+    expect(extractFilterComplex(withoutWatermark)).toContain("[1:v]scale=");
+    expect(extractFilterComplex(withWatermark)).toContain("[1:v]scale=");
+    // Watermark uses input index 2 (0=concat, 1=banner, 2=watermark).
+    expect(extractFilterComplex(withWatermark)).toContain("[2:v]scale=");
+  });
+
+  it("composites the watermark AFTER (on top of) a fullscreen banner in the filter chain", () => {
+    const fullscreenBanner: ResolvedBanner = {
+      localPngPath: "/tmp/fs.png",
+      placementId: "fullscreen",
+      startSec: 0,
+      endSec: 3,
+      fadeSec: 0.3,
+    };
+    const args = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      banners: [fullscreenBanner],
+      watermarkImage: watermark,
+    });
+    const graph = extractFilterComplex(args);
+    const fullscreenOverlayIdx = graph.indexOf("overlay=0:0");
+    const watermarkScaleIdx = graph.indexOf("scale=108:-2"); // 1080*10% = 108
+    expect(fullscreenOverlayIdx).toBeGreaterThan(-1);
+    expect(watermarkScaleIdx).toBeGreaterThan(fullscreenOverlayIdx);
+    // Final map targets the watermark's own output label.
+    expect(args).toContain("[wm]");
+  });
+
+  it("positions top_right with a main_w-overlay_w-margin expression", () => {
+    const args = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      watermarkImage: watermark,
+    });
+    expect(extractFilterComplex(args)).toContain(
+      "overlay=main_w-overlay_w-32:32"
+    );
+  });
+
+  it("positions bottom_left with margin-only x and a main_h-overlay_h-margin y expression", () => {
+    const args = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      watermarkImage: { ...watermark, position: "bottom_left", marginPx: 20 },
+    });
+    expect(extractFilterComplex(args)).toContain(
+      "overlay=20:main_h-overlay_h-20"
+    );
+  });
+
+  it("is a complete no-op (identical args) when watermarkImage is omitted", () => {
+    const withUndefined = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      dialogueAudio: { segments: [{ localPath: "/tmp/a.mp3", startSec: 0 }] },
+    });
+    const withExplicitUndefined = buildFinalRenderFfmpegArgs({
+      concatListPath: CONCAT_LIST_PATH,
+      output: OUTPUT_PATH,
+      videoDurationSeconds: 30,
+      dialogueAudio: { segments: [{ localPath: "/tmp/a.mp3", startSec: 0 }] },
+      watermarkImage: undefined,
+    });
+    expect(withExplicitUndefined).toEqual(withUndefined);
+  });
+});
+
+describe("buildWatermarkInputArgs", () => {
+  it("loops the watermark PNG for the full probed video duration", () => {
+    const args = buildWatermarkInputArgs(
+      {
+        localPngPath: "/tmp/w.png",
+        position: "top_right",
+        opacity: 0.4,
+        scalePct: 8,
+        marginPx: 24,
+      },
+      42.5
+    );
+    expect(args).toEqual(["-loop", "1", "-t", "42.5", "-i", "/tmp/w.png"]);
+  });
+});
+
+describe("resolveWatermarkOverlayFragment", () => {
+  it("scales to scalePct% of the 1080px frame width, rounded to an even pixel count", () => {
+    const { filterFragments } = resolveWatermarkOverlayFragment(
+      { localPngPath: "/tmp/w.png", position: "top_right", opacity: 0.45, scalePct: 15, marginPx: 32 },
+      1,
+      { baseLabel: "vbase" }
+    );
+    // 1080 * 15% = 162 (already even).
+    expect(filterFragments[0]).toContain("scale=162:-2");
+  });
+
+  it("rounds an odd target width up to the nearest even number", () => {
+    const { filterFragments } = resolveWatermarkOverlayFragment(
+      { localPngPath: "/tmp/w.png", position: "top_right", opacity: 0.45, scalePct: 5, marginPx: 32 },
+      1,
+      { baseLabel: "vbase" }
+    );
+    // 1080 * 5% = 54 (even already) — use 7% to force an odd rounding case: 1080*0.07=75.6 -> round 76 (even).
+    expect(filterFragments[0]).toContain("scale=54:-2");
+  });
+
+  it("clamps opacity into [0,1] defensively", () => {
+    const { filterFragments } = resolveWatermarkOverlayFragment(
+      { localPngPath: "/tmp/w.png", position: "top_right", opacity: 5, scalePct: 10, marginPx: 32 },
+      1,
+      { baseLabel: "vbase" }
+    );
+    expect(filterFragments[0]).toContain("colorchannelmixer=aa=1");
   });
 });

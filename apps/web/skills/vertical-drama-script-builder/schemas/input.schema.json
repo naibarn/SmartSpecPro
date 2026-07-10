@@ -84,6 +84,124 @@
           "type": "string"
         }
       }
+    },
+    "speech_budget": {
+      "description": "Optional episode speech-budget target from the platform's canonical speech-budget module (added 2026-07-07, story-density reform). When present, structure.beats must carry dialogue-complete dialogue_lines[] sized to this budget — see skill.md 'Speech budget'.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "target_speech_seconds_min": {
+          "type": "number"
+        },
+        "target_speech_seconds_max": {
+          "type": "number"
+        },
+        "per_shot_band": {
+          "description": "Target/minimum speech seconds for each distinct clip-duration band in the episode's duration profile (e.g. the main ~8s shots vs. a trailing ~4s shot).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "clip_duration_seconds": {
+                "type": "number"
+              },
+              "target_speech_seconds": {
+                "type": "number"
+              },
+              "min_speech_seconds": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "locale": {
+          "type": "string"
+        }
+      }
+    },
+    "content_budget": {
+      "description": "Optional per-episode content budget carried by the active series-bible breakdown item (VerticalDramaEpisodeContentBudget, added 2026-07-07, story-density reform) — states how much narrative material this episode was conceived to carry.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "beatCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "estimatedSpeechSeconds": {
+          "type": "number"
+        },
+        "conflictLevel": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "reversalTarget": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "arcThreads": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "episode_draft": {
+      "description": "Optional deep-story-drafts refine base (W10-B, added 2026-07-08): a vetted, already-approved per-shot draft carried over from the season-planning stage. When present, REFINE it into the full script schema instead of generating from the story brief alone — see skill.md 'Episode draft (refine mode)'.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "shots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "shot_number": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9
+              },
+              "summary": {
+                "type": "string"
+              },
+              "dialogue_lines": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "speaker": {
+                      "type": "string"
+                    },
+                    "line": {
+                      "type": "string"
+                    },
+                    "delivery": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "silence_intent": {
+                "type": "string",
+                "enum": [
+                  "dramatic_pause",
+                  "action_visual",
+                  "montage",
+                  "establishing"
+                ]
+              }
+            }
+          }
+        },
+        "cliffhanger_line": {
+          "type": "string"
+        }
+      }
     }
   }
 }

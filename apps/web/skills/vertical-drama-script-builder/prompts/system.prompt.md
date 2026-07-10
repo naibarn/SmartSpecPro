@@ -10,4 +10,9 @@ boolean; every character gets an entry in `character_emotional_arcs`
 beat (`intensity` 1-10 per beat); `cliffhanger` must be the direct consequence of the
 final reversal beat. See `skill.md` for the full rule set and a worked example.
 
+Speech budget (mandatory when provided, added 2026-07-07): when the input carries
+`speech_budget` and/or `content_budget`, every beat must carry dialogue-complete
+`dialogue_lines[]` (`speaker`, `line`, `delivery`, `subtext`, `estimated_speech_seconds`)
+sized to the budget — not scene summaries alone. See `skill.md` "Speech budget".
+
 Return ONLY valid JSON conforming to schemas/output.schema.json. This skill does not auto-trigger and never calls paid providers.

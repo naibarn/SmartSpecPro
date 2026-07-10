@@ -46,6 +46,21 @@ import {
   // dependency on `verticalDramaStoryBible.ts` (the imports above), so its
   // transitive chain is already loaded by every test of this file.
   type VdDeepDraftShotDraft,
+  // Feature 132 §6.1 (F132C, scene contracts, added 2026-07-09) — TYPE-ONLY.
+  // `verticalDramaStoryBible.ts`'s own `shotContractSchema` (the RUNTIME zod
+  // value `VdSceneContract` is inferred from) is a private, non-exported
+  // `const` in that file, and this section's task brief explicitly forbids
+  // touching `verticalDramaStoryBible.ts` at all (finalized by a prior
+  // pass) — so the runtime schema value cannot be imported without adding an
+  // `export` keyword there. `storyboardContractSchema` below is therefore a
+  // second zod object with the IDENTICAL field shape, and `satisfies
+  // z.ZodType<VdSceneContract>` (see below) makes the two shapes provably
+  // identical at compile time — if `shotContractSchema` ever changes shape
+  // without this file being updated to match, `pnpm check` fails here
+  // immediately rather than silently drifting. Flagged in the Result Report
+  // as a one-line follow-up (`export const shotContractSchema` in
+  // `verticalDramaStoryBible.ts`) for whoever next revisits that file.
+  type VdSceneContract,
 } from "./verticalDramaStoryBible";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 
@@ -137,6 +152,35 @@ const storyboardActingDirectionSchema = z.union([
   z.record(z.string(), z.string()),
 ]);
 
+/**
+ * Feature 132 §6.1 (F132C, scene contracts, added 2026-07-09) — the SAME
+ * per-shot story-function contract shape as `verticalDramaStoryBible.ts`'s
+ * `shotContractSchema` (see this file's `VdSceneContract` import doc comment
+ * for why this is a second zod object rather than a shared import). The
+ * `AssertShapesMatch` check below fails `pnpm check` if the two shapes ever
+ * drift apart.
+ */
+const storyboardContractSchema = z
+  .object({
+    storyFunction: z.string().min(1),
+    emotionalBeat: z.string().min(1),
+    audienceTakeaway: z.string().min(1),
+    tensionSource: z.string().min(1),
+    newClueIds: z.array(z.string().min(1)).default([]),
+    dialoguePurpose: z.string().min(1),
+    characterDecision: z.string().min(1).optional(),
+    continuityDependency: z.string().min(1).optional(),
+    anchorLine: z.boolean().optional(),
+  })
+  .passthrough();
+
+type AssertShapesMatch<A, B> = A extends B ? (B extends A ? true : never) : never;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _storyboardContractShapeMatchesShotContractSchema: AssertShapesMatch<
+  z.infer<typeof storyboardContractSchema>,
+  VdSceneContract
+> = true;
+
 const storyboardShotSchema = z
   .object({
     shot_number: z.number().int(),
@@ -152,6 +196,13 @@ const storyboardShotSchema = z
     facial_expression: storyboardActingDirectionSchema.optional(),
     body_language: storyboardActingDirectionSchema.optional(),
     gaze_direction: storyboardActingDirectionSchema.optional(),
+    /**
+     * Feature 132 §6.1 (F132C, scene contracts) — see
+     * `storyboardContractSchema`'s own doc comment. Absent on every shot
+     * from a flag-off/legacy response, or a shot generated before this
+     * field existed.
+     */
+    contract: storyboardContractSchema.optional(),
   })
   .passthrough();
 
@@ -268,6 +319,18 @@ export interface GenerateStoryboardShotgridParams {
   opts?: {
     /** Feature flag `verticalDramaSeriesDeepStoryDrafts` (W10-B). */
     episodeDraftHydrationEnabled?: boolean;
+    /**
+     * Feature flag `verticalDramaSceneContracts` (F132C, spec §6, added
+     * 2026-07-09) — when true, tells the LLM to (a) copy each draft shot's
+     * `contract` onto the matching output shot verbatim when hydrating from
+     * `episodeDraft` (only meaningful together with
+     * `episodeDraftHydrationEnabled`), and (b) emit its own well-shaped
+     * `contract` object per shot when generating fresh without hydration.
+     * Also extends the required-output-shape description to include
+     * `contract`. Purely additive — omitted/false renders nothing new,
+     * byte-identical prompt to before this flag existed.
+     */
+    sceneContractsEnabled?: boolean;
   };
 }
 
@@ -330,6 +393,23 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
         ].join("\n")
       : null;
 
+  // Feature 132 §6.1 (F132C, scene contracts, `verticalDramaSceneContracts`,
+  // added 2026-07-09) — additive; only rendered when `sceneContractsEnabled`
+  // is true, so the flag-off prompt is byte-identical to before this change.
+  // Branches on whether the episode-draft hydration section above actually
+  // rendered: when it did, each draft shot's own `contract` (already
+  // "free"-carried into the prompt via `episode_draft`'s JSON.stringify
+  // payload) must be copied onto the matching output shot verbatim; when it
+  // did not (fresh generation with no hydrated draft), the LLM must invent
+  // its own well-shaped `contract` per shot. Also extends the required
+  // output shape to include `contract`.
+  const sceneContractsEnabled = params.opts?.sceneContractsEnabled === true;
+  const sceneContractSection = sceneContractsEnabled
+    ? episodeDraftSection
+      ? 'Every shot in "shots" must ALSO include a "contract" object: when the matching draft shot above (in episode_draft) already has a "contract", copy it onto that SAME output shot VERBATIM — do not alter, drop, or re-derive it; for any shot with no draft contract, emit your own well-shaped "contract" object for that shot. A "contract" object has these 6 required fields: "storyFunction" (one clear function for this shot), "emotionalBeat" (one beat), "audienceTakeaway" (what the viewer must retain), "tensionSource" (the conflict/pressure present in this shot), "newClueIds" (array of new important names/objects/dates/lore terms this shot introduces — at most 2 per shot), "dialoguePurpose" (what the dialogue in this shot is for); and these 3 optional fields when applicable: "characterDecision" (set when a decision happens in this shot), "continuityDependency" (the earlier fact this shot relies on, if any), "anchorLine" (true when this shot carries an anchor line — no run of 3 or more consecutive shots without anchorLine: true).'
+      : 'Every shot in "shots" must ALSO include a "contract" object with these 6 required fields: "storyFunction" (one clear function for this shot), "emotionalBeat" (one beat), "audienceTakeaway" (what the viewer must retain), "tensionSource" (the conflict/pressure present in this shot), "newClueIds" (array of new important names/objects/dates/lore terms this shot introduces — at most 2 per shot), "dialoguePurpose" (what the dialogue in this shot is for); and these 3 optional fields when applicable: "characterDecision" (set when a decision happens in this shot), "continuityDependency" (the earlier fact this shot relies on, if any), "anchorLine" (true when this shot carries an anchor line — no run of 3 or more consecutive shots without anchorLine: true).'
+    : null;
+
   // Repair-mode framing — see `GenerateStoryboardShotgridParams.repairContext`'s
   // doc comment. Additive; only rendered when a caller explicitly supplies
   // `repairContext`, so every fresh-generation call site's prompt is
@@ -359,6 +439,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
     episodeDraftSection,
+    sceneContractSection,
     repairSection,
     VD_COMPACT_JSON_INSTRUCTION,
   ]

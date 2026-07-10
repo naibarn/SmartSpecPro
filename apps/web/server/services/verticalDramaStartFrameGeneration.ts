@@ -32,6 +32,7 @@ import {
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import {
   buildTargetAudienceRegionInstruction,
   type VerticalDramaTargetAudienceRegion,
@@ -39,6 +40,7 @@ import {
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 import {
   buildCharacterIdentityMapBlock,
+  formatIdentityLockedImagePrompt,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
@@ -197,6 +199,7 @@ export function projectStartFramePlan(
    * reintroduce the same bug one stage later.
    */
   shotCharacterIdsByShotNumber?: Map<number, string[]>,
+  characters?: readonly VerticalDramaCharacterDescriptorSource[],
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -217,9 +220,19 @@ export function projectStartFramePlan(
             : (r.reference_assets ?? [])
                 .map((ref) => ref.character_id)
                 .filter((id): id is string => typeof id === "string" && id.length > 0);
+        const charEntries = requiredCharacterRefs
+          .map((id) => {
+            const found = characters?.find((c) => c.characterKey === id);
+            return found ? { name: found.name } : null;
+          })
+          .filter((c): c is { name: string } => c !== null);
+        const identityLockedPrompt =
+          charEntries.length > 0
+            ? formatIdentityLockedImagePrompt(r.prompt, charEntries)
+            : r.prompt;
         return {
           shotNumber: r.shot_number,
-          imagePrompt: r.prompt,
+          imagePrompt: identityLockedPrompt,
           negativePrompt: r.negative_prompt ?? "",
           requiredCharacterRefs,
           productReferenceAssetIds: [],
@@ -227,6 +240,7 @@ export function projectStartFramePlan(
       }),
   };
 }
+
 
 /* -------------------------------------------------------------------------- */
 /* Prompt building                                                            */
@@ -270,7 +284,10 @@ export interface GenerateStartFrameRenderPlanParams {
   characters?: VerticalDramaCharacterDescriptorSource[];
 }
 
-function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
+const VD_CHARACTER_REF_INDEXING_INSTRUCTION =
+  "Attached Character Reference Image Indexing: When writing each shot's `prompt` for shots with required characters, reference character names alongside attached image indexing (e.g., 'emphasis on ใบข้าว (attached Image 2)'s face' or 'Image 1 = ฝ้าย, Image 2 = ใบข้าว') so diffusion image models correctly link each character identity to their corresponding attached reference image.";
+
+export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
   const shotLines = params.storyboardShots
     .map(
       (s) =>
@@ -288,6 +305,7 @@ function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
 
   return [
     `Episode title: ${params.episodeTitle}`,
+    renderCriteriaVersionMarker(),
     `Episode duration: ${params.durationSeconds} seconds`,
     params.selectedImageModelId
       ? `Preferred image model: ${params.selectedImageModelId}`
@@ -295,6 +313,7 @@ function buildUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
     `Storyboard shots (build exactly one start-frame render request per shot, 9 total):\n${shotLines}`,
     characterIdentityMapBlock,
     params.storyboardShots.some((s) => s.characterIds.length > 0) ? VD_CHARACTER_LOCK_INSTRUCTION : null,
+    params.storyboardShots.some((s) => s.characterIds.length > 0) ? VD_CHARACTER_REF_INDEXING_INSTRUCTION : null,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -338,7 +357,7 @@ export async function generateStartFrameRenderPlan(
 
   const model = await resolveStoryBibleModel();
   const systemPrompt = loadSkillSystemPrompt();
-  const userPrompt = buildUserPrompt(params);
+  const userPrompt = buildStartFrameRenderPlanUserPrompt(params);
 
   // 9 enriched per-shot requests (Phase 3B skill upgrades — micro-expressions,
   // mood lighting, power-dynamic composition — made each shot's prompt much
@@ -388,6 +407,7 @@ export async function generateStartFrameRenderPlan(
     validatedData,
     params.selectedImageModelId ?? "dry-run-image-model",
     shotCharacterIdsByShotNumber,
+    params.characters,
   );
 
   return { plan, raw: validatedData, creditsUsed, model };

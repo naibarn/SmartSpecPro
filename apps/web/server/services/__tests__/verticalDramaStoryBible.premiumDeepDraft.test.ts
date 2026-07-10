@@ -30,6 +30,7 @@ vi.mock("../enabledLlmModels", () => ({
 vi.mock("../intelligentModelSelector", () => ({
   selectBestLlmModel: vi.fn(() => null),
 }));
+import { selectBestLlmModel } from "../intelligentModelSelector";
 
 const { mockHasEnoughCredits, mockDeductCredits, mockCalculateCreditsForLLM } = vi.hoisted(() => ({
   mockHasEnoughCredits: vi.fn(),
@@ -56,11 +57,14 @@ vi.mock("../_core/logger", () => ({
 
 import {
   generateStoryBibleDeep,
+  resolveDeepStoryDraftModel,
   estimatePremiumDeepDraftCalls,
+  computePremiumDeepDraftChunkSizes,
   meetsPremiumDraftFloor,
   computePremiumGateViolationCount,
   selectPremiumDraftWinnerIndex,
   VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE,
+  VD_PREMIUM_DEEP_DRAFT_EPISODES_PER_CALL,
   VD_DEEP_DRAFT_SHOTS_PER_EPISODE,
   VD_PREMIUM_DRAFT_CANDIDATE_COUNT,
   VD_PREMIUM_DRAFT_MAX_REVISE_ROUNDS,
@@ -73,6 +77,8 @@ import {
   type VdDeepDraftShotDraft,
   type StoredEpisodeBreakdownItem,
 } from "../verticalDramaStoryBible";
+
+const mockSelectBestLlmModel = vi.mocked(selectBestLlmModel);
 
 /* -------------------------------------------------------------------------- */
 /* Fixtures — mirrors verticalDramaStoryBible.deepStoryDrafts.test.ts's own   */
@@ -205,6 +211,7 @@ function userPromptOf(callIndex: number): string {
 beforeEach(() => {
   vi.clearAllMocks();
   mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockSelectBestLlmModel.mockReturnValue(null);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockCalculateCreditsForLLM.mockReturnValue(3);
@@ -223,6 +230,37 @@ describe("estimatePremiumDeepDraftCalls", () => {
 
   it("never goes negative for a negative chunk count", () => {
     expect(estimatePremiumDeepDraftCalls(-5)).toBe(2);
+  });
+});
+
+describe("computePremiumDeepDraftChunkSizes", () => {
+  it(`splits premium chunks at ${VD_PREMIUM_DEEP_DRAFT_EPISODES_PER_CALL} episode(s) per call`, () => {
+    expect(computePremiumDeepDraftChunkSizes(0)).toEqual([]);
+    expect(computePremiumDeepDraftChunkSizes(1)).toEqual([1]);
+    expect(computePremiumDeepDraftChunkSizes(5)).toEqual([2, 2, 1]);
+    expect(computePremiumDeepDraftChunkSizes(10)).toEqual([2, 2, 2, 2, 2]);
+  });
+});
+
+describe("resolveDeepStoryDraftModel", () => {
+  it("selects by capability policy instead of a hardcoded model id", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "small-fast-model", priority: 0 } as any,
+      { modelId: "large-structured-model", priority: 10 } as any,
+    ]);
+    mockSelectBestLlmModel.mockReturnValue("large-structured-model");
+
+    await expect(resolveDeepStoryDraftModel()).resolves.toBe("large-structured-model");
+
+    expect(mockSelectBestLlmModel).toHaveBeenCalledWith(
+      {
+        supportsThinking: true,
+        supportsStructuredOutputs: true,
+        supportsResponses: true,
+        contextLength: 1_000_000,
+      },
+      expect.any(Array),
+    );
   });
 });
 
@@ -354,7 +392,7 @@ describe("premium — fan-out", () => {
     });
   });
 
-  it("fails the whole chunk (throws, since it's the first chunk) when ANY of the 3 fan-out candidates fails, but still deducts credits for the ones that DID succeed", async () => {
+  it("fails the whole chunk (throws, since it's the first chunk) when ANY of the 3 fan-out candidates fails without deducting the unusable fan-out set", async () => {
     mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
     mockExecuteWithFallback.mockResolvedValueOnce({ type: "error", error: "provider exploded" });
     mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
@@ -362,7 +400,7 @@ describe("premium — fan-out", () => {
     await expect(generateStoryBibleDeep(baseDeepParams())).rejects.toThrow();
 
     expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3); // no judge/sweep call — chunk failed before that
-    expect(mockDeductCredits).toHaveBeenCalledTimes(2); // candidates 0 and 2 succeeded and were deducted
+    expect(mockDeductCredits).not.toHaveBeenCalled(); // no persisted/usable chunk, so no partial fan-out charge
   });
 });
 
@@ -560,27 +598,27 @@ describe("premium — season continuity sweep", () => {
 
 describe("premium — credits", () => {
   it("pre-checks total credits as estimatePremiumDeepDraftCalls(chunkCount) * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE BEFORE the first call", async () => {
-    const episodes = Array.from({ length: 6 }, (_, i) => existingItem(i + 1)); // -> chunks [5, 1]
-    mockLlmResponseOnce(candidateChunkPayload("c0", [1, 2, 3, 4, 5]));
-    mockLlmResponseOnce(candidateChunkPayload("c1", [1, 2, 3, 4, 5]));
-    mockLlmResponseOnce(candidateChunkPayload("c2", [1, 2, 3, 4, 5]));
+    const episodes = Array.from({ length: 3 }, (_, i) => existingItem(i + 1)); // -> premium chunks [2, 1]
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1, 2]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1, 2]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1, 2]));
     mockLlmResponseOnce(
       judgeResponsePayload(
-        [1, 2, 3, 4, 5].flatMap((ep) => [
+        [1, 2].flatMap((ep) => [
           { candidateIndex: 0, episodeNumber: ep },
           { candidateIndex: 1, episodeNumber: ep },
           { candidateIndex: 2, episodeNumber: ep },
         ]),
       ),
     );
-    mockLlmResponseOnce(candidateChunkPayload("c0b", [6]));
-    mockLlmResponseOnce(candidateChunkPayload("c1b", [6]));
-    mockLlmResponseOnce(candidateChunkPayload("c2b", [6]));
+    mockLlmResponseOnce(candidateChunkPayload("c0b", [3]));
+    mockLlmResponseOnce(candidateChunkPayload("c1b", [3]));
+    mockLlmResponseOnce(candidateChunkPayload("c2b", [3]));
     mockLlmResponseOnce(
       judgeResponsePayload([
-        { candidateIndex: 0, episodeNumber: 6 },
-        { candidateIndex: 1, episodeNumber: 6 },
-        { candidateIndex: 2, episodeNumber: 6 },
+        { candidateIndex: 0, episodeNumber: 3 },
+        { candidateIndex: 1, episodeNumber: 3 },
+        { candidateIndex: 2, episodeNumber: 3 },
       ]),
     );
     mockLlmResponseOnce(sweepResponsePayload([]));
@@ -600,36 +638,36 @@ describe("premium — credits", () => {
   });
 
   it("deducts credits per ACTUAL successful call, and on a partial failure still counts only the calls that really succeeded", async () => {
-    const episodes = Array.from({ length: 10 }, (_, i) => existingItem(i + 1)); // -> chunks [5, 5]
+    const episodes = Array.from({ length: 3 }, (_, i) => existingItem(i + 1)); // -> premium chunks [2, 1]
 
-    // Chunk 1 (episodes 1-5): fan-out + judge, everyone already at floor -> 4 calls, no revise.
-    mockLlmResponseOnce(candidateChunkPayload("c0", [1, 2, 3, 4, 5]));
-    mockLlmResponseOnce(candidateChunkPayload("c1", [1, 2, 3, 4, 5]));
-    mockLlmResponseOnce(candidateChunkPayload("c2", [1, 2, 3, 4, 5]));
+    // Chunk 1 (episodes 1-2): fan-out + judge, everyone already at floor -> 4 calls, no revise.
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1, 2]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1, 2]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1, 2]));
     mockLlmResponseOnce(
       judgeResponsePayload(
-        [1, 2, 3, 4, 5].flatMap((ep) => [
+        [1, 2].flatMap((ep) => [
           { candidateIndex: 0, episodeNumber: ep },
           { candidateIndex: 1, episodeNumber: ep },
           { candidateIndex: 2, episodeNumber: ep },
         ]),
       ),
     );
-    // Chunk 2 (episodes 6-10): candidate 0 succeeds, candidate 1 FAILS, candidate 2 succeeds -> chunk fails.
-    mockLlmResponseOnce(candidateChunkPayload("c0b", [6, 7, 8, 9, 10]));
+    // Chunk 2 (episode 3): candidate 0 succeeds, candidate 1 FAILS, candidate 2 succeeds -> chunk fails.
+    mockLlmResponseOnce(candidateChunkPayload("c0b", [3]));
     mockExecuteWithFallback.mockResolvedValueOnce({ type: "error", error: "provider exploded" });
-    mockLlmResponseOnce(candidateChunkPayload("c2b", [6, 7, 8, 9, 10]));
+    mockLlmResponseOnce(candidateChunkPayload("c2b", [3]));
 
     const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
 
     expect(result.partial).toBe(true);
-    expect(result.chunkSizes).toEqual([5]);
-    expect(result.draftedItems.map((i) => i.episodeNumber)).toEqual([1, 2, 3, 4, 5]);
+    expect(result.chunkSizes).toEqual([2]);
+    expect(result.draftedItems.map((i) => i.episodeNumber)).toEqual([1, 2]);
     expect(result.error).toBeTruthy();
 
     expect(mockExecuteWithFallback).toHaveBeenCalledTimes(7); // 4 (chunk1) + 3 attempted (chunk2)
-    expect(mockDeductCredits).toHaveBeenCalledTimes(6); // 4 (chunk1) + 2 successful candidates (chunk2) — none for the failed one
-    expect(result.premiumMetrics?.callsMade).toBe(6);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(4); // chunk2 produced no usable persisted result, so no partial fan-out charge
+    expect(result.premiumMetrics?.callsMade).toBe(4);
     expect(result.premiumMetrics?.sweepIssuesFound).toBe(0); // sweep never runs on a partial result
   });
 });

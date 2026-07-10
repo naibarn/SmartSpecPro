@@ -16,6 +16,24 @@ tags:
   - start-frame
   - render
   - qc
+trigger_patterns: []
+priority: 50
+config:
+  media_studio:
+    auto_learning:
+      enabled: false
+      prompt_qa_after_auto_prompt: true
+      image_qa_after_generation: true
+      require_admin_approval: true
+      min_prompt_score_to_pass: 85
+      min_image_fidelity_score_to_pass: 80
+      max_auto_patch_risk: medium
+  orchestration:
+    mode: local
+    endpoint: null
+    skillTargets: []
+    parallel: false
+    fallback: local
 ---
 # Vertical Drama Shot Start-Frame Render Planner
 
@@ -57,6 +75,12 @@ plan. Specifically, each `prompt` must include:
    composition should visually favor the character who just gained power (e.g.
    camera looks slightly up at them, or the other character is pushed to the
    frame edge / smaller in a wider shot).
+4. **Attached Character Reference Image Indexing** — When writing each shot's
+   `prompt` for shots with required characters, reference character names alongside
+   attached image indexing (e.g., `"emphasis on ใบข้าว (attached Image 2)'s face"` or
+   `"Image 1 = ฝ้าย, Image 2 = ใบข้าว"`) so diffusion image models correctly link each
+   character identity to their corresponding attached reference image number (`Image 1`,
+   `Image 2`).
 
 ## Prompt length limit — MANDATORY
 

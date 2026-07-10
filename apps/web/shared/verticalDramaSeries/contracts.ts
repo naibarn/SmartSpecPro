@@ -497,6 +497,14 @@ export type VerticalDramaMotionPromptClipDialogueLine = {
   emotion?: string;
   delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
   subtext?: string;
+  /**
+   * Additive (2026-07-07 unusable-dialogue fix) — set ONLY when this line was
+   * auto-recovered from the script's freeform scene dialogue (never reviewed
+   * by a dedicated dialogue-planning pass or a human edit). Drives a subtle
+   * "from the script — check it sounds natural" hint in the storyboard
+   * panel's dialogue box. `undefined` everywhere else (default).
+   */
+  origin?: "script_fallback";
 };
 
 /**
@@ -696,6 +704,20 @@ export type VerticalDramaMotionPromptPack = {
   dialogueLanguage?: VerticalDramaDialogueLanguage;
   /** Thai regional speech accent — only meaningful when `dialogueLanguage` is `"th"` (or absent, which defaults to Thai). See `VerticalDramaThaiAccent`. */
   thaiAccent?: VerticalDramaThaiAccent;
+  /**
+   * Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt option,
+   * added 2026-07-09) — the user's persisted preference for whether shot
+   * video-prompt generation should request native ambient bed + SFX prompt
+   * direction (see `skills/vertical-drama-shot-video-prompt/skill.md`'s
+   * "NATIVE AUDIO DIRECTION" section). Only takes effect when BOTH the
+   * rollout gate (`VD_NATIVE_AUDIO_PROMPTS_ROLLOUT` in
+   * `@shared/verticalDramaSeries/nativeAudioPrompts`) is on AND the
+   * episode's selected video model's `supportsNativeAudio` capability is
+   * true — stored independently of both so a user's choice survives a
+   * future model change or the rollout flag switching on. `undefined` for
+   * every pre-existing pack (byte-identical default: treated as `false`).
+   */
+  nativeAudioEnabled?: boolean;
   motionMode:
     | "first_last_frame_bridge"
     | "first_frame_to_video"
@@ -725,6 +747,28 @@ export type VerticalDramaMotionPromptPack = {
      * in `@shared/verticalDramaSeries/thaiAdCompliance.ts`.
      */
     requiredDisclosure?: string;
+    /**
+     * Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt
+     * option, added 2026-07-09) — this clip's model-directed ambient bed +
+     * SFX cues (SFX cues tied to visible on-screen actions first, ambient
+     * soundscape/atmosphere second — see the shot-video-prompt skill's
+     * "NATIVE AUDIO DIRECTION" section), returned by
+     * `generateVerticalDramaShotVideoPrompt` ONLY when the episode's
+     * `nativeAudioEnabled` preference + rollout gate + the selected video
+     * model's `supportsNativeAudio` capability were ALL true at generation
+     * time. Kept as a SEPARATE field (never inlined into `prompt` at
+     * generation time) — `formatVideoClipRequest`
+     * (`verticalDramaVideoPromptFormatter.ts`) is the single place that
+     * appends it onto the final provider-submitted prompt text, mirroring
+     * how that same function (not the per-shot generator) owns folding
+     * dialogue direction into the final prompt. NEVER contains speech/
+     * dialogue/voices or music/melody/lyrics/score — those stay owned by
+     * the TTS (Layer 2) and future BGM (Layer 3) layers respectively; see
+     * `@shared/verticalDramaSeries/nativeAudioPrompts` for the full 3-layer
+     * audio architecture. `undefined` when the option was off/unsupported
+     * for this clip (or predates this task).
+     */
+    audioDirection?: string;
     /**
      * Additive (2026-07-06 fix — completed video renders were never
      * persisted anywhere, only shown as a transient toast) — durable record

@@ -15,7 +15,13 @@
   ],
   "properties": {
     "contract_version": {
-      "const": 1
+      "description": "1 = shipped v1 scorecard (reversal_count/sharpness, emotion_variety, dialogue_naturalness, pacing, overall). 2 = superset (added 2026-07-07) adding scorecard.hook_strength/cliffhanger_strength/continuity_consistency/tie_in_naturalness plus the top-level density_metrics block. v1 artifacts remain readable under this schema; default is 1 when not requested.",
+      "type": "integer",
+      "enum": [
+        1,
+        2
+      ],
+      "default": 1
     },
     "episode_title": {
       "type": "string"
@@ -63,11 +69,95 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 5
+        },
+        "hook_strength": {
+          "description": "Optional superset (contract_version 2, added 2026-07-07): how strongly the episode's hook/first seconds grab attention.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "cliffhanger_strength": {
+          "description": "Optional superset (contract_version 2): how sharply the cliffhanger pays off the final reversal.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "continuity_consistency": {
+          "description": "Optional superset (contract_version 2): whether character state, wardrobe/prop continuity, and established facts stay consistent across script and storyboard.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "tie_in_naturalness": {
+          "description": "Optional superset (contract_version 2): 1-5, or null when no product tie-in is configured for this episode. See 'tie_in_assessment'.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
         }
       }
     },
     "summary": {
       "type": "string"
+    },
+    "tie_in_assessment": {
+      "description": "Optional superset (contract_version 2, added 2026-07-07): one-or-two-sentence qualitative note supporting scorecard.tie_in_naturalness, citing the specific shot/line that helped or hurt naturalness. Omitted (not null) when no tie-in is configured.",
+      "type": "string"
+    },
+    "density_metrics": {
+      "description": "Optional superset (contract_version 2, added 2026-07-07, story-density reform): deterministic density facts computed in code from the platform's canonical speech-budget module and script/storyboard markers, injected into this skill's input and echoed VERBATIM here — the LLM must never re-estimate these numbers. Present only when the caller supplied deterministic density input.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "estimated_speech_seconds": {
+          "type": "number"
+        },
+        "per_clip_coverage": {
+          "description": "Deterministic summary of per-clip speech-coverage ratio vs. target/floor bands.",
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "clips_evaluated": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "clips_below_min_ratio": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "clips_below_error_ratio": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "average_coverage_ratio": {
+              "type": "number"
+            }
+          }
+        },
+        "silent_gap_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duplicate_line_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stage_direction_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reversal_count": {
+          "description": "Deterministic count of script beats/markers where is_reversal === true, computed in code — distinct from scorecard.reversal_count, which is this skill's own judgment (and may corroborate or, if markers are missing upstream, infer this count).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_consecutive_same_emotion": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     },
     "issues": {
       "type": "array",

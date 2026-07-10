@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
-import { useScopedTranslation } from '@/i18n/useScopedTranslation';
+import { useTranslation } from 'react-i18next';
 import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 import {
   Sparkles,
@@ -31,7 +31,10 @@ type Channel = 'email' | 'backup_email' | 'sms';
 type Step = 'choose' | 'input' | 'sent' | 'reset' | 'success';
 
 export default function ForgotPassword() {
-  const { t } = useScopedTranslation('auth');
+  // Pre-auth pages have no language selector, so they always render English
+  // and translate="no" keeps browser auto-translate from mutating the DOM.
+  const { i18n } = useTranslation('auth');
+  const t = i18n.getFixedT('en', 'auth');
   const { data: recoveryCapabilities } = trpc.auth.getRecoveryCapabilities.useQuery();
   const [step, setStep] = useState<Step>('choose');
   const [channel, setChannel] = useState<Channel>('email');
@@ -130,7 +133,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div translate="no" className="min-h-screen flex">
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-blue-600 via-cyan-500 to-teal-400">
         {/* Animated Background */}

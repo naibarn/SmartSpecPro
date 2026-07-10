@@ -275,3 +275,6 @@ apps/worker-app/runtime-pack/*/
 # Worker runtime distribution archives (hundreds of MB–GB, exceed what
 # should be committed) — only the paired *.manifest.json is tracked.
 apps/web/client/public/releases/runtime/*.zip
+
+# Machine-specific MCP registration (command path is local to this server)
+.mcp.json

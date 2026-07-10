@@ -41,6 +41,7 @@ vi.mock("@/lib/posthog", () => ({
 
 vi.mock("@/lib/webRuntime", () => ({
   getSmartSpecWebEndpoint: (path: string) => path,
+  hasTauriRuntime: () => false,
 }));
 
 vi.mock("../../lib/trpc", () => ({

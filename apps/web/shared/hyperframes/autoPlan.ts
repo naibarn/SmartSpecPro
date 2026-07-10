@@ -68,6 +68,7 @@ export const HyperframesAutoPlanDefaultsSchema = z
     speechLanguage: HyperframesSpokenLanguageSchema.default("en"),
     creativeBrief: z.string().trim().max(2000).optional().default(""),
     qualityMode: z.enum(["fast", "balanced", "high"]),
+    visionQaModel: z.string().min(1).max(120).nullable().optional().default(null),
     renderEngine: MarketplaceAutoReviewRenderEngineSchema,
     compositionMode: MarketplaceAutoReviewCompositionModeSchema,
     renderIntent: HyperframesRenderIntentSchema,
@@ -174,6 +175,7 @@ const HyperframesAutoPlanOverrideFieldSchemas = {
   speechLanguage: HyperframesSpokenLanguageSchema.optional(),
   creativeBrief: z.string().trim().max(2000).optional(),
   qualityMode: z.enum(["fast", "balanced", "high"]).optional(),
+  visionQaModel: z.string().min(1).max(120).optional().nullable(),
   platformPresetId: z
     .enum(["generic_vertical_9_16", "tiktok_reels_shorts_9_16"])
     .optional(),
@@ -200,6 +202,7 @@ export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   speechLanguage: "en",
   creativeBrief: "",
   qualityMode: "balanced",
+  visionQaModel: "",
 } as const satisfies Record<keyof HyperframesAutoPlanOverrideInput, string>;
 
 export function buildDefaultHyperframesAutoPlanDefaults(
@@ -235,6 +238,7 @@ export function buildDefaultHyperframesAutoPlanDefaults(
     speechLanguage: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.speechLanguage,
     creativeBrief: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.creativeBrief,
     qualityMode: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.qualityMode,
+    visionQaModel: null,
     renderEngine: "hyperframes_composition",
     compositionMode,
     renderIntent,
@@ -325,6 +329,13 @@ export function normalizeHyperframesAutoPlanOverrides(
     );
   if (qualityMode.success && qualityMode.data) {
     normalized.qualityMode = qualityMode.data;
+  }
+  const visionQaModel =
+    HyperframesAutoPlanOverrideFieldSchemas.visionQaModel.safeParse(
+      overrides.visionQaModel
+    );
+  if (visionQaModel.success && visionQaModel.data) {
+    normalized.visionQaModel = visionQaModel.data;
   }
   const platformPresetId =
     HyperframesAutoPlanOverrideFieldSchemas.platformPresetId.safeParse(

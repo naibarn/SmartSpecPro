@@ -719,6 +719,95 @@ describe("summarizeEpisodeToMemory — manual episode -> series memory trigger",
     expect(keys.every((k: string) => k.startsWith("vd-episode-summary-manual-100-"))).toBe(true);
   });
 
+  /**
+   * Feature 132 §5.3 (F132B, ledgers-and-story-state, added 2026-07-09) —
+   * `summarizeEpisodeToMemory` appends a `story_state` memory event ONLY
+   * when the `verticalDramaQualityLedgers` tenant flag is on AND the
+   * memory-planner's response actually included a `story_state` object this
+   * run (a pre-upgrade skill response, or the flag being off, omits the
+   * key) — byte-identical event count to today in either case.
+   */
+  describe("story_state event write (F132B)", () => {
+    const STORY_STATE = {
+      episode: 3,
+      knownByProtagonist: ["the note is fake"],
+      threatLevel: 3,
+      requiredNextEpisodeResponse: "Aria must confront the rival",
+    };
+
+    it("appends a story_state event when the flag is ON and the planner response includes story_state", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaQualityLedgers: true });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([EPISODE_ROW]))
+        .mockReturnValueOnce(selectChain([]));
+      mockMemoryService.listEvents.mockResolvedValue([]);
+      mockMemoryService.buildEpisodeMemoryBundle = vi.fn().mockResolvedValue({});
+      mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+        planned: { ...PLANNED, story_state: STORY_STATE },
+        creditsUsed: 12,
+        model: "gpt-x",
+      });
+      mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+
+      await router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const storyStateCall = mockMemoryService.appendEvent.mock.calls.find(
+        (c) => c[0].memoryKind === "story_state",
+      );
+      expect(storyStateCall).toBeDefined();
+      expect(storyStateCall[0].payload.storyState).toEqual(STORY_STATE);
+      expect(storyStateCall[0].payload.episodeNumber).toBe(3);
+    });
+
+    it("does NOT append a story_state event when the flag is OFF, even if the planner response includes story_state", async () => {
+      mockDb.select
+        .mockReturnValueOnce(selectChain([EPISODE_ROW]))
+        .mockReturnValueOnce(selectChain([]));
+      mockMemoryService.listEvents.mockResolvedValue([]);
+      mockMemoryService.buildEpisodeMemoryBundle = vi.fn().mockResolvedValue({});
+      mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+        planned: { ...PLANNED, story_state: STORY_STATE },
+        creditsUsed: 12,
+        model: "gpt-x",
+      });
+      mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+
+      await router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const kinds = mockMemoryService.appendEvent.mock.calls.map((c) => c[0].memoryKind);
+      expect(kinds).not.toContain("story_state");
+    });
+
+    it("does NOT append a story_state event when the flag is ON but the planner response omits story_state (byte-identical event count)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaQualityLedgers: true });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([EPISODE_ROW]))
+        .mockReturnValueOnce(selectChain([]));
+      mockMemoryService.listEvents.mockResolvedValue([]);
+      mockMemoryService.buildEpisodeMemoryBundle = vi.fn().mockResolvedValue({});
+      mockRunVerticalDramaSeriesMemoryPlanning.mockResolvedValue({
+        planned: PLANNED, // no story_state field
+        creditsUsed: 12,
+        model: "gpt-x",
+      });
+      mockMemoryService.appendEvent.mockResolvedValue({ memoryEventId: "1" });
+
+      await router.summarizeEpisodeToMemory({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      const kinds = mockMemoryService.appendEvent.mock.calls.map((c) => c[0].memoryKind);
+      expect(kinds).not.toContain("story_state");
+    });
+  });
+
   it("is a free no-op when already manually summarized and force is not set", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW])); // loadOwnedEpisode
     mockMemoryService.listEvents.mockResolvedValue([

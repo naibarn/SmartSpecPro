@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/drama-script-evaluate-improve/output.schema.json",
+  "title": "Drama Script Evaluate & Improve Output",
+  "description": "Output for the unified drama script evaluation and improvement skill. Returns one Markdown result containing the final score after improvement and the best revised script only. For long scripts, the result may end cleanly at an episode/shot boundary with a continuation marker; internal loop details must never be shown.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "final_result"
+  ],
+  "properties": {
+    "final_result": {
+      "type": "string",
+      "title": "Final Improved Result",
+      "description": "A single Markdown output. It must start with the final score after improvement and a very short summary, followed by the best improved drama script in the same structure as the original input. It must not include internal loop details, alternative versions, or a long evaluation report. Use compact visual anchors to avoid repetitive scene, costume, and lighting descriptions while keeping enough detail for image/video generation.",
+      "minLength": 1,
+      "examples": [
+        "# ผลลัพธ์สุดท้าย\n\n**คะแนนหลังปรับปรุง: 8.6/10**\nสรุป: ปรับให้แรงค้างท้ายตอนชัดขึ้น ภาษาพูดง่ายขึ้น และฉากต่อเนื่องขึ้น\n\n---\n\nซีรีส์: ..."
+      ]
+    }
+  }
+}

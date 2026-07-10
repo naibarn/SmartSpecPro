@@ -37,7 +37,11 @@ vi.mock("../../services/modelRegistry", () => ({
 const { mockDb } = vi.hoisted(() => ({
   mockDb: {
     select: vi.fn(),
-    update: vi.fn(),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn(() => Promise.resolve([])),
+      })),
+    })),
     insert: vi.fn(),
     delete: vi.fn(),
     instance: {},
@@ -418,3 +422,33 @@ describe("generateStartFrameAngleVariations — F131Z threading (second call sit
     ]);
   });
 });
+
+describe("generateStartFrameImage — attached character reference image indexing (Image 1/2 mapping)", () => {
+  it("explicitly maps attached reference image indices (Image 1 = Name) and annotates character names in prompt", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesCharacterRefV2: false,
+    } as any);
+    const namedCharacterRows = [
+      { id: 501, name: "ใบข้าว" },
+      { id: 502, name: "ฝ้าย" },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow()]))
+      .mockReturnValueOnce(selectChain(namedCharacterRows))
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }]));
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce(PORTRAIT_A)
+      .mockResolvedValueOnce(PORTRAIT_B);
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.prompt).toContain("Image 1 = ใบข้าว, Image 2 = ฝ้าย");
+    expect(request.prompt).toContain("Attached character reference images:");
+    expect(mockDb.update).toHaveBeenCalled();
+  });
+});
+

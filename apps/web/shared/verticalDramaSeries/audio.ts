@@ -12,6 +12,7 @@
 
 import type { VerticalDramaWarning } from "./contracts";
 import type { VerticalDramaProviderCapabilities } from "./providerRouting";
+import type { VerticalDramaEpisodeDialogueQuality } from "./dialogueQuality";
 import type {
   VerticalDramaSubtitleCue,
   VerticalDramaSubtitleSafeArea,
@@ -125,6 +126,28 @@ export type VerticalDramaSeparateTtsPlanItem = {
   blocked: boolean;
   /** Reason code when blocked, e.g. `missing_voice_id`. */
   blockReason?: string;
+  /**
+   * Per-line async TTS submission/result (W12-A voice chain wave), mirroring
+   * `VerticalDramaMotionPromptPack["clips"][number]["videoTask"]`'s exact
+   * field naming (`pendingTaskId`/`...Url`/`mediaTaskId`) so the SAME
+   * client submit -> poll `media.getTask` -> persist-on-completion
+   * convention applies unchanged — see that field's own doc comment in
+   * `contracts.ts` for the full resume rationale. `pendingTaskId` is written
+   * by `verticalDramaEpisodes.generateEpisodeDialogueAudio` at submit time
+   * (before polling even starts, so a reload resumes tracking); `audioUrl`
+   * lands via the client's existing `updateEpisodeDraft` JSONB-patch after
+   * polling completes, same as `clip.videoTask.videoUrl`.
+   */
+  audioTask?: {
+    pendingTaskId?: string;
+    audioUrl?: string;
+    mediaTaskId?: string;
+    /** Canonical `media_assets` id, only once a future wave resolves the raw
+     *  `audioUrl` into one (mirrors `clip.startFrameAssetId`'s convention).
+     *  Absent today — `dialogueAudioTimeline` falls back to `audioUrl` when
+     *  this is not set (see `VerticalDramaAssemblyManifest` in `assembly.ts`). */
+    mediaAssetId?: string;
+  };
 };
 
 /**
@@ -170,6 +193,7 @@ export type VerticalDramaAudioTimingSummary = {
 
 export type VerticalDramaAudioRepairKind =
   | "shorten_overlong_line"
+  | "expand_underfilled_dialogue"
   | "assign_missing_voice_id"
   | "disable_native_audio"
   | "fix_timing_mismatch"
@@ -213,6 +237,8 @@ export type VerticalDramaDialogueAudioPlan = {
   subtitleCues: VerticalDramaSubtitleCue[];
   subtitleSafeArea: VerticalDramaSubtitleSafeArea;
   timing: VerticalDramaAudioTimingSummary;
+  /** Deterministic whole-episode speech density / usability analysis. */
+  dialogueQuality?: VerticalDramaEpisodeDialogueQuality;
   repairQueue: VerticalDramaAudioRepairAction[];
   warnings: VerticalDramaWarning[];
   /** True when `verticalDramaSeriesSubShots` was enabled for this plan. */

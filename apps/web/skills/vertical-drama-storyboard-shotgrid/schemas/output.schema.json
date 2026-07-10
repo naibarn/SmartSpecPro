@@ -219,6 +219,28 @@
           },
           "age_suitability": {
             "type": "string"
+          },
+          "source_beat_indexes": {
+            "description": "Optional superset (added 2026-07-07, story-density reform): script beat numbers (matching the input script's structure.beats[].beat) this shot visualizes — persisted shot-to-beat attribution replacing positional/proportional guesses downstream. REQUIRED in practice (see skill.md) whenever the input script's beats are dialogue-complete.",
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "silence_intent": {
+            "description": "Optional superset: declares this shot visual-only and why. Required in practice for any shot carrying no spoken dialogue. Excluded from per-clip speech-coverage checks but still counts toward the whole-episode floor.",
+            "type": "string",
+            "enum": [
+              "dramatic_pause",
+              "action_visual",
+              "montage",
+              "establishing"
+            ]
+          },
+          "target_speech_seconds": {
+            "description": "Optional superset: this shot's speech target derived from its own duration_seconds (clamp(duration_seconds * 0.68, 2.5, duration_seconds - 0.75), mirroring the platform's canonical per-shot speech-budget calculation). Omit or set to 0 for a declared silence_intent shot.",
+            "type": "number",
+            "minimum": 0
           }
         },
         "required": [

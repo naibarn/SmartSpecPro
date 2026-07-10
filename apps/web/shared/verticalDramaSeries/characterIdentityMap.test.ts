@@ -3,6 +3,7 @@ import {
   buildCharacterDescriptorLine,
   buildCharacterIdentityMapBlock,
   findMissingCharacterIdentityWarnings,
+  formatIdentityLockedImagePrompt,
   type VerticalDramaCharacterDescriptorSource,
 } from "./characterIdentityMap";
 
@@ -169,5 +170,32 @@ describe("findMissingCharacterIdentityWarnings", () => {
     expect(warnings).toEqual([
       { shotNumber: 2, characterKey: "character-8", characterName: "เจ้าเกลือ" },
     ]);
+  });
+});
+
+describe("formatIdentityLockedImagePrompt", () => {
+  it("returns basePrompt unchanged when entries array is empty", () => {
+    expect(formatIdentityLockedImagePrompt("A scenic view of a city.", [])).toBe(
+      "A scenic view of a city."
+    );
+  });
+
+  it("adds generic attached reference instruction when names are empty", () => {
+    const formatted = formatIdentityLockedImagePrompt("A close-up shot.", [{ name: "" }]);
+    expect(formatted).toContain("Use the attached reference image as this character's exact identity");
+  });
+
+  it("annotates character names and appends numbered Image 1 / Image 2 lock mapping", () => {
+    const prompt = "ใบข้าว talks to ฝ้าย in the shop.";
+    const formatted = formatIdentityLockedImagePrompt(prompt, [
+      { name: "ใบข้าว" },
+      { name: "ฝ้าย" },
+    ]);
+    expect(formatted).toContain("ใบข้าว (see attached Image 1)");
+    expect(formatted).toContain("ฝ้าย (see attached Image 2)");
+    expect(formatted).toContain("Image 1 = ใบข้าว, Image 2 = ฝ้าย");
+    expect(formatted).toContain(
+      "Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.)"
+    );
   });
 });

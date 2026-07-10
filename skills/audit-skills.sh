@@ -773,6 +773,8 @@ if scenario_path.exists():
             return "direct-edit", "direct-edit"
         if "routing decision" in text:
             return "orchestra", "multi-agent-waves"
+        if "architecture" in text and "แตกแผน" in message:
+            return "orchestra", "quick-plan-chain"
         if "วางแผน" in message and "ทำต่อ" in message:
             return "orchestra", "quick-plan-chain"
         return "orchestra", "multi-agent-waves"

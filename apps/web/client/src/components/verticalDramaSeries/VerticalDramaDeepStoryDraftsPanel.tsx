@@ -117,6 +117,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -159,13 +166,7 @@ import {
   PREMIUM_DRAFT_SCORE_DIMENSIONS,
   pickCopy,
   verticalDramaCopy,
-  seasonCritiqueApplyFooterText,
-  seasonCritiqueApplySuccessText,
-  seasonCritiqueEvidenceEpisodesText,
-  seasonCritiqueFindingKindLabel,
-  seasonCritiqueRejectedLineText,
-  seasonCritiqueScoreText,
-  /** Async story jobs (#28, added 2026-07-08) — submit -> poll progress copy, shared by generate/extend/critique/apply. */
+  /** Async story jobs (#28, added 2026-07-08) — submit -> poll progress copy, shared by generate/extend/improve_script. */
   storyJobProgressText,
   type VerticalDramaLang,
   type VerticalDramaPremiumDraftScoreDimension,
@@ -182,6 +183,21 @@ import {
   tieInDraftFullyReconciledText,
   tieInDraftMismatchSummaryText,
 } from "./verticalDramaTieInDraftCopy";
+/**
+ * "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — pulled out to its own
+ * file (unlike the removed `VerticalDramaSeasonCritiqueCard`, which lived
+ * inline here) since it has real sub-structure (edit-toggle request box,
+ * needs-review fail-closed state, per-episode comparison list). Imports
+ * `pollVerticalDramaStoryJob`/`VerticalDramaStoryJobKind`/
+ * `VerticalDramaStoryJobProgressLike` back FROM this file (a deliberate,
+ * narrow circular import — safe here since `pollVerticalDramaStoryJob` is a
+ * hoisted `function` declaration, not a `const`/class, so it is fully bound
+ * before either module's top-level code ever calls it) rather than this file
+ * importing the card in one direction and the card importing the poll helper
+ * in the other via some third shared module — see that file's own header
+ * doc comment.
+ */
+import { VerticalDramaImproveScriptCard } from "./VerticalDramaImproveScriptCard";
 
 /* -------------------------------------------------------------------------- */
 /* Async story jobs (#28, added 2026-07-08) — submit -> poll                  */
@@ -191,7 +207,7 @@ import {
 /* imperative `utils.*.fetch()` (not a `useQuery` subscription) so this can   */
 /* run inside an event handler / resume effect without a per-poll re-render.  */
 /* Shared by `VerticalDramaDeepStoryDraftsActions` (deep_generate/extend) and */
-/* `VerticalDramaSeasonCritiqueCard` (critique/apply_critique) — the poll     */
+/* `VerticalDramaImproveScriptCard` (improve_script, its own file) — the poll */
 /* loop itself is 100% kind-agnostic; callers branch on the polled record's   */
 /* OWN `kind` (not the kind they expected to submit) before interpreting      */
 /* `result`, so a cross-kind dedupe race (this series already has a DIFFERENT */
@@ -200,10 +216,25 @@ import {
 /* result shape as its own.                                                  */
 /* -------------------------------------------------------------------------- */
 
-export type VerticalDramaStoryJobKind = "deep_generate" | "extend" | "critique" | "apply_critique";
+/**
+ * `"improve_script"` (added 2026-07-10) — the "ปรับปรุงบทละครให้มีความสมบูรณ์"
+ * job kind `VerticalDramaImproveScriptCard` submits via `startImproveScript`
+ * (replaces the removed `"critique" | "apply_critique" | "quality_loop"`
+ * flow). Polled through the exact same `pollVerticalDramaStoryJob` loop as
+ * every other kind below; only that card branches on it (see its own
+ * `pollStoryJob`'s `onSucceeded`/`onFailed`).
+ */
+export type VerticalDramaStoryJobKind = "deep_generate" | "extend" | "improve_script";
 
 export interface VerticalDramaStoryJobProgressLike {
-  phase: "outline" | "draft" | "review" | "fix" | "reading";
+  /**
+   * Feature 132 §5 (F132B, ledgers-and-story-state) — `"ledger"` is the new
+   * `ledger_plan` job phase (runs after `"outline"`, before per-episode
+   * `"draft"`ing) — see `services/verticalDramaStoryJobs.ts`'s
+   * `VerticalDramaStoryJobProgressPhase` and `verticalDramaCopy.ts`'s
+   * `storyJobProgressText` for the matching label branch.
+   */
+  phase: "outline" | "ledger" | "draft" | "review" | "fix" | "reading";
   chunkIndex?: number;
   chunkCount?: number;
   callsDone?: number;
@@ -698,6 +729,21 @@ export interface VerticalDramaDeepStoryDraftsActionsProps {
    * so this component does not need the rejection reason.
    */
   onGenerateStoryBible: () => Promise<void>;
+  /**
+   * Feature 132 §4.4 (F132A) — the series' active "โจทย์เรื่องที่อยากได้"
+   * (`series.bible.userPremise`), sourced by the parent
+   * (`VerticalDramaSeriesDetailPage.tsx`). Display-only here: renders a
+   * collapsed/truncated read-only preview + an edit-affordance link to
+   * series settings, ahead of the primary generate/update action, only when
+   * non-empty. Undefined/empty renders nothing.
+   */
+  userPremise?: string;
+  /**
+   * Edit-affordance callback for the premise preview above — navigates to
+   * series settings (this component builds no new settings UI itself).
+   * Omitted/undefined simply renders the preview without a clickable link.
+   */
+  onEditPremiseClick?: () => void;
 }
 
 export function VerticalDramaDeepStoryDraftsActions({
@@ -708,6 +754,8 @@ export function VerticalDramaDeepStoryDraftsActions({
   deepDraftSummary,
   hasPlan,
   onGenerateStoryBible,
+  userPremise,
+  onEditPremiseClick,
 }: VerticalDramaDeepStoryDraftsActionsProps) {
   const utils = trpc.useUtils();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -757,10 +805,10 @@ export function VerticalDramaDeepStoryDraftsActions({
    * Refresh-safe resume (#28) — on mount (and whenever the series' active
    * story job changes), picks up any `deep_generate`/`extend` job still
    * queued/running for this series and resumes polling it, disabling the
-   * primary CTA with progress shown. A `critique`/`apply_critique` job
-   * belongs to `VerticalDramaSeasonCritiqueCard` instead (it runs its own
-   * identical resume effect) — this component only cares about its OWN two
-   * kinds, even though the pointer is per-series (see
+   * primary CTA with progress shown. An `improve_script` job belongs to
+   * `VerticalDramaImproveScriptCard` instead (it runs its own identical
+   * resume effect) — this component only cares about its OWN two kinds,
+   * even though the pointer is per-series (see
    * `enqueueVerticalDramaStoryJob`'s cross-kind dedupe doc comment).
    */
   const activeStoryJobQuery = trpc.verticalDramaSeries.getActiveStoryJob.useQuery(
@@ -1114,6 +1162,28 @@ export function VerticalDramaDeepStoryDraftsActions({
         </AlertDialogContent>
       </AlertDialog>
 
+      {userPremise && userPremise.trim().length > 0 && (
+        <div
+          className="rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs"
+          data-testid="vd-deep-story-drafts-premise-preview"
+        >
+          <p className="font-medium text-muted-foreground">
+            {pickCopy(lang, verticalDramaCopy.deepStoryDraftsPremisePreviewLabel)}
+          </p>
+          <p className="mt-1 line-clamp-2 text-foreground">{userPremise}</p>
+          {onEditPremiseClick && (
+            <button
+              type="button"
+              onClick={onEditPremiseClick}
+              className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-primary underline-offset-2 hover:underline"
+            >
+              <Pencil className="h-3 w-3" aria-hidden="true" />
+              {pickCopy(lang, verticalDramaCopy.deepStoryDraftsPremiseEditLinkLabel)}
+            </button>
+          )}
+        </div>
+      )}
+
       {!readOnly && (
         <Button
           type="button"
@@ -1208,370 +1278,12 @@ export function VerticalDramaDeepStoryDraftsActions({
         </div>
       )}
 
-      <VerticalDramaSeasonCritiqueCard
+      <VerticalDramaImproveScriptCard
         lang={lang}
         seriesId={seriesId}
         readOnly={readOnly}
         hasDrafts={Boolean(deepDraftSummary)}
       />
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* VerticalDramaSeasonCritiqueCard — "วิจารณ์ซีซั่นนี้ (AI)" (W11.5, added    */
-/* 2026-07-08)                                                                */
-/*                                                                             */
-/* Self-contained (mirrors `VerticalDramaArcReplanCard.tsx`'s own "queries    */
-/* its own `verticalDramaSeries.get`" convention — SAME query key             */
-/* `VerticalDramaSeriesDetailPage.tsx`'s own detail query already uses, so    */
-/* TanStack Query dedupes this into that ONE shared network request) —        */
-/* mounted unconditionally at the end of `VerticalDramaDeepStoryDraftsActions`*/
-/* above; renders nothing (`null`) until `hasDrafts` is true (mirrors that    */
-/* component's own `deepDraftSummary`-presence gate for "visible when drafts  */
-/* exist").                                                                   */
-/*                                                                             */
-/* Flow: "วิจารณ์ซีซั่นนี้ (AI)" -> `critiqueSeasonDrafts` -> results card     */
-/* (score/10, collapsed strengths, findings with default-all-checked          */
-/* checkboxes) -> "ปรับตามคำวิจารณ์ ({n} ข้อ, มีค่าใช้จ่าย)" ->                */
-/* `applySeasonCritique(selected)` -> success toast + rejected warnings +     */
-/* invalidate `get`. A PERSISTED `series.lastCritique` (read back from the    */
-/* same `get` query) renders on reopen, with the primary CTA relabeled        */
-/* "วิจารณ์ใหม่" to re-run.                                                   */
-/* -------------------------------------------------------------------------- */
-
-const seasonCritiqueFindingKindSchema = z.enum([
-  "protagonist_no_stake",
-  "world_rules_undefined",
-  "key_character_late_intro",
-  "character_agency_zero_decisions",
-  "antagonist_tactic_repetition",
-  "finale_no_price_paid",
-  "on_the_nose_dialogue",
-  "info_heavy_low_action",
-  // Task #22 (added 2026-07-09) — mirrors the server's
-  // `VD_SEASON_CRITIQUE_FINDING_KINDS` 9th entry
-  // (`server/services/verticalDramaStoryBible.ts`, a server-only file, not
-  // importable from the client). `seasonCritiqueFindingKindLabel` (imported
-  // from `verticalDramaCopy.ts`, out of this task's writable scope) falls
-  // back to the raw kind string for an unmapped kind — see this file's
-  // header doc comment's conductor follow-up for the missing copy entry.
-  "tie_in_distribution",
-  "other",
-]);
-
-const seasonCritiqueFindingSchema = z
-  .object({
-    kind: seasonCritiqueFindingKindSchema,
-    evidenceEpisodes: z.array(z.number().int().positive()).default([]),
-    problem: z.string().min(1),
-    fixInstruction: z.string().min(1),
-  })
-  .passthrough();
-
-const seasonCritiqueSchema = z
-  .object({
-    critiquedAt: z.string().min(1),
-    overallScore: z.number().min(1).max(10),
-    strengths: z.array(z.string()).default([]),
-    findings: z.array(seasonCritiqueFindingSchema).default([]),
-  })
-  .passthrough();
-
-export type VerticalDramaSeasonCritiqueFinding = z.infer<typeof seasonCritiqueFindingSchema>;
-export type VerticalDramaSeasonCritique = z.infer<typeof seasonCritiqueSchema>;
-
-/**
- * Tolerant read of `series.lastCritique` (W11.5) — `null` when absent or
- * malformed, never throws. Client-side mirror of the server's
- * `readActiveSeasonCritique` (a server-only file, not importable from the
- * client) — mirrors every other `readDeepDraft*` reader's own convention in
- * this file.
- */
-export function readSeasonCritique(raw: unknown): VerticalDramaSeasonCritique | null {
-  if (raw === undefined || raw === null) return null;
-  const parsed = seasonCritiqueSchema.safeParse(raw);
-  return parsed.success ? parsed.data : null;
-}
-
-/** Every finding index 0..n-1 — the checkbox list's "default all checked" selection seed. */
-export function allSeasonCritiqueFindingIndexes(findings: readonly unknown[]): number[] {
-  return findings.map((_, i) => i);
-}
-
-export interface VerticalDramaSeasonCritiqueCardProps {
-  lang: VerticalDramaLang;
-  seriesId: string;
-  readOnly: boolean;
-  /** Visibility gate — mirrors the caller's own `Boolean(deepDraftSummary)` ("visible when drafts exist"). */
-  hasDrafts: boolean;
-}
-
-export function VerticalDramaSeasonCritiqueCard({
-  lang,
-  seriesId,
-  readOnly,
-  hasDrafts,
-}: VerticalDramaSeasonCritiqueCardProps) {
-  const utils = trpc.useUtils();
-  // Same query key `VerticalDramaSeriesDetailPage.tsx`'s own detail query
-  // already uses — TanStack Query dedupes this into a single network
-  // request (see `VerticalDramaArcReplanCard.tsx` for the same convention).
-  // `enabled: hasDrafts` — nothing to critique/show until a draft exists, so
-  // no network fetch is wasted before that.
-  const seriesQuery = trpc.verticalDramaSeries.get.useQuery(
-    { seriesId },
-    { enabled: Boolean(seriesId) && hasDrafts, staleTime: 15_000 },
-  );
-
-  const persistedCritique = readSeasonCritique(
-    (seriesQuery.data as { series?: { lastCritique?: unknown } } | undefined)?.series?.lastCritique,
-  );
-
-  const [liveCritique, setLiveCritique] = useState<VerticalDramaSeasonCritique | null>(null);
-  const [selectedIndexes, setSelectedIndexes] = useState<Set<number>>(new Set());
-  const [rejected, setRejected] = useState<Array<{ episodeNumber: number; reason: string }>>([]);
-
-  const critique = liveCritique ?? persistedCritique;
-
-  const invalidateSeries = () => void utils.verticalDramaSeries.get.invalidate({ seriesId });
-
-  /**
-   * Async story jobs (#28, added 2026-07-08) — same submit -> poll pattern as
-   * `VerticalDramaDeepStoryDraftsActions` above (see its own `storyJobPoll`
-   * doc comment); `critiqueSeasonDrafts`/`applySeasonCritique` now enqueue
-   * and return `{ jobId, deduped }` immediately.
-   */
-  const [storyJobPoll, setStoryJobPoll] = useState<{
-    jobId: string;
-    kind: VerticalDramaStoryJobKind;
-    progress: VerticalDramaStoryJobProgressLike | null;
-  } | null>(null);
-  const storyJobPollInFlightRef = useRef(false);
-  const resumedStoryJobRef = useRef(false);
-
-  const critiqueMutation = trpc.verticalDramaSeries.critiqueSeasonDrafts.useMutation({
-    onError: (err: { message?: string }) => {
-      toast.error(err?.message || pickCopy(lang, verticalDramaCopy.seasonCritiqueError));
-    },
-  });
-
-  const applyMutation = trpc.verticalDramaSeries.applySeasonCritique.useMutation({
-    onError: (err: { message?: string }) => {
-      toast.error(err?.message || pickCopy(lang, verticalDramaCopy.seasonCritiqueApplyError));
-    },
-  });
-
-  /** Same query key `VerticalDramaDeepStoryDraftsActions` above already uses — TanStack dedupes into ONE network request regardless of which of the two components mounted first. */
-  const activeStoryJobQuery = trpc.verticalDramaSeries.getActiveStoryJob.useQuery(
-    { seriesId },
-    { enabled: Boolean(seriesId) && hasDrafts, staleTime: 15_000 },
-  );
-
-  async function pollStoryJob(jobId: string, submittedKind: VerticalDramaStoryJobKind) {
-    if (storyJobPollInFlightRef.current) return;
-    storyJobPollInFlightRef.current = true;
-    setStoryJobPoll({ jobId, kind: submittedKind, progress: null });
-    try {
-      await pollVerticalDramaStoryJob({
-        fetchStatus: () => utils.verticalDramaSeries.getStoryJobStatus.fetch({ seriesId, jobId }),
-        onProgress: (progress, kind) => setStoryJobPoll({ jobId, kind, progress }),
-        onSucceeded: (result, kind) => {
-          if (kind === "critique") {
-            const data = result as { critique: VerticalDramaSeasonCritique };
-            setLiveCritique(data.critique);
-            setSelectedIndexes(new Set(allSeasonCritiqueFindingIndexes(data.critique.findings)));
-            setRejected([]);
-          } else if (kind === "apply_critique") {
-            const data = result as {
-              updatedEpisodes: number[];
-              rejected: Array<{ episodeNumber: number; reason: string }>;
-            };
-            toast.success(seasonCritiqueApplySuccessText(lang, data.updatedEpisodes.length));
-            setRejected(data.rejected);
-          }
-          // Cross-kind dedupe race (deep_generate/extend) — nothing
-          // critique-specific to update; still refresh the series data.
-          invalidateSeries();
-        },
-        onFailed: (error, kind) => {
-          const fallback =
-            kind === "apply_critique" ? verticalDramaCopy.seasonCritiqueApplyError : verticalDramaCopy.seasonCritiqueError;
-          toast.error(error || pickCopy(lang, fallback));
-        },
-        onTimeout: () => toast.error(pickCopy(lang, verticalDramaCopy.storyJobTimeoutError)),
-        onNotFound: () => toast.error(pickCopy(lang, verticalDramaCopy.storyJobTimeoutError)),
-      });
-    } finally {
-      storyJobPollInFlightRef.current = false;
-      setStoryJobPoll(null);
-    }
-  }
-
-  /** Refresh-safe resume (#28) — mirrors `VerticalDramaDeepStoryDraftsActions`'s own resume effect, for this card's two kinds only. */
-  useEffect(() => {
-    const active = activeStoryJobQuery.data;
-    if (!active) return;
-    if (active.kind !== "critique" && active.kind !== "apply_critique") return;
-    if (resumedStoryJobRef.current || storyJobPollInFlightRef.current) return;
-    resumedStoryJobRef.current = true;
-    void pollStoryJob(active.jobId, active.kind);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStoryJobQuery.data]);
-
-  if (!hasDrafts) return null;
-
-  const isPollingCritique = storyJobPoll?.kind === "critique";
-  const isPollingApply = storyJobPoll?.kind === "apply_critique";
-  const liveStoryJobProgressText = storyJobPoll ? storyJobProgressText(lang, storyJobPoll.progress) : null;
-
-  const findings = critique?.findings ?? [];
-  const selectedCount = [...selectedIndexes].filter((i) => i >= 0 && i < findings.length).length;
-
-  const toggleFinding = (index: number) => {
-    setSelectedIndexes((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  };
-
-  return (
-    <div className="grid gap-2 border-t border-border/60 pt-2" data-testid="vd-season-critique-card">
-      {!readOnly && (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="w-fit gap-2"
-          disabled={critiqueMutation.isPending || isPollingCritique || isPollingApply}
-          onClick={async () => {
-            try {
-              const { jobId } = await critiqueMutation.mutateAsync({ seriesId, idempotencyKey: crypto.randomUUID() });
-              await pollStoryJob(jobId, "critique");
-            } catch {
-              // Enqueue-level error toast already shown by critiqueMutation's own onError.
-            }
-          }}
-          data-testid="vd-season-critique-cta"
-        >
-          {critiqueMutation.isPending || isPollingCritique ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-          ) : null}
-          {critiqueMutation.isPending || isPollingCritique
-            ? liveStoryJobProgressText ?? pickCopy(lang, verticalDramaCopy.seasonCritiqueRunning)
-            : pickCopy(lang, critique ? verticalDramaCopy.seasonCritiqueRerunCta : verticalDramaCopy.seasonCritiqueCta)}
-        </Button>
-      )}
-      {/* Async story jobs (#28) — a11y live region for the critique/apply progress text. */}
-      {liveStoryJobProgressText && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="text-xs text-muted-foreground"
-          data-testid="vd-season-critique-progress"
-        >
-          {liveStoryJobProgressText}
-        </p>
-      )}
-
-      {critique && (
-        <div className="grid gap-2 rounded-md border border-border/60 p-3" data-testid="vd-season-critique-results">
-          <p className="text-sm font-medium" data-testid="vd-season-critique-score">
-            {seasonCritiqueScoreText(lang, critique.overallScore)}
-          </p>
-
-          {critique.strengths.length > 0 && (
-            <details data-testid="vd-season-critique-strengths">
-              <summary className="cursor-pointer text-xs text-muted-foreground">
-                {pickCopy(lang, verticalDramaCopy.seasonCritiqueStrengthsToggle)}
-              </summary>
-              <ul className="mt-1 grid gap-0.5 pl-4 text-xs list-disc">
-                {critique.strengths.map((strength, i) => (
-                  <li key={i}>{strength}</li>
-                ))}
-              </ul>
-            </details>
-          )}
-
-          {rejected.length > 0 && (
-            <div
-              className="grid gap-0.5 rounded-md border border-amber-400/60 bg-amber-50 p-2 text-[11px] text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-400"
-              data-testid="vd-season-critique-rejected"
-            >
-              <p className="flex items-center gap-1 font-medium">
-                <AlertTriangle aria-hidden="true" className="h-3 w-3 shrink-0" />
-                {pickCopy(lang, verticalDramaCopy.seasonCritiqueRejectedHeading)}
-              </p>
-              {rejected.map((r) => (
-                <p key={r.episodeNumber}>{seasonCritiqueRejectedLineText(lang, r.episodeNumber, r.reason)}</p>
-              ))}
-            </div>
-          )}
-
-          {findings.length > 0 && !readOnly && (
-            <div className="grid gap-1.5" data-testid="vd-season-critique-findings">
-              <p className="text-xs font-medium text-muted-foreground">
-                {pickCopy(lang, verticalDramaCopy.seasonCritiqueFindingsLabel)}
-              </p>
-              {findings.map((finding, index) => {
-                const checkboxId = `vd-season-critique-finding-${index}`;
-                return (
-                  <label
-                    key={index}
-                    htmlFor={checkboxId}
-                    className="flex cursor-pointer items-start gap-2 rounded border border-border/40 p-1.5 text-xs"
-                    data-testid={`vd-season-critique-finding-${index}`}
-                  >
-                    <Checkbox
-                      id={checkboxId}
-                      checked={selectedIndexes.has(index)}
-                      onCheckedChange={() => toggleFinding(index)}
-                      data-testid={`vd-season-critique-finding-checkbox-${index}`}
-                    />
-                    <span className="grid gap-0.5">
-                      <span className="font-medium">
-                        {seasonCritiqueFindingKindLabel(lang, finding.kind)} —{" "}
-                        {seasonCritiqueEvidenceEpisodesText(lang, finding.evidenceEpisodes)}
-                      </span>
-                      <span>{finding.problem}</span>
-                      <span className="text-muted-foreground">{finding.fixInstruction}</span>
-                    </span>
-                  </label>
-                );
-              })}
-
-              <Button
-                type="button"
-                size="sm"
-                className="w-fit"
-                disabled={applyMutation.isPending || isPollingCritique || isPollingApply || selectedCount === 0}
-                onClick={async () => {
-                  try {
-                    const { jobId } = await applyMutation.mutateAsync({
-                      seriesId,
-                      findingIndexes: [...selectedIndexes],
-                      idempotencyKey: crypto.randomUUID(),
-                    });
-                    await pollStoryJob(jobId, "apply_critique");
-                  } catch {
-                    // Enqueue-level error toast already shown by applyMutation's own onError.
-                  }
-                }}
-                data-testid="vd-season-critique-apply-cta"
-              >
-                {applyMutation.isPending || isPollingApply ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
-                ) : null}
-                {applyMutation.isPending || isPollingApply
-                  ? liveStoryJobProgressText ?? pickCopy(lang, verticalDramaCopy.seasonCritiqueApplying)
-                  : seasonCritiqueApplyFooterText(lang, selectedCount)}
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

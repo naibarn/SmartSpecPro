@@ -310,6 +310,10 @@ describe("runVerticalDramaEpisodeQualityReview — v2 prompt injection (spec §1
     stage_direction_count: 0,
     reversal_count: 2,
     max_consecutive_same_emotion: 2,
+    new_proper_noun_count_per_shot: [1, 0, 2],
+    new_proper_noun_contract_mismatch_shot_count: 1,
+    anchor_line_gap: 2,
+    abstract_line_ungrounded_count: 1,
   };
 
   it("v1 byte-identical: the prompt has no density_metrics/tie_in_config/contract_version:2 text when neither new param is supplied", async () => {
@@ -359,6 +363,10 @@ describe("runVerticalDramaEpisodeQualityReview — v2 prompt injection (spec §1
                   stage_direction_count: 99,
                   reversal_count: 99,
                   max_consecutive_same_emotion: 99,
+                  new_proper_noun_count_per_shot: [99, 99],
+                  new_proper_noun_contract_mismatch_shot_count: 99,
+                  anchor_line_gap: 99,
+                  abstract_line_ungrounded_count: 99,
                 },
               }),
             },
@@ -583,6 +591,95 @@ describe("computeVerticalDramaDensityMetrics (spec §16.1 rule 1 / §7.7.1) — 
       stage_direction_count: 0,
       reversal_count: 0,
       max_consecutive_same_emotion: 0,
+      new_proper_noun_count_per_shot: [],
+      new_proper_noun_contract_mismatch_shot_count: 0,
+      anchor_line_gap: 0,
+      abstract_line_ungrounded_count: 0,
     });
+  });
+});
+
+describe("computeVerticalDramaDensityMetrics — Section 05 additions (spec §7.1/§7.2, F132D)", () => {
+  it("new_proper_noun_count_per_shot: counts new Thai-honorific/English-capitalized names per shot, cumulatively (not re-counted once seen)", () => {
+    const clipDurations = [
+      { shotNumber: 1, durationSeconds: 8 },
+      { shotNumber: 2, durationSeconds: 8 },
+    ];
+    const dialoguePlan = {
+      dialogueLines: [
+        { shotNumber: 1, text: "คุณสมชายบอกว่านางสาวมาลีจะมาสาย และ Mr Somsak ก็รอไม่ไหว" },
+        { shotNumber: 2, text: "คุณสมชายพยักหน้า" },
+      ],
+    };
+    const result = computeVerticalDramaDensityMetrics({ dialoguePlan, clipDurations });
+    expect(result.new_proper_noun_count_per_shot).toHaveLength(2);
+    expect(result.new_proper_noun_count_per_shot[0]).toBeGreaterThanOrEqual(3);
+    // Shot 2 repeats the same honorific+name already seen in shot 1 — not "new" again.
+    expect(result.new_proper_noun_count_per_shot[1]).toBe(0);
+  });
+
+  it("new_proper_noun_contract_mismatch_shot_count: surfaces a mismatch when a shot's heuristic count exceeds contract.newClueIds.length", () => {
+    const clipDurations = [{ shotNumber: 1, durationSeconds: 8 }];
+    const dialoguePlan = {
+      dialogueLines: [
+        {
+          shotNumber: 1,
+          text: "คุณสมชายและนางสาวมาลีคุยกับ Mr Somsak เรื่องนางวรรณา",
+        },
+      ],
+    };
+    const contracts = [{ shotNumber: 1, newClueIds: ["clue-1"] }];
+
+    const result = computeVerticalDramaDensityMetrics({ dialoguePlan, clipDurations, contracts });
+    expect(result.new_proper_noun_count_per_shot[0]).toBeGreaterThan(1);
+    expect(result.new_proper_noun_contract_mismatch_shot_count).toBe(1);
+  });
+
+  it("new_proper_noun_contract_mismatch_shot_count is 0 when no contracts are supplied at all (degraded mode)", () => {
+    const clipDurations = [{ shotNumber: 1, durationSeconds: 8 }];
+    const dialoguePlan = {
+      dialogueLines: [{ shotNumber: 1, text: "คุณสมชายและนางสาวมาลีคุยกับ Mr Somsak" }],
+    };
+    const result = computeVerticalDramaDensityMetrics({ dialoguePlan, clipDurations });
+    expect(result.new_proper_noun_contract_mismatch_shot_count).toBe(0);
+  });
+
+  it("anchor_line_gap: 5 shots with contract.anchorLine true only on shot 1 and shot 5 -> gap of 3", () => {
+    const contracts = [
+      { shotNumber: 1, anchorLine: true },
+      { shotNumber: 2, anchorLine: false },
+      { shotNumber: 3, anchorLine: false },
+      { shotNumber: 4, anchorLine: false },
+      { shotNumber: 5, anchorLine: true },
+    ];
+    expect(computeVerticalDramaDensityMetrics({ contracts }).anchor_line_gap).toBe(3);
+  });
+
+  it("anchor_line_gap: no contracts supplied at all -> explicit 0 (chosen degrade convention)", () => {
+    expect(computeVerticalDramaDensityMetrics({}).anchor_line_gap).toBe(0);
+  });
+
+  it("abstract_line_ungrounded_count: an isolated abstract line with no adjacent lines at all is counted", () => {
+    const clipDurations = [{ shotNumber: 1, durationSeconds: 8 }];
+    const dialoguePlan = {
+      dialogueLines: [{ shotNumber: 1, text: "ความจริงต้องถูกเปิดเผย" }],
+    };
+    const result = computeVerticalDramaDensityMetrics({ dialoguePlan, clipDurations });
+    expect(result.abstract_line_ungrounded_count).toBe(1);
+  });
+
+  it("abstract_line_ungrounded_count: the same abstract term immediately followed by a grounding (plain) line is NOT counted", () => {
+    const clipDurations = [
+      { shotNumber: 1, durationSeconds: 8 },
+      { shotNumber: 2, durationSeconds: 8 },
+    ];
+    const dialoguePlan = {
+      dialogueLines: [
+        { shotNumber: 1, text: "ความจริงต้องถูกเปิดเผย" },
+        { shotNumber: 2, text: "เดี๋ยวเราไปดูกันที่ห้องเก็บของ" },
+      ],
+    };
+    const result = computeVerticalDramaDensityMetrics({ dialoguePlan, clipDurations });
+    expect(result.abstract_line_ungrounded_count).toBe(0);
   });
 });

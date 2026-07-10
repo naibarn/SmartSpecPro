@@ -1,0 +1,25 @@
+{
+  "name": "vertical_drama_ledger_planner",
+  "display_name": "Vertical Drama Quality Ledger Planner",
+  "display_name_th": "ผู้วางแผนบัญชีคุณภาพละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Build the seven quality ledgers (evidence, character activation, threat ladder, consequence, thread, world-rule, causal-chain) for a Vertical Drama season's active breakdown (Feature 132 F132B, ledgers-and-story-state).",
+  "description_th": "สร้างบัญชีคุณภาพทั้งเจ็ดประเภทสำหรับซีซั่นละครแนวตั้ง (เบาะแส, การเปิดตัวตัวละคร, บันไดภัยคุกคาม, ผลของการตัดสินใจ, เธรดเรื่อง, กฎโลก, แผนที่เหตุและผล)",
+  "entry_prompt": "You are the Vertical Drama quality ledger planner. Given a series bible and its active episode breakdown, produce the seven quality ledgers that will be reconciled deterministically after every future draft/critique/loop/replan.",
+  "input_schema": "schemas/input.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "examples": {
+    "input": "examples/example.input.json",
+    "output_sample": "examples/example.output.sample.json"
+  },
+  "capabilities": [
+    "plain_text_output",
+    "json_handoff",
+    "bilingual_ui",
+    "continuity_tracking"
+  ],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-ledger-planner",
+  "upstream_manifest_name": "vertical_drama_ledger_planner",
+  "openai_sora_primary": false
+}

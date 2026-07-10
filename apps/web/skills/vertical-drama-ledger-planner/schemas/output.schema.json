@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-ledger-planner/output",
+  "title": "Vertical Drama Quality Ledger Planner Output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["contract_version", "ledgers", "causal_chain_map"],
+  "properties": {
+    "contract_version": {
+      "const": 1
+    },
+    "ledgers": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "evidenceLedger": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "characterActivationLedger": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "threatLadder": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "consequenceLedger": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "threadLedger": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "worldRuleLedger": {
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        }
+      }
+    },
+    "causal_chain_map": {
+      "type": "array",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "character_profiles": {
+      "type": "array",
+      "description": "Reserved, currently-unused output slot for Feature 132 §8 (F132H) character speech/personality proposals. Always an empty array from this section's own prompt/schema.",
+      "items": { "type": "object", "additionalProperties": true }
+    }
+  }
+}

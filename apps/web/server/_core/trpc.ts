@@ -3,9 +3,26 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
 import { createRateLimitMiddleware } from "./rateLimitedProcedure";
+import { getTraceId } from "../services/traceContext";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
+  errorFormatter({ shape, ctx, error }) {
+    // Resolve a trace/correlation id so clients can show/report it alongside
+    // the error. Prefer the AsyncLocalStorage-scoped trace id (set for every
+    // request by auditMiddleware); fall back to the Express correlation id
+    // set by correlationIdMiddleware. Never surface anything else (no stack
+    // traces, env, or internal paths) — only the id is added.
+    const traceId = getTraceId() ?? ctx?.req?.requestId ?? null;
+
+    return {
+      ...shape,
+      data: {
+        ...shape.data,
+        traceId,
+      },
+    };
+  },
 });
 
 export const router = t.router;

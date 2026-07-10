@@ -25,6 +25,7 @@ import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -59,12 +60,24 @@ interface GenerateNextEpisodesViaLlmParams {
 
 interface GenerateNextEpisodesViaLlmResult {
   generated: EpisodeBreakdownItem[];
+  previousEpisodeBridge: {
+    episodeNumber: number;
+    logline?: string;
+    keyBeats?: string[];
+  } | null;
   creditsUsed: number;
   model: string;
 }
 
 const continuationResponseSchema = z.object({
   episodes: z.array(episodeBreakdownItemSchema).min(1),
+  previousEpisodeBridge: z
+    .object({
+      episodeNumber: z.number().int().positive(),
+      logline: z.string().min(1).optional(),
+      keyBeats: z.array(z.string().min(1)).min(1).optional(),
+    })
+    .optional(),
 });
 
 function buildContinuationPrompts(
@@ -77,11 +90,13 @@ function buildContinuationPrompts(
 
   const systemPrompt = [
     "You are continuing an existing vertical-drama (short-form mobile drama series) story bible.",
+    renderCriteriaVersionMarker(),
     "You are given the series' plot/tone/character setup PLUS every episode written so far, and must invent what comes NEXT.",
     langInstruction,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    '{"episodes": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}',
+    '{"previousEpisodeBridge": {"episodeNumber": number, "logline": string, "keyBeats": string[]}, "episodes": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}',
     `"episodes" must contain exactly ${params.count} NEW entries, numbered starting at ${params.nextEpisodeNumber} and increasing by 1, each with 3-5 short keyBeats.`,
+    `Also revise the immediately previous episode (${params.nextEpisodeNumber - 1}) just enough to bridge into the new continuation. Put that in "previousEpisodeBridge" with episodeNumber ${params.nextEpisodeNumber - 1}; do not rewrite earlier episodes.`,
     `Continue the story with new episodes numbered starting at ${params.nextEpisodeNumber}, maintaining tone/plot/character consistency with everything above. Do not repeat prior beats.`,
   ].join("\n");
 
@@ -103,6 +118,7 @@ function buildContinuationPrompts(
     `Characters: ${JSON.stringify(characters)}`,
     `Existing episodes so far (for continuity — do not repeat these beats): ${JSON.stringify(params.existingEpisodes)}`,
     `Generate exactly ${params.count} new episodes starting at episode number ${params.nextEpisodeNumber}.`,
+    `If there is an existing episode ${params.nextEpisodeNumber - 1}, revise only its final bridge beat/logline so it naturally leads into episode ${params.nextEpisodeNumber}; keep its core outcome intact.`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -158,6 +174,15 @@ export async function generateNextEpisodesViaLlm(
     );
   }
   const generated = validatedData.episodes.slice(0, params.count);
+  const expectedBridgeEpisodeNumber = params.nextEpisodeNumber - 1;
+  const previousEpisodeBridge =
+    validatedData.previousEpisodeBridge?.episodeNumber === expectedBridgeEpisodeNumber
+      ? {
+          episodeNumber: validatedData.previousEpisodeBridge.episodeNumber,
+          logline: validatedData.previousEpisodeBridge.logline,
+          keyBeats: validatedData.previousEpisodeBridge.keyBeats,
+        }
+      : null;
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
@@ -182,5 +207,5 @@ export async function generateNextEpisodesViaLlm(
     },
   });
 
-  return { generated, creditsUsed, model };
+  return { generated, previousEpisodeBridge, creditsUsed, model };
 }

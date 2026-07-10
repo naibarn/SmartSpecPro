@@ -30,6 +30,7 @@ import {
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import {
   buildTargetAudienceRegionInstruction,
   type VerticalDramaTargetAudienceRegion,
@@ -411,7 +412,33 @@ export function resolveCharacterRoleTier(
 
   if (LEAD_FEMALE_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "lead_female";
   if (LEAD_MALE_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "lead_male";
-  if (LEAD_GENERIC_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "lead";
+  if (LEAD_GENERIC_KEYWORDS.some((kw) => normalizedRole.includes(kw))) {
+    const isFemale = [
+      "หญิง",
+      "แม่",
+      "สาว",
+      "นาง",
+      "woman",
+      "female",
+      "mother",
+      "lady",
+      "girl",
+    ].some((kw) => combined.includes(kw));
+    const isMale = [
+      "ชาย",
+      "พ่อ",
+      "หนุ่ม",
+      "นาย",
+      "man",
+      "male",
+      "father",
+      "guy",
+      "boy",
+    ].some((kw) => combined.includes(kw));
+    if (isFemale && !isMale) return "lead_female";
+    if (isMale && !isFemale) return "lead_male";
+    return "lead";
+  }
   if (VILLAIN_FEMALE_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "villain_female";
   if (VILLAIN_MALE_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "villain_male";
   if (VILLAIN_KEYWORDS.some((kw) => normalizedRole.includes(kw))) return "villain";
@@ -442,23 +469,26 @@ const ROLE_TIER_DIRECTIVES: Record<CharacterRoleTier, string | undefined> = {
     "always wins and is never changed or aged up."
   ),
   lead_female: (
-    "Modern vertical-drama heroine (นางเอก): emotionally magnetic, natural beauty with strong " +
+    "Modern vertical-drama heroine (นางเอก): หญิงสาวสวยสง่า อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น " +
+    "(Warm natural lighting, beautiful appearance), emotionally magnetic, natural beauty with strong " +
     "screen presence, expressive eyes capable of tears, vulnerable yet determined expression, " +
-    "soft delicate features, relatable but unforgettable, quiet strength, romantic-drama " +
-    "tension; simple elegant outfit; realistic skin texture. Apply this WITHIN the age and " +
+    "soft delicate features, relatable but unforgettable, quiet strength, clean bright warm lighting, " +
+    "romantic-drama tension; simple elegant outfit; realistic skin texture. Apply this WITHIN the age and " +
     "identity already given in the character's description — never change or imply an " +
     "older/younger age than described."
   ),
   lead_male: (
-    "Modern vertical-drama male lead (พระเอก): magnetic and intense, cold-CEO energy, sharp " +
-    "realistic facial structure, intense eyes, quiet dominance, protective yet intimidating, " +
-    "emotionally restrained with hidden pain; dark elegant outfit; realistic skin texture. " +
+    "Modern vertical-drama male lead (พระเอก): ชายหนุ่มหล่อเหลาชวนหลงใหล อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น " +
+    "(Warm natural lighting, handsome appearance), magnetic and intense, cold-CEO energy, sharp " +
+    "realistic facial structure, intense eyes, quiet dominance, protective yet inviting, clean bright warm lighting, " +
+    "emotionally restrained with hidden pain; elegant outfit; realistic skin texture. " +
     "Apply this WITHIN the age and identity already given in the character's description — " +
     "never change or imply an older/younger age than described."
   ),
   lead: (
-    "Modern vertical-drama lead (gender-neutral): emotionally magnetic with strong screen " +
-    "presence, natural realistic features with quiet intensity, expressive eyes, relatable but " +
+    "Modern vertical-drama lead (gender-neutral / ตัวเอก): ตัวเอกรูปร่างหน้าตาดี สง่างาม อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น " +
+    "(Warm natural lighting, beautiful/handsome appearance), emotionally magnetic with strong screen " +
+    "presence, natural realistic features with clean bright warm lighting, expressive eyes, relatable but " +
     "unforgettable, understated elegant styling; realistic skin texture. Apply this WITHIN the " +
     "age and identity already given in the character's description — never change or imply an " +
     "older/younger age than described."
@@ -703,7 +733,7 @@ function buildPresetVisualIdentityInstruction(
   );
 }
 
-function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
+export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
   const appearanceDirective = getRoleTierAppearanceDirective(params.role, params.description);
   const tierNegativeTerms = getRoleTierNegativeTerms(params.role, params.description);
   const inputPayload = {
@@ -726,6 +756,7 @@ function buildUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
   };
 
   return [
+    renderCriteriaVersionMarker(),
     "Generate the character visual bible for exactly ONE character using the following input",
     "(matches this skill's schemas/input.schema.json shape):",
     JSON.stringify(inputPayload, null, 2),
@@ -819,7 +850,7 @@ export async function generateCharacterVisualPrompts(
 
   const model = await resolveCharacterVisualBibleModel();
   const systemPrompt = loadCharacterVisualBibleSystemPrompt();
-  const userPrompt = buildUserPrompt(params);
+  const userPrompt = buildCharacterVisualPromptsUserPrompt(params);
 
   // Single-character payload (portrait/turnaround/full-body/expression/
   // outfit prompts + attachment_package) — smaller than the multi-shot

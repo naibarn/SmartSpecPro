@@ -75,6 +75,7 @@
 import { z } from "zod";
 import { HyperframesFinalCompositeSubtitlePresetSchema } from "@shared/hyperframes/runtimeApiSchemas";
 import {
+  VD_AD_BANNER_FRAME_WIDTH,
   VD_AD_BANNER_MAX_PER_SERIES,
   VD_AD_BANNER_PLACEMENT_IDS,
   getAdBannerPlacementPreset,
@@ -141,6 +142,25 @@ export interface SubtitlesInput {
   fontsDir?: string;
 }
 
+/**
+ * A resolved (locally-staged) IMAGE watermark (task #34, plan.md ลายน้ำ —
+ * `type: "image"` only; `type: "text"` renders through the ASS overlay
+ * channel instead, see `VdTextOverlayAssEvent`'s `"watermark_text"` kind).
+ * Spans the WHOLE video by construction (the job service loops it for
+ * exactly `videoDurationSeconds`, mirroring how a `fullscreen`
+ * `ResolvedBanner` would if it covered the entire clip) — there is no
+ * start/end window because a watermark is always "entire clip" by design.
+ */
+export interface ResolvedWatermarkImage {
+  localPngPath: string;
+  position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+  /** 0.2-0.8 (validated by the caller's zod schema; this module trusts it). */
+  opacity: number;
+  /** 5-20 (% of the 1080px-wide compositing frame). */
+  scalePct: number;
+  marginPx: number;
+}
+
 export interface BuildFinalRenderFfmpegArgsInput {
   /** Absolute path to the concat-demuxer list file (same as `buildConcatFfmpegArgs`). */
   concatListPath: string;
@@ -155,6 +175,13 @@ export interface BuildFinalRenderFfmpegArgsInput {
   banners?: ResolvedBanner[];
   dialogueAudio?: DialogueAudioInput;
   subtitles?: SubtitlesInput | null;
+  /** Task #34 — a series' IMAGE watermark, composited as the ABSOLUTE
+   *  TOP-MOST layer (above fullscreen banners, plan.md "z-order บนสุดเหนือ
+   *  ทุกชั้นรวม fullscreen banner — branding ต้องรอดเสมอ"). See
+   *  `resolveWatermarkOverlayFragment`'s doc comment for the z-order
+   *  implementation and its one documented scope limit (the TEXT watermark
+   *  variant does not get this same guarantee). */
+  watermarkImage?: ResolvedWatermarkImage;
 }
 
 /** One caption/subtitle line to burn in — shot-timeline-agnostic; the caller
@@ -264,6 +291,10 @@ interface VdAssStyleSpec {
   /** When true, `buildAssDialogueEvent` renders the body text as evenly-timed
    *  `\k` karaoke word tags instead of plain text (see `buildKaraokeAssText`). */
   supportsKaraoke?: boolean;
+  /** ASS `[V4+ Styles]` `Spacing` field (letter-spacing, px) — defaults to
+   *  `0` (byte-identical to before task #34) when omitted; used by
+   *  `VdTimeSetting` (task #34, see that style's own comment). */
+  spacing?: number;
 }
 
 /**
@@ -584,7 +615,7 @@ function formatAssStyleLine(style: VdAssStyleSpec): string {
       0,
       100,
       100,
-      0,
+      style.spacing ?? 0,
       0,
       style.borderStyle,
       style.outline,
@@ -596,6 +627,380 @@ function formatAssStyleLine(style: VdAssStyleSpec): string {
       1,
     ].join(","),
   ].join(" ");
+}
+
+/* -------------------------------------------------------------------------- */
+/* Text Overlay Suite (task #34) — 8 overlay kinds, one shared ASS channel   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The 8 overlay "kinds" (task #34, plan.md v2): each gets its OWN named ASS
+ * style (`VD_TEXT_OVERLAY_ASS_STYLES` below), independent of the 10 caption
+ * presets above — a rendered `.ass` file may carry a caption-preset style, any
+ * subset of these 8, or (subtitlePreset "none" + at least one overlay) ONLY
+ * overlay styles, since `buildAssSubtitleFile`'s 4th `overlays` argument is
+ * fully independent of its `preset` argument (see that function's doc
+ * comment). `cards[].kind === "custom"` reuses the `narrative_hook` ASS kind
+ * (see `defaultCardStyleVariantForKind` in
+ * `@shared/verticalDramaSeries/textOverlay.ts`) — there is no dedicated
+ * "custom" style, keeping the ASS style budget at exactly 8.
+ */
+export const VD_TEXT_OVERLAY_ASS_KINDS = [
+  "end_card",
+  "opener_recap",
+  "title_bumper",
+  "episode_indicator",
+  "character_intro",
+  "time_setting",
+  "narrative_hook",
+  "watermark_text",
+] as const;
+export type VdTextOverlayAssKind = (typeof VD_TEXT_OVERLAY_ASS_KINDS)[number];
+
+/** The 4 frame-corner positions shared by `episode_indicator` (top corners
+ *  only) and `watermark_text` (all 4) — mirrors
+ *  `@shared/verticalDramaSeries/textOverlay.ts`'s `VdWatermarkPosition`
+ *  (this module intentionally does NOT import that shared type, to keep this
+ *  file's own contract self-contained/pure like its sibling banner types). */
+export type VdTextOverlayCornerPosition =
+  | "top_left"
+  | "top_right"
+  | "bottom_left"
+  | "bottom_right";
+
+function isCornerPosition(value: unknown): value is VdTextOverlayCornerPosition {
+  return (
+    value === "top_left" ||
+    value === "top_right" ||
+    value === "bottom_left" ||
+    value === "bottom_right"
+  );
+}
+
+/**
+ * One resolved (render-time, absolute-timeline) text overlay event. The
+ * caller (`verticalDramaEpisodeVideoAssembly.ts`'s `runAssemblyJob` /
+ * `resolveEpisodeTextOverlayRunInputs`) is responsible for resolving every
+ * anchor (shot-local, "entire clip", or "end of clip") down to concrete
+ * `startSec`/`endSec` BEFORE calling `buildAssSubtitleFile` — mirrors
+ * `AssSubtitleLine`'s own "shot-timeline-agnostic" contract exactly.
+ */
+export interface VdTextOverlayAssEvent {
+  kind: VdTextOverlayAssKind;
+  startSec: number;
+  endSec: number;
+  text: string;
+  /** A second, smaller line rendered below `text` via `\N` (end card's
+   *  "follow line", character intro's role, title bumper's "EP N: ..." line).
+   */
+  secondaryText?: string;
+  /** `end_card` only: `"lower_band"` repositions the event to a lower-third-
+   *  ish band via an inline `\an2\pos()` override (default/omitted =
+   *  `"center_card"`, the style's own baked-in middle-center alignment).
+   *  `episode_indicator`/`watermark_text`: the corner to render in (episode
+   *  indicator only ever sends a TOP corner; watermark sends all 4). */
+  variant?: "center_card" | "lower_band" | VdTextOverlayCornerPosition;
+  /** `watermark_text` only — 0.2-0.8; overrides the style's baked-in primary
+   *  fill alpha via an inline `\1a` tag so ONE style can serve any
+   *  series-configured opacity. */
+  opacity?: number;
+  /** `watermark_text` only — pixel margin from its `variant` corner; drives
+   *  an explicit `\pos()` override so a continuous, series-configurable
+   *  value is respected regardless of the style's own fixed MarginL/R/V
+   *  (which can only ever express ONE fixed number, not a per-series one). */
+  marginPx?: number;
+}
+
+/**
+ * Style table for the 8 overlay kinds (task #34, plan.md "Styles" section) —
+ * ALL eight are always defined (unlike `VD_CAPTION_PRESET_ASS_STYLES`, which
+ * has a `null` sentinel for "skip burn-in"): an overlay event is only ever
+ * present in `overlays` when its owning kind is actually enabled, so there is
+ * no "kind with nothing to render" case here. Every font name is one of
+ * `hyperframesThaiFontFamilies` (`@shared/hyperframes/creativePresets.ts`),
+ * same allow-list convention as `VD_CAPTION_PRESET_ASS_STYLES`. Canvas is
+ * fixed 1080x1920 (9:16-only feature, same as the caption presets) — every
+ * margin/size below is tuned against exactly that canvas, placed clear of the
+ * existing caption safe zones (top ~130px indicator band, bottom ~170-300px
+ * caption/lower-third band) per plan.md "ปลอด safe zones".
+ */
+const VD_TEXT_OVERLAY_ASS_STYLES: Record<VdTextOverlayAssKind, VdAssStyleSpec> = {
+  // end_card — "ใหญ่ 1.6x กลางจอ/แถบล่าง, fade 0.4s": 1.6x classic_box's
+  // 60px base size, bold, middle-center by default (event-level `\an2\pos()`
+  // override switches to the "lower_band" variant — see `buildOverlayAssEvent`).
+  end_card: {
+    name: "VdEndCardTeaser",
+    fontName: "Prompt",
+    fontSize: 96,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H90000000",
+    backColour: "&HB0000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 3,
+    shadow: 0,
+    alignment: 5,
+    marginL: 90,
+    marginR: 90,
+    marginV: 200,
+  },
+  // opener_recap — "บนจอ, มีหัว 'ความเดิม…'": top-center, off-white, the
+  // "ความเดิมตอนที่แล้ว" header is rendered as `secondaryText`... actually
+  // rendered as the PRIMARY line (bigger/first) with the recap body as
+  // `secondaryText` — see `buildOverlayAssEvent`'s doc comment for the exact
+  // two-line composition `resolveEpisodeTextOverlayRunInputs` builds.
+  opener_recap: {
+    name: "VdOpenerRecap",
+    fontName: "Noto Sans Thai",
+    fontSize: 46,
+    primaryColour: "&H00F8FAFC",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H85000000",
+    backColour: "&HA0000000",
+    bold: 0,
+    italic: 0,
+    borderStyle: 3,
+    outline: 2,
+    shadow: 0,
+    alignment: 8,
+    marginL: 90,
+    marginR: 90,
+    marginV: 140,
+  },
+  // title_bumper — "ใหญ่กลางจอ 1.2s fade": bold, no box (drop-shadow only,
+  // BorderStyle 1) so it reads as a clean title card, not a caption line.
+  title_bumper: {
+    name: "VdTitleBumper",
+    fontName: "Prompt",
+    fontSize: 80,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&HA0000000",
+    backColour: "&H00000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 1,
+    outline: 3,
+    shadow: 2,
+    alignment: 5,
+    marginL: 80,
+    marginR: 80,
+    marginV: 80,
+  },
+  // episode_indicator — "เล็ก มุมจอ, opacity ~55%": PrimaryColour's AA byte
+  // (`0x73` = 115/255 transparency) bakes in the ~55% visible opacity
+  // directly (no per-event override needed — unlike `watermark_text`, this
+  // kind's opacity is NOT series-configurable). Default top-right; an
+  // event-level `\an7` override switches to top-left (plan.md
+  // `episodeIndicator.position`).
+  episode_indicator: {
+    name: "VdEpIndicator",
+    fontName: "Noto Sans Thai",
+    fontSize: 34,
+    primaryColour: "&H73FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H90000000",
+    backColour: "&H00000000",
+    bold: 0,
+    italic: 0,
+    borderStyle: 1,
+    outline: 1,
+    shadow: 0,
+    alignment: 9,
+    marginL: 40,
+    marginR: 40,
+    marginV: 50,
+  },
+  // character_intro — "lower-third ซ้าย ชื่อหนา+บทบาทบาง": bottom-left,
+  // mirrors `lower_third` caption preset's own MarginV(300)/Alignment(1)
+  // convention exactly (same news-chyron-style placement) so it never
+  // collides with the dialogue caption band above it. Role is rendered as
+  // `secondaryText` (smaller, thin — see `buildOverlayAssEvent`).
+  character_intro: {
+    name: "VdCharacterIntro",
+    fontName: "Noto Sans Thai",
+    fontSize: 46,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80111111",
+    backColour: "&HB0000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 2,
+    shadow: 0,
+    alignment: 1,
+    marginL: 92,
+    marginR: 96,
+    marginV: 300,
+  },
+  // time_setting — "สไตล์ cinema — เหลือง/ขาว serif-ish กลางจอบน,
+  // letter-spacing": Sarabun (the allow-list's most editorial/book-like
+  // face), pale gold, top-center, positive `Spacing` for the "cinema title
+  // card" letter-spaced look.
+  time_setting: {
+    name: "VdTimeSetting",
+    fontName: "Sarabun",
+    fontSize: 50,
+    primaryColour: "&H003CCCFA",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&HA0000000",
+    backColour: "&H00000000",
+    bold: 0,
+    italic: 0,
+    borderStyle: 1,
+    outline: 2,
+    shadow: 1,
+    alignment: 8,
+    marginL: 90,
+    marginR: 90,
+    marginV: 130,
+    spacing: 3,
+  },
+  // narrative_hook — "ใหญ่ เอียงเล็กน้อย มี accent": Kanit italic+bold,
+  // amber/gold OUTLINE as the "accent" (reusing `highlight_bar`'s own amber
+  // tone, here as an outline rather than a fill — same reuse-the-tuned-
+  // palette rationale `VD_CAPTION_PRESET_ASS_STYLES`'s own comments cite).
+  // `cards[].kind === "custom"` also renders through this style (see this
+  // section's own header comment).
+  narrative_hook: {
+    name: "VdNarrativeHook",
+    fontName: "Kanit",
+    fontSize: 62,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H0015CCFA",
+    backColour: "&H00000000",
+    bold: 1,
+    italic: 1,
+    borderStyle: 1,
+    outline: 3,
+    shadow: 1,
+    alignment: 5,
+    marginL: 80,
+    marginR: 80,
+    marginV: 80,
+  },
+  // watermark_text — "จาง opacity ต่ำ" (plan.md ลายน้ำ, text variant):
+  // PrimaryColour's baked-in alpha is just a NEUTRAL default (`0x4D` ≈ 30%)
+  // — every real event overrides it via `\1a` from the series' OWN
+  // configured `opacity` (0.2-0.8, see `VdTextOverlayAssEvent.opacity`),
+  // since (unlike `episode_indicator`) this kind's opacity IS per-series
+  // configurable and one style can only bake in one fixed number.
+  watermark_text: {
+    name: "VdWatermark",
+    fontName: "Noto Sans Thai",
+    fontSize: 32,
+    primaryColour: "&H4DFFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H60000000",
+    backColour: "&H00000000",
+    bold: 0,
+    italic: 0,
+    borderStyle: 1,
+    outline: 1,
+    shadow: 0,
+    alignment: 9,
+    marginL: 32,
+    marginR: 32,
+    marginV: 32,
+  },
+};
+
+/** ASS numpad alignment for a frame corner (7=top-left, 9=top-right,
+ *  1=bottom-left, 3=bottom-right) — shared by the `\an` override tag AND
+ *  `cornerPositionPx`'s matching `\pos()` anchor point. */
+function overlayAnchorForCorner(corner: VdTextOverlayCornerPosition): number {
+  switch (corner) {
+    case "top_left":
+      return 7;
+    case "top_right":
+      return 9;
+    case "bottom_left":
+      return 1;
+    case "bottom_right":
+      return 3;
+  }
+}
+
+/** Absolute `\pos(x,y)` coordinates for `corner` at `marginPx` from BOTH
+ *  edges it touches, on the fixed 1080x1920 canvas (matches
+ *  `overlayAnchorForCorner`'s anchor point exactly, so the margin is
+ *  measured from the correct edge regardless of corner). */
+function cornerPositionPx(
+  corner: VdTextOverlayCornerPosition,
+  marginPx: number
+): { x: number; y: number } {
+  const frameW = 1080;
+  const frameH = 1920;
+  const isLeft = corner === "top_left" || corner === "bottom_left";
+  const isTop = corner === "top_left" || corner === "top_right";
+  return {
+    x: isLeft ? marginPx : frameW - marginPx,
+    y: isTop ? marginPx : frameH - marginPx,
+  };
+}
+
+/** `\1a&HXX&` primary-fill-alpha override tag for `opacity` (0-1 visible
+ *  opacity -> `XX` = the ASS transparency byte, `00`=opaque/`FF`=invisible —
+ *  same AA-byte convention as every `PrimaryColour` value in this file). */
+function overlayAlphaOverrideTag(opacity: number): string {
+  const clamped = Math.min(1, Math.max(0, opacity));
+  const alphaByte = Math.round((1 - clamped) * 255);
+  const hex = alphaByte.toString(16).toUpperCase().padStart(2, "0");
+  return `\\1a&H${hex}&`;
+}
+
+/**
+ * Build one overlay `Dialogue:` event. Every kind gets a `\fad(in,out)` fade
+ * (plan.md "ทุกตัว fade in/out"), capped so a very short-lived event's
+ * in/out windows never overlap each other. `end_card`'s `"lower_band"`
+ * variant and BOTH corner-driven kinds (`episode_indicator`/`watermark_text`)
+ * layer an inline `\an`/`\pos()` override on top of the style's own default
+ * alignment/margins (see this section's header comment for why `\pos()` is
+ * necessary for `watermark_text` specifically: its margin is a continuous,
+ * per-series configurable value a fixed ASS style margin cannot express).
+ * `secondaryText`, when present, is rendered as a smaller second line via the
+ * SAME chip technique `buildAssDialogueEvent` uses for the speaker-name chip
+ * (a font-size override + `\N`), just with the roles reversed (primary text
+ * first/bigger, secondary second/smaller) — end card's "follow line",
+ * character intro's role, title bumper's "EP N: ..." line, and opener
+ * recap's body (below the header) all reuse this one mechanism.
+ */
+function buildOverlayAssEvent(
+  event: VdTextOverlayAssEvent,
+  style: VdAssStyleSpec
+): string {
+  const start = assTimeStamp(event.startSec);
+  const end = assTimeStamp(event.endSec);
+  const durationSec = Math.max(0.01, event.endSec - event.startSec);
+  const fadeMs = Math.max(50, Math.min(400, Math.round((durationSec * 1000) / 2) - 10));
+
+  const overrides: string[] = [`\\fad(${fadeMs},${fadeMs})`];
+
+  if (event.kind === "end_card" && event.variant === "lower_band") {
+    overrides.push("\\an2", "\\pos(540,1650)");
+  }
+  if (event.kind === "episode_indicator" && event.variant === "top_left") {
+    overrides.push("\\an7");
+  }
+  if (event.kind === "watermark_text") {
+    const corner = isCornerPosition(event.variant) ? event.variant : "top_right";
+    const marginPx = event.marginPx ?? 32;
+    const { x, y } = cornerPositionPx(corner, marginPx);
+    overrides.push(`\\an${overlayAnchorForCorner(corner)}`, `\\pos(${x},${y})`);
+    if (event.opacity != null) overrides.push(overlayAlphaOverrideTag(event.opacity));
+  }
+
+  const primary = escapeAssInlineText(event.text);
+  const secondary = event.secondaryText?.trim();
+  const text = secondary
+    ? `{${overrides.join("")}}${primary}\\N{\\fs${Math.round(style.fontSize * 0.62)}}${escapeAssInlineText(secondary)}`
+    : `{${overrides.join("")}}${primary}`;
+
+  return `Dialogue: 0,${start},${end},${style.name},,0,0,0,,${text}`;
 }
 
 /**
@@ -650,11 +1055,23 @@ function buildAssDialogueEvent(
  * `subtitles` filter's own `fontsdir` option, see `SubtitlesInput`'s doc
  * comment) and is recorded as an informational `;`-prefixed ASS comment line
  * so the parameter is not silently dropped.
+ *
+ * `overlays` (task #34, default `[]`) is COMPLETELY INDEPENDENT of `preset`:
+ * a `[V4+ Styles]` entry is emitted for every DISTINCT overlay kind actually
+ * present (not all 8 unconditionally, keeping the file lean), and every
+ * valid overlay event is always rendered — even when `preset` is
+ * `"no_subtitle_style"` (`style` is `null`, so `events` below is `[]`, but
+ * `overlayEvents` is NOT gated on `style`). This is what lets a render with
+ * `subtitlePreset: "none"` still carry end-card/opener/watermark/etc. text
+ * (plan.md "works when subtitlePreset is 'none'"). Omitting the 4th argument
+ * entirely (every pre-existing call site) is BYTE-IDENTICAL to before task
+ * #34 — this is purely additive.
  */
 export function buildAssSubtitleFile(
   lines: AssSubtitleLine[],
   preset: CaptionPresetId,
-  opts: AssSubtitleBuildOpts
+  opts: AssSubtitleBuildOpts,
+  overlays: VdTextOverlayAssEvent[] = []
 ): string {
   const style = VD_CAPTION_PRESET_ASS_STYLES[preset];
   const headerLines = [
@@ -672,6 +1089,14 @@ export function buildAssSubtitleFile(
   ].filter((l): l is string => l !== undefined);
   if (style) headerLines.push(formatAssStyleLine(style));
 
+  const validOverlays = overlays.filter(
+    ov => ov.endSec > ov.startSec && ov.text.trim().length > 0
+  );
+  const overlayKindsPresent = Array.from(new Set(validOverlays.map(ov => ov.kind)));
+  for (const kind of overlayKindsPresent) {
+    headerLines.push(formatAssStyleLine(VD_TEXT_OVERLAY_ASS_STYLES[kind]));
+  }
+
   const eventsHeader = [
     "",
     "[Events]",
@@ -686,7 +1111,13 @@ export function buildAssSubtitleFile(
         .map(line => buildAssDialogueEvent(line, style))
     : [];
 
-  return [...headerLines, ...eventsHeader, ...events].join("\n") + "\n";
+  const overlayEvents = [...validOverlays]
+    .sort((a, b) => a.startSec - b.startSec || a.kind.localeCompare(b.kind))
+    .map(ov => buildOverlayAssEvent(ov, VD_TEXT_OVERLAY_ASS_STYLES[ov.kind]));
+
+  return (
+    [...headerLines, ...eventsHeader, ...events, ...overlayEvents].join("\n") + "\n"
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -890,6 +1321,82 @@ export function resolveBannerOverlayChain(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Watermark image overlay (task #34) — separate input/chain from banners    */
+/* -------------------------------------------------------------------------- */
+
+/** Build the `-loop/-t/-i` input args for the watermark image — looped for
+ *  the FULL (real, post-probe) `videoDurationSeconds`, mirroring how a
+ *  `fullscreen` banner's input args would look if it covered the entire
+ *  clip. Called once, with the SAME `videoDurationSeconds` already used for
+ *  the rest of this render (never a second probe). */
+export function buildWatermarkInputArgs(
+  watermark: ResolvedWatermarkImage,
+  videoDurationSeconds: number
+): string[] {
+  return [
+    "-loop",
+    "1",
+    "-t",
+    secStr(videoDurationSeconds),
+    "-i",
+    watermark.localPngPath,
+  ];
+}
+
+/** `x`/`y` overlay-filter EXPRESSIONS (not concrete numbers) anchored off
+ *  ffmpeg's own `main_w`/`main_h`/`overlay_w`/`overlay_h` — deliberately
+ *  expression-based rather than pre-computed pixels, since the watermark
+ *  PNG's post-`scale` height is only known to ffmpeg itself at filter-graph
+ *  EVALUATION time (the source image's aspect ratio isn't probed by this
+ *  pure builder). */
+function watermarkOverlayPositionExpr(
+  position: ResolvedWatermarkImage["position"],
+  marginPx: number
+): { xExpr: string; yExpr: string } {
+  const isLeft = position === "top_left" || position === "bottom_left";
+  const isTop = position === "top_left" || position === "top_right";
+  return {
+    xExpr: isLeft ? `${marginPx}` : `main_w-overlay_w-${marginPx}`,
+    yExpr: isTop ? `${marginPx}` : `main_h-overlay_h-${marginPx}`,
+  };
+}
+
+/**
+ * Build the watermark's OWN overlay filter fragment: scale to `scalePct`% of
+ * the 1080px-wide compositing frame (aspect-preserving, `-2` so the scaled
+ * height always stays even — required for `yuv420p`), apply `opacity` via
+ * `colorchannelmixer=aa=`, then overlay onto `opts.baseLabel` at the
+ * corner + margin resolved by `watermarkOverlayPositionExpr`. Pure —
+ * mirrors `resolveBannerOverlayChain`'s own fragment-building shape, kept as
+ * a SEPARATE function (not folded into that one) because a watermark has no
+ * time window/fade/crop (spans the whole clip, `format=rgba` only needs a
+ * flat alpha multiply, not the banner chain's cover-crop-then-fade sequence).
+ */
+export function resolveWatermarkOverlayFragment(
+  watermark: ResolvedWatermarkImage,
+  inputIndex: number,
+  opts: { baseLabel: string }
+): { filterFragments: string[]; outputLabel: string } {
+  const targetWidthPx = Math.max(
+    2,
+    Math.round(VD_AD_BANNER_FRAME_WIDTH * (watermark.scalePct / 100))
+  );
+  const evenWidthPx = targetWidthPx % 2 === 0 ? targetWidthPx : targetWidthPx + 1;
+  const alpha = Math.min(1, Math.max(0, watermark.opacity));
+  const { xExpr, yExpr } = watermarkOverlayPositionExpr(
+    watermark.position,
+    watermark.marginPx
+  );
+  const imgLabel = "wmimg";
+  const outLabel = "wm";
+  const fragments = [
+    `[${inputIndex}:v]scale=${evenWidthPx}:-2,format=rgba,colorchannelmixer=aa=${alpha}[${imgLabel}]`,
+    `[${opts.baseLabel}][${imgLabel}]overlay=${xExpr}:${yExpr}[${outLabel}]`,
+  ];
+  return { filterFragments: fragments, outputLabel: outLabel };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Audio mixdown                                                              */
 /* -------------------------------------------------------------------------- */
 
@@ -994,8 +1501,9 @@ export function buildFinalRenderFfmpegArgs(
     dialogueSegments.length > 0 ||
     input.dialogueAudio?.loudnessNormalize === true;
   const wantsSubtitles = Boolean(input.subtitles);
+  const wantsWatermarkImage = Boolean(input.watermarkImage);
   const wantsComplexGraph =
-    banners.length > 0 || wantsAudioMix || wantsSubtitles;
+    banners.length > 0 || wantsAudioMix || wantsSubtitles || wantsWatermarkImage;
 
   if (!wantsComplexGraph) {
     return [
@@ -1048,6 +1556,11 @@ export function buildFinalRenderFfmpegArgs(
   const bannerInputIndex = new Map<ResolvedBanner, number>();
   banners.forEach((banner, index) => bannerInputIndex.set(banner, index + 1));
   const dialogueInputIndexStart = banners.length + 1;
+  // Task #34 — appended LAST (after every banner + dialogue-audio input),
+  // so pre-existing banner/dialogue-audio input indices are UNCHANGED
+  // whenever no watermark is present (backward-compatible global input
+  // ordering, same care `RunAssemblyJobBannerInput`'s own indexing takes).
+  const watermarkInputIndex = dialogueInputIndexStart + dialogueSegments.length;
 
   const args: string[] = [
     "-y",
@@ -1061,6 +1574,11 @@ export function buildFinalRenderFfmpegArgs(
   args.push(...buildBannerInputArgs(banners));
   for (const segment of dialogueSegments) {
     args.push("-i", segment.localPath);
+  }
+  if (input.watermarkImage) {
+    args.push(
+      ...buildWatermarkInputArgs(input.watermarkImage, input.videoDurationSeconds)
+    );
   }
 
   const filterParts: string[] = [`[0:v]${LEGACY_SCALE_PAD_VF}[vbase]`];
@@ -1097,6 +1615,28 @@ export function buildFinalRenderFfmpegArgs(
     });
     filterParts.push(...chain.filterFragments);
     currentVideoLabel = chain.outputLabel;
+  }
+
+  // Task #34 — the IMAGE watermark is composited LAST among the video
+  // stages (after fullscreen banners), so it is the ABSOLUTE TOP-MOST layer
+  // (plan.md "z-order บนสุดเหนือทุกชั้นรวม fullscreen banner"). Documented
+  // scope limit: the ASS-rendered `watermark_text` variant (see
+  // `VdTextOverlayAssEvent`) shares the SAME z-order slot as dialogue
+  // captions/`episode_indicator` (burned in during the `subtitles` stage
+  // above, BEFORE fullscreen banners) — reordering the subtitle burn-in
+  // stage itself would change the ALREADY-REGRESSION-LOCKED z-order for
+  // dialogue captions (this module's own header doc comment: "video ->
+  // bottom_band/side_vertical banners -> subtitles -> fullscreen banners"),
+  // which is out of scope for this feature. Only the IMAGE watermark gets
+  // the "always survives fullscreen" guarantee.
+  if (input.watermarkImage) {
+    const watermark = resolveWatermarkOverlayFragment(
+      input.watermarkImage,
+      watermarkInputIndex,
+      { baseLabel: currentVideoLabel }
+    );
+    filterParts.push(...watermark.filterFragments);
+    currentVideoLabel = watermark.outputLabel;
   }
 
   const audio = buildAudioFilterGraph(

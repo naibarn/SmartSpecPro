@@ -134,6 +134,7 @@ const videoClipRequestSchema = z
     duration_seconds: z.number(),
     prompt: z.string().min(1),
     negative_motion_prompt: z.string().optional().default(""),
+    audio_direction: z.string().optional(),
     start_frame_reference: z
       .object({ asset_id: z.string().optional() })
       .passthrough()
@@ -356,14 +357,16 @@ export function projectMotionPromptPack(
         const dialogueNote = dialogueLines.length
           ? ` Dialogue spoken during this clip: ${dialogueLines.map((l) => `"${l}"`).join(" / ")}.`
           : "";
+        const audioNote = c.audio_direction ? ` SFX cues: ${c.audio_direction}` : "";
         return {
           clipNumber: c.clip_number,
           sourceShotNumbers: c.source_shot_numbers,
-          prompt: `${c.prompt}${dialogueNote}`,
+          prompt: `${c.prompt}${audioNote}${dialogueNote}`,
           negativeMotionPrompt: c.negative_motion_prompt ?? undefined,
           startFrameAssetId: c.start_frame_reference?.asset_id ?? undefined,
           endFrameAssetId: c.end_frame_reference?.asset_id ?? undefined,
           durationSeconds: c.duration_seconds,
+          audioDirection: c.audio_direction ?? undefined,
         };
       }),
   };
@@ -1268,21 +1271,21 @@ export async function generateVerticalDramaShotVideoPrompt(
     },
   });
 
+  const resolvedAudioDirection = nativeAudioDirectionEnabled
+    ? data.audio_direction || undefined
+    : undefined;
+
   return {
-    prompt: data.prompt,
+    prompt: resolvedAudioDirection
+      ? `${data.prompt} SFX cues: ${resolvedAudioDirection}`
+      : data.prompt,
     negativeMotionPrompt: data.negative_motion_prompt || undefined,
     dialogue: data.dialogue,
     creditsUsed,
     model,
     usedVision: hasVision,
     requiredDisclosure: data.requiredDisclosure || undefined,
-    // Vertical Drama task #36 — only ever copied from the model's response
-    // when the option was actually requested this call (never trust an
-    // unprompted field the model produced on its own), guaranteeing
-    // byte-identical results whenever the option is off/unsupported.
-    audioDirection: nativeAudioDirectionEnabled
-      ? data.audio_direction || undefined
-      : undefined,
+    audioDirection: resolvedAudioDirection,
   };
 }
 

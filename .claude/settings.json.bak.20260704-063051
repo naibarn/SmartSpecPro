@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(npx vitest:*)"
+    ]
+  },
+  "enabledPlugins": {
+    "context7@claude-plugins-official": true,
+    "deep-project@piercelamb-plugins": true,
+    "deep-plan@piercelamb-plugins": true,
+    "deep-implement@piercelamb-plugins": true,
+    "error-debugging@claude-code-workflows": true,
+    "backend-api-security@claude-code-workflows": true,
+    "python-development@claude-code-workflows": true,
+    "developer-essentials@claude-code-workflows": true
+  }
+}

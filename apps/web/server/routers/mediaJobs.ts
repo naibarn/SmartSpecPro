@@ -166,6 +166,19 @@ async function notifyJobFailure(
         },
       });
     }
+
+    // System auto-report: file (or dedup-update) a diagnostic feedback
+    // ticket for this failure — richer than the truncated bell notification
+    // above, and admin-visible in AdminFeedbackHub. Best-effort, does not
+    // affect the notifications sent above.
+    const { reportSystemFailure } = await import("../services/systemAutoReportService");
+    await reportSystemFailure({
+      source: "media_jobs",
+      userId: userIdNum,
+      jobId,
+      title: "Media job failed",
+      errorMessage,
+    });
   } catch {
     // Best effort — don't break the caller
   }

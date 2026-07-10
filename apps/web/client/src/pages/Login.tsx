@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { trpc } from '../lib/trpc';
-import { useScopedTranslation } from '@/i18n/useScopedTranslation';
+import { useTranslation } from 'react-i18next';
 import {
   Mail,
   Lock,
@@ -180,7 +180,11 @@ function toDesktopAuthUser(user: NonNullable<DesktopLoginResponse["user"]>) {
 }
 
 export default function Login() {
-  const { t } = useScopedTranslation('auth');
+  // Login page has no language selector, so it is always English regardless of
+  // the stored locale, and translate="no" keeps browser auto-translate from
+  // mutating the DOM (which breaks React interactions like the password toggle).
+  const { i18n } = useTranslation('auth');
+  const t = i18n.getFixedT('en', 'auth');
   const [, navigate] = useLocation();
   const { user, loading: authLoading } = useAuth();
 
@@ -529,7 +533,10 @@ export default function Login() {
   // Show loading while checking auth or redirecting
   if (authLoading || user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center">
+      <div
+        translate="no"
+        className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex items-center justify-center"
+      >
         <div className="text-center">
           <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center animate-pulse">
             <Sparkles className="w-6 h-6 text-white" />
@@ -541,7 +548,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex">
+    <div
+      translate="no"
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20 flex"
+    >
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Background Pattern */}

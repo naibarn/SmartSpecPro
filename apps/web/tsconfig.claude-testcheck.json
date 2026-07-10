@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [],
+  "exclude": ["node_modules", "build", "dist"],
+  "files": [
+    "server/services/__tests__/verticalDramaFinalRenderGraph.test.ts",
+    "server/services/__tests__/verticalDramaEpisodeVideoAssembly.test.ts"
+  ]
+}

@@ -59,6 +59,7 @@ import type {
 } from "@shared/hyperframes/autoPlan";
 import { HyperframesAutoPlanOverrideInputSchema } from "@shared/hyperframes/autoPlan";
 import { type MarketplaceAutoReviewLaunchMode } from "@shared/hyperframes/contracts";
+import { MARKETPLACE_AUTO_REVIEW_CURATED_VISION_QA_MODELS } from "@shared/marketplaceAutoReview/contracts";
 import {
   AUTO_REVIEW_CREATIVE_PRESETS,
   autoReviewCreativePresetRequestedAudioStrategy,
@@ -2369,6 +2370,10 @@ export default function MarketplaceCaptureProductDetail() {
     useState<AutoReviewOverlayTextMode>("no_text");
   const [autoReviewImageModel, setAutoReviewImageModel] =
     useState<AutoReviewImageModel>("google-banana-2");
+  // Empty string means "auto (follow quality mode)" — the historical
+  // fixed mapping of fast_draft/balanced -> gpt-4o-mini, premium_strict_qa
+  // -> gpt-4o. Vision-capable models change often, so users can override it.
+  const [autoReviewVisionQaModel, setAutoReviewVisionQaModel] = useState("");
   const [autoReviewMcpConnectionId, setAutoReviewMcpConnectionId] = useState<
     string | null
   >(null);
@@ -2667,6 +2672,23 @@ export default function MarketplaceCaptureProductDetail() {
       creditCost: number | null;
     }>;
   }, [autoReviewVideoModelRecords, eligibleVideoMcpProviderKeys]);
+  const autoReviewVisionQaModelsQuery =
+    trpc.llmProviders.availableModels.useQuery(undefined, {
+      staleTime: 5 * 60 * 1000,
+    });
+  const autoReviewVisionQaModelOptions = useMemo(() => {
+    const liveModels = (autoReviewVisionQaModelsQuery.data?.models ?? [])
+      .map(model => ({
+        value: String(model?.id ?? "").trim(),
+        label: String(model?.name ?? model?.id ?? "").trim(),
+      }))
+      .filter(option => option.value);
+    if (liveModels.length > 0) return liveModels;
+    return MARKETPLACE_AUTO_REVIEW_CURATED_VISION_QA_MODELS.map(modelId => ({
+      value: modelId,
+      label: modelId,
+    }));
+  }, [autoReviewVisionQaModelsQuery.data]);
   useEffect(() => {
     if (!autoReviewImageModelOptions.length) return;
     if (
@@ -4637,6 +4659,7 @@ export default function MarketplaceCaptureProductDetail() {
             .filter(Boolean)
         )
       );
+      const trimmedVisionQaModel = autoReviewVisionQaModel.trim();
       startAutoReviewMutation.mutate({
         productId,
         creationIntent: action,
@@ -4646,6 +4669,7 @@ export default function MarketplaceCaptureProductDetail() {
         shotCount: autoReviewShotCount,
         overlayTextMode: autoReviewOverlayTextMode,
         imageModel: autoReviewImageModel,
+        visionQaModel: trimmedVisionQaModel || undefined,
         transportMetadata,
         referenceAnchors,
       });
@@ -4655,6 +4679,7 @@ export default function MarketplaceCaptureProductDetail() {
       autoReviewAudioStrategy,
       autoReviewFrameStrategy,
       autoReviewImageModel,
+      autoReviewVisionQaModel,
       autoReviewOverlayTextMode,
       autoReviewRunItems,
       autoReviewShotCount,
@@ -5154,6 +5179,7 @@ export default function MarketplaceCaptureProductDetail() {
               value: option.value,
               label: `${option.label} (${option.transport === "mcp" ? "MCP" : "API"}${option.provider ? ` • ${option.provider}` : ""})`,
             }))}
+            visionQaModelOptions={autoReviewVisionQaModelOptions}
             videoSegmentPreview={{
               loading: autoStoryboardVideoSegmentPreviewQuery.isFetching,
               error:
@@ -6204,6 +6230,32 @@ export default function MarketplaceCaptureProductDetail() {
                         />
                       </div>
                     ) : null}
+                  </div>
+                  <div className="rounded-lg border bg-slate-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      โมเดลตรวจ QA (Vision)
+                    </p>
+                    <select
+                      aria-label="โมเดลตรวจ QA (Vision)"
+                      className="mt-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                      value={autoReviewVisionQaModel}
+                      onChange={event =>
+                        setAutoReviewVisionQaModel(event.target.value)
+                      }
+                    >
+                      <option value="">
+                        อัตโนมัติตามคุณภาพ (gpt-4o-mini / gpt-4o)
+                      </option>
+                      {autoReviewVisionQaModelOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                      เลือกโมเดลตรวจสอบภาพ/วิดีโอ (Vision QA) เอง
+                      แทนค่าที่ผูกกับโหมดคุณภาพ
+                    </p>
                   </div>
                   <div className="rounded-lg border bg-slate-50 p-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

@@ -51,6 +51,7 @@
  */
 
 import type { VerticalDramaPipelineStage } from "@shared/verticalDramaSeries";
+import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 
 /** One issue from `episodeQualityReviewOutputSchema`'s `issues[]` array. */
 export interface QualityReviewIssueLike {
@@ -286,18 +287,41 @@ export function groupQualityReviewIssuesByStageWithFlag(
  * `plan_episode_script`/`storyboard_shotgrid`; every other stage
  * (`dialogue_audio_plan`/`tie_in`) is untouched by story lock (their repairs
  * were never story content in the first place).
+ *
+ * `options.sceneContractsStage` (Feature 132 §6, F132C scene contracts, tenant
+ * flag `verticalDramaSceneContracts`, added 2026-07-09) — same OPTIONAL,
+ * purely additive, decoupled-from-payload convention as `storyLockStage`:
+ * omitted (every pre-existing call site) reproduces the exact instruction
+ * text byte-for-byte. When a caller passes it (only when the
+ * `verticalDramaSceneContracts` flag is on for the episode's tenant AND this
+ * repair targets `plan_episode_script`/`storyboard_shotgrid` — spec §6.2's
+ * "repair ... must preserve contracts" scope), the contract-preservation
+ * directive from `appendVerticalDramaSceneContractPreservationConstraint` is
+ * appended; every other stage (`dialogue_audio_plan`/`tie_in`) is untouched.
+ * Independent of `storyLockStage` — both constraints can be appended
+ * together (a story-locked AND contract-preserving repair) or either alone.
  */
 export function composeQualityReviewRepairInstruction(
   issues: QualityReviewIssueLike[],
-  options?: { storyLockStage?: QualityReviewApplicableStageWithTieIn },
+  options?: {
+    storyLockStage?: QualityReviewApplicableStageWithTieIn;
+    sceneContractsStage?: QualityReviewApplicableStageWithTieIn;
+  },
 ): string {
   const lines = issues.map(
     issue => `- [${issue.location}] ปัญหา: ${issue.problem} -> แก้ไข: ${issue.suggested_fix}`,
   );
-  const base = ["แก้ตามคำแนะนำต่อไปนี้:", ...lines].join("\n");
-  return options?.storyLockStage
+  const base = [renderCriteriaVersionMarker(), "แก้ตามคำแนะนำต่อไปนี้:", ...lines].join("\n");
+  let instruction = options?.storyLockStage
     ? appendVerticalDramaStoryLockRepairConstraint(base, options.storyLockStage)
     : base;
+  if (options?.sceneContractsStage) {
+    instruction = appendVerticalDramaSceneContractPreservationConstraint(
+      instruction,
+      options.sceneContractsStage,
+    );
+  }
+  return instruction;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -345,6 +369,41 @@ export function appendVerticalDramaStoryLockRepairConstraint(
   }
   if (stage === "storyboard_shotgrid") {
     return `${instruction}\n\n${VD_STORY_LOCK_STORYBOARD_REPAIR_CONSTRAINT}`;
+  }
+  return instruction;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Feature 132 §6.2 (F132C, scene contracts) — repair-preservation directive  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Spec §6.2's exact contract-preservation directive text (Thai) — instructs
+ * the repair LLM to keep each shot's existing `contract` unchanged unless
+ * the repair genuinely changes that shot's core content, in which case it
+ * must emit an updated, consistent `contract` rather than silently dropping
+ * the field.
+ */
+export const VD_SCENE_CONTRACT_PRESERVATION_CONSTRAINT =
+  "รักษา `contract` เดิมของแต่ละช็อตไว้ เว้นแต่การแก้ไขนี้เปลี่ยนแก่นของช็อตนั้นจริง ๆ — ถ้าเปลี่ยน ให้ระบุ `contract` ใหม่ที่สอดคล้องด้วย";
+
+/**
+ * Appends `VD_SCENE_CONTRACT_PRESERVATION_CONSTRAINT` for a repair-target
+ * stage of `plan_episode_script`/`storyboard_shotgrid` (spec §6.2's scope —
+ * these are the only two stages whose payload carries per-shot `contract`
+ * objects/instructions today). Any other stage (`dialogue_audio_plan`/
+ * `tie_in`, or a plain `VerticalDramaPipelineStage` string that isn't one of
+ * the two contract-carrying stages) is returned UNCHANGED — this is a
+ * prompt-level nudge only; callers must only invoke this when the
+ * `verticalDramaSceneContracts` flag is on for the episode's tenant, so
+ * flag-off behavior stays byte-identical by simply never calling it.
+ */
+export function appendVerticalDramaSceneContractPreservationConstraint(
+  instruction: string,
+  stage: QualityReviewApplicableStageWithTieIn | string,
+): string {
+  if (stage === "plan_episode_script" || stage === "storyboard_shotgrid") {
+    return `${instruction}\n\n${VD_SCENE_CONTRACT_PRESERVATION_CONSTRAINT}`;
   }
   return instruction;
 }

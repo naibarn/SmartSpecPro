@@ -1393,6 +1393,7 @@ export async function startAutoStoryboardReviewForApi(input: {
       qualityMode: toMarketplaceAutoReviewQualityMode(
         plan.defaults.qualityMode
       ),
+      visionQaModel: cleanText(plan.defaults.visionQaModel) || undefined,
       referenceAnchors,
       transportMetadata: input.transportMetadata,
     },

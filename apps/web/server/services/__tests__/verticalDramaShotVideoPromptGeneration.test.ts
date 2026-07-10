@@ -810,6 +810,9 @@ describe("generateVerticalDramaShotVideoPrompt â€” duration-aware prompt (spec Â
       expect(result.audioDirection).toBe(
         "Door slams shut; distant rain patters against the window.",
       );
+      expect(result.prompt).toContain(
+        "SFX cues: Door slams shut; distant rain patters against the window.",
+      );
     });
 
     it("leaves audioDirection undefined when enabled + supported but the model's response has no audio_direction field", async () => {

@@ -16,6 +16,24 @@ tags:
   - scorecard
   - reversal
   - pacing
+trigger_patterns: []
+priority: 50
+config:
+  media_studio:
+    auto_learning:
+      enabled: false
+      prompt_qa_after_auto_prompt: true
+      image_qa_after_generation: true
+      require_admin_approval: true
+      min_prompt_score_to_pass: 85
+      min_image_fidelity_score_to_pass: 80
+      max_auto_patch_risk: medium
+  orchestration:
+    mode: local
+    endpoint: null
+    skillTargets: []
+    parallel: false
+    fallback: local
 ---
 # Vertical Drama Episode Quality Review
 
@@ -94,6 +112,75 @@ generic episode gets a full, valid scorecard with `overall: 1` and a long
 whether to act on the scorecard, apply suggested fixes via the existing repair
 path, or proceed anyway.
 
+## Scorecard v2 — additional dimensions, deterministic density facts (superset, added 2026-07-07)
+
+When the caller wants the v2 scorecard, set `"contract_version": 2` in your
+output (default remains `1` when not requested). v2 is purely additive to
+everything above — score the original four axes exactly as described, and
+additionally:
+
+1. **`hook_strength` (1-5)** — how strongly `hook`/the episode's first seconds
+   grab attention. Judge whether THIS episode actually delivers the "hook
+   lands within 3 seconds" bar (an immediate, concrete moment — a reveal,
+   threat, confrontation, shock), not merely whether a hook field exists.
+2. **`cliffhanger_strength` (1-5)** — how sharply `cliffhanger` pays off the
+   final reversal and gives a real reason to watch the next episode, versus
+   an unrelated twist bolted onto the end.
+3. **`continuity_consistency` (1-5)** — whether character state, wardrobe/prop
+   continuity, and established facts stay consistent across the script's
+   `continuity_notes`/`character_state_deltas` and the storyboard's per-shot
+   `continuity_notes`. Cite any contradiction as a normal `issues[]` entry
+   (e.g. a prop the script says is lost reappearing in a later shot).
+4. **`tie_in_naturalness` (1-5, or `null` when no tie-in is configured)** —
+   see "Tie-in naturalness assessment" below.
+
+### Deterministic density facts — NEVER estimate these yourself
+
+When the input includes a `density_metrics` object, it was computed
+DETERMINISTICALLY IN CODE from the platform's canonical speech-budget module
+— not by you. Echo it back **verbatim, unchanged**, as the output's top-level
+`density_metrics`. Do not recompute, round differently, "improve", or
+second-guess any of its numbers (`estimated_speech_seconds`,
+`per_clip_coverage`, `silent_gap_count`, `duplicate_line_count`,
+`stage_direction_count`, `reversal_count`, `max_consecutive_same_emotion`) —
+your job is to JUDGE quality using these facts as context (e.g. a high
+`silent_gap_count` or a low `per_clip_coverage.average_coverage_ratio` should
+inform a lower `pacing` score; a high `max_consecutive_same_emotion` should
+inform a lower `emotion_variety` score), never to re-derive the facts
+themselves. `density_metrics.reversal_count` is a separate, code-computed
+number from script markers — it may differ from your own `scorecard.reversal_count`
+judgment; report both honestly rather than forcing them to match. If
+`density_metrics` is absent from the input, omit it from the output rather
+than inventing placeholder numbers.
+
+### Tie-in naturalness assessment
+
+When the input includes a `tie_in_config` with `enabled: true` (or an
+equivalent tie-in plan/usage payload), produce:
+
+- `scorecard.tie_in_naturalness` (1-5) — judges whether the product placement
+  reads as something the story needed: would the beat still work without the
+  product? does the character have an in-story reason to touch/mention it?
+  does the tone match the surrounding drama with no sudden ad-voice? This is
+  NOT about whether the product is memorable or well-lit — that is a separate,
+  deterministic check owned elsewhere.
+- `tie_in_assessment` — one or two sentences explaining that score, citing the
+  specific shot/line that helped or hurt naturalness (e.g. "shot 4's dialogue
+  states the product's benefit outright ('the cream cleared my skin in a
+  week') — this reads as an ad line, not something the character would say
+  mid-argument; lower naturalness").
+
+When no tie-in is configured (`tie_in_config` absent, or `enabled: false`),
+set `scorecard.tie_in_naturalness: null` and omit `tie_in_assessment` — never
+penalize an episode for having no product tie-in.
+
+### v1 compatibility
+
+Everything above is additive. When the caller does not request v2 (no
+`density_metrics`/`tie_in_config` supplied, `contract_version` not requested
+as `2`), continue returning exactly the v1 shape this skill has always
+returned: `contract_version: 1`, and the v2 fields simply do not appear.
+
 Output skeleton:
 
 ```json
@@ -116,6 +203,52 @@ Output skeleton:
       "suggested_fix": "sharpen shot 7's emotion toward something more overtly unsettled (e.g. 'barely-held panic') to contrast with shot 8's calm."
     }
   ],
+  "warnings": [],
+  "repair_queue": []
+}
+```
+
+### Example: scorecard v2 (when the caller requests it)
+
+```json
+{
+  "contract_version": 2,
+  "episode_title": "Midnight Verdict",
+  "scorecard": {
+    "reversal_count": 2,
+    "reversal_sharpness": 4,
+    "emotion_variety": 4,
+    "dialogue_naturalness": 4,
+    "pacing": 4,
+    "overall": 4,
+    "hook_strength": 5,
+    "cliffhanger_strength": 4,
+    "continuity_consistency": 5,
+    "tie_in_naturalness": 3
+  },
+  "summary": "Two clear reversals (beat 3, cliffhanger) with legible power shifts; hook lands in the first line of dialogue; continuity holds across script and storyboard; the tie-in reads slightly ad-voiced in shot 4.",
+  "issues": [
+    {
+      "location": "shot 4",
+      "problem": "the tie-in line states the product's benefit outright ('the cream cleared my skin in a week') — reads as an ad line, not something the character would say mid-argument.",
+      "suggested_fix": "replace the direct benefit claim with a natural in-story reference (e.g. the character reaching for it out of habit) and move the benefit statement, if needed, to a calmer beat."
+    }
+  ],
+  "tie_in_assessment": "Shot 4's dialogue states the product's benefit outright mid-confrontation, which reads as ad copy rather than something the character would actually say in that moment; the visual placement itself (background, not hero prop) is otherwise natural.",
+  "density_metrics": {
+    "estimated_speech_seconds": 42,
+    "per_clip_coverage": {
+      "clips_evaluated": 9,
+      "clips_below_min_ratio": 1,
+      "clips_below_error_ratio": 0,
+      "average_coverage_ratio": 0.61
+    },
+    "silent_gap_count": 0,
+    "duplicate_line_count": 0,
+    "stage_direction_count": 0,
+    "reversal_count": 2,
+    "max_consecutive_same_emotion": 2
+  },
   "warnings": [],
   "repair_queue": []
 }

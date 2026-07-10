@@ -27,7 +27,7 @@
         "required": ["kind", "evidenceEpisodes", "problem", "fixInstruction"],
         "properties": {
           "kind": {
-            "description": "6 of these 9 kinds are ALSO independently checked deterministically in code by analyzeSeasonDramaturgy (world_rules_undefined, key_character_late_intro, character_agency_zero_decisions, antagonist_tactic_repetition, finale_no_price_paid, on_the_nose_dialogue); protagonist_no_stake and info_heavy_low_action are LLM-only judgment; other is the fallback.",
+            "description": "7 of these 11 kinds are ALSO independently checked deterministically in code by analyzeSeasonDramaturgy (world_rules_undefined, key_character_late_intro, character_agency_zero_decisions, antagonist_tactic_repetition, finale_no_price_paid, on_the_nose_dialogue, tie_in_distribution); protagonist_no_stake, unnatural_dialogue_language, and info_heavy_low_action are LLM-only judgment; other is the fallback.",
             "type": "string",
             "enum": [
               "protagonist_no_stake",
@@ -37,7 +37,9 @@
               "antagonist_tactic_repetition",
               "finale_no_price_paid",
               "on_the_nose_dialogue",
+              "unnatural_dialogue_language",
               "info_heavy_low_action",
+              "tie_in_distribution",
               "other"
             ]
           },

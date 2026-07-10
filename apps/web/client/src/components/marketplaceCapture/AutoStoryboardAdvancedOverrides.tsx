@@ -6,6 +6,7 @@ import type {
   HyperframesAutoStoryboardReviewPlan,
 } from "@shared/hyperframes/autoPlan";
 import { HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES } from "@shared/hyperframes/autoPlan";
+import { MARKETPLACE_AUTO_REVIEW_CURATED_VISION_QA_MODELS } from "@shared/marketplaceAutoReview/contracts";
 import {
   getMarketplaceHyperframesUiCopy,
   type MarketplaceHyperframesUiLocale,
@@ -21,6 +22,7 @@ interface AutoStoryboardAdvancedOverridesProps {
   locale?: MarketplaceHyperframesUiLocale | string;
   imageModelOptions?: ReadonlyArray<{ value: string; label: string }>;
   videoModelOptions?: ReadonlyArray<{ value: string; label: string }>;
+  visionQaModelOptions?: ReadonlyArray<{ value: string; label: string }>;
   videoSegmentPreview?: {
     loading?: boolean;
     error?: string | null;
@@ -88,6 +90,7 @@ export function AutoStoryboardAdvancedOverrides({
   locale,
   imageModelOptions: providedImageModelOptions,
   videoModelOptions: providedVideoModelOptions,
+  visionQaModelOptions: providedVisionQaModelOptions,
   videoSegmentPreview,
 }: AutoStoryboardAdvancedOverridesProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
@@ -105,6 +108,7 @@ export function AutoStoryboardAdvancedOverrides({
     frames: thai ? "เฟรม" : "Frames",
     imageModel: thai ? "โมเดลภาพ" : "Image model",
     videoModel: thai ? "โมเดลวิดีโอ" : "Video model",
+    visionQaModel: copy.visionQaModel,
     videoStructure: thai ? "โครงสร้างวิดีโอ" : "Video structure",
     manualGroupSize: thai ? "กำหนดจำนวนช็อตต่อคลิป" : "Manual group size",
     speechLanguage: thai ? "ภาษาพูด" : "Spoken language",
@@ -120,6 +124,7 @@ export function AutoStoryboardAdvancedOverrides({
     frameStrategy: labels.frames,
     imageModel: labels.imageModel,
     videoModel: labels.videoModel,
+    visionQaModel: labels.visionQaModel,
     videoStructureMode: labels.videoStructure,
     manualVideoGroupSize: labels.manualGroupSize,
     speechLanguage: labels.speechLanguage,
@@ -248,6 +253,12 @@ export function AutoStoryboardAdvancedOverrides({
           label: thai ? "Veo 3 Lite" : "Veo 3 Lite",
         },
       ] as const);
+  const visionQaModelOptions = providedVisionQaModelOptions?.length
+    ? providedVisionQaModelOptions
+    : MARKETPLACE_AUTO_REVIEW_CURATED_VISION_QA_MODELS.map(modelId => ({
+        value: modelId,
+        label: modelId,
+      }));
   const defaultValueFor = (key: OverrideKey): string =>
     baseAutoDefaultValues[key];
   const selectedValueFor = (key: OverrideKey): string =>
@@ -440,6 +451,24 @@ export function AutoStoryboardAdvancedOverrides({
                 onChange={event => update("videoModel", event.target.value)}
               >
                 {videoModelOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className={labelClass}>{labels.visionQaModel}</span>
+              <select
+                aria-label={labels.visionQaModel}
+                className={fieldClass}
+                value={selectedValueFor("visionQaModel")}
+                onChange={event =>
+                  update("visionQaModel", event.target.value)
+                }
+              >
+                <option value="">{copy.visionQaModelAuto}</option>
+                {visionQaModelOptions.map(option => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>

@@ -27,6 +27,11 @@ import {
 } from "@shared/verticalDramaSeries";
 import type { VerticalDramaSeriesMemory } from "@shared/verticalDramaSeries";
 import { artifactChecksumSha256 } from "@shared/verticalDramaSeries";
+// Feature 132 §5.3 (F132B, ledgers-and-story-state, added 2026-07-09) — the
+// typed per-episode story-state shape; tolerant-parsed here (never throws)
+// so a malformed `story_state` event payload never breaks bundle
+// construction — see `storyState`'s own doc comment below.
+import { verticalDramaStoryStateSchema, type VerticalDramaStoryState } from "@shared/verticalDramaSeries/qualityLedgers";
 // Story-density reform (spec §7.7.3, section-13, added 2026-07-07) — imported
 // DIRECTLY from the submodule (not the shared barrel), mirroring the
 // convention `verticalDramaStoryBible.ts`/`verticalDramaScriptGeneration.ts`
@@ -160,6 +165,16 @@ export interface VerticalDramaEpisodeMemoryBundle extends VerticalDramaSeriesMem
   activeBreakdownVersion?: VerticalDramaActiveBreakdownVersionSummary;
   /** See `VerticalDramaStandingArcDriftWarning`. Same flag-gating as `activeBreakdownVersion`. */
   standingArcDriftWarnings?: VerticalDramaStandingArcDriftWarning[];
+  /**
+   * Feature 132 §5.3 (F132B, ledgers-and-story-state, added 2026-07-09) —
+   * the most recent `story_state` event whose `payload.episode` is the
+   * highest value `<= episodeNumber` (never a future episode's state).
+   * Flag-gated by `BuildEpisodeMemoryBundleOpts.ledgersEnabled`; `undefined`
+   * when the flag is off, no `story_state` event exists yet for this
+   * episode, or the event's payload fails tolerant-parse — same
+   * "omitted-not-undefined-keyed" convention as `activeBreakdownVersion`.
+   */
+  storyState?: VerticalDramaStoryState;
 }
 
 /**
@@ -188,6 +203,13 @@ export interface BuildEpisodeMemoryBundleOpts {
    * failed to load) rather than throwing.
    */
   activeBreakdownVersion?: VerticalDramaActiveBreakdownVersionSummary | null;
+  /**
+   * Feature 132 §5.3 (F132B) — gates `storyState` derivation entirely,
+   * mirroring `arcReplanEnabled`'s exact flag-gated-optional convention:
+   * the caller resolves the `verticalDramaQualityLedgers` tenant flag
+   * (this module has no direct tenant-flag read of its own).
+   */
+  ledgersEnabled?: boolean;
 }
 
 /** Outcome derived from the append-only chain, never stored on the proposal. */
@@ -232,6 +254,34 @@ export function deriveStandingArcDriftWarnings(
     });
   }
   return warnings;
+}
+
+/**
+ * Feature 132 §5.3 (F132B) — resolves the most recent `story_state` event
+ * whose `payload.storyState.episode` (or, tolerantly, `payload.episode`) is
+ * the highest value `<= episodeNumber`, never a future episode's state.
+ * Tolerant-parsed against `verticalDramaStoryStateSchema` — a malformed
+ * payload is skipped (never thrown), falling back to the next-best
+ * candidate or `undefined`. Pure, deterministic — operates on the same
+ * `live` (retcon-supersession-filtered) event list `buildEpisodeMemoryBundle`
+ * already computes.
+ */
+export function deriveStoryStateForEpisode(
+  liveEvents: VerticalDramaMemoryEvent[],
+  episodeNumber: number,
+): VerticalDramaStoryState | undefined {
+  const candidates = liveEvents
+    .filter((ev) => ev.memoryKind === "story_state")
+    .map((ev) => {
+      const raw = (ev.payload?.storyState ?? ev.payload) as unknown;
+      const parsed = verticalDramaStoryStateSchema.safeParse(raw);
+      return parsed.success ? parsed.data : null;
+    })
+    .filter((state): state is VerticalDramaStoryState => state !== null)
+    .filter((state) => state.episode <= episodeNumber)
+    .sort((a, b) => a.episode - b.episode);
+
+  return candidates.length > 0 ? candidates[candidates.length - 1] : undefined;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -416,6 +466,13 @@ export function buildEpisodeMemoryBundle(
       }
     : {};
 
+  // Feature 132 §5.3 (F132B) — flag-gated; omitted entirely (not even
+  // present as an `undefined` key) when the flag is off, matching
+  // `arcReplanExtras`'s exact convention above.
+  const storyState = opts.ledgersEnabled
+    ? deriveStoryStateForEpisode(live, episodeNumber)
+    : undefined;
+
   return {
     canonicalFacts,
     episodeSummaries: lastSummaries,
@@ -429,6 +486,7 @@ export function buildEpisodeMemoryBundle(
     resolvedHookLookback,
     usedCompaction,
     ...arcReplanExtras,
+    ...(storyState ? { storyState } : {}),
   };
 }
 

@@ -20386,6 +20386,20 @@ export const verticalDramaSeries = pgTable(
     qualityPolicy: jsonb("qualityPolicy"),
     /** VerticalDramaSeriesTrailerState (series-level narrated trailer, Bible tab) */
     trailer: jsonb("trailer"),
+    /**
+     * Text Overlay Suite (task #34, F131AB) — series-level branding WATERMARK
+     * (`VdSeriesWatermarkConfig`, `@shared/verticalDramaSeries/textOverlay.ts`):
+     * enabled/type(text|image)/text/imageUrl/position/opacity/scalePct/marginPx.
+     * Nullable JSONB, additive; same "hand-authored migration, schema.ts
+     * catches up separately" convention as this table's sibling `trailer`
+     * column — see `manual_vertical_drama_series_watermark.sql` for the
+     * idempotent `ADD COLUMN IF NOT EXISTS` record. Zero data-loss: nullable
+     * ADD COLUMN, existing rows get `watermark = NULL` (client/server treat
+     * NULL as "no watermark configured"). Read/written via
+     * `updateSeriesWatermark` (flag-gated on
+     * `verticalDramaSeriesTextOverlaySuite`, F131AB).
+     */
+    watermark: jsonb("watermark"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -20553,6 +20567,21 @@ export const verticalDramaEpisodes = pgTable(
      * `updateEpisodeAdBannerPlan` (flag-gated on `verticalDramaSeriesAdBannerOverlay`, F131W).
      */
     adBannerPlan: jsonb("adBannerPlan"),
+    /**
+     * Text Overlay Suite (task #34, F131AB) — this EPISODE's text-overlay
+     * plan (`VdTextOverlayPlan`, `@shared/verticalDramaSeries/textOverlay.ts`):
+     * endCard/openerRecap/titleBumper/episodeIndicator/characterIntroCards/
+     * cards[]. Nullable JSONB, additive; same "hand-authored migration,
+     * schema.ts catches up separately" convention as this table's sibling
+     * `adBannerPlan` column — see
+     * `manual_vertical_drama_episode_text_overlay_plan.sql` for the
+     * idempotent `ADD COLUMN IF NOT EXISTS` record. Zero data-loss: nullable
+     * ADD COLUMN, existing rows get `textOverlayPlan = NULL` (client/server
+     * treat NULL as "no text overlay plan configured yet" — every kind
+     * defaults to disabled). Read/written via `updateEpisodeTextOverlayPlan`
+     * (flag-gated on `verticalDramaSeriesTextOverlaySuite`, F131AB).
+     */
+    textOverlayPlan: jsonb("textOverlayPlan"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),

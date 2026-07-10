@@ -15,6 +15,24 @@ tags:
   - product
   - tie-in
   - compliance
+trigger_patterns: []
+priority: 50
+config:
+  media_studio:
+    auto_learning:
+      enabled: false
+      prompt_qa_after_auto_prompt: true
+      image_qa_after_generation: true
+      require_admin_approval: true
+      min_prompt_score_to_pass: 85
+      min_image_fidelity_score_to_pass: 80
+      max_auto_patch_risk: medium
+  orchestration:
+    mode: local
+    endpoint: null
+    skillTargets: []
+    parallel: false
+    fallback: local
 ---
 # Vertical Drama Product Tie-In Planner
 

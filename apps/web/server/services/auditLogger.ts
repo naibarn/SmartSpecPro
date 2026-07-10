@@ -181,6 +181,8 @@ export type AuditEventType =
   | "worker_budget_updated"
   | "worker_callback_published"
   | "worker_legacy_data_redacted"
+  | "vertical_drama_season_critique_apply_error"
+  | "vertical_drama_deep_generate_error"
   | "error";
 
 export interface AuditLogEntry {

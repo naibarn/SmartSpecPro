@@ -15,6 +15,24 @@ tags:
   - script
   - episode
   - series
+trigger_patterns: []
+priority: 50
+config:
+  media_studio:
+    auto_learning:
+      enabled: false
+      prompt_qa_after_auto_prompt: true
+      image_qa_after_generation: true
+      require_admin_approval: true
+      min_prompt_score_to_pass: 85
+      min_image_fidelity_score_to_pass: 80
+      max_auto_patch_risk: medium
+  orchestration:
+    mode: local
+    endpoint: null
+    skillTargets: []
+    parallel: false
+    fallback: local
 ---
 # Vertical Drama Script Builder
 
@@ -66,6 +84,139 @@ any of the following is NOT acceptable, even if it validates against the JSON sc
 Failing any of points 1-6 means the episode will read as flat, generic melodrama —
 exactly the failure mode this skill exists to prevent. When in doubt, add MORE
 reversal and sharper power shifts, never fewer.
+
+## Speech budget — MANDATORY WHEN PROVIDED (story-density reform)
+
+The input may include a `speech_budget` object and a `content_budget` object.
+When EITHER is present, dialogue is no longer optional summary prose — the
+beats must contain ACTUAL, SPOKEN-REGISTER dialogue sized to the budget, not
+scene summaries alone:
+
+- `speech_budget.target_speech_seconds_min` / `target_speech_seconds_max` —
+  the whole-episode spoken-content target, in seconds. The sum of every
+  beat's `estimated_speech_seconds` must fall inside this band (never below
+  the min).
+- `speech_budget.per_shot_band` — the target/minimum speech seconds for each
+  clip-duration band the episode will eventually be cut into (e.g. the main
+  ~8s shots vs. a trailing ~4s shot). Use this to judge roughly how much
+  spoken content each beat needs to carry once it is later split into shots.
+- `speech_budget.locale` — `"th"` requires natural SPOKEN-REGISTER Thai
+  (ภาษาพูด: natural sentence-final particles, short clauses, no
+  written/translated register — the same bar `vertical-drama-dialogue-audio-planner`
+  enforces); non-`"th"` locales still require natural spoken-style dialogue,
+  never written/formal prose.
+- `content_budget` (`beatCount`, `estimatedSpeechSeconds`, `conflictLevel`,
+  `reversalTarget`, `arcThreads`) states how much story material THIS episode
+  was CONCEIVED to carry. Write enough plot — never padding — to legitimately
+  fill `estimatedSpeechSeconds` of real spoken content across approximately
+  `beatCount` beats, honor `reversalTarget` (never fewer reversals than this;
+  it never lowers the narrative-grammar minimum above), and advance every
+  thread named in `arcThreads`.
+
+When `speech_budget`/`content_budget` are present, every beat in
+`structure.beats` MUST carry a non-empty `dialogue_lines[]` array — actual
+lines of dialogue a performer would say, not a scene summary restated as
+prose — plus a beat-level `estimated_speech_seconds` equal to the sum of its
+lines' own `estimated_speech_seconds`. A script that only describes what
+characters say, without writing the actual lines, FAILS this requirement even
+when `scene_dialogue_summary` is populated — `scene_dialogue_summary` is a
+supplementary index, never a substitute for `dialogue_lines`.
+
+### HARD RULE — every `dialogue_lines[].line` must be literally speakable
+
+`line` MUST be text a TTS engine or a human actor can read ALOUD exactly as
+written — nothing left over that only makes sense on a printed page. This
+applies to `dialogue_lines[].line` (and `scene_dialogue_summary`'s
+`key_line`/dialogue text) exactly as it does downstream in
+`vertical-drama-dialogue-audio-planner`. A line that fails this is a FAILED
+output even if the words themselves are natural spoken Thai:
+
+- **No wrapping quote marks** (`" " " '`) around the line — the line IS the
+  spoken content, do not additionally "quote" it.
+- **No parenthetical stage direction in `speaker` or `line`.** A parenthetical
+  is a NOTE, not something an actor speaks — put emotion/acting direction in
+  `delivery`/`subtext` instead.
+- **No tildes, asterisks, brackets, slashes, or other markup**
+  (`~ * [ ] / `` ` `` `< >` `_`).
+- **No em-dash as a spoken beat** (`—`) — use a comma or a new beat instead.
+- **Ellipsis runs collapse to ONE `…` per line, maximum.**
+- **No emoji.**
+- **A bare animal/ambient sound is a SOUND CUE, not a dialogue line.** A cat
+  meowing, a dog barking, ambient noise — these are NOT a `dialogue_lines[]`
+  entry for a "character"; note them in `continuity_notes`/`warnings` instead.
+
+**Real observed bad outputs (DO NOT reproduce this — actual production
+defects, not hypotheticals):**
+
+| Bad (actual defect) | Why it fails | Good |
+| --- | --- | --- |
+| `หนูนา: "ยายทวดจัน…วันนี้อย่าหลงนะ เราต้องทำตามกติกาเหมือนเดิม"` | wrapping quote marks around the whole line | speaker `หนูนา`, line `ยายทวดจัน…วันนี้อย่าหลงนะ เราต้องทำตามกติกาเหมือนเดิม` |
+| `หนูนา(สะดุ้ง): "ไม่ใช่แค่แสงธรรมดา…ขวดนี้…เหมือนมีคำสั่งอยู่ข้างใน"` | parenthetical `(สะดุ้ง)` fused into the speaker; two `…` in one line | speaker `หนูนา`, `delivery` conveys "สะดุ้ง" (startled), line `ไม่ใช่แค่แสงธรรมดา…ขวดนี้เหมือนมีคำสั่งอยู่ข้างใน` (one `…`) |
+| `เจ้าเกลือ(เหมียว): "เหมียว~"` | a CAT SOUND written as a dialogue line, quoted, with a tilde | do not write this as a `dialogue_lines[]` entry at all — this is a sound cue, not dialogue |
+| `ชายนต์: "ใจเย็น ฟังให้ครบตามกติกา—ความจริงที่ปลอดภัยต้องพิสูจน์ได้ด้วย"` | wrapping quotes; em-dash used as a spoken beat | speaker `ชายนต์`, line `ใจเย็น ฟังให้ครบตามกติกา, ความจริงที่ปลอดภัยต้องพิสูจน์ได้ด้วย` |
+| `เสียงในขวด(เหมือนคำเตือน): "ไม่ใช่เอกสาร…คือคนที่หายไป"` | parenthetical fused into the speaker; wrapping quotes | speaker `เสียงในขวด`, `delivery` conveys "เหมือนคำเตือน" (like a warning), line `ไม่ใช่เอกสาร…คือคนที่หายไป` |
+
+Downstream, `analyzeVerticalDramaLineSpeakability` (`VD_DIALOGUE_UNSPEAKABLE_SYMBOLS`,
+`shared/verticalDramaSeries/dialogueQuality.ts`) deterministically checks every
+resolved line against this rule and flags violations — do not rely on it to
+clean up your output; write it speakable the first time, since you are the
+SOURCE of this content (spec §7.7.2: "dialogue is authored AT SCRIPT STAGE").
+
+Each entry in a beat's `dialogue_lines[]`:
+
+```json
+{
+  "speaker": "char_aria",
+  "line": "เรื่องนี้ยังไม่จบง่ายๆ หรอกนะ",
+  "delivery": "เย็นชา นิ่ง แต่แฝงคำขู่ — ช้าและหนักแน่น",
+  "subtext": "sounds calm but has already decided to retaliate",
+  "estimated_speech_seconds": 2.4
+}
+```
+
+If the episode totals below `speech_budget.target_speech_seconds_min` after
+every beat has dialogue, do NOT pad with filler lines — go back and add real
+plot (a new beat, an expanded confrontation, an additional reversal) so the
+extra seconds carry story weight, then re-total `estimated_speech_seconds`.
+Note any remaining shortfall in `warnings`/`repair_queue` rather than silently
+under-filling; downstream, an episode below the platform's minimum coverage
+ratio is returned for repair before the storyboard stage.
+
+When NEITHER `speech_budget` nor `content_budget` is present in the input,
+`dialogue_lines` and beat-level `estimated_speech_seconds` remain fully
+optional — legacy callers are unaffected.
+
+## Episode draft (refine mode) — MANDATORY WHEN PROVIDED (W10-B)
+
+The input may include an `episode_draft` object: `{ "shots": [...9 numbered
+shot drafts, each with "shot_number"/"summary"/"dialogue_lines"/
+"silence_intent"...], "cliffhanger_line": "..." }` — a vetted, already-
+approved per-shot draft carried over from the season-planning stage
+(spec/section-16).
+
+**A vetted per-shot draft exists — REFINE it into the full script schema:
+keep the shot-to-story structure and dialogue intent, improve flow/spoken
+register, preserve speakability rules; do NOT invent a divergent plot.**
+
+- Keep the shot-to-story structure and dialogue intent `episode_draft.shots`
+  already establishes — the same characters, the same outcome, the same
+  sequence of events; do not invent a divergent plot.
+- Improve on it: sharpen flow, tighten spoken register, and strengthen the
+  narrative-grammar requirements above (reversals, power shifts, escalation,
+  cliffhanger) beyond what the draft alone shows.
+- Every speakability rule above still applies in full while refining — never
+  reintroduce quote marks, parenthetical stage direction, or markup into a
+  line that is already clean.
+- `episode_draft.cliffhanger_line`, when present, is the intended payoff —
+  build `cliffhanger` toward it (wording may be adapted) rather than
+  inventing an unrelated twist.
+- This is REFINE, not skip: still produce the complete script schema exactly
+  as required below (beats, power shifts, emotional arcs, dialogue-complete
+  lines when `speech_budget`/`content_budget` are present, etc.) — a draft
+  never lowers or bypasses any requirement in this document.
+
+When `episode_draft` is absent, this section does not apply — generate the
+episode from the story brief as usual.
 
 Output skeleton:
 
@@ -171,5 +322,43 @@ Output skeleton:
     }
   ],
   "repair_queue": []
+}
+```
+
+### Example: a dialogue-complete beat (when `speech_budget`/`content_budget` are present)
+
+The skeleton above illustrates the required shape when no speech budget is
+supplied. When `speech_budget`/`content_budget` ARE present in the input,
+beat 3 from the same episode looks like this instead — dialogue authored in
+full, not summarized:
+
+```json
+{
+  "beat": 3,
+  "summary": "Aria reveals she already transferred the clinic out of the collateral pool an hour earlier",
+  "intensity": 9,
+  "power_shift": {
+    "holder_before": "char_rival",
+    "holder_after": "char_aria",
+    "how": "the clause the rival weaponized is now void; Aria's calm reveal flips who is exposed"
+  },
+  "is_reversal": true,
+  "dialogue_lines": [
+    {
+      "speaker": "char_aria",
+      "line": "พี่น่าจะเช็กบัญชีโอนก่อนจะยิ้มออกมาแบบนั้นนะ",
+      "delivery": "ประชดเบาๆ ปนสะใจ ช้าลงตอนท้ายประโยค",
+      "subtext": "delivering the reversal calmly to make the rival's shock land harder",
+      "estimated_speech_seconds": 2.8
+    },
+    {
+      "speaker": "char_rival",
+      "line": "เดี๋ยว... เธอพูดเรื่องอะไร",
+      "delivery": "สั่นเครือ เร็วขึ้นกะทันหัน",
+      "subtext": "the certainty just cracked; genuinely caught off guard",
+      "estimated_speech_seconds": 1.6
+    }
+  ],
+  "estimated_speech_seconds": 4.4
 }
 ```

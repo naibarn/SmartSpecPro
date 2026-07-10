@@ -14,3 +14,17 @@ single-character shot) — see `skill.md`'s "Emotional & acting direction" secti
 `emotion` remains required, but must vary — the same value MUST NOT appear on more
 than 2 consecutive shots. These are optional at the JSON-schema level for backward
 compatibility, but expected on every real generation.
+
+## Shot-to-beat attribution and silence budget (optional superset, added 2026-07-07)
+
+Each shot in `shots[]` MAY additionally carry `source_beat_indexes` (`integer[]`,
+matching the input script's `structure.beats[].beat`), `silence_intent`
+(`"dramatic_pause" | "action_visual" | "montage" | "establishing"`), and
+`target_speech_seconds` (`number`) — see `skill.md`'s "Shot-to-beat attribution
+and silence budget" section. These are optional at the JSON-schema level for
+backward compatibility, but `source_beat_indexes` is REQUIRED in practice
+whenever the input script's beats are dialogue-complete, and `silence_intent`
+is REQUIRED in practice on any shot with no spoken dialogue (max 2 of 9 shots
+visual-only unless the episode is marked visual-first). Downstream,
+`vertical-drama-dialogue-audio-planner` and `resolveShotDialogueLines` prefer
+this persisted mapping over positional guesswork.

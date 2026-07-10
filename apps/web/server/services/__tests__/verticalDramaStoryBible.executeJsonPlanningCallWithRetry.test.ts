@@ -13,7 +13,7 @@
  * against the SAME model (never auto-switches models) with a stricter
  * "do not truncate" instruction appended and a higher token ceiling.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { z } from "zod";
 
 vi.mock("../llmRouter", () => ({
@@ -134,27 +134,138 @@ describe("executeJsonPlanningCallWithRetry", () => {
       .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000))
       .mockResolvedValueOnce(successWith(JSON.stringify({ items: ["only-one"] })));
 
-    await expect(executeJsonPlanningCallWithRetry(baseArgs())).rejects.toThrow(
-      VdSchemaValidationError,
-    );
+    const promise = executeJsonPlanningCallWithRetry(baseArgs());
+    await expect(promise).rejects.toThrow(VdSchemaValidationError);
+    await expect(promise).rejects.toThrow(/items: Array must contain exactly 3/);
     expect(mockExecute).toHaveBeenCalledTimes(2);
   });
 
-  it("does NOT retry a provider/network error — only malformed-JSON/schema failures are retried", async () => {
-    mockExecute.mockResolvedValue({ type: "error", error: "upstream 503", statusCode: 503 } as any);
+  it("does NOT retry a FATAL error (auth failure) — retrying would only waste another call", async () => {
+    mockExecute.mockResolvedValue({
+      type: "error",
+      error: "Unauthorized: invalid api key",
+      statusCode: 401,
+    } as any);
 
     await expect(executeJsonPlanningCallWithRetry(baseArgs())).rejects.toThrow(
-      "LLM request failed: upstream 503",
+      "LLM request failed: Unauthorized: invalid api key",
     );
     expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 
-  it("does NOT retry when the provider never reaches a successful response (non-success, non-error type)", async () => {
-    mockExecute.mockResolvedValue({ type: "no_provider" } as any);
+  it("does NOT retry an insufficient-credit error — fatal, never transient", async () => {
+    mockExecute.mockResolvedValue({
+      type: "error",
+      error: "insufficient_quota: account has no remaining credit",
+      statusCode: 400,
+    } as any);
 
     await expect(executeJsonPlanningCallWithRetry(baseArgs())).rejects.toThrow(
-      "LLM request did not reach a successful provider response",
+      /insufficient_quota/,
     );
     expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
+
+  /* ------------------------------------------------------------------------ */
+  /* Phase A reliability fix (added 2026-07-09) — transient-error retry with  */
+  /* backoff. Root cause: a hung `kie_ai` provider hit `llmRouter.ts`'s 120s   */
+  /* `AbortController` timeout (errorType "network_error" / message "This     */
+  /* operation was aborted") on EVERY call, and nothing retried it. These     */
+  /* transient failures (network/timeout/rate-limit/upstream-5xx) now get a  */
+  /* bounded backoff retry (5s then 15s), orthogonal to the schema retry      */
+  /* above, with total LLM calls per invocation capped at 4.                  */
+  /* ------------------------------------------------------------------------ */
+  describe("Phase A — transient-error retry with backoff", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("retries a transient network/timeout error (\"This operation was aborted\") after a 5s backoff and succeeds", async () => {
+      mockExecute
+        .mockResolvedValueOnce({
+          type: "error",
+          error: "This operation was aborted",
+        } as any)
+        .mockResolvedValueOnce(successWith(VALID_JSON));
+
+      const promise = executeJsonPlanningCallWithRetry(baseArgs());
+      // Let the first attempt's rejection propagate before advancing the backoff timer.
+      await vi.advanceTimersByTimeAsync(5_000);
+      const result = await promise;
+
+      expect(result.data).toEqual({ items: ["a", "b", "c"] });
+      expect(result.retried).toBe(true);
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+    });
+
+    it("retries a 'no successful provider' response (fallback exhausted) with backoff and succeeds on the 2nd transient retry (5s then 15s)", async () => {
+      mockExecute
+        .mockResolvedValueOnce({ type: "no_provider" } as any)
+        .mockResolvedValueOnce({ type: "no_provider" } as any)
+        .mockResolvedValueOnce(successWith(VALID_JSON));
+
+      const promise = executeJsonPlanningCallWithRetry(baseArgs());
+      await vi.advanceTimersByTimeAsync(5_000);
+      await vi.advanceTimersByTimeAsync(15_000);
+      const result = await promise;
+
+      expect(result.data).toEqual({ items: ["a", "b", "c"] });
+      expect(result.retried).toBe(true);
+      expect(mockExecute).toHaveBeenCalledTimes(3);
+    });
+
+    it("does NOT retry a non-transient, non-schema (fatal) error even once", async () => {
+      mockExecute.mockResolvedValue({
+        type: "error",
+        error: "invalid_request_error: unsupported field 'foo'",
+        statusCode: 400,
+      } as any);
+
+      await expect(executeJsonPlanningCallWithRetry(baseArgs())).rejects.toThrow();
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+    });
+
+    it("caps TOTAL LLM calls at 4 (1 initial + 1 schema-retry + 2 transient-retries) even when every attempt keeps failing", async () => {
+      mockExecute
+        // Attempt 1: schema failure (truncated JSON) -> consumes the ONE schema-retry.
+        .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000))
+        // Attempt 2 (schema retry): transient failure -> consumes transient-retry 1/2.
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        // Attempt 3 (transient retry 1): transient failure again -> consumes transient-retry 2/2.
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        // Attempt 4 (transient retry 2): still fails -> budget exhausted, must throw now.
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any);
+
+      const promise = executeJsonPlanningCallWithRetry(baseArgs());
+      // Swallow the eventual rejection so the unhandled-rejection warning
+      // doesn't fire while we still need to advance fake timers below.
+      promise.catch(() => {});
+      await vi.advanceTimersByTimeAsync(5_000);
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      await expect(promise).rejects.toThrow("fetch failed");
+      expect(mockExecute).toHaveBeenCalledTimes(4); // never a 5th call.
+    });
+
+    it("does NOT exceed the transient-retry budget even if a 5th attempt would have succeeded", async () => {
+      mockExecute
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        .mockResolvedValueOnce({ type: "error", error: "fetch failed" } as any)
+        // A 4th call would succeed, but the cap is reached after 3 calls
+        // (1 initial + 2 transient retries) since no schema-retry fired here.
+        .mockResolvedValueOnce(successWith(VALID_JSON));
+
+      const promise = executeJsonPlanningCallWithRetry(baseArgs());
+      promise.catch(() => {});
+      await vi.advanceTimersByTimeAsync(5_000);
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      await expect(promise).rejects.toThrow("fetch failed");
+      expect(mockExecute).toHaveBeenCalledTimes(3);
+    });
   });
 });

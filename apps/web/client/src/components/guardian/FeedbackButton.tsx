@@ -20,6 +20,12 @@ import {
 } from "@smartspec/ui/src/components/ui/select";
 import { toast } from "sonner";
 import { MessageSquarePlus, Paperclip, X, FileText, Image, RefreshCw } from "lucide-react";
+import {
+  REPORT_ERROR_EVENT,
+  getDiagnosticsForFeedback,
+  type DiagnosticsBundle,
+  type ReportErrorEventDetail,
+} from "@/lib/systemErrorMonitor";
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -139,10 +145,16 @@ export function FeedbackButton() {
   );
   // Holds the ticket ID when ticket was created but file upload failed
   const [pendingUploadTicketId, setPendingUploadTicketId] = useState<number | null>(null);
+  // Diagnostics bundle from a "แจ้งปัญหา" system-error-toast report, if this
+  // dialog session was opened that way. Attached as contextJson on submit and
+  // surfaced via a non-editable transparency note in the dialog.
+  const [pendingDiagnostics, setPendingDiagnostics] = useState<DiagnosticsBundle | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const feedbackButtonRef = useRef<HTMLButtonElement>(null);
   const dragStateRef = useRef<FeedbackDragState | null>(null);
   const suppressNextClickRef = useRef(false);
+  const openRef = useRef(open);
+  const pasteImageCounterRef = useRef(0);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
@@ -234,6 +246,32 @@ export function FeedbackButton() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  // Listen for the "แจ้งปัญหา" action dispatched by systemErrorMonitor when a
+  // system-class error toast fires. Opens the dialog pre-filled with the
+  // suggested title/description and stashes the error's diagnostics bundle
+  // for submission — without clobbering an in-progress draft.
+  useEffect(() => {
+    function handleReportError(event: Event) {
+      const detail = (event as CustomEvent<ReportErrorEventDetail>).detail;
+      if (!detail) return;
+
+      setPendingDiagnostics(detail.diagnostics);
+      setTicketType("bug");
+      setTitle((prev) => (!openRef.current || !prev.trim() ? detail.suggestedTitle : prev));
+      setDescription((prev) =>
+        !openRef.current || !prev.trim() ? detail.suggestedDescription : prev,
+      );
+      setOpen(true);
+    }
+
+    window.addEventListener(REPORT_ERROR_EVENT, handleReportError);
+    return () => window.removeEventListener(REPORT_ERROR_EVENT, handleReportError);
+  }, []);
+
   async function uploadFiles(ticketId: number): Promise<boolean> {
     if (files.length === 0) return true;
     setUploading(true);
@@ -291,6 +329,7 @@ export function FeedbackButton() {
     setTicketType("bug");
     setFiles([]);
     setPendingUploadTicketId(null);
+    setPendingDiagnostics(null);
   }, []);
 
   const handleRetryUpload = useCallback(async () => {
@@ -356,6 +395,35 @@ export function FeedbackButton() {
       if (e.dataTransfer.files.length > 0) {
         addFiles(e.dataTransfer.files);
       }
+    },
+    [addFiles],
+  );
+
+  // Clipboard screenshot paste: fires while any element inside the dialog has
+  // focus. Only consumes image items so plain text paste into Title/Description
+  // inputs keeps working. Accumulates across multiple sequential pastes (and
+  // multiple images in one paste) — validation (size/type/count) is delegated
+  // to the existing addFiles().
+  const handleDialogPaste = useCallback(
+    (event: React.ClipboardEvent<HTMLDivElement>) => {
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      const pastedImages: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind !== "file" || !item.type.startsWith("image/")) continue;
+        const blob = item.getAsFile();
+        if (!blob) continue;
+        pasteImageCounterRef.current += 1;
+        const ext = (item.type.split("/")[1] || "png").toLowerCase();
+        const name = `screenshot-${Date.now()}-${pasteImageCounterRef.current}.${ext}`;
+        pastedImages.push(new File([blob], name, { type: blob.type || item.type }));
+      }
+
+      if (pastedImages.length === 0) return; // No image in clipboard — let normal text paste through
+      event.preventDefault();
+      addFiles(pastedImages);
     },
     [addFiles],
   );
@@ -434,7 +502,10 @@ export function FeedbackButton() {
           <span className="hidden sm:inline">Feedback</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto">
+      <DialogContent
+        className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto"
+        onPaste={handleDialogPaste}
+      >
         <DialogHeader>
           <DialogTitle>Send Feedback</DialogTitle>
         </DialogHeader>
@@ -534,6 +605,9 @@ export function FeedbackButton() {
               <p className="text-[10px] text-muted-foreground/60 mt-0.5">
                 jpg, png, webp, pdf, md — max 5 MB each — up to {MAX_FILES} files
               </p>
+              <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                วางภาพจากคลิปบอร์ดได้ (Ctrl+V) สูงสุด {MAX_FILES} ไฟล์
+              </p>
             </div>
 
             {files.length > 0 && (
@@ -565,6 +639,22 @@ export function FeedbackButton() {
             )}
           </div>
 
+          {/* Transparency note: only shown when this draft was opened via a
+              system-error-toast report, so users know diagnostics are attached. */}
+          {pendingDiagnostics && !pendingUploadTicketId && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+              <p>
+                ระบบจะแนบข้อมูลวินิจฉัยทางเทคนิค (รหัสติดตาม, หน้าที่เกิดปัญหา, ข้อความ error)
+                ไปให้ผู้ดูแลโดยอัตโนมัติ
+              </p>
+              {pendingDiagnostics.primaryError?.traceId && (
+                <p className="mt-1 font-mono text-[10px] text-blue-600">
+                  traceId: {pendingDiagnostics.primaryError.traceId}
+                </p>
+              )}
+            </div>
+          )}
+
           {!pendingUploadTicketId && (
             <Button
               className="w-full"
@@ -574,6 +664,10 @@ export function FeedbackButton() {
                   ticketType: ticketType as any,
                   title: title.trim(),
                   description: description.trim() || undefined,
+                  contextJson: (pendingDiagnostics ?? getDiagnosticsForFeedback()) as unknown as Record<
+                    string,
+                    unknown
+                  >,
                 })
               }
             >

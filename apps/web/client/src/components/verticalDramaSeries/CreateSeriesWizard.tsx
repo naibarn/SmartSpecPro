@@ -39,6 +39,7 @@ import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
   VERTICAL_DRAMA_SERIES_LOCALES,
   clampToCreateSeriesLimit,
+  CREATE_SERIES_FIELD_LIMITS,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import type {
@@ -52,6 +53,16 @@ import { mixWeightLabel, pickCopy, verticalDramaCopy, visualStyleLabel, wizardSt
 interface WizardState {
   title: string;
   genre: string;
+  /**
+   * Feature 132 §4 (F132A) — free-form "โจทย์เรื่องที่อยากได้" creative-intent
+   * input, positioned directly above `logline`. When non-empty, the SERVER
+   * (gated behind the `verticalDramaUserPremise` tenant flag) treats it as
+   * the primary story spine and the selected preset(s) as supporting flavor.
+   * Sent unconditionally on both `synthesizeGenrePreset` and `create` (same
+   * "server decides" convention as Preset Mix v2's `selections` field) — see
+   * `handleSynthesizePreset`/`handleCreate` below.
+   */
+  userPremise: string;
   logline: string;
   targetEpisodeCount: string;
   locale: VerticalDramaSeriesLocale;
@@ -81,6 +92,7 @@ interface WizardState {
 const INITIAL_WIZARD: WizardState = {
   title: "",
   genre: "",
+  userPremise: "",
   logline: "",
   targetEpisodeCount: "10",
   locale: "th",
@@ -223,6 +235,9 @@ export function CreateSeriesWizard({
     // can additively stamp this preset's `visualIdentityJson` (if any) into
     // the new series' bible; a no-op server side for presets without one.
     set("appliedPresetId", preset.id);
+    // Feature 132 §4.1 (F132A) distinctness rule — `userPremise` is
+    // creative-intent input, never overwritten by preset application.
+    // Deliberately not touched here.
     toast.success(
       lang === "th"
         ? `นำ Preset "${preset.title}" มาใช้แล้ว — แก้ไขต่อได้ทุกแท็บ`
@@ -246,6 +261,10 @@ export function CreateSeriesWizard({
       // any single-preset `appliedPresetId` a prior "Use this preset" click
       // may have left behind so `create` doesn't stamp the wrong identity.
       appliedPresetId: undefined,
+      // Feature 132 §4.1 (F132A) distinctness rule — `userPremise` is
+      // creative-intent input, never overwritten by preset application.
+      // `prev` is already spread above, so `userPremise` is deliberately not
+      // listed here (leaving it untouched).
     }));
     toast.success(
       lang === "th"
@@ -302,7 +321,13 @@ export function CreateSeriesWizard({
         presetId: id,
         weight: mixWeights[id] ?? DEFAULT_MIX_WEIGHT,
       })),
-    });
+      // Feature 132 §4.2 (F132A) — sent UNCONDITIONALLY, same "server
+      // decides" convention as `selections` above (verticalDramaUserPremise
+      // tenant flag gates whether the server honors it).
+      // TODO: server accepts this once verticalDramaSeries.ts's deferred
+      // userPremise wiring lands (section-02 plan item 3/4).
+      userPremise: form.userPremise.trim() || undefined,
+    } as Parameters<typeof synthesizePresetMutation.mutate>[0]);
   }
 
   // All steps are always reachable (freely-navigable tabs) — this only drives
@@ -365,7 +390,13 @@ export function CreateSeriesWizard({
       // server; a no-op when unset, invalid, or the preset has no
       // `visualIdentityJson`. See `applyPreset`/`applyPresetDraft` above.
       appliedPresetId: form.appliedPresetId,
-    });
+      // Feature 132 §4.2 (F132A) — top-level sibling of `bible` (NOT nested
+      // inside it), matching the router schema shape; sent unconditionally,
+      // server decides whether to honor it (`verticalDramaUserPremise` flag).
+      // TODO: server accepts this once verticalDramaSeries.ts's deferred
+      // userPremise wiring lands (section-02 plan item 3).
+      userPremise: form.userPremise.trim() || undefined,
+    } as Parameters<typeof createMutation.mutate>[0]);
   };
 
   return (
@@ -695,6 +726,10 @@ function WizardStep({
               onApplyDraft={onApplyPresetDraft}
               onApplySinglePreset={onApplyPreset}
               expanded={presetListExpanded}
+              // Feature 132 §4.1 (F132A) — the badge only signals that a
+              // premise is present; it does not itself gate anything (the
+              // server decides whether the tenant flag honors it).
+              hasUserPremise={form.userPremise.trim().length > 0}
             />
           </div>
 
@@ -718,6 +753,37 @@ function WizardStep({
                   min={1}
                   value={form.targetEpisodeCount}
                   onChange={(e) => set("targetEpisodeCount", e.target.value)}
+                />
+              </Field>
+              <Field
+                label={th ? "โจทย์เรื่องที่อยากได้ (ไม่บังคับ)" : "Story premise you want (optional)"}
+                helperText={
+                  th
+                    ? "ถ้าระบุ ระบบจะใช้โจทย์ของคุณเป็นแกนเรื่องหลัก แล้วนำ preset ที่เลือก (1–5 แบบ) มาผสมเพื่อเสริมความเข้มข้นและความร่วมสมัย"
+                    : "If provided, the system uses your premise as the primary story spine and blends the selected preset(s) (1-5) to intensify and add contemporary flavor."
+                }
+              >
+                <Textarea
+                  value={form.userPremise}
+                  onChange={(e) => {
+                    // Hard length cap only while typing (no trim here — trimming
+                    // on every keystroke would eat trailing spaces the user is
+                    // still mid-word on, breaking normal typing). Full
+                    // trim + word-boundary clamp runs on blur below.
+                    const raw = e.target.value;
+                    const limit = CREATE_SERIES_FIELD_LIMITS.userPremise;
+                    set("userPremise", raw.length > limit ? raw.slice(0, limit) : raw);
+                  }}
+                  onBlur={(e) =>
+                    set("userPremise", clampToCreateSeriesLimit(e.target.value, "userPremise") ?? "")
+                  }
+                  rows={4}
+                  maxLength={CREATE_SERIES_FIELD_LIMITS.userPremise}
+                  placeholder={
+                    th
+                      ? "อยากได้เรื่องเกี่ยวกับอะไร แนวไหน เกิดที่ไหน ตัวเอกเป็นใคร ปมหลักคืออะไร — ระบุเท่าที่อยากกำหนด ที่เหลือให้ AI ช่วยเติม"
+                      : "What is it about, which genre, where does it happen, who's the lead, what's the core conflict — specify as much as you want, AI fills the rest."
+                  }
                 />
               </Field>
               <Field label={th ? "เรื่องย่อ (logline)" : "Logline"}>
@@ -780,6 +846,15 @@ function WizardStep({
       return (
         <Field label={th ? "ตัวละคร / บทบาท / ความสัมพันธ์ (หนึ่งบรรทัดต่อหนึ่งตัว)" : "Characters / roles / relationships (one per line)"}>
           <Textarea value={form.characters} onChange={(e) => set("characters", e.target.value)} rows={6} />
+          {/* F132F (spec 132 §7.3, added 2026-07-09) — this freeform textarea
+              stays exactly as-is pre-generation; detailed voice/personality
+              profiles are generated automatically afterward and editable in
+              the character stock panel, not here. */}
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {th
+              ? "โปรไฟล์เสียงพูด/บุคลิกโดยละเอียดของแต่ละตัวละครจะถูกสร้างอัตโนมัติหลังจากสร้างซีรีส์ และแก้ไขได้ภายหลังในแท็บ \"ตัวละคร\""
+              : "Detailed voice/personality profiles for each character are generated automatically after the series is created, and can be edited afterward in the Characters tab."}
+          </p>
         </Field>
       );
     case 3:
@@ -1052,6 +1127,7 @@ function MixAndMatchPresetPanel({
   onApplyDraft,
   onApplySinglePreset,
   expanded,
+  hasUserPremise,
 }: {
   lang: "th" | "en";
   presets: GenrePreset[];
@@ -1075,6 +1151,8 @@ function MixAndMatchPresetPanel({
   onApplyDraft: (draft: SynthesizedGenrePresetDraft) => void;
   onApplySinglePreset: (preset: GenrePreset) => void;
   expanded: boolean;
+  /** Feature 132 §4.1 (F132A) — true when `form.userPremise` is non-empty (trimmed); shows the premise-primary badge below. */
+  hasUserPremise?: boolean;
 }) {
   const th = lang === "th";
   const selectionCount = selectedPresetIds.length;
@@ -1129,6 +1207,13 @@ function MixAndMatchPresetPanel({
                 ? "เลือก 1 แบบเพื่อใช้ preset เดี่ยวแบบเดิม หรือเลือก 2-5 แบบเพื่อให้ AI ช่วย mix เป็น draft เดียว"
                 : "Choose 1 preset to use it directly, or choose 2-5 presets for AI to mix into one draft."}
             </p>
+            {hasUserPremise && (
+              <Badge variant="secondary" className="mt-1.5 whitespace-normal text-left text-[11px] leading-4">
+                {th
+                  ? "ใช้โจทย์ของคุณเป็นแกนหลัก — preset ที่เลือกจะเป็นตัวเสริม"
+                  : "Your premise is the spine — selected presets add supporting flavor"}
+              </Badge>
+            )}
           </div>
         </div>
       </div>
@@ -1384,11 +1469,20 @@ function MixAndMatchPresetPanel({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  helperText,
+  children,
+}: {
+  label: string;
+  helperText?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="grid gap-1.5">
       <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
       {children}
+      {helperText && <p className="text-[11px] text-muted-foreground">{helperText}</p>}
     </div>
   );
 }

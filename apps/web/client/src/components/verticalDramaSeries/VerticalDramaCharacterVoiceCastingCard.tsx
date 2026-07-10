@@ -18,12 +18,24 @@
  */
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Check, ChevronDown, Loader2, Mic, Search, Volume2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  Loader2,
+  Mic,
+  Save,
+  Search,
+  Sparkles,
+  Volume2,
+  X,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +65,8 @@ import type {
   VerticalDramaCharacterVoiceConfig,
   VerticalDramaVoiceCatalogEntry,
 } from "@shared/verticalDramaSeries/voiceCasting";
+import type { VerticalDramaSpeechProfile } from "@shared/verticalDramaSeries/speechProfile";
+import { Textarea } from "@/components/ui/textarea";
 
 /* -------------------------------------------------------------------------- */
 /* Pure helpers (exported for direct unit testing)                            */
@@ -110,6 +124,46 @@ export function formatVoiceChipLabel(
   return voiceConfig.voiceLabel?.trim() || voiceConfig.voiceId;
 }
 
+/**
+ * F132F speech-profile "prefill from speech profile" suggestion (spec 132
+ * §7.3, added 2026-07-09) — maps `speechProfile.speakingSpeed`/
+ * `emotionalDefault` into a proposed `voiceConfig.styleHints[]` entry. Pure,
+ * side-effect-free — the caller decides whether/how to insert the result
+ * into the (editable, never-auto-saved) style-hints draft text; this
+ * function never writes anywhere itself. Mirrors `voiceCasting.ts`'s own
+ * doc comment on `styleHints`: "informational only; never sent verbatim...
+ * as control parameters" — this is a SUGGESTION for the user to review, not
+ * an automatic assignment.
+ */
+export function suggestStyleHintsFromSpeechProfile(
+  profile: VerticalDramaSpeechProfile,
+): string[] {
+  const speedPhrase: Record<VerticalDramaSpeechProfile["speakingSpeed"], string> = {
+    slow: "slow, deliberate pacing",
+    measured: "measured, unhurried pacing",
+    normal: "normal conversational pacing",
+    fast: "quick, energetic pacing",
+    rapid_fire: "rapid-fire, breathless pacing",
+  };
+  const hints = [speedPhrase[profile.speakingSpeed], profile.emotionalDefault.trim()].filter(
+    (hint): hint is string => Boolean(hint),
+  );
+  return hints;
+}
+
+/** Splits a comma-separated style-hints textarea value into a trimmed, non-empty-only array — the form <-> `styleHints[]` boundary. */
+export function parseStyleHintsText(text: string): string[] {
+  return text
+    .split(",")
+    .map((hint) => hint.trim())
+    .filter(Boolean);
+}
+
+/** Joins `styleHints[]` back into the comma-separated textarea display value — inverse of `parseStyleHintsText`. */
+export function formatStyleHintsText(hints: string[] | undefined): string {
+  return (hints ?? []).join(", ");
+}
+
 /* -------------------------------------------------------------------------- */
 /* Component                                                                  */
 /* -------------------------------------------------------------------------- */
@@ -137,6 +191,20 @@ export interface VerticalDramaCharacterVoiceCastingCardProps {
    *  preview action so the paid-preview confirm dialog's "this spends
    *  credits" warning is followed by the actual resolved amount. */
   previewCreditCost?: number | null;
+  /** F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added
+   *  2026-07-09) — when present, shows a "suggest from speech profile"
+   *  action that proposes style hints derived from this profile. Absent
+   *  (flag off, or no profile yet) renders byte-identical to before this
+   *  addition — no style-hints section at all. */
+  speechProfile?: VerticalDramaSpeechProfile;
+  /** Persists the (user-reviewed, possibly-edited) style-hints text as
+   *  `styleHints[]` — only ever called on an explicit user Save click,
+   *  never automatically. Omitted -> the Save action is hidden (a caller
+   *  that doesn't wire persistence yet still gets the suggest/edit UI, just
+   *  without a way to save). */
+  onSaveStyleHints?: (hints: string[]) => void;
+  /** `setCharacterVoiceConfig` in flight for a style-hints-only save. */
+  savingStyleHints?: boolean;
   className?: string;
 }
 
@@ -155,6 +223,9 @@ export function VerticalDramaCharacterVoiceCastingCard({
   previewing = false,
   previewAudioUrl,
   previewCreditCost,
+  speechProfile,
+  onSaveStyleHints,
+  savingStyleHints = false,
   className,
 }: VerticalDramaCharacterVoiceCastingCardProps) {
   const t = (key: keyof typeof verticalDramaCopy) => pickCopy(lang, verticalDramaCopy[key]);
@@ -162,6 +233,26 @@ export function VerticalDramaCharacterVoiceCastingCard({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmingPreview, setConfirmingPreview] = useState(false);
+  /** `null` (not yet edited by the user this session) means "always mirror
+   *  the persisted `voiceConfig.styleHints` on every render" — once the user
+   *  types or clicks "suggest", this takes over so their in-progress edit
+   *  isn't clobbered by a re-render. Never auto-saved (spec 132 §7.3 hard
+   *  rule) — only `handleSaveStyleHints` below persists it. */
+  const [styleHintsDraft, setStyleHintsDraft] = useState<string | null>(null);
+  const styleHintsText = styleHintsDraft ?? formatStyleHintsText(voiceConfig?.styleHints);
+
+  const handleSuggestStyleHints = () => {
+    if (!speechProfile) return;
+    const suggested = suggestStyleHintsFromSpeechProfile(speechProfile);
+    if (suggested.length === 0) return;
+    const existingHints = parseStyleHintsText(styleHintsText);
+    const merged = [...existingHints, ...suggested.filter((hint) => !existingHints.includes(hint))];
+    setStyleHintsDraft(formatStyleHintsText(merged));
+  };
+
+  const handleSaveStyleHints = () => {
+    onSaveStyleHints?.(parseStyleHintsText(styleHintsText));
+  };
 
   const groups = useMemo(() => filterAndGroupVoiceCatalog(voices, searchQuery), [voices, searchQuery]);
   const hasAnyVoices = voices.length > 0;
@@ -384,6 +475,65 @@ export function VerticalDramaCharacterVoiceCastingCard({
             <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
             {t("voiceCastingPreviewErrorNoVoice")}
           </p>
+        )}
+
+        {/* F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added
+            2026-07-09) — style-hints editor + "suggest from speech profile".
+            Informational only (mirrors `voiceCasting.ts`'s own
+            `styleHints` doc comment) — never sent verbatim to a TTS
+            provider as control parameters, and never auto-saved: only an
+            explicit click on the Save button below persists anything. */}
+        {!readOnly && (
+          <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+            <Label className="text-xs text-muted-foreground">
+              {t("voiceCastingStyleHintsLabel")}
+            </Label>
+            <Textarea
+              rows={2}
+              value={styleHintsText}
+              onChange={(e) => setStyleHintsDraft(e.target.value)}
+              placeholder={t("voiceCastingStyleHintsPlaceholder")}
+              data-testid="vd-voice-casting-style-hints-input"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              {speechProfile && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={handleSuggestStyleHints}
+                  data-testid="vd-voice-casting-suggest-style-hints"
+                >
+                  <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t("voiceCastingSuggestStyleHintsCta")}
+                </Button>
+              )}
+              {onSaveStyleHints && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="gap-2"
+                  disabled={!voiceConfig || savingStyleHints}
+                  onClick={handleSaveStyleHints}
+                  data-testid="vd-voice-casting-save-style-hints"
+                >
+                  {savingStyleHints ? (
+                    <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Save aria-hidden="true" className="h-3.5 w-3.5" />
+                  )}
+                  {t("voiceCastingSaveStyleHintsCta")}
+                </Button>
+              )}
+            </div>
+            {!voiceConfig && onSaveStyleHints && (
+              <p className="text-xs text-muted-foreground">
+                {t("voiceCastingStyleHintsRequiresCastVoice")}
+              </p>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

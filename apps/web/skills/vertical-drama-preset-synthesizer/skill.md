@@ -80,3 +80,29 @@ Output skeleton:
   "warnings": []
 }
 ```
+
+## User Premise — Premise-Primary Blending (Feature 132 §4.3, F132A)
+
+When the creator supplies a free-form "โจทย์เรื่องที่อยากได้" (user premise) alongside the selected preset(s), the service (`server/services/verticalDramaPresetSynthesis.ts`) prepends the following conditional instruction block to the request ahead of the payload — it is templated per-request by the service, not statically present in every call, since this file is loaded verbatim and only the service can conditionally render it:
+
+```text
+USER PREMISE (PRIMARY SPINE):
+{{userPremise}}
+
+Blending rules when a user premise is present:
+- The user premise is the primary story spine. Setting, protagonist, core
+  conflict, and direction stated by the user are non-negotiable.
+- The selected presets (1-5) are supporting flavor: use them to intensify
+  drama, sharpen tropes, add contemporary texture, and fill gaps the user
+  left open. Do not let any preset displace a premise-stated element.
+- primarySelectionId, when also provided, selects which preset contributes
+  the strongest *flavor*, not the spine.
+- If a preset directly conflicts with the premise, keep the premise and
+  record the dropped preset element in `warnings`.
+- The synthesized draft's logline and mainPlot must be traceable to the
+  premise: a reader comparing them side by side must see the user's story.
+```
+
+When no user premise is supplied, this block is entirely absent and behavior is byte-for-byte identical to the preset-only flow described above (the preset spine via `primarySelectionId` remains the story spine).
+
+After synthesis, a deterministic, warn-only `evaluatePremiseCoverage` guard checks whether the draft's `logline`/`mainPlot`/`seasonArc` still reflect the supplied premise; a low-coverage result never blocks the draft — it only appends a `premise_coverage_low` entry to `warnings` for the creator to review.

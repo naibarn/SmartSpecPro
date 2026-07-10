@@ -220,6 +220,60 @@
     "app_metadata": {
       "type": "object",
       "additionalProperties": true
+    },
+    "episode_draft": {
+      "description": "Optional deep-story-drafts refine base (W10-B, added 2026-07-08): the same vetted per-shot draft carried over from the season-planning stage that the script-builder skill accepts. When present, REFINE it into the full storyboard shot schema — preserve the 9-shot allocation and shot_number alignment, pass through silence_intent — instead of building the 9 shots from the script/scene beats alone. See skill.md 'Episode draft (refine mode)'.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "shots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "shot_number": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9
+              },
+              "summary": {
+                "type": "string"
+              },
+              "dialogue_lines": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "properties": {
+                    "speaker": {
+                      "type": "string"
+                    },
+                    "line": {
+                      "type": "string"
+                    },
+                    "delivery": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "silence_intent": {
+                "type": "string",
+                "enum": [
+                  "dramatic_pause",
+                  "action_visual",
+                  "montage",
+                  "establishing"
+                ]
+              }
+            }
+          }
+        },
+        "cliffhanger_line": {
+          "type": "string"
+        }
+      }
     }
   }
 }

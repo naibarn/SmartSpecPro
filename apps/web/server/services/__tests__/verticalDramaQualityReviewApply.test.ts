@@ -244,16 +244,17 @@ describe("composeQualityReviewRepairInstruction", () => {
     expect(instruction).toContain("แก้ตามคำแนะนำต่อไปนี้:");
     expect(instruction).toContain("[shot 1] ปัญหา: flat emotion -> แก้ไข: vary expression");
     expect(instruction).toContain("[shot 3] ปัญหา: generic gaze -> แก้ไข: add specificity");
-    // One line per issue plus the header line.
-    expect(instruction.split("\n")).toHaveLength(3);
+    // Criteria marker + one header line + one line per issue.
+    expect(instruction.split("\n")).toHaveLength(4);
   });
 
   it("composes a valid instruction for a single issue", () => {
     const instruction = composeQualityReviewRepairInstruction([
       { location: "beat 2", problem: "weak reversal", suggested_fix: "sharpen the flip" },
     ]);
-    expect(instruction).toBe(
-      "แก้ตามคำแนะนำต่อไปนี้:\n- [beat 2] ปัญหา: weak reversal -> แก้ไข: sharpen the flip",
+    expect(instruction).toContain("แก้ตามคำแนะนำต่อไปนี้:");
+    expect(instruction).toContain(
+      "- [beat 2] ปัญหา: weak reversal -> แก้ไข: sharpen the flip",
     );
   });
 

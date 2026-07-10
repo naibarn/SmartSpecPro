@@ -54,6 +54,11 @@ import {
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+// Section 05 (spec §7.1/§7.3 dialogue rules v2 + speech profiles, F132D/
+// F132F, added 2026-07-09) — the ONE canonical quality-criteria bundle and
+// the speech-profile schema. Never re-declared here.
+import { getVerticalDramaQualityCriteriaBundle } from "./verticalDramaQualityCriteria";
+import type { VerticalDramaSpeechProfile } from "@shared/verticalDramaSeries/speechProfile";
 
 // Re-exported so `verticalDramaEpisodePipeline.ts` only needs to import from
 // this one module for its `dialogue_audio_plan` real-repair wiring — mirrors
@@ -1107,7 +1112,21 @@ export interface GenerateEpisodeDialogueAudioPlanParams {
   /** The episode's own persisted `script` column (full object) — the skill's dialogue-complete source of truth when present. */
   episodeScript: Record<string, unknown>;
   audioStrategy?: string;
-  characters: Array<{ characterId: string; name: string; role: string | null }>;
+  characters: Array<{
+    characterId: string;
+    name: string;
+    role: string | null;
+    /**
+     * Section 05 addition (spec §7.3 speech profiles, F132F
+     * `verticalDramaCharacterProfiles`, added 2026-07-09) — purely additive
+     * optional field. Every existing caller that omits it keeps the prompt
+     * byte-identical. When present, mapped into a per-line delivery-hint
+     * instruction (`emotionalDefault`/`speakingSpeed` -> tone/pace guidance)
+     * so the planner's `delivery.tone`/`delivery.pace` output honors each
+     * character's distinct speech profile.
+     */
+    speechProfile?: VerticalDramaSpeechProfile;
+  }>;
   shotClipTiming?: Array<{
     shotNumber: number;
     clipNumber?: number;
@@ -1124,7 +1143,31 @@ export interface GenerateEpisodeDialogueAudioPlanParams {
     currentPlan: Record<string, unknown> | null;
     instruction: string;
   };
+  /**
+   * Additive feature-flag bag (Section 05, spec §11, added 2026-07-09) —
+   * mirrors `GenerateEpisodeScriptParams.opts`'s convention exactly. Every
+   * flag defaults to falsy/undefined, preserving today's byte-identical
+   * prompt.
+   */
+  opts?: {
+    /**
+     * Feature flag `verticalDramaMultiPassQc` (F132D) — injects Section 01's
+     * single-source dialogue-rules-v2 fragment (stamped with the greppable
+     * criteria-version marker) into this planner's prompt. Omitted/false
+     * preserves today's byte-identical prompt.
+     */
+    dialogueRulesV2Enabled?: boolean;
+  };
 }
+
+/** Human-readable speaking-speed -> pacing-instruction phrase for the per-character delivery-hint section. */
+const SPEAKING_SPEED_DELIVERY_HINT: Record<VerticalDramaSpeechProfile["speakingSpeed"], string> = {
+  slow: "deliberately slow pacing",
+  measured: "measured, unhurried pacing",
+  normal: "normal conversational pacing",
+  fast: "quick, energetic pacing",
+  rapid_fire: "rapid-fire, breathless pacing",
+};
 
 function buildDialogueAudioPlannerUserPrompt(params: GenerateEpisodeDialogueAudioPlanParams): string {
   const langInstruction =
@@ -1146,6 +1189,41 @@ function buildDialogueAudioPlannerUserPrompt(params: GenerateEpisodeDialogueAudi
           duration_seconds: s.durationSeconds,
         })),
       )}`
+    : null;
+
+  // Section 05 addition (spec §7.3 speech profiles, F132F, added
+  // 2026-07-09) — per-character delivery-hint instructions, only rendered
+  // for characters that actually carry a `speechProfile` (purely additive:
+  // a character list with none produces `null` here, byte-identical to
+  // before this field existed). Maps `speakingSpeed`/`emotionalDefault`
+  // into a concrete tone/pace instruction for this planner's
+  // `delivery.tone`/`delivery.pace` output — never the speech-profile object
+  // verbatim, since this planner's job is delivery HINTS, not profile
+  // echoing (that's the script-builder's "voice card", a different
+  // rendering — see `verticalDramaScriptGeneration.ts`'s `renderVoiceCardBlock`
+  // usage).
+  const charactersWithSpeechProfile = params.characters.filter((c) => c.speechProfile);
+  const speechProfileDeliveryHintsSection =
+    charactersWithSpeechProfile.length > 0
+      ? [
+          "Character speech-profile delivery hints — map each character's speech profile into per-line delivery.tone/delivery.pace whenever that character speaks:",
+          ...charactersWithSpeechProfile.map((c) => {
+            const profile = c.speechProfile!;
+            return `- ${c.characterId} (${c.name}): pace = ${SPEAKING_SPEED_DELIVERY_HINT[profile.speakingSpeed] ?? profile.speakingSpeed}; tone = ${profile.emotionalDefault}`;
+          }),
+        ].join("\n")
+      : null;
+
+  // Section 05 addition (spec §11 "Unified Criteria Application" / F132D,
+  // added 2026-07-09) — embeds Section 01's single-source dialogue-rules-v2
+  // fragment (already carries the criteria-version marker) into this
+  // planner's prompt, satisfying the "dialogue-audio-planner prompt"
+  // consumer entry point tracked by
+  // `verticalDramaQualityCriteria.agreement.test.ts`. Gated on
+  // `opts.dialogueRulesV2Enabled` — omitted/false preserves today's byte-
+  // identical prompt.
+  const dialogueRulesV2Section = params.opts?.dialogueRulesV2Enabled
+    ? getVerticalDramaQualityCriteriaBundle().dialogueRulesV2
     : null;
 
   // Repair-mode framing — see `GenerateEpisodeDialogueAudioPlanParams.repairContext`'s
@@ -1170,8 +1248,10 @@ function buildDialogueAudioPlannerUserPrompt(params: GenerateEpisodeDialogueAudi
     langInstruction,
     `target_duration_seconds: ${params.durationSeconds}`,
     `characters:\n${characterLines}`,
+    speechProfileDeliveryHintsSection,
     shotTimingSection,
     repairSection,
+    dialogueRulesV2Section,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)

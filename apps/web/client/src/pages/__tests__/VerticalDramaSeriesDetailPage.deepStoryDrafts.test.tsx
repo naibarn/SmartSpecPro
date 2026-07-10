@@ -115,28 +115,36 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
-      // Dramaturgy critic (W11.5) — `VerticalDramaSeasonCritiqueCard` is
-      // mounted unconditionally at the end of `VerticalDramaDeepStoryDraftsActions`
-      // (self-contained, queries its own `get` and owns two new mutations —
-      // see that component's own module header in
-      // `VerticalDramaDeepStoryDraftsPanel.tsx`). These harmless stubs exist
-      // purely so this file's own (pre-W11.5) assertions keep passing; the
-      // card's own behavior is covered by
-      // `VerticalDramaDeepStoryDraftsPanel.seasonCritique.test.tsx`.
+      // "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) —
+      // `VerticalDramaImproveScriptCard` is mounted unconditionally at the
+      // end of `VerticalDramaDeepStoryDraftsActions` (self-contained,
+      // queries its own `get` and owns three new mutations — see that
+      // component's own module header in
+      // `VerticalDramaImproveScriptCard.tsx`). These harmless stubs exist
+      // purely so this file's own (pre-existing) assertions keep passing;
+      // the card's own behavior is covered by
+      // `VerticalDramaDeepStoryDraftsPanel.improveScript.test.tsx`.
       get: {
         useQuery: () => ({ data: undefined, isLoading: false }),
       },
-      critiqueSeasonDrafts: {
+      startImproveScript: {
         useMutation: (_opts: unknown) => ({
           mutate: vi.fn(),
-          mutateAsync: vi.fn().mockResolvedValue({ jobId: "critique-job", deduped: false }),
+          mutateAsync: vi.fn().mockResolvedValue({ jobId: "improve-script-job", deduped: false }),
           isPending: false,
         }),
       },
-      applySeasonCritique: {
+      confirmImproveScript: {
         useMutation: (_opts: unknown) => ({
           mutate: vi.fn(),
-          mutateAsync: vi.fn().mockResolvedValue({ jobId: "apply-job", deduped: false }),
+          mutateAsync: vi.fn().mockResolvedValue({ updatedEpisodeNumbers: [] }),
+          isPending: false,
+        }),
+      },
+      discardImproveScript: {
+        useMutation: (_opts: unknown) => ({
+          mutate: vi.fn(),
+          mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
           isPending: false,
         }),
       },
@@ -149,7 +157,12 @@ vi.mock("sonner", () => ({
 }));
 
 import { toast } from "sonner";
-import { StoryBibleOverviewCard } from "@/pages/VerticalDramaSeriesDetailPage";
+import {
+  StoryBibleOverviewCard,
+  buildVerticalDramaStoryCopyText,
+} from "@/pages/VerticalDramaSeriesDetailPage";
+
+const mockClipboardWriteText = vi.fn();
 
 function nineShots() {
   return Array.from({ length: 9 }, (_, i) => ({
@@ -212,11 +225,75 @@ const baseProps = {
 describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: mockClipboardWriteText },
+    });
     generateStoryBibleShouldFail = false;
     generateStoryBibleDeepShouldFail = false;
     generateStoryBibleResult = { creditsUsed: 8 };
     generateStoryBibleDeepResult = { partial: false, horizonEndEpisode: 5, chunkSizes: [5] };
     callOrder = [];
+  });
+
+  it("builds copy text with per-episode summaries and every drafted shot dialogue, capped by episode range", () => {
+    const result = buildVerticalDramaStoryCopyText({
+      lang: "th",
+      title: "หนูน้อยช่างสงสัย",
+      genre: "แม่ลูกเรียนรู้ด้วยกัน",
+      tone: "อบอุ่น",
+      seasonArc: "Season arc text",
+      episodes: [
+        bibleWithStoryOnly.episodeBreakdown[0],
+        {
+          ...bibleWithStoryOnly.episodeBreakdown[1],
+          logline: "EP2 logline ".repeat(200),
+        },
+      ],
+      activeItems: bibleWithDeepDraft.breakdownVersions[0].items,
+      fromEpisode: 1,
+      toEpisode: 2,
+      maxChars: 1_200,
+    });
+
+    expect(result.copiedEpisodeNumbers).toEqual([1]);
+    expect(result.omittedEpisodeNumbers).toEqual([2]);
+    expect(result.text).toContain("ซีรีส์: หนูน้อยช่างสงสัย");
+    expect(result.text).toContain("ตอนที่ 1: EP1 title");
+    expect(result.text).toContain("เรื่องย่อ: EP1 logline");
+    expect(result.text).toContain("ช็อต 1: Shot 1 summary");
+    expect(result.text).toContain("นางเอก: Line 1");
+    expect(result.text).toContain("ช็อต 9: Shot 9 summary");
+    expect(result.text).toContain("นางเอก: Line 9");
+    expect(result.text).toContain("จุดค้าง: จุดค้างตอน 1");
+  });
+
+  it("copies the selected full-story range to the clipboard from the overview card", async () => {
+    render(
+      <StoryBibleOverviewCard
+        {...baseProps}
+        seriesTitle="หนูน้อยช่างสงสัย"
+        bible={bibleWithDeepDraft}
+        deepDraftsFlagEnabled={true}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /คัดลอกเนื้อเรื่อง/ }));
+    expect(screen.getByRole("dialog", { name: /คัดลอกเนื้อเรื่องพร้อมบทพูด/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /คัดลอกช่วงที่เลือก/ }));
+
+    await waitFor(() => expect(mockClipboardWriteText).toHaveBeenCalledTimes(1));
+    const copied = mockClipboardWriteText.mock.calls[0][0] as string;
+    expect(copied).toContain("ซีรีส์: หนูน้อยช่างสงสัย");
+    expect(copied).toContain("ตอนที่ 1: EP1 title");
+    expect(copied).toContain("เรื่องย่อ: EP1 logline");
+    expect(copied).toContain("ช็อต 1: Shot 1 summary");
+    expect(copied).toContain("นางเอก: Line 1");
+    expect(copied).toContain("ช็อต 9: Shot 9 summary");
+    expect(copied).toContain("นางเอก: Line 9");
+    expect(copied).toContain("ตอนที่ 2: EP2 title");
+    expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("คัดลอกเนื้อเรื่องตอน"));
   });
 
   it("renders BYTE-IDENTICAL markup whether deepDraftsFlagEnabled is omitted or explicitly false", () => {

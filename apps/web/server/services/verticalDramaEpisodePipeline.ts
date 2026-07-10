@@ -795,10 +795,83 @@ export interface StageValidationResult {
   errors: RunResult["errors"];
 }
 
+/**
+ * Feature 132 §6.2 (F132C, scene contracts) — the SAME canonical
+ * anchor-line-cadence predicate used by `verticalDramaStoryBible.ts`'s
+ * `meetsPremiumDraftContractFloor`: "no run of 3 or more consecutive shots
+ * without anchorLine: true" (equivalently: for every 3 consecutive shots, at
+ * least 1 has `anchorLine: true`). Kept as a small local pure function
+ * (rather than importing the premium-gate's private helper) since this
+ * module already avoids a static value import of `verticalDramaStoryBible.ts`
+ * (see `resolveEpisodeDraftHydration`'s doc comment for the import-chain
+ * rationale) — this predicate is trivial enough that duplicating just the
+ * boolean check (not the whole gate) carries no real drift risk, and the
+ * EXACT wording above is asserted identically in both files' tests.
+ */
+function anchorLineCadenceOk(shots: Array<{ contract?: { anchorLine?: boolean } }>): boolean {
+  let runWithoutAnchor = 0;
+  for (const shot of shots) {
+    if (shot.contract?.anchorLine === true) {
+      runWithoutAnchor = 0;
+    } else {
+      runWithoutAnchor += 1;
+      if (runWithoutAnchor >= 3) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Feature 132 §6.2 (F132C, scene contracts) — per-shot contract
+ * presence/shape check for `validateStagePayload`'s `storyboard_shotgrid`
+ * branch: every shot must have a `contract` object with all 6 required
+ * fields present and non-empty (`storyFunction`, `emotionalBeat`,
+ * `audienceTakeaway`, `tensionSource`, `newClueIds`, `dialoguePurpose`) —
+ * the 3 optional fields (`characterDecision`, `continuityDependency`,
+ * `anchorLine`) are never required here.
+ */
+function shotContractShapeOk(shot: Record<string, unknown>): boolean {
+  const contract = shot.contract as Record<string, unknown> | undefined;
+  if (!contract || typeof contract !== "object") return false;
+  const requiredStringFields = [
+    "storyFunction",
+    "emotionalBeat",
+    "audienceTakeaway",
+    "tensionSource",
+    "dialoguePurpose",
+  ];
+  for (const field of requiredStringFields) {
+    if (typeof contract[field] !== "string" || (contract[field] as string).trim().length === 0) {
+      return false;
+    }
+  }
+  if (!Array.isArray(contract.newClueIds)) return false;
+  return true;
+}
+
 /** Schema-shape validation gate (spec §11.5 failed-validation rule). */
 export function validateStagePayload(
   stage: VerticalDramaPipelineStage,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  /**
+   * Feature 132 §6.2 (F132C, scene contracts, tenant flag
+   * `verticalDramaSceneContracts`) — when true, additionally checks
+   * `storyboard_shotgrid` shots for contract presence/shape, the ≤2
+   * `newClueIds` budget, and the anchor-line-cadence predicate (see
+   * `anchorLineCadenceOk`/`shotContractShapeOk` above). Defaults to false so
+   * every existing caller is byte-identical to before this parameter
+   * existed.
+   *
+   * `plan_episode_script` — per this section's own open-question
+   * resolution (spec section-04 §"Open questions", item 1): that stage's
+   * payload (`scene_dialogue_summary`) is a *scene*-grained, LLM-freeform
+   * array (`additionalProperties: true`), not a 1:1 match with the 9-shot
+   * storyboard grid — it has NO shot-grained structure that could carry a
+   * per-shot `contract`. There is therefore no shape to deterministically
+   * check here; enforcement is intentionally left to `storyboard_shotgrid`
+   * only (this is a documented no-op, not an oversight).
+   */
+  sceneContractsEnabled: boolean = false
 ): StageValidationResult {
   const errors: RunResult["errors"] = [];
   const fail = (message: string) =>
@@ -812,6 +885,36 @@ export function validateStagePayload(
     const shots = (payload.shots as unknown[]) ?? [];
     if (shots.length !== 9)
       fail(`storyboard must have exactly 9 shots, got ${shots.length}`);
+
+    if (sceneContractsEnabled) {
+      const typedShots = shots as Array<Record<string, unknown>>;
+      const missingContractIndex = typedShots.findIndex(
+        shot => !shotContractShapeOk(shot)
+      );
+      if (missingContractIndex >= 0) {
+        fail(
+          `storyboard shot #${missingContractIndex + 1} is missing a well-shaped contract (storyFunction, emotionalBeat, audienceTakeaway, tensionSource, newClueIds, dialoguePurpose all required)`
+        );
+      }
+      const overBudgetIndex = typedShots.findIndex(shot => {
+        const contract = shot.contract as Record<string, unknown> | undefined;
+        const newClueIds = Array.isArray(contract?.newClueIds) ? contract!.newClueIds : [];
+        return newClueIds.length > 2;
+      });
+      if (overBudgetIndex >= 0) {
+        fail(
+          `storyboard shot #${overBudgetIndex + 1}'s contract.newClueIds exceeds the budget of 2`
+        );
+      }
+      const shotsForCadence = typedShots as unknown as Array<{
+        contract?: { anchorLine?: boolean };
+      }>;
+      if (!anchorLineCadenceOk(shotsForCadence)) {
+        fail(
+          "storyboard shots violate anchor-line cadence: no run of 3 or more consecutive shots without anchorLine: true"
+        );
+      }
+    }
   }
   if (stage === "plan_episode_script") {
     if (!payload.episode_title) fail("script is missing episode_title");
@@ -1097,6 +1200,21 @@ export interface RunStageOptions {
    * off → byte-identical legacy behavior.
    */
   tieInReplanFlagOn?: boolean;
+  /**
+   * Feature 132 §6 (F132C, scene contracts, tenant flag
+   * `verticalDramaSceneContracts`, added 2026-07-09) — same "router resolves
+   * the tenant flag, the pipeline stays flag-agnostic beyond this bag"
+   * convention as `deepStoryDraftsFlagOn`/`tieInReplanFlagOn` above. When on:
+   *  - `storyboard_shotgrid`'s real-generation call
+   *    (`generateRealStoryboard`/`generateStoryboardShotgrid`) is told to
+   *    honor/emit each shot's `contract`;
+   *  - `validateStagePayload`'s `storyboard_shotgrid` branch additionally
+   *    checks contract presence/shape, the ≤2 `newClueIds` budget, and the
+   *    anchor-line cadence predicate.
+   * Defaults to off when omitted, so every existing caller/test is
+   * byte-identical.
+   */
+  sceneContractsEnabled?: boolean;
 }
 
 export interface RunStageOutcome {
@@ -1278,7 +1396,8 @@ export class VerticalDramaEpisodePipeline {
     episode: VerticalDramaEpisodeRow,
     deepStoryDraftsFlagOn: boolean = false,
     repairInstruction?: string,
-    tieInReplanFlagOn: boolean = false
+    tieInReplanFlagOn: boolean = false,
+    sceneContractsEnabled: boolean = false
   ): Promise<{
     script: ScriptBuilderOutput;
     creditsUsed: number;
@@ -1391,7 +1510,10 @@ export class VerticalDramaEpisodePipeline {
       productTieIn,
       episodeDraft: episodeDraft ?? undefined,
       episodeTieInPlacement,
-      opts: { episodeDraftHydrationEnabled: episodeDraft !== null },
+      opts: {
+        episodeDraftHydrationEnabled: episodeDraft !== null,
+        sceneContractsEnabled,
+      },
       storySource: {
         logline:
           typeof matchingBreakdown?.logline === "string"
@@ -1572,7 +1694,8 @@ export class VerticalDramaEpisodePipeline {
     owner: EpisodeRunOwner,
     episode: VerticalDramaEpisodeRow,
     deepStoryDraftsFlagOn: boolean = false,
-    repairInstruction?: string
+    repairInstruction?: string,
+    sceneContractsEnabled: boolean = false
   ): Promise<{
     storyboard: StoryboardShotgridOutput;
     creditsUsed: number;
@@ -1675,7 +1798,10 @@ export class VerticalDramaEpisodePipeline {
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
       episodeDraft: episodeDraft ?? undefined,
-      opts: { episodeDraftHydrationEnabled: episodeDraft !== null },
+      opts: {
+        episodeDraftHydrationEnabled: episodeDraft !== null,
+        sceneContractsEnabled,
+      },
       storySource: {
         logline:
           typeof matchingBreakdown?.logline === "string"
@@ -2303,7 +2429,8 @@ export class VerticalDramaEpisodePipeline {
           episode,
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
-          opts.tieInReplanFlagOn ?? false
+          opts.tieInReplanFlagOn ?? false,
+          opts.sceneContractsEnabled ?? false
         );
         payload = { stage, ...generated.script };
         // Persist to the episode's own `script` jsonb column.
@@ -2404,7 +2531,9 @@ export class VerticalDramaEpisodePipeline {
         const generated = await this.generateRealStoryboard(
           owner,
           episode,
-          opts.deepStoryDraftsFlagOn ?? false
+          opts.deepStoryDraftsFlagOn ?? false,
+          undefined,
+          opts.sceneContractsEnabled ?? false
         );
         payload = { stage, ...generated.storyboard };
         // Persist to the episode's own `storyboard` jsonb column (not
@@ -2903,7 +3032,11 @@ export class VerticalDramaEpisodePipeline {
     }
 
     // 1) Schema-validation gate — a failed validation never advances (spec §11.5).
-    const validation = validateStagePayload(stage, payload);
+    const validation = validateStagePayload(
+      stage,
+      payload,
+      opts.sceneContractsEnabled ?? false
+    );
     if (!validation.valid) {
       // Create the run row FIRST so the artifact FK (runId) is satisfiable.
       const runId = await this.writeRun(owner, stage, mode, {
@@ -3179,6 +3312,17 @@ export class VerticalDramaEpisodePipeline {
       instruction: string;
       subShotFlagOn?: boolean;
       subShotPolicy?: VerticalDramaSubShotPolicy;
+      /**
+       * Feature 132 §6 (F132C, scene contracts, tenant flag
+       * `verticalDramaSceneContracts`, added 2026-07-09) — same
+       * router-resolves-the-flag convention as `subShotFlagOn` above (this
+       * method has no `RunStageOptions` bag of its own — every feature flag
+       * it needs is its own explicit `args` field). Threaded into
+       * `generateRealStoryboard`'s `storyboard_shotgrid` branch and into
+       * `validateStagePayload` below. Defaults to false, so every existing
+       * caller is byte-identical to before this field existed.
+       */
+      sceneContractsEnabled?: boolean;
     }
   ): Promise<RunStageOutcome> {
     const episode = await this.loadEpisode(owner);
@@ -3229,7 +3373,8 @@ export class VerticalDramaEpisodePipeline {
             owner,
             episode,
             false,
-            args.instruction
+            args.instruction,
+            args.sceneContractsEnabled ?? false
           );
           payload = { stage, ...generated.storyboard };
           await db
@@ -3293,7 +3438,11 @@ export class VerticalDramaEpisodePipeline {
     // version's payload so the prior candidate is preserved and superseded.
     payload._repair = buildRepairMetadata();
 
-    const validation = validateStagePayload(stage, payload);
+    const validation = validateStagePayload(
+      stage,
+      payload,
+      args.sceneContractsEnabled ?? false
+    );
     const errors = validation.errors;
     const status: RunResult["status"] = validation.valid
       ? "succeeded"

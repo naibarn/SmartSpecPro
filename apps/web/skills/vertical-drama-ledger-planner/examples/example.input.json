@@ -1,0 +1,29 @@
+{
+  "series_id": "series-101",
+  "locale": "th",
+  "title": "เงาในกระจก",
+  "genre": "ระทึกขวัญครอบครัว",
+  "tone": "มืดหม่น ลุ้นระทึก",
+  "refined_characters": [
+    { "name": "Mai", "role": "นางเอก", "description": "นักสืบสมัครเล่นผู้ตามหาความจริงเกี่ยวกับน้องสาว" },
+    { "name": "Nok", "role": "ตัวร้าย", "description": "เพื่อนสนิทที่ปกปิดความลับ" }
+  ],
+  "world_rules": [
+    { "rule": "คำสาปส่งต่อกันได้เฉพาะเที่ยงคืน", "limit_or_cost": "ต้องแลกด้วยความทรงจำ" }
+  ],
+  "active_breakdown": [
+    {
+      "episodeNumber": 1,
+      "workingTitle": "จุดเริ่มต้น",
+      "logline": "Mai ค้นพบว่าน้องสาวหายตัวไปอย่างลึกลับ",
+      "keyBeats": ["เปิดเรื่อง", "น้องสาวหายตัวไป"]
+    },
+    {
+      "episodeNumber": 2,
+      "workingTitle": "เบาะแสแรก",
+      "logline": "Mai พบบันทึกเปื้อนเลือดในห้องของน้องสาว",
+      "keyBeats": ["พบบันทึกเปื้อนเลือด"]
+    }
+  ],
+  "total_episode_count": 12
+}

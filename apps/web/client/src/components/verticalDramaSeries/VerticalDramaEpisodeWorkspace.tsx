@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -69,6 +70,12 @@ import {
   type VdLocale,
   type VdPhase,
 } from "./verticalDramaWorkspaceCopy";
+// Task #34 (Text Overlay Suite) — dedicated copy module, see that file's own
+// header doc comment for why it is separate from `verticalDramaWorkspaceCopy.ts`.
+import {
+  vdTextOverlayCopy,
+  vdTextOverlayCopyWithParams,
+} from "./verticalDramaTextOverlayCopy";
 import {
   VerticalDramaApprovalBar,
   type VerticalDramaApprovalBarState,
@@ -195,6 +202,90 @@ export interface VerticalDramaAdBannerPlanPanelData {
   saving?: boolean;
   error?: string | null;
   onSave?: (plan: VerticalDramaAdBannerPlanView) => void;
+}
+
+/**
+ * Text Overlay Suite (F131AB, task #34, plan.md v2) — per-episode
+ * `textOverlayPlan` client view types. Mirrors the server's
+ * `VdTextOverlayPlan` (`@shared/verticalDramaSeries/textOverlay.ts`) field
+ * for field, kept as independent client view types (same convention as
+ * every other `*View` type in this file — this component never imports
+ * server-owned routers, and `@shared/verticalDramaSeries/textOverlay.ts`
+ * happens to be pure/isomorphic but the type is still re-declared here for
+ * consistency with the file's own established posture).
+ */
+export interface VerticalDramaTextOverlayEndCardView {
+  enabled: boolean;
+  text?: string;
+  source?: "auto" | "manual";
+  durationSec: number;
+  showFollowLine: boolean;
+  styleVariant: "center_card" | "lower_band";
+}
+
+export interface VerticalDramaTextOverlayOpenerRecapView {
+  enabled: boolean;
+  text?: string;
+  source?: "auto" | "manual";
+  durationSec: number;
+}
+
+export interface VerticalDramaTextOverlayTitleBumperView {
+  enabled: boolean;
+  text?: string;
+}
+
+export interface VerticalDramaTextOverlayEpisodeIndicatorView {
+  enabled: boolean;
+  position: "top_right" | "top_left";
+}
+
+export interface VerticalDramaTextOverlayCharacterIntroCardsView {
+  enabled: boolean;
+}
+
+export interface VerticalDramaTextOverlayCardView {
+  id: string;
+  kind: "time_setting" | "narrative_hook" | "custom";
+  anchor: { shotNumber: number; offsetSec?: number };
+  text: string;
+  durationSec: number;
+  styleVariant?: "time_setting" | "narrative_hook";
+  enabled: boolean;
+}
+
+export interface VerticalDramaTextOverlayPlanView {
+  endCard?: VerticalDramaTextOverlayEndCardView;
+  openerRecap?: VerticalDramaTextOverlayOpenerRecapView;
+  titleBumper?: VerticalDramaTextOverlayTitleBumperView;
+  episodeIndicator?: VerticalDramaTextOverlayEpisodeIndicatorView;
+  characterIntroCards?: VerticalDramaTextOverlayCharacterIntroCardsView;
+  cards?: VerticalDramaTextOverlayCardView[];
+}
+
+/** `getEpisodeDetail.textOverlayPreview`'s client view — read-only
+ *  auto-derived text/labels, used for "ที่มา"/auto-fill without a
+ *  round-trip. */
+export interface VerticalDramaTextOverlayPreviewView {
+  endCard: { text: string; source: string };
+  openerRecap: { text: string; source: string };
+  titleBumper: { primary: string; secondary: string };
+  episodeIndicator: { label: string };
+  characterIntroCards: Array<{
+    characterKey: string;
+    shotNumber: number;
+    name: string;
+    role?: string;
+  }>;
+}
+
+/** Data needed to render the "ข้อความบนวิดีโอ" section. */
+export interface VerticalDramaTextOverlayPlanPanelData {
+  plan?: VerticalDramaTextOverlayPlanView | null;
+  preview?: VerticalDramaTextOverlayPreviewView | null;
+  saving?: boolean;
+  error?: string | null;
+  onSave?: (plan: VerticalDramaTextOverlayPlanView) => void;
 }
 
 /**
@@ -571,6 +662,18 @@ export interface VerticalDramaEpisodeWorkspaceProps {
   adBannerOverlayEnabled?: boolean;
   adBannerPlanPanel?: VerticalDramaAdBannerPlanPanelData;
 
+  /* ---- Text Overlay Suite (F131AB, task #34, plan.md v2). Feature-detected
+     on the PAYLOAD (`textOverlaySuiteEnabled`, mirroring
+     `detail.flags.textOverlaySuite` verbatim), same convention as
+     `adBannerOverlayEnabled` above. Flag-off (the default): nothing renders
+     here at all. `characterIntroFrames` is the episode's own
+     `startFramePlan.frames` projection (shotNumber +
+     requiredCharacterRefs), threaded through so the section can render a
+     "pick a shot" dropdown for mid-episode cards without a separate query. ---- */
+  textOverlaySuiteEnabled?: boolean;
+  textOverlayPlanPanel?: VerticalDramaTextOverlayPlanPanelData;
+  textOverlayShotNumbers?: number[];
+
   /* ---- Task #21 / W12.5 "Final Render Suite" phase B (2026-07-09) —
      dialogue-audio + subtitle options for the whole-episode compiled video.
      `voiceChainEnabled` mirrors `adBannerOverlayEnabled`'s own "feature-
@@ -725,6 +828,9 @@ export function VerticalDramaEpisodeWorkspace({
   seasonPlanTabHref,
   adBannerOverlayEnabled = false,
   adBannerPlanPanel,
+  textOverlaySuiteEnabled = false,
+  textOverlayPlanPanel,
+  textOverlayShotNumbers,
   voiceChainEnabled = false,
   finalRenderOptionsPanel,
   className,
@@ -1352,6 +1458,21 @@ export function VerticalDramaEpisodeWorkspace({
           saving={adBannerPlanPanel?.saving}
           error={adBannerPlanPanel?.error}
           onSave={adBannerPlanPanel?.onSave}
+        />
+      ) : null}
+
+      {/* Text Overlay Suite (F131AB, task #34, plan.md v2) — near the ad
+          banner section above (same `hasStoryboardShots` gate: nothing to
+          anchor mid-episode cards to until a storyboard/clips exist). */}
+      {hasStoryboardShots && textOverlaySuiteEnabled ? (
+        <VerticalDramaTextOverlayPlanSection
+          locale={locale}
+          plan={textOverlayPlanPanel?.plan ?? null}
+          preview={textOverlayPlanPanel?.preview ?? null}
+          shotNumbers={textOverlayShotNumbers ?? []}
+          saving={textOverlayPlanPanel?.saving}
+          error={textOverlayPlanPanel?.error}
+          onSave={textOverlayPlanPanel?.onSave}
         />
       ) : null}
 
@@ -2370,6 +2491,787 @@ function VerticalDramaAdBannerPlanSection({
         data-testid="vd-ad-banner-save"
       >
         {saving ? t.adBannerSaving : t.adBannerSave}
+      </Button>
+    </section>
+  );
+}
+
+/** Maps a `textOverlayPreview` auto-derivation source id to its Thai/English
+ *  copy label — shared by every "ที่มา" badge in the section below. */
+function textOverlaySourceLabel(
+  source: string | undefined,
+  t: ReturnType<typeof vdTextOverlayCopy>
+): string {
+  switch (source) {
+    case "cliffhanger":
+      return t.sourceCliffhanger;
+    case "hook":
+      return t.sourceHook;
+    case "summary":
+      return t.sourceSummary;
+    case "none":
+      return t.sourceNone;
+    case "manual":
+      return t.sourceManual;
+    default:
+      return t.sourceFallback;
+  }
+}
+
+/**
+ * Text Overlay Suite (F131AB, task #34, plan.md v2) — the "ข้อความบนวิดีโอ"
+ * section: per-kind toggles + auto-fill/manual editors for end card/opener
+ * recap, an optional title-bumper text override, an episode-indicator
+ * position picker, a read-only character-intro-card preview, a mid-episode
+ * card list editor, and a rendered-text preview block. Same LOCAL-draft +
+ * explicit-Save convention as `VerticalDramaAdBannerPlanSection` (draft
+ * state seeded from `plan`, re-synced via `useEffect` whenever a fresh
+ * `plan` arrives from the server, saved wholesale via `onSave`).
+ *
+ * Client-side validation here is a best-effort PREVIEW only (duration
+ * bounds via `<Input min/max>`, a total-card-count guard) — the server's
+ * `validateTextOverlayPlan` (`updateEpisodeTextOverlayPlan`) is the single
+ * source of truth and is re-run on every save; its `warnings`/error message
+ * surface through the `error` prop exactly like the ad banner section.
+ */
+function VerticalDramaTextOverlayPlanSection({
+  locale,
+  plan,
+  preview,
+  shotNumbers,
+  saving = false,
+  error = null,
+  onSave,
+}: {
+  locale: VdLocale;
+  plan: VerticalDramaTextOverlayPlanView | null;
+  preview: VerticalDramaTextOverlayPreviewView | null;
+  shotNumbers: number[];
+  saving?: boolean;
+  error?: string | null;
+  onSave?: (plan: VerticalDramaTextOverlayPlanView) => void;
+}) {
+  const t = useMemo(() => vdTextOverlayCopy(locale), [locale]);
+
+  const [draft, setDraft] = useState<VerticalDramaTextOverlayPlanView>(
+    plan ?? {}
+  );
+  useEffect(() => {
+    setDraft(plan ?? {});
+  }, [plan]);
+
+  function patchEndCard(patch: Partial<VerticalDramaTextOverlayEndCardView>) {
+    setDraft(prev => ({
+      ...prev,
+      endCard: {
+        enabled: prev.endCard?.enabled ?? false,
+        durationSec: prev.endCard?.durationSec ?? 3,
+        showFollowLine: prev.endCard?.showFollowLine ?? true,
+        styleVariant: prev.endCard?.styleVariant ?? "center_card",
+        text: prev.endCard?.text,
+        source: prev.endCard?.source,
+        ...patch,
+      },
+    }));
+  }
+
+  function patchOpenerRecap(
+    patch: Partial<VerticalDramaTextOverlayOpenerRecapView>
+  ) {
+    setDraft(prev => ({
+      ...prev,
+      openerRecap: {
+        enabled: prev.openerRecap?.enabled ?? false,
+        durationSec: prev.openerRecap?.durationSec ?? 4,
+        text: prev.openerRecap?.text,
+        source: prev.openerRecap?.source,
+        ...patch,
+      },
+    }));
+  }
+
+  function patchTitleBumper(
+    patch: Partial<VerticalDramaTextOverlayTitleBumperView>
+  ) {
+    setDraft(prev => ({
+      ...prev,
+      titleBumper: {
+        enabled: prev.titleBumper?.enabled ?? false,
+        text: prev.titleBumper?.text,
+        ...patch,
+      },
+    }));
+  }
+
+  function patchEpisodeIndicator(
+    patch: Partial<VerticalDramaTextOverlayEpisodeIndicatorView>
+  ) {
+    setDraft(prev => ({
+      ...prev,
+      episodeIndicator: {
+        enabled: prev.episodeIndicator?.enabled ?? false,
+        position: prev.episodeIndicator?.position ?? "top_right",
+        ...patch,
+      },
+    }));
+  }
+
+  function setCharacterIntroEnabled(enabled: boolean) {
+    setDraft(prev => ({ ...prev, characterIntroCards: { enabled } }));
+  }
+
+  function addCard() {
+    setDraft(prev => ({
+      ...prev,
+      cards: [
+        ...(prev.cards ?? []),
+        {
+          id: `card-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          kind: "time_setting",
+          anchor: { shotNumber: shotNumbers[0] ?? 1, offsetSec: 0 },
+          text: "",
+          durationSec: 2.5,
+          enabled: true,
+        },
+      ],
+    }));
+  }
+
+  function updateCard(
+    id: string,
+    patch: Partial<VerticalDramaTextOverlayCardView>
+  ) {
+    setDraft(prev => ({
+      ...prev,
+      cards: (prev.cards ?? []).map(c =>
+        c.id === id ? { ...c, ...patch } : c
+      ),
+    }));
+  }
+
+  function updateCardAnchor(
+    id: string,
+    patch: Partial<VerticalDramaTextOverlayCardView["anchor"]>
+  ) {
+    setDraft(prev => ({
+      ...prev,
+      cards: (prev.cards ?? []).map(c =>
+        c.id === id ? { ...c, anchor: { ...c.anchor, ...patch } } : c
+      ),
+    }));
+  }
+
+  function removeCard(id: string) {
+    setDraft(prev => ({
+      ...prev,
+      cards: (prev.cards ?? []).filter(c => c.id !== id),
+    }));
+  }
+
+  const cards = draft.cards ?? [];
+  const tooManyCards = cards.length > 24;
+
+  const previewLines = useMemo(() => {
+    const lines: string[] = [];
+    if (draft.endCard?.enabled) {
+      const text = draft.endCard.text?.trim() || preview?.endCard.text || "";
+      if (text) lines.push(`${t.endCardTitle}: ${text}`);
+    }
+    if (draft.openerRecap?.enabled) {
+      const text =
+        draft.openerRecap.text?.trim() || preview?.openerRecap.text || "";
+      if (text) lines.push(`${t.openerRecapTitle}: ${text}`);
+    }
+    if (draft.titleBumper?.enabled) {
+      const secondary =
+        draft.titleBumper.text?.trim() ||
+        preview?.titleBumper.secondary ||
+        "";
+      lines.push(
+        `${t.titleBumperTitle}: ${preview?.titleBumper.primary ?? ""} / ${secondary}`
+      );
+    }
+    if (draft.episodeIndicator?.enabled) {
+      lines.push(
+        `${t.episodeIndicatorTitle}: ${preview?.episodeIndicator.label ?? ""}`
+      );
+    }
+    if (draft.characterIntroCards?.enabled) {
+      for (const card of preview?.characterIntroCards ?? []) {
+        lines.push(
+          `${t.characterIntroTitle}: ${card.name}${card.role ? ` (${card.role})` : ""} — ${vdTextOverlayCopyWithParams(t.characterIntroShotLabel, { shot: card.shotNumber })}`
+        );
+      }
+    }
+    for (const card of cards) {
+      if (!card.enabled || !card.text.trim()) continue;
+      lines.push(
+        `${vdTextOverlayCopyWithParams(t.characterIntroShotLabel, { shot: card.anchor.shotNumber })}: ${card.text}`
+      );
+    }
+    return lines;
+  }, [draft, preview, cards, t]);
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={t.sectionTitle}
+      data-testid="vd-text-overlay-section"
+    >
+      <div>
+        <h3 className="text-sm font-medium">{t.sectionTitle}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t.sectionDescription}
+        </p>
+      </div>
+
+      {/* End card */}
+      <div
+        className="space-y-2 rounded-md border p-2"
+        data-testid="vd-text-overlay-end-card"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium">{t.endCardTitle}</span>
+          <Switch
+            checked={draft.endCard?.enabled ?? false}
+            onCheckedChange={next => patchEndCard({ enabled: Boolean(next) })}
+            data-testid="vd-text-overlay-end-card-toggle"
+          />
+        </div>
+        {draft.endCard?.enabled ? (
+          <div className="space-y-2 pl-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-[10px]">
+                {t.sourceLabel}:{" "}
+                {draft.endCard.text?.trim()
+                  ? t.sourceManual
+                  : textOverlaySourceLabel(preview?.endCard.source, t)}
+              </Badge>
+              {draft.endCard.text?.trim() ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    patchEndCard({ text: undefined, source: "auto" })
+                  }
+                  data-testid="vd-text-overlay-end-card-revert"
+                >
+                  {t.revertToAutoButton}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    patchEndCard({
+                      text: preview?.endCard.text ?? "",
+                      source: "manual",
+                    })
+                  }
+                  data-testid="vd-text-overlay-end-card-autofill"
+                >
+                  {t.autoFillButton}
+                </Button>
+              )}
+            </div>
+            <Textarea
+              value={draft.endCard.text ?? ""}
+              placeholder={preview?.endCard.text || t.endCardTextPlaceholder}
+              onChange={e =>
+                patchEndCard({
+                  text: e.target.value,
+                  source: e.target.value.trim() ? "manual" : "auto",
+                })
+              }
+              rows={2}
+              data-testid="vd-text-overlay-end-card-text"
+            />
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-1 text-[11px]">
+                {t.endCardDurationLabel}
+                <Input
+                  type="number"
+                  min={2}
+                  max={5}
+                  step={0.1}
+                  className="h-7 w-16"
+                  value={draft.endCard.durationSec}
+                  onChange={e =>
+                    patchEndCard({ durationSec: Number(e.target.value) })
+                  }
+                  data-testid="vd-text-overlay-end-card-duration"
+                />
+              </label>
+              <label className="flex items-center gap-1 text-[11px]">
+                <Checkbox
+                  checked={draft.endCard.showFollowLine}
+                  onCheckedChange={checked =>
+                    patchEndCard({ showFollowLine: Boolean(checked) })
+                  }
+                  data-testid="vd-text-overlay-end-card-follow-line"
+                />
+                {t.endCardShowFollowLineLabel}
+              </label>
+              <label className="flex items-center gap-1 text-[11px]">
+                {t.endCardStyleVariantLabel}
+                <Select
+                  value={draft.endCard.styleVariant}
+                  onValueChange={v =>
+                    patchEndCard({
+                      styleVariant: v as "center_card" | "lower_band",
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    className="h-7 w-32"
+                    data-testid="vd-text-overlay-end-card-style"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="center_card">
+                      {t.endCardStyleCenterCard}
+                    </SelectItem>
+                    <SelectItem value="lower_band">
+                      {t.endCardStyleLowerBand}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Opener recap */}
+      <div
+        className="space-y-2 rounded-md border p-2"
+        data-testid="vd-text-overlay-opener-recap"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium">{t.openerRecapTitle}</span>
+          <Switch
+            checked={draft.openerRecap?.enabled ?? false}
+            onCheckedChange={next =>
+              patchOpenerRecap({ enabled: Boolean(next) })
+            }
+            data-testid="vd-text-overlay-opener-recap-toggle"
+          />
+        </div>
+        {draft.openerRecap?.enabled ? (
+          <div className="space-y-2 pl-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-[10px]">
+                {t.sourceLabel}:{" "}
+                {draft.openerRecap.text?.trim()
+                  ? t.sourceManual
+                  : textOverlaySourceLabel(preview?.openerRecap.source, t)}
+              </Badge>
+              {draft.openerRecap.text?.trim() ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    patchOpenerRecap({ text: undefined, source: "auto" })
+                  }
+                  data-testid="vd-text-overlay-opener-recap-revert"
+                >
+                  {t.revertToAutoButton}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    patchOpenerRecap({
+                      text: preview?.openerRecap.text ?? "",
+                      source: "manual",
+                    })
+                  }
+                  data-testid="vd-text-overlay-opener-recap-autofill"
+                >
+                  {t.autoFillButton}
+                </Button>
+              )}
+            </div>
+            <Textarea
+              value={draft.openerRecap.text ?? ""}
+              placeholder={
+                preview?.openerRecap.text || t.openerRecapTextPlaceholder
+              }
+              onChange={e =>
+                patchOpenerRecap({
+                  text: e.target.value,
+                  source: e.target.value.trim() ? "manual" : "auto",
+                })
+              }
+              rows={2}
+              data-testid="vd-text-overlay-opener-recap-text"
+            />
+            <label className="flex items-center gap-1 text-[11px]">
+              {t.openerRecapDurationLabel}
+              <Input
+                type="number"
+                min={3}
+                max={5}
+                step={0.1}
+                className="h-7 w-16"
+                value={draft.openerRecap.durationSec}
+                onChange={e =>
+                  patchOpenerRecap({ durationSec: Number(e.target.value) })
+                }
+                data-testid="vd-text-overlay-opener-recap-duration"
+              />
+            </label>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Title bumper */}
+      <div
+        className="space-y-2 rounded-md border p-2"
+        data-testid="vd-text-overlay-title-bumper"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium">{t.titleBumperTitle}</span>
+          <Switch
+            checked={draft.titleBumper?.enabled ?? false}
+            onCheckedChange={next =>
+              patchTitleBumper({ enabled: Boolean(next) })
+            }
+            data-testid="vd-text-overlay-title-bumper-toggle"
+          />
+        </div>
+        {draft.titleBumper?.enabled ? (
+          <div className="space-y-2 pl-1">
+            <Input
+              value={draft.titleBumper.text ?? ""}
+              placeholder={t.titleBumperTextLabel}
+              onChange={e => patchTitleBumper({ text: e.target.value })}
+              data-testid="vd-text-overlay-title-bumper-text"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {vdTextOverlayCopyWithParams(t.titleBumperPreviewTemplate, {
+                primary: preview?.titleBumper.primary ?? "",
+                secondary:
+                  draft.titleBumper.text?.trim() ||
+                  preview?.titleBumper.secondary ||
+                  "",
+              })}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Episode indicator */}
+      <div
+        className="space-y-2 rounded-md border p-2"
+        data-testid="vd-text-overlay-episode-indicator"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium">
+            {t.episodeIndicatorTitle}
+          </span>
+          <Switch
+            checked={draft.episodeIndicator?.enabled ?? false}
+            onCheckedChange={next =>
+              patchEpisodeIndicator({ enabled: Boolean(next) })
+            }
+            data-testid="vd-text-overlay-episode-indicator-toggle"
+          />
+        </div>
+        {draft.episodeIndicator?.enabled ? (
+          <div className="space-y-2 pl-1">
+            <label className="flex items-center gap-1 text-[11px]">
+              {t.episodeIndicatorPositionLabel}
+              <Select
+                value={draft.episodeIndicator.position}
+                onValueChange={v =>
+                  patchEpisodeIndicator({
+                    position: v as "top_right" | "top_left",
+                  })
+                }
+              >
+                <SelectTrigger
+                  className="h-7 w-32"
+                  data-testid="vd-text-overlay-episode-indicator-position"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="top_right">
+                    {t.episodeIndicatorPositionTopRight}
+                  </SelectItem>
+                  <SelectItem value="top_left">
+                    {t.episodeIndicatorPositionTopLeft}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <p className="text-[11px] text-muted-foreground">
+              {vdTextOverlayCopyWithParams(
+                t.episodeIndicatorPreviewTemplate,
+                { label: preview?.episodeIndicator.label ?? "" }
+              )}
+            </p>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Character intro cards */}
+      <div
+        className="space-y-2 rounded-md border p-2"
+        data-testid="vd-text-overlay-character-intro"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium">{t.characterIntroTitle}</span>
+          <Switch
+            checked={draft.characterIntroCards?.enabled ?? false}
+            onCheckedChange={next => setCharacterIntroEnabled(Boolean(next))}
+            data-testid="vd-text-overlay-character-intro-toggle"
+          />
+        </div>
+        {draft.characterIntroCards?.enabled ? (
+          <div className="pl-1">
+            <p className="text-[11px] font-medium text-muted-foreground">
+              {t.characterIntroPreviewTitle}
+            </p>
+            {(preview?.characterIntroCards ?? []).length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                {t.characterIntroPreviewEmpty}
+              </p>
+            ) : (
+              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                {preview?.characterIntroCards.map(card => (
+                  <li key={card.characterKey}>
+                    {card.name}
+                    {card.role ? ` — ${card.role}` : ""} (
+                    {vdTextOverlayCopyWithParams(t.characterIntroShotLabel, {
+                      shot: card.shotNumber,
+                    })}
+                    )
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Mid-episode cards */}
+      <div
+        className="space-y-2 rounded-md border p-2"
+        data-testid="vd-text-overlay-cards"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-xs font-medium">{t.cardsTitle}</span>
+            <p className="text-[11px] text-muted-foreground">
+              {t.cardsDescription}
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={addCard}
+            data-testid="vd-text-overlay-card-add"
+          >
+            {t.cardsAddButton}
+          </Button>
+        </div>
+
+        {cards.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">
+            {t.cardsEmptyState}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {cards.map(card => (
+              <div
+                key={card.id}
+                className="space-y-2 rounded-md border p-2"
+                data-testid={`vd-text-overlay-card-${card.id}`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Checkbox
+                    checked={card.enabled}
+                    onCheckedChange={checked =>
+                      updateCard(card.id, { enabled: Boolean(checked) })
+                    }
+                    data-testid={`vd-text-overlay-card-enabled-${card.id}`}
+                  />
+                  <Select
+                    value={card.kind}
+                    onValueChange={v =>
+                      updateCard(card.id, {
+                        kind: v as "time_setting" | "narrative_hook" | "custom",
+                      })
+                    }
+                  >
+                    <SelectTrigger
+                      className="h-7 w-36"
+                      data-testid={`vd-text-overlay-card-kind-${card.id}`}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="time_setting">
+                        {t.cardKindTimeSetting}
+                      </SelectItem>
+                      <SelectItem value="narrative_hook">
+                        {t.cardKindNarrativeHook}
+                      </SelectItem>
+                      <SelectItem value="custom">
+                        {t.cardKindCustom}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <label className="flex items-center gap-1 text-[11px]">
+                    {t.cardAnchorShotLabel}
+                    {shotNumbers.length > 0 ? (
+                      <Select
+                        value={String(card.anchor.shotNumber)}
+                        onValueChange={v =>
+                          updateCardAnchor(card.id, { shotNumber: Number(v) })
+                        }
+                      >
+                        <SelectTrigger
+                          className="h-7 w-20"
+                          data-testid={`vd-text-overlay-card-shot-${card.id}`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shotNumbers.map(shot => (
+                            <SelectItem key={shot} value={String(shot)}>
+                              {shot}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        type="number"
+                        min={1}
+                        className="h-7 w-16"
+                        value={card.anchor.shotNumber}
+                        onChange={e =>
+                          updateCardAnchor(card.id, {
+                            shotNumber: Number(e.target.value),
+                          })
+                        }
+                        data-testid={`vd-text-overlay-card-shot-${card.id}`}
+                      />
+                    )}
+                  </label>
+                  <label className="flex items-center gap-1 text-[11px]">
+                    {t.cardAnchorOffsetLabel}
+                    <Input
+                      type="number"
+                      min={0}
+                      max={30}
+                      step={0.1}
+                      className="h-7 w-16"
+                      value={card.anchor.offsetSec ?? 0}
+                      onChange={e =>
+                        updateCardAnchor(card.id, {
+                          offsetSec: Number(e.target.value),
+                        })
+                      }
+                      data-testid={`vd-text-overlay-card-offset-${card.id}`}
+                    />
+                  </label>
+                  <label className="flex items-center gap-1 text-[11px]">
+                    {t.cardDurationLabel}
+                    <Input
+                      type="number"
+                      min={1.5}
+                      max={5}
+                      step={0.1}
+                      className="h-7 w-16"
+                      value={card.durationSec}
+                      onChange={e =>
+                        updateCard(card.id, {
+                          durationSec: Number(e.target.value),
+                        })
+                      }
+                      data-testid={`vd-text-overlay-card-duration-${card.id}`}
+                    />
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="ml-auto"
+                    onClick={() => removeCard(card.id)}
+                    data-testid={`vd-text-overlay-card-remove-${card.id}`}
+                  >
+                    {t.cardRemoveButton}
+                  </Button>
+                </div>
+                <Input
+                  value={card.text}
+                  placeholder={t.cardTextPlaceholder}
+                  onChange={e =>
+                    updateCard(card.id, { text: e.target.value })
+                  }
+                  data-testid={`vd-text-overlay-card-text-${card.id}`}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {tooManyCards ? (
+          <p
+            className="text-xs text-destructive"
+            data-testid="vd-text-overlay-cards-too-many"
+          >
+            {vdTextOverlayCopyWithParams(t.cardTooManyTotalError, { n: 24 })}
+          </p>
+        ) : null}
+      </div>
+
+      {/* Preview */}
+      <div
+        className="rounded-md border bg-muted/30 p-2"
+        data-testid="vd-text-overlay-preview"
+      >
+        <h4 className="text-xs font-medium">{t.previewTitle}</h4>
+        {previewLines.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">
+            {t.previewEmpty}
+          </p>
+        ) : (
+          <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+            {previewLines.map((line, index) => (
+              <li key={index}>{line}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {error ? (
+        <p
+          className="text-xs text-destructive"
+          data-testid="vd-text-overlay-save-error"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <Button
+        type="button"
+        size="sm"
+        disabled={saving || tooManyCards}
+        onClick={() => onSave?.(draft)}
+        data-testid="vd-text-overlay-save"
+      >
+        {saving ? t.saving : t.saveButton}
       </Button>
     </section>
   );

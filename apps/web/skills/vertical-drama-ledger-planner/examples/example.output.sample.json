@@ -1,0 +1,45 @@
+{
+  "contract_version": 1,
+  "ledgers": {
+    "evidenceLedger": [
+      {
+        "id": "e1",
+        "label": "บันทึกเปื้อนเลือด",
+        "introducedEpisode": 2,
+        "mustPayoffByEpisode": 8,
+        "usedEpisodes": [],
+        "changesDecisionEpisodes": [],
+        "status": "open"
+      }
+    ],
+    "characterActivationLedger": [
+      { "character": "Mai", "requiredActivationByEpisode": 1, "status": "dormant" },
+      { "character": "Nok", "requiredActivationByEpisode": 6, "status": "dormant" }
+    ],
+    "threatLadder": [
+      { "episode": 1, "threatLevel": 1, "costToProtagonist": "เสียเวลาค้นหา", "causedByAntagonist": false }
+    ],
+    "consequenceLedger": [],
+    "threadLedger": [
+      { "id": "t1", "label": "ปมน้องสาวหายตัวไป", "mustMoveAgainByEpisode": 4, "status": "active" }
+    ],
+    "worldRuleLedger": [
+      {
+        "id": "w1",
+        "rule": "คำสาปส่งต่อกันได้เฉพาะเที่ยงคืน",
+        "introducedEpisode": 1,
+        "usedAgainEpisodes": [],
+        "createsChoice": true,
+        "verdict": "keep"
+      }
+    ]
+  },
+  "causal_chain_map": [
+    {
+      "id": "cc1",
+      "description": "การพบบันทึกเปื้อนเลือดนำไปสู่การเผชิญหน้ากับ Nok ในตอนท้ายซีซั่น",
+      "episodes": [2, 12]
+    }
+  ],
+  "character_profiles": []
+}

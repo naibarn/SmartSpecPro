@@ -15,13 +15,19 @@
  */
 
 import { TRPCError } from "@trpc/server";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
+import { db } from "../db";
+import { verticalDramaCharacters } from "../../drizzle/schema";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import type { VerticalDramaCharacterVoiceConfigMapEntry } from "@shared/verticalDramaSeries/voiceCasting";
 import {
   VerticalDramaOwnershipError,
   audioRepairInputSchema,
   planDialogueAudioInputSchema,
   verticalDramaDialogueAudioService,
+  type PlanDialogueAudioInput,
 } from "../services/verticalDramaDialogueAudio";
 
 /** Authenticated AND gated on the canonical `verticalDramaSeries` flag (fail-closed). */
@@ -46,6 +52,65 @@ function toTrpcError(err: unknown): never {
   throw err;
 }
 
+/**
+ * Sweep the series' character roster for locked voice castings (W12-A voice
+ * chain wave) and flatten into the `characterId -> config` array shape
+ * `planDialogueAudioInputSchema.characterVoiceConfigs` accepts. Tenant + user
+ * + series scoped (same ownership triple as every other query in this
+ * feature); an invalid/unparsable `seriesId` or a series with no cast
+ * characters both resolve to an empty array rather than throwing — the
+ * service's own `planDialogueAudio` ownership check is the single source of
+ * truth for "series not found" errors, so this helper never preempts it.
+ */
+async function loadCharacterVoiceConfigsForSeries(
+  tenantId: string,
+  userId: number,
+  seriesId: string,
+): Promise<VerticalDramaCharacterVoiceConfigMapEntry[]> {
+  const numericSeriesId = Number(seriesId);
+  if (!Number.isFinite(numericSeriesId) || numericSeriesId <= 0) return [];
+
+  const rows = await db
+    .select({ id: verticalDramaCharacters.id, voiceConfig: verticalDramaCharacters.voiceConfig })
+    .from(verticalDramaCharacters)
+    .where(
+      and(
+        eq(verticalDramaCharacters.tenantId, tenantId),
+        eq(verticalDramaCharacters.userId, userId),
+        eq(verticalDramaCharacters.seriesId, numericSeriesId),
+        isNotNull(verticalDramaCharacters.voiceConfig),
+      ),
+    );
+
+  type CharacterVoiceConfigRow = { id: number; voiceConfig: unknown };
+  return (rows as CharacterVoiceConfigRow[])
+    .filter((row) => row.voiceConfig && typeof row.voiceConfig === "object")
+    .map((row) => ({
+      characterId: String(row.id),
+      ...(row.voiceConfig as Record<string, unknown>),
+    })) as VerticalDramaCharacterVoiceConfigMapEntry[];
+}
+
+/**
+ * Thread server-authoritative voice casting into a `planDialogueAudio` call
+ * when the tenant has `verticalDramaSeriesVoiceChain` enabled — flag OFF (the
+ * default) returns `input` completely unchanged (byte-identical to
+ * pre-W12-A behavior). When ON, ALWAYS overwrites `characterVoiceConfigs`
+ * with a fresh DB read (never trusts a client-supplied value for this field)
+ * so casting can never be spoofed/stale from the caller.
+ */
+async function withCharacterVoiceConfigs(
+  tenantId: string,
+  userId: number,
+  input: PlanDialogueAudioInput,
+): Promise<PlanDialogueAudioInput> {
+  const flags = await getTenantFeatureFlags(tenantId);
+  if (flags?.verticalDramaSeriesVoiceChain !== true) return input;
+
+  const characterVoiceConfigs = await loadCharacterVoiceConfigsForSeries(tenantId, userId, input.seriesId);
+  return { ...input, characterVoiceConfigs };
+}
+
 export const verticalDramaDialogueAudioRouter = router({
   /**
    * Plan dialogue/audio/subtitles for an owned episode and persist the plan into
@@ -57,9 +122,13 @@ export const verticalDramaDialogueAudioRouter = router({
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       try {
+        // W12-A voice chain — flag-gated; see `withCharacterVoiceConfigs`'s
+        // own doc comment. No-op (returns `input` unchanged) when the
+        // tenant's `verticalDramaSeriesVoiceChain` flag is off.
+        const effectiveInput = await withCharacterVoiceConfigs(tenantId, ctx.user.id, input);
         return await verticalDramaDialogueAudioService.planDialogueAudio(
           { tenantId, userId: ctx.user.id },
-          input,
+          effectiveInput,
         );
       } catch (err) {
         toTrpcError(err);

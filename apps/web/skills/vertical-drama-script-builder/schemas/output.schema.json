@@ -70,6 +70,40 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 10
+              },
+              "dialogue_lines": {
+                "description": "Optional superset (added 2026-07-07, story-density reform): dialogue-complete lines authored for this beat, sized to the episode's speech_budget by the canonical estimator. See skill.md 'Speech budget'. Downstream dialogue_audio_plan distributes/enriches these lines rather than inventing new ones.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [
+                    "speaker",
+                    "line"
+                  ],
+                  "properties": {
+                    "speaker": {
+                      "type": "string"
+                    },
+                    "line": {
+                      "type": "string"
+                    },
+                    "delivery": {
+                      "type": "string"
+                    },
+                    "subtext": {
+                      "type": "string"
+                    },
+                    "estimated_speech_seconds": {
+                      "type": "number"
+                    }
+                  }
+                }
+              },
+              "estimated_speech_seconds": {
+                "description": "Optional superset: beat-level total estimated speech seconds (sum of this beat's dialogue_lines[].estimated_speech_seconds), computed via the canonical speech estimator.",
+                "type": "number",
+                "minimum": 0
               }
             }
           }

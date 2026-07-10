@@ -9,18 +9,14 @@
  * convention used by `enhancePrompt` in `server/routers/skills.ts`.
  */
 
-import fs from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
 import { z } from "zod";
-import { parseSkillFile } from "@smartspec/skills";
 import { executeWithFallback } from "./llmRouter";
-import { loadEnabledLlmModelRows } from "./enabledLlmModels";
-import { selectBestLlmModel } from "./intelligentModelSelector";
 import {
-  resolveSkillDirCandidates,
-  resolveSkillManifestPath,
-} from "./skillFiles";
+  loadEnabledLlmModelRows,
+  type EnabledLlmModelRow,
+} from "./enabledLlmModels";
+import { selectBestLlmModel } from "./intelligentModelSelector";
 import {
   hasEnoughCredits,
   deductCredits,
@@ -83,8 +79,31 @@ import {
   resolveVerticalDramaFormatProfile,
   type VerticalDramaFormatProfile,
 } from "@shared/verticalDramaSeries/formatProfiles";
+// Feature 132 §11 "Unified Criteria Application" (spec; plan
+// `sections/section-01-shared-criteria-and-flags.md`) — every prompt builder
+// in this file stamps the greppable criteria-version marker, tracked by
+// `verticalDramaQualityCriteria.agreement.test.ts`.
+import {
+  renderCriteriaVersionMarker,
+  getVerticalDramaQualityCriteriaBundle,
+} from "./verticalDramaQualityCriteria";
+// Feature 132 §4 (F132A, user-premise-preset-mix) — the deterministic,
+// no-LLM premise-coverage guard, reused here at story-bible generation time.
+// NOTE: `verticalDramaPresetSynthesis.ts` also imports FROM this file
+// (`resolveStoryBibleModel`) — this is an intentional, already-established
+// circular service pair; both exports here are only ever called from inside
+// function bodies (never at module-evaluation time), so the cycle resolves
+// safely at runtime.
+import { evaluatePremiseCoverage } from "./verticalDramaPresetSynthesis";
+// Feature 132 §5 (F132B, ledgers-and-story-state) — see
+// `readBreakdownVersionLedgers`/`appendBreakdownVersion` below.
+import {
+  emptyQualityLedgers,
+  type VerticalDramaQualityLedgers,
+} from "@shared/verticalDramaSeries/qualityLedgers";
 
 const LAST_RESORT_MODEL = "gpt-4o-mini";
+const DEEP_STORY_DRAFT_MIN_CONTEXT_LENGTH = 1_000_000;
 
 export async function resolveStoryBibleModel(): Promise<string> {
   try {
@@ -101,6 +120,25 @@ export async function resolveStoryBibleModel(): Promise<string> {
   }
 }
 
+export async function resolveDeepStoryDraftModel(): Promise<string> {
+  try {
+    const rows = await loadEnabledLlmModelRows();
+    if (rows.length === 0) return LAST_RESORT_MODEL;
+    const best = selectBestLlmModel(
+      {
+        supportsThinking: true,
+        supportsStructuredOutputs: true,
+        supportsResponses: true,
+        contextLength: DEEP_STORY_DRAFT_MIN_CONTEXT_LENGTH,
+      },
+      rows
+    );
+    return best ?? (await resolveStoryBibleModel());
+  } catch {
+    return resolveStoryBibleModel();
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Deep story drafts (W10-A, added 2026-07-08)                                */
 /*                                                                            */
@@ -114,6 +152,13 @@ export const VD_DEEP_DRAFT_SHOTS_PER_EPISODE = 9;
 
 /** Episodes covered per chunked LLM call (owner-approved chunk size). */
 export const VD_DEEP_DRAFT_EPISODES_PER_CALL = 5;
+
+/**
+ * Premium fan-out asks for 3 long, judged candidates per chunk. Keep the
+ * per-call JSON body smaller than standard mode so failures are driven by
+ * true schema/content errors, not oversized structured-output truncation.
+ */
+export const VD_PREMIUM_DEEP_DRAFT_EPISODES_PER_CALL = 2;
 
 /** Series with at most this many total episodes default to drafting ALL of them. */
 export const VD_DEEP_DRAFT_HORIZON_ALL_THRESHOLD = 20;
@@ -170,6 +215,30 @@ const shotDraftTieInSchema = z
 export type VdDeepDraftShotTieIn = z.infer<typeof shotDraftTieInSchema>;
 
 /**
+ * Feature 132 §6.1 (F132C, scene-contracts) — a per-shot story-function
+ * contract, requested ONLY when `sceneContractsEnabled` is true (see
+ * `buildDeepDraftPrompts`). Deliberately `newClueIds` has NO `.max()` at the
+ * schema level — the ≤2 clue budget is enforced solely by the deterministic
+ * gate (`meetsPremiumDraftContractFloor`/`validateStagePayload`), never a
+ * schema-retry failure (spec §6.2, resolved open question).
+ */
+const shotContractSchema = z
+  .object({
+    storyFunction: z.string().min(1),
+    emotionalBeat: z.string().min(1),
+    audienceTakeaway: z.string().min(1),
+    tensionSource: z.string().min(1),
+    newClueIds: z.array(z.string().min(1)).default([]),
+    dialoguePurpose: z.string().min(1),
+    characterDecision: z.string().min(1).optional(),
+    continuityDependency: z.string().min(1).optional(),
+    anchorLine: z.boolean().optional(),
+  })
+  .passthrough();
+
+export type VdSceneContract = z.infer<typeof shotContractSchema>;
+
+/**
  * One of the 9 numbered shots in a deep-drafted episode. `silence_intent`
  * reuses the canonical enum from `contentBudget.ts` (spec §7.7.2 Layer 3) —
  * never re-declared here — for shots that are intentionally visual-only
@@ -181,9 +250,23 @@ const shotDraftSchema = z
     shot_number: z.number().int().min(1).max(VD_DEEP_DRAFT_SHOTS_PER_EPISODE),
     summary: z.string().min(1),
     dialogue_lines: z.array(shotDialogueLineSchema).default([]),
-    silence_intent: z.enum(VERTICAL_DRAMA_SILENCE_INTENTS).optional(),
+    // Phase A reliability fix (chronic bug, added 2026-07-09) — the model
+    // frequently emits an explicit JSON `null` for this field on shots that
+    // have no silence intent (instead of omitting the key), which
+    // `.optional()` alone rejects (it only accepts `undefined`/absent),
+    // failing schema validation on both the first attempt AND the schema
+    // retry. `.nullish()` accepts `null` too, and the `.transform` normalizes
+    // it to `undefined` so the persisted/returned shape never carries an
+    // explicit `null` (every downstream read — e.g. `enforceEpisodeShotDraftSpeakability`,
+    // `computeDraftCompleteness` — already treats `undefined` as "no silence intent").
+    silence_intent: z
+      .enum(VERTICAL_DRAMA_SILENCE_INTENTS)
+      .nullish()
+      .transform(v => v ?? undefined),
     /** Task #22 — see `shotDraftTieInSchema`'s own doc comment. */
     tie_in: shotDraftTieInSchema.optional(),
+    /** Feature 132 §6.1 (F132C) — see `shotContractSchema`'s own doc comment. Absent on every shot from a flag-off/legacy response. */
+    contract: shotContractSchema.optional(),
   })
   .passthrough();
 
@@ -228,13 +311,20 @@ export type VdDeepDraftWarning = {
    * episode-level — no single shot to blame), or an UNPLANNED episode has
    * ONE anyway (`shotNumber` names the offending shot). See
    * `reconcileTieInDraftMarking` — deterministic, never fails the run.
+   * `"premise_coverage_low"` (Feature 132 §4.2.7, F132A, added 2026-07-09) —
+   * a season-level (`episodeNumber: 0`, `shotNumber: 0`) warning from
+   * `evaluatePremiseCoverage` finding this run's drafted shots/open threads
+   * don't sufficiently cover `params.userPremise`. Only ever present when
+   * `userPremise` was supplied this run — see
+   * `appendDeepDraftPremiseCoverageWarning`.
    */
   reason:
     | "nonverbal_line"
     | "empty_after_cleaning"
     | "silence_intent_conflict"
     | "episode_missing_after_retry"
-    | "tie_in_placement_mismatch";
+    | "tie_in_placement_mismatch"
+    | "premise_coverage_low";
 };
 
 /* -------------------------------------------------------------------------- */
@@ -249,7 +339,7 @@ export type VdDeepDraftWarning = {
 /* shapes — this block only defines the shapes themselves.                    */
 /* -------------------------------------------------------------------------- */
 
-/** The 8 judged dimensions, in prompt/response order (owner-approved design point 2c). */
+/** The judged dimensions, in prompt/response order (owner-approved design point 2c; Feature 132 scorecard v3 adds the last four). */
 export const VD_PREMIUM_DRAFT_SCORE_DIMENSIONS = [
   "hook_strength",
   "reversal_sharpness",
@@ -259,6 +349,10 @@ export const VD_PREMIUM_DRAFT_SCORE_DIMENSIONS = [
   "cliffhanger_strength",
   "continuity_with_recap",
   "season_cohesion",
+  "clarity",
+  "character_consistency",
+  "evidence_payoff",
+  "threat_escalation",
 ] as const;
 
 export type VdPremiumDraftScoreDimension =
@@ -283,6 +377,10 @@ const premiumScoreDimensionsShape = {
   cliffhanger_strength: z.number().min(1).max(5),
   continuity_with_recap: z.number().min(1).max(5),
   season_cohesion: z.number().min(1).max(5),
+  clarity: z.number().min(1).max(5),
+  character_consistency: z.number().min(1).max(5),
+  evidence_payoff: z.number().min(1).max(5),
+  threat_escalation: z.number().min(1).max(5),
   overall: z.number().min(1).max(5),
 };
 
@@ -315,6 +413,13 @@ export const VD_PREMIUM_DRAFT_SWEEP_ROUND = 3;
 const draftScorecardSchema = z
   .object({
     ...premiumScoreDimensionsShape,
+    // Feature 132 v3 dimensions are required for newly-produced premium
+    // judge payloads, but optional while reading persisted scorecards so
+    // older drafts can still be parsed and updated in-place by critique apply.
+    clarity: premiumScoreDimensionsShape.clarity.optional(),
+    character_consistency: premiumScoreDimensionsShape.character_consistency.optional(),
+    evidence_payoff: premiumScoreDimensionsShape.evidence_payoff.optional(),
+    threat_escalation: premiumScoreDimensionsShape.threat_escalation.optional(),
     ...premiumTieInNaturalnessShape,
     judgedAtRound: z.number().int().nonnegative(),
   })
@@ -361,9 +466,31 @@ const characterDecisionSchema = z
  * Dramaturgy critic (W11.5) — one fantasy/world rule + its stated limit or
  * cost, requested ONCE (bible-level, stored on episode 1 — see
  * `buildDeepDraftPrompts`'s `includeBibleLevelFields` branch below).
+ *
+ * Feature 132 §5.2 (F132B, ledgers-and-story-state) upgrade-in-place: this
+ * schema is widened, not narrowed, to also carry the richer world-rule-ledger
+ * shape (`id`, `introducedEpisode`, `usedAgainEpisodes[]`, `createsChoice`,
+ * `payoffEpisode?`, `verdict`) alongside the two legacy fields
+ * (`rule`/`limit_or_cost`) `buildDeepDraftPrompts`'s CURRENT, unchanged
+ * prompt still requests. Every §5.2 field is optional/defaulted and
+ * `limit_or_cost` is now optional (was required) so a legacy
+ * `{rule, limit_or_cost}`-only row (or today's unchanged LLM response, which
+ * never emits the §5.2 fields) still parses without a migration — this is
+ * the ONE non-purely-additive change in Feature 132 F132B, per that
+ * section's own risk note.
  */
 const worldRuleSchema = z
-  .object({ rule: z.string().min(1), limit_or_cost: z.string().min(1) })
+  .object({
+    rule: z.string().min(1),
+    limit_or_cost: z.string().min(1).optional(),
+    /** §5.2 richer shape — all optional/defaulted for legacy-row back-compat (see doc comment above). */
+    id: z.string().min(1).optional(),
+    introducedEpisode: z.number().int().positive().optional(),
+    usedAgainEpisodes: z.array(z.number().int().positive()).default([]),
+    createsChoice: z.boolean().optional(),
+    payoffEpisode: z.number().int().positive().optional(),
+    verdict: z.enum(["keep", "revise"]).default("keep"),
+  })
   .passthrough();
 
 export type VdCharacterDecision = z.infer<typeof characterDecisionSchema>;
@@ -456,13 +583,45 @@ export type ExpandedVerticalDramaStoryBible = z.infer<
 /** Mirrors the pipeline's own `VD_SCHEMA_VALIDATION_FAILED` convention for LLM-output parse failures. */
 export class VdSchemaValidationError extends Error {
   code = "VD_SCHEMA_VALIDATION_FAILED" as const;
+  issueSummary: string | null;
   constructor(
     message: string,
     public issues: unknown
   ) {
-    super(message);
+    const issueSummary = summarizeValidationIssues(issues);
+    super(issueSummary ? `${message}: ${issueSummary}` : message);
     this.name = "VdSchemaValidationError";
+    this.issueSummary = issueSummary;
   }
+}
+
+function summarizeValidationIssues(issues: unknown): string | null {
+  const maybeIssues =
+    issues &&
+    typeof issues === "object" &&
+    "issues" in issues &&
+    Array.isArray((issues as { issues?: unknown }).issues)
+      ? (issues as { issues: unknown[] }).issues
+      : [];
+  if (maybeIssues.length === 0) {
+    return null;
+  }
+  return maybeIssues
+    .slice(0, 8)
+    .map((issue) => {
+      if (!issue || typeof issue !== "object") {
+        return "unknown validation issue";
+      }
+      const record = issue as { path?: unknown; message?: unknown };
+      const path =
+        Array.isArray(record.path) && record.path.length > 0
+          ? record.path.join(".")
+          : "(root)";
+      const message =
+        typeof record.message === "string" ? record.message : "invalid value";
+      return `${path}: ${message}`;
+    })
+    .join("; ");
 }
 
 export class InsufficientCreditsError extends Error {
@@ -601,27 +760,128 @@ const VD_RETRY_STRICT_INSTRUCTION =
   "Your previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text). Do not truncate — if needed, shorten prose fields to fit, but every object/array must be properly closed. Output exactly ONE JSON object and nothing after it.";
 
 /**
- * Shared one-retry wrapper for the `executeWithFallback` -> `extractJson` ->
+ * Phase A reliability fix (root cause: 2026-07-09 kie_ai outage — every call
+ * hung on `llmRouter.ts`'s 120s `AbortController` timeout with
+ * `errorType: "network_error"` / message "This operation was aborted", and
+ * NOTHING retried it before the bug in this file was fixed). Classifies a
+ * thrown planning-call error into one of three buckets so callers can decide
+ * whether a bounded retry is safe:
+ *  - `"schema"` — the LLM responded but its JSON failed zod validation
+ *    (`VdSchemaValidationError`); only ever retried by the stricter-
+ *    instruction/higher-token-ceiling path below, never by the transient
+ *    backoff retry.
+ *  - `"transient"` — network/timeout/rate-limit/upstream-5xx failures that a
+ *    provider (or a different provider via `executeWithFallback`'s own
+ *    internal fallback chain) may well succeed at moments later; safe to
+ *    retry with backoff.
+ *  - `"fatal"` — auth, invalid-request, or insufficient-credit failures that
+ *    will never succeed on retry; retrying only wastes time and money.
+ * Classification is intentionally conservative (message-substring matching)
+ * since `executeWithFallback` (see `llmRouter.ts`, NOT modified here) only
+ * ever throws/returns a flattened string message by the time it reaches this
+ * file's `attempt()` closures — it does not preserve a structured error code
+ * across its own fallback chain.
+ */
+export type VdLlmErrorClass = "schema" | "transient" | "fatal";
+
+const VD_FATAL_LLM_ERROR_PATTERNS: RegExp[] = [
+  /unauthorized/,
+  /forbidden/,
+  /invalid api key/,
+  /invalid_api_key/,
+  /\b401\b/,
+  /\b403\b/,
+  /payment required/,
+  /\b402\b/,
+  /insufficient credit/,
+  /insufficient_quota/,
+  /invalid_request_error/,
+  /does not allow/,
+  /unsupported field/,
+  /unsupported request fields/,
+];
+
+const VD_TRANSIENT_LLM_ERROR_PATTERNS: RegExp[] = [
+  /operation was aborted/,
+  /econnreset/,
+  /etimedout/,
+  /econnrefused/,
+  /fetch failed/,
+  /network_error/,
+  /network error/,
+  /no successful provider/,
+  /did not reach a successful provider response/,
+  /all providers failed/,
+  /timed out/,
+  /\btimeout\b/,
+  /socket hang up/,
+  /\b429\b/,
+  /\b5\d{2}\b/,
+  /rate limit/,
+];
+
+export function classifyVerticalDramaLlmError(error: unknown): VdLlmErrorClass {
+  if (error instanceof VdSchemaValidationError) {
+    return "schema";
+  }
+  const message = (
+    error instanceof Error ? error.message : String(error ?? "")
+  ).toLowerCase();
+  if (!message) {
+    return "fatal";
+  }
+  if (VD_FATAL_LLM_ERROR_PATTERNS.some(pattern => pattern.test(message))) {
+    return "fatal";
+  }
+  if (VD_TRANSIENT_LLM_ERROR_PATTERNS.some(pattern => pattern.test(message))) {
+    return "transient";
+  }
+  return "fatal";
+}
+
+/** Bounded backoff schedule (ms) for `"transient"`-classified retries in `executeJsonPlanningCallWithRetry` — see `classifyVerticalDramaLlmError`. */
+const VD_TRANSIENT_RETRY_BACKOFFS_MS = [5_000, 15_000];
+
+/** Hard ceiling on TOTAL LLM calls a single `executeJsonPlanningCallWithRetry` invocation may make: 1 initial + at most 1 schema-retry + at most `VD_TRANSIENT_RETRY_BACKOFFS_MS.length` transient-retries. */
+const VD_PLANNING_CALL_MAX_ATTEMPTS =
+  1 + 1 + VD_TRANSIENT_RETRY_BACKOFFS_MS.length;
+
+function vdSleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Shared retry wrapper for the `executeWithFallback` -> `extractJson` ->
  * zod-`safeParse` pattern used by every vertical-drama LLM *planning* call
  * (`generateStoryBible`, `generateEpisodeScript`, `generateStoryboardShotgrid`,
  * `generateStartFrameRenderPlan`, `generateVideoMotionPromptPack`).
  *
- * On the first attempt's JSON-parse/schema-validation failure, retries
- * EXACTLY ONCE against the SAME model (never switches models — vertical
- * drama and the wider app never auto-switch a model chosen for a call) with
- * (a) the same system+user prompt plus one appended strict-JSON instruction
- * message, and (b) a higher `maxTokens` ceiling (`retryMaxTokens`, defaults
- * to `Math.max(params.maxTokens * 2, 16000)` when omitted) so a
- * previously-truncated multi-shot payload has more room to complete. Logs
- * both the failure that triggered the retry and the retry's own outcome via
- * the shared file/console `debugLog`/`debugError` logger (never logs prompt
- * or response bodies — only lengths/codes/messages, per the secret/PII
- * logging rules).
+ * Two INDEPENDENT (orthogonal) retry mechanisms, both against the SAME model
+ * (never switches models — vertical drama and the wider app never
+ * auto-switch a model chosen for a call):
+ *  1. **Schema retry** (original behavior) — on a `"schema"`-classified
+ *     failure (JSON-parse/zod-validation), retries AT MOST ONCE with (a) the
+ *     same system+user prompt plus one appended strict-JSON instruction
+ *     message, and (b) a higher `maxTokens` ceiling (`retryMaxTokens`,
+ *     defaults to `Math.max(params.maxTokens * 2, 16000)` when omitted) so a
+ *     previously-truncated multi-shot payload has more room to complete.
+ *  2. **Transient retry** (Phase A reliability fix, added 2026-07-09) — on a
+ *     `"transient"`-classified failure (network/timeout/rate-limit/upstream
+ *     5xx — see `classifyVerticalDramaLlmError`), retries with the SAME
+ *     prompt/token-ceiling after a backoff (`VD_TRANSIENT_RETRY_BACKOFFS_MS`:
+ *     5s then 15s), up to `VD_TRANSIENT_RETRY_BACKOFFS_MS.length` times.
+ *     `"fatal"`-classified failures (auth/invalid-request/insufficient-
+ *     credit) are NEVER retried.
+ * A transient failure of the schema-retry attempt (or vice versa) may also
+ * be retried — the two mechanisms are orthogonal — but TOTAL LLM calls for a
+ * single invocation are hard-capped at `VD_PLANNING_CALL_MAX_ATTEMPTS` (4).
+ * Logs every retry attempt and the final failure via the shared
+ * file/console `debugLog`/`debugError` logger (never logs prompt or response
+ * bodies — only lengths/codes/messages, per the secret/PII logging rules).
  *
- * Returns the successfully-parsed+validated data. Throws the retry's own
- * error (or the original error, if the retry attempt itself never reached a
- * successful provider response) when both attempts fail — callers keep their
- * existing catch/failed-run handling unchanged.
+ * Returns the successfully-parsed+validated data. Throws the LAST attempt's
+ * own error when every attempt fails — callers keep their existing
+ * catch/failed-run handling unchanged.
  */
 export async function executeJsonPlanningCallWithRetry<T>(params: {
   model: string;
@@ -683,47 +943,76 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
     return { data: validation.data as T, response: result.response };
   };
 
-  try {
-    const first = await attempt(params.userPrompt, params.maxTokens);
-    return { ...first, retried: false } as never;
-  } catch (firstError) {
-    if (!(firstError instanceof VdSchemaValidationError)) {
-      // Provider/network/rate-limit errors are not retried here — only
-      // malformed-JSON/schema failures, which is the class of failure a
-      // stricter-instruction + bigger-ceiling retry can actually fix.
-      throw firstError;
-    }
+  let currentUserPrompt = params.userPrompt;
+  let currentMaxTokens = params.maxTokens;
+  let usedSchemaRetry = false;
+  let transientRetriesUsed = 0;
+  let attemptNumber = 0;
 
-    debugError(
-      "vd_planning_retry",
-      `${params.label}: first attempt failed schema validation for model ${params.model}, retrying once with stricter instruction + higher token ceiling`,
-      { message: firstError.message }
-    );
-
-    const retryMaxTokens =
-      params.retryMaxTokens ?? Math.max(params.maxTokens * 2, 16000);
-    const retryUserPrompt = `${params.userPrompt}\n\n${VD_RETRY_STRICT_INSTRUCTION}`;
-
+  for (;;) {
+    attemptNumber++;
     try {
-      const second = await attempt(retryUserPrompt, retryMaxTokens);
-      debugLog(
-        "vd_planning_retry",
-        `${params.label}: retry succeeded for model ${params.model}`,
-        { retryMaxTokens }
-      );
-      return { ...second, retried: true } as never;
-    } catch (secondError) {
+      const result = await attempt(currentUserPrompt, currentMaxTokens);
+      if (attemptNumber > 1) {
+        debugLog(
+          "vd_planning_retry",
+          `${params.label}: retry succeeded for model ${params.model} (attempt ${attemptNumber}/${VD_PLANNING_CALL_MAX_ATTEMPTS})`,
+          { attemptNumber }
+        );
+      }
+      return { ...result, retried: attemptNumber > 1 } as never;
+    } catch (error) {
+      const classification = classifyVerticalDramaLlmError(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
+      // Schema retry (original behavior) — at most ONE stricter-instruction
+      // + higher-token-ceiling retry, only for JSON-parse/schema failures.
+      if (
+        classification === "schema" &&
+        !usedSchemaRetry &&
+        attemptNumber < VD_PLANNING_CALL_MAX_ATTEMPTS
+      ) {
+        usedSchemaRetry = true;
+        debugError(
+          "vd_planning_retry",
+          `${params.label}: attempt ${attemptNumber} failed schema validation for model ${params.model}, retrying once with stricter instruction + higher token ceiling`,
+          { message: errorMessage }
+        );
+        currentMaxTokens =
+          params.retryMaxTokens ?? Math.max(params.maxTokens * 2, 16000);
+        currentUserPrompt = `${params.userPrompt}\n\n${VD_RETRY_STRICT_INSTRUCTION}`;
+        continue;
+      }
+
+      // Transient retry (Phase A reliability fix, 2026-07-09 kie_ai outage —
+      // see `classifyVerticalDramaLlmError`'s doc comment) — bounded backoff
+      // retry for network/timeout/rate-limit/upstream-5xx failures, ORTHOGONAL
+      // to the schema retry above (either may fire independently), but the
+      // overall attempt count is capped by `VD_PLANNING_CALL_MAX_ATTEMPTS`.
+      if (
+        classification === "transient" &&
+        transientRetriesUsed < VD_TRANSIENT_RETRY_BACKOFFS_MS.length &&
+        attemptNumber < VD_PLANNING_CALL_MAX_ATTEMPTS
+      ) {
+        const backoffMs = VD_TRANSIENT_RETRY_BACKOFFS_MS[transientRetriesUsed];
+        transientRetriesUsed++;
+        debugError(
+          "vd_planning_retry",
+          `${params.label}: attempt ${attemptNumber} failed with a transient error for model ${params.model}, retrying after ${backoffMs}ms (transient retry ${transientRetriesUsed}/${VD_TRANSIENT_RETRY_BACKOFFS_MS.length})`,
+          { message: errorMessage }
+        );
+        await vdSleep(backoffMs);
+        continue;
+      }
+
+      // Fatal, or every available retry budget exhausted — fail the stage.
       debugError(
         "vd_planning_retry",
-        `${params.label}: retry ALSO failed for model ${params.model} — failing the stage`,
-        {
-          message:
-            secondError instanceof Error
-              ? secondError.message
-              : String(secondError),
-        }
+        `${params.label}: attempt ${attemptNumber} (classification: ${classification}) failed for model ${params.model} — failing the stage`,
+        { message: errorMessage, attemptNumber }
       );
-      throw secondError;
+      throw error;
     }
   }
 }
@@ -762,6 +1051,17 @@ interface GenerateStoryBibleParams {
      */
     speechBudgetEnabled?: boolean;
   };
+  /**
+   * Feature 132 §4.2.7 (F132A, user-premise-preset-mix) — the creator's
+   * free-form "โจทย์เรื่องที่อยากได้" premise (persisted at `bible.userPremise`,
+   * gated by the `verticalDramaUserPremise` tenant flag at the router layer —
+   * see `verticalDramaSeries.ts`). When a non-empty trimmed string,
+   * `buildPrompts` prepends a dedicated "USER PREMISE (PRIMARY)" block ahead
+   * of `Series title:`/`Existing bible:`. Optional — absent/empty is
+   * BYTE-IDENTICAL to before this field existed (the `.filter(Boolean)`
+   * conditional-block idiom below renders nothing).
+   */
+  userPremise?: string;
 }
 
 function buildPrompts(params: GenerateStoryBibleParams): {
@@ -784,6 +1084,7 @@ function buildPrompts(params: GenerateStoryBibleParams): {
   );
 
   const systemPrompt = [
+    renderCriteriaVersionMarker(),
     "You are a vertical-drama (short-form mobile drama series) story bible writer.",
     "Given a series' basic setup, expand it into a fuller production-ready story bible.",
     langInstruction,
@@ -797,7 +1098,17 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     .filter(Boolean)
     .join("\n");
 
+  // Feature 132 §4.2.7 (F132A) — prepended ahead of `Series title:` so an
+  // absent/empty `userPremise` renders nothing (byte-identical), per the
+  // `.filter(Boolean).join("\n")` conditional-block idiom used throughout
+  // this file.
+  const trimmedUserPremise = params.userPremise?.trim();
+  const userPremiseBlock = trimmedUserPremise
+    ? `USER PREMISE (PRIMARY):\n${trimmedUserPremise}\nThis premise is the PRIMARY story spine — the series' genre/tone/existing bible fields below are supporting flavor. Do not contradict this premise.`
+    : null;
+
   const userPrompt = [
+    userPremiseBlock,
     `Series title: ${params.title}`,
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
@@ -824,6 +1135,14 @@ export async function generateStoryBible(
   expanded: ExpandedVerticalDramaStoryBible;
   creditsUsed: number;
   model: string;
+  /**
+   * Feature 132 §4.2.7 (F132A) — deterministic, warn-only findings from
+   * `evaluatePremiseCoverage` (never present when `params.userPremise` is
+   * absent/blank, or when the produced bible covers the premise). Additive:
+   * every existing caller destructuring `{ expanded, creditsUsed, model }`
+   * is unaffected.
+   */
+  warnings?: Array<{ code: string; message: string }>;
 }> {
   const hasCredits = await hasEnoughCredits(params.userId, 1);
   if (!hasCredits) {
@@ -875,7 +1194,27 @@ export async function generateStoryBible(
     },
   });
 
-  return { expanded: validatedData, creditsUsed, model };
+  // Feature 132 §4.2.7 (F132A) — deterministic, no-LLM premise-coverage
+  // guard, only run when a premise was actually supplied this call
+  // (router-level flag gate already forces `undefined` when the
+  // `verticalDramaUserPremise` tenant flag is off — see `verticalDramaSeries.ts`).
+  const trimmedUserPremiseForCoverage = params.userPremise?.trim();
+  const coverage = trimmedUserPremiseForCoverage
+    ? evaluatePremiseCoverage(trimmedUserPremiseForCoverage, {
+        logline: params.title,
+        mainPlot: validatedData.expandedSeasonArc,
+        seasonArc: validatedData.episodeBreakdown
+          .map(ep => `${ep.workingTitle}: ${ep.logline}`)
+          .join(" "),
+      })
+    : undefined;
+
+  return {
+    expanded: validatedData,
+    creditsUsed,
+    model,
+    ...(coverage?.warning ? { warnings: [coverage.warning] } : {}),
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -964,6 +1303,15 @@ export interface AppendBreakdownVersionInput {
    * `generateStoryBible`), so existing callers/tests are unaffected.
    */
   deepDraft?: StoredDeepDraftMetadata;
+  /**
+   * Feature 132 §5 (F132B, ledgers-and-story-state) — this version's quality
+   * ledgers, as produced by the `ledger_plan` step / kept in sync by
+   * `reconcileLedgers`. Optional/additive: absent whenever the
+   * `verticalDramaQualityLedgers` tenant flag is off, or for any version
+   * source that doesn't run ledger planning — existing callers/tests are
+   * unaffected.
+   */
+  ledgers?: VerticalDramaQualityLedgers;
 }
 
 /**
@@ -975,6 +1323,15 @@ export interface AppendBreakdownVersionInput {
  * `activeBreakdownVersionId` moved to point at it; every other key on
  * `bible` (and every prior version) is carried over untouched via a shallow
  * spread.
+ *
+ * Feature 132 §5 (F132B) — whenever this new version becomes the active one
+ * (which every call does, per the above), its `ledgers` (when given) are
+ * ALSO mirrored onto the top-level `bible.ledgers` key, at this SAME call
+ * site, mirroring how `activeBreakdownVersionId` itself is kept in sync with
+ * "whichever version is active" right here. Omitted entirely (never an
+ * `undefined` key) when `input.ledgers` is absent, so a flag-off/legacy
+ * caller's returned bible shape is byte-identical to before this field
+ * existed.
  */
 export function appendBreakdownVersion(
   bible: Record<string, unknown> | null | undefined,
@@ -992,13 +1349,51 @@ export function appendBreakdownVersion(
     // every reader; omitted entirely (not even an `undefined` key) when the
     // caller doesn't pass it, matching every other version source's shape.
     ...(input.deepDraft ? { deepDraft: input.deepDraft } : {}),
+    ...(input.ledgers ? { ledgers: input.ledgers } : {}),
   };
 
-  return {
+  const nextBible: Record<string, unknown> = {
     ...(bible ?? {}),
     breakdownVersions: [...existingVersions, newVersion],
     activeBreakdownVersionId: newVersion.versionId,
   };
+  // The mirror reflects the NEWLY-ACTIVE version's own `ledgers` — explicitly
+  // cleared (not left as a stale copy from the shallow spread above) when
+  // this version doesn't carry any, so `bible.ledgers` never lags one
+  // version behind `activeBreakdownVersionId`. A legacy/flag-off bible that
+  // never had a `ledgers` key to begin with is unaffected either way (`delete`
+  // on an absent key is a no-op).
+  if (input.ledgers) {
+    nextBible.ledgers = input.ledgers;
+  } else {
+    delete nextBible.ledgers;
+  }
+  return nextBible;
+}
+
+/**
+ * Feature 132 §5 (F132B) — tolerant read of the CURRENTLY ACTIVE breakdown
+ * version's `ledgers` (mirrors `readBreakdownVersions`'s "never throw, `[]`/
+ * default on absence or malformed data" convention). Falls back to
+ * `emptyQualityLedgers()` when no active version carries `ledgers` (flag
+ * off, a version predating F132B, or no versions at all) — never `undefined`,
+ * so callers never need a null-check.
+ */
+export function readBreakdownVersionLedgers(
+  bible: Record<string, unknown> | null | undefined
+): VerticalDramaQualityLedgers {
+  const versions = readBreakdownVersions(bible);
+  if (versions.length === 0) return emptyQualityLedgers();
+
+  const activeId = (
+    bible as { activeBreakdownVersionId?: unknown } | null | undefined
+  )?.activeBreakdownVersionId;
+  const active =
+    (typeof activeId === "string" &&
+      versions.find(v => v.versionId === activeId)) ||
+    versions[versions.length - 1];
+
+  return active.ledgers ?? emptyQualityLedgers();
 }
 
 /**
@@ -1127,6 +1522,18 @@ export function computeDeepDraftChunkSizes(episodeCount: number): number[] {
   let remaining = Math.floor(episodeCount);
   while (remaining > 0) {
     const size = Math.min(VD_DEEP_DRAFT_EPISODES_PER_CALL, remaining);
+    chunks.push(size);
+    remaining -= size;
+  }
+  return chunks;
+}
+
+export function computePremiumDeepDraftChunkSizes(episodeCount: number): number[] {
+  if (episodeCount <= 0) return [];
+  const chunks: number[] = [];
+  let remaining = Math.floor(episodeCount);
+  while (remaining > 0) {
+    const size = Math.min(VD_PREMIUM_DEEP_DRAFT_EPISODES_PER_CALL, remaining);
     chunks.push(size);
     remaining -= size;
   }
@@ -1676,6 +2083,84 @@ function tieInDraftShotShapeSuffix(
 }
 
 /**
+ * Feature 132 §6.1 (F132C, scene-contracts) — JSON-shape suffix appended to
+ * a shot object's literal shape spec inside a "Respond with ONLY..."
+ * instruction, mirroring `tieInDraftShotShapeSuffix`'s own "empty string
+ * when disabled" convention — empty string (no change to that line) when
+ * `enabled` is falsy, keeping it byte-identical to before F132C.
+ */
+function sceneContractShotShapeSuffix(enabled: boolean | undefined): string {
+  return enabled
+    ? ', "contract": {"storyFunction": string, "emotionalBeat": string, "audienceTakeaway": string, "tensionSource": string, "newClueIds": string[], "dialoguePurpose": string, "characterDecision": string, "continuityDependency": string, "anchorLine": boolean}'
+    : "";
+}
+
+/**
+ * Feature 132 §6.1 (F132C) — the flag-gated system-prompt instruction block
+ * requiring each shot's `contract` object, the ≤2-`newClueIds` budget, and
+ * the canonical anchor-line-cadence predicate (verbatim — this EXACT
+ * wording is also used by `meetsPremiumDraftContractFloor` and
+ * `validateStagePayload`, so prompt text and gate checks never drift).
+ * `null` (renders nothing) when `enabled` is falsy — byte-identical to
+ * before F132C.
+ */
+function buildSceneContractPromptBlock(enabled: boolean | undefined): string | null {
+  if (!enabled) return null;
+  return [
+    getVerticalDramaQualityCriteriaBundle().sceneContractRequirements,
+    'Every shot\'s JSON object must ALSO include a "contract" object with these 6 required fields: "storyFunction" (one clear function for this shot), "emotionalBeat" (one beat), "audienceTakeaway" (what the viewer must retain), "tensionSource" (the conflict/pressure present in this shot), "newClueIds" (array of new important names/objects/dates/lore terms this shot introduces — at most 2 per shot), "dialoguePurpose" (what the dialogue in this shot is for); and these 3 optional fields when applicable: "characterDecision" (set when a decision happens in this shot), "continuityDependency" (the earlier fact this shot relies on, if any), "anchorLine" (true when this shot carries an anchor line).',
+    "Anchor-line cadence (hard requirement): no run of 3 or more consecutive shots without anchorLine: true (equivalently: for every 3 consecutive shots, at least 1 has anchorLine: true).",
+  ].join("\n");
+}
+
+/**
+ * Feature 132 §4.2.7 (F132A) — deterministic, no-LLM premise-coverage guard
+ * over a just-drafted set of deep-draft episodes, reusing the SAME
+ * `evaluatePremiseCoverage` heuristic `verticalDramaPresetSynthesis.ts` uses
+ * at synthesis time. No-op (returns `warnings` unchanged, same reference)
+ * when `userPremise` is absent/blank or nothing was drafted this run.
+ * `VdDeepDraftWarning` has no free-text field, so the appended entry is
+ * season-level (`episodeNumber: 0`, `shotNumber: 0`), mirroring
+ * `"episode_missing_after_retry"`'s own episode-level convention above.
+ * Shared by BOTH `generateStoryBibleDeep` (standard) and
+ * `generateStoryBibleDeepPremium`.
+ */
+function appendDeepDraftPremiseCoverageWarning(
+  warnings: VdDeepDraftWarning[],
+  userPremise: string | undefined,
+  draftedItems: Array<Pick<DeepDraftedEpisodeItem, "shotDrafts" | "cliffhanger_line">>,
+  openThreads: string[]
+): VdDeepDraftWarning[] {
+  const trimmed = userPremise?.trim();
+  if (!trimmed || draftedItems.length === 0) return warnings;
+
+  const mainPlot = draftedItems
+    .flatMap(item =>
+      item.shotDrafts.flatMap(shot => [
+        shot.summary,
+        ...shot.dialogue_lines.map(line => line.line),
+      ])
+    )
+    .join(" ");
+  const logline = draftedItems
+    .map(item => item.cliffhanger_line ?? "")
+    .filter(Boolean)
+    .join(" ");
+
+  const coverage = evaluatePremiseCoverage(trimmed, {
+    logline,
+    mainPlot,
+    seasonArc: openThreads.join(" "),
+  });
+  if (coverage.covered) return warnings;
+
+  return [
+    ...warnings,
+    { episodeNumber: 0, shotNumber: 0, reason: "premise_coverage_low" as const },
+  ];
+}
+
+/**
  * Deterministic post-chunk reconciliation (task #22) between the season plan
  * (`context.placements[].placement.planned`) and what the drafted shots
  * actually marked: every PLANNED episode must end up with >= 1 shot marked
@@ -1759,6 +2244,10 @@ function buildDeepDraftPrompts(params: {
    * product tie-in draft awareness" section above for the full design.
    */
   tieInDraftContext?: VdTieInDraftContext;
+  /** Feature 132 §4.2.7 (F132A) — see `GenerateStoryBibleDeepParams.userPremise`'s own doc comment. */
+  userPremise?: string;
+  /** Feature 132 §6 (F132C) — see `GenerateStoryBibleDeepParams.sceneContractsEnabled`'s own doc comment. */
+  sceneContractsEnabled?: boolean;
 }): { systemPrompt: string; userPrompt: string } {
   const langInstruction =
     params.locale === "th"
@@ -1790,9 +2279,11 @@ function buildDeepDraftPrompts(params: {
     );
 
   const systemPrompt = [
+    renderCriteriaVersionMarker(),
     "You are a vertical-drama (short-form mobile drama series) shot-dialogue writer.",
     `For EACH episode listed below, write a draft of EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) with speakable dialogue that fills that shot's speech budget.`,
     langInstruction,
+    params.locale === "th" ? VD_NATURAL_THAI_DIALOGUE_RULES : null,
     'SPEAKABILITY RULES (hard requirement): every "line" must be literally speakable as written — no wrapping quote marks, no parenthetical stage direction, no symbols (~ * [ ] / ` < > _), no em-dash as a spoken beat (use a comma instead), at most one "…" per line, no emoji. Put delivery/emotion notes in the separate "delivery" field, NEVER inside "line" itself. A shot that is only an animal/ambient sound or otherwise wordless must set "silence_intent" instead of writing the sound as a dialogue line.',
     'A shot must NEVER set BOTH "silence_intent" and one or more "dialogue_lines" — pick exactly one: give it real speakable dialogue, or mark it "silence_intent" only if it truly has no speech at all.',
     `Per-shot speech budget for the standard 60-second/${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot episode profile: ${perShotBandText}. Give each speaking shot enough "dialogue_lines" to reach its target — do not leave a speaking shot underfilled.`,
@@ -1806,13 +2297,19 @@ function buildDeepDraftPrompts(params: {
       : null,
     buildFormatProfilePromptBlock(params.formatProfile, params.locale),
     buildTieInDraftSystemBlock(params.tieInDraftContext),
+    buildSceneContractPromptBlock(params.sceneContractsEnabled),
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}], "open_threads": string[]}`,
+    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}], "open_threads": string[]}`,
     `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts".`,
     '"open_threads" must be the UPDATED list of unresolved plot threads/hooks after these episodes: carry forward every thread you were given that is still open, add any new thread you introduce, and drop any thread you fully resolve.',
   ]
     .filter(Boolean)
     .join("\n");
+
+  const trimmedUserPremiseForDeepDraft = params.userPremise?.trim();
+  const userPremiseBlockForDeepDraft = trimmedUserPremiseForDeepDraft
+    ? `USER PREMISE (PRIMARY):\n${trimmedUserPremiseForDeepDraft}\nThis premise is the PRIMARY story spine — keep every drafted shot consistent with it.`
+    : null;
 
   const episodesPayload = params.chunkEpisodes.map(ep => ({
     episodeNumber: ep.episodeNumber,
@@ -1831,6 +2328,7 @@ function buildDeepDraftPrompts(params: {
   );
 
   const userPrompt = [
+    userPremiseBlockForDeepDraft,
     `Series title: ${params.title}`,
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
@@ -1935,6 +2433,22 @@ export interface GenerateStoryBibleDeepParams {
    * `GenerateStoryBibleDeepResult.tieInMismatchCount`.
    */
   tieInDraftContext?: VdTieInDraftContext;
+  /**
+   * Feature 132 §4.2.7 (F132A, user-premise-preset-mix) — see
+   * `GenerateStoryBibleParams.userPremise`'s own doc comment; same contract,
+   * threaded into `buildDeepDraftPrompts` (standard AND premium — both share
+   * that one function) instead of `buildPrompts`.
+   */
+  userPremise?: string;
+  /**
+   * Feature 132 §6 (F132C, scene-contracts) — when `true`, `buildDeepDraftPrompts`
+   * additionally requests a per-shot `contract` object (see `shotContractSchema`)
+   * and the premium pipeline's deterministic gate
+   * (`meetsPremiumDraftContractFloor`) enforces it. Optional, defaults to
+   * `false`/falsy — omitting it is BYTE-IDENTICAL to before this field
+   * existed (spec §16.5 "flag-off = current behavior").
+   */
+  sceneContractsEnabled?: boolean;
 }
 
 /**
@@ -1945,6 +2459,8 @@ export interface GenerateStoryBibleDeepParams {
  * one, avoiding any service/service coupling for a pure notification type.
  *  - "outline"  — season-level structural pass (the premium pipeline's
  *                 one-time continuity sweep).
+ *  - "ledger"   — Feature 132 §5 ledger_plan step, emitted by the story-job
+ *                 executor before per-episode drafting when F132B is enabled.
  *  - "draft"    — a chunk's fan-out/generation call(s).
  *  - "review"   — a chunk's judge/scoring call.
  *  - "fix"      — a targeted revise call for specific episode(s)
@@ -1955,6 +2471,7 @@ export interface GenerateStoryBibleDeepParams {
  */
 export type VdStoryDraftProgressPhase =
   | "outline"
+  | "ledger"
   | "draft"
   | "review"
   | "fix"
@@ -2185,7 +2702,7 @@ export async function generateStoryBibleDeep(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveDeepStoryDraftModel();
 
   // Format profiles (task #23) — resolved ONCE per run, from the FULL
   // planned season length (`totalEpisodeCount`), never from `episodes.length`
@@ -2236,6 +2753,8 @@ export async function generateStoryBibleDeep(
       totalEpisodeCount: params.totalEpisodeCount,
       formatProfile,
       tieInDraftContext: params.tieInDraftContext,
+      userPremise: params.userPremise,
+      sceneContractsEnabled: params.sceneContractsEnabled,
     });
 
     try {
@@ -2444,6 +2963,14 @@ export async function generateStoryBibleDeep(
     draftedItems,
     params.tieInDraftContext
   );
+  // Feature 132 §4.2.7 (F132A) — deterministic premise-coverage guard;
+  // no-op when `params.userPremise` is absent/blank.
+  const warningsWithPremiseCoverage = appendDeepDraftPremiseCoverageWarning(
+    [...warnings, ...tieInReconciliation.warnings],
+    params.userPremise,
+    draftedItems,
+    openThreads
+  );
 
   return {
     draftedItems,
@@ -2451,7 +2978,7 @@ export async function generateStoryBibleDeep(
     partial,
     creditsUsed: totalCreditsUsed,
     model,
-    warnings: [...warnings, ...tieInReconciliation.warnings],
+    warnings: warningsWithPremiseCoverage,
     finalOpenThreads: openThreads,
     missingEpisodes,
     ...(partial && failureMessage ? { error: failureMessage } : {}),
@@ -2551,8 +3078,8 @@ export function estimatePremiumDeepDraftCalls(chunkCount: number): number {
   return Math.max(0, chunkCount) * 6 + 2;
 }
 
-/** `Record<dimension, score>` shape shared by judge/re-judge scores AND the persisted scorecard — used for floor checks, feedback text, and scorecard construction. */
-type PremiumScoreLike = Record<VdPremiumDraftScoreDimension, number> & {
+/** `Record<dimension, score>` shape shared by judge/re-judge scores AND the persisted scorecard — used for floor checks, feedback text, and scorecard construction. Persisted legacy scorecards may omit newer v3 dimensions. */
+type PremiumScoreLike = Partial<Record<VdPremiumDraftScoreDimension, number>> & {
   overall: number;
   /** Task #22 — see `premiumTieInNaturalnessShape`'s own doc comment; present ONLY for a placed episode's score. */
   tie_in_naturalness?: number;
@@ -2611,7 +3138,8 @@ export function meetsPremiumDraftFloor(
       dimension === "hook_strength"
         ? VD_PREMIUM_DRAFT_MIN_DIMENSION + hookStrengthFloorDelta
         : VD_PREMIUM_DRAFT_MIN_DIMENSION;
-    if (scorecard[dimension] < floor) return false;
+    const value = scorecard[dimension];
+    if (value === undefined || value < floor) return false;
   }
   // Task #22 — additive: only checked when this episode was actually judged
   // on `tie_in_naturalness` (a placed episode this run); absent (every
@@ -2623,6 +3151,58 @@ export function meetsPremiumDraftFloor(
     return false;
   }
   return true;
+}
+
+/**
+ * Feature 132 §6.2 (F132C, scene-contracts) — deterministic contract gate,
+ * called ALONGSIDE — never replacing — `meetsPremiumDraftFloor` at both its
+ * call sites. Checks, over ONE episode's 9 shot drafts: (a) every shot has a
+ * `contract` object; (b) every shot's `contract.newClueIds.length <= 2`
+ * (the SOLE enforcement point for the clue budget — the schema itself has
+ * no `.max()`); (c) the canonical anchor-line-cadence predicate — no run of
+ * 3 or more consecutive shots without `anchorLine: true` (this EXACT
+ * wording/definition is also used by `buildSceneContractPromptBlock` and
+ * `validateStagePayload` — never restated differently); (d) a conservative
+ * want/obstacle/choice/cost collective-coverage heuristic — across the
+ * episode's shots, at least one `contract.tensionSource` (want/obstacle
+ * signal), at least one `contract.characterDecision` (choice), and at least
+ * one `contract.tensionSource` again read as the cost-implying field (a
+ * presence-of-coverage check, not a quality judgment — Section 06's
+ * Structure Pass owns judging QUALITY).
+ */
+export function meetsPremiumDraftContractFloor(
+  shotDrafts: VdDeepDraftShotDraft[]
+): boolean {
+  if (shotDrafts.length === 0) return false;
+
+  let consecutiveWithoutAnchor = 0;
+  let hasTensionSource = false;
+  let hasCharacterDecision = false;
+
+  for (const shot of shotDrafts) {
+    const contract = shot.contract;
+    if (!contract) return false;
+    if (contract.newClueIds.length > 2) return false;
+
+    if (contract.anchorLine === true) {
+      consecutiveWithoutAnchor = 0;
+    } else {
+      consecutiveWithoutAnchor += 1;
+      if (consecutiveWithoutAnchor >= 3) return false;
+    }
+
+    if (contract.tensionSource.trim().length > 0) hasTensionSource = true;
+    if (contract.characterDecision?.trim()) hasCharacterDecision = true;
+  }
+
+  // (d) want/obstacle/choice/cost collective coverage — conservative
+  // field-presence heuristic: `tensionSource` doubles as the want/obstacle/
+  // cost signal (every shot has one, checked above via `.min(1)` at the
+  // schema level, so this only needs at least one non-blank occurrence
+  // across the episode — already guaranteed once any shot exists), and
+  // `characterDecision` is the choice signal (optional per-shot, so the
+  // EPISODE must carry at least one somewhere).
+  return hasTensionSource && hasCharacterDecision;
 }
 
 /**
@@ -2755,6 +3335,9 @@ type PremiumDramaturgyStructureFields = {
 /** One fan-out (or revise) candidate's SINGLE episode after deterministic gating (owner-approved design point 2b) — pre-judge. */
 type PremiumGatedEpisode = {
   episodeNumber: number;
+  workingTitle: string;
+  logline: string;
+  keyBeats: string[];
   shotDrafts: VdDeepDraftShotDraft[];
   cliffhanger_line?: string;
   draftCompleteness: VdDeepDraftCompleteness;
@@ -2797,6 +3380,9 @@ function gateRawPremiumEpisodes(
     const draftCompleteness = computeDraftCompleteness(cleaned);
     return {
       episodeNumber: raw.episodeNumber,
+      workingTitle: raw.workingTitle,
+      logline: raw.logline,
+      keyBeats: raw.keyBeats,
       shotDrafts: cleaned,
       cliffhanger_line: raw.cliffhanger_line,
       draftCompleteness,
@@ -2817,7 +3403,7 @@ function scoreToScorecard(
     overall: score.overall,
   };
   for (const dimension of VD_PREMIUM_DRAFT_SCORE_DIMENSIONS) {
-    scorecard[dimension] = score[dimension];
+    scorecard[dimension] = score[dimension] ?? 1;
   }
   // Task #22 — carried through ONLY when the judge actually scored it
   // (a placed episode); absent otherwise, matching `worstCasePremiumScorecard`'s
@@ -2860,7 +3446,7 @@ function worstCasePremiumScorecard(
 /** Composes human-readable feedback from a below-floor episode's CURRENT scorecard, for the targeted-revise call's per-episode instruction. */
 function composePremiumScoreFeedback(scorecard: PremiumScoreLike): string {
   const weakDimensions = VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.filter(
-    dimension => scorecard[dimension] < VD_PREMIUM_DRAFT_MIN_DIMENSION
+    dimension => (scorecard[dimension] ?? 0) < VD_PREMIUM_DRAFT_MIN_DIMENSION
   );
   // Task #22 — `tie_in_naturalness` participates in the SAME "weak
   // dimensions"/feedback text as the 8 core dimensions whenever it was
@@ -2875,7 +3461,7 @@ function composePremiumScoreFeedback(scorecard: PremiumScoreLike): string {
   const allScoresText = [
     `overall: ${scorecard.overall}/5`,
     ...VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.map(
-      dimension => `${dimension}: ${scorecard[dimension]}/5`
+      dimension => `${dimension}: ${scorecard[dimension] ?? "missing"}/5`
     ),
     ...(scorecard.tie_in_naturalness !== undefined
       ? [`tie_in_naturalness: ${scorecard.tie_in_naturalness}/5`]
@@ -2970,6 +3556,13 @@ function buildPremiumEpisodeDigest(params: {
 const VD_PREMIUM_SPEAKABILITY_RULES =
   'SPEAKABILITY RULES (hard requirement): every "line" must be literally speakable as written — no wrapping quote marks, no parenthetical stage direction, no symbols (~ * [ ] / ` < > _), no em-dash as a spoken beat (use a comma instead), at most one "…" per line, no emoji. Put delivery/emotion notes in the separate "delivery" field, NEVER inside "line" itself. A shot that is only an animal/ambient sound or otherwise wordless must set "silence_intent" instead of writing the sound as a dialogue line.';
 
+const VD_NATURAL_THAI_DIALOGUE_RULES = [
+  "NATURAL THAI DIALOGUE RULES (hard requirement): write Thai dialogue like real people speaking in a tense short drama, not translated prose, textbook Thai, or summary text.",
+  "Match pronouns and particles to each character's age, status, relationship, and emotional state; use ครับ/ค่ะ/นะ/สิ/เถอะ/วะ/เว้ย only when that speaker would naturally say it, and keep each character's voice consistent.",
+  "Prefer short spoken clauses, implied meaning, interruptions, and emotion under pressure. Avoid stiff phrases, formal report language, repeated abstract nouns, and lines that explain the plot out loud.",
+  "Good Thai dialogue: \"แม่ไม่ต้องพูดแล้ว หนูเห็นเองกับตา\" / \"ถ้าเขารู้ เราจบกันคืนนี้\". Bad Thai dialogue: \"ฉันรู้สึกถึงความยุติธรรมและสิทธิ์ของครอบครัว\" / \"ข้อมูลนี้ทำให้สถานการณ์เปลี่ยนแปลงอย่างมีนัยสำคัญ\".",
+].join(" ");
+
 /**
  * Duplicated verbatim from `buildDeepDraftPrompts`'s own "don't set both" rule
  * (live-bug fix, added 2026-07-08) for the SAME reason `VD_PREMIUM_SPEAKABILITY_RULES`
@@ -3030,8 +3623,11 @@ function buildPremiumJudgePrompts(params: {
     tieInAddon.scoreShapeSuffix;
   const systemPrompt = [
     "You are a strict vertical-drama story-quality judge.",
-    `You are given ${params.candidates.length} DIFFERENT candidate drafts, each covering the SAME set of episodes. Score EVERY candidate's EVERY episode independently on these 8 dimensions, each 1-5 (1 = weak, 5 = excellent): ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.join(", ")}. Also give an "overall" 1-5 holistic score per candidate per episode.`,
+    `You are given ${params.candidates.length} DIFFERENT candidate drafts, each covering the SAME set of episodes. Score EVERY candidate's EVERY episode independently on these ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.length} dimensions, each 1-5 (1 = weak, 5 = excellent): ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.join(", ")}. Also give an "overall" 1-5 holistic score per candidate per episode.`,
     "Judge dialogue_naturalness/pacing/emotion_variety/reversal_sharpness/hook_strength/cliffhanger_strength from each episode's own shots. Judge continuity_with_recap against the continuity recap given below (does this candidate respect and build on it, without contradiction?). Judge season_cohesion against how well this candidate's set of episodes reads as one coherent stretch of the season, together with the recap.",
+    params.locale === "th"
+      ? 'For dialogue_naturalness in Thai: 5 means the lines sound like real Thai people speaking under pressure, with character-appropriate pronouns/particles and subtext; 3 means understandable but stiff or expositional; 1-2 means translated, textbook-like, formal-report-like, or plot-summary language.'
+      : null,
     tieInAddon.instruction,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
     `{"scores": [{"candidateIndex": number, "episodeNumber": number, ${scoreShape}, "overall": number}]}`,
@@ -3096,8 +3692,11 @@ function buildPremiumRejudgePrompts(params: {
     tieInAddon.scoreShapeSuffix;
   const systemPrompt = [
     "You are a strict vertical-drama story-quality judge.",
-    `Score EVERY episode given below on these 8 dimensions, each 1-5 (1 = weak, 5 = excellent): ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.join(", ")}. Also give an "overall" 1-5 holistic score per episode.`,
+    `Score EVERY episode given below on these ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.length} dimensions, each 1-5 (1 = weak, 5 = excellent): ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.join(", ")}. Also give an "overall" 1-5 holistic score per episode.`,
     "Judge continuity_with_recap against the continuity recap given below, and season_cohesion against how well this episode fits the season so far.",
+    params.locale === "th"
+      ? 'For dialogue_naturalness in Thai: 5 means the lines sound like real Thai people speaking under pressure, with character-appropriate pronouns/particles and subtext; 3 means understandable but stiff or expositional; 1-2 means translated, textbook-like, formal-report-like, or plot-summary language.'
+      : null,
     tieInAddon.instruction,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
     `{"scores": [{"episodeNumber": number, ${scoreShape}, "overall": number}]}`,
@@ -3167,6 +3766,7 @@ function buildPremiumRevisePrompts(params: {
     "You are a vertical-drama (short-form mobile drama series) shot-dialogue REVISER.",
     `For EACH episode listed below, REVISE its existing ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot draft to address the specific feedback given for that episode — keep everything that already works, change only what the feedback calls out. The revised draft must still have EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) and must NOT change the episode's workingTitle/logline/keyBeats.`,
     langInstruction,
+    params.locale === "th" ? VD_NATURAL_THAI_DIALOGUE_RULES : null,
     VD_PREMIUM_SPEAKABILITY_RULES,
     VD_PREMIUM_NO_SILENCE_INTENT_WITH_DIALOGUE_RULE,
     'Each episode\'s "currentStructure" (when given) is its already-recorded antagonist_tactics/character_decisions/protagonist_stake/world_rules/price_paid — carry each forward UNCHANGED in your revised entry unless the feedback specifically calls for updating that one, in which case update ONLY that field.',
@@ -3323,6 +3923,10 @@ async function callPremiumFanoutCandidate(
     formatProfile?: VerticalDramaFormatProfile;
     /** Task #22 — see `buildDeepDraftPrompts`'s own doc comment; threaded straight through. */
     tieInDraftContext?: VdTieInDraftContext;
+    /** Feature 132 §4.2.7 (F132A) — see `buildDeepDraftPrompts`'s own doc comment; threaded straight through. */
+    userPremise?: string;
+    /** Feature 132 §6 (F132C) — see `buildDeepDraftPrompts`'s own doc comment; threaded straight through. */
+    sceneContractsEnabled?: boolean;
   }
 ) {
   const base = buildDeepDraftPrompts(params);
@@ -3448,6 +4052,10 @@ async function runPremiumChunk(
     chunkCount?: number;
     /** Task #22 — threaded to the fan-out candidates, the judge/re-judge/revise calls, and the missing-episode recovery retry below. */
     tieInDraftContext?: VdTieInDraftContext;
+    /** Feature 132 §4.2.7 (F132A) — threaded to the fan-out candidates and the missing-episode recovery retry below. */
+    userPremise?: string;
+    /** Feature 132 §6 (F132C) — threaded to the fan-out candidates and the missing-episode recovery retry below; also gates the contract deterministic-gate check further below. */
+    sceneContractsEnabled?: boolean;
   },
   callAccounting: PremiumCallAccounting
 ): Promise<PremiumChunkResult> {
@@ -3473,19 +4081,22 @@ async function runPremiumChunk(
   );
 
   const episodeRangeLabel = `episodes ${params.chunkEpisodes[0]?.episodeNumber}-${params.chunkEpisodes[params.chunkEpisodes.length - 1]?.episodeNumber}`;
-  const fulfilled: Array<{ index: number; data: DeepDraftChunkResponse }> = [];
+  const fulfilled: Array<{
+    index: number;
+    data: DeepDraftChunkResponse;
+    usage:
+      | { prompt_tokens?: number; completion_tokens?: number }
+      | null
+      | undefined;
+  }> = [];
   for (let idx = 0; idx < settled.length; idx++) {
     const outcome = settled[idx];
     if (outcome.status === "fulfilled") {
-      const credits = await deductPremiumCall(
-        ctx,
-        outcome.value.usage,
-        `Vertical Drama — premium draft candidate ${idx} [${VD_PREMIUM_DRAFT_LENS_LABELS[idx]}] (series #${ctx.seriesId}, ${episodeRangeLabel})`,
-        { candidateIndex: idx, lens: VD_PREMIUM_DRAFT_LENS_LABELS[idx] }
-      );
-      callAccounting.addCredits(credits);
-      callAccounting.addCall();
-      fulfilled.push({ index: idx, data: outcome.value.data });
+      fulfilled.push({
+        index: idx,
+        data: outcome.value.data,
+        usage: outcome.value.usage,
+      });
     }
   }
 
@@ -3498,6 +4109,20 @@ async function runPremiumChunk(
       : new Error(
           `Premium fan-out candidate failed: ${String(rejected.reason)}`
         );
+  }
+
+  for (const candidate of fulfilled) {
+    const credits = await deductPremiumCall(
+      ctx,
+      candidate.usage,
+      `Vertical Drama — premium draft candidate ${candidate.index} [${VD_PREMIUM_DRAFT_LENS_LABELS[candidate.index]}] (series #${ctx.seriesId}, ${episodeRangeLabel})`,
+      {
+        candidateIndex: candidate.index,
+        lens: VD_PREMIUM_DRAFT_LENS_LABELS[candidate.index],
+      }
+    );
+    callAccounting.addCredits(credits);
+    callAccounting.addCall();
   }
 
   // 2. DETERMINISTIC GATES — no extra LLM call.
@@ -3602,7 +4227,10 @@ async function runPremiumChunk(
   let roundsUsed = 0;
   for (let round = 1; round <= VD_PREMIUM_DRAFT_MAX_REVISE_ROUNDS; round++) {
     const belowFloor = [...currentByEpisode.values()].filter(
-      ep => !meetsPremiumDraftFloor(ep.draftScorecard, params.formatProfile)
+      ep =>
+        !meetsPremiumDraftFloor(ep.draftScorecard, params.formatProfile) ||
+        (params.sceneContractsEnabled &&
+          !meetsPremiumDraftContractFloor(ep.shotDrafts))
     );
     if (belowFloor.length === 0) break; // stop early — every episode already passes floors.
     roundsUsed = round;
@@ -3639,7 +4267,16 @@ async function runPremiumChunk(
         episodes: reviseEpisodesInput,
         tieInDraftContext: params.tieInDraftContext,
       });
-    } catch {
+    } catch (err) {
+      // Phase A reliability fix (added 2026-07-09) — was a bare `catch {}`
+      // that silently swallowed the error; behavior (best-effort early stop)
+      // is UNCHANGED, this only adds visibility into WHY the revise loop
+      // stopped early.
+      debugError(
+        "vd_premium_revise_round",
+        `Premium deep draft revise round ${round} failed for chunk episodes ${belowFloorEpisodeNumbers} (model ${ctx.model}) — keeping the current winner state, stopping the revise loop early`,
+        { message: err instanceof Error ? err.message : String(err) }
+      );
       break; // best-effort — keep the current winner state, stop the revise loop early.
     }
     {
@@ -3678,7 +4315,14 @@ async function runPremiumChunk(
             : undefined,
         })),
       });
-    } catch {
+    } catch (err) {
+      // Phase A reliability fix (added 2026-07-09) — see the revise catch
+      // above's own comment; same treatment, behavior unchanged.
+      debugError(
+        "vd_premium_rejudge_round",
+        `Premium deep draft re-judge round ${round} failed for chunk episodes ${belowFloorEpisodeNumbers} (model ${ctx.model}) — keeping the current (un-revised) winner, this round's revision can't be scored`,
+        { message: err instanceof Error ? err.message : String(err) }
+      );
       break; // best-effort — keep the current (un-revised) winner, this round's revision can't be scored.
     }
     {
@@ -3746,6 +4390,8 @@ async function runPremiumChunk(
         totalEpisodeCount: params.totalEpisodeCount,
         formatProfile: params.formatProfile,
         tieInDraftContext: params.tieInDraftContext,
+        userPremise: params.userPremise,
+        sceneContractsEnabled: params.sceneContractsEnabled,
       });
       const retryUserPrompt = `${base.userPrompt}\n\n${buildDeepDraftMissingEpisodesRetryInstruction(missingEpisodeNumbers)}`;
       const { data: retryData, response: retryResponse } =
@@ -3957,7 +4603,15 @@ async function runPremiumSeasonSweep(
       label: "Premium deep draft season sweep spot-revise",
       episodes: reviseEpisodesInput,
     });
-  } catch {
+  } catch (err) {
+    // Phase A reliability fix (added 2026-07-09) — was a bare `catch {}`
+    // that silently swallowed the error; behavior (best-effort — the sweep
+    // never blocks the run) is UNCHANGED, this only adds visibility.
+    debugError(
+      "vd_premium_sweep_spot_revise",
+      `Premium deep draft season sweep spot-revise failed for episodes ${affectedEpisodeNumbersLabel} (model ${ctx.model}) — sweep issues reported but not fixed`,
+      { message: err instanceof Error ? err.message : String(err) }
+    );
     return { issuesFound: sweepResult.issues.length };
   }
   {
@@ -3990,7 +4644,14 @@ async function runPremiumSeasonSweep(
         shotDrafts: ep.shotDrafts,
       })),
     });
-  } catch {
+  } catch (err) {
+    // Phase A reliability fix (added 2026-07-09) — see the spot-revise
+    // catch above's own comment; same treatment, behavior unchanged.
+    debugError(
+      "vd_premium_sweep_spot_rejudge",
+      `Premium deep draft season sweep spot-rejudge failed for episodes ${affectedEpisodeNumbersLabel} (model ${ctx.model}) — sweep issues reported but not fixed`,
+      { message: err instanceof Error ? err.message : String(err) }
+    );
     return { issuesFound: sweepResult.issues.length };
   }
   {
@@ -4063,7 +4724,7 @@ async function generateStoryBibleDeepPremium(
     };
   }
 
-  const chunkSizes = computeDeepDraftChunkSizes(episodes.length);
+  const chunkSizes = computePremiumDeepDraftChunkSizes(episodes.length);
   const totalEstimate =
     estimatePremiumDeepDraftCalls(chunkSizes.length) *
     VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE;
@@ -4072,7 +4733,7 @@ async function generateStoryBibleDeepPremium(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveDeepStoryDraftModel();
   const ctx: PremiumRunContext = {
     model,
     userId: params.userId,
@@ -4113,6 +4774,39 @@ async function generateStoryBibleDeepPremium(
     },
   };
 
+  const applyChunkResult = (
+    chunkResult: PremiumChunkResult,
+    sourceEpisodes: StoredEpisodeBreakdownItem[]
+  ): boolean => {
+    for (const state of chunkResult.episodeStates) {
+      allDraftedByEpisode.set(state.episodeNumber, state);
+    }
+    recapItems = [...recapItems, ...chunkResult.recapDelta];
+    openThreads = chunkResult.openThreads;
+    // Actual number of episodes this chunk actually persisted — NOT the
+    // originally-requested size (same live-bug fix as standard mode: the
+    // client success toast sums this via `sumDeepDraftChunkSizes`).
+    completedChunkSizes.push(chunkResult.episodeStates.length);
+    roundsUsedPerChunk.push(chunkResult.roundsUsed);
+    firstPassGateFlags.push(...chunkResult.firstPassGatePassFlags);
+
+    if (chunkResult.missingEpisodeNumbers.length === 0) {
+      return true;
+    }
+
+    for (const missingEpisodeNumber of chunkResult.missingEpisodeNumbers) {
+      missingEpisodes.push(missingEpisodeNumber);
+      missingEpisodeWarnings.push({
+        episodeNumber: missingEpisodeNumber,
+        shotNumber: 0,
+        reason: "episode_missing_after_retry",
+      });
+    }
+    partial = true;
+    failureMessage = `Premium deep story draft chunk (${sourceEpisodes[0]?.episodeNumber}-${sourceEpisodes[sourceEpisodes.length - 1]?.episodeNumber}) is still missing episode(s) ${chunkResult.missingEpisodeNumbers.join(", ")} after a corrective retry`;
+    return false;
+  };
+
   for (const size of chunkSizes) {
     chunkIndex += 1;
     const chunkEpisodes = episodes.slice(cursor, cursor + size);
@@ -4134,38 +4828,65 @@ async function generateStoryBibleDeepPremium(
           chunkIndex,
           chunkCount: chunkSizes.length,
           tieInDraftContext: params.tieInDraftContext,
+          userPremise: params.userPremise,
+          sceneContractsEnabled: params.sceneContractsEnabled,
         },
         callAccounting
       );
 
-      for (const state of chunkResult.episodeStates) {
-        allDraftedByEpisode.set(state.episodeNumber, state);
-      }
-      recapItems = [...recapItems, ...chunkResult.recapDelta];
-      openThreads = chunkResult.openThreads;
-      // Actual number of episodes this chunk actually persisted — NOT the
-      // originally-requested `size` (same live-bug fix as standard mode: the
-      // client success toast sums this via `sumDeepDraftChunkSizes`).
-      completedChunkSizes.push(chunkResult.episodeStates.length);
-      roundsUsedPerChunk.push(chunkResult.roundsUsed);
-      firstPassGateFlags.push(...chunkResult.firstPassGatePassFlags);
-
-      if (chunkResult.missingEpisodeNumbers.length > 0) {
-        for (const missingEpisodeNumber of chunkResult.missingEpisodeNumbers) {
-          missingEpisodes.push(missingEpisodeNumber);
-          missingEpisodeWarnings.push({
-            episodeNumber: missingEpisodeNumber,
-            shotNumber: 0,
-            reason: "episode_missing_after_retry",
-          });
-        }
-        partial = true;
-        failureMessage = `Premium deep story draft chunk (${chunkEpisodes[0]?.episodeNumber}-${chunkEpisodes[chunkEpisodes.length - 1]?.episodeNumber}) is still missing episode(s) ${chunkResult.missingEpisodeNumbers.join(", ")} after a corrective retry`;
+      if (!applyChunkResult(chunkResult, chunkEpisodes)) {
         // Stop here — same "never let a later chunk push horizonEndEpisode
         // past an actual gap" reasoning as standard mode's loop.
         break;
       }
     } catch (error) {
+      if (chunkEpisodes.length > 1) {
+        let splitFailure: unknown = null;
+        for (const singleEpisode of chunkEpisodes) {
+          chunkIndex += 1;
+          try {
+            const singleResult = await runPremiumChunk(
+              ctx,
+              {
+                title: params.title,
+                locale: params.locale,
+                genre: params.genre,
+                tone: params.tone,
+                chunkEpisodes: [singleEpisode],
+                recapItems,
+                openThreads,
+                totalEpisodeCount: params.totalEpisodeCount,
+                formatProfile,
+                chunkIndex,
+                chunkCount: chunkSizes.length,
+                tieInDraftContext: params.tieInDraftContext,
+                userPremise: params.userPremise,
+                sceneContractsEnabled: params.sceneContractsEnabled,
+              },
+              callAccounting
+            );
+            if (!applyChunkResult(singleResult, [singleEpisode])) {
+              splitFailure = new Error(failureMessage);
+              break;
+            }
+          } catch (singleError) {
+            splitFailure = singleError;
+            break;
+          }
+        }
+        if (splitFailure == null) {
+          continue;
+        }
+        if (allDraftedByEpisode.size > 0) {
+          partial = true;
+          failureMessage =
+            splitFailure instanceof Error
+              ? splitFailure.message
+              : String(splitFailure);
+          break;
+        }
+        throw splitFailure;
+      }
       if (allDraftedByEpisode.size === 0) {
         // Nothing succeeded yet — nothing to persist, so fail exactly like a
         // single-call `generateStoryBible` failure (no partial result).
@@ -4178,7 +4899,10 @@ async function generateStoryBibleDeepPremium(
   }
 
   const episodesBelowFloorAfter = [...allDraftedByEpisode.values()].filter(
-    state => !meetsPremiumDraftFloor(state.draftScorecard, formatProfile)
+    state =>
+      !meetsPremiumDraftFloor(state.draftScorecard, formatProfile) ||
+      (params.sceneContractsEnabled &&
+        !meetsPremiumDraftContractFloor(state.shotDrafts))
   ).length;
 
   let sweepIssuesFound = 0;
@@ -4235,6 +4959,14 @@ async function generateStoryBibleDeepPremium(
     draftedItems,
     params.tieInDraftContext
   );
+  // Feature 132 §4.2.7 (F132A) — same deterministic premise-coverage guard
+  // standard mode runs above; no-op when `params.userPremise` is absent/blank.
+  const warningsWithPremiseCoverage = appendDeepDraftPremiseCoverageWarning(
+    [...warnings, ...tieInReconciliation.warnings],
+    params.userPremise,
+    draftedItems,
+    openThreads
+  );
 
   return {
     draftedItems,
@@ -4242,7 +4974,7 @@ async function generateStoryBibleDeepPremium(
     partial,
     creditsUsed: totalCreditsUsed,
     model,
-    warnings: [...warnings, ...tieInReconciliation.warnings],
+    warnings: warningsWithPremiseCoverage,
     finalOpenThreads: openThreads,
     premiumMetrics,
     missingEpisodes,
@@ -4451,6 +5183,7 @@ export interface ApplyManualDialogueEditInput {
 
 export interface ApplyManualDialogueEditResult {
   item: StoredEpisodeBreakdownItem;
+  criteriaVersionMarker: string;
   speakabilityWarnings: VdManualDialogueEditSpeakabilityWarning[];
   silenceIntentRemoved: boolean;
 }
@@ -4547,7 +5280,12 @@ export function applyManualDialogueEdit(
     manualDialogueEdit,
   } as StoredEpisodeBreakdownItem;
 
-  return { item: updatedItem, speakabilityWarnings, silenceIntentRemoved };
+  return {
+    item: updatedItem,
+    criteriaVersionMarker: renderCriteriaVersionMarker(),
+    speakabilityWarnings,
+    silenceIntentRemoved,
+  };
 }
 
 /* ============================================================================ */
@@ -4671,7 +5409,7 @@ export function readBibleRefinedCharacters(
 /* Deterministic dramaturgy checks (pure, code-only, NO LLM call)             */
 /* -------------------------------------------------------------------------- */
 
-/** The 8 golden-critique finding kinds + "other" — shared by deterministic findings AND the LLM critic's own `findings[].kind`. */
+/** The season-critique finding kinds + "other" — shared by deterministic findings AND the LLM critic's own `findings[].kind`. */
 export const VD_SEASON_CRITIQUE_FINDING_KINDS = [
   /** (1) LLM-only — no deterministic signal. */
   "protagonist_no_stake",
@@ -4687,10 +5425,12 @@ export const VD_SEASON_CRITIQUE_FINDING_KINDS = [
   "finale_no_price_paid",
   /** (7) deterministic (abstract-word-density proxy). */
   "on_the_nose_dialogue",
-  /** (8) LLM-only — no deterministic signal. */
+  /** (8) LLM-only — Thai dialogue sounds written/translated, not spoken. */
+  "unnatural_dialogue_language",
+  /** (9) LLM-only — no deterministic signal. */
   "info_heavy_low_action",
   /**
-   * (9) deterministic — task #22, added 2026-07-09. Season-planned product
+   * (10) deterministic — task #22, added 2026-07-09. Season-planned product
    * tie-in placements read poorly distributed: either two ADJACENT episodes
    * both planned (bunching, instead of the even spread
    * `planSeasonTieInPlacements` targets), or a PLANNED episode whose drafted
@@ -4700,6 +5440,22 @@ export const VD_SEASON_CRITIQUE_FINDING_KINDS = [
    * multiple runs/extends). See `analyzeSeasonDramaturgy`.
    */
   "tie_in_distribution",
+  "evidence_orphaned",
+  "evidence_no_resistance",
+  "evidence_no_payoff",
+  "threat_not_escalating",
+  "antagonist_idle",
+  "clue_overload",
+  "missing_anchor_line",
+  "voices_too_similar",
+  "cast_visually_similar",
+  "hook_not_answered_in_opening",
+  "decision_without_consequence",
+  "thread_stalled",
+  "episode_replaceable",
+  "knowledge_continuity_break",
+  "emotional_residue_reset",
+  "premise_drifted",
   "other",
 ] as const;
 
@@ -4752,8 +5508,8 @@ function countOccurrences(haystack: string, needle: string): number {
 
 /**
  * Deterministic, pure, code-only season-craft checks (owner-approved design,
- * W11.5) — encodes 6 of the owner's 8 golden-critique findings (see this
- * section's header comment for which 2 are LLM-only). Operates on the FULL
+ * W11.5) — encodes the deterministic subset of the owner's critique findings
+ * (LLM-only kinds still live in the critic prompt/schema). Operates on the FULL
  * active breakdown (`items` — drafted AND not-yet-drafted episodes; `total`
  * for the late-intro threshold is `items.length`, the season's full planned
  * length), but every per-content check only ever reads episodes that
@@ -5089,6 +5845,9 @@ const seasonCritiqueFindingSchema = z
     evidenceEpisodes: z.array(z.number().int().positive()).default([]),
     problem: z.string().min(1),
     fixInstruction: z.string().min(1),
+    severity: z
+      .enum(["minor", "moderate", "major", "structural"])
+      .default("moderate"),
   })
   .passthrough();
 
@@ -5169,638 +5928,12 @@ export function stampSeasonCritiqueOnActiveVersion(
   return { ...(bible ?? {}), breakdownVersions: updatedVersions };
 }
 
-/** Compact per-episode digest for the critic prompt — summaries/dialogue are intentionally OMITTED (kept in the deterministic-findings facts + titles/loglines/cliffhangers/structure only) to keep the prompt a manageable size for a full-season critique. */
-function buildSeasonCritiqueEpisodeDigest(
+/** Tolerant read of a stored breakdown item's `lastAppliedCritiqueRound` (plan §B.5 checkpoint) — `undefined` when absent/malformed. */
+export function readItemLastAppliedCritiqueRound(
   item: StoredEpisodeBreakdownItem
-): Record<string, unknown> {
-  return {
-    episodeNumber: item.episodeNumber,
-    workingTitle: item.workingTitle,
-    logline: item.logline,
-    cliffhangerLine: readItemCliffhangerLine(item) ?? null,
-    antagonistTactics: readItemAntagonistTactics(item),
-    characterDecisions: readItemCharacterDecisions(item),
-    pricePaid: readItemPricePaid(item) ?? null,
-  };
+): string | undefined {
+  const raw = (item as { lastAppliedCritiqueRound?: unknown })
+    .lastAppliedCritiqueRound;
+  return typeof raw === "string" && raw.trim().length > 0 ? raw : undefined;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Season critique skill file + capability-based model selection              */
-/* (relocated from an inline prompt, added 2026-07-08, task #29)              */
-/* -------------------------------------------------------------------------- */
-
-const SEASON_CRITIQUE_SKILL_FOLDER_PATH = path.join(
-  "skills",
-  "vertical-drama-season-dramaturgy-critic"
-);
-
-let cachedSeasonCritiqueSystemPrompt: string | null = null;
-
-/**
- * Fallback system prompt — the ORIGINAL inline systemPrompt this file used
- * before the season-critique prompt was relocated to
- * `skills/vertical-drama-season-dramaturgy-critic/skill.md`, kept verbatim
- * as a named constant so a deploy that's missing (or has an unreadable)
- * `skills/` folder never hard-crashes the critic in production — mirrors
- * this file's own "guard in both places" style (see `critiqueSeasonDrafts`'s
- * own doc comment).
- */
-export const SEASON_CRITIQUE_SYSTEM_PROMPT_FALLBACK = [
-  "You are a strict vertical-drama DRAMATURGY critic — judge STORY CRAFT ONLY (structure, character agency, stakes, antagonist tactics, world-rule consistency, dialogue subtlety, and how much of the runtime is dramatized action versus exposition/info-dumping). Do NOT judge production values, visuals, or technical execution.",
-  "You are given a compact digest of the whole season's drafted episodes PLUS a set of DETERMINISTIC FACTS already found by code — treat every deterministic fact as TRUE and reflect it in your findings where relevant; never contradict it.",
-  'Score the season 1-10 overall ("overallScore"), list its genuine strengths ("strengths"), and list concrete craft problems ("findings"). Each finding MUST cite the specific episode number(s) it applies to ("evidenceEpisodes"), describe the PROBLEM in Thai ("problem"), and give a concrete FIX INSTRUCTION ("fixInstruction") that PRESERVES the season\'s existing premise, characters, and already-resolved plot — never propose a fix that invents a new character, changes the premise, or contradicts an earlier episode.',
-  `Each finding's "kind" must be exactly one of: ${VD_SEASON_CRITIQUE_FINDING_KINDS.join(", ")} — use "other" only when none of the specific kinds fit.`,
-  "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-  '{"overallScore": number, "strengths": string[], "findings": [{"kind": string, "evidenceEpisodes": number[], "problem": string, "fixInstruction": string}]}',
-].join("\n");
-
-/**
- * Read the `vertical-drama-season-dramaturgy-critic` skill's markdown body
- * verbatim, to use as the critic's LLM system prompt — same resolution
- * strategy as `verticalDramaStoryboardGeneration.ts`'s `loadSkillSystemPrompt`
- * (`resolveSkillDirCandidates`/`resolveSkillManifestPath` from
- * `./skillFiles`, in-process cache, only caches on SUCCESS). Unlike that
- * sibling loader, this one NEVER throws — a missing/unreadable skill file
- * falls back to `SEASON_CRITIQUE_SYSTEM_PROMPT_FALLBACK` (logged via
- * `console.warn`) so a deploy missing the `skills/` folder never breaks the
- * critic in production. The fallback is deliberately NOT cached, so a
- * transient failure can still self-heal on a later call.
- */
-export function loadSeasonCritiqueSystemPrompt(): string {
-  if (cachedSeasonCritiqueSystemPrompt) return cachedSeasonCritiqueSystemPrompt;
-
-  for (const dir of resolveSkillDirCandidates(
-    SEASON_CRITIQUE_SKILL_FOLDER_PATH
-  )) {
-    const manifestPath = resolveSkillManifestPath(dir);
-    if (manifestPath && fs.existsSync(manifestPath)) {
-      const raw = fs.readFileSync(manifestPath, "utf-8");
-      const { content } = parseSkillFile(raw);
-      if (content && content.trim().length > 0) {
-        cachedSeasonCritiqueSystemPrompt = content;
-        return cachedSeasonCritiqueSystemPrompt;
-      }
-    }
-  }
-
-  console.warn(
-    '[verticalDramaStoryBible] Could not locate skill.md for "vertical-drama-season-dramaturgy-critic" — falling back to the inline season-critique system prompt.'
-  );
-  return SEASON_CRITIQUE_SYSTEM_PROMPT_FALLBACK;
-}
-
-/** Minimum context window (in tokens) `resolveSeasonCritiqueModel` requires — a full-season episode digest + deterministic findings can be large, so this is deliberately generous. Named constant, never inlined. */
-export const VD_SEASON_CRITIQUE_MIN_CONTEXT_LENGTH = 100_000;
-
-/**
- * Capability-based model selection for the season dramaturgy critic — used
- * by BOTH `critiqueSeasonDrafts` (the critique call) and `applySeasonCritique`
- * (the apply-fixes call), per owner requirement that both paths get the
- * same capable-model treatment. Mirrors
- * `verticalDramaVideoMotionPromptGeneration.ts`'s `resolveShotVideoPromptModel`
- * exactly: try `loadEnabledLlmModelRows` -> `selectBestLlmModel` (requiring
- * extended thinking + structured outputs + a large context window) -> on
- * null/throw fall back to `resolveStoryBibleModel()`. NEVER a hardcoded
- * model id.
- */
-export async function resolveSeasonCritiqueModel(): Promise<{
-  model: string;
-  capable: boolean;
-}> {
-  try {
-    const rows = await loadEnabledLlmModelRows();
-    if (rows.length > 0) {
-      const capableModel = selectBestLlmModel(
-        {
-          supportsThinking: true,
-          supportsStructuredOutputs: true,
-          contextLength: VD_SEASON_CRITIQUE_MIN_CONTEXT_LENGTH,
-        },
-        rows
-      );
-      if (capableModel) return { model: capableModel, capable: true };
-    }
-  } catch {
-    // Fall through to the non-capability-gated default below.
-  }
-  const fallbackModel = await resolveStoryBibleModel();
-  return { model: fallbackModel, capable: false };
-}
-
-function buildSeasonCritiquePrompts(params: {
-  title: string;
-  genre?: string | null;
-  tone?: string | null;
-  items: StoredEpisodeBreakdownItem[];
-  deterministicFindings: VdDramaturgyFinding[];
-  protagonistStake?: string;
-  worldRules: VdWorldRule[];
-}): { systemPrompt: string; userPrompt: string } {
-  const systemPrompt = loadSeasonCritiqueSystemPrompt();
-
-  const userPrompt = [
-    `Series title: ${params.title}`,
-    params.genre ? `Genre: ${params.genre}` : null,
-    params.tone ? `Tone: ${params.tone}` : null,
-    `Stated protagonist stake: ${params.protagonistStake ?? "(none recorded)"}`,
-    `World rules recorded: ${JSON.stringify(params.worldRules)}`,
-    `Deterministic facts already found by code (treat as true, do not contradict): ${JSON.stringify(params.deterministicFindings)}`,
-    `Episodes: ${JSON.stringify(params.items.map(buildSeasonCritiqueEpisodeDigest))}`,
-    VD_COMPACT_JSON_INSTRUCTION,
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  return { systemPrompt, userPrompt };
-}
-
-/** Thrown by `critiqueSeasonDrafts` when `items` has no deep-drafted episode at all — mirrors `ManualDialogueEditNoDraftError`'s "one clear error class" shape. The router maps this to `PRECONDITION_FAILED`. */
-export class NoDeepDraftedEpisodesError extends Error {
-  code = "VD_NO_DEEP_DRAFTED_EPISODES" as const;
-  constructor() {
-    super("No deep-drafted episodes are available to critique");
-    this.name = "NoDeepDraftedEpisodesError";
-  }
-}
-
-export interface CritiqueSeasonDraftsParams {
-  userId: number;
-  tenantId?: string;
-  seriesId: number;
-  title: string;
-  locale: VerticalDramaSeriesLocale;
-  genre?: string | null;
-  tone?: string | null;
-  /** The series' FULL active breakdown (drafted AND not-yet-drafted episodes) — mirrors `analyzeSeasonDramaturgy`'s own `items` contract. */
-  items: StoredEpisodeBreakdownItem[];
-  roster?: VdDramaturgyRosterCharacter[];
-  /**
-   * Format profiles (task #23, added 2026-07-08) — when `true`, resolves a
-   * `VerticalDramaFormatProfile` from `items.length` (the FULL planned
-   * season length — same convention `analyzeSeasonDramaturgy` itself already
-   * uses for `totalEpisodes`) and passes it to `analyzeSeasonDramaturgy`,
-   * scaling its thresholds for a short/ultra-short season. Optional,
-   * defaults to `false` — TEMPORARY flag-pending gate, see
-   * `VD_FORMAT_PROFILES_ROLLOUT` in `@shared/verticalDramaSeries/
-   * formatProfiles`. Omitting it is byte-identical to before this field
-   * existed.
-   */
-  formatProfilesEnabled?: boolean;
-  /** Async story jobs (#28) — see `GenerateStoryBibleDeepParams.onProgress`'s own doc comment; additive, no-op when absent. */
-  onProgress?: VdStoryDraftProgressCallback;
-}
-
-export interface CritiqueSeasonDraftsResult {
-  critique: VdSeasonCritiqueResult;
-  deterministicFindings: VdDramaturgyFinding[];
-  creditsUsed: number;
-  model: string;
-}
-
-/**
- * Season dramaturgy critique — ONE real, credit-consuming LLM call (owner-
- * approved design, W11.5). Runs the deterministic checks first
- * (`analyzeSeasonDramaturgy`) and injects them as established facts into the
- * critic prompt (see `buildSeasonCritiquePrompts`) so the LLM never has to
- * re-derive what code can already prove. Mirrors `generateStoryBible`'s
- * check-credits -> call -> deduct-credits convention exactly. Throws
- * `NoDeepDraftedEpisodesError` when `items` has nothing drafted yet (the
- * router itself normally guards this earlier, so real callers hit that
- * PRECONDITION_FAILED first — this is a defensive second layer, matching
- * this file's established "guard in both places" style).
- */
-export async function critiqueSeasonDrafts(
-  params: CritiqueSeasonDraftsParams
-): Promise<CritiqueSeasonDraftsResult> {
-  const draftedItems = params.items.filter(
-    item => readItemShotDrafts(item) !== null
-  );
-  if (draftedItems.length === 0) {
-    throw new NoDeepDraftedEpisodesError();
-  }
-
-  const hasCredits = await hasEnoughCredits(params.userId, 1);
-  if (!hasCredits) {
-    throw new InsufficientCreditsError();
-  }
-
-  // Format profiles (task #23) — `items.length` is the FULL planned season
-  // length (`items` includes not-yet-drafted episodes too — see this
-  // param's own doc comment), the exact same source
-  // `analyzeSeasonDramaturgy` already uses for its own `totalEpisodes`.
-  const formatProfile = params.formatProfilesEnabled
-    ? resolveVerticalDramaFormatProfile(params.items.length)
-    : undefined;
-  const deterministicFindings = analyzeSeasonDramaturgy(
-    params.items,
-    params.roster ?? [],
-    formatProfile
-  );
-  const protagonistStake = draftedItems
-    .map(readItemProtagonistStake)
-    .find((s): s is string => !!s);
-  const worldRules = draftedItems.flatMap(readItemWorldRules);
-
-  const { model } = await resolveSeasonCritiqueModel();
-  const { systemPrompt, userPrompt } = buildSeasonCritiquePrompts({
-    title: params.title,
-    genre: params.genre,
-    tone: params.tone,
-    items: draftedItems,
-    deterministicFindings,
-    protagonistStake,
-    worldRules,
-  });
-
-  // Async story jobs (#28) — additive, no-op when `onProgress` is absent.
-  params.onProgress?.({ phase: "reading" });
-
-  const { data: critique, response } = await executeJsonPlanningCallWithRetry({
-    model,
-    systemPrompt,
-    userPrompt,
-    temperature: 0.4,
-    userId: params.userId,
-    maxTokens: 4000,
-    schema: seasonCritiqueResponseSchema,
-    label: "Season dramaturgy critique",
-  });
-
-  const usage = response.usage;
-  const creditsUsed = calculateCreditsForLLM(
-    usage?.prompt_tokens ?? 0,
-    usage?.completion_tokens ?? 0,
-    model
-  );
-
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
-    amount: creditsUsed,
-    description: `Vertical Drama — season dramaturgy critique (series #${params.seriesId})`,
-    sourceType: "skill",
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series_season_critique",
-      seriesId: params.seriesId,
-      inputTokens: usage?.prompt_tokens ?? 0,
-      outputTokens: usage?.completion_tokens ?? 0,
-    },
-  });
-
-  return { critique, deterministicFindings, creditsUsed, model };
-}
-
-/* -------------------------------------------------------------------------- */
-/* Apply critique fixes — batch revise + deterministic regression guard        */
-/* -------------------------------------------------------------------------- */
-
-/** Affected episodes are split into AT MOST this many batched revise calls. */
-export const VD_SEASON_CRITIQUE_APPLY_MAX_CHUNKS = 2;
-
-/** Sentinel `judgedAtRound` bump stamped on a premium `draftScorecard` an applied critique fix touched — distinct from the fan-out judge (0), the 1-2 per-chunk revise rounds, and the season sweep (`VD_PREMIUM_DRAFT_SWEEP_ROUND` = 3). The score VALUES are left as-is (this pass never re-runs the premium judge); only the round marker moves. */
-export const VD_SEASON_CRITIQUE_APPLY_SCORECARD_ROUND = 4;
-
-/**
- * Splits a set of episode numbers into AT MOST `VD_SEASON_CRITIQUE_APPLY_MAX_CHUNKS`
- * contiguous, roughly-equal-sized batches (owner-approved design: "group by
- * episode, <= 2 chunks") — deduplicates and sorts ascending first. `[]` in,
- * `[]` out.
- */
-export function chunkSeasonCritiqueEpisodeNumbers(
-  episodeNumbers: number[]
-): number[][] {
-  const sorted = Array.from(new Set(episodeNumbers)).sort((a, b) => a - b);
-  if (sorted.length === 0) return [];
-  const chunkCount = Math.min(
-    VD_SEASON_CRITIQUE_APPLY_MAX_CHUNKS,
-    sorted.length
-  );
-  const size = Math.ceil(sorted.length / chunkCount);
-  const chunks: number[][] = [];
-  for (let i = 0; i < sorted.length; i += size) {
-    chunks.push(sorted.slice(i, i + size));
-  }
-  return chunks;
-}
-
-/** Distinct finding `kind`s among `findings` whose `evidenceEpisodes` includes `episodeNumber`. */
-function findingKindsForEpisode(
-  findings: VdDramaturgyFinding[],
-  episodeNumber: number
-): Set<VdSeasonCritiqueFindingKind> {
-  const kinds = new Set<VdSeasonCritiqueFindingKind>();
-  for (const finding of findings) {
-    if (finding.evidenceEpisodes.includes(episodeNumber))
-      kinds.add(finding.kind);
-  }
-  return kinds;
-}
-
-/**
- * REGRESSION GUARD (owner-approved design): `true` when re-running
- * `analyzeSeasonDramaturgy` AFTER a revision finds a finding `kind` touching
- * `episodeNumber` that was NOT already true for that episode BEFORE the
- * revision — i.e. the "fix" introduced a brand-new deterministic problem.
- * Compares by `kind` set membership (not exact `evidenceEpisodes` arrays,
- * which can legitimately shift by a episode or two across a revision, e.g. a
- * tactic-repetition streak's range) — exported standalone so the guard logic
- * is directly unit-testable without any LLM mocking.
- */
-export function seasonCritiqueRevisionIntroducesNewFinding(
-  baselineFindings: VdDramaturgyFinding[],
-  afterFindings: VdDramaturgyFinding[],
-  episodeNumber: number
-): boolean {
-  const before = findingKindsForEpisode(baselineFindings, episodeNumber);
-  const after = findingKindsForEpisode(afterFindings, episodeNumber);
-  for (const kind of after) {
-    if (!before.has(kind)) return true;
-  }
-  return false;
-}
-
-export interface ApplySeasonCritiqueFindingInput {
-  kind: VdSeasonCritiqueFindingKind;
-  evidenceEpisodes: number[];
-  problem: string;
-  fixInstruction: string;
-}
-
-export interface ApplySeasonCritiqueParams {
-  userId: number;
-  tenantId?: string;
-  seriesId: number;
-  title: string;
-  locale: VerticalDramaSeriesLocale;
-  genre?: string | null;
-  tone?: string | null;
-  /** The series' FULL active breakdown (drafted AND not-yet-drafted episodes). */
-  items: StoredEpisodeBreakdownItem[];
-  roster?: VdDramaturgyRosterCharacter[];
-  /** The SELECTED findings to apply (router resolves `findingIndexes` against the persisted `lastCritique.findings` before calling this). */
-  findings: ApplySeasonCritiqueFindingInput[];
-  /**
-   * Format profiles (task #23, added 2026-07-08) — see
-   * `CritiqueSeasonDraftsParams.formatProfilesEnabled`'s identical doc
-   * comment; the SAME resolved profile is used for both the baseline and
-   * every candidate re-check below (`analyzeSeasonDramaturgy`'s 2 call
-   * sites in this function), so the regression guard always compares
-   * before/after under identical thresholds. Optional, defaults to `false`.
-   */
-  formatProfilesEnabled?: boolean;
-  /** Async story jobs (#28) — see `GenerateStoryBibleDeepParams.onProgress`'s own doc comment; additive, no-op when absent. */
-  onProgress?: VdStoryDraftProgressCallback;
-}
-
-export interface ApplySeasonCritiqueRejection {
-  episodeNumber: number;
-  reason: string;
-}
-
-export interface ApplySeasonCritiqueResult {
-  /** The FULL active breakdown, with every accepted episode's content replaced — same length/order as `params.items`. */
-  updatedItems: StoredEpisodeBreakdownItem[];
-  updatedEpisodeNumbers: number[];
-  rejected: ApplySeasonCritiqueRejection[];
-  creditsUsed: number;
-  callsMade: number;
-  model: string;
-}
-
-/**
- * Applies selected critique findings as targeted shot-draft revisions (owner-
- * approved design, W11.5) — a SEPARATE, on-demand pass from the premium
- * fan-out/judge/revise/sweep pipeline above; it never runs inside that
- * pipeline and never changes its behavior. Reuses that pipeline's OWN
- * `callPremiumRevise`/`buildPremiumRevisePrompts`/`gateRawPremiumEpisodes`
- * machinery unmodified (feedback text is built from the critique's
- * `problem`/`fixInstruction` instead of a judge scorecard) — same LLM-call
- * shape, same speakability/coverage gating, same credit-per-actual-call
- * convention (`deductPremiumCall`).
- *
- * Affected episodes (the union of every selected finding's `evidenceEpisodes`
- * that is ACTUALLY deep-drafted — an evidence episode with no draft yet is
- * silently skipped, nothing to revise) are split into at most
- * `VD_SEASON_CRITIQUE_APPLY_MAX_CHUNKS` batched revise calls
- * (`chunkSeasonCritiqueEpisodeNumbers`). EVERY revised episode then goes
- * through the REGRESSION GUARD (`seasonCritiqueRevisionIntroducesNewFinding`):
- * a revision that introduces a deterministic finding `kind` the episode
- * didn't already have is REJECTED (the prior content is kept, and the
- * rejection is reported) — never silently applied. An episode a chunk's
- * revise response never covered at all is also rejected with a clear reason.
- * A chunk-level call failure rejects every episode in that chunk (best-effort
- * — mirrors the premium pipeline's own revise/sweep "never throws" style)
- * rather than failing the whole run.
- */
-export async function applySeasonCritique(
-  params: ApplySeasonCritiqueParams
-): Promise<ApplySeasonCritiqueResult> {
-  const draftedByEpisode = new Map(
-    params.items
-      .filter(item => readItemShotDrafts(item) !== null)
-      .map(item => [item.episodeNumber, item])
-  );
-
-  const affectedEpisodeNumbers = Array.from(
-    new Set(
-      params.findings
-        .flatMap(f => f.evidenceEpisodes)
-        .filter(ep => draftedByEpisode.has(ep))
-    )
-  ).sort((a, b) => a - b);
-
-  if (affectedEpisodeNumbers.length === 0) {
-    return {
-      updatedItems: params.items,
-      updatedEpisodeNumbers: [],
-      rejected: [],
-      creditsUsed: 0,
-      callsMade: 0,
-      model: "",
-    };
-  }
-
-  const totalEstimate =
-    VD_SEASON_CRITIQUE_APPLY_MAX_CHUNKS *
-    VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE;
-  const hasCredits = await hasEnoughCredits(params.userId, totalEstimate);
-  if (!hasCredits) {
-    throw new InsufficientCreditsError();
-  }
-
-  const { model } = await resolveSeasonCritiqueModel();
-  const ctx: PremiumRunContext = {
-    model,
-    userId: params.userId,
-    tenantId: params.tenantId,
-    seriesId: params.seriesId,
-    onProgress: params.onProgress,
-  };
-  // Format profiles (task #23) — resolved ONCE and reused for BOTH the
-  // baseline findings here AND every candidate re-check below, so the
-  // regression guard (`seasonCritiqueRevisionIntroducesNewFinding`) always
-  // compares before/after under identical thresholds. See
-  // `ApplySeasonCritiqueParams.formatProfilesEnabled`'s own doc comment.
-  const formatProfile = params.formatProfilesEnabled
-    ? resolveVerticalDramaFormatProfile(params.items.length)
-    : undefined;
-  const baselineFindings = analyzeSeasonDramaturgy(
-    params.items,
-    params.roster ?? [],
-    formatProfile
-  );
-
-  const chunks = chunkSeasonCritiqueEpisodeNumbers(affectedEpisodeNumbers);
-  const updatedByEpisode = new Map<number, StoredEpisodeBreakdownItem>();
-  const rejected: ApplySeasonCritiqueRejection[] = [];
-  let creditsUsed = 0;
-  let callsMade = 0;
-  let chunkIndex = 0;
-
-  for (const chunkEpisodeNumbers of chunks) {
-    chunkIndex += 1;
-    // Async story jobs (#28) — additive, no-op when `ctx.onProgress` is absent.
-    ctx.onProgress?.({
-      phase: "fix",
-      chunkIndex,
-      chunkCount: chunks.length,
-      episodesDone: chunkEpisodeNumbers,
-    });
-
-    const reviseEpisodesInput = chunkEpisodeNumbers.map(episodeNumber => {
-      const item = draftedByEpisode.get(episodeNumber)!;
-      const relevantFindings = params.findings.filter(f =>
-        f.evidenceEpisodes.includes(episodeNumber)
-      );
-      const feedback = relevantFindings
-        .map(
-          f => `ปัญหา (${f.kind}): ${f.problem} วิธีแก้: ${f.fixInstruction}`
-        )
-        .join(" ");
-      return {
-        sourceItem: item,
-        currentShotDrafts: readItemShotDrafts(item) ?? [],
-        currentCliffhangerLine: readItemCliffhangerLine(item),
-        feedback,
-        currentStructure: extractDramaturgyStructureFields(
-          item as DramaturgyStructureFieldsLike
-        ),
-      };
-    });
-
-    let reviseResult;
-    try {
-      reviseResult = await callPremiumRevise(ctx, {
-        title: params.title,
-        locale: params.locale,
-        genre: params.genre,
-        tone: params.tone,
-        recapItems: [],
-        openThreads: [],
-        label: "Season dramaturgy critique — apply fixes",
-        episodes: reviseEpisodesInput,
-      });
-    } catch {
-      for (const episodeNumber of chunkEpisodeNumbers) {
-        rejected.push({
-          episodeNumber,
-          reason: "การเรียก AI เพื่อแก้ไขล้มเหลว",
-        });
-      }
-      continue;
-    }
-
-    callsMade += 1;
-    creditsUsed += await deductPremiumCall(
-      ctx,
-      reviseResult.usage,
-      `Vertical Drama — season dramaturgy critique apply (series #${params.seriesId}, episodes ${chunkEpisodeNumbers.join(",")})`,
-      { episodeNumbers: chunkEpisodeNumbers }
-    );
-
-    const revisedGated = gateRawPremiumEpisodes(
-      reviseResult.data.episodeBreakdown
-    );
-
-    for (const revisedEp of revisedGated) {
-      const priorItem = draftedByEpisode.get(revisedEp.episodeNumber);
-      if (!priorItem) continue; // defensive — revised set is expected to be a subset of this chunk's episode numbers.
-
-      const candidateItem = {
-        ...priorItem,
-        shotDrafts: revisedEp.shotDrafts,
-        cliffhanger_line: revisedEp.cliffhanger_line,
-        draftCompleteness: revisedEp.draftCompleteness,
-        ...mergeDramaturgyStructureFields(
-          revisedEp,
-          priorItem as DramaturgyStructureFieldsLike
-        ),
-      } as StoredEpisodeBreakdownItem;
-
-      const candidateFullItems = params.items.map(item =>
-        item.episodeNumber === candidateItem.episodeNumber
-          ? candidateItem
-          : item
-      );
-      const candidateFindings = analyzeSeasonDramaturgy(
-        candidateFullItems,
-        params.roster ?? [],
-        formatProfile
-      );
-
-      if (
-        seasonCritiqueRevisionIntroducesNewFinding(
-          baselineFindings,
-          candidateFindings,
-          revisedEp.episodeNumber
-        )
-      ) {
-        rejected.push({
-          episodeNumber: revisedEp.episodeNumber,
-          reason: "การแก้ไขทำให้เกิดปัญหาใหม่ จึงเก็บเวอร์ชันเดิมไว้",
-        });
-        continue;
-      }
-
-      const priorScorecard = readItemDraftScorecard(priorItem);
-      updatedByEpisode.set(candidateItem.episodeNumber, {
-        ...candidateItem,
-        ...(priorScorecard
-          ? {
-              draftScorecard: {
-                ...priorScorecard,
-                judgedAtRound: VD_SEASON_CRITIQUE_APPLY_SCORECARD_ROUND,
-              },
-            }
-          : {}),
-      } as StoredEpisodeBreakdownItem);
-    }
-
-    for (const episodeNumber of chunkEpisodeNumbers) {
-      if (
-        !updatedByEpisode.has(episodeNumber) &&
-        !rejected.some(r => r.episodeNumber === episodeNumber)
-      ) {
-        rejected.push({
-          episodeNumber,
-          reason: "AI ไม่ได้ส่งร่างที่แก้ไขกลับมาสำหรับตอนนี้",
-        });
-      }
-    }
-  }
-
-  const updatedItems = params.items.map(
-    item => updatedByEpisode.get(item.episodeNumber) ?? item
-  );
-
-  return {
-    updatedItems,
-    updatedEpisodeNumbers: [...updatedByEpisode.keys()].sort((a, b) => a - b),
-    rejected,
-    creditsUsed,
-    callsMade,
-    model,
-  };
-}

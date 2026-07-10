@@ -34,6 +34,67 @@
       "description": "Optional vertical-drama-dialogue-audio-planner output (or the relevant subset: dialogue_lines[]). When omitted, dialogue_naturalness is scored as null.",
       "type": "object",
       "additionalProperties": true
+    },
+    "density_metrics": {
+      "description": "Optional superset (added 2026-07-07, story-density reform): deterministic density facts pre-computed in code from the platform's canonical speech-budget module. When present, request contract_version 2 and echo this object back VERBATIM as the output's top-level density_metrics — never re-estimate these numbers. See skill.md 'Scorecard v2'.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "estimated_speech_seconds": {
+          "type": "number"
+        },
+        "per_clip_coverage": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "clips_evaluated": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "clips_below_min_ratio": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "clips_below_error_ratio": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "average_coverage_ratio": {
+              "type": "number"
+            }
+          }
+        },
+        "silent_gap_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duplicate_line_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stage_direction_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reversal_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_consecutive_same_emotion": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "tie_in_config": {
+      "description": "Optional superset (added 2026-07-07): presence of an enabled tie-in config asks this skill to additionally score scorecard.tie_in_naturalness and produce a short tie_in_assessment. When omitted, or enabled is false, tie_in_naturalness is scored as null and tie_in_assessment is omitted.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

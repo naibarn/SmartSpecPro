@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-ledger-planner/input",
+  "title": "Vertical Drama Quality Ledger Planner Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["series_id", "locale", "active_breakdown"],
+  "properties": {
+    "series_id": {
+      "type": "string"
+    },
+    "locale": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "genre": {
+      "type": "string"
+    },
+    "tone": {
+      "type": "string"
+    },
+    "refined_characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "world_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "active_breakdown": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "total_episode_count": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

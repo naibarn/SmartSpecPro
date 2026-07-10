@@ -232,6 +232,16 @@ export const verticalDramaCopy = {
   },
   deepStoryDraftsExtending: { th: "กำลังขยายร่าง…", en: "Extending draft…" },
   deepStoryDraftsExtendError: { th: "ขยายร่างไม่สำเร็จ", en: "Failed to extend the draft" },
+  // Feature 132 §4.4 (F132A) — read-only premise preview + edit-affordance
+  // link in the Deep Story Drafts panel.
+  deepStoryDraftsPremisePreviewLabel: {
+    th: "โจทย์เรื่องที่อยากได้",
+    en: "Your story premise",
+  },
+  deepStoryDraftsPremiseEditLinkLabel: {
+    th: "แก้ไขที่การตั้งค่าซีรีย์",
+    en: "Edit in series settings",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* Async story jobs (#28, added 2026-07-08) — submit -> poll progress copy, */
@@ -245,6 +255,8 @@ export const verticalDramaCopy = {
   storyJobQueued: { th: "กำลังอยู่ในคิว…", en: "Queued…" },
   storyJobRoundLabel: { th: "รอบเรียก", en: "Call" },
   storyJobPhaseOutline: { th: "กำลังคิดโครง", en: "Outlining" },
+  /** Feature 132 §5 (F132B, ledgers-and-story-state) — the `ledger_plan` job phase, runs after "outline"/before per-episode "draft". */
+  storyJobPhaseLedger: { th: "กำลังจัดทำบัญชีความต่อเนื่อง…", en: "Planning continuity ledgers…" },
   storyJobPhaseDraft: { th: "กำลังร่าง", en: "Drafting" },
   storyJobPhaseReview: { th: "กำลังตรวจ", en: "Reviewing" },
   storyJobPhaseFixPrefix: { th: "กำลังซ่อมตอน", en: "Fixing episode" },
@@ -354,23 +366,34 @@ export const verticalDramaCopy = {
   manualDialogueEditSaveError: { th: "แก้ไขบทพูดไม่สำเร็จ", en: "Failed to edit the dialogue" },
 
   /* ---------------------------------------------------------------------- */
-  /* Dramaturgy critic (W11.5, added 2026-07-08) — "วิจารณ์ซีซั่นนี้" card    */
-  /* inside the Overview actions area (`VerticalDramaSeasonCritiqueCard` in  */
-  /* `VerticalDramaDeepStoryDraftsPanel.tsx`). Gated the SAME way as every   */
-  /* other deep-story-drafts string above — no new flag.                    */
+  /* "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — replaces the old   */
+  /* dramaturgy-critic/quality-loop flow (formerly                          */
+  /* `VerticalDramaSeasonCritiqueCard`) with one whole-script improve pass,  */
+  /* surfaced by `VerticalDramaImproveScriptCard.tsx`. Mounted the SAME way  */
+  /* the card it replaces was — unconditionally inside                      */
+  /* `VerticalDramaDeepStoryDraftsActions`, renders nothing until           */
+  /* `hasDrafts` is true. No new flag.                                      */
   /* ---------------------------------------------------------------------- */
-  seasonCritiqueCta: { th: "วิจารณ์ซีซั่นนี้ (AI)", en: "Critique this season (AI)" },
-  seasonCritiqueRerunCta: { th: "วิจารณ์ใหม่", en: "Re-run critique" },
-  seasonCritiqueRunning: { th: "กำลังวิจารณ์…", en: "Critiquing…" },
-  seasonCritiqueError: { th: "วิจารณ์ซีซั่นไม่สำเร็จ", en: "Failed to critique this season" },
-  seasonCritiqueApplying: { th: "กำลังปรับแก้…", en: "Applying fixes…" },
-  seasonCritiqueApplyError: { th: "ปรับตามคำวิจารณ์ไม่สำเร็จ", en: "Failed to apply the critique" },
-  seasonCritiqueStrengthsToggle: { th: "จุดแข็งของซีซั่นนี้", en: "This season's strengths" },
-  seasonCritiqueFindingsLabel: { th: "จุดที่ควรปรับปรุง", en: "Points to improve" },
-  seasonCritiqueRejectedHeading: {
-    th: "บางข้อปรับไม่สำเร็จ (เก็บเวอร์ชันเดิมไว้)",
-    en: "Some fixes could not be applied (the prior version was kept)",
+  improveScriptRequestLabel: { th: "สิ่งที่ต้องการให้ปรับปรุง", en: "What to improve" },
+  improveScriptEditCta: { th: "แก้ไข", en: "Edit" },
+  improveScriptSaveCta: { th: "บันทึก", en: "Save" },
+  improveScriptCancelCta: { th: "ยกเลิก", en: "Cancel" },
+  improveScriptCta: {
+    th: "ปรับปรุงบทละครให้มีความสมบูรณ์",
+    en: "Improve the script to make it more complete",
   },
+  improveScriptRunning: { th: "กำลังปรับปรุงบทละคร…", en: "Improving the script…" },
+  improveScriptError: { th: "ปรับปรุงบทละครไม่สำเร็จ", en: "Failed to improve the script" },
+  improveScriptNeedsReviewHeading: {
+    th: "ผลลัพธ์นี้ยังไม่ผ่านการตรวจสอบ ไม่สามารถยืนยันได้ — กรุณาตรวจสอบเหตุผลด้านล่าง",
+    en: "This result did not pass verification and cannot be confirmed — please review the reasons below",
+  },
+  improveScriptRawTextToggle: { th: "ดูสคริปต์แบบข้อความดิบ", en: "View raw script text" },
+  improveScriptScoreSummaryLabel: { th: "สรุปคะแนนจาก AI", en: "AI score summary" },
+  improveScriptConfirmCta: { th: "ยืนยันการปรับปรุง", en: "Confirm the improvement" },
+  improveScriptConfirmError: { th: "ยืนยันการปรับปรุงไม่สำเร็จ", en: "Failed to confirm the improvement" },
+  improveScriptDiscardCta: { th: "ทิ้งผลลัพธ์นี้", en: "Discard this result" },
+  improveScriptDiscardError: { th: "ทิ้งผลลัพธ์ไม่สำเร็จ", en: "Failed to discard this result" },
 
   /* ---------------------------------------------------------------------- */
   /* Voice casting (W12-B, spec feature 131 §14/§7.4, voice chain wave) —    */
@@ -411,6 +434,27 @@ export const verticalDramaCopy = {
   voiceCastingCurrentlyCast: { th: "เสียงที่กำหนดไว้", en: "Currently cast" },
   voiceCastingCancel: { th: "ยกเลิก", en: "Cancel" },
   voiceCastingConfirm: { th: "ยืนยัน", en: "Confirm" },
+  /* F132F speech-profile-driven style hints (spec 132 §7.3, added           */
+  /* 2026-07-09) — "prefill from speech profile" suggestion action. Always   */
+  /* informational/suggestion-only; never auto-saved (see `voiceCasting.ts`'s */
+  /* own `styleHints` doc comment).                                          */
+  voiceCastingStyleHintsLabel: {
+    th: "คำแนะนำสไตล์การพากย์ (ข้อมูลอ้างอิงเท่านั้น)",
+    en: "Style hints (informational only)",
+  },
+  voiceCastingStyleHintsPlaceholder: {
+    th: "เช่น เสียงต่ำ, จังหวะช้า, น้ำเสียงอบอุ่น",
+    en: "e.g. low register, slow pace, warm tone",
+  },
+  voiceCastingSuggestStyleHintsCta: {
+    th: "แนะนำจากโปรไฟล์เสียงพูด",
+    en: "Suggest from speech profile",
+  },
+  voiceCastingSaveStyleHintsCta: { th: "บันทึกคำแนะนำสไตล์", en: "Save style hints" },
+  voiceCastingStyleHintsRequiresCastVoice: {
+    th: "ต้องกำหนดเสียงให้ตัวละครนี้ก่อนจึงจะบันทึกคำแนะนำสไตล์ได้",
+    en: "Cast a voice for this character before style hints can be saved.",
+  },
 } as const;
 
 /**
@@ -906,6 +950,15 @@ export const manualDialogueEditViolationCopy: Record<
     th: "เป็นเสียงที่ไม่ใช่คำพูด ควรใช้ป้ายช็อตภาพล้วนแทน",
     en: "Reads as a nonverbal sound, not spoken dialogue",
   },
+  /** Added (spec §7.1 "read-aloud: one main idea per line", F132D, added
+   *  2026-07-09) — only ever appears when a caller opts into
+   *  `checkOneIdeaPerLine: true`; every existing unconditional caller never
+   *  produces this kind, so this entry exists purely for forward-compat
+   *  completeness of the `Record`. */
+  multiple_main_ideas: {
+    th: "มีหลายใจความในบรรทัดเดียว ควรแยกเป็นสองบรรทัด",
+    en: "Carries multiple main ideas — consider splitting into two lines",
+  },
 };
 
 /** Defensive lookup mirroring `arcDriftReasonLabel`/`deepStoryDraftsSilenceIntentLabel` — unknown violation kinds fall back to the raw code, never throws. */
@@ -915,112 +968,32 @@ export function manualDialogueEditViolationLabel(lang: VerticalDramaLang, kind: 
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dramaturgy critic (W11.5, added 2026-07-08) — the 8 golden-critique        */
-/* finding kinds + "other", plus interpolated Copy Contract strings for       */
-/* `VerticalDramaSeasonCritiqueCard` (`VerticalDramaDeepStoryDraftsPanel.tsx`).*/
-/*                                                                            */
-/* `SEASON_CRITIQUE_FINDING_KINDS` mirrors the server's own                   */
-/* `VD_SEASON_CRITIQUE_FINDING_KINDS` (`server/services/verticalDramaStoryBible.ts`,*/
-/* a server-only file, not importable from the client) — order + key set      */
-/* only, DISPLAY MATH/COPY ONLY.                                              */
+/* "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — default request text  */
+/* + interpolated Copy Contract strings for `VerticalDramaImproveScriptCard`   */
+/* (`VerticalDramaImproveScriptCard.tsx`), replacing the removed dramaturgy-   */
+/* critic/quality-loop finding-kind copy set that used to live here.          */
 /* -------------------------------------------------------------------------- */
-export const SEASON_CRITIQUE_FINDING_KINDS = [
-  "protagonist_no_stake",
-  "world_rules_undefined",
-  "key_character_late_intro",
-  "character_agency_zero_decisions",
-  "antagonist_tactic_repetition",
-  "finale_no_price_paid",
-  "on_the_nose_dialogue",
-  "info_heavy_low_action",
-  "tie_in_distribution",
-  "other",
-] as const;
 
-export type VerticalDramaSeasonCritiqueFindingKind = (typeof SEASON_CRITIQUE_FINDING_KINDS)[number];
+/** Default "what to improve" free-text request — user-editable via the card's own edit toggle. Exported so tests can assert against the exact seeded value. */
+export const IMPROVE_SCRIPT_DEFAULT_REQUEST_TEXT =
+  "ปรับปรุงบทละครให้มีความสมบูรณ์มากขึ้น เหตุการณ์สมเหตุสมผล บทพูดเป็นธรรมชาติ บรรยากาศ แสงอ่อน ๆ นุ่มนวล สอดคล้องกับสถานการณ์ในเรื่อง";
 
-/** Bilingual labels for the 8 golden-critique finding kinds + "other" (ม.ปลาย reading level — plain, concrete Thai). */
-export const seasonCritiqueFindingKindCopy: Record<
-  VerticalDramaSeasonCritiqueFindingKind,
-  { th: string; en: string }
-> = {
-  protagonist_no_stake: {
-    th: "พระเอก/นางเอกไม่มีเหตุผลส่วนตัว",
-    en: "Protagonist lacks a personal stake",
-  },
-  world_rules_undefined: {
-    th: "กติกาโลกของเรื่องยังไม่ชัดเจน",
-    en: "The story's world-rule system is undefined",
-  },
-  key_character_late_intro: {
-    th: "ตัวละครสำคัญออกตัวช้าเกินไป",
-    en: "A key character is introduced too late",
-  },
-  character_agency_zero_decisions: {
-    th: "ตัวละครไม่มีบทบาทตัดสินใจเอง",
-    en: "A character never gets to decide anything on their own",
-  },
-  antagonist_tactic_repetition: {
-    th: "ตัวร้ายใช้กลวิธีซ้ำเดิม",
-    en: "The antagonist repeats the same tactic",
-  },
-  finale_no_price_paid: {
-    th: "ตอนจบไม่มีราคาที่ต้องจ่าย",
-    en: "The finale resolves without any real cost",
-  },
-  on_the_nose_dialogue: {
-    th: "บทพูดตรงเกินไป (บอกแทนที่จะเล่า)",
-    en: "Dialogue is too on-the-nose (tells instead of shows)",
-  },
-  info_heavy_low_action: {
-    th: "ตอนแน่นข้อมูล ขาดฉากดราม่า",
-    en: "Episode is info-heavy with little dramatized action",
-  },
-  tie_in_distribution: {
-    th: "การวางสินค้าตามแผนกระจายไม่ดี",
-    en: "Tie-in placements are poorly distributed",
-  },
-  other: { th: "ปัญหาอื่น ๆ", en: "Other" },
-};
-
-/** Defensive lookup mirroring `arcDriftReasonLabel`/`manualDialogueEditViolationLabel` — unknown kinds fall back to the raw code, never throws. */
-export function seasonCritiqueFindingKindLabel(lang: VerticalDramaLang, kind: string): string {
-  const entry = seasonCritiqueFindingKindCopy[kind as VerticalDramaSeasonCritiqueFindingKind];
-  return entry ? entry[lang] : kind;
-}
-
-/** Copy Contract: "คะแนนรวม {overallScore}/10". */
-export function seasonCritiqueScoreText(lang: VerticalDramaLang, overallScore: number): string {
-  return lang === "th" ? `คะแนนรวม ${overallScore}/10` : `Overall score ${overallScore}/10`;
-}
-
-/** Copy Contract: "ตอนที่ 3, 5, 7" — a finding's cited episode numbers, ascending. */
-export function seasonCritiqueEvidenceEpisodesText(lang: VerticalDramaLang, episodeNumbers: number[]): string {
-  const list = [...episodeNumbers].sort((a, b) => a - b).join(", ");
-  return lang === "th" ? `ตอนที่ ${list}` : `Episode${episodeNumbers.length === 1 ? "" : "s"} ${list}`;
-}
-
-/** Copy Contract: "ปรับตามคำวิจารณ์ ({n} ข้อ, มีค่าใช้จ่าย)" — the apply footer button. */
-export function seasonCritiqueApplyFooterText(lang: VerticalDramaLang, selectedCount: number): string {
+/** Copy Contract: "กำลังปรับปรุง... (รอบ {round}/{maxRounds})" — round-aware progress while `startImproveScript`'s job polls. */
+export function improveScriptRoundProgressText(
+  lang: VerticalDramaLang,
+  round: number,
+  maxRounds: number,
+): string {
   return lang === "th"
-    ? `ปรับตามคำวิจารณ์ (${selectedCount} ข้อ, มีค่าใช้จ่าย)`
-    : `Apply the critique (${selectedCount} item${selectedCount === 1 ? "" : "s"}, incurs a cost)`;
+    ? `กำลังปรับปรุง... (รอบ ${round}/${maxRounds})`
+    : `Improving... (round ${round}/${maxRounds})`;
 }
 
-/** Copy Contract: "ปรับปรุงแล้ว {n} ตอน" — the apply success toast. */
-export function seasonCritiqueApplySuccessText(lang: VerticalDramaLang, updatedCount: number): string {
+/** Copy Contract: "ปรับปรุงแล้ว {n} ตอน" — the confirm success toast (same phrasing the removed apply-critique flow used). */
+export function improveScriptConfirmSuccessText(lang: VerticalDramaLang, updatedCount: number): string {
   return lang === "th"
     ? `ปรับปรุงแล้ว ${updatedCount} ตอน`
     : `Updated ${updatedCount} episode${updatedCount === 1 ? "" : "s"}`;
-}
-
-/** Copy Contract: "ตอนที่ {n}: {reason}" — one line per rejected episode in the apply-result warning. */
-export function seasonCritiqueRejectedLineText(
-  lang: VerticalDramaLang,
-  episodeNumber: number,
-  reason: string,
-): string {
-  return lang === "th" ? `ตอนที่ ${episodeNumber}: ${reason}` : `Episode ${episodeNumber}: ${reason}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1029,7 +1002,7 @@ export function seasonCritiqueRejectedLineText(
 
 /** A structural (not imported) mirror of `services/verticalDramaStoryJobs.ts`'s `VerticalDramaStoryJobProgress` — keeps this file dependency-free of any server module. */
 export interface VerticalDramaStoryJobProgressCopyInput {
-  phase: "outline" | "draft" | "review" | "fix" | "reading";
+  phase: "outline" | "ledger" | "draft" | "review" | "fix" | "reading";
   chunkIndex?: number;
   chunkCount?: number;
   episodesDone?: number[];
@@ -1066,13 +1039,15 @@ export function storyJobProgressText(
   const phaseLabel =
     progress.phase === "outline"
       ? pickCopy(lang, verticalDramaCopy.storyJobPhaseOutline)
-      : progress.phase === "draft"
-        ? pickCopy(lang, verticalDramaCopy.storyJobPhaseDraft)
-        : progress.phase === "review"
-          ? pickCopy(lang, verticalDramaCopy.storyJobPhaseReview)
-          : progress.phase === "reading"
-            ? pickCopy(lang, verticalDramaCopy.storyJobPhaseReading)
-            : storyJobPhaseFixText(lang, progress.episodesDone);
+      : progress.phase === "ledger"
+        ? pickCopy(lang, verticalDramaCopy.storyJobPhaseLedger)
+        : progress.phase === "draft"
+          ? pickCopy(lang, verticalDramaCopy.storyJobPhaseDraft)
+          : progress.phase === "review"
+            ? pickCopy(lang, verticalDramaCopy.storyJobPhaseReview)
+            : progress.phase === "reading"
+              ? pickCopy(lang, verticalDramaCopy.storyJobPhaseReading)
+              : storyJobPhaseFixText(lang, progress.episodesDone);
 
   if (progress.chunkIndex == null || progress.chunkCount == null) {
     return phaseLabel;

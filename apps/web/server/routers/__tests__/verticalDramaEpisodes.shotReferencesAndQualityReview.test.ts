@@ -1924,6 +1924,9 @@ describe("getEpisodeDetail — qualityReview field", () => {
       // F131W (#30-A2) — see `verticalDramaEpisodes.adBannerPlan.test.ts` for
       // dedicated flags.adBannerOverlay coverage.
       adBannerOverlay: false,
+      // F131AB (task #34) — see `verticalDramaEpisodes.textOverlayPlan.test.ts`
+      // for dedicated flags.textOverlaySuite coverage.
+      textOverlaySuite: false,
     });
     // Pre-existing fields stay exactly as before — no extra db.select calls
     // beyond the original 3 (byte-identical flags-off proof; W10-B's own

@@ -56,7 +56,7 @@
       }
     },
     "episodes": {
-      "description": "Compact per-episode digest for every deep-drafted episode being critiqued — full shot summaries/dialogue text are intentionally omitted to keep the prompt a manageable size for a full-season critique.",
+      "description": "Compact per-episode digest for every deep-drafted episode being critiqued — includes capped dialogueSamples for spoken-language checks while omitting full shot transcripts to keep the prompt manageable.",
       "type": "array",
       "items": {
         "type": "object",

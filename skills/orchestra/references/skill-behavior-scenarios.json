@@ -97,11 +97,11 @@
       "expected_agents": [
         "reviewer"
       ],
-      "expected_model_preference": "gpt-5.5",
+      "expected_model_preference": "gpt-5.6-terra",
       "expected_gates": [
         "Verification Before Completion"
       ],
-      "why": "Bounded read-only sub-agent review should prefer the GPT 5.5 model override unless overridden."
+      "why": "A bounded read-only review is non-planning work and should use GPT-5.6 Terra."
     },
     {
       "id": "MODEL-002",
@@ -115,22 +115,36 @@
       "expected_gates": [
         "Verification Before Completion"
       ],
-      "why": "Explicit user model requests must take precedence over the GPT 5.5 lightweight default."
+      "why": "Explicit user model requests must take precedence over the Terra default."
     },
     {
       "id": "MODEL-003",
-      "user_message": "แก้ปัญหา auth/RBAC ที่ GPT 5.5 agent แก้ไม่ผ่าน gate ซ้ำแล้ว",
+      "user_message": "แก้ปัญหา auth/RBAC ที่ GPT-5.6 Terra agent แก้ไม่ผ่าน gate ซ้ำแล้ว",
       "expected_owner": "orchestra",
       "expected_route": "security-gate",
       "expected_agents": [
         "security"
       ],
-      "expected_model_preference": "inherited-default",
+      "expected_model_preference": "gpt-5.6-terra",
       "expected_gates": [
         "Pre-Merge Security Gate",
         "Verification Before Completion"
       ],
-      "why": "High-risk security work and retry escalation after a failed GPT 5.5 attempt should use the inherited/default model."
+      "why": "Security repair and retries remain non-planning work, so they stay on GPT-5.6 Terra."
+    },
+    {
+      "id": "MODEL-004",
+      "user_message": "ให้ sub-agent วาง architecture และแตกแผนงานก่อนเริ่ม implement",
+      "expected_owner": "orchestra",
+      "expected_route": "quick-plan-chain",
+      "expected_agents": [
+        "architect"
+      ],
+      "expected_model_preference": "gpt-5.6-sol",
+      "expected_gates": [
+        "Verification Before Completion"
+      ],
+      "why": "Architecture and decomposition are planning deliverables, so the planning agent uses GPT-5.6 Sol."
     },
     {
       "id": "META-001",

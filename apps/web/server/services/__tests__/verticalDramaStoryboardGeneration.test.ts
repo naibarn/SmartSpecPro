@@ -350,12 +350,20 @@ describe("generateStoryboardShotgrid", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
-  it("does not retry on a non-JSON provider/network error (only retries malformed-JSON/schema failures)", async () => {
+  it("does not retry on a FATAL provider error (only retries malformed-JSON/schema failures, or transient network/timeout errors — see verticalDramaStoryBible.executeJsonPlanningCallWithRetry.test.ts)", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
-    mockExecute.mockResolvedValue({ type: "error", error: "upstream 503", statusCode: 503 } as any);
+    // Phase A reliability fix (2026-07-09) — `executeJsonPlanningCallWithRetry`
+    // (shared with verticalDramaStoryBible.ts) now DOES retry transient
+    // network/timeout/5xx errors with backoff. A genuinely fatal error (auth
+    // failure) is used here so "not retried" stays a true assertion.
+    mockExecute.mockResolvedValue({
+      type: "error",
+      error: "Unauthorized: invalid api key",
+      statusCode: 401,
+    } as any);
 
     await expect(generateStoryboardShotgrid(baseParams())).rejects.toThrow(
-      "LLM request failed: upstream 503",
+      "LLM request failed: Unauthorized: invalid api key",
     );
 
     expect(mockExecute).toHaveBeenCalledTimes(1);

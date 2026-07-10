@@ -1,0 +1,180 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cinematic Prompt Refiner Pro Input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "source_prompt": {
+      "type": "string",
+      "title": "Source Prompt / Prompt ต้นฉบับ",
+      "description": "Original prompt to convert into a cinematic image or video prompt without changing the original purpose.",
+      "minLength": 1
+    },
+    "target_type": {
+      "type": "string",
+      "title": "Target Type / ประเภท Prompt",
+      "description": "Choose the final output type.",
+      "enum": ["auto", "image", "video"],
+      "default": "auto"
+    },
+    "cinematic_mode": {
+      "type": "string",
+      "title": "Cinematic Mode / โหมดภาพยนตร์",
+      "description": "Select the cinematic style direction.",
+      "enum": ["neutral_cinematic", "drama", "commercial", "social_clip", "storyboard"],
+      "default": "neutral_cinematic"
+    },
+    "preservation_strength": {
+      "type": "string",
+      "title": "Preservation Strength / ระดับการรักษาเจตนาเดิม",
+      "description": "Controls how strictly the skill preserves the original prompt.",
+      "enum": ["flexible", "standard", "strict"],
+      "default": "standard"
+    },
+    "style_intensity": {
+      "type": "string",
+      "title": "Enhancement Intensity / ระดับการปรับให้ Cinematic",
+      "description": "Controls how strongly the prompt is upgraded.",
+      "enum": ["light", "balanced", "strong"],
+      "default": "balanced"
+    },
+    "output_language": {
+      "type": "string",
+      "title": "Output Language / ภาษาผลลัพธ์",
+      "description": "Language for the refined prompt.",
+      "enum": ["auto", "english", "thai", "bilingual"],
+      "default": "auto"
+    },
+    "aspect_ratio": {
+      "type": "string",
+      "title": "Aspect Ratio / อัตราส่วนภาพ",
+      "description": "Optional framing preference.",
+      "enum": ["auto", "1:1", "4:3", "3:2", "16:9", "9:16", "21:9"],
+      "default": "auto"
+    },
+    "shot_size": {
+      "type": "string",
+      "title": "Shot Size / ขนาดภาพ",
+      "description": "Preferred cinematic shot size.",
+      "enum": ["auto", "extreme_close_up", "close_up", "medium_close_up", "medium_shot", "wide_shot", "full_body", "establishing_shot"],
+      "default": "auto"
+    },
+    "camera_angle": {
+      "type": "string",
+      "title": "Camera Angle / มุมกล้อง",
+      "description": "Preferred camera angle.",
+      "enum": ["auto", "eye_level", "low_angle", "high_angle", "over_the_shoulder", "dutch_angle", "top_down", "profile", "three_quarter"],
+      "default": "auto"
+    },
+    "camera_movement": {
+      "type": "string",
+      "title": "Camera Movement / การเคลื่อนกล้อง",
+      "description": "Preferred camera motion, mainly for video prompts.",
+      "enum": ["auto", "static", "slow_push_in", "slow_pull_back", "pan", "tilt", "tracking", "handheld_subtle", "dolly", "orbit_subtle", "none"],
+      "default": "auto"
+    },
+    "emotion_priority": {
+      "type": "string",
+      "title": "Emotion Priority / อารมณ์หลัก",
+      "description": "Optional emotional direction to preserve or emphasize.",
+      "enum": ["auto", "calm", "warm", "tense", "urgent", "confused", "alert", "joyful", "sad", "romantic", "mysterious", "premium", "natural", "dramatic"],
+      "default": "auto"
+    },
+    "movement_priority": {
+      "type": "string",
+      "title": "Movement Priority / น้ำหนักการเคลื่อนไหว",
+      "description": "How much movement should be emphasized.",
+      "enum": ["auto", "minimal", "subtle", "moderate", "dynamic"],
+      "default": "auto"
+    },
+    "shot_emphasis": {
+      "type": "array",
+      "title": "Cinematic Emphasis / สิ่งที่ต้องเน้น",
+      "description": "Cinematic priorities for refinement.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "emotion",
+          "movement",
+          "camera",
+          "composition",
+          "lighting",
+          "blocking",
+          "pacing",
+          "micro_expression",
+          "gaze_direction",
+          "environment_tension",
+          "product_clarity",
+          "continuity",
+          "storytelling"
+        ]
+      },
+      "uniqueItems": true,
+      "default": ["emotion", "movement", "camera", "continuity"]
+    },
+    "has_attached_images": {
+      "type": "boolean",
+      "title": "Attached Images Present / มีภาพแนบ",
+      "description": "Use true when reference images will be attached by the system.",
+      "default": true
+    },
+    "minimize_appearance_description": {
+      "type": "boolean",
+      "title": "Minimize Appearance Description / ลดการบรรยายรูปลักษณ์",
+      "description": "Avoid describing character appearance, product design, or location details unless essential.",
+      "default": true
+    },
+    "preserve_all_key_actions": {
+      "type": "boolean",
+      "title": "Preserve All Key Actions / รักษาการกระทำสำคัญทั้งหมด",
+      "description": "Keep all key actions from the original prompt.",
+      "default": true
+    },
+    "preserve_names_and_relationships": {
+      "type": "boolean",
+      "title": "Preserve Names and Relationships / รักษาชื่อและความสัมพันธ์",
+      "description": "Keep character names, roles, and relationships unchanged.",
+      "default": true
+    },
+    "include_negative_constraints": {
+      "type": "boolean",
+      "title": "Include Negative Constraints / เพิ่มข้อห้ามสั้น ๆ",
+      "description": "Add compact negative constraints when helpful.",
+      "default": true
+    },
+    "audio_handling": {
+      "type": "string",
+      "title": "Audio Handling / การจัดการเสียง",
+      "description": "Optional audio instruction for video prompts.",
+      "enum": ["auto", "omit_audio", "natural_ambience", "foley_only", "voice_forward", "no_music"],
+      "default": "auto"
+    },
+    "custom_notes": {
+      "type": "string",
+      "title": "Additional Notes / หมายเหตุเพิ่มเติม",
+      "description": "Extra instruction such as 'keep Thai names', 'make it realistic', or 'avoid overacting'.",
+      "default": ""
+    }
+  },
+  "required": [
+    "source_prompt",
+    "target_type",
+    "cinematic_mode",
+    "preservation_strength",
+    "style_intensity",
+    "output_language",
+    "aspect_ratio",
+    "shot_size",
+    "camera_angle",
+    "camera_movement",
+    "emotion_priority",
+    "movement_priority",
+    "shot_emphasis",
+    "has_attached_images",
+    "minimize_appearance_description",
+    "preserve_all_key_actions",
+    "preserve_names_and_relationships",
+    "include_negative_constraints",
+    "audio_handling"
+  ]
+}

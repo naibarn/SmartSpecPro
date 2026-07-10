@@ -43,7 +43,33 @@
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "properties": {
+          "shot_number": {
+            "type": "integer"
+          },
+          "clip_number": {
+            "type": "integer"
+          },
+          "duration_seconds": {
+            "type": "number"
+          },
+          "target_speech_seconds": {
+            "description": "Optional superset (added 2026-07-07, story-density reform): this shot/clip's speech target, mirroring the platform's canonical per-shot speech budget (targetVerticalDramaSpeechSeconds(duration), spec §7.7.1) — typically echoed from vertical-drama-storyboard-shotgrid's per-shot target_speech_seconds. Time distributed dialogue toward this figure rather than re-deriving a per-shot target from scratch.",
+            "type": "number",
+            "minimum": 0
+          },
+          "silence_intent": {
+            "description": "Optional superset: when the storyboard marked this shot visual-only, its silence_intent is passed through here so this skill does not force dialogue into it.",
+            "type": "string",
+            "enum": [
+              "dramatic_pause",
+              "action_visual",
+              "montage",
+              "establishing"
+            ]
+          }
+        }
       }
     },
     "age_control": {

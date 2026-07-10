@@ -66,6 +66,15 @@ import {
   // transitive chain is already loaded by every test of this file.
   type VdDeepDraftShotDraft,
 } from "./verticalDramaStoryBible";
+// Section 05 (spec §7.1/§7.3 dialogue rules v2 + speech profiles, F132D/
+// F132F, added 2026-07-09) — the ONE canonical quality-criteria bundle
+// (spec §11 "Unified Criteria Application") and the speech-profile schema +
+// voice-card renderer. Never re-declared here.
+import { getVerticalDramaQualityCriteriaBundle } from "./verticalDramaQualityCriteria";
+import {
+  renderVoiceCardBlock,
+  type VerticalDramaSpeechProfile,
+} from "@shared/verticalDramaSeries/speechProfile";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -217,6 +226,17 @@ export interface GenerateEpisodeScriptParams {
     characterId: string;
     name: string;
     role: string | null;
+    /**
+     * Section 05 addition (spec §7.3 speech profiles, F132F
+     * `verticalDramaCharacterProfiles`, added 2026-07-09) — purely additive
+     * optional field. Every existing caller that omits it (every call site
+     * predating this field) keeps the prompt byte-identical: `characterLines`
+     * below renders exactly as before when `speechProfile` is absent on
+     * every character. When present, a per-character "voice card" (rendered
+     * via the shared `renderVoiceCardBlock`) is appended so the script-
+     * builder skill can honor each character's distinct speech profile.
+     */
+    speechProfile?: VerticalDramaSpeechProfile;
   }>;
   /**
    * Series long-memory retrieval bundle (spec §7.6), built by
@@ -365,6 +385,29 @@ export interface GenerateEpisodeScriptParams {
      * as a REFINE base. See `episodeDraft` above.
      */
     episodeDraftHydrationEnabled?: boolean;
+    /**
+     * Feature flag `verticalDramaMultiPassQc` (F132D, spec §7.1/§11, added
+     * 2026-07-09) — injects Section 01's single-source dialogue-rules-v2
+     * fragment (mystery grounding, pressure-not-summary, clue budget,
+     * anchor-line cadence, read-aloud one-idea-per-line, spoken register,
+     * distinct voices) into this stage's prompt, stamped with the
+     * greppable criteria-version marker. Omitted/false preserves today's
+     * byte-identical prompt.
+     */
+    dialogueRulesV2Enabled?: boolean;
+    /**
+     * Feature 132 §6 (F132C, scene contracts, `verticalDramaSceneContracts`,
+     * added 2026-07-09) — when true AND an `episodeDraft` is present, appends
+     * an instruction telling the script-builder to honor each draft shot's
+     * `contract` (see `VdSceneContract` in `verticalDramaStoryBible.ts`) when
+     * refining: do not contradict `storyFunction`/`emotionalBeat`/
+     * `tensionSource`; keep any `characterDecision` visible in the scene;
+     * respect the `newClueIds` budget. Purely additive/decoupled from the
+     * `episodeDraft` payload itself (same convention as
+     * `episodeDraftHydrationEnabled` above) — omitted/false, or no
+     * `episodeDraft` supplied, preserves today's byte-identical prompt.
+     */
+    sceneContractsEnabled?: boolean;
   };
 }
 
@@ -446,6 +489,43 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
         .map(c => `- ${c.characterId}: ${c.name}${c.role ? ` (${c.role})` : ""}`)
         .join("\n")
     : "(no characters registered yet — invent minimal placeholder character ids consistent with the story context)";
+
+  // Section 05 addition (spec §7.3 speech profiles, F132F, added 2026-07-09)
+  // — a per-character "voice card" block, only rendered for characters that
+  // actually carry a `speechProfile` (purely additive: a caller/character
+  // list with none produces `null` here, so the prompt is byte-identical to
+  // before this field existed). Uses the SAME `renderVoiceCardBlock` pure
+  // renderer the characters router's `extractCharacterDescription` rewrite
+  // (Section 08) also calls — one canonical "Voice:" block format, never a
+  // second implementation.
+  const charactersWithSpeechProfile = params.characters.filter(c => c.speechProfile);
+  const voiceCardsSection =
+    charactersWithSpeechProfile.length > 0
+      ? [
+          "Character voice cards — honor each character's distinct speech profile so lines remain identifiable by rhythm/word choice/attitude even with names removed (spec dialogue rules v2 'distinct voices'):",
+          ...charactersWithSpeechProfile.map(
+            c => `${c.characterId} (${c.name}):\n${renderVoiceCardBlock(c.speechProfile!)}`,
+          ),
+        ].join("\n\n")
+      : null;
+
+  // Section 05 addition (spec §11 "Unified Criteria Application" / F132D
+  // `verticalDramaMultiPassQc`, added 2026-07-09) — embeds Section 01's
+  // single-source-of-truth dialogue-rules-v2 fragment (which already carries
+  // the criteria-version marker `renderCriteriaVersionMarker()`/
+  // `buildCriteriaVersionMarker()` produces) into this stage's prompt,
+  // satisfying the "generateEpisodeScript stage functions (runStage/
+  // regenerateStage/repairStageOutput)" consumer entry point tracked by
+  // `verticalDramaQualityCriteria.agreement.test.ts`. Every one of this
+  // function's three call modes (fresh/regenerate/repair) shares this exact
+  // prompt builder, so all three are covered by one wiring point. Gated on
+  // `opts.dialogueRulesV2Enabled` (same decoupled-payload-vs-flag convention
+  // as `speechBudgetEnabled`/`episodeDraftHydrationEnabled` below) — omitted/
+  // false preserves today's byte-identical prompt for every caller that
+  // hasn't opted in yet.
+  const dialogueRulesV2Section = params.opts?.dialogueRulesV2Enabled
+    ? getVerticalDramaQualityCriteriaBundle().dialogueRulesV2
+    : null;
 
   const storyBrief = [
     storySource.logline ? `Logline: ${storySource.logline}` : null,
@@ -558,6 +638,18 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
         ].join("\n")
       : null;
 
+  // Feature 132 §6 (F132C, scene contracts, `verticalDramaSceneContracts`,
+  // added 2026-07-09) — additive; only rendered when BOTH
+  // `opts.sceneContractsEnabled` is true AND the episode-draft hydration
+  // section above actually rendered (a `contract` only exists on
+  // `episodeDraft` shots), so the flag-off (or no-draft) prompt is
+  // byte-identical to before this change.
+  const sceneContractsEnabled = params.opts?.sceneContractsEnabled === true;
+  const sceneContractSection =
+    sceneContractsEnabled && episodeDraftSection
+      ? 'Some draft shots above may carry a "contract" object (storyFunction, emotionalBeat, audienceTakeaway, tensionSource, newClueIds, dialoguePurpose, and optionally characterDecision/continuityDependency/anchorLine) — honor it when refining: do not contradict that shot\'s storyFunction, emotionalBeat, or tensionSource; keep any characterDecision visible in the scene\'s dialogue/action; and do not introduce more new named clues/objects/lore terms in that shot than its contract.newClueIds budget allows.'
+      : null;
+
   // Repair-mode framing (see `GenerateEpisodeScriptParams.repairContext`'s
   // doc comment) — additive; only rendered when a caller explicitly supplies
   // `repairContext` (only `repairStage`'s real-repair path does), so every
@@ -579,12 +671,15 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     `duration_seconds: ${params.durationSeconds}`,
     langInstruction,
     `characters:\n${characterLines}`,
+    voiceCardsSection,
     memorySection,
     tieInSection,
     speechBudgetSection,
     contentBudgetSection,
     episodeDraftSection,
+    sceneContractSection,
     repairSection,
+    dialogueRulesV2Section,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)

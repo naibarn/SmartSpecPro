@@ -3486,25 +3486,25 @@ export default function AdminSkills() {
                             {(skill as any).visibility === "private" && (
                               <Badge variant="outline" className="border-gray-400 text-gray-600">
                                 <Lock className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.visibility.private")}
+                                Private
                               </Badge>
                             )}
                             {(skill as any).visibility === "pending_approval" && (
                               <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">
                                 <Clock className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.visibility.pendingApproval")}
+                                Pending
                               </Badge>
                             )}
                             {(skill as any).visibility === "public" && (
                               <Badge variant="outline" className="border-green-500 text-green-600 bg-green-50">
                                 <Globe className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.visibility.public")}
+                                Public
                               </Badge>
                             )}
                             {(skill as any).visibility === "rejected" && (
                               <Badge variant="outline" className="border-red-500 text-red-600 bg-red-50">
                                 <XCircle className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.visibility.rejected")}
+                                Rejected
                               </Badge>
                             )}
                           </TableCell>

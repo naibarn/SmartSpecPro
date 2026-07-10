@@ -8,7 +8,7 @@
  * payload). Disabled entirely when the series is archived (`readOnly`).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { Loader2, Save, Trash2 } from "lucide-react";
@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -45,6 +47,16 @@ import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries/contracts";
+// Text Overlay Suite (F131AB, task #34) — series watermark card. Pure/
+// isomorphic module, safe as a normal static import (same posture as
+// `targetAudienceRegion.ts` above).
+import {
+  parseSeriesWatermarkConfig,
+  VD_WATERMARK_POSITIONS,
+  type VdSeriesWatermarkConfig,
+  type VdWatermarkPosition,
+} from "@shared/verticalDramaSeries/textOverlay";
+import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDramaTextOverlayCopy";
 
 const STATUS_OPTIONS: VerticalDramaSeriesStatus[] = [
   "draft",
@@ -82,6 +94,14 @@ export interface VerticalDramaSettingsTabProps {
   defaultEpisodeDurationSeconds?: number | null;
   locale?: string | null;
   bible?: unknown;
+  /** Text Overlay Suite (F131AB, task #34) — gates the watermark card
+   *  entirely (fail-closed, default `false`, same convention as every other
+   *  Vertical Drama flag threaded into this component's siblings). */
+  textOverlaySuiteEnabled?: boolean;
+  /** Raw `series.watermark` jsonb value — parsed defensively via
+   *  `parseSeriesWatermarkConfig` inside this component (never trust a
+   *  jsonb column's runtime shape client-side either). */
+  watermark?: unknown;
 }
 
 export function VerticalDramaSettingsTab({
@@ -98,6 +118,8 @@ export function VerticalDramaSettingsTab({
   defaultEpisodeDurationSeconds,
   locale,
   bible,
+  textOverlaySuiteEnabled = false,
+  watermark,
 }: VerticalDramaSettingsTabProps) {
   const [, setLocation] = useLocation();
   const [titleInput, setTitleInput] = useState(title);
@@ -125,9 +147,47 @@ export function VerticalDramaSettingsTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bibleRegion]);
 
+  // Text Overlay Suite (F131AB, task #34) — series watermark local draft,
+  // seeded from the parsed persisted config (never trust the raw jsonb
+  // shape — `parseSeriesWatermarkConfig` never throws, same convention as
+  // every other Vertical Drama jsonb reader).
+  const parsedWatermark = useMemo(
+    () =>
+      parseSeriesWatermarkConfig(watermark) ?? {
+        enabled: false,
+        type: "text" as const,
+        text: "",
+        position: "top_right" as const,
+        opacity: 0.45,
+        scalePct: 10,
+        marginPx: 32,
+      },
+    [watermark],
+  );
+  const [watermarkDraft, setWatermarkDraft] =
+    useState<VdSeriesWatermarkConfig>(parsedWatermark);
+  useEffect(() => {
+    setWatermarkDraft(parsedWatermark);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedWatermark]);
+
   const utils = trpc.useUtils();
   const updateMutation = trpc.verticalDramaSeries.updateSeries.useMutation();
   const regionMutation = trpc.verticalDramaSeries.setSeriesTargetAudienceRegion.useMutation();
+  const updateWatermarkMutation =
+    trpc.verticalDramaSeries.updateSeriesWatermark.useMutation({
+      onSuccess: () => {
+        toast.success(lang === "th" ? "บันทึกลายน้ำแล้ว" : "Watermark saved");
+        void utils.verticalDramaSeries.get.invalidate();
+        onSaved?.();
+      },
+      onError: (err) => {
+        toast.error(
+          err.message ||
+            (lang === "th" ? "บันทึกลายน้ำไม่สำเร็จ" : "Failed to save watermark"),
+        );
+      },
+    });
 
   const dirty = titleInput !== title || statusInput !== status;
   const regionDirty = regionInput !== bibleRegion;
@@ -304,6 +364,19 @@ export function VerticalDramaSettingsTab({
         </CardContent>
       </Card>
 
+      {textOverlaySuiteEnabled ? (
+        <VerticalDramaSeriesWatermarkCard
+          lang={lang}
+          readOnly={readOnly}
+          draft={watermarkDraft}
+          onChange={setWatermarkDraft}
+          saving={updateWatermarkMutation.isPending}
+          onSave={() =>
+            updateWatermarkMutation.mutate({ seriesId, watermark: watermarkDraft })
+          }
+        />
+      ) : null}
+
       <Card className="border-destructive/50">
         <CardHeader>
           <CardTitle className="text-base text-destructive">
@@ -335,5 +408,248 @@ export function VerticalDramaSettingsTab({
         onDeleted={() => setLocation(verticalDramaRoutes.seriesList())}
       />
     </div>
+  );
+}
+
+/** Corner -> Tailwind absolute-position classes for the 9:16 mock preview
+ *  box below (`VerticalDramaSeriesWatermarkCard`'s own small helper). */
+const WATERMARK_PREVIEW_CORNER_CLASS: Record<VdWatermarkPosition, string> = {
+  top_left: "left-1 top-1",
+  top_right: "right-1 top-1",
+  bottom_left: "left-1 bottom-1",
+  bottom_right: "right-1 bottom-1",
+};
+
+/**
+ * Text Overlay Suite (F131AB, task #34, plan.md v2 "ลายน้ำ") — the series
+ * watermark settings card, rendered on the Settings tab (see
+ * `VerticalDramaSettingsTab`'s own render call above for the flag gate).
+ * Local-draft + explicit-Save convention, mirroring
+ * `VerticalDramaEpisodeWorkspace.tsx`'s `VerticalDramaAdBannerPlanSection`/
+ * `VerticalDramaTextOverlayPlanSection` (draft passed up from the parent —
+ * this card is a pure, controlled sub-component so the parent owns the
+ * `useEffect` re-sync-on-fresh-query-data logic once, not duplicated here).
+ */
+function VerticalDramaSeriesWatermarkCard({
+  lang,
+  readOnly,
+  draft,
+  onChange,
+  saving,
+  onSave,
+}: {
+  lang: "th" | "en";
+  readOnly: boolean;
+  draft: VdSeriesWatermarkConfig;
+  onChange: (next: VdSeriesWatermarkConfig) => void;
+  saving: boolean;
+  onSave: () => void;
+}) {
+  const t = vdTextOverlayCopy(lang);
+
+  function patch(next: Partial<VdSeriesWatermarkConfig>) {
+    onChange({ ...draft, ...next });
+  }
+
+  return (
+    <Card data-testid="vd-watermark-card">
+      <CardHeader>
+        <CardTitle className="text-base">{t.watermarkCardTitle}</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          {t.watermarkCardDescription}
+        </p>
+      </CardHeader>
+      <CardContent className="grid max-w-2xl gap-4 sm:grid-cols-[1fr_auto]">
+        <div className="grid gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={draft.enabled}
+              onCheckedChange={(next) => patch({ enabled: Boolean(next) })}
+              disabled={readOnly}
+              data-testid="vd-watermark-enabled-toggle"
+            />
+            <Label className="text-sm font-medium">
+              {t.watermarkEnableLabel}
+            </Label>
+          </div>
+
+          {draft.enabled ? (
+            <>
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {t.watermarkTypeLabel}
+                </Label>
+                <Select
+                  value={draft.type}
+                  onValueChange={(v) =>
+                    patch({ type: v as "text" | "image" })
+                  }
+                  disabled={readOnly}
+                >
+                  <SelectTrigger data-testid="vd-watermark-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">{t.watermarkTypeText}</SelectItem>
+                    <SelectItem value="image">{t.watermarkTypeImage}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {draft.type === "text" ? (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    {t.watermarkTextLabel}
+                  </Label>
+                  <Input
+                    value={draft.text ?? ""}
+                    placeholder={t.watermarkTextPlaceholder}
+                    onChange={(e) => patch({ text: e.target.value })}
+                    disabled={readOnly}
+                    data-testid="vd-watermark-text"
+                  />
+                </div>
+              ) : (
+                <div className="grid gap-1.5">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    {t.watermarkImageUrlLabel}
+                  </Label>
+                  <Input
+                    value={draft.imageUrl ?? ""}
+                    placeholder="https://…/logo.png"
+                    onChange={(e) => patch({ imageUrl: e.target.value })}
+                    disabled={readOnly}
+                    data-testid="vd-watermark-image-url"
+                  />
+                </div>
+              )}
+
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {t.watermarkPositionLabel}
+                </Label>
+                <Select
+                  value={draft.position}
+                  onValueChange={(v) =>
+                    patch({ position: v as VdWatermarkPosition })
+                  }
+                  disabled={readOnly}
+                >
+                  <SelectTrigger data-testid="vd-watermark-position">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VD_WATERMARK_POSITIONS.map((pos) => (
+                      <SelectItem key={pos} value={pos}>
+                        {pos === "top_left"
+                          ? t.watermarkPositionTopLeft
+                          : pos === "top_right"
+                            ? t.watermarkPositionTopRight
+                            : pos === "bottom_left"
+                              ? t.watermarkPositionBottomLeft
+                              : t.watermarkPositionBottomRight}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    {t.watermarkOpacityLabel}
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    {Math.round(draft.opacity * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.2}
+                  max={0.8}
+                  step={0.05}
+                  value={[draft.opacity]}
+                  onValueChange={([v]) => patch({ opacity: v ?? draft.opacity })}
+                  disabled={readOnly}
+                  data-testid="vd-watermark-opacity"
+                />
+              </div>
+
+              <div className="grid gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium text-muted-foreground">
+                    {t.watermarkScalePctLabel}
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    {draft.scalePct}%
+                  </span>
+                </div>
+                <Slider
+                  min={5}
+                  max={20}
+                  step={1}
+                  value={[draft.scalePct]}
+                  onValueChange={([v]) => patch({ scalePct: v ?? draft.scalePct })}
+                  disabled={readOnly}
+                  data-testid="vd-watermark-scale"
+                />
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {t.watermarkMarginPxLabel}
+                </Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={200}
+                  className="w-24"
+                  value={draft.marginPx}
+                  onChange={(e) =>
+                    patch({ marginPx: Number(e.target.value) })
+                  }
+                  disabled={readOnly}
+                  data-testid="vd-watermark-margin"
+                />
+              </div>
+            </>
+          ) : null}
+
+          {!readOnly && (
+            <Button
+              onClick={onSave}
+              disabled={saving}
+              className="w-fit gap-2"
+              data-testid="vd-watermark-save"
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Save className="h-4 w-4" aria-hidden="true" />
+              )}
+              {saving ? t.watermarkSaving : t.watermarkSaveButton}
+            </Button>
+          )}
+        </div>
+
+        {draft.enabled ? (
+          <div className="flex flex-col items-center gap-1">
+            <Label className="text-xs font-medium text-muted-foreground">
+              {t.watermarkPreviewLabel}
+            </Label>
+            <div
+              className="relative h-40 w-[90px] shrink-0 overflow-hidden rounded-md border bg-muted"
+              data-testid="vd-watermark-preview"
+            >
+              <span
+                className={`absolute rounded bg-foreground/70 px-1 py-0.5 text-[9px] text-background ${WATERMARK_PREVIEW_CORNER_CLASS[draft.position]}`}
+                style={{ opacity: draft.opacity }}
+              >
+                {draft.type === "text" ? draft.text || "LOGO" : "IMG"}
+              </span>
+            </div>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }

@@ -55,7 +55,12 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
+  // Section 05 (spec §7.1/§7.2 dialogue rules v2, F132D) — the ONE canonical
+  // abstract-word lexicon (spec: "never re-declare"); reused directly by this
+  // file's own `abstract_line_ungrounded_count` metric below.
+  VD_DRAMATURGY_ABSTRACT_WORDS,
 } from "./verticalDramaStoryBible";
+import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import { debugError } from "../_core/logger";
 import {
   verticalDramaLocaleEnglishName,
@@ -135,6 +140,11 @@ const qualityReviewScorecardSchema = z
     continuity_consistency: z.number().int().min(1).max(5).optional(),
     /** 1-5, or null when no tie-in is configured for this episode. */
     tie_in_naturalness: z.number().int().min(1).max(5).nullable().optional(),
+    /** v3 superset (Feature 132 §8.3) — optional so v1/v2 payloads keep parsing unchanged. */
+    clarity: z.number().int().min(1).max(5).optional(),
+    character_consistency: z.number().int().min(1).max(5).optional(),
+    evidence_payoff: z.number().int().min(1).max(5).optional(),
+    threat_escalation: z.number().int().min(1).max(5).optional(),
   })
   .passthrough();
 
@@ -143,6 +153,9 @@ const qualityReviewIssueSchema = z
     location: z.string().min(1),
     problem: z.string().min(1),
     suggested_fix: z.string().min(1),
+    severity: z
+      .enum(["minor", "moderate", "major", "structural"])
+      .default("moderate"),
   })
   .passthrough();
 
@@ -175,6 +188,18 @@ const densityMetricsSchema = z
     stage_direction_count: z.number().int().min(0).optional(),
     reversal_count: z.number().int().min(0).optional(),
     max_consecutive_same_emotion: z.number().int().min(0).optional(),
+    /**
+     * Section 05 additions (spec §7.1/§7.2 dialogue rules v2, F132D, added
+     * 2026-07-09) — see `VerticalDramaDensityMetrics`'s own doc comments for
+     * each field's semantics. All optional here (lenient LLM-echo shape);
+     * the CODE-computed value from `computeVerticalDramaDensityMetrics` is
+     * what actually gets persisted (force-overwritten, see
+     * `runVerticalDramaEpisodeQualityReview` below).
+     */
+    new_proper_noun_count_per_shot: z.array(z.number().int().min(0)).optional(),
+    new_proper_noun_contract_mismatch_shot_count: z.number().int().min(0).optional(),
+    anchor_line_gap: z.number().int().min(0).optional(),
+    abstract_line_ungrounded_count: z.number().int().min(0).optional(),
   })
   .passthrough();
 
@@ -183,7 +208,7 @@ export const episodeQualityReviewOutputSchema = z
     // v1 shipped as `z.literal(1).optional()` — widened to accept `2` too
     // (spec §16.1). Still optional/absent-defaults-to-1 so every already
     // persisted v1 artifact (many predate this field entirely) keeps parsing.
-    contract_version: z.union([z.literal(1), z.literal(2)]).optional(),
+    contract_version: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     episode_title: z.string().min(1),
     scorecard: qualityReviewScorecardSchema,
     summary: z.string().min(1),
@@ -228,6 +253,44 @@ export interface VerticalDramaDensityMetrics {
   /** Deterministic count from `script.structure.beats[].is_reversal === true` — distinct from `scorecard.reversal_count`, which is the LLM's own judgment. */
   reversal_count: number;
   max_consecutive_same_emotion: number;
+  /**
+   * Section 05 addition (spec §7.1 clue budget, F132D, added 2026-07-09) —
+   * per-shot heuristic count of NEW proper nouns detected in that shot's
+   * dialogue (Thai honorific-prefixed names + English capitalized words),
+   * tracked CUMULATIVELY across the episode (a name already counted in an
+   * earlier shot is never counted "new" again). Sorted by ascending shot
+   * number; index order follows the same shot ordering
+   * `deriveShotsFromStoryboard`/`buildDensityClipInputs` already use. `[]`
+   * when there are no clips at all.
+   */
+  new_proper_noun_count_per_shot: number[];
+  /**
+   * Count of shots where the heuristic count above EXCEEDS that shot's
+   * `contract.newClueIds.length` (spec §7.1 clue-budget cross-check) —
+   * ONLY ever nonzero when `ComputeVerticalDramaDensityMetricsParams.contracts`
+   * was supplied; `0` in degraded (no-contracts) mode, since there is
+   * nothing to cross-check the heuristic against.
+   */
+  new_proper_noun_contract_mismatch_shot_count: number;
+  /**
+   * Max run of consecutive shots (in shot-number order) with no
+   * `contract.anchorLine === true` (spec §7.1 anchor-line cadence,
+   * `QUALITY_CRITERIA_ANCHOR_LINE_MAX_GAP_SHOTS` in
+   * `@shared/verticalDramaSeries/qualityCriteria`). Chosen degrade
+   * convention (spec §7.2, Section 04 dependency): explicit `0` when NO
+   * `contracts` were supplied at all — there is no contract data to compute
+   * a gap from, so this is "nothing to report", never a false "perfect
+   * cadence" claim.
+   */
+  anchor_line_gap: number;
+  /**
+   * Count of dialogue lines containing a `VD_DRAMATURGY_ABSTRACT_WORDS` term
+   * with NEITHER an immediately adjacent (previous or next, across the
+   * whole episode's dialogue in shot order) plain (non-abstract) line to
+   * ground it — spec §7.1 "mystery must be understandable, not merely
+   * vague".
+   */
+  abstract_line_ungrounded_count: number;
 }
 
 /** One clip's duration, keyed by shot (+ optional sub-shot/clip number). */
@@ -253,6 +316,20 @@ export interface ComputeVerticalDramaDensityMetricsParams {
    * there is nothing locale-specific left for this function to decide.
    */
   locale?: VerticalDramaSeriesLocale;
+  /**
+   * Section 05 addition (spec §7.1/§6.1, F132D, added 2026-07-09) — per-shot
+   * scene `contract` data (Section 04's `shotDraftSchema.contract`),
+   * `null`-safe/optional so this degrades gracefully to text-only heuristics
+   * when Section 04 has not landed yet or a caller has no contract data for
+   * this episode. Only `newClueIds`/`anchorLine` are consulted here (the
+   * clue-budget cross-check and anchor-line-gap metric respectively) —
+   * every other contract field is out of scope for this function.
+   */
+  contracts?: Array<{
+    shotNumber: number;
+    newClueIds?: string[] | null;
+    anchorLine?: boolean | null;
+  }>;
 }
 
 function asPlainRecord(value: unknown): Record<string, unknown> | null {
@@ -413,6 +490,167 @@ function maxConsecutiveSameEmotion(shots: DensityStoryboardShot[]): number {
   return max;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Section 05 additions (spec §7.1/§7.2 dialogue rules v2, F132D)             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Longest-prefix-first so `นางสาว` matches before its own `นาง` substring
+ * would. The name-capture group is deliberately capped short (1-5 Thai
+ * characters) — Thai has no inter-word spacing within a clause, so an
+ * unbounded capture greedily swallows the following verb/clause too,
+ * producing a DIFFERENT literal token for the same person on every mention
+ * (breaking the cumulative "already seen" dedup this metric relies on). A
+ * short, fixed cap is itself an approximation (a genuinely long given name
+ * can get truncated, or a short name can pick up one trailing character of
+ * the next word) — an accepted, documented judgment call for this NER-lite
+ * heuristic (spec §7.1 "Open questions"), not a claim of correctness; when
+ * `contracts[].newClueIds` is supplied it is the ground truth this heuristic
+ * is cross-checked against, not overridden by.
+ */
+const THAI_NAME_HONORIFIC_PATTERN = /(นางสาว|คุณ|นาย|นาง)([฀-๿]{1,5})/g;
+/** English proper-noun heuristic: a capitalized word (not the sole heuristic signal — see this section's "Open questions" doc note on NER-lite quality). */
+const ENGLISH_PROPER_NOUN_PATTERN = /\b[A-Z][a-zA-Z]{1,20}\b/g;
+
+/**
+ * Sorts `clips` ascending by shot number (clips with no shot number sort
+ * last, stable order preserved among them) — shared ordering convention for
+ * every Section 05 per-shot metric below, mirroring
+ * `deriveShotsFromStoryboard`'s own "always sort before scanning" rule.
+ */
+function sortClipsByShotNumber(
+  clips: VerticalDramaDialogueClipQualityInput[],
+): VerticalDramaDialogueClipQualityInput[] {
+  return [...clips].sort(
+    (a, b) => (a.shotNumber ?? Number.MAX_SAFE_INTEGER) - (b.shotNumber ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+/**
+ * Per-shot heuristic count of NEW proper nouns (spec §7.1 clue budget) —
+ * cumulative across the episode: a name already seen in an earlier shot is
+ * never counted "new" again in a later shot. Thai names are heuristically
+ * detected via a narrow honorific-prefix list (คุณ/นาย/นาง/นางสาว — the exact
+ * list this section's own doc notes as the deliberately narrow, lower-false-
+ * positive choice); English/Latin names via a bare capitalized-word pattern.
+ * This is an ESTIMATE, not ground truth (Thai has no capitalization signal)
+ * — `contracts[].newClueIds` is the authoritative source when supplied (see
+ * `countProperNounContractMismatches` below).
+ */
+function countNewProperNounsPerShot(
+  clips: VerticalDramaDialogueClipQualityInput[],
+): Array<{ shotNumber?: number; count: number }> {
+  const seen = new Set<string>();
+  const result: Array<{ shotNumber?: number; count: number }> = [];
+  for (const clip of sortClipsByShotNumber(clips)) {
+    const text = (clip.dialogue ?? []).map((line) => line.lineTh ?? "").join(" ");
+    let newCount = 0;
+
+    THAI_NAME_HONORIFIC_PATTERN.lastIndex = 0;
+    let thaiMatch: RegExpExecArray | null;
+    while ((thaiMatch = THAI_NAME_HONORIFIC_PATTERN.exec(text)) !== null) {
+      const token = thaiMatch[0];
+      if (!seen.has(token)) {
+        seen.add(token);
+        newCount += 1;
+      }
+    }
+
+    ENGLISH_PROPER_NOUN_PATTERN.lastIndex = 0;
+    let enMatch: RegExpExecArray | null;
+    while ((enMatch = ENGLISH_PROPER_NOUN_PATTERN.exec(text)) !== null) {
+      const token = enMatch[0];
+      if (!seen.has(token)) {
+        seen.add(token);
+        newCount += 1;
+      }
+    }
+
+    result.push({ shotNumber: clip.shotNumber, count: newCount });
+  }
+  return result;
+}
+
+/**
+ * Counts shots where the heuristic new-proper-noun count EXCEEDS that shot's
+ * `contract.newClueIds.length` — the clue-budget cross-check (spec §7.1).
+ * Returns `0` when no `contracts` were supplied (degraded/heuristic-only
+ * mode — nothing to cross-check against).
+ */
+function countProperNounContractMismatches(
+  perShot: Array<{ shotNumber?: number; count: number }>,
+  contracts: ComputeVerticalDramaDensityMetricsParams["contracts"],
+): number {
+  if (!contracts || contracts.length === 0) return 0;
+  const contractCueCountByShot = new Map<number, number>(
+    contracts.map((c) => [c.shotNumber, c.newClueIds?.length ?? 0]),
+  );
+  let mismatches = 0;
+  for (const shot of perShot) {
+    if (shot.shotNumber === undefined) continue;
+    const contractCount = contractCueCountByShot.get(shot.shotNumber);
+    if (contractCount === undefined) continue;
+    if (shot.count > contractCount) mismatches += 1;
+  }
+  return mismatches;
+}
+
+/**
+ * Max run of consecutive shots (in shot-number order) with no
+ * `contract.anchorLine === true` — spec §7.1 anchor-line cadence. Returns
+ * `0` when no `contracts` were supplied (chosen degrade convention, see
+ * `VerticalDramaDensityMetrics.anchor_line_gap`'s own doc comment).
+ */
+function computeAnchorLineGap(
+  contracts: ComputeVerticalDramaDensityMetricsParams["contracts"],
+): number {
+  if (!contracts || contracts.length === 0) return 0;
+  const sorted = [...contracts].sort((a, b) => a.shotNumber - b.shotNumber);
+  let max = 0;
+  let current = 0;
+  for (const contract of sorted) {
+    if (contract.anchorLine === true) {
+      current = 0;
+    } else {
+      current += 1;
+      if (current > max) max = current;
+    }
+  }
+  return max;
+}
+
+/**
+ * Counts dialogue lines containing a `VD_DRAMATURGY_ABSTRACT_WORDS` term
+ * with NEITHER neighbor (immediately previous or next line, across the
+ * WHOLE episode's dialogue in shot order) being a plain (non-abstract)
+ * line — spec §7.1 "mystery must be understandable, not merely vague". An
+ * isolated single-line shot with an abstract term and no neighbors at all
+ * counts as ungrounded (no neighbor exists to ground it).
+ */
+function countAbstractLineUngroundedOccurrences(
+  clips: VerticalDramaDialogueClipQualityInput[],
+): number {
+  const lines: string[] = [];
+  for (const clip of sortClipsByShotNumber(clips)) {
+    for (const line of clip.dialogue ?? []) {
+      const text = (line.lineTh ?? "").trim();
+      if (text) lines.push(text);
+    }
+  }
+
+  const isAbstract = (text: string): boolean =>
+    VD_DRAMATURGY_ABSTRACT_WORDS.some((word) => text.includes(word));
+
+  let count = 0;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!isAbstract(lines[i])) continue;
+    const prevIsPlain = i > 0 && !isAbstract(lines[i - 1]);
+    const nextIsPlain = i < lines.length - 1 && !isAbstract(lines[i + 1]);
+    if (!prevIsPlain && !nextIsPlain) count += 1;
+  }
+  return count;
+}
+
 /**
  * Deterministic density-metrics block (spec §16.1 rule 1 / §7.7.1) — built
  * ONLY from `@shared/verticalDramaSeries/dialogueQuality`'s exported analyzers
@@ -459,6 +697,9 @@ export function computeVerticalDramaDensityMetrics(
     0,
   );
 
+  // Section 05 additions (spec §7.1/§7.2, F132D, added 2026-07-09).
+  const newProperNounPerShot = countNewProperNounsPerShot(clips);
+
   return {
     estimated_speech_seconds: roundTo(episodeQuality.totalSpeechSeconds, 2),
     per_clip_coverage: {
@@ -472,6 +713,13 @@ export function computeVerticalDramaDensityMetrics(
     stage_direction_count: stageDirectionCount,
     reversal_count: countReversalsFromScript(params.script),
     max_consecutive_same_emotion: maxConsecutiveSameEmotion(deriveShotsFromStoryboard(params.storyboard)),
+    new_proper_noun_count_per_shot: newProperNounPerShot.map((s) => s.count),
+    new_proper_noun_contract_mismatch_shot_count: countProperNounContractMismatches(
+      newProperNounPerShot,
+      params.contracts,
+    ),
+    anchor_line_gap: computeAnchorLineGap(params.contracts),
+    abstract_line_ungrounded_count: countAbstractLineUngroundedOccurrences(clips),
   };
 }
 
@@ -541,6 +789,11 @@ export interface RunEpisodeQualityReviewParams {
    * `verticalDramaQualityReviewApply.ts`.
    */
   reviewMode?: "execution";
+  /**
+   * Feature 132 scorecard v3 opt-in. Omitted keeps the v1/v2 prompt shape
+   * unchanged; true asks for contract_version 3 plus the four v3 dimensions.
+   */
+  scoreV3Dimensions?: boolean;
 }
 
 /**
@@ -623,9 +876,20 @@ function buildUserPrompt(params: RunEpisodeQualityReviewParams): string {
           .join(" ")
       : null;
 
+  const contractVersion3Instruction = params.scoreV3Dimensions
+    ? [
+        'Set "contract_version": 3 in your output and additionally score these four',
+        "Feature 132 scorecard v3 dimensions (1-5 each): clarity = first-listen",
+        "understandability; character_consistency = profile adherence and character",
+        "activation; evidence_payoff = clue discipline and payoff; threat_escalation =",
+        "whether danger/stakes increase appropriately for this episode's season position.",
+      ].join(" ")
+    : null;
+
   return [
     `episode_title: ${params.episodeTitle}`,
     langInstruction,
+    renderCriteriaVersionMarker(),
     `script:\n${JSON.stringify(params.script)}`,
     `storyboard:\n${JSON.stringify(params.storyboard)}`,
     params.dialoguePlan
@@ -634,6 +898,7 @@ function buildUserPrompt(params: RunEpisodeQualityReviewParams): string {
     densityMetricsInstruction,
     tieInConfigInstruction,
     contractVersion2Instruction,
+    contractVersion3Instruction,
     executionModeInstruction,
     avoidPreviousInstruction,
     VD_COMPACT_JSON_INSTRUCTION,

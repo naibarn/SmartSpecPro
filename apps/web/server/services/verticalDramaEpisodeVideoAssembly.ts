@@ -56,11 +56,25 @@ import type { VdAdBannerPlacementId } from "@shared/verticalDramaSeries/adBanner
 // `VerticalDramaDialogueAudioPlan` would otherwise collide with the compact,
 // unrelated recommendation type of the same name re-exported from
 // `@shared/verticalDramaSeries/contracts` through the barrel.
-import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
+import type {
+  VerticalDramaDialogueAudioPlan,
+  VerticalDramaDialogueLine,
+} from "@shared/verticalDramaSeries/audio";
 import {
   resolveDialogueLineAbsoluteTimings,
   type VdDialogueTimelineClip,
 } from "@shared/verticalDramaSeries/dialogueAudioTimeline";
+// Task #34 — pure Text Overlay Suite constants/helpers. Safe as a normal
+// static import (unlike `verticalDramaStoryBible.ts`, this shared module has
+// no transitive `adminProcedure`/router dependency — see
+// `server/services/verticalDramaTextOverlayResolution.ts`'s own doc comment
+// for the ONE module in this feature that DOES need a dynamic import).
+import {
+  VD_CHARACTER_INTRO_DURATION_SECONDS,
+  VD_END_CARD_FOLLOW_LINE_TH,
+  VD_OPENER_RECAP_HEADER_TH,
+  resolveOpeningSequenceWindows,
+} from "@shared/verticalDramaSeries/textOverlay";
 import {
   buildAssSubtitleFile,
   buildFinalRenderFfmpegArgs,
@@ -68,6 +82,9 @@ import {
   type CaptionPresetId,
   type DialogueAudioSegment,
   type ResolvedBanner,
+  type ResolvedWatermarkImage,
+  type VdTextOverlayAssEvent,
+  type VdTextOverlayAssKind,
 } from "./verticalDramaFinalRenderGraph";
 
 /* -------------------------------------------------------------------------- */
@@ -486,6 +503,14 @@ export interface FinalRenderManifestSection {
   loudnessNormalize: boolean;
   subtitlePreset?: CaptionPresetId;
   subtitleLineCount: number;
+  /** Task #34 — how many Text Overlay Suite events were actually burned in
+   *  (end card, opener recap, title bumper, episode indicator, character
+   *  intro cards, mid-episode cards, and/or the text-variant watermark —
+   *  all share this one count). `0` when the flag is off or the episode's
+   *  `textOverlayPlan` has nothing enabled. */
+  textOverlayEventCount: number;
+  /** Task #34 — whether an IMAGE watermark was composited into this render. */
+  watermarkIncluded: boolean;
   renderedAt: string;
 }
 
@@ -585,11 +610,64 @@ export interface RunAssemblyJobDialogueAudioInput {
   duckClipAudioDb?: number;
 }
 
+/**
+ * One Text Overlay Suite event (task #34) — REMOTE/pre-resolved shaped,
+ * mirroring `RunAssemblyJobBannerInput`'s own "advisory window + resolution
+ * flag" convention for the two kinds whose true window isn't known until
+ * this job has probed the real total video duration.
+ */
+export interface RunAssemblyJobTextOverlayEventInput {
+  kind: VdTextOverlayAssKind;
+  text: string;
+  secondaryText?: string;
+  variant?: VdTextOverlayAssEvent["variant"];
+  opacity?: number;
+  marginPx?: number;
+  startSec: number;
+  endSec: number;
+  /** Mirrors `RunAssemblyJobBannerInput.entire` — when `true`, `startSec`/
+   *  `endSec` above are ADVISORY only; `runAssemblyJob` re-resolves this
+   *  event's window to `[0, probedTotalDurationSeconds]` after its own
+   *  duration probe. Used for `episode_indicator`/`watermark_text` (whole-
+   *  clip kinds — see `VdTextOverlayAssEvent`'s own doc comment). */
+  entireClip?: boolean;
+  /** When `true`, this event's `endSec` is resolved to the REAL probed
+   *  `videoDurationSeconds` and `startSec` to `videoDurationSeconds -
+   *  durationSecForEndAnchor` — i.e. the event keeps a FIXED length, anchored
+   *  to the true end of the video (used for `end_card`, plan.md "end-anchored
+   *  events resolved post-probe (mirror the banner 'entire' pattern)"). */
+  endAnchored?: boolean;
+  /** Required (falls back to `endSec - startSec` otherwise) when `endAnchored`
+   *  is `true` — the event's fixed duration in seconds. */
+  durationSecForEndAnchor?: number;
+}
+
+/**
+ * A series' IMAGE watermark (task #34, plan.md ลายน้ำ `type: "image"`) —
+ * REMOTE-url shaped like `RunAssemblyJobBannerInput`; the job downloads
+ * `imageUrl` to a local staged PNG the same way clip/banner sources already
+ * are. Always spans the whole video (no start/end window — see
+ * `ResolvedWatermarkImage`'s own doc comment in
+ * `verticalDramaFinalRenderGraph.ts`).
+ */
+export interface RunAssemblyJobWatermarkImageInput {
+  imageUrl: string;
+  position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+  opacity: number;
+  scalePct: number;
+  marginPx: number;
+}
+
 export interface RunAssemblyJobSubtitlesInput {
   preset: CaptionPresetId;
   lines: AssSubtitleLine[];
   /** Overrides `resolveVdSubtitleFontsDir()`'s auto-resolution when supplied. */
   fontsDir?: string;
+  /** Task #34 — additive Text Overlay Suite events merged into the SAME
+   *  `.ass` file as `lines` (see `buildAssSubtitleFile`'s own doc comment for
+   *  why this is safe/independent of `preset`/`lines`). Absent/empty is
+   *  BYTE-IDENTICAL to before task #34. */
+  overlays?: RunAssemblyJobTextOverlayEventInput[];
 }
 
 export interface RunAssemblyJobArgs {
@@ -606,6 +684,8 @@ export interface RunAssemblyJobArgs {
   banners?: RunAssemblyJobBannerInput[];
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
   subtitles?: RunAssemblyJobSubtitlesInput | null;
+  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. */
+  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
   /** Test injection point for the total-source-duration probe the final-render
    *  path needs up front (banner timing/validation) — mirrors `ffmpegRunner`'s
    *  existing injection convention so tests never need a real `ffprobe`
@@ -657,7 +737,8 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       args.banners?.length ||
       args.dialogueAudio?.segments?.length ||
       args.dialogueAudio?.loudnessNormalize ||
-      args.subtitles
+      args.subtitles ||
+      args.watermarkImage
     );
 
     let ffArgs: string[];
@@ -705,27 +786,32 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         });
       }
 
-      // Generate the subtitle `.ass` locally — synthesized, not downloaded.
-      let subtitlesForGraph: { assPath: string; fontsDir?: string } | undefined;
-      if (args.subtitles && args.subtitles.lines.length > 0) {
-        const fontsDir = args.subtitles.fontsDir ?? resolveVdSubtitleFontsDir();
-        const assContent = buildAssSubtitleFile(
-          args.subtitles.lines,
-          args.subtitles.preset,
-          {
-            fontsDir,
-            playResX: 1080,
-            playResY: 1920,
-          }
+      // Task #34 — stage the series' IMAGE watermark (additive) BEFORE the
+      // duration probe below, same download helper/convention as banners.
+      let resolvedWatermarkImage: ResolvedWatermarkImage | undefined;
+      if (args.watermarkImage) {
+        const dest = path.join(
+          workDir,
+          `watermark${inferDownloadExtension(args.watermarkImage.imageUrl, ".png")}`
         );
-        const assPath = path.join(workDir, "captions.ass");
-        await fsp.writeFile(assPath, assContent, "utf8");
-        subtitlesForGraph = { assPath, fontsDir };
+        await downloadClipToFile(args.watermarkImage.imageUrl, dest, internalBaseUrl);
+        resolvedWatermarkImage = {
+          localPngPath: dest,
+          position: args.watermarkImage.position,
+          opacity: args.watermarkImage.opacity,
+          scalePct: args.watermarkImage.scalePct,
+          marginPx: args.watermarkImage.marginPx,
+        };
       }
 
-      // Total source duration, needed up front for banner timing/validation —
+      // Total source duration, needed up front for banner timing/validation
+      // AND (task #34) end-anchored/entire-clip text-overlay events —
       // summed from the already-downloaded clips (concat never re-times
       // individual clips, so this matches the final output's duration).
+      // Moved BEFORE `.ass` generation (task #34; previously this probe ran
+      // AFTER subtitle generation, back when subtitle timing never needed
+      // the total duration) so `entireClip`/`endAnchored` overlay events can
+      // be resolved to real seconds before the `.ass` file is written.
       const perClipDurations = await Promise.all(
         inputPaths.map(p => probeDuration(p))
       );
@@ -739,6 +825,56 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         (sum: number, d) => sum + (d as number),
         0
       );
+
+      // Task #34 — re-resolve `entireClip`/`endAnchored` overlay events to
+      // the REAL probed `videoDurationSeconds`, mirroring banners' own
+      // `entire: true` re-resolution immediately below (same "advisory
+      // window, real value substituted post-probe" pattern — see
+      // `RunAssemblyJobBannerInput.entire`'s doc comment for the full "why").
+      const resolvedOverlayEvents: VdTextOverlayAssEvent[] = (
+        args.subtitles?.overlays ?? []
+      ).map(overlay => {
+        if (overlay.entireClip) {
+          return { ...overlay, startSec: 0, endSec: videoDurationSeconds };
+        }
+        if (overlay.endAnchored) {
+          const dur =
+            overlay.durationSecForEndAnchor ??
+            Math.max(0.1, overlay.endSec - overlay.startSec);
+          return {
+            ...overlay,
+            startSec: Math.max(0, videoDurationSeconds - dur),
+            endSec: videoDurationSeconds,
+          };
+        }
+        return overlay;
+      });
+
+      // Generate the subtitle `.ass` locally — synthesized, not downloaded.
+      // Task #34: also triggered by a non-empty `overlays` list, independent
+      // of `lines` (a render with `subtitlePreset: "none"` but at least one
+      // enabled text-overlay kind still needs an `.ass` file — see
+      // `buildAssSubtitleFile`'s own doc comment).
+      let subtitlesForGraph: { assPath: string; fontsDir?: string } | undefined;
+      if (
+        args.subtitles &&
+        (args.subtitles.lines.length > 0 || resolvedOverlayEvents.length > 0)
+      ) {
+        const fontsDir = args.subtitles.fontsDir ?? resolveVdSubtitleFontsDir();
+        const assContent = buildAssSubtitleFile(
+          args.subtitles.lines,
+          args.subtitles.preset,
+          {
+            fontsDir,
+            playResX: 1080,
+            playResY: 1920,
+          },
+          resolvedOverlayEvents
+        );
+        const assPath = path.join(workDir, "captions.ass");
+        await fsp.writeFile(assPath, assContent, "utf8");
+        subtitlesForGraph = { assPath, fontsDir };
+      }
 
       // Task #21 phase B — re-resolve `entire: true` banners to the REAL
       // probed `videoDurationSeconds` (see `RunAssemblyJobBannerInput.entire`'s
@@ -771,6 +907,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
               }
             : undefined,
         subtitles: subtitlesForGraph ?? null,
+        watermarkImage: resolvedWatermarkImage,
       });
 
       finalRenderSummary = {
@@ -779,6 +916,8 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         loudnessNormalize: args.dialogueAudio?.loudnessNormalize === true,
         subtitlePreset: args.subtitles?.preset,
         subtitleLineCount: args.subtitles?.lines?.length ?? 0,
+        textOverlayEventCount: resolvedOverlayEvents.length,
+        watermarkIncluded: Boolean(resolvedWatermarkImage),
         renderedAt: new Date().toISOString(),
       };
     }
@@ -854,6 +993,8 @@ export async function submitAssemblyJob(args: {
   banners?: RunAssemblyJobBannerInput[];
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
   subtitles?: RunAssemblyJobSubtitlesInput | null;
+  /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. */
+  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
   probeDurationSecondsFn?: (filePath: string) => Promise<number | undefined>;
 }): Promise<{ jobId: string }> {
   const jobId = randomUUID();
@@ -875,6 +1016,7 @@ export async function submitAssemblyJob(args: {
     banners: args.banners,
     dialogueAudio: args.dialogueAudio,
     subtitles: args.subtitles,
+    watermarkImage: args.watermarkImage,
     probeDurationSecondsFn: args.probeDurationSecondsFn,
   });
 
@@ -1002,6 +1144,247 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Text Overlay Suite render feed (task #34)                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One SHOT-anchored overlay input (character intro cards + mid-episode
+ * `time_setting`/`narrative_hook`/`custom` cards) — shot-local, like a
+ * `VerticalDramaDialogueLine`, so it can be resolved to an ABSOLUTE
+ * render-timeline position via the SAME `resolveDialogueLineAbsoluteTimings`
+ * this file already uses for dialogue lines (plan.md "ตัวแปลงเวลา
+ * shot→absolute ที่มีแล้ว (#21-B)... reuse for card anchors").
+ */
+export interface VdEpisodeTextOverlayAnchorInput {
+  id: string;
+  kind: VdTextOverlayAssKind;
+  text: string;
+  secondaryText?: string;
+  variant?: VdTextOverlayAssEvent["variant"];
+  shotNumber: number;
+  offsetSec?: number;
+  durationSec: number;
+}
+
+/**
+ * Resolve a list of shot-anchored overlay inputs to absolute render-timeline
+ * events by treating each one as a SYNTHETIC, non-narration-free dialogue
+ * line (`lineId`/`shotNumber`/`start`/`end` — the exact fields
+ * `resolveDialogueLineAbsoluteTimings` needs) and reusing that function
+ * whole, unmodified. `speakerName`/`isNarration` are throwaway (never read
+ * back out — only `absoluteStartSec`/`absoluteEndSec` and the `lineId` ->
+ * anchor zip matter here).
+ */
+export function resolveEpisodeTextOverlayAnchoredEvents(
+  anchors: VdEpisodeTextOverlayAnchorInput[],
+  motionClips: VdDialogueTimelineClip[],
+  includedClipNumbers: number[]
+): RunAssemblyJobTextOverlayEventInput[] {
+  if (anchors.length === 0) return [];
+
+  const syntheticLines: VerticalDramaDialogueLine[] = anchors.map(anchor => ({
+    lineId: anchor.id,
+    shotNumber: anchor.shotNumber,
+    speakerName: "",
+    isNarration: true,
+    text: anchor.text,
+    start: anchor.offsetSec ?? 0,
+    end: (anchor.offsetSec ?? 0) + anchor.durationSec,
+    targetDurationSeconds: anchor.durationSec,
+  }));
+
+  const timings = resolveDialogueLineAbsoluteTimings(
+    syntheticLines,
+    motionClips,
+    includedClipNumbers
+  );
+  const anchorById = new Map(anchors.map(anchor => [anchor.id, anchor]));
+
+  return timings.map(timing => {
+    const anchor = anchorById.get(timing.lineId)!;
+    return {
+      kind: anchor.kind,
+      text: anchor.text,
+      secondaryText: anchor.secondaryText,
+      variant: anchor.variant,
+      startSec: timing.absoluteStartSec,
+      endSec: timing.absoluteEndSec,
+    };
+  });
+}
+
+export interface VdEpisodeTextOverlayCharacterIntroInput {
+  characterKey: string;
+  shotNumber: number;
+  name: string;
+  role?: string;
+}
+
+export interface VdEpisodeTextOverlayCardInput {
+  id: string;
+  /** Already resolved to its ASS kind (`time_setting`/`narrative_hook` —
+   *  `"custom"` cards resolve to `"narrative_hook"`, see
+   *  `defaultCardStyleVariantForKind`/`VdTextOverlayCard.styleVariant` in
+   *  `@shared/verticalDramaSeries/textOverlay.ts`; the caller performs this
+   *  mapping since it owns the plan's own `kind`/`styleVariant` fields). */
+  kind: Extract<VdTextOverlayAssKind, "time_setting" | "narrative_hook">;
+  text: string;
+  shotNumber: number;
+  offsetSec?: number;
+  durationSec: number;
+}
+
+/**
+ * Build the render engine's Text Overlay Suite feed (task #34,
+ * `RunAssemblyJobSubtitlesInput["overlays"]`) from an episode's ALREADY-
+ * DERIVED text values (the caller — `verticalDramaTextOverlayResolution.ts`
+ * plus the episode/series routers — resolves manual-vs-auto priority,
+ * cliffhanger/memory-bundle lookups, and character-intro roster joins BEFORE
+ * calling this; this function is pure/DB-free, mirroring
+ * `resolveEpisodeDialogueAudioAndSubtitlesRunInputs`'s own "everything
+ * pre-resolved in" contract). A field being `null`/`undefined`/omitted means
+ * "this kind is disabled for this render" — the caller is responsible for
+ * that decision (flag gate + per-kind `enabled` + any render-time opt-out).
+ */
+export interface VdEpisodeTextOverlayRunInputsParams {
+  endCard?: {
+    text: string;
+    durationSec: number;
+    showFollowLine: boolean;
+    styleVariant: "center_card" | "lower_band";
+  } | null;
+  openerRecap?: { text: string; durationSec: number } | null;
+  titleBumper?: { primary: string; secondary: string } | null;
+  episodeIndicator?: { label: string; position: "top_left" | "top_right" } | null;
+  characterIntroCards?: VdEpisodeTextOverlayCharacterIntroInput[];
+  cards?: VdEpisodeTextOverlayCardInput[];
+  watermarkText?: {
+    text: string;
+    position: "top_left" | "top_right" | "bottom_left" | "bottom_right";
+    opacity: number;
+    marginPx: number;
+  } | null;
+  motionClips: VdDialogueTimelineClip[];
+  includedClipNumbers: number[];
+}
+
+export interface VdEpisodeTextOverlayRunInputsResult {
+  overlays: RunAssemblyJobTextOverlayEventInput[];
+  overlayCount: number;
+}
+
+export function resolveEpisodeTextOverlayRunInputs(
+  params: VdEpisodeTextOverlayRunInputsParams
+): VdEpisodeTextOverlayRunInputsResult {
+  const overlays: RunAssemblyJobTextOverlayEventInput[] = [];
+
+  if (params.endCard?.text?.trim()) {
+    overlays.push({
+      kind: "end_card",
+      text: params.endCard.text,
+      secondaryText: params.endCard.showFollowLine
+        ? VD_END_CARD_FOLLOW_LINE_TH
+        : undefined,
+      variant: params.endCard.styleVariant,
+      // Advisory-only — `runAssemblyJob` re-resolves to the real
+      // [videoDurationSeconds - durationSec, videoDurationSeconds] window
+      // post-probe (see `RunAssemblyJobTextOverlayEventInput.endAnchored`).
+      startSec: 0,
+      endSec: params.endCard.durationSec,
+      endAnchored: true,
+      durationSecForEndAnchor: params.endCard.durationSec,
+    });
+  }
+
+  // Opening sequence auto-queue (plan.md "opener+titleBumper ซ้อนต้นคลิป →
+  // จัดคิวต่อกันอัตโนมัติ") — both are START-anchored, fully resolvable
+  // without a duration probe.
+  const opening = resolveOpeningSequenceWindows({
+    titleBumper: params.titleBumper ? { enabled: true } : undefined,
+    openerRecap: params.openerRecap
+      ? { enabled: true, durationSec: params.openerRecap.durationSec }
+      : undefined,
+  });
+  if (params.titleBumper && opening.titleBumper) {
+    overlays.push({
+      kind: "title_bumper",
+      text: params.titleBumper.primary,
+      secondaryText: params.titleBumper.secondary,
+      startSec: opening.titleBumper.startSec,
+      endSec: opening.titleBumper.endSec,
+    });
+  }
+  if (params.openerRecap?.text?.trim() && opening.openerRecap) {
+    overlays.push({
+      kind: "opener_recap",
+      text: VD_OPENER_RECAP_HEADER_TH,
+      secondaryText: params.openerRecap.text,
+      startSec: opening.openerRecap.startSec,
+      endSec: opening.openerRecap.endSec,
+    });
+  }
+
+  if (params.episodeIndicator) {
+    overlays.push({
+      kind: "episode_indicator",
+      text: params.episodeIndicator.label,
+      variant: params.episodeIndicator.position,
+      // Advisory-only — re-resolved to [0, videoDurationSeconds] post-probe.
+      startSec: 0,
+      endSec: 0,
+      entireClip: true,
+    });
+  }
+
+  if (params.watermarkText?.text?.trim()) {
+    overlays.push({
+      kind: "watermark_text",
+      text: params.watermarkText.text,
+      variant: params.watermarkText.position,
+      opacity: params.watermarkText.opacity,
+      marginPx: params.watermarkText.marginPx,
+      // Advisory-only — re-resolved to [0, videoDurationSeconds] post-probe.
+      startSec: 0,
+      endSec: 0,
+      entireClip: true,
+    });
+  }
+
+  const anchoredInputs: VdEpisodeTextOverlayAnchorInput[] = [
+    ...(params.characterIntroCards ?? []).map(
+      (card): VdEpisodeTextOverlayAnchorInput => ({
+        id: `character_intro:${card.characterKey}`,
+        kind: "character_intro",
+        text: card.name,
+        secondaryText: card.role,
+        shotNumber: card.shotNumber,
+        offsetSec: 0,
+        durationSec: VD_CHARACTER_INTRO_DURATION_SECONDS,
+      })
+    ),
+    ...(params.cards ?? []).map(
+      (card): VdEpisodeTextOverlayAnchorInput => ({
+        id: card.id,
+        kind: card.kind,
+        text: card.text,
+        shotNumber: card.shotNumber,
+        offsetSec: card.offsetSec,
+        durationSec: card.durationSec,
+      })
+    ),
+  ];
+  overlays.push(
+    ...resolveEpisodeTextOverlayAnchoredEvents(
+      anchoredInputs,
+      params.motionClips,
+      params.includedClipNumbers
+    )
+  );
+
+  return { overlays, overlayCount: overlays.length };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Season batch render — sequential job chain (task #21 phase B)              */
 /* -------------------------------------------------------------------------- */
 
@@ -1024,6 +1407,10 @@ export interface SequentialAssemblyJobSpec {
   banners?: RunAssemblyJobBannerInput[];
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
   subtitles?: RunAssemblyJobSubtitlesInput | null;
+  /** Task #34 — additive; `verticalDramaSeries.ts`'s `assembleSeasonVideos`
+   *  populates this per-episode from the SAME series watermark config
+   *  (batch-level "ใส่ลายน้ำ" toggle). */
+  watermarkImage?: RunAssemblyJobWatermarkImageInput | null;
 }
 
 export interface SequentialAssemblyJobResult {
@@ -1094,6 +1481,7 @@ export async function submitSequentialAssemblyJobs(
           banners: spec.banners,
           dialogueAudio: spec.dialogueAudio,
           subtitles: spec.subtitles,
+          watermarkImage: spec.watermarkImage,
           probeDurationSecondsFn,
         });
       } catch {

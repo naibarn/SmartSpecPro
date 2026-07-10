@@ -1,0 +1,155 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cinematic Prompt Refiner Pro UI Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ui:language": {
+      "type": "string",
+      "default": "bilingual_en_th"
+    },
+    "ui:order": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [
+        "source_prompt",
+        "target_type",
+        "cinematic_mode",
+        "preservation_strength",
+        "style_intensity",
+        "output_language",
+        "aspect_ratio",
+        "shot_size",
+        "camera_angle",
+        "camera_movement",
+        "emotion_priority",
+        "movement_priority",
+        "shot_emphasis",
+        "has_attached_images",
+        "minimize_appearance_description",
+        "preserve_all_key_actions",
+        "preserve_names_and_relationships",
+        "include_negative_constraints",
+        "audio_handling",
+        "custom_notes"
+      ]
+    },
+    "ui:groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "fields": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["title", "fields"]
+      },
+      "default": [
+        {
+          "title": "1. Main Prompt / Prompt หลัก",
+          "description": "Paste the original prompt to refine.",
+          "fields": ["source_prompt"]
+        },
+        {
+          "title": "2. Output Mode / โหมดผลลัพธ์",
+          "description": "Choose image/video mode and cinematic style.",
+          "fields": ["target_type", "cinematic_mode", "output_language"]
+        },
+        {
+          "title": "3. Fidelity Controls / การรักษาเจตนาเดิม",
+          "description": "Controls how strictly the original prompt should be preserved.",
+          "fields": ["preservation_strength", "preserve_all_key_actions", "preserve_names_and_relationships"]
+        },
+        {
+          "title": "4. Cinematic Controls / การคุมภาพยนตร์",
+          "description": "Camera, framing, movement, emotion, and emphasis options.",
+          "fields": ["style_intensity", "aspect_ratio", "shot_size", "camera_angle", "camera_movement", "emotion_priority", "movement_priority", "shot_emphasis"]
+        },
+        {
+          "title": "5. Reference Image Behavior / การทำงานร่วมกับภาพแนบ",
+          "description": "Recommended when the system attaches images automatically.",
+          "fields": ["has_attached_images", "minimize_appearance_description"]
+        },
+        {
+          "title": "6. Constraints and Audio / ข้อห้ามและเสียง",
+          "description": "Optional controls for negative constraints and video audio behavior.",
+          "fields": ["include_negative_constraints", "audio_handling"]
+        },
+        {
+          "title": "7. Notes / หมายเหตุ",
+          "description": "Add special handling instructions.",
+          "fields": ["custom_notes"]
+        }
+      ]
+    },
+    "ui:widget": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_prompt": { "type": "string", "default": "textarea" },
+        "target_type": { "type": "string", "default": "radio" },
+        "cinematic_mode": { "type": "string", "default": "select" },
+        "preservation_strength": { "type": "string", "default": "radio" },
+        "style_intensity": { "type": "string", "default": "radio" },
+        "output_language": { "type": "string", "default": "radio" },
+        "aspect_ratio": { "type": "string", "default": "select" },
+        "shot_size": { "type": "string", "default": "select" },
+        "camera_angle": { "type": "string", "default": "select" },
+        "camera_movement": { "type": "string", "default": "select" },
+        "emotion_priority": { "type": "string", "default": "select" },
+        "movement_priority": { "type": "string", "default": "select" },
+        "shot_emphasis": { "type": "string", "default": "checkboxes" },
+        "has_attached_images": { "type": "string", "default": "switch" },
+        "minimize_appearance_description": { "type": "string", "default": "switch" },
+        "preserve_all_key_actions": { "type": "string", "default": "switch" },
+        "preserve_names_and_relationships": { "type": "string", "default": "switch" },
+        "include_negative_constraints": { "type": "string", "default": "switch" },
+        "audio_handling": { "type": "string", "default": "select" },
+        "custom_notes": { "type": "string", "default": "textarea" }
+      },
+      "default": {
+        "source_prompt": "textarea",
+        "target_type": "radio",
+        "cinematic_mode": "select",
+        "preservation_strength": "radio",
+        "style_intensity": "radio",
+        "output_language": "radio",
+        "aspect_ratio": "select",
+        "shot_size": "select",
+        "camera_angle": "select",
+        "camera_movement": "select",
+        "emotion_priority": "select",
+        "movement_priority": "select",
+        "shot_emphasis": "checkboxes",
+        "has_attached_images": "switch",
+        "minimize_appearance_description": "switch",
+        "preserve_all_key_actions": "switch",
+        "preserve_names_and_relationships": "switch",
+        "include_negative_constraints": "switch",
+        "audio_handling": "select",
+        "custom_notes": "textarea"
+      }
+    },
+    "ui:help": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_prompt": { "type": "string", "default": "Paste the original prompt. / วาง prompt ต้นฉบับ" },
+        "target_type": { "type": "string", "default": "Auto, image, or video. / เลือก Auto, ภาพ หรือวิดีโอ" },
+        "cinematic_mode": { "type": "string", "default": "Drama for acting, Commercial for product clarity, Social Clip for short-form, Storyboard for scene panels." },
+        "preservation_strength": { "type": "string", "default": "Use Strict when the original prompt must not drift. / ใช้ Strict เมื่อต้องรักษาเจตนาเดิมมากที่สุด" },
+        "style_intensity": { "type": "string", "default": "Balanced is recommended. / แนะนำ Balanced" },
+        "has_attached_images": { "type": "string", "default": "Turn on when images are supplied. / เปิดเมื่อระบบแนบภาพให้" },
+        "minimize_appearance_description": { "type": "string", "default": "Recommended for image-referenced workflows. / เหมาะกับงานที่มีภาพอ้างอิง" },
+        "include_negative_constraints": { "type": "string", "default": "Adds short safety constraints such as no extra characters or no identity drift." },
+        "audio_handling": { "type": "string", "default": "Use only for video prompts. / ใช้เฉพาะ prompt วิดีโอ" },
+        "custom_notes": { "type": "string", "default": "Optional special instructions. / คำสั่งเพิ่มเติม" }
+      }
+    }
+  }
+}

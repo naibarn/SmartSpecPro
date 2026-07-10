@@ -35,9 +35,9 @@ Maintain scenario coverage for:
   `sequential_reason` is recorded
 - inline/direct execution is forbidden for non-trivial tasks only when an authorized
   Task/sub-agent tool is available and light mode does not apply
-- lightweight sub-agent work defaults to `gpt-5.5` when model overrides are available,
-  while explicit overrides, deep/high-risk/performance work, and failed GPT 5.5
-  attempts use inherited/default or requested models
+- normal conductor and non-planning sub-agent work defaults to `gpt-5.6-terra` when model
+  overrides are available; planning-only roles use `gpt-5.6-sol`, and explicit user
+  overrides take precedence
 - overlapping writer scenarios split or use explicit worktree isolation
 - installed-skill routing covers launch, deploy, release, security, migration,
   API/health, performance, SEO/content, analytics, rescue, docs, and skill-system flows
@@ -55,8 +55,8 @@ expected_gates: optional list
 expected_dispatch_mode: optional dispatch expectation (`parallel_batch`,
   `parallel_with_worktree`, `single_agent`, `mixed_parallel_waves`,
   `sequential_exception`)
-expected_model_preference: optional model expectation (`gpt-5.5`,
-  `inherited-default`, or `explicit:<model>`)
+expected_model_preference: optional model expectation (`gpt-5.6-terra`,
+  `gpt-5.6-sol`, or `explicit:<model>`)
 expected_waves: optional array of agent-name arrays, where each inner array is one batch
 forbidden_execution: optional list such as `direct-edit` or `inline-with-agent-tool`
 sequential_reason: required when 2+ expected agents are not expected to run in parallel

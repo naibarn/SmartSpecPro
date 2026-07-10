@@ -35,6 +35,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -45,6 +53,14 @@ import type {
   VerticalDramaCharacterVoiceConfig,
   VerticalDramaVoiceCatalogEntry,
 } from "@shared/verticalDramaSeries/voiceCasting";
+import {
+  speechProfileSchema,
+  VD_SPEECH_PROFILE_SPEAKING_SPEEDS,
+  VD_SPEECH_PROFILE_VOCABULARY_LEVELS,
+  VD_SPEECH_PROFILE_SENTENCE_LENGTHS,
+  VD_SPEECH_PROFILE_METAPHOR_USAGE,
+  type VerticalDramaSpeechProfile,
+} from "@shared/verticalDramaSeries/speechProfile";
 import { readDroppedImageInput, readFileAsDataUrl } from "@/components/media/ImageSourcePicker";
 import ModelSelectorDialog, {
   type MediaModel,
@@ -213,6 +229,77 @@ function findBibleCharacterDescription(
 }
 
 /* -------------------------------------------------------------------------- */
+/* F132F speech-profile editing form state (spec 132 §7.3, added 2026-07-09)  */
+/* -------------------------------------------------------------------------- */
+
+/** Editable form-state mirror of `VerticalDramaSpeechProfile` — the array
+ *  fields (`forbiddenStyle`/`signaturePhrases`) are edited as newline-
+ *  separated free text and split/joined only at the form <-> schema
+ *  boundary (`formStateToSpeechProfile`/`speechProfileToFormState`), so the
+ *  inputs behave like a normal textarea rather than a tag-picker widget. */
+export type VdSpeechProfileFormState = {
+  speakingSpeed: VerticalDramaSpeechProfile["speakingSpeed"];
+  vocabularyLevel: VerticalDramaSpeechProfile["vocabularyLevel"];
+  emotionalDefault: string;
+  typicalSentenceLength: VerticalDramaSpeechProfile["typicalSentenceLength"];
+  metaphorUsage: VerticalDramaSpeechProfile["metaphorUsage"];
+  commonLineFunction: string;
+  forbiddenStyleText: string;
+  signaturePhrasesText: string;
+};
+
+export const VD_SPEECH_PROFILE_FORM_DEFAULTS: VdSpeechProfileFormState = {
+  speakingSpeed: "normal",
+  vocabularyLevel: "everyday",
+  emotionalDefault: "",
+  typicalSentenceLength: "medium",
+  metaphorUsage: "occasional",
+  commonLineFunction: "",
+  forbiddenStyleText: "",
+  signaturePhrasesText: "",
+};
+
+/** Splits a newline-separated textarea value into a trimmed, non-empty-only string array — `undefined` when the result would be empty (matches `speechProfileSchema`'s optional-array convention, never persists an empty array). */
+function splitLinesToArray(text: string): string[] | undefined {
+  const lines = text
+    .split("\n")
+    .map(line => line.trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines : undefined;
+}
+
+export function speechProfileToFormState(
+  profile: VerticalDramaSpeechProfile | undefined
+): VdSpeechProfileFormState {
+  if (!profile) return VD_SPEECH_PROFILE_FORM_DEFAULTS;
+  return {
+    speakingSpeed: profile.speakingSpeed,
+    vocabularyLevel: profile.vocabularyLevel,
+    emotionalDefault: profile.emotionalDefault,
+    typicalSentenceLength: profile.typicalSentenceLength,
+    metaphorUsage: profile.metaphorUsage,
+    commonLineFunction: profile.commonLineFunction,
+    forbiddenStyleText: (profile.forbiddenStyle ?? []).join("\n"),
+    signaturePhrasesText: (profile.signaturePhrases ?? []).join("\n"),
+  };
+}
+
+export function formStateToSpeechProfile(
+  form: VdSpeechProfileFormState
+): Record<string, unknown> {
+  return {
+    speakingSpeed: form.speakingSpeed,
+    vocabularyLevel: form.vocabularyLevel,
+    emotionalDefault: form.emotionalDefault.trim(),
+    typicalSentenceLength: form.typicalSentenceLength,
+    metaphorUsage: form.metaphorUsage,
+    commonLineFunction: form.commonLineFunction.trim(),
+    forbiddenStyle: splitLinesToArray(form.forbiddenStyleText),
+    signaturePhrases: splitLinesToArray(form.signaturePhrasesText),
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Localized copy                                                             */
 /* -------------------------------------------------------------------------- */
 
@@ -234,6 +321,14 @@ export interface VerticalDramaCharacterStockPanelProps {
    *  before this wave (see `VerticalDramaSeriesDetailPage.tsx`'s
    *  `useTenantFeatureFlag("verticalDramaSeriesVoiceChain")`). */
   voiceChainEnabled?: boolean;
+  /** F132F `verticalDramaCharacterProfiles` (spec 132 §7.3, added 2026-07-09)
+   *  — gates the speech-profile editing sub-section mounted below the
+   *  selected character's detail card, and the voice-casting card's
+   *  "prefill from speech profile" suggestion action. `false`/omitted
+   *  renders byte-identical to before this section (see
+   *  `VerticalDramaSeriesDetailPage.tsx`'s
+   *  `useTenantFeatureFlag("verticalDramaCharacterProfiles")`). */
+  characterProfilesEnabled?: boolean;
   className?: string;
 }
 
@@ -245,6 +340,7 @@ export function VerticalDramaCharacterStockPanel({
   seriesId,
   readOnly = false,
   voiceChainEnabled = false,
+  characterProfilesEnabled = false,
   className,
 }: VerticalDramaCharacterStockPanelProps) {
   const lang = useVerticalDramaLang();
@@ -462,6 +558,76 @@ export function VerticalDramaCharacterStockPanel({
       onError,
     });
 
+  /** F132F (spec 132 §7.3, added 2026-07-09) — persists the speech-profile
+   *  editing sub-section's edits via the existing generic `updateCharacter`
+   *  mutation (`data` is a wholesale replace server-side, never a merge —
+   *  see `verticalDramaCharacters.ts`'s `updateCharacter` mutation — so every
+   *  call site below always spreads the character's CURRENT `data` first,
+   *  then overrides only the `speechProfile` key). */
+  const updateCharacterMutation =
+    trpc.verticalDramaCharacters.updateCharacter.useMutation({
+      onSuccess: () => {
+        invalidate();
+        toast.success(t(lang, "บันทึกโปรไฟล์เสียงพูดแล้ว", "Speech profile saved"));
+      },
+      onError,
+    });
+
+  /** F132F speech-profile editing sub-section — a per-character draft-form
+   *  buffer, keyed by characterId (mirrors `generatedImageUrls`'s own
+   *  Record-keyed-by-id convention). Deliberately NOT synced via a `useEffect`
+   *  on character switch — reading always falls back to the persisted
+   *  server value (`speechProfileFormFor`) when no local draft exists yet
+   *  for that character, so switching characters shows the right data
+   *  immediately without any effect-timing risk. */
+  const [speechProfileFormDrafts, setSpeechProfileFormDrafts] = useState<
+    Record<string, VdSpeechProfileFormState>
+  >({});
+
+  const speechProfileFormFor = (characterId: string): VdSpeechProfileFormState => {
+    const existingDraft = speechProfileFormDrafts[characterId];
+    if (existingDraft) return existingDraft;
+    const persisted =
+      characterId === selectedCharacter?.characterId
+        ? selectedCharacterSpeechProfile
+        : undefined;
+    return speechProfileToFormState(persisted);
+  };
+
+  const updateSpeechProfileForm = (
+    characterId: string,
+    patch: Partial<VdSpeechProfileFormState>
+  ) => {
+    setSpeechProfileFormDrafts(prev => ({
+      ...prev,
+      [characterId]: { ...speechProfileFormFor(characterId), ...patch },
+    }));
+  };
+
+  const handleSaveSpeechProfile = (characterId: string) => {
+    const form = speechProfileFormFor(characterId);
+    const parsed = speechProfileSchema.safeParse(formStateToSpeechProfile(form));
+    if (!parsed.success) {
+      toast.error(
+        t(
+          lang,
+          "กรอกอารมณ์หลักและหน้าที่ของบทพูดก่อนบันทึก",
+          "Fill in the emotional default and common line function before saving"
+        )
+      );
+      return;
+    }
+    const character = characters.find(
+      (c: VdCharacterListItem) => c.characterId === characterId
+    );
+    const currentData = (character?.data ?? {}) as Record<string, unknown>;
+    updateCharacterMutation.mutate({
+      seriesId,
+      characterId,
+      data: { ...currentData, speechProfile: parsed.data },
+    });
+  };
+
   /** Character ids currently between "preview task submitted" and
    *  "preview task completed" — same Set-keyed-by-id convention as
    *  `pollingCharacters` above (independent characters can preview
@@ -567,6 +733,32 @@ export function VerticalDramaCharacterStockPanel({
       return rest;
     });
     previewVoiceMutation.mutate({ seriesId, characterId });
+  };
+
+  /** F132F "prefill from speech profile" style-hints save (spec 132 §7.3,
+   *  added 2026-07-09) — only ever called on an explicit user Save click
+   *  (never automatically); merges the reviewed `hints[]` onto the
+   *  character's EXISTING voice config (required: `setCharacterVoiceConfig`'s
+   *  input schema needs `voiceModelId`/`voiceId`, so this is only reachable
+   *  once a voice is already cast — the casting card itself disables its
+   *  Save button until then). */
+  const handleSaveStyleHints = (
+    characterId: string,
+    voiceConfig: VerticalDramaCharacterVoiceConfig | undefined,
+    hints: string[]
+  ) => {
+    if (!voiceConfig) return;
+    setVoiceConfigMutation.mutate({
+      seriesId,
+      characterId,
+      voiceConfig: {
+        voiceModelId: voiceConfig.voiceModelId,
+        voiceId: voiceConfig.voiceId,
+        voiceLabel: voiceConfig.voiceLabel,
+        styleHints: hints.length > 0 ? hints : undefined,
+      },
+      idempotencyKey: crypto.randomUUID(),
+    });
   };
 
   const createMutation =
@@ -1023,6 +1215,21 @@ export function VerticalDramaCharacterStockPanel({
       | (VdCharacterListItem & { voiceConfig?: VerticalDramaCharacterVoiceConfig })
       | null
   )?.voiceConfig;
+  /** F132F (spec 132 §7.3, added 2026-07-09) — tolerant parse of the
+   *  selected character's `data.speechProfile` (a free-form jsonb payload
+   *  server-side, so a malformed/legacy value must never crash this panel —
+   *  `safeParse` degrades to `undefined`, which the editing sub-section
+   *  below renders as "no profile yet" rather than throwing). */
+  const selectedCharacterData = (selectedCharacter?.data ?? null) as
+    | Record<string, unknown>
+    | null;
+  const selectedCharacterSpeechProfileParse = selectedCharacterData?.speechProfile
+    ? speechProfileSchema.safeParse(selectedCharacterData.speechProfile)
+    : null;
+  const selectedCharacterSpeechProfile: VerticalDramaSpeechProfile | undefined =
+    selectedCharacterSpeechProfileParse?.success
+      ? selectedCharacterSpeechProfileParse.data
+      : undefined;
   /** Show the persistent right-side reference-panel column only when there's
    *  a character to attach references to and mutations are allowed — matches
    *  the condition that previously gated mounting `VerticalDramaCharacterReferencePanel`
@@ -2005,8 +2212,250 @@ export function VerticalDramaCharacterStockPanel({
                     previewCreditCost={
                       voicePreviewCreditCostByCharacterId[selectedCharacter.characterId] ?? null
                     }
+                    speechProfile={selectedCharacterSpeechProfile}
+                    onSaveStyleHints={
+                      characterProfilesEnabled
+                        ? hints =>
+                            handleSaveStyleHints(
+                              selectedCharacter.characterId,
+                              selectedCharacterVoiceConfig,
+                              hints
+                            )
+                        : undefined
+                    }
+                    savingStyleHints={
+                      setVoiceConfigMutation.isPending &&
+                      setVoiceConfigMutation.variables?.characterId ===
+                        selectedCharacter.characterId &&
+                      setVoiceConfigMutation.variables?.voiceConfig !== null
+                    }
                   />
                 )}
+
+                {/* F132F `verticalDramaCharacterProfiles` (spec 132 §7.3,
+                    added 2026-07-09) — speech-profile editing sub-section.
+                    Gated on `characterProfilesEnabled` (flag off ->
+                    byte-identical, nothing below renders at all). */}
+                {characterProfilesEnabled && (() => {
+                  const characterId = selectedCharacter.characterId;
+                  const form = speechProfileFormFor(characterId);
+                  const saving =
+                    updateCharacterMutation.isPending &&
+                    updateCharacterMutation.variables?.characterId === characterId;
+                  return (
+                    <Card data-testid="vd-speech-profile-card">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">
+                          {t(lang, "โปรไฟล์เสียงพูด", "Speech profile")}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex flex-col gap-3">
+                        {!selectedCharacterSpeechProfile && (
+                          <p className="text-xs text-muted-foreground" data-testid="vd-speech-profile-empty-hint">
+                            {t(
+                              lang,
+                              "ยังไม่มีโปรไฟล์เสียงพูด — กรอกด้านล่างเพื่อสร้างใหม่",
+                              "No profile yet — fill in the fields below to create one"
+                            )}
+                          </p>
+                        )}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="flex flex-col gap-1.5">
+                            <Label className="text-xs">
+                              {t(lang, "ความเร็วในการพูด", "Speaking speed")}
+                            </Label>
+                            <Select
+                              value={form.speakingSpeed}
+                              onValueChange={value =>
+                                updateSpeechProfileForm(characterId, {
+                                  speakingSpeed: value as VdSpeechProfileFormState["speakingSpeed"],
+                                })
+                              }
+                              disabled={readOnly}
+                            >
+                              <SelectTrigger className="h-9 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VD_SPEECH_PROFILE_SPEAKING_SPEEDS.map(value => (
+                                  <SelectItem key={value} value={value}>
+                                    {value}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <Label className="text-xs">
+                              {t(lang, "ระดับคำศัพท์", "Vocabulary level")}
+                            </Label>
+                            <Select
+                              value={form.vocabularyLevel}
+                              onValueChange={value =>
+                                updateSpeechProfileForm(characterId, {
+                                  vocabularyLevel: value as VdSpeechProfileFormState["vocabularyLevel"],
+                                })
+                              }
+                              disabled={readOnly}
+                            >
+                              <SelectTrigger className="h-9 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VD_SPEECH_PROFILE_VOCABULARY_LEVELS.map(value => (
+                                  <SelectItem key={value} value={value}>
+                                    {value}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <Label className="text-xs">
+                              {t(lang, "ความยาวประโยคทั่วไป", "Typical sentence length")}
+                            </Label>
+                            <Select
+                              value={form.typicalSentenceLength}
+                              onValueChange={value =>
+                                updateSpeechProfileForm(characterId, {
+                                  typicalSentenceLength:
+                                    value as VdSpeechProfileFormState["typicalSentenceLength"],
+                                })
+                              }
+                              disabled={readOnly}
+                            >
+                              <SelectTrigger className="h-9 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VD_SPEECH_PROFILE_SENTENCE_LENGTHS.map(value => (
+                                  <SelectItem key={value} value={value}>
+                                    {value}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <Label className="text-xs">
+                              {t(lang, "การใช้อุปมา", "Metaphor usage")}
+                            </Label>
+                            <Select
+                              value={form.metaphorUsage}
+                              onValueChange={value =>
+                                updateSpeechProfileForm(characterId, {
+                                  metaphorUsage: value as VdSpeechProfileFormState["metaphorUsage"],
+                                })
+                              }
+                              disabled={readOnly}
+                            >
+                              <SelectTrigger className="h-9 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {VD_SPEECH_PROFILE_METAPHOR_USAGE.map(value => (
+                                  <SelectItem key={value} value={value}>
+                                    {value}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <Label className="text-xs">
+                            {t(lang, "อารมณ์หลัก", "Emotional default")}
+                          </Label>
+                          <Input
+                            value={form.emotionalDefault}
+                            disabled={readOnly}
+                            placeholder={t(
+                              lang,
+                              "เช่น เย็นชาแต่แฝงความกังวล",
+                              "e.g. brittle sarcasm masking fear"
+                            )}
+                            onChange={e =>
+                              updateSpeechProfileForm(characterId, {
+                                emotionalDefault: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <Label className="text-xs">
+                            {t(lang, "หน้าที่ของบทพูดทั่วไป", "Common line function")}
+                          </Label>
+                          <Input
+                            value={form.commonLineFunction}
+                            disabled={readOnly}
+                            placeholder={t(
+                              lang,
+                              "เช่น กวนใจก่อนเข้าเรื่องจริง",
+                              "e.g. deflects with humor then pivots to the real ask"
+                            )}
+                            onChange={e =>
+                              updateSpeechProfileForm(characterId, {
+                                commonLineFunction: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div className="flex flex-col gap-1.5">
+                            <Label className="text-xs">
+                              {t(lang, "รูปแบบต้องห้าม (บรรทัดละ 1 รายการ)", "Forbidden style (one per line)")}
+                            </Label>
+                            <Textarea
+                              rows={3}
+                              value={form.forbiddenStyleText}
+                              disabled={readOnly}
+                              onChange={e =>
+                                updateSpeechProfileForm(characterId, {
+                                  forbiddenStyleText: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <Label className="text-xs">
+                              {t(lang, "คำพูดติดปาก (บรรทัดละ 1 รายการ)", "Signature phrases (one per line)")}
+                            </Label>
+                            <Textarea
+                              rows={3}
+                              value={form.signaturePhrasesText}
+                              disabled={readOnly}
+                              onChange={e =>
+                                updateSpeechProfileForm(characterId, {
+                                  signaturePhrasesText: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+
+                        {!readOnly && (
+                          <div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={saving}
+                              onClick={() => handleSaveSpeechProfile(characterId)}
+                              data-testid="vd-speech-profile-save"
+                            >
+                              {saving ? (
+                                <Loader2 aria-hidden="true" className="mr-2 h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              {t(lang, "บันทึกโปรไฟล์เสียงพูด", "Save speech profile")}
+                            </Button>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })()}
 
                 <ModelSelectorDialog
                   open={isModelDialogOpen}

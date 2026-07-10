@@ -128,19 +128,17 @@ together only when their verdicts are all needed for the next decision. Examples
 ### Model Routing Rule
 
 Before dispatching any sub-agent, read `model-routing.md` and choose a model preference.
-The default for bounded, routine, non-deep sub-agent work is
-`gpt-5.5`. Preserve explicit user or Task Packet model overrides. Escalate to the inherited
-current/default model for deep-* routes, high-complexity/high-risk work,
-performance-critical analysis, failed or blocked GPT 5.5 attempts, and repeated gate fixes.
+The default for every non-planning sub-agent is `gpt-5.6-terra`. Use
+`gpt-5.6-sol` only when the assigned role's primary deliverable is planning. Preserve
+explicit user or Task Packet model overrides.
 
 If the active Task/sub-agent tool exposes a model override field, pass
-`gpt-5.5` for lightweight-default packets. If the tool does not support model
+the selected model for the packet. If the tool does not support model
 overrides, keep the metadata in the Task Packet and proceed normally.
 
-Codex enforcement: when using `spawn_agent` for lightweight-default work, the tool
-call MUST include `model: "gpt-5.5"`. A Task Packet that only says
-`model_preference: gpt-5.5` is documentation, not an actual model
-override.
+Codex enforcement: when `spawn_agent` exposes a model override, the tool call MUST use
+the selected Terra or Sol model. A Task Packet's `model_preference` alone is documentation,
+not an actual model override.
 
 ### Dispatch Metadata
 
@@ -149,8 +147,8 @@ Every wave plan must include dispatch metadata before launch:
 ```text
 agent: ssp-frontend
 portable_role: frontend
-model_preference: gpt-5.5 | inherited-default | explicit:<model>
-model_reason: lightweight-default | explicit-user-request | high-complexity | high-risk | performance-critical | deep-route | retry-escalation | unavailable
+model_preference: gpt-5.6-terra | gpt-5.6-sol | explicit:<model>
+model_reason: terra-default | planning-upgrade | explicit-user-request | unavailable
 writes_files: true
 background: false
 isolation: worktree | none

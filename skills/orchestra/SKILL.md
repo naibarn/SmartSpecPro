@@ -2,7 +2,6 @@
 name: orchestra
 description: "AI Orchestra Conductor: analyzes tasks, dispatches specialized sub-agents, integrates results, manages file-based memory to survive context compaction, and automatically chains into deep-project, deep-plan, deep-plan-quick, and deep-implement when needed."
 license: MIT
-compatibility: "Claude Code (registered agents), Standard (default/worker/explorer agents when available), OpenCode (sequential mode)"
 ---
 
 # Orchestra — AI Multi-Agent Conductor
@@ -495,12 +494,12 @@ Check whether `orchestra/platform.md` exists. If missing:
 
 **Build Task Packets:** For each agent in the current wave, construct a Task Packet following `references/sub-agent-dispatch.md`. See `references/task-packet-format.md` for the construction guide. The packet must include all 8 required sections: TASK, DOMAIN, FILES, CONTEXT, CONSTRAINTS, CONTRACT, OUTPUT, QUALITY GATE.
 
-By default, lightweight sub-agent work that does not require deep reasoning or maximum
-capability MUST use `gpt-5.5` when the sub-agent tool supports model overrides. Do not use
-GPT 5.5 when the user or Task Packet explicitly names another model, the task is
-high-risk/high-complexity or performance-critical, a quality gate has failed repeatedly, or
-a previous GPT 5.5 attempt could not complete the work; in those cases use the inherited
-current/default model unless a stronger explicit override is required.
+By default, the conductor and every non-planning sub-agent MUST use `gpt-5.6-terra` when
+the host supports model overrides. Use `gpt-5.6-sol` only when the role's primary
+deliverable is planning: architecture, decomposition, specification, product/UX planning,
+acceptance criteria, wave planning, risk analysis, or an implementation decision. A
+planning packet uses Sol; every implementation, reviewer, test, repair, security, and
+performance packet uses Terra unless the user explicitly names another model.
 
 Before dispatching, read `../sub-agents/references/shared-operational-discipline.md` and include its rules in every Task Packet's CONTEXT/CONSTRAINTS. In Standard or Open-Code mode, also inject those rules with the agent identity.
 
@@ -641,9 +640,8 @@ Read `references/verification-before-completion.md` before reporting any wave or
    command, exit code, decisive error lines, a short first/last excerpt, and the path to
    the full captured output when available. Do not paste full logs, stack traces, or test
    transcripts into the packet.
-3. Re-dispatch the same agent type. If the failed attempt used
-   `gpt-5.5`, escalate the retry packet to
-   `model_preference: inherited-default` per `references/model-routing.md`
+3. Re-dispatch the same agent type on its original model. Use Sol only if the retry is
+   recast as a genuine planning packet per `references/model-routing.md`
 4. After each fix, mark all gates covering changed files/contracts/runtime paths as stale
 5. Re-run stale gates and impact closure before continuing
 6. Maximum 3 retry attempts per blocking gate

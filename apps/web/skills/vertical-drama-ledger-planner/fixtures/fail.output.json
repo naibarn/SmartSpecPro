@@ -1,0 +1,8 @@
+{
+  "contract_version": 1,
+  "ledgers": {
+    "evidenceLedger": [
+      { "label": "เบาะแสไม่มี id" }
+    ]
+  }
+}

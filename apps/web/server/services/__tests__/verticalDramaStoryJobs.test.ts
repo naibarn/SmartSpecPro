@@ -12,6 +12,7 @@ import {
   getActiveVerticalDramaStoryJob,
   getVerticalDramaStoryJobStatus,
   runVerticalDramaStoryJob,
+  submitVerticalDramaSystemFeedback,
   type VerticalDramaStoryJobExecutor,
   type VerticalDramaStoryJobPayload,
   type VerticalDramaStoryJobProgress,
@@ -36,7 +37,20 @@ const mockCreateNotification = vi
 vi.mock("../notificationService", () => ({
   createNotification: (...args: unknown[]) => mockCreateNotification(...args),
 }));
-const mockGetDb = vi.fn(() => ({}) as unknown);
+const mockProcessTicket = vi.fn().mockResolvedValue({});
+vi.mock("../virtualAdmin/feedbackProcessor", () => ({
+  processTicket: (...args: unknown[]) => mockProcessTicket(...args),
+}));
+const mockFeedbackInsertValues = vi.fn();
+const mockFeedbackReturning = vi.fn().mockResolvedValue([{ id: 123 }]);
+const mockDb = {
+  insert: vi.fn(() => ({
+    values: mockFeedbackInsertValues.mockImplementation(() => ({
+      returning: mockFeedbackReturning,
+    })),
+  })),
+};
+const mockGetDb = vi.fn(() => mockDb as unknown);
 vi.mock("../../db", () => ({
   getDb: (...args: unknown[]) => mockGetDb(...args),
 }));
@@ -61,7 +75,14 @@ function makeFakeRedis(): VerticalDramaStoryJobRedisAdapter & { store: Map<strin
 beforeEach(() => {
   mockCreateNotification.mockClear();
   mockCreateNotification.mockResolvedValue({ notificationId: 1, deduplicated: false });
+  mockProcessTicket.mockClear();
+  mockProcessTicket.mockResolvedValue({});
+  mockDb.insert.mockClear();
+  mockFeedbackInsertValues.mockClear();
+  mockFeedbackReturning.mockClear();
+  mockFeedbackReturning.mockResolvedValue([{ id: 123 }]);
   mockGetDb.mockClear();
+  mockGetDb.mockReturnValue(mockDb as unknown);
 });
 
 function basePayload(overrides: Partial<VerticalDramaStoryJobPayload> = {}): VerticalDramaStoryJobPayload {
@@ -114,21 +135,21 @@ describe("enqueueVerticalDramaStoryJob", () => {
     expect(enqueueBullmqJob).toHaveBeenCalledTimes(1); // never enqueued a second BullMQ job
   });
 
-  it("cross-kind double-spend guard: 'critique' blocks 'apply_critique' for the same series, and vice versa (the pointer is per-series, not per-kind)", async () => {
+  it("cross-kind double-spend guard: 'extend' blocks 'improve_script' for the same series, and vice versa (the pointer is per-series, not per-kind)", async () => {
     const redis = makeFakeRedis();
     const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
 
-    const critique = await enqueueVerticalDramaStoryJob(basePayload({ kind: "critique", input: {} }), {
+    const extend = await enqueueVerticalDramaStoryJob(basePayload({ kind: "extend", input: {} }), {
       redis,
       enqueueBullmqJob,
     });
-    const applyAttempt = await enqueueVerticalDramaStoryJob(
-      basePayload({ kind: "apply_critique", input: { findingIndexes: [0] } }),
+    const improveAttempt = await enqueueVerticalDramaStoryJob(
+      basePayload({ kind: "improve_script", input: { userRevisionRequest: "ทำให้สนุกขึ้น" } }),
       { redis, enqueueBullmqJob },
     );
 
-    expect(applyAttempt.deduped).toBe(true);
-    expect(applyAttempt.jobId).toBe(critique.jobId);
+    expect(improveAttempt.deduped).toBe(true);
+    expect(improveAttempt.jobId).toBe(extend.jobId);
   });
 
   it("does NOT dedupe a different series (independent per-series pointers)", async () => {
@@ -361,6 +382,85 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
     expect(input.content).toContain("insufficient credits");
   });
 
+  it("failed: creates an automatic system feedback ticket for admins with diagnostic context and original user attribution", async () => {
+    const redis = makeFakeRedis();
+    const { jobId } = await enqueueVerticalDramaStoryJob(
+      basePayload({ userId: 42, tenantId: "tenant-1", seriesId: 10, input: { mode: "premium" } }),
+      {
+        redis,
+        enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+      },
+    );
+
+    await runVerticalDramaStoryJob(
+      jobId,
+      vi.fn().mockRejectedValue(new Error("response failed schema validation")),
+      {
+        redis,
+      },
+    );
+
+    expect(mockDb.insert).toHaveBeenCalledTimes(1);
+    expect(mockFeedbackInsertValues).toHaveBeenCalledTimes(1);
+    const values = mockFeedbackInsertValues.mock.calls[0][0] as Record<string, any>;
+    expect(values).toMatchObject({
+      tenantId: "tenant-1",
+      submittedBy: 42,
+      submittedByType: "system",
+      ticketType: "bug",
+      priority: "high",
+      severity: "high",
+      category: "vertical_drama_story_jobs",
+    });
+    expect(values.description).toContain("User ID: 42");
+    expect(values.description).toContain(`Job ID: ${jobId}`);
+    expect(values.description).toContain("response failed schema validation");
+    expect(values.contextJson).toMatchObject({
+      source: "vertical_drama_story_jobs",
+      eventType: "system_job_failure",
+      user: { id: 42, tenantId: "tenant-1" },
+      verticalDrama: {
+        seriesId: 10,
+        jobId,
+        kind: "deep_generate",
+        status: "failed",
+        input: { mode: "premium" },
+      },
+      diagnostics: {
+        pageUrl: "/drama-series/10",
+        redisKey: `vd:story-job:${jobId}`,
+        activePointerKey: "vd:story-job:active:tenant-1:10",
+        screenshotCapture: {
+          attached: false,
+        },
+      },
+      error: {
+        message: "response failed schema validation",
+      },
+    });
+    expect(mockProcessTicket).toHaveBeenCalledWith(123);
+  });
+
+  it("failed: still creates admin feedback even when the owner notification fails", async () => {
+    const redis = makeFakeRedis();
+    mockCreateNotification.mockRejectedValueOnce(new Error("notification service down"));
+    const { jobId } = await enqueueVerticalDramaStoryJob(basePayload({ userId: 42, seriesId: 10 }), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await expect(
+      runVerticalDramaStoryJob(jobId, vi.fn().mockRejectedValue(new Error("schema validation failed")), {
+        redis,
+      }),
+    ).resolves.toBeUndefined();
+
+    const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
+    expect(record?.status).toBe("failed");
+    expect(mockFeedbackInsertValues).toHaveBeenCalledTimes(1);
+    expect(mockProcessTicket).toHaveBeenCalledWith(123);
+  });
+
   it("differentiates the notification content per job kind (extend vs. deep_generate)", async () => {
     const redis = makeFakeRedis();
     const { jobId } = await enqueueVerticalDramaStoryJob(basePayload({ kind: "extend" }), {
@@ -408,5 +508,95 @@ describe("runVerticalDramaStoryJob — terminal notification (debt-item-6)", () 
     const record = await getVerticalDramaStoryJobStatus(jobId, { tenantId: "tenant-1", seriesId: 10 }, { redis });
     expect(record?.status).toBe("succeeded");
     expect(mockCreateNotification).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* submitVerticalDramaSystemFeedback (Phase F, added 2026-07-09) — the        */
+/* generic auto-filed-ticket helper extracted from `submitFailedStoryJobFeedback` */
+/* so a partial (not job-terminal) in-job failure can file a ticket through   */
+/* the SAME mechanism. `routers/verticalDramaSeries.ts`'s own tests cover the */
+/* call-site wiring; these tests cover the helper itself directly.           */
+/* -------------------------------------------------------------------------- */
+
+describe("submitVerticalDramaSystemFeedback", () => {
+  function baseInput(overrides: Partial<Parameters<typeof submitVerticalDramaSystemFeedback>[0]> = {}) {
+    return {
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      category: "vertical_drama_season_critique_apply",
+      title: "[System] ปรับปรุงเนื้อเรื่องตามคำแนะนำ ล้มเหลวบางส่วน (series #10)",
+      description: "some description",
+      stepsToReproduce: "1. do a thing",
+      expectedBehavior: "should not fail silently",
+      actualBehavior: "การเรียก AI เพื่อแก้ไขล้มเหลว",
+      contextJson: { source: "vertical_drama_season_critique_apply", seriesId: 10 },
+      ...overrides,
+    };
+  }
+
+  it("inserts a `submittedByType: 'system'` feedback ticket and processes it", async () => {
+    await submitVerticalDramaSystemFeedback(baseInput(), mockDb);
+
+    expect(mockDb.insert).toHaveBeenCalledTimes(1);
+    expect(mockFeedbackInsertValues).toHaveBeenCalledTimes(1);
+    const values = mockFeedbackInsertValues.mock.calls[0][0] as Record<string, any>;
+    expect(values).toMatchObject({
+      tenantId: "tenant-1",
+      submittedBy: 42,
+      submittedByType: "system",
+      ticketType: "bug",
+      priority: "high",
+      severity: "high",
+      category: "vertical_drama_season_critique_apply",
+      title: "[System] ปรับปรุงเนื้อเรื่องตามคำแนะนำ ล้มเหลวบางส่วน (series #10)",
+      description: "some description",
+      expectedBehavior: "should not fail silently",
+      actualBehavior: "การเรียก AI เพื่อแก้ไขล้มเหลว",
+    });
+    expect(values.contextJson).toEqual({ source: "vertical_drama_season_critique_apply", seriesId: 10 });
+    expect(mockProcessTicket).toHaveBeenCalledWith(123);
+  });
+
+  it("sanitizes/truncates title, description, and actualBehavior but leaves expectedBehavior untouched", async () => {
+    await submitVerticalDramaSystemFeedback(
+      baseInput({
+        title: `<script>${"a".repeat(300)}`,
+        description: `<b>${"d".repeat(6000)}`,
+        actualBehavior: `<i>${"e".repeat(3000)}`,
+        expectedBehavior: "raw & unsanitized <ok>",
+      }),
+      mockDb,
+    );
+
+    const values = mockFeedbackInsertValues.mock.calls[0][0] as Record<string, any>;
+    expect(values.title.startsWith("&lt;script&gt;")).toBe(true);
+    expect(values.title.length).toBe(255);
+    expect(values.description.startsWith("&lt;b&gt;")).toBe(true);
+    expect(values.description.length).toBe(5000);
+    expect(values.actualBehavior.startsWith("&lt;i&gt;")).toBe(true);
+    expect(values.actualBehavior.length).toBe(2000);
+    expect(values.expectedBehavior).toBe("raw & unsanitized <ok>"); // NOT sanitized — caller's responsibility.
+  });
+
+  it("never throws even when the DB insert itself fails", async () => {
+    const throwingDb = {
+      insert: vi.fn(() => ({
+        values: vi.fn(() => {
+          throw new Error("db down");
+        }),
+      })),
+    };
+
+    await expect(submitVerticalDramaSystemFeedback(baseInput(), throwingDb)).resolves.toBeUndefined();
+    expect(mockProcessTicket).not.toHaveBeenCalled();
+  });
+
+  it("never throws and skips processTicket when the insert returns no row", async () => {
+    mockFeedbackReturning.mockResolvedValueOnce([]);
+
+    await expect(submitVerticalDramaSystemFeedback(baseInput(), mockDb)).resolves.toBeUndefined();
+    expect(mockProcessTicket).not.toHaveBeenCalled();
   });
 });

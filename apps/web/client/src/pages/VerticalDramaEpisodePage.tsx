@@ -45,6 +45,7 @@ import {
   type VerticalDramaAdBannerPlanView,
   type VerticalDramaFinalRenderOptionsView,
   type VerticalDramaFinalRenderResultView,
+  type VerticalDramaTextOverlayPlanView,
 } from "@/components/verticalDramaSeries/VerticalDramaEpisodeWorkspace";
 import {
   VerticalDramaRepairDialog,
@@ -356,6 +357,22 @@ export function resolveVoiceChainFlagEnabled(
  * than reused — the two flags are independent features).
  */
 export function resolveAdBannerOverlayFlagEnabled(
+  serverFlag: boolean | undefined,
+  tenantFlagFallback: boolean
+): boolean {
+  return serverFlag ?? tenantFlagFallback;
+}
+
+/**
+ * Text Overlay Suite (F131AB, task #34) — prefers the server-resolved
+ * `getEpisodeDetail.flags.textOverlaySuite` (same tenant flag,
+ * `resolveVerticalDramaTextOverlaySuiteFlag` server-side) once it has
+ * loaded; falls back to the direct `useTenantFeatureFlag` read for the
+ * render(s) before `episodeDetailQuery` resolves. Same shape as
+ * `resolveAdBannerOverlayFlagEnabled` above (kept as its own named export —
+ * the two flags are independent features).
+ */
+export function resolveTextOverlaySuiteFlagEnabled(
   serverFlag: boolean | undefined,
   tenantFlagFallback: boolean
 ): boolean {
@@ -1062,6 +1079,7 @@ function EpisodeWorkspaceShell({
   const generateStartFrameImageMutation =
     trpc.verticalDramaEpisodes.generateStartFrameImage.useMutation({
       onSuccess: (data, variables) => {
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
         void pollStartFrameTask(
           data.taskId,
           variables.shotNumber,
@@ -1070,6 +1088,7 @@ function EpisodeWorkspaceShell({
       },
       onError: err => toast.error(err.message),
     });
+
 
   // Multi-angle (3x3 grid) generation — submit + poll like start-frame
   // images, but the result is a single grid URL the panel splits
@@ -3127,6 +3146,77 @@ function EpisodeWorkspaceShell({
       episodeId,
     ]
   );
+
+  /* ---- Text Overlay Suite (F131AB, task #34) — per-episode text-overlay
+   *  plan. Same server-preferred-with-tenant-fallback pattern as
+   *  `adBannerOverlayEnabled` immediately above. ---- */
+  const textOverlaySuiteTenantFlagFallback = useTenantFeatureFlag(
+    "verticalDramaSeriesTextOverlaySuite"
+  );
+  const textOverlaySuiteEnabled = resolveTextOverlaySuiteFlagEnabled(
+    episodeDetailQuery.data?.flags?.textOverlaySuite,
+    textOverlaySuiteTenantFlagFallback
+  );
+  const updateEpisodeTextOverlayPlanMutation =
+    trpc.verticalDramaEpisodes.updateEpisodeTextOverlayPlan.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th" ? "บันทึกข้อความบนวิดีโอแล้ว" : "Text overlays saved."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => {
+        toast.error(
+          err.message ||
+            (lang === "th"
+              ? "บันทึกข้อความบนวิดีโอไม่สำเร็จ"
+              : "Failed to save text overlays.")
+        );
+      },
+    });
+  const textOverlayPlanPanelData = useMemo(
+    () => ({
+      plan: episodeDetailQuery.data?.textOverlayPlan ?? null,
+      preview: episodeDetailQuery.data?.textOverlayPreview ?? null,
+      saving: updateEpisodeTextOverlayPlanMutation.isPending,
+      error: updateEpisodeTextOverlayPlanMutation.error?.message ?? null,
+      onSave: (plan: VerticalDramaTextOverlayPlanView) =>
+        updateEpisodeTextOverlayPlanMutation.mutate({
+          seriesId,
+          episodeId,
+          plan,
+          idempotencyKey: crypto.randomUUID(),
+        }),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      episodeDetailQuery.data?.textOverlayPlan,
+      episodeDetailQuery.data?.textOverlayPreview,
+      updateEpisodeTextOverlayPlanMutation.isPending,
+      updateEpisodeTextOverlayPlanMutation.error?.message,
+      seriesId,
+      episodeId,
+    ]
+  );
+  /** Shot numbers available for the mid-episode card list editor's "which
+   *  shot" picker — sourced from the storyboard (available earlier in the
+   *  pipeline than start frames), same field convention
+   *  (`shots[].shot_number`) every other storyboard reader on this page
+   *  already uses. */
+  const textOverlayShotNumbers = useMemo(() => {
+    const shots = (
+      episodeDetailQuery.data?.storyboard as
+        | { shots?: Array<{ shot_number?: number }> }
+        | null
+        | undefined
+    )?.shots;
+    if (!Array.isArray(shots)) return [];
+    return shots
+      .map(s => s.shot_number)
+      .filter((n): n is number => typeof n === "number")
+      .sort((a, b) => a - b);
+  }, [episodeDetailQuery.data?.storyboard]);
+
   const audioLinePollInFlightRef = useRef<Set<string>>(new Set());
   const resumedAudioLinesRef = useRef<Set<string>>(new Set());
   /** Lines whose most recent poll observed `status === "failed"` (or a
@@ -4257,9 +4347,7 @@ function EpisodeWorkspaceShell({
             // invisible end-to-end, exactly like every other optional
             // selector in this bag that the caller doesn't wire.
             nativeAudioEnabled,
-            onSelectNativeAudioEnabled: nativeAudioPromptsEnabled
-              ? setNativeAudioEnabledOverride
-              : undefined,
+            onSelectNativeAudioEnabled: setNativeAudioEnabledOverride,
             shotReferencesByShot,
             onAddShotReference: handleAddShotReference,
             onRemoveShotReference: handleRemoveShotReference,
@@ -4369,6 +4457,9 @@ function EpisodeWorkspaceShell({
           }}
           adBannerOverlayEnabled={adBannerOverlayEnabled}
           adBannerPlanPanel={adBannerPlanPanelData}
+          textOverlaySuiteEnabled={textOverlaySuiteEnabled}
+          textOverlayPlanPanel={textOverlayPlanPanelData}
+          textOverlayShotNumbers={textOverlayShotNumbers}
           voiceChainEnabled={voiceChainFlagEnabled}
           finalRenderOptionsPanel={{
             value: finalRenderOptions,

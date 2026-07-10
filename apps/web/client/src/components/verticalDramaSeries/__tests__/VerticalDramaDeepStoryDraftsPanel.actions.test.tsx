@@ -24,23 +24,25 @@ let extendResult: {
   chunkSizes: [5],
 };
 
-// Dramaturgy critic (W11.5) — `VerticalDramaSeasonCritiqueCard` is mounted
-// unconditionally at the end of `VerticalDramaDeepStoryDraftsActions` (see
-// that component's own module header), so every render in this file goes
-// through its hooks too (`enabled: false` unless `deepDraftSummary` is
-// passed, so no real fetch fires) — these harmless defaults exist purely so
-// none of the OTHER (pre-W11.5) tests below break. Dedicated behavior tests
-// for the card itself live in `VerticalDramaDeepStoryDraftsPanel.seasonCritique.test.tsx`.
+// "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) —
+// `VerticalDramaImproveScriptCard` is mounted unconditionally at the end of
+// `VerticalDramaDeepStoryDraftsActions` (see that component's own module
+// header), so every render in this file goes through its hooks too
+// (`enabled: false` unless `deepDraftSummary` is passed, so no real fetch
+// fires) — these harmless defaults exist purely so none of the OTHER
+// (pre-existing) tests below break. Dedicated behavior tests for the card
+// itself live in `VerticalDramaDeepStoryDraftsPanel.improveScript.test.tsx`.
 let seasonCritiqueSeriesGetData: unknown = undefined;
-const mockCritiqueMutateAsync = vi.fn();
-const mockApplyCritiqueMutateAsync = vi.fn();
+const mockStartImproveScriptMutateAsync = vi.fn();
+const mockConfirmImproveScriptMutateAsync = vi.fn();
+const mockDiscardImproveScriptMutateAsync = vi.fn();
 
 /** Async story jobs (#28) — the series' active job, as `getActiveStoryJob` would return it. `null` (default, reset in `beforeEach`) means no resume. */
 let activeStoryJobData: { jobId: string; kind: string; status: string; progress: unknown } | null = null;
 
 /**
  * Async story jobs (#28, added 2026-07-08) — `generateStoryBibleDeep`/
- * `extendStoryDraftHorizon`/`critiqueSeasonDrafts`/`applySeasonCritique` now
+ * `extendStoryDraftHorizon`/`startImproveScript` now
  * enqueue (`mutateAsync` resolves with `{ jobId, deduped: false }`
  * immediately) and the component itself polls `getStoryJobStatus.fetch` to
  * completion. This fake resolves EVERY poll to a TERMINAL status on the
@@ -99,20 +101,29 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
-      critiqueSeasonDrafts: {
+      startImproveScript: {
         useMutation: (_opts: unknown) => ({
           mutateAsync: async (input: unknown) => {
-            mockCritiqueMutateAsync(input);
-            return { jobId: "critique-job", deduped: false };
+            mockStartImproveScriptMutateAsync(input);
+            return { jobId: "improve-script-job", deduped: false };
           },
           isPending: false,
         }),
       },
-      applySeasonCritique: {
+      confirmImproveScript: {
         useMutation: (_opts: unknown) => ({
           mutateAsync: async (input: unknown) => {
-            mockApplyCritiqueMutateAsync(input);
-            return { jobId: "apply-job", deduped: false };
+            mockConfirmImproveScriptMutateAsync(input);
+            return { updatedEpisodeNumbers: [] };
+          },
+          isPending: false,
+        }),
+      },
+      discardImproveScript: {
+        useMutation: (_opts: unknown) => ({
+          mutateAsync: async (input: unknown) => {
+            mockDiscardImproveScriptMutateAsync(input);
+            return { ok: true };
           },
           isPending: false,
         }),
@@ -1233,6 +1244,63 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       await waitFor(() => expect(toast.success).toHaveBeenCalledWith("ร่างแล้ว 5 ตอน"));
       await waitFor(() => expect(toast.info).toHaveBeenCalledTimes(1));
       expect(toast.warning).not.toHaveBeenCalled();
+    });
+  });
+
+  /* ---------------------------------------------------------------------- */
+  /* User Premise read-only preview (F132A, section-02)                     */
+  /* ---------------------------------------------------------------------- */
+  describe("read-only premise preview (F132A)", () => {
+    it("renders no preview when userPremise is absent", () => {
+      render(
+        <VerticalDramaDeepStoryDraftsActions
+          lang="th"
+          seriesId="10"
+          readOnly={false}
+          targetEpisodeCount={10}
+          hasPlan={false}
+          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
+        />,
+      );
+      expect(screen.queryByTestId("vd-deep-story-drafts-premise-preview")).not.toBeInTheDocument();
+    });
+
+    it("renders the premise text and an edit-affordance link when userPremise is present", () => {
+      const onEditPremiseClick = vi.fn();
+      render(
+        <VerticalDramaDeepStoryDraftsActions
+          lang="th"
+          seriesId="10"
+          readOnly={false}
+          targetEpisodeCount={10}
+          hasPlan={false}
+          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
+          userPremise="ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล"
+          onEditPremiseClick={onEditPremiseClick}
+        />,
+      );
+      const preview = screen.getByTestId("vd-deep-story-drafts-premise-preview");
+      expect(preview).toHaveTextContent("ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล");
+
+      fireEvent.click(screen.getByRole("button", { name: /แก้ไขที่การตั้งค่าซีรีย์/ }));
+      expect(onEditPremiseClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("renders no edit-affordance link when onEditPremiseClick is not provided", () => {
+      render(
+        <VerticalDramaDeepStoryDraftsActions
+          lang="th"
+          seriesId="10"
+          readOnly={false}
+          targetEpisodeCount={10}
+          hasPlan={false}
+          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
+          userPremise="โจทย์ไม่มีลิงก์แก้ไข"
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /แก้ไขที่การตั้งค่าซีรีย์/ }),
+      ).not.toBeInTheDocument();
     });
   });
 });

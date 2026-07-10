@@ -143,6 +143,16 @@ describe("resolveCharacterRoleTier", () => {
     expect(resolveCharacterRoleTier(role)).toBe(expected);
   });
 
+  it("maps generic lead with female/mother indicator (e.g. แม่ ตัวเอก) to lead_female", () => {
+    expect(resolveCharacterRoleTier("แม่ ตัวเอก")).toBe("lead_female");
+    expect(resolveCharacterRoleTier("ตัวเอก", "หญิงสาววัย 25 ปี")).toBe("lead_female");
+  });
+
+  it("maps generic lead with male indicator to lead_male", () => {
+    expect(resolveCharacterRoleTier("พ่อ ตัวเอก")).toBe("lead_male");
+    expect(resolveCharacterRoleTier("ตัวเอก", "ชายหนุ่มวัย 28 ปี")).toBe("lead_male");
+  });
+
   it.each([
     ["ตัวร้าย", "villain"],
     ["วายร้าย", "villain"],
@@ -315,6 +325,7 @@ describe("getRoleTierAppearanceDirective", () => {
   it("returns the modern heroine archetype directive for female lead roles (นางเอก)", () => {
     const directive = getRoleTierAppearanceDirective("นางเอก");
     expect(directive).toBeDefined();
+    expect(directive).toMatch(/Warm natural lighting/i);
     expect(directive).toMatch(/emotionally magnetic/i);
     expect(directive).toMatch(/natural beauty/i);
     expect(directive).toMatch(/expressive eyes capable of tears/i);
@@ -325,6 +336,7 @@ describe("getRoleTierAppearanceDirective", () => {
   it("returns the modern male-lead archetype directive for male lead roles (พระเอก)", () => {
     const directive = getRoleTierAppearanceDirective("พระเอก");
     expect(directive).toBeDefined();
+    expect(directive).toMatch(/Warm natural lighting/i);
     expect(directive).toMatch(/cold-ceo energy/i);
     expect(directive).toMatch(/quiet dominance/i);
     expect(directive).toMatch(/hidden pain/i);
@@ -334,6 +346,7 @@ describe("getRoleTierAppearanceDirective", () => {
   it("returns a merged neutral directive for gender-ambiguous lead roles", () => {
     const directive = getRoleTierAppearanceDirective("ตัวเอก");
     expect(directive).toBeDefined();
+    expect(directive).toMatch(/Warm natural lighting/i);
     expect(directive).toMatch(/emotionally magnetic/i);
     expect(directive).toMatch(/gender-neutral/i);
   });

@@ -17,6 +17,24 @@ tags:
   - motion-prompt
   - veo
   - assembly
+trigger_patterns: []
+priority: 50
+config:
+  media_studio:
+    auto_learning:
+      enabled: false
+      prompt_qa_after_auto_prompt: true
+      image_qa_after_generation: true
+      require_admin_approval: true
+      min_prompt_score_to_pass: 85
+      min_image_fidelity_score_to_pass: 80
+      max_auto_patch_risk: medium
+  orchestration:
+    mode: local
+    endpoint: null
+    skillTargets: []
+    parallel: false
+    fallback: local
 ---
 # Vertical Drama Video Motion Prompt Pack
 
@@ -27,6 +45,26 @@ This skill does not auto-trigger. The Vertical Drama episode pipeline invokes it
 Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form prose is
 allowed only inside explicitly named string fields (e.g. `human_summary`, `notes`,
 `dialogue_line`, `final_prompt`, `revision_instruction`).
+
+## Language — MANDATORY
+
+The caller tells you two independent language settings for this episode:
+
+1. **PROMPT LANGUAGE** — the language every `video_clip_requests[].prompt`
+   and `negative_motion_prompt` must be WRITTEN IN (the motion/acting/camera
+   direction prose). Defaults to English when the caller does not specify
+   one. Write EVERY word of these fields in this language, regardless of what
+   language the dialogue is in.
+2. **SPEECH LANGUAGE** — the language the character(s) SPEAK in the video.
+   Defaults to Thai when the caller does not specify one. Supported values:
+   Thai, English, Chinese, Japanese, Korean, Spanish, Portuguese, Indonesian,
+   Vietnamese, Hindi, and Arabic. Any literal quoted dialogue embedded in a
+   clip's prompt (native-audio provider variants) or returned as a dialogue
+   line must be natural, native-register speech in this language
+   (adapted/translated naturally — never word-for-word — if the incoming
+   shot/dialogue context is in a different language; never leave a spoken
+   line in the wrong language). This generalizes the "natural spoken Thai"
+   dialogue-quality bar to whichever speech language the caller selects.
 
 ## Weave delivery + acting direction into every clip prompt — MANDATORY
 
@@ -48,6 +86,33 @@ is a FAILED clip. Concretely:
    storyboard's sharper camera language (fast push-in / whip cut rhythm) and make
    the acting direction show the power shift landing — e.g. one character's
    composure visibly cracking as the other's steadies.
+
+## Every clip's prompt must be unique — MANDATORY
+
+`video_clip_requests[].prompt` MUST be a DIFFERENT string for every clip in the
+array, even when consecutive clips share a character, location, or a dialogue
+line that spans multiple shots (a spoken line continuing across shots is
+common and expected — copying the SAME motion-prompt text onto more than one
+clip is NOT). Each clip's prompt must describe that clip's own distinct
+camera movement, blocking change, and performance beat, derived from its own
+`source_shot_numbers`' visual description, so no two clips ever end up
+readable as duplicates of each other. Never reuse a previous clip's `prompt`
+string verbatim as a shortcut, even when you are unsure what changed between
+shots — invent the smallest plausible motion/performance delta instead of
+repeating text.
+
+## Prompt length limit — MANDATORY
+
+Every `video_clip_requests[].prompt` MUST be **2000 characters or fewer**,
+INCLUDING any embedded dialogue/delivery/acting direction text (the final
+prompt sent to the provider folds this content into the base motion prompt —
+write with that combined budget in mind, not just the camera-movement text
+alone). Prioritize (in order): camera movement + performance beat, delivery
+direction for embedded dialogue, facial/body continuity detail — compress or
+drop the least story-critical detail first if the full description would
+exceed the limit. A downstream quality-control pass will refine/compress any
+prompt that is still over the limit, but a well-written motion prompt should
+not rely on that fallback.
 
 ## Provider request variants
 

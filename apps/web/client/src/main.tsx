@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/react";
 import { assertJsonApiResponse } from "@/lib/apiResponseDiagnostics";
+import * as systemErrorMonitor from "@/lib/systemErrorMonitor";
 import { trpc } from "@/lib/trpc";
 import { getPrivateVaultAccessToken } from "@/lib/privateVault";
 import { getProtectedSurfaceAccessToken } from "@/lib/protectedSurface";
@@ -452,11 +453,31 @@ const redirectToLoginIfUnauthorized = async (error: unknown) => {
   }, 1500);
 };
 
+// Derives a dotted tRPC procedure path (e.g. "media.generate") from a
+// @trpc/react-query queryKey/mutationKey, whose first element is the path
+// segments array. Returns undefined for shapes that don't match (e.g.
+// plain non-tRPC React Query keys) rather than guessing.
+function deriveTrpcPathFromKey(key: unknown): string | undefined {
+  if (!Array.isArray(key) || key.length === 0) return undefined;
+  const pathSegments = key[0];
+  if (
+    Array.isArray(pathSegments)
+    && pathSegments.every(segment => typeof segment === "string")
+  ) {
+    return pathSegments.join(".");
+  }
+  return undefined;
+}
+
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     void redirectToLoginIfUnauthorized(error);
     console.error("[API Query Error]", error);
+    systemErrorMonitor.handleError(
+      error,
+      deriveTrpcPathFromKey(event.query.queryKey),
+    );
   }
 });
 
@@ -465,6 +486,10 @@ queryClient.getMutationCache().subscribe(event => {
     const error = event.mutation.state.error;
     void redirectToLoginIfUnauthorized(error);
     console.error("[API Mutation Error]", error);
+    systemErrorMonitor.handleError(
+      error,
+      deriveTrpcPathFromKey(event.mutation.options.mutationKey),
+    );
   }
 });
 
@@ -504,6 +529,14 @@ const trpcClient = trpc.createClient({
           headers,
           credentials: "include",
         });
+          if (!response.ok) {
+            try {
+              const requestId = response.headers.get("X-Request-ID");
+              if (requestId) systemErrorMonitor.noteRequestId(requestId);
+            } catch {
+              // Diagnostics capture must never break the request path.
+            }
+          }
           await assertJsonApiResponse(response, requestUrl);
           if (debugTrpcFetch) {
             console.log("[tRPC Response]", {

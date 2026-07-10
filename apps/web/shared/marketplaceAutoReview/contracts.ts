@@ -4,6 +4,23 @@ import { ProductionAgentsSdkCapabilityManifestSchema as AgentRuntimeProductionAg
 export const MARKETPLACE_AUTO_REVIEW_CONTRACT_VERSION =
   "marketplace_auto_review_v2";
 
+/**
+ * Curated fallback list of vision-capable LLM model ids for the Auto Review
+ * "Vision QA model" override dropdown. Used only when
+ * `llmProviders.availableModels` has no enabled models to offer (e.g. fresh
+ * deployments before any provider is configured). Prefer the live endpoint
+ * whenever it returns models, since vision-capable model availability
+ * changes frequently.
+ */
+export const MARKETPLACE_AUTO_REVIEW_CURATED_VISION_QA_MODELS = [
+  "gpt-4o-mini",
+  "gpt-4o",
+  "gpt-5.4-nano",
+  "gpt-5.4-mini",
+  "gemini-2.5-flash",
+  "gemini-3-flash",
+] as const;
+
 export const MARKETPLACE_AUTO_REVIEW_STAGE_KEYS = [
   "product_preflight",
   "production_project",

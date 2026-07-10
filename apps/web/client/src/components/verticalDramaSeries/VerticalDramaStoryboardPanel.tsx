@@ -313,8 +313,8 @@ export interface VerticalDramaClipDialogueLineView {
  *  keeps parsing/rendering unchanged (flags-off byte-identical). */
 export interface VerticalDramaQualityReviewView {
   episode_title?: string;
-  /** `1` (default/legacy) or `2` — absent means v1. */
-  contract_version?: 1 | 2;
+  /** `1` (default/legacy), `2`, or Feature 132 scorecard v3 — absent means v1. */
+  contract_version?: 1 | 2 | 3;
   scorecard: {
     reversal_count: number;
     reversal_sharpness: number;
@@ -327,6 +327,10 @@ export interface VerticalDramaQualityReviewView {
     cliffhanger_strength?: number | null;
     continuity_consistency?: number | null;
     tie_in_naturalness?: number | null;
+    clarity?: number | null;
+    character_consistency?: number | null;
+    evidence_payoff?: number | null;
+    threat_escalation?: number | null;
   };
   summary?: string;
   /** v2 superset — short qualitative note supporting `tie_in_naturalness`. */
@@ -1885,7 +1889,7 @@ export function VerticalDramaStoryboardPanel({
                 audio. Default ON while visible per the owner's brief; the
                 caller sends the current value along with every
                 `generateShotVideoPrompt` call. */}
-              {onSelectNativeAudioEnabled && selectedVideoModel?.supportsNativeAudio ? (
+              {onSelectNativeAudioEnabled ? (
                 <label
                   className="flex flex-col items-start gap-1 rounded-md border border-border bg-background px-3 py-2 text-left"
                   data-testid="vd-storyboard-native-audio-toggle"
@@ -1906,7 +1910,7 @@ export function VerticalDramaStoryboardPanel({
             <p className="text-xs text-muted-foreground">
               {t2.modelChangeNote}
             </p>
-            {onSelectNativeAudioEnabled && selectedVideoModel?.supportsNativeAudio ? (
+            {onSelectNativeAudioEnabled ? (
               <p
                 className="text-xs text-muted-foreground"
                 data-testid="vd-storyboard-native-audio-hint"

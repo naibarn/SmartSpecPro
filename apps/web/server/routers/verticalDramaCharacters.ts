@@ -33,6 +33,7 @@ import {
   mediaAssets,
   mediaModels,
   libraryItems,
+  apiAuditEvents,
   type VerticalDramaCharacterRow,
 } from "../../drizzle/schema";
 import {
@@ -49,6 +50,7 @@ import {
   generateCharacterVisualPrompts,
   InsufficientCreditsError,
   VdSchemaValidationError,
+  readPresetVisualIdentityFromBible,
 } from "../services/verticalDramaCharacterImageGeneration";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
@@ -58,6 +60,29 @@ import { normalizeMcpProviderModelIdForProvider } from "../services/mcpProviderM
 import { resolveMcpRouteFromModelId, defaultMcpArgumentShape } from "../services/mcpModelRouteResolver";
 import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
 import { getModelsByTypeAsync } from "../services/modelRegistry";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+// W12-A voice chain note: `listVoiceCatalog` below reuses the EXACT
+// server-side voice-option resolution `media.listModelFieldOptions` already
+// implements (dynamic UVoice/provider-API fetch with its own module-level
+// cache, merged with static field options) via a real in-process tRPC caller
+// into `./media`'s already-exported `mediaRouter` — never a duplicated
+// network-calling/caching implementation, and `media.ts` is never modified by
+// this router. Imported with a DYNAMIC `import()` INSIDE that procedure
+// (never a static top-level import) — `media.ts`'s own module graph pulls in
+// `enabledLlmModels.ts` -> `llmProviders.ts`'s `adminProcedure`, which this
+// file's existing minimal-mock test suites (`modelSelection.test.ts`,
+// `extractDescription.test.ts`) do not export; a static import would break
+// them the moment this file loads. Same "dynamic import, never static"
+// convention `verticalDramaEpisodes.ts` already documents for the identical
+// problem (see that file's Wave-7D `scriptCoverageDetail` doc comment).
+import { sanitizeSpeakableLineForDelivery } from "@shared/verticalDramaSeries/dialogueQuality";
+import { debugError } from "../_core/logger";
+import {
+  verticalDramaCharacterVoiceConfigInputSchema,
+  type VerticalDramaCharacterVoiceConfig,
+  type VerticalDramaVoiceCatalogEntry,
+} from "@shared/verticalDramaSeries/voiceCasting";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                          */
@@ -65,6 +90,20 @@ import { getModelsByTypeAsync } from "../services/modelRegistry";
 
 const verticalDramaProcedure = protectedProcedure.use(
   requireFeatureFlag("verticalDramaSeries"),
+);
+
+/**
+ * Base procedure for the voice-casting/voice-chain procedures (W12-A, spec
+ * feature 131 addendum): the base `verticalDramaSeries` gate PLUS the
+ * dedicated `verticalDramaSeriesVoiceChain` flag — mirrors
+ * `verticalDramaSeries.ts`'s established "chain a second, feature-specific
+ * `requireFeatureFlag` middleware" convention (see
+ * `verticalDramaDeepStoryDraftsProcedure`/`verticalDramaArcReplanProcedure`
+ * there). Flags-off byte-identical: these are brand-new procedures, so "off"
+ * means the procedure throws FORBIDDEN before any handler code runs at all.
+ */
+const verticalDramaVoiceChainProcedure = verticalDramaProcedure.use(
+  requireFeatureFlag("verticalDramaSeriesVoiceChain"),
 );
 
 /** Resolve a non-null tenant id or fail closed. */
@@ -128,6 +167,26 @@ async function loadOwnedCharacter(
     .limit(1);
   if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Character not found" });
   return row;
+}
+
+/**
+ * Resolves the series' stamped preset visual identity for character-prompt
+ * flow-through (spec §8.2.2 flow-through rule, section-15 change D) —
+ * flag-gated: returns `undefined` (no flow-through, legacy-tolerant
+ * behavior) unless the tenant has `verticalDramaSeriesPresetMixV2` enabled.
+ * `generateCharacterVisualPrompts`/`buildUserPrompt` in
+ * `verticalDramaCharacterImageGeneration.ts` do NOT know about feature
+ * flags themselves (same convention as every other flag-gated field on this
+ * router) — this is the ONE place the flag is consulted for all 4
+ * generation call sites below.
+ */
+async function resolveCharacterPresetVisualIdentity(
+  tenantId: string,
+  bible: Record<string, unknown> | null,
+): Promise<VerticalDramaPresetVisualIdentity | undefined> {
+  const flags = await getTenantFeatureFlags(tenantId);
+  if (flags.verticalDramaSeriesPresetMixV2 !== true) return undefined;
+  return readPresetVisualIdentityFromBible(bible);
 }
 
 /**
@@ -318,7 +377,15 @@ export function extractCharacterDescription(data: Record<string, unknown> | null
 }
 
 /** Browser-safe projection of a character roster row (never leaks internal ids as numbers). */
-function characterRowToDto(row: VerticalDramaCharacterRow) {
+/**
+ * `includeVoiceConfig` (W12-A, default `false`) — only set `true` by callers
+ * that already confirmed the tenant's `verticalDramaSeriesVoiceChain` flag is
+ * on (see `resolveVerticalDramaVoiceChainFlag`). Gating it here, not just on
+ * the DB column being null, keeps read payloads flags-off byte-identical even
+ * in the edge case where a tenant had the flag on, cast a character, then had
+ * it turned back off — the field simply stops being surfaced.
+ */
+function characterRowToDto(row: VerticalDramaCharacterRow, options: { includeVoiceConfig?: boolean } = {}) {
   return {
     characterId: String(row.id),
     seriesId: String(row.seriesId),
@@ -328,7 +395,140 @@ function characterRowToDto(row: VerticalDramaCharacterRow) {
     data: (row.data as Record<string, unknown> | null) ?? undefined,
     createdAt: (row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt)).toISOString(),
     updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
+    ...(options.includeVoiceConfig
+      ? { voiceConfig: (row.voiceConfig as VerticalDramaCharacterVoiceConfig | null) ?? undefined }
+      : {}),
   };
+}
+
+/** Resolve the `verticalDramaSeriesVoiceChain` tenant flag (W12-A) — same
+ *  "one focused helper per flag-group" convention as
+ *  `verticalDramaEpisodes.ts`'s `resolveVerticalDramaDeepStoryDraftsFlag`.
+ *  Optional chaining fails closed for any pre-existing test that mocks
+ *  `getTenantFeatureFlags` as a bare `vi.fn()`. */
+async function resolveVerticalDramaVoiceChainFlag(tenantId: string): Promise<boolean> {
+  const flags = await getTenantFeatureFlags(tenantId);
+  return flags?.verticalDramaSeriesVoiceChain === true;
+}
+
+/* -------------------------------------------------------------------------- */
+/* W12-A voice chain helpers                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Best-effort audit record for a voice-casting/voice-chain action. Written to
+ * the cross-cutting `api_audit_events` table — same "best-effort DB insert,
+ * never throws" convention as `verticalDramaSeries.ts`'s
+ * `recordDeepStoryDraftAuditEvent` (see that function's own doc comment for
+ * the full rationale). NEVER throws — a failed audit write must not fail the
+ * user-facing mutation.
+ */
+async function recordVoiceChainAuditEvent(params: {
+  eventType: "vertical_drama_voice_cast" | "vertical_drama_voice_preview";
+  endpoint: string;
+  userId: number;
+  seriesId: number;
+  characterId: number;
+  creditsCharged?: number;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  try {
+    await db.insert(apiAuditEvents).values({
+      traceId: crypto.randomUUID().replace(/-/g, "").slice(0, 32),
+      eventType: params.eventType,
+      userId: params.userId,
+      endpoint: `verticalDramaCharacters.${params.endpoint}`,
+      statusCode: 200,
+      skillSlug: "vertical-drama-voice-chain",
+      creditsCharged: Math.round(params.creditsCharged ?? 0),
+      metadata: {
+        seriesId: params.seriesId,
+        characterId: params.characterId,
+        ...(params.metadata ?? {}),
+      },
+    });
+  } catch (error) {
+    debugError("verticalDramaCharacters.voiceChain", "Failed to record voice chain audit event", error);
+  }
+}
+
+/** The subset of a media model's `configJson.inputFields[n]` entry needed to
+ *  detect the voice picker field — mirrors the SAME subset
+ *  `VerticalDramaSeriesTrailerPanel.tsx`'s (client-only) `ModelInputFieldConfig`
+ *  reads, reimplemented here server-side since that component's helpers are
+ *  not exported/shared. */
+interface VoiceCatalogInputFieldConfig {
+  key?: string;
+  options?: unknown;
+  optionsSource?: { valueField?: string; previewField?: string };
+}
+
+/**
+ * Detect whether a model input field is "the voice picker" — same rule as
+ * the trailer panel's `isVoiceSelectionField`: a field counts when its
+ * provider-API options source targets `voice_id`/`preview_url`, OR its
+ * (normalized) key is `voice`, `voiceid`, or `voiceidN` (matches UVoice's
+ * `voiceID` key, not just the literal string `"voice"`).
+ */
+function isVoiceCatalogField(field: VoiceCatalogInputFieldConfig | null | undefined): boolean {
+  if (!field || typeof field !== "object") return false;
+  const source = field.optionsSource;
+  if (source && typeof source === "object") {
+    const valueField = String(source.valueField ?? "").trim().toLowerCase();
+    const previewField = String(source.previewField ?? "").trim().toLowerCase();
+    if (valueField === "voice_id" || previewField === "preview_url") return true;
+  }
+  const normalizedKey = String(field.key ?? "").trim().toLowerCase().replace(/[_\-\s]/g, "");
+  return normalizedKey === "voice" || normalizedKey === "voiceid" || /^voiceid\d+$/.test(normalizedKey);
+}
+
+/** Resolve which `configJson.inputFields[]` key is the voice picker for a
+ *  model, or `undefined` when the model has no dynamic/static voice field
+ *  (e.g. models that only expose a flat `voices` column). */
+function resolveVoiceCatalogFieldKey(configJson: Record<string, unknown> | null | undefined): string | undefined {
+  const inputFields = Array.isArray(configJson?.inputFields)
+    ? (configJson!.inputFields as VoiceCatalogInputFieldConfig[])
+    : [];
+  return inputFields.find((field) => isVoiceCatalogField(field))?.key;
+}
+
+/**
+ * Best-effort `{language, ageTag}` extraction from a voice option label —
+ * e.g. UVoice's `"th - ปอร์เช่ (Adult)"` -> `{language: "th", ageTag: "Adult"}`.
+ * Returns an empty object when the label doesn't encode either; no source
+ * this catalog reads from currently publishes an explicit `gender` field, so
+ * `VerticalDramaVoiceCatalogEntry.gender` is always left unset here — it
+ * exists on the shared type for forward compatibility only.
+ */
+function parseVoiceCatalogLabelMetadata(label: string): { language?: string; ageTag?: string } {
+  const languageMatch = /^([a-z]{2})\s*-\s*/i.exec(label);
+  const ageTagMatch = /\(([^()]+)\)\s*$/.exec(label);
+  return {
+    language: languageMatch?.[1]?.toLowerCase(),
+    ageTag: ageTagMatch?.[1]?.trim(),
+  };
+}
+
+/** Fixed Thai self-introduction sample line for `previewCharacterVoice` when
+ *  the caller doesn't supply `sampleText` — always includes the character's
+ *  name so the preview is recognizably about THIS character. */
+function buildFixedThaiVoicePreviewSample(characterName: string): string {
+  return `สวัสดีค่ะ ฉันคือ ${characterName} ยินดีที่ได้รู้จักนะคะ`;
+}
+
+/** Resolve the audio model's pricing row for credit calculation, falling back
+ *  to the same `{creditCost: 10, configJson: null}` default this router
+ *  already uses for image models when the row is missing (e.g. a stale/
+ *  deleted model id). */
+async function resolveAudioModelPricing(
+  voiceModelId: string,
+): Promise<{ creditCost: number; configJson: Record<string, unknown> | null }> {
+  const [pricingRow] = await db
+    .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+    .from(mediaModels)
+    .where(eq(mediaModels.modelId, voiceModelId))
+    .limit(1);
+  return pricingRow ?? { creditCost: 10, configJson: null };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -375,7 +575,15 @@ export const verticalDramaCharactersRouter = router({
         seriesId,
       });
 
-      return { characters: rows.map(characterRowToDto), manifest };
+      // W12-A — additive `voiceConfig` field, flag-gated (see
+      // `characterRowToDto`'s own doc comment for the byte-identical rationale).
+      const voiceChainEnabled = await resolveVerticalDramaVoiceChainFlag(tenantId);
+      return {
+        characters: rows.map((row: VerticalDramaCharacterRow) =>
+          characterRowToDto(row, { includeVoiceConfig: voiceChainEnabled }),
+        ),
+        manifest,
+      };
     }),
 
   /**
@@ -460,7 +668,16 @@ export const verticalDramaCharactersRouter = router({
         )
         .returning();
 
-      return { character: characterRowToDto(row as VerticalDramaCharacterRow) };
+      // W12-A — additive `voiceConfig` field, flag-gated (see
+      // `characterRowToDto`'s own doc comment). `updateCharacter` returns the
+      // full up-to-date character, so a caller relying on this response to
+      // refresh its cache must still see an existing casting after an
+      // unrelated name/role edit — `createCharacter` (a fresh insert, never
+      // cast yet) intentionally skips this extra flag lookup.
+      const voiceChainEnabled = await resolveVerticalDramaVoiceChainFlag(tenantId);
+      return {
+        character: characterRowToDto(row as VerticalDramaCharacterRow, { includeVoiceConfig: voiceChainEnabled }),
+      };
     }),
 
   /**
@@ -792,6 +1009,10 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+        tenantId,
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
@@ -812,6 +1033,7 @@ export const verticalDramaCharactersRouter = router({
             ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
             : undefined,
           targetAudienceRegion,
+          presetVisualIdentity,
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -916,6 +1138,10 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+        tenantId,
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
@@ -950,6 +1176,7 @@ export const verticalDramaCharactersRouter = router({
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
               : undefined,
             targetAudienceRegion,
+            presetVisualIdentity,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1175,6 +1402,10 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+        tenantId,
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
@@ -1211,6 +1442,7 @@ export const verticalDramaCharactersRouter = router({
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
               : undefined,
             targetAudienceRegion,
+            presetVisualIdentity,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1411,6 +1643,10 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
+        tenantId,
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
 
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
@@ -1455,6 +1691,7 @@ export const verticalDramaCharactersRouter = router({
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
               : undefined,
             targetAudienceRegion,
+            presetVisualIdentity,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1608,6 +1845,280 @@ export const verticalDramaCharactersRouter = router({
         visualBibleSummary,
         creditsUsed: { promptGeneration: promptCreditsUsed },
       };
+    }),
+
+  /* ------------------------------------------------------------------------ */
+  /* W12-A voice chain — per-character voice casting                          */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * Lock (or clear, `voiceConfig: null`) a character's voice casting. No
+   * paid generation — a plain metadata write, mirroring `updateCharacter`'s
+   * ownership-scoped read-modify-write convention. `lockedAt`/`lockedByUserId`
+   * are ALWAYS server-stamped from request context, never taken from client
+   * input (see `verticalDramaCharacterVoiceConfigInputSchema`, which omits
+   * both fields from what the client can even send).
+   */
+  setCharacterVoiceConfig: verticalDramaVoiceChainProcedure
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        voiceConfig: verticalDramaCharacterVoiceConfigInputSchema.nullable(),
+        idempotencyKey: z.string().trim().min(1).max(128).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+
+      const nextVoiceConfig: VerticalDramaCharacterVoiceConfig | null = input.voiceConfig
+        ? { ...input.voiceConfig, lockedAt: new Date().toISOString(), lockedByUserId: userId }
+        : null;
+
+      const [row] = await db
+        .update(verticalDramaCharacters)
+        .set({ voiceConfig: nextVoiceConfig, updatedAt: new Date() })
+        .where(
+          and(
+            eq(verticalDramaCharacters.id, characterId),
+            eq(verticalDramaCharacters.tenantId, tenantId),
+            eq(verticalDramaCharacters.userId, userId),
+            eq(verticalDramaCharacters.seriesId, seriesId),
+          ),
+        )
+        .returning();
+
+      await recordVoiceChainAuditEvent({
+        eventType: "vertical_drama_voice_cast",
+        endpoint: "setCharacterVoiceConfig",
+        userId,
+        seriesId,
+        characterId,
+        metadata: {
+          cleared: nextVoiceConfig === null,
+          voiceModelId: nextVoiceConfig?.voiceModelId ?? null,
+          voiceId: nextVoiceConfig?.voiceId ?? null,
+          idempotencyKey: input.idempotencyKey ?? null,
+        },
+      });
+
+      return {
+        character: characterRowToDto(row as VerticalDramaCharacterRow, { includeVoiceConfig: true }),
+      };
+    }),
+
+  /**
+   * Flattened voice catalog for the series' voice-casting picker. Reuses the
+   * EXACT machinery the series-trailer voice picker uses — the `mediaModels`
+   * table (`modelType: "audio"`, enabled only) for the model list, then
+   * `media.listModelFieldOptions` (via a real in-process tRPC caller into the
+   * already-exported `mediaRouter` — never a duplicated network-fetch/caching
+   * implementation) for each model's dynamic-or-static voice options, exactly
+   * as `VerticalDramaSeriesTrailerPanel.tsx`'s `voiceOptionsQuery` does
+   * client-side. Falls back to the model's own flat `voices` column when
+   * neither a voice field nor dynamic options are found (the SAME final
+   * fallback tier that panel's `modelVoicesColumnOptions` uses — e.g. Gemini
+   * TTS models that expose no dynamic voice field at all). Read-only.
+   */
+  listVoiceCatalog: verticalDramaVoiceChainProcedure
+    .input(seriesScope)
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const models = await db
+        .select({
+          modelId: mediaModels.modelId,
+          voices: mediaModels.voices,
+          configJson: mediaModels.configJson,
+        })
+        .from(mediaModels)
+        .where(and(eq(mediaModels.modelType, "audio"), eq(mediaModels.isEnabled, true)));
+
+      const { mediaRouter } = await import("./media");
+      const caller = mediaRouter.createCaller(ctx);
+      const voices: VerticalDramaVoiceCatalogEntry[] = [];
+
+      for (const model of models) {
+        const fieldKey = resolveVoiceCatalogFieldKey(model.configJson as Record<string, unknown> | null);
+        let options: Array<{ value: string; label: string; previewUrl?: string }> = [];
+        if (fieldKey) {
+          try {
+            const result = await caller.listModelFieldOptions({
+              modelId: model.modelId,
+              fieldKey,
+              limit: 500,
+            });
+            options = result.options;
+          } catch (error) {
+            // One model's dynamic voice-option fetch (e.g. a transient
+            // network error reaching a provider) must never break the whole
+            // catalog — fall through to the static `voices` column below.
+            debugError("verticalDramaCharacters.listVoiceCatalog", "Voice option fetch failed", error);
+          }
+        }
+        if (options.length === 0 && Array.isArray(model.voices) && model.voices.length > 0) {
+          options = (model.voices as string[]).map((voice) => ({ value: voice, label: voice }));
+        }
+
+        for (const option of options) {
+          const { language, ageTag } = parseVoiceCatalogLabelMetadata(option.label);
+          voices.push({
+            voiceModelId: model.modelId,
+            voiceId: option.value,
+            label: option.label,
+            ...(language ? { language } : {}),
+            ...(ageTag ? { ageTag } : {}),
+            ...(option.previewUrl ? { previewUrl: option.previewUrl } : {}),
+          });
+        }
+      }
+
+      return { voices };
+    }),
+
+  /**
+   * Paid, credit-gated preview of a candidate (or already-cast) voice —
+   * synthesizes a short sample line so the caller can hear a voice before
+   * locking it in. Submitted via the SAME async submit -> `media.getTask`
+   * poll -> credit reserve/reconcile machinery every other paid generation
+   * mutation in this router uses (`mediaGenerationService.generateAudioAsync`
+   * directly — never `media.ts`'s own procedures, same convention as
+   * `generateCharacterImage`/`generateCharacterTurnaround`/
+   * `generateCharacterSheet` above). Never persists anything — `voiceConfig`
+   * here is a candidate to audition, not a cast (`setCharacterVoiceConfig` is
+   * the separate, explicit lock action).
+   */
+  previewCharacterVoice: verticalDramaVoiceChainProcedure
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        voiceConfig: verticalDramaCharacterVoiceConfigInputSchema.optional(),
+        sampleText: z.string().trim().max(120).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+
+      // Caller-supplied candidate voiceConfig takes priority (auditioning a
+      // NOT-YET-cast voice); falls back to the character's already-locked
+      // casting so "preview the current cast voice" needs no extra input.
+      const candidateVoiceConfig: Partial<VerticalDramaCharacterVoiceConfig> | undefined =
+        input.voiceConfig ??
+        ((character.voiceConfig as VerticalDramaCharacterVoiceConfig | null) ?? undefined);
+
+      if (!candidateVoiceConfig?.voiceModelId || !candidateVoiceConfig?.voiceId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "No voice configuration to preview — cast this character first, or supply a voiceConfig to audition.",
+        });
+      }
+
+      const sampleText = input.sampleText
+        ? sanitizeSpeakableLineForDelivery(input.sampleText).slice(0, 120)
+        : buildFixedThaiVoicePreviewSample(character.name);
+
+      const pricingModel = await resolveAudioModelPricing(candidateVoiceConfig.voiceModelId);
+      const creditCost = calculateCreditCost(pricingModel, { text: sampleText });
+
+      // Zero-cost models skip reserve/refund entirely — same convention as
+      // `generateCharacterImage`'s matching comment.
+      const shouldChargeCredits = creditCost > 0;
+      if (shouldChargeCredits) {
+        const hasCredits = await hasEnoughCredits(userId, creditCost);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for voice preview. Required: ${creditCost}`,
+          });
+        }
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: creditCost,
+          description: `Vertical Drama — character voice preview (character #${characterId}, reserved)`,
+          sourceType: "media_audio",
+          metadata: {
+            feature: "vertical_drama_character_voice_preview",
+            seriesId,
+            characterId,
+            type: "reservation",
+            creditCost,
+            modelId: candidateVoiceConfig.voiceModelId,
+          },
+        });
+      }
+
+      const userToken = getCharacterPortraitUserToken(ctx);
+      let task;
+      try {
+        task = await mediaGenerationService.generateAudioAsync(
+          {
+            text: sampleText,
+            model: candidateVoiceConfig.voiceModelId,
+            voice: candidateVoiceConfig.voiceId,
+            publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId,
+              traceId: crypto.randomUUID(),
+              source: "trpc.verticalDramaCharacters.previewCharacterVoice",
+              stage: "submission",
+            },
+          },
+          userToken,
+        );
+      } catch (err) {
+        if (shouldChargeCredits) {
+          await refundCredits({
+            userId,
+            amount: creditCost,
+            description: `Refund: character voice preview failed to submit (character #${characterId})`,
+            sourceType: "media_audio",
+            metadata: { feature: "vertical_drama_character_voice_preview", seriesId, characterId },
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Character voice preview failed to submit",
+        });
+      }
+
+      await recordVoiceChainAuditEvent({
+        eventType: "vertical_drama_voice_preview",
+        endpoint: "previewCharacterVoice",
+        userId,
+        seriesId,
+        characterId,
+        creditsCharged: creditCost,
+        metadata: {
+          voiceModelId: candidateVoiceConfig.voiceModelId,
+          voiceId: candidateVoiceConfig.voiceId,
+          sampleTextLength: sampleText.length,
+          taskId: task.id,
+        },
+      });
+
+      return { taskId: task.id, creditCost };
     }),
 });
 

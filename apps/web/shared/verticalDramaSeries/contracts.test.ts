@@ -119,9 +119,12 @@ describe("sub-shot decomposition (spec §7.4)", () => {
 });
 
 describe("memory contracts (spec §7.6)", () => {
-  it("enumerates all nine memory kinds including retcon_proposal", () => {
-    expect(VERTICAL_DRAMA_MEMORY_KINDS).toHaveLength(9);
+  it("enumerates all twelve memory kinds including retcon_proposal, the arc-replan pair (spec §7.7.3, section-13), and story_state (Feature 132 §5.3, F132B)", () => {
+    expect(VERTICAL_DRAMA_MEMORY_KINDS).toHaveLength(12);
     expect(VERTICAL_DRAMA_MEMORY_KINDS).toContain("retcon_proposal");
+    expect(VERTICAL_DRAMA_MEMORY_KINDS).toContain("arc_replan_proposal");
+    expect(VERTICAL_DRAMA_MEMORY_KINDS).toContain("arc_replan_applied");
+    expect(VERTICAL_DRAMA_MEMORY_KINDS).toContain("story_state");
   });
 
   it("retrieval policy defaults are pinned deterministically", () => {

@@ -51,13 +51,16 @@ SocratiCode is active.
 
 ## Sub-Agent Model Routing
 
-When spawning Codex sub-agents for bounded, routine, or non-deep work, pass the
-actual tool override `model: "gpt-5.5"`. Task-packet metadata alone
-is not enough.
+Use GPT-5.6 Terra (`gpt-5.6-terra`) by default for normal conductor work and every
+non-planning Codex sub-agent. Use GPT-5.6 Sol (`gpt-5.6-sol`) only for an agent whose
+primary deliverable is planning, such as architecture, decomposition, specification,
+product/UX planning, acceptance criteria, wave planning, risk analysis, or choosing an
+implementation approach.
 
-Use the inherited/default model instead when the user explicitly requests another
-model, the work is deep/high-risk/performance-critical, a GPT 5.5 attempt fails or
-blocks, or a gate retry needs broader reasoning.
+When the sub-agent tool exposes a model override, pass the selected model through that
+override; Task-packet metadata alone is not enough. An explicit user model request takes
+precedence. Do not upgrade implementation, review, test, security, performance, or retry
+work to Sol merely because it is complex or high risk.
 
 ## Sub-Agent Opening Rules
 

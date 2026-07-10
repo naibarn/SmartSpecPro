@@ -57,6 +57,8 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         advancedOverrides: "ตัวเลือก Auto ขั้นสูง",
         autoNoSetup:
           "Auto เริ่มได้โดยไม่ต้องเลือก template, engine, platform, frame strategy, shot count, audio หรือ text policy",
+        visionQaModel: "โมเดลตรวจ QA (Vision)",
+        visionQaModelAuto: "อัตโนมัติตามคุณภาพ (gpt-4o-mini / gpt-4o)",
         overrideDiff: (fields: string[]) =>
           `ค่าที่ปรับจากแผนอัตโนมัติ: ${fields.join(", ")}`,
         overridePending:
@@ -108,6 +110,8 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         advancedOverrides: "Advanced overrides",
         autoNoSetup:
           "Auto starts without selecting template, engine, platform, frame strategy, shot count, audio, or text policy.",
+        visionQaModel: "Vision QA model",
+        visionQaModelAuto: "Auto (follow quality mode: gpt-4o-mini / gpt-4o)",
         overrideDiff: (fields: string[]) => `Override diff: ${fields.join(", ")}`,
         overridePending:
           "Updating the auto plan with your optional choices. Template and engine remain backend-managed.",

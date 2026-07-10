@@ -1,0 +1,481 @@
+/**
+ * Feature 132 (Vertical Drama Story & Character Quality Engine) — coverage
+ * for the coordinated Section 02/03/04 hot-file pass on
+ * `verticalDramaStoryBible.ts`:
+ *  - F132A (user premise): `buildPrompts`/`buildDeepDraftPrompts` prepend a
+ *    "USER PREMISE (PRIMARY)" block when present, byte-identical when
+ *    absent; `evaluatePremiseCoverage` wired into `generateStoryBible`'s and
+ *    `generateStoryBibleDeep`'s result-warnings path.
+ *  - F132B (ledgers): `appendBreakdownVersion`/`readBreakdownVersionLedgers`
+ *    round-trip a version's ledgers and mirror them onto `bible.ledgers`;
+ *    `worldRuleSchema`'s upgraded-in-place shape stays back-compatible with
+ *    a legacy `{rule, limit_or_cost}`-only row.
+ *  - F132C (scene contracts): `shotDraftSchema.contract`, the flag-gated
+ *    prompt block, and `meetsPremiumDraftContractFloor`'s deterministic
+ *    gate.
+ *
+ * Mocking convention mirrors `verticalDramaStoryBible.speechBudget.test.ts`.
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockLoadEnabledLlmModelRows } = vi.hoisted(() => ({
+  mockLoadEnabledLlmModelRows: vi.fn(async () => [] as unknown[]),
+}));
+vi.mock("../enabledLlmModels", () => ({
+  loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
+}));
+
+vi.mock("../intelligentModelSelector", () => ({
+  selectBestLlmModel: vi.fn(() => null),
+}));
+
+const { mockHasEnoughCredits, mockDeductCredits, mockCalculateCreditsForLLM } = vi.hoisted(() => ({
+  mockHasEnoughCredits: vi.fn(),
+  mockDeductCredits: vi.fn(),
+  mockCalculateCreditsForLLM: vi.fn(() => 3),
+}));
+vi.mock("../creditService", () => ({
+  hasEnoughCredits: mockHasEnoughCredits,
+  deductCredits: mockDeductCredits,
+  calculateCreditsForLLM: mockCalculateCreditsForLLM,
+}));
+
+const { mockExecuteWithFallback } = vi.hoisted(() => ({
+  mockExecuteWithFallback: vi.fn(),
+}));
+vi.mock("../llmRouter", () => ({
+  executeWithFallback: mockExecuteWithFallback,
+}));
+
+vi.mock("../_core/logger", () => ({
+  debugLog: vi.fn(),
+  debugError: vi.fn(),
+}));
+
+import {
+  generateStoryBible,
+  generateStoryBibleDeep,
+  appendBreakdownVersion,
+  readBreakdownVersionLedgers,
+  readItemWorldRules,
+  meetsPremiumDraftContractFloor,
+  type StoredEpisodeBreakdownItem,
+  type VdDeepDraftShotDraft,
+} from "../verticalDramaStoryBible";
+import { renderCriteriaVersionMarker } from "../verticalDramaQualityCriteria";
+
+function baseParams(overrides: Record<string, unknown> = {}) {
+  return {
+    userId: 1,
+    tenantId: "tenant-1",
+    seriesId: 10,
+    title: "Test Series",
+    locale: "th" as const,
+    genre: "romance",
+    tone: "dramatic",
+    targetEpisodeCount: 1,
+    bible: {},
+    ...overrides,
+  };
+}
+
+function validExpandedResponse() {
+  return {
+    expandedSeasonArc: "A grand season arc",
+    refinedCharacters: [{ name: "Aria", role: "lead", description: "The protagonist" }],
+    episodeBreakdown: [
+      { episodeNumber: 1, workingTitle: "Ep1", logline: "Logline 1", keyBeats: ["Beat 1"] },
+    ],
+  };
+}
+
+function mockLlmResponse(payload: unknown) {
+  mockExecuteWithFallback.mockResolvedValue({
+    type: "success",
+    response: {
+      choices: [{ message: { content: JSON.stringify(payload) } }],
+      usage: { prompt_tokens: 100, completion_tokens: 50 },
+    },
+  });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockHasEnoughCredits.mockResolvedValue(true);
+  mockDeductCredits.mockResolvedValue(undefined);
+  mockCalculateCreditsForLLM.mockReturnValue(3);
+});
+
+/* -------------------------------------------------------------------------- */
+/* F132A — user premise threading (generateStoryBible)                       */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBible — user premise (F132A)", () => {
+  it("byte-identical (no USER PREMISE block) when userPremise is absent", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).not.toContain("USER PREMISE");
+  });
+
+  it("byte-identical (no USER PREMISE block) when userPremise is an empty/whitespace string", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ userPremise: "   " }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).not.toContain("USER PREMISE");
+  });
+
+  it("prepends a USER PREMISE (PRIMARY) block ahead of Series title: when present", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ userPremise: "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล" }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain("USER PREMISE (PRIMARY)");
+    expect(userPrompt).toContain("ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล");
+    expect(userPrompt.indexOf("USER PREMISE")).toBeLessThan(userPrompt.indexOf("Series title:"));
+  });
+
+  it("embeds the criteria version marker in the system prompt", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain(renderCriteriaVersionMarker());
+  });
+
+  it("wires evaluatePremiseCoverage into the result's warnings when the premise drifts", async () => {
+    mockLlmResponse({
+      expandedSeasonArc: "A season about competitive baking contests",
+      refinedCharacters: [{ name: "Aria", role: "lead", description: "A baker" }],
+      episodeBreakdown: [
+        { episodeNumber: 1, workingTitle: "Bake Off", logline: "Cakes everywhere", keyBeats: ["Beat 1"] },
+      ],
+    });
+    const result = await generateStoryBible(
+      baseParams({ userPremise: "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาลลับ องค์กรอาชญากรรม" }),
+    );
+    expect(result.warnings?.[0]?.code).toBeDefined();
+  });
+
+  it("omits warnings entirely when userPremise is absent", async () => {
+    mockLlmResponse(validExpandedResponse());
+    const result = await generateStoryBible(baseParams());
+    expect(result.warnings).toBeUndefined();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* F132A — user premise threading (generateStoryBibleDeep)                   */
+/* -------------------------------------------------------------------------- */
+
+function deepDraftItem(episodeNumber: number): StoredEpisodeBreakdownItem {
+  return {
+    episodeNumber,
+    workingTitle: `Episode ${episodeNumber}`,
+    logline: `Logline ${episodeNumber}`,
+    keyBeats: ["Beat A"],
+  } as StoredEpisodeBreakdownItem;
+}
+
+function nineShots(): Record<string, unknown>[] {
+  return Array.from({ length: 9 }, (_, i) => ({
+    shot_number: i + 1,
+    summary: `Shot ${i + 1}`,
+    dialogue_lines: [{ speaker: "A", line: "สวัสดีเพื่อนที่รักของฉัน" }],
+  }));
+}
+
+function deepDraftResponse(episodeNumber: number) {
+  return {
+    episodeBreakdown: [
+      {
+        episodeNumber,
+        workingTitle: `Episode ${episodeNumber}`,
+        logline: `Logline ${episodeNumber}`,
+        keyBeats: ["Beat A"],
+        shotDrafts: nineShots(),
+      },
+    ],
+    open_threads: [],
+  };
+}
+
+describe("generateStoryBibleDeep — user premise (F132A)", () => {
+  it("byte-identical (no USER PREMISE block) when userPremise is absent", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).not.toContain("USER PREMISE");
+  });
+
+  it("prepends a USER PREMISE (PRIMARY) block ahead of Series title: when present", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(
+      baseParams({ episodes: [deepDraftItem(1)], userPremise: "ตำรวจสาวสืบคดีฆาตกรรม" }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain("USER PREMISE (PRIMARY)");
+    expect(userPrompt.indexOf("USER PREMISE")).toBeLessThan(userPrompt.indexOf("Series title:"));
+  });
+
+  it("embeds the criteria version marker in the system prompt", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain(renderCriteriaVersionMarker());
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* F132C — scene contracts prompt threading                                  */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBibleDeep — scene contracts prompt (F132C)", () => {
+  it("byte-identical (no contract instruction/JSON-shape) when sceneContractsEnabled is absent/false", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).not.toContain('"contract"');
+    expect(systemPrompt).not.toContain("anchorLine");
+  });
+
+  it("adds the contract instruction + JSON-shape suffix when sceneContractsEnabled is true", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(
+      baseParams({ episodes: [deepDraftItem(1)], sceneContractsEnabled: true }),
+    );
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain('"contract"');
+    expect(systemPrompt).toContain("storyFunction");
+    expect(systemPrompt).toContain(
+      "no run of 3 or more consecutive shots without anchorLine: true",
+    );
+  });
+
+  it("shotDraftSchema accepts a shot with a well-shaped contract object", async () => {
+    const withContract = {
+      episodeBreakdown: [
+        {
+          episodeNumber: 1,
+          workingTitle: "Episode 1",
+          logline: "Logline 1",
+          keyBeats: ["Beat A"],
+          shotDrafts: nineShots().map((shot, i) => ({
+            ...shot,
+            contract:
+              i === 0
+                ? {
+                    storyFunction: "reveal",
+                    emotionalBeat: "dread",
+                    audienceTakeaway: "the note is fake",
+                    tensionSource: "time pressure",
+                    newClueIds: ["clue-1"],
+                    dialoguePurpose: "confront",
+                    anchorLine: true,
+                  }
+                : undefined,
+          })),
+        },
+      ],
+      open_threads: [],
+    };
+    mockLlmResponse(withContract);
+    const result = await generateStoryBibleDeep(
+      baseParams({ episodes: [deepDraftItem(1)], sceneContractsEnabled: true }),
+    );
+    expect(result.draftedItems[0].shotDrafts[0].contract?.storyFunction).toBe("reveal");
+  });
+
+  it("shotDraftSchema still parses a legacy shot with no contract key at all", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    const result = await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
+    expect(result.draftedItems[0].shotDrafts[0].contract).toBeUndefined();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* F132C — meetsPremiumDraftContractFloor (deterministic gate)                */
+/* -------------------------------------------------------------------------- */
+
+function contractShot(
+  shotNumber: number,
+  overrides: Partial<NonNullable<VdDeepDraftShotDraft["contract"]>> = {},
+): VdDeepDraftShotDraft {
+  return {
+    shot_number: shotNumber,
+    summary: `Shot ${shotNumber}`,
+    dialogue_lines: [],
+    contract: {
+      storyFunction: "advance plot",
+      emotionalBeat: "tension",
+      audienceTakeaway: "something changed",
+      tensionSource: "time pressure",
+      newClueIds: [],
+      dialoguePurpose: "reveal",
+      ...overrides,
+    },
+  } as unknown as VdDeepDraftShotDraft;
+}
+
+describe("meetsPremiumDraftContractFloor (F132C deterministic gate)", () => {
+  it("fails when any shot is missing a contract", () => {
+    const shots = [
+      contractShot(1, { characterDecision: "left" }),
+      { shot_number: 2, summary: "no contract", dialogue_lines: [] } as unknown as VdDeepDraftShotDraft,
+    ];
+    expect(meetsPremiumDraftContractFloor(shots)).toBe(false);
+  });
+
+  it("fails when a shot has more than 2 newClueIds", () => {
+    const shots = [
+      contractShot(1, { characterDecision: "left", newClueIds: ["a", "b", "c"] }),
+    ];
+    expect(meetsPremiumDraftContractFloor(shots)).toBe(false);
+  });
+
+  it("fails on a run of 3+ consecutive shots without anchorLine: true", () => {
+    const shots = Array.from({ length: 9 }, (_, i) =>
+      contractShot(i + 1, { characterDecision: "left", anchorLine: i === 0 }),
+    );
+    // shots 2-9 (8 in a row) never set anchorLine — must fail.
+    expect(meetsPremiumDraftContractFloor(shots)).toBe(false);
+  });
+
+  it("passes with anchor lines at 1, 4, 7 (gaps of exactly 3, never 4)", () => {
+    const shots = Array.from({ length: 9 }, (_, i) =>
+      contractShot(i + 1, {
+        characterDecision: i === 3 ? "made a choice" : undefined,
+        anchorLine: [0, 3, 6].includes(i),
+      }),
+    );
+    expect(meetsPremiumDraftContractFloor(shots)).toBe(true);
+  });
+
+  it("fails the want/obstacle/choice/cost coverage check when no shot has a characterDecision", () => {
+    const shots = Array.from({ length: 9 }, (_, i) =>
+      contractShot(i + 1, { anchorLine: [0, 3, 6].includes(i) }),
+    );
+    expect(meetsPremiumDraftContractFloor(shots)).toBe(false);
+  });
+
+  it("fails on an empty shot list", () => {
+    expect(meetsPremiumDraftContractFloor([])).toBe(false);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* F132B — ledgers mirror (appendBreakdownVersion/readBreakdownVersionLedgers)*/
+/* -------------------------------------------------------------------------- */
+
+describe("appendBreakdownVersion / readBreakdownVersionLedgers (F132B)", () => {
+  it("returns emptyQualityLedgers() when no version carries ledgers (flag off/legacy)", () => {
+    const bible = appendBreakdownVersion(null, {
+      source: "generate_story",
+      items: [deepDraftItem(1)],
+      createdByUserId: 1,
+    });
+    const ledgers = readBreakdownVersionLedgers(bible);
+    expect(ledgers.evidenceLedger).toEqual([]);
+    expect((bible as Record<string, unknown>).ledgers).toBeUndefined();
+  });
+
+  it("mirrors the new active version's ledgers onto bible.ledgers, and readBreakdownVersionLedgers reads them back", () => {
+    const ledgers = {
+      evidenceLedger: [{ id: "e1", label: "note", introducedEpisode: 1, usedEpisodes: [], changesDecisionEpisodes: [], status: "open" as const }],
+      characterActivationLedger: [],
+      threatLadder: [],
+      consequenceLedger: [],
+      threadLedger: [],
+      worldRuleLedger: [],
+      causalChainMap: [],
+    };
+    const bible = appendBreakdownVersion(null, {
+      source: "generate_story",
+      items: [deepDraftItem(1)],
+      createdByUserId: 1,
+      ledgers,
+    });
+    expect((bible as Record<string, unknown>).ledgers).toEqual(ledgers);
+    expect(readBreakdownVersionLedgers(bible).evidenceLedger).toHaveLength(1);
+  });
+
+  it("a SECOND appended version without ledgers still leaves the mirror pointing at the (now active) version's own ledgers state", () => {
+    const ledgers = {
+      evidenceLedger: [{ id: "e1", label: "note", introducedEpisode: 1, usedEpisodes: [], changesDecisionEpisodes: [], status: "open" as const }],
+      characterActivationLedger: [],
+      threatLadder: [],
+      consequenceLedger: [],
+      threadLedger: [],
+      worldRuleLedger: [],
+      causalChainMap: [],
+    };
+    const firstBible = appendBreakdownVersion(null, {
+      source: "generate_story",
+      items: [deepDraftItem(1)],
+      createdByUserId: 1,
+      ledgers,
+    });
+    const secondBible = appendBreakdownVersion(firstBible, {
+      source: "arc_replan",
+      items: [deepDraftItem(1), deepDraftItem(2)],
+      createdByUserId: 1,
+    });
+    // Second version carries no ledgers of its own -> mirror key is omitted
+    // entirely on this new bible object (never a stale copy of version 1's).
+    expect((secondBible as Record<string, unknown>).ledgers).toBeUndefined();
+    expect(readBreakdownVersionLedgers(secondBible).evidenceLedger).toEqual([]);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* F132B — worldRuleSchema upgrade-in-place back-compat                      */
+/* -------------------------------------------------------------------------- */
+
+describe("readItemWorldRules — worldRuleSchema §5.2 upgrade-in-place back-compat (F132B)", () => {
+  it("still parses a legacy {rule, limit_or_cost}-only row", () => {
+    const item = {
+      episodeNumber: 1,
+      workingTitle: "Ep1",
+      logline: "l",
+      keyBeats: ["b"],
+      world_rules: [{ rule: "curses transfer at midnight", limit_or_cost: "one year of life" }],
+    } as unknown as StoredEpisodeBreakdownItem;
+    const rules = readItemWorldRules(item);
+    expect(rules).toHaveLength(1);
+    expect(rules[0].rule).toBe("curses transfer at midnight");
+    expect(rules[0].limit_or_cost).toBe("one year of life");
+  });
+
+  it("parses the richer §5.2 shape with defaults applied", () => {
+    const item = {
+      episodeNumber: 1,
+      workingTitle: "Ep1",
+      logline: "l",
+      keyBeats: ["b"],
+      world_rules: [
+        {
+          id: "w1",
+          rule: "curses transfer at midnight",
+          introducedEpisode: 2,
+          usedAgainEpisodes: [4],
+          createsChoice: true,
+          verdict: "revise",
+        },
+      ],
+    } as unknown as StoredEpisodeBreakdownItem;
+    const rules = readItemWorldRules(item);
+    expect(rules[0].id).toBe("w1");
+    expect(rules[0].verdict).toBe("revise");
+    expect(rules[0].usedAgainEpisodes).toEqual([4]);
+  });
+
+  it("rejects a row missing the always-required rule field", () => {
+    const item = {
+      episodeNumber: 1,
+      workingTitle: "Ep1",
+      logline: "l",
+      keyBeats: ["b"],
+      world_rules: [{ limit_or_cost: "one year of life" }],
+    } as unknown as StoredEpisodeBreakdownItem;
+    expect(readItemWorldRules(item)).toEqual([]);
+  });
+});

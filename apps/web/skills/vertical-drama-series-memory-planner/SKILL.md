@@ -15,6 +15,24 @@ tags:
   - series
   - memory
   - continuity
+trigger_patterns: []
+priority: 50
+config:
+  media_studio:
+    auto_learning:
+      enabled: false
+      prompt_qa_after_auto_prompt: true
+      image_qa_after_generation: true
+      require_admin_approval: true
+      min_prompt_score_to_pass: 85
+      min_image_fidelity_score_to_pass: 80
+      max_auto_patch_risk: medium
+  orchestration:
+    mode: local
+    endpoint: null
+    skillTargets: []
+    parallel: false
+    fallback: local
 ---
 # Vertical Drama Series Memory Planner
 
@@ -76,3 +94,48 @@ Output skeleton:
   "memory_compaction_summary": "Series so far: corporate betrayal, clinic subplot open, Aria vs rival."
 }
 ```
+
+## Story State — Ledgers & Story State (Feature 132 §5.3, F132B)
+
+When the `verticalDramaQualityLedgers` tenant flag is on, the service
+(`server/services/verticalDramaSeriesMemoryPlanning.ts`) appends the
+following conditional instruction block to the request ahead of the payload
+— it is templated per-request by the service, not statically present in
+every call, since this file is loaded verbatim and only the service can
+conditionally render it:
+
+```text
+STORY STATE (Feature 132 §5.3) — additionally include a "story_state" object
+in your JSON response, alongside every field above, shaped exactly like this:
+
+{
+  "story_state": {
+    "episode": <this episode's number>,
+    "knownByProtagonist": ["fact the protagonist now knows"],
+    "knownByAudience": ["fact the audience now knows, protagonist may not"],
+    "knownOnlyByAntagonist": ["fact only the antagonist/villain knows"],
+    "evidenceGained": ["new piece of evidence/clue gained this episode"],
+    "evidenceLostOrDamaged": ["evidence destroyed/compromised this episode"],
+    "trustChanges": [
+      { "characterA": "name", "characterB": "name", "change": "short description of how trust shifted" }
+    ],
+    "emotionalResidue": [
+      { "character": "name", "residue": "lingering emotional state after this episode" }
+    ],
+    "threatLevel": <integer 1-5, this episode's threat intensity>,
+    "unresolvedThreadIds": ["id or short label of a thread still open after this episode"],
+    "requiredNextEpisodeResponse": "what the next episode MUST address given how this one ended"
+  }
+}
+```
+
+This is "story-state aware compaction": think of `story_state` as a single,
+typed snapshot of exactly what a viewer/character would know and feel
+walking out of this episode — later episodes and the deterministic quality
+ledgers use it to check that nobody acts on information they shouldn't have
+yet, and that nothing important is silently forgotten.
+
+When no such instruction is appended (flag off, or an older service version
+that predates this section), omit `story_state` entirely from your response
+— every other field's behavior stays byte-for-byte identical to the flow
+described above.

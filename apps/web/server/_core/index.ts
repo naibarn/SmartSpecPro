@@ -1058,6 +1058,69 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
   }
 });
 
+// Internal system auto-report endpoint (Python backend -> Node.js)
+// Lets the Python side (Celery tasks, LLM gateway, etc.) file the same
+// fingerprinted/deduped auto-report feedback ticket that Node's own
+// tRPC onError / media-job / vertical-drama-story-job hooks use — see
+// `services/systemAutoReportService.ts`. Same bearer-token auth + Zod
+// validation + rate-limit shape as `/api/internal/notifications/admin-broadcast`
+// above (copied intentionally so both internal endpoints behave identically).
+const autoReportRateLimit = (() => {
+  const window: number[] = [];
+  const MAX_RPM = 20;
+  return (): boolean => {
+    const now = Date.now();
+    while (window.length > 0 && window[0]! < now - 60_000) window.shift();
+    if (window.length >= MAX_RPM) return false;
+    window.push(now);
+    return true;
+  };
+})();
+
+app.post("/api/internal/feedback/auto-report", async (req, res) => {
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  // Rate limit: max 20 requests per minute
+  if (!autoReportRateLimit()) {
+    return res.status(429).json({ success: false, error: "Rate limit exceeded (max 20/min)" });
+  }
+
+  try {
+    const { z } = await import("zod");
+    const autoReportBodySchema = z.object({
+      source: z.string().min(1).max(200),
+      userId: z.union([z.number(), z.string()]).optional(),
+      tenantId: z.string().max(36).optional(),
+      title: z.string().min(1).max(255),
+      errorMessage: z.string().min(1).max(5000),
+      stack: z.string().max(8000).optional(),
+      path: z.string().max(500).optional(),
+      jobId: z.string().max(200).optional(),
+      traceId: z.string().max(200).optional(),
+      extra: z.record(z.unknown()).optional(),
+    });
+
+    const bodyResult = autoReportBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid request body",
+        details: bodyResult.error.issues.map((i) => i.message),
+      });
+    }
+
+    const { reportSystemFailure } = await import("../services/systemAutoReportService");
+    await reportSystemFailure(bodyResult.data);
+
+    return res.json({ ok: true });
+  } catch (err: any) {
+    debugError("SystemAutoReport", "Internal auto-report endpoint failed", err);
+    return res.status(500).json({ success: false, error: "Internal auto-report failed" });
+  }
+});
+
 // Internal presentation import callback (Python backend -> Node.js)
 app.post("/api/internal/presentation-import/callback", presentationImportCallbackHandler);
 
@@ -1407,8 +1470,33 @@ app.use(
   createExpressMiddleware({
     router: appRouter,
     createContext,
-    onError: ({ error, path }) => {
+    onError: ({ error, path, ctx }) => {
       debugError("tRPC", `${path}: ${error.message}`, error);
+
+      // Best-effort auto-report for unexpected server-side failures — these
+      // never surface to the user as a "please report this" prompt, so the
+      // SYSTEM files the diagnostic ticket itself. Fire-and-forget: never
+      // let a reporting failure affect the original tRPC error response.
+      if (error.code === "INTERNAL_SERVER_ERROR" || error.code === "TIMEOUT") {
+        void (async () => {
+          try {
+            const { getTraceId } = await import("../services/traceContext");
+            const { reportSystemFailure } = await import("../services/systemAutoReportService");
+            await reportSystemFailure({
+              source: "trpc",
+              userId: ctx?.user?.id ?? null,
+              tenantId: ctx?.tenantId ?? null,
+              title: `tRPC ${path ?? "unknown"} failed (${error.code})`,
+              errorMessage: error.message,
+              stack: error.stack,
+              path,
+              traceId: getTraceId(),
+            });
+          } catch (reportErr) {
+            debugError("tRPC", "Auto-report dispatch failed", reportErr);
+          }
+        })().catch(() => {});
+      }
     },
   })
 );

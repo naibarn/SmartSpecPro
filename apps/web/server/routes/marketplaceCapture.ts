@@ -31,6 +31,11 @@ import { getMarketplaceCaptureConfig, isAllowedMarketplaceOrigin } from "../serv
 import { requireMarketplaceAuth } from "../services/marketplaceExtensionAuthService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getProductionSpace, isProductionSpaceStorageUnavailable } from "../services/productionSpaceService";
+import {
+  listDramaSeriesProjectsForExtension,
+  listDramaSeriesEpisodesForExtension,
+  getDramaSeriesEpisodeDetailForExtension,
+} from "../services/verticalDramaExtensionReadService";
 
 function sendError(res: Response, error: any) {
   const status = Number(error?.status || (error instanceof z.ZodError ? 400 : 500));
@@ -920,6 +925,48 @@ export function registerMarketplaceCaptureRoutes(app: Express) {
     try {
       const auth = await requireMarketplaceAuth(req, "marketplace:read");
       res.json(await getStoryboardReviewProjectForExtension(auth, Number(req.params.reviewId)));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/drama-series/projects", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      res.json(await listDramaSeriesProjectsForExtension(auth, {
+        query: typeof req.query.query === "string" ? req.query.query : "",
+        limit: Number(req.query.limit ?? 50),
+      }));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/drama-series/episodes", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      const seriesId = Number(req.query.seriesId ?? 0);
+      if (!Number.isFinite(seriesId) || !Number.isInteger(seriesId) || seriesId <= 0) {
+        throw Object.assign(new Error("A valid seriesId is required"), { status: 400, code: "invalid_request" });
+      }
+      res.json(await listDramaSeriesEpisodesForExtension(auth, seriesId));
+    } catch (error) {
+      sendError(res, error);
+    }
+  });
+
+  router.get("/drama-series/episode", async (req, res) => {
+    try {
+      const auth = await requireMarketplaceAuth(req, "marketplace:read");
+      const seriesId = Number(req.query.seriesId ?? 0);
+      const episodeId = Number(req.query.episodeId ?? 0);
+      if (!Number.isFinite(seriesId) || !Number.isInteger(seriesId) || seriesId <= 0) {
+        throw Object.assign(new Error("A valid seriesId is required"), { status: 400, code: "invalid_request" });
+      }
+      if (!Number.isFinite(episodeId) || !Number.isInteger(episodeId) || episodeId <= 0) {
+        throw Object.assign(new Error("A valid episodeId is required"), { status: 400, code: "invalid_request" });
+      }
+      res.json(await getDramaSeriesEpisodeDetailForExtension(auth, seriesId, episodeId));
     } catch (error) {
       sendError(res, error);
     }

@@ -116,6 +116,18 @@ export const seriesMemoryPlannerOutputSchema = z
     continuity_risks: z.array(z.object({}).passthrough()),
     episode_recap: z.string(),
     memory_compaction_summary: z.string(),
+    /**
+     * Feature 132 §5.3 (F132B, ledgers-and-story-state) — optional
+     * "story-state aware compaction" output (spec §14.1), requested from the
+     * `vertical-drama-series-memory-planner` skill only when the
+     * `verticalDramaQualityLedgers` tenant flag is on. `.passthrough()`
+     * tolerant object (not the full `verticalDramaStoryStateSchema` shape) so
+     * a pre-upgrade skill version that omits this key, or one that emits a
+     * partially-shaped object, never breaks this schema's tolerant parse —
+     * `summarizeEpisodeToMemory` only forwards it into a `story_state`
+     * memory event when present.
+     */
+    story_state: z.object({}).passthrough().optional(),
   })
   .passthrough();
 

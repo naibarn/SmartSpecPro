@@ -312,3 +312,154 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     );
   });
 });
+
+/* -------------------------------------------------------------------------- */
+/* User Premise & Premise-Primary Preset Mix (F132A, section-02)              */
+/* -------------------------------------------------------------------------- */
+
+describe("CreateSeriesWizard — User Premise (F132A)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockListGenrePresetsQuery.mockReturnValue({ data: { presets: [presetOne, presetTwo] }, isLoading: false });
+    mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+  });
+
+  function getPremiseTextarea(): HTMLTextAreaElement {
+    const label = screen.getByText(/โจทย์เรื่องที่อยากได้/);
+    return label.closest("div")?.querySelector("textarea") as HTMLTextAreaElement;
+  }
+
+  it("typing into the premise textarea updates form state and is clamped at 2,000 chars", () => {
+    renderWizard();
+    const textarea = getPremiseTextarea();
+    const longValue = "ก".repeat(2500);
+    fireEvent.change(textarea, { target: { value: longValue } });
+    expect(textarea.value.length).toBeLessThanOrEqual(2000);
+  });
+
+  it("handleCreate sends userPremise as a top-level field, omitted (undefined) when the textarea is empty", () => {
+    renderWizard();
+    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: "Premise-less Series" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ userPremise: undefined }),
+    );
+  });
+
+  it("handleCreate sends the trimmed userPremise as a top-level field (sibling of bible, not nested)", () => {
+    renderWizard();
+    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: "Premise Series" } });
+
+    const textarea = getPremiseTextarea();
+    fireEvent.change(textarea, { target: { value: "  ตำรวจสาวสืบคดีฆาตกรรม  " } });
+
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+
+    const call = mockCreateMutate.mock.calls[0][0];
+    expect(call.userPremise).toBe("ตำรวจสาวสืบคดีฆาตกรรม");
+    expect(call.bible?.userPremise).toBeUndefined();
+  });
+
+  it("handleSynthesizePreset sends userPremise unconditionally alongside selections", () => {
+    renderWizard();
+    const textarea = getPremiseTextarea();
+    fireEvent.change(textarea, { target: { value: "นักสืบไล่ล่าคดีปริศนา" } });
+
+    selectCategoryAndPresets(["1", "2"]);
+    fireEvent.click(screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ }));
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPremise: "นักสืบไล่ล่าคดีปริศนา",
+        selections: [
+          { presetId: "1", weight: 3 },
+          { presetId: "2", weight: 3 },
+        ],
+      }),
+    );
+  });
+
+  it("handleSynthesizePreset omits (undefined) userPremise when the textarea is empty", () => {
+    renderWizard();
+    selectCategoryAndPresets(["1", "2"]);
+    fireEvent.click(screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ }));
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ userPremise: undefined }),
+    );
+  });
+
+  it("no-clobber: applying a single preset never touches form.userPremise", () => {
+    renderWizard();
+    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: "No Clobber Series" } });
+
+    const textarea = getPremiseTextarea();
+    fireEvent.change(textarea, { target: { value: "รักษาโจทย์เดิมไว้เสมอ" } });
+
+    selectCategoryAndPresets(["1"]);
+    fireEvent.click(screen.getByRole("button", { name: /ใช้ Preset นี้/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ userPremise: "รักษาโจทย์เดิมไว้เสมอ" }),
+    );
+  });
+
+  it("no-clobber: applying an AI-mixed draft never touches form.userPremise", () => {
+    mockSynthesizeMutationState = {
+      data: {
+        draft: {
+          contract_version: 1,
+          title: "Mixed V1 Draft",
+          category: "sci_fi_mecha",
+          logline: "mixed logline",
+          mainPlot: "mixed main plot",
+          seasonArc: "mixed season arc",
+          tone: "mixed tone",
+          cliffhangerStyle: "mixed cliff",
+          characters: [{ name: "E", role: "Lead", description: "desc" }],
+          visualBible: "mixed visual bible",
+          warnings: [],
+        },
+        creditsUsed: 3,
+        model: "test-model",
+      },
+      isPending: false,
+    };
+    renderWizard();
+    const textarea = getPremiseTextarea();
+    fireEvent.change(textarea, { target: { value: "โจทย์นี้ต้องไม่หาย" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ userPremise: "โจทย์นี้ต้องไม่หาย" }),
+    );
+  });
+
+  it("shows the premise-primary badge in the mix panel only when a premise is present", () => {
+    renderWizard();
+    expect(screen.queryByText(/ใช้โจทย์ของคุณเป็นแกนหลัก/)).not.toBeInTheDocument();
+
+    const textarea = getPremiseTextarea();
+    fireEvent.change(textarea, { target: { value: "มีโจทย์แล้ว" } });
+
+    expect(screen.getByText(/ใช้โจทย์ของคุณเป็นแกนหลัก/)).toBeInTheDocument();
+  });
+});

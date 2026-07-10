@@ -91,8 +91,47 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     expect(onChange).toHaveBeenLastCalledWith({
       videoModel: "kling3/generate-kling-3-video",
     });
+    fireEvent.change(screen.getByLabelText("Vision QA model"), {
+      target: { value: "gemini-3-flash" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith({
+      visionQaModel: "gemini-3-flash",
+    });
     expect(screen.queryByLabelText(/template/i)).toBeNull();
     expect(screen.queryByLabelText(/render engine/i)).toBeNull();
+  });
+
+  it("renders the vision QA model select with the auto default label and provided options", () => {
+    const onChange = vi.fn();
+    render(
+      <AutoStoryboardAdvancedOverrides
+        plan={readyPlan()}
+        open
+        value={{}}
+        onChange={onChange}
+        onOpenChange={vi.fn()}
+        onResetToAuto={vi.fn()}
+        visionQaModelOptions={[
+          { value: "gpt-4o-mini", label: "GPT-4o mini" },
+          { value: "gemini-3-flash", label: "Gemini 3 Flash" },
+        ]}
+      />
+    );
+
+    const select = screen.getByLabelText("Vision QA model");
+    expect(select).toHaveValue("");
+    expect(
+      screen.getByText("Auto (follow quality mode: gpt-4o-mini / gpt-4o)")
+    ).toBeTruthy();
+    expect(screen.getByText("Gemini 3 Flash")).toBeTruthy();
+
+    fireEvent.change(select, { target: { value: "gemini-3-flash" } });
+    expect(onChange).toHaveBeenLastCalledWith({
+      visionQaModel: "gemini-3-flash",
+    });
+
+    fireEvent.change(select, { target: { value: "" } });
+    expect(onChange).toHaveBeenLastCalledWith({});
   });
 
   it("shows concrete Auto defaults for every optional control", () => {
@@ -121,6 +160,10 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     );
     expect(screen.getByLabelText("Video structure")).toHaveValue("per_shot");
     expect(screen.getByLabelText("Creative brief")).toHaveValue("");
+    expect(screen.getByLabelText("Vision QA model")).toHaveValue("");
+    expect(
+      screen.getByText("Auto (follow quality mode: gpt-4o-mini / gpt-4o)")
+    ).toBeTruthy();
     expect(screen.getByText(/no overrides active/i)).toBeTruthy();
   });
 
@@ -370,5 +413,9 @@ describe("AutoStoryboardAdvancedOverrides", () => {
     expect(screen.getByLabelText("โครงสร้างวิดีโอ")).toBeTruthy();
     expect(screen.getByLabelText("แนวเรื่องหรือคำบรรยายเพิ่มเติม")).toBeTruthy();
     expect(screen.getByLabelText("ตัวเลือก Auto ขั้นสูง")).toBeTruthy();
+    expect(screen.getByLabelText("โมเดลตรวจ QA (Vision)")).toBeTruthy();
+    expect(
+      screen.getByText("อัตโนมัติตามคุณภาพ (gpt-4o-mini / gpt-4o)")
+    ).toBeTruthy();
   });
 });

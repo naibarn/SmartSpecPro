@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cinematic Prompt Refiner Pro Output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "target_type": {
+      "type": "string",
+      "title": "Resolved Target Type",
+      "description": "The final inferred or selected prompt type.",
+      "enum": ["image", "video"]
+    },
+    "optimized_prompt": {
+      "type": "string",
+      "title": "Optimized Cinematic Prompt",
+      "description": "Final prompt ready to use for image or video generation.",
+      "minLength": 1
+    },
+    "character_count": {
+      "type": "integer",
+      "title": "Character Count",
+      "description": "Number of characters in optimized_prompt.",
+      "minimum": 0
+    },
+    "within_limit": {
+      "type": "boolean",
+      "title": "Within Character Limit",
+      "description": "True if image prompt is <= 3500 characters or video prompt is <= 2000 characters."
+    },
+    "preserved_intent_summary": {
+      "type": "string",
+      "title": "Preserved Intent Summary",
+      "description": "Brief summary of the original intent preserved by the rewrite."
+    },
+    "changes_made": {
+      "type": "array",
+      "title": "Changes Made",
+      "description": "Short list of cinematic improvements applied.",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "risk_flags": {
+      "type": "array",
+      "title": "Risk Flags",
+      "description": "Potential issues such as ambiguous motion, too much appearance detail, or risk of identity drift.",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes",
+      "description": "Optional short note about compression or interpretation decisions.",
+      "default": ""
+    }
+  },
+  "required": [
+    "target_type",
+    "optimized_prompt",
+    "character_count",
+    "within_limit",
+    "preserved_intent_summary",
+    "changes_made",
+    "risk_flags"
+  ]
+}

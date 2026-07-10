@@ -12,6 +12,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import fsp from "fs/promises";
 
 const dbState = {
   episode: {
@@ -69,6 +70,8 @@ import {
   getJobStatus,
   resolveClipsForAssembly,
   resolveEpisodeDialogueAudioAndSubtitlesRunInputs,
+  resolveEpisodeTextOverlayAnchoredEvents,
+  resolveEpisodeTextOverlayRunInputs,
   runAssemblyJob,
   submitAssemblyJob,
   submitSequentialAssemblyJobs,
@@ -429,6 +432,8 @@ describe("runAssemblyJob — final render integration-lite (banners/dialogueAudi
       loudnessNormalize: true,
       subtitlePreset: "classic_box",
       subtitleLineCount: 1,
+      textOverlayEventCount: 0,
+      watermarkIncluded: false,
       renderedAt: expect.any(String),
     });
   });
@@ -633,6 +638,417 @@ describe('runAssemblyJob — "entire" banner duration resolution (task #21 phase
     const filterComplex = extractFilterComplex(capturedArgs[0]!);
     expect(filterComplex).toContain("between(t\\,0\\,24)"); // entire -> probed total
     expect(filterComplex).toContain("between(t\\,2\\,6)"); // window -> unchanged
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Task #34 — Text Overlay Suite render feed                                  */
+/* -------------------------------------------------------------------------- */
+
+describe("resolveEpisodeTextOverlayAnchoredEvents", () => {
+  const clip1: VdDialogueTimelineClip = {
+    clipNumber: 1,
+    sourceShotNumbers: [1],
+    durationSeconds: 8,
+  };
+  const clip2: VdDialogueTimelineClip = {
+    clipNumber: 2,
+    sourceShotNumbers: [2],
+    durationSeconds: 8,
+  };
+
+  it("returns [] for an empty anchor list", () => {
+    expect(resolveEpisodeTextOverlayAnchoredEvents([], [clip1], [1])).toEqual([]);
+  });
+
+  it("resolves a shot-anchored card to its clip's absolute offset (reusing resolveDialogueLineAbsoluteTimings)", () => {
+    const [event] = resolveEpisodeTextOverlayAnchoredEvents(
+      [
+        {
+          id: "card-1",
+          kind: "time_setting",
+          text: "ปี 1980",
+          shotNumber: 2,
+          offsetSec: 1,
+          durationSec: 2.5,
+        },
+      ],
+      [clip1, clip2],
+      [1, 2]
+    );
+    // clip1 (8s) offset + 1s local offset = 9s absolute start.
+    expect(event).toMatchObject({
+      kind: "time_setting",
+      text: "ปี 1980",
+      startSec: 9,
+      endSec: 11.5,
+    });
+  });
+
+  it("carries secondaryText/variant through unchanged", () => {
+    const [event] = resolveEpisodeTextOverlayAnchoredEvents(
+      [
+        {
+          id: "character_intro:char-a",
+          kind: "character_intro",
+          text: "มาลี",
+          secondaryText: "นางเอก",
+          shotNumber: 1,
+          durationSec: 2.5,
+        },
+      ],
+      [clip1],
+      [1]
+    );
+    expect(event).toMatchObject({ text: "มาลี", secondaryText: "นางเอก" });
+  });
+
+  it("resolves multiple anchors independently, zipped back by id", () => {
+    const events = resolveEpisodeTextOverlayAnchoredEvents(
+      [
+        { id: "a", kind: "time_setting", text: "A", shotNumber: 1, durationSec: 2 },
+        { id: "b", kind: "narrative_hook", text: "B", shotNumber: 2, durationSec: 2 },
+      ],
+      [clip1, clip2],
+      [1, 2]
+    );
+    expect(events.find(e => e.text === "A")?.startSec).toBe(0);
+    expect(events.find(e => e.text === "B")?.startSec).toBe(8);
+  });
+});
+
+describe("resolveEpisodeTextOverlayRunInputs", () => {
+  const baseParams = { motionClips: [], includedClipNumbers: [] };
+
+  it("returns an empty overlays array when nothing is enabled", () => {
+    expect(resolveEpisodeTextOverlayRunInputs(baseParams)).toEqual({
+      overlays: [],
+      overlayCount: 0,
+    });
+  });
+
+  it("builds an end_card event as endAnchored with the follow line when showFollowLine is true", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      endCard: {
+        text: "ติดตามตอนต่อไป",
+        durationSec: 3,
+        showFollowLine: true,
+        styleVariant: "center_card",
+      },
+    });
+    expect(result.overlays).toEqual([
+      expect.objectContaining({
+        kind: "end_card",
+        text: "ติดตามตอนต่อไป",
+        endAnchored: true,
+        durationSecForEndAnchor: 3,
+        variant: "center_card",
+        secondaryText: expect.any(String),
+      }),
+    ]);
+  });
+
+  it("omits the follow line when showFollowLine is false", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      endCard: {
+        text: "x",
+        durationSec: 3,
+        showFollowLine: false,
+        styleVariant: "center_card",
+      },
+    });
+    expect(result.overlays[0]?.secondaryText).toBeUndefined();
+  });
+
+  it("skips a blank end_card text entirely", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      endCard: { text: "   ", durationSec: 3, showFollowLine: true, styleVariant: "center_card" },
+    });
+    expect(result.overlays).toEqual([]);
+  });
+
+  it("queues title_bumper before opener_recap when both are enabled (auto-queue)", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      titleBumper: { primary: "ซีรีส์", secondary: "EP 1" },
+      openerRecap: { text: "ความเดิม", durationSec: 4 },
+    });
+    const bumper = result.overlays.find(o => o.kind === "title_bumper");
+    const recap = result.overlays.find(o => o.kind === "opener_recap");
+    expect(bumper).toMatchObject({ startSec: 0, endSec: 1.2 });
+    expect(recap).toMatchObject({ startSec: 1.2, endSec: 5.2, secondaryText: "ความเดิม" });
+  });
+
+  it("starts opener_recap at 0 when titleBumper is absent", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      openerRecap: { text: "ความเดิม", durationSec: 3 },
+    });
+    expect(result.overlays[0]).toMatchObject({ kind: "opener_recap", startSec: 0, endSec: 3 });
+  });
+
+  it("skips a blank opener_recap text", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      openerRecap: { text: "", durationSec: 3 },
+    });
+    expect(result.overlays).toEqual([]);
+  });
+
+  it("builds episode_indicator as entireClip:true", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      episodeIndicator: { label: "EP 3/10", position: "top_right" },
+    });
+    expect(result.overlays).toEqual([
+      expect.objectContaining({
+        kind: "episode_indicator",
+        text: "EP 3/10",
+        variant: "top_right",
+        entireClip: true,
+      }),
+    ]);
+  });
+
+  it("builds watermark_text as entireClip:true, carrying opacity/marginPx", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      watermarkText: { text: "@brand", position: "bottom_right", opacity: 0.5, marginPx: 24 },
+    });
+    expect(result.overlays).toEqual([
+      expect.objectContaining({
+        kind: "watermark_text",
+        text: "@brand",
+        variant: "bottom_right",
+        opacity: 0.5,
+        marginPx: 24,
+        entireClip: true,
+      }),
+    ]);
+  });
+
+  it("resolves character intro cards anchored to their first-appearance shot", () => {
+    const clip1: VdDialogueTimelineClip = { clipNumber: 1, sourceShotNumbers: [1], durationSeconds: 6 };
+    const result = resolveEpisodeTextOverlayRunInputs({
+      motionClips: [clip1],
+      includedClipNumbers: [1],
+      characterIntroCards: [{ characterKey: "char-a", shotNumber: 1, name: "มาลี", role: "นางเอก" }],
+    });
+    expect(result.overlays).toEqual([
+      expect.objectContaining({
+        kind: "character_intro",
+        text: "มาลี",
+        secondaryText: "นางเอก",
+        startSec: 0,
+      }),
+    ]);
+  });
+
+  it("resolves mid-episode cards anchored to their own shot", () => {
+    const clip1: VdDialogueTimelineClip = { clipNumber: 1, sourceShotNumbers: [1], durationSeconds: 6 };
+    const result = resolveEpisodeTextOverlayRunInputs({
+      motionClips: [clip1],
+      includedClipNumbers: [1],
+      cards: [{ id: "c1", kind: "time_setting", text: "ปี 1980", shotNumber: 1, offsetSec: 2, durationSec: 2.5 }],
+    });
+    expect(result.overlays).toEqual([
+      expect.objectContaining({ kind: "time_setting", text: "ปี 1980", startSec: 2, endSec: 4.5 }),
+    ]);
+  });
+
+  it("assembles every kind together, counting them all in overlayCount", () => {
+    const clip1: VdDialogueTimelineClip = { clipNumber: 1, sourceShotNumbers: [1], durationSeconds: 6 };
+    const result = resolveEpisodeTextOverlayRunInputs({
+      motionClips: [clip1],
+      includedClipNumbers: [1],
+      endCard: { text: "จบ", durationSec: 3, showFollowLine: true, styleVariant: "center_card" },
+      openerRecap: { text: "ความเดิม", durationSec: 3 },
+      titleBumper: { primary: "ซีรีส์", secondary: "EP 1" },
+      episodeIndicator: { label: "EP 1/10", position: "top_right" },
+      watermarkText: { text: "@brand", position: "top_left", opacity: 0.4, marginPx: 20 },
+      characterIntroCards: [{ characterKey: "char-a", shotNumber: 1, name: "มาลี" }],
+      cards: [{ id: "c1", kind: "narrative_hook", text: "จะเกิดอะไรขึ้น", shotNumber: 1, durationSec: 2 }],
+    });
+    expect(result.overlayCount).toBe(7);
+    expect(result.overlays.map(o => o.kind).sort()).toEqual(
+      [
+        "character_intro",
+        "end_card",
+        "episode_indicator",
+        "narrative_hook",
+        "opener_recap",
+        "title_bumper",
+        "watermark_text",
+      ].sort()
+    );
+  });
+});
+
+describe("runAssemblyJob — Text Overlay Suite integration (task #34)", () => {
+  const owner = { tenantId: "t1", userId: 1, seriesId: 1, episodeId: 1 };
+  const clips: EpisodeClipSource[] = [
+    { clipNumber: 1, videoUrl: "/api/storage/files/a.mp4" },
+  ];
+
+  function extractFilterComplex(ffArgs: string[]): string {
+    const idx = ffArgs.indexOf("-filter_complex");
+    expect(idx).toBeGreaterThan(-1);
+    return ffArgs[idx + 1]!;
+  }
+
+  it("resolves an entireClip overlay (episode indicator) to [0, real probed duration] post-probe", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    const fakeProbe = vi.fn(async () => 20);
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-overlay-entire",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      subtitles: {
+        preset: "none" as unknown as never,
+        lines: [],
+        overlays: [
+          {
+            kind: "episode_indicator",
+            text: "EP 3/10",
+            variant: "top_right",
+            startSec: 0,
+            endSec: 0,
+            entireClip: true,
+          },
+        ],
+      } as any,
+    });
+
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const filterComplex = extractFilterComplex(capturedArgs[0]!);
+    expect(filterComplex).toContain("subtitles=filename=");
+    // The written .ass content isn't directly inspectable from the filter
+    // graph string, but the job completing (not throwing) with a subtitles
+    // stage present confirms the overlay-only .ass path is taken even
+    // though `lines` is empty (preset "none").
+    const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
+    expect(compiled.status).toBe("completed");
+    const finalRender = (dbState.episode.assemblyManifest as any)?.finalRender;
+    expect(finalRender.textOverlayEventCount).toBe(1);
+  });
+
+  it("resolves an endAnchored overlay (end card) to [duration - fixedLen, duration] post-probe", async () => {
+    const writeFileSpy = vi.spyOn(fsp, "writeFile");
+    const fakeRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
+    const fakeProbe = vi.fn(async () => 30);
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-overlay-end-anchored",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      subtitles: {
+        preset: "none" as unknown as never,
+        lines: [],
+        overlays: [
+          {
+            kind: "end_card",
+            text: "ติดตามตอนต่อไป",
+            startSec: 0,
+            endSec: 3,
+            endAnchored: true,
+            durationSecForEndAnchor: 3,
+          },
+        ],
+      } as any,
+    });
+
+    const assCall = writeFileSpy.mock.calls.find(call =>
+      String(call[0]).endsWith("captions.ass")
+    );
+    expect(assCall).toBeDefined();
+    const assContent = String(assCall![1]);
+    // 30s probed duration - 3s fixed length = starts at 27s.
+    expect(assContent).toContain("0:00:27.00,0:00:30.00");
+    writeFileSpy.mockRestore();
+  });
+
+  it("stages and composites an IMAGE watermark, surviving on top of a fullscreen banner", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    const fakeProbe = vi.fn(async () => 10);
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-watermark-image",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      banners: [
+        {
+          imageUrl: "https://cdn.example.com/fullscreen.png",
+          placementId: "fullscreen",
+          startSec: 0,
+          endSec: 3,
+          fadeSec: 0.3,
+        },
+      ],
+      watermarkImage: {
+        imageUrl: "https://cdn.example.com/logo.png",
+        position: "top_right",
+        opacity: 0.45,
+        scalePct: 10,
+        marginPx: 32,
+      },
+    });
+
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const ffArgs = capturedArgs[0]!;
+    expect(ffArgs.some(a => a.endsWith("watermark.png"))).toBe(true);
+    const filterComplex = extractFilterComplex(ffArgs);
+    const fullscreenIdx = filterComplex.indexOf("overlay=0:0");
+    const watermarkIdx = filterComplex.indexOf("colorchannelmixer=aa=0.45");
+    expect(fullscreenIdx).toBeGreaterThan(-1);
+    expect(watermarkIdx).toBeGreaterThan(fullscreenIdx);
+
+    const finalRender = (dbState.episode.assemblyManifest as any)?.finalRender;
+    expect(finalRender.watermarkIncluded).toBe(true);
+  });
+
+  it("is a complete no-op for the legacy concat path when neither overlays nor watermarkImage is supplied", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-legacy-still-works",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+    });
+
+    expect(capturedArgs[0]).not.toContain("-filter_complex");
+    const finalRender = (dbState.episode.assemblyManifest as any)?.finalRender;
+    expect(finalRender).toBeUndefined();
   });
 });
 

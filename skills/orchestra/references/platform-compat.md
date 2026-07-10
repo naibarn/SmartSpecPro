@@ -119,14 +119,14 @@ independent, decision-relevant agents are ready, dispatch them as one batch. If 
 tool is available, follow the open-code inline procedure while preserving the same Task
 Packet and Result Report contracts.
 
-For lightweight-default sub-agent work, pass `gpt-5.5` when the tool supports a model
-override. Use the inherited current/default model for explicit overrides, deep-* routes,
-high-complexity/high-risk work, performance-critical analysis, retry escalations, or
-unsupported override paths. See `model-routing.md`.
+For non-planning sub-agent work, pass `gpt-5.6-terra` when the tool supports a model
+override. Use `gpt-5.6-sol` only for planning roles; explicit user requests take
+precedence. If the override path is unsupported, retain the routing metadata. See
+`model-routing.md`.
 
-In Codex Standard mode, this is an actual `spawn_agent` parameter:
-`model: "gpt-5.5"`. Do not rely only on prompt text or Task Packet
-metadata for model routing.
+In Codex Standard mode, pass the selected model through the actual `spawn_agent` override
+when that parameter is available. Do not rely only on prompt text or Task Packet metadata
+for model routing.
 
 Inline execution in Standard mode is a last resort only when delegation is authorized. In
 Standard Light Mode it is the default. Record the reason in `orchestra/progress.md`.

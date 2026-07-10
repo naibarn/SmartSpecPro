@@ -59,12 +59,14 @@ import {
   buildFacetAssignments,
   resolveMixSelections,
   synthesizeVerticalDramaPresetV2,
+  evaluatePremiseCoverage,
   type PresetSynthesisPresetInput,
   type PresetSynthesisPresetInputV2,
   type SynthesizeVerticalDramaPresetV2Params,
 } from "../verticalDramaPresetSynthesis";
 import { VdSchemaValidationError } from "../verticalDramaStoryBible";
 import { CREATE_SERIES_FIELD_LIMITS } from "@shared/verticalDramaSeries";
+import { renderCriteriaVersionMarker } from "../verticalDramaQualityCriteria";
 import {
   DEFAULT_MIN_FACETS_PER_PRESET,
   mergeVisualIdentities,
@@ -533,12 +535,20 @@ describe("synthesizeVerticalDramaPresetV2", () => {
   });
 
   it("does not throw when the corrective retry call itself errors — falls back to the first attempt's result", async () => {
+    // Phase A reliability fix (2026-07-09) — `executeJsonPlanningCallWithRetry`
+    // (shared with verticalDramaStoryBible.ts) now retries TRANSIENT errors
+    // (network/timeout/5xx) with backoff, so a "provider timeout" rejection
+    // would no longer fail on the first internal attempt. A genuinely FATAL
+    // error (auth failure) is used here so the retry call still fails fast,
+    // preserving this test's intent (the corrective retry call errors out
+    // entirely -> the first attempt's under-blended result is kept).
     mockExecuteWithFallback
       .mockResolvedValueOnce(mockLlmResponse(draftPayload({ blendFacets: UNDER_BLENDED_FACETS })))
-      .mockRejectedValueOnce(new Error("provider timeout"));
+      .mockRejectedValueOnce(new Error("Unauthorized: invalid api key"));
 
     const { draft } = await synthesizeVerticalDramaPresetV2(baseV2Params());
 
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(2); // no retry-of-the-retry — fatal fails fast.
     expect(draft.blendReport.underBlended).toEqual(["202"]);
     expect(draft.warnings.some((w) => w.code === "preset_under_blended")).toBe(true);
   });
@@ -653,5 +663,257 @@ describe("synthesizeVerticalDramaPresetV2", () => {
 
     expect(mockCalculateCreditsForLLM).toHaveBeenCalledWith(180, 90, "gpt-x");
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* User Premise & Premise-Primary Preset Mix (F132A, section-02)              */
+/* -------------------------------------------------------------------------- */
+
+describe("buildUserPrompt (via synthesizeVerticalDramaPreset) — premise-primary blending", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [{ message: { content: JSON.stringify(VALID_DRAFT) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+  });
+
+  function capturedUserPrompt(): string {
+    const call = mockExecuteWithFallback.mock.calls[0][0];
+    return call.messages[1].content as string;
+  }
+
+  it("without userPremise: prompt contains no USER PREMISE section", async () => {
+    await synthesizeVerticalDramaPreset(baseParams());
+    expect(capturedUserPrompt()).not.toContain("USER PREMISE");
+  });
+
+  it("with userPremise: prompt contains the USER PREMISE (PRIMARY SPINE) header and the premise text verbatim, ahead of the payload JSON", async () => {
+    const premise = "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาลกลางดึก";
+    await synthesizeVerticalDramaPreset({ ...baseParams(), userPremise: premise });
+
+    const prompt = capturedUserPrompt();
+    expect(prompt).toContain("USER PREMISE (PRIMARY SPINE):");
+    expect(prompt).toContain(premise);
+    expect(prompt).toContain("Blending rules when a user premise is present:");
+
+    const premiseIndex = prompt.indexOf("USER PREMISE (PRIMARY SPINE):");
+    const payloadIndex = prompt.indexOf('"selectedPresets"');
+    expect(premiseIndex).toBeGreaterThanOrEqual(0);
+    expect(payloadIndex).toBeGreaterThan(premiseIndex);
+  });
+
+  it("blank/whitespace-only userPremise behaves like an absent premise (no USER PREMISE section)", async () => {
+    await synthesizeVerticalDramaPreset({ ...baseParams(), userPremise: "   " });
+    expect(capturedUserPrompt()).not.toContain("USER PREMISE");
+  });
+
+  it("embeds the shared criteria version marker regardless of userPremise presence (Finding 8 / §11 adoption)", async () => {
+    await synthesizeVerticalDramaPreset(baseParams());
+    expect(capturedUserPrompt()).toContain(renderCriteriaVersionMarker());
+
+    mockExecuteWithFallback.mockClear();
+    await synthesizeVerticalDramaPreset({ ...baseParams(), userPremise: "แนวสืบสวน" });
+    expect(capturedUserPrompt()).toContain(renderCriteriaVersionMarker());
+  });
+});
+
+describe("buildUserPromptV2 (via synthesizeVerticalDramaPresetV2) — premise-primary blending", () => {
+  const WELL_BLENDED_FACETS_MIN = [
+    { facet: "story_spine", contributions: [{ presetId: "101", element: "hero's journey", kept: true }] },
+    {
+      facet: "situations",
+      contributions: [
+        { presetId: "101", element: "chase", kept: true },
+        { presetId: "202", element: "support beat", kept: true },
+      ],
+    },
+    {
+      facet: "characters",
+      contributions: [
+        { presetId: "101", element: "lead", kept: true },
+        { presetId: "202", element: "sidekick", kept: true },
+      ],
+    },
+    { facet: "tone", contributions: [{ presetId: "101", element: "tense", kept: true }] },
+    { facet: "cliffhanger_style", contributions: [{ presetId: "101", element: "twist", kept: true }] },
+    { facet: "world_texture", contributions: [{ presetId: "101", element: "texture", kept: true }] },
+    { facet: "visual_identity", contributions: [{ presetId: "101", element: "palette", kept: true }] },
+    { facet: "product_fit", contributions: [{ presetId: "101", element: "tie-in", kept: true }] },
+  ];
+
+  function draftV2Payload(overrides: Record<string, unknown> = {}) {
+    return {
+      contract_version: 2,
+      title: "Title",
+      category: "sci_fi_mecha",
+      logline: "logline",
+      mainPlot: "main plot",
+      seasonArc: "season arc",
+      tone: "tone",
+      cliffhangerStyle: "cliffhanger",
+      characters: [
+        { name: "A", role: "lead", description: "d" },
+        { name: "B", role: "support", description: "d" },
+        { name: "C", role: "villain", description: "d" },
+      ],
+      visualBible: "prose",
+      mixRecipe: { primaryFlavor: "101", supportingFlavors: ["202"], rationale: "why" },
+      warnings: [],
+      blendFacets: WELL_BLENDED_FACETS_MIN,
+      ...overrides,
+    };
+  }
+
+  function baseV2ParamsMin(
+    overrides: Partial<SynthesizeVerticalDramaPresetV2Params> = {},
+  ): SynthesizeVerticalDramaPresetV2Params {
+    return {
+      userId: 7,
+      tenantId: "tenant-1",
+      locale: "th",
+      selections: [
+        { presetId: "101", weight: 3 },
+        { presetId: "202", weight: 2 },
+      ],
+      selectedPresets: [
+        presetInputV2({ id: "101", title: "Primary Preset" }),
+        presetInputV2({ id: "202", title: "Supporting Preset" }),
+      ],
+      selectedCategories: [],
+      primarySelectionId: "101",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [{ message: { content: JSON.stringify(draftV2Payload()) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+  });
+
+  function capturedUserPromptV2(): string {
+    const call = mockExecuteWithFallback.mock.calls[0][0];
+    return call.messages[1].content as string;
+  }
+
+  it("without userPremise: prompt contains no USER PREMISE section", async () => {
+    await synthesizeVerticalDramaPresetV2(baseV2ParamsMin());
+    expect(capturedUserPromptV2()).not.toContain("USER PREMISE");
+  });
+
+  it("with userPremise: prompt contains the USER PREMISE (PRIMARY SPINE) header and the premise text verbatim, ahead of the payload JSON", async () => {
+    const premise = "นักสืบหนุ่มไล่ล่าคดีปริศนาในเมืองท่า";
+    await synthesizeVerticalDramaPresetV2({ ...baseV2ParamsMin(), userPremise: premise });
+
+    const prompt = capturedUserPromptV2();
+    expect(prompt).toContain("USER PREMISE (PRIMARY SPINE):");
+    expect(prompt).toContain(premise);
+
+    const premiseIndex = prompt.indexOf("USER PREMISE (PRIMARY SPINE):");
+    const payloadIndex = prompt.indexOf('"selectedPresets"');
+    expect(payloadIndex).toBeGreaterThan(premiseIndex);
+  });
+
+  it("embeds the shared criteria version marker regardless of userPremise presence", async () => {
+    await synthesizeVerticalDramaPresetV2(baseV2ParamsMin());
+    expect(capturedUserPromptV2()).toContain(renderCriteriaVersionMarker());
+  });
+});
+
+describe("evaluatePremiseCoverage", () => {
+  it("faithful draft: premise entities present in the draft → covered: true, no warning", () => {
+    const premise = "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล";
+    const result = evaluatePremiseCoverage(premise, {
+      logline: "ตำรวจสาวมือใหม่ต้องสืบคดีฆาตกรรมลึกลับที่เกิดขึ้นกลางโรงพยาบาลยามดึก",
+      mainPlot: "เธอไล่ตามเบาะแสในโรงพยาบาลทีละจุดจนเจอความจริง",
+      seasonArc: "คดีฆาตกรรมในโรงพยาบาลค่อยๆคลี่คลายตลอดซีซัน",
+    });
+
+    expect(result.covered).toBe(true);
+    expect(result.warning).toBeUndefined();
+  });
+
+  it("drifted draft: premise entities entirely absent from the draft → covered: false, stable warning code", () => {
+    const premise = "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล";
+    const result = evaluatePremiseCoverage(premise, {
+      logline: "เชฟหนุ่มแข่งทำอาหารในครัวเรียลิตี้โชว์",
+      mainPlot: "ทีมกุ๊กแข่งกันปรุงเมนูใหม่ทุกสัปดาห์เพื่อชิงรางวัลใหญ่",
+      seasonArc: "การแข่งขันทำอาหารทวีความเข้มข้นขึ้นเรื่อยๆ จนถึงรอบชิงชนะเลิศ",
+    });
+
+    expect(result.covered).toBe(false);
+    expect(result.warning).toBeDefined();
+    expect(result.warning?.code).toBe("premise_coverage_low");
+  });
+
+  it("empty/whitespace-only premise short-circuits to covered: true (defensive no-op)", () => {
+    expect(evaluatePremiseCoverage("", { logline: "a", mainPlot: "b", seasonArc: "c" }).covered).toBe(
+      true,
+    );
+    expect(
+      evaluatePremiseCoverage("   ", { logline: "a", mainPlot: "b", seasonArc: "c" }).covered,
+    ).toBe(true);
+  });
+});
+
+describe("synthesizeVerticalDramaPreset with a drifted userPremise", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  it("appends a premise_coverage_low warning after existing clamp warnings when the LLM response drifts from the premise", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_DRAFT,
+                logline: "เชฟหนุ่มแข่งทำอาหารในครัวเรียลิตี้โชว์",
+                mainPlot: "ทีมกุ๊กแข่งกันปรุงเมนูใหม่ทุกสัปดาห์",
+                seasonArc: "การแข่งขันทำอาหารทวีความเข้มข้นขึ้นเรื่อยๆ",
+                warnings: [{ code: "existing_warning", message: "pre-existing" }],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPreset({
+      ...baseParams(),
+      userPremise: "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล",
+    });
+
+    expect(draft.warnings[0].code).toBe("existing_warning");
+    expect(draft.warnings[draft.warnings.length - 1].code).toBe("premise_coverage_low");
+  });
+
+  it("does not append a coverage warning when userPremise is absent", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [{ message: { content: JSON.stringify(VALID_DRAFT) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPreset(baseParams());
+    expect(draft.warnings.some((w) => w.code === "premise_coverage_low")).toBe(false);
   });
 });

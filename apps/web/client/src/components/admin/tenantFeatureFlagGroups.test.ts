@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
+import {
+  FEATURE_FLAG_DEFAULTS,
+  VERTICAL_DRAMA_QUALITY_ENGINE_FEATURE_FLAG_KEYS,
+} from "@shared/featureFlags";
 import {
   buildTenantFeatureFlagGroups,
   getUngroupedTenantFeatureFlagKeys,
@@ -155,6 +158,21 @@ describe("tenantFeatureFlagGroups", () => {
         description: expect.stringContaining("F131AA"),
       }),
     );
+  });
+
+  it("groups all 9 Feature 132 quality-engine flags (F132A-I) with Vertical Drama Series, each with a non-empty label/description", () => {
+    const dramaGroup = buildTenantFeatureFlagGroups().find(
+      (group) => group.title === "Vertical Drama Series",
+    );
+
+    expect(VERTICAL_DRAMA_QUALITY_ENGINE_FEATURE_FLAG_KEYS).toHaveLength(9);
+
+    for (const key of VERTICAL_DRAMA_QUALITY_ENGINE_FEATURE_FLAG_KEYS) {
+      const flag = dramaGroup?.flags.find((f) => f.key === key);
+      expect(flag, `expected Vertical Drama Series group to contain flag "${key}"`).toBeDefined();
+      expect(flag?.label?.length ?? 0).toBeGreaterThan(0);
+      expect(flag?.description?.length ?? 0).toBeGreaterThan(0);
+    }
   });
 
   it("covers every declared tenant feature flag", () => {

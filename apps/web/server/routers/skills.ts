@@ -42,7 +42,7 @@ import {
   type Skill,
   type InsertSkill,
 } from "../../drizzle/schema";
-import { eq, asc, desc, like, or, and, sql, inArray } from "drizzle-orm";
+import { eq, asc, desc, like, ilike, or, and, sql, inArray } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM, hasEnoughCredits } from "../services/creditService";
 import { executeWithFallback, getProviderForModel } from "../services/llmRouter";
 import { buildModelLookupCandidates } from "../services/modelLookup";
@@ -5112,8 +5112,9 @@ export const skillsRouter = router({
       if (input?.search) {
         conditions.push(
           or(
-            like(skills.name, `%${input.search}%`),
-            like(skills.description, `%${input.search}%`),
+            ilike(skills.slug, `%${input.search}%`),
+            ilike(skills.name, `%${input.search}%`),
+            ilike(skills.description, `%${input.search}%`),
           )
         );
       }

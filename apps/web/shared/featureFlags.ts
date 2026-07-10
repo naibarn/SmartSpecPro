@@ -173,6 +173,31 @@ export interface TenantFeatureFlags {
   verticalDramaSeriesDialogueAudio: boolean; // F131K — Dialogue/audio planning surfaces
   verticalDramaSeriesSubtitles: boolean; // F131L — Subtitle planning surfaces
   verticalDramaSeriesSubShots: boolean; // F131M — Opt-in sub-shot decomposition editor (fail-closed)
+  verticalDramaSeriesSpeechBudget: boolean; // F131N — §7.7 density-first planning + coverage gates (fail-closed)
+  verticalDramaSeriesArcReplan: boolean; // F131O — §7.7.3 arc drift detection + re-plan proposals (fail-closed)
+  verticalDramaSeriesQualityLoopV2: boolean; // F131P — §16.1 scorecard v2 + bounded auto-improve loop (fail-closed)
+  verticalDramaSeriesTieInQc: boolean; // F131Q — §13.1 tie-in naturalness QC gates (fail-closed)
+  verticalDramaSeriesProductionWizard: boolean; // F131R — §8.8 guided production wizard (fail-closed)
+  verticalDramaSeriesPresetMixV2: boolean; // F131S — §8.2.2 preset visual identity + verifiable blending (fail-closed)
+  verticalDramaSeriesDeepStoryDrafts: boolean; // F131T — deep story drafts: chunked bible-stage 9-shot speakable dialogue drafts for every planned episode (fail-closed)
+  verticalDramaSeriesVoiceChain: boolean; // F131U — per-character voice casting, voice catalog + paid preview, whole-episode dialogue TTS batch, audio timeline handoff (fail-closed)
+  verticalDramaSeriesStoryLock: boolean; // F131V — story lock: story is finalized on the series Overview; episode-level improve/repair may change EXECUTION only, never story content (mechanically enforced, fail-closed)
+  verticalDramaSeriesAdBannerOverlay: boolean; // F131W — ad banner overlay: series-level banner design studio (style/placement presets, prompt + image generation) composited over episode video, separate from in-story product tie-in (fail-closed)
+  verticalDramaSeriesFormatProfiles: boolean; // F131X — length-aware format profiles: ultra-short (≤5 ep) / short (6-12) tiers tune deep-draft density prompts, per-episode cold-open hook rule, dramaturgy critic thresholds, premium judge hook floor (fail-closed)
+  verticalDramaSeriesTieInReplan: boolean; // F131Y — tie-in defer → real arc replan: tieIn placement field on season-plan items, defer creates a deterministic VD_ARC_TIE_IN_DEFERRED move proposal via the propose→approve→apply chain (fail-closed)
+  verticalDramaSeriesCharacterRefV2: boolean; // F131Z — character visual-identity consistency option A: send a SECOND identity-lock reference image per character (the stored character-sheet turnaround/full asset, alongside the primary portrait) into start-frame image generation, zero provider cost (fail-closed)
+  verticalDramaSeriesShareLinks: boolean; // F131AA — Collab-lite L1: owner-created, expiring, revocable read-only share links to a whitelisted story-content projection of the series, no account/login required to view (fail-closed)
+  verticalDramaSeriesTextOverlaySuite: boolean; // F131AB — Text Overlay Suite: end-card teaser/opener recap/title bumper/episode indicator/character intro cards/mid-episode cards + series watermark, all rendered through the existing ASS subtitle channel + a dedicated top-most watermark overlay input (fail-closed)
+  verticalDramaSeriesNativeAudioPrompts: boolean; // F131AC — native audio direction in shot video prompts: SFX cues tied to visible actions (primary) + ambient soundscape (secondary) for video models with supportsNativeAudio; hard rules: no speech/voices, no music — 3-layer audio architecture layer 1 (fail-closed)
+  verticalDramaUserPremise: boolean; // F132A — spec 132 §4 user premise field + premise-primary synthesis (fail-closed)
+  verticalDramaQualityLedgers: boolean; // F132B — spec 132 §5 ledgers + story state + deterministic checks (fail-closed)
+  verticalDramaSceneContracts: boolean; // F132C — spec 132 §6 scene contracts in drafts/pipeline validation (fail-closed)
+  verticalDramaMultiPassQc: boolean; // F132D — spec 132 §7-8 dialogue rules v2 + multi-pass critique + scorecard v3 (fail-closed)
+  verticalDramaTargetedRevisionV2: boolean; // F132E — spec 132 §9 shot-scoped revision + revision plan (fail-closed)
+  verticalDramaCharacterProfiles: boolean; // F132F — spec 132 §7.3/§10.1 structured personality/speech profiles (fail-closed)
+  verticalDramaCharacterVisualQuality: boolean; // F132G — spec 132 §10.2-10.7 persisted bible, expression set, image QC, consistency ledger (fail-closed)
+  verticalDramaContinuityContracts: boolean; // F132H — spec 132 §8.2 causal chain / hook-to-opening enforcement (fail-closed)
+  verticalDramaAngleGridQuality: boolean; // F132I — spec 132 §19 structured 9-angle schema, diversity/coverage rules, best-angle scoring rubric (fail-closed)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -349,6 +374,31 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "verticalDramaSeriesDialogueAudio",
   "verticalDramaSeriesSubtitles",
   "verticalDramaSeriesSubShots",
+  "verticalDramaSeriesSpeechBudget",
+  "verticalDramaSeriesArcReplan",
+  "verticalDramaSeriesQualityLoopV2",
+  "verticalDramaSeriesTieInQc",
+  "verticalDramaSeriesProductionWizard",
+  "verticalDramaSeriesPresetMixV2",
+  "verticalDramaSeriesDeepStoryDrafts",
+  "verticalDramaSeriesVoiceChain",
+  "verticalDramaSeriesStoryLock",
+  "verticalDramaSeriesAdBannerOverlay",
+  "verticalDramaSeriesFormatProfiles",
+  "verticalDramaSeriesTieInReplan",
+  "verticalDramaSeriesCharacterRefV2",
+  "verticalDramaSeriesShareLinks",
+  "verticalDramaSeriesTextOverlaySuite",
+  "verticalDramaSeriesNativeAudioPrompts",
+  "verticalDramaUserPremise",
+  "verticalDramaQualityLedgers",
+  "verticalDramaSceneContracts",
+  "verticalDramaMultiPassQc",
+  "verticalDramaTargetedRevisionV2",
+  "verticalDramaCharacterProfiles",
+  "verticalDramaCharacterVisualQuality",
+  "verticalDramaContinuityContracts",
+  "verticalDramaAngleGridQuality",
 ]);
 
 /**
@@ -525,6 +575,31 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaSeriesDialogueAudio: false,
   verticalDramaSeriesSubtitles: false,
   verticalDramaSeriesSubShots: false,
+  verticalDramaSeriesSpeechBudget: false,
+  verticalDramaSeriesArcReplan: false,
+  verticalDramaSeriesQualityLoopV2: false,
+  verticalDramaSeriesTieInQc: false,
+  verticalDramaSeriesProductionWizard: false,
+  verticalDramaSeriesPresetMixV2: false,
+  verticalDramaSeriesDeepStoryDrafts: false,
+  verticalDramaSeriesVoiceChain: false,
+  verticalDramaSeriesStoryLock: false,
+  verticalDramaSeriesAdBannerOverlay: false,
+  verticalDramaSeriesFormatProfiles: false,
+  verticalDramaSeriesTieInReplan: false,
+  verticalDramaSeriesCharacterRefV2: false,
+  verticalDramaSeriesShareLinks: false,
+  verticalDramaSeriesTextOverlaySuite: false,
+  verticalDramaSeriesNativeAudioPrompts: true,
+  verticalDramaUserPremise: false,
+  verticalDramaQualityLedgers: false,
+  verticalDramaSceneContracts: false,
+  verticalDramaMultiPassQc: false,
+  verticalDramaTargetedRevisionV2: false,
+  verticalDramaCharacterProfiles: false,
+  verticalDramaCharacterVisualQuality: false,
+  verticalDramaContinuityContracts: false,
+  verticalDramaAngleGridQuality: false,
 };
 
 export const AGE_SAFETY_FEATURE_FLAG_KEYS = [
@@ -570,6 +645,22 @@ export const VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS = [
   "verticalDramaSeriesDialogueAudio",
   "verticalDramaSeriesSubtitles",
   "verticalDramaSeriesSubShots",
+  "verticalDramaSeriesSpeechBudget",
+  "verticalDramaSeriesArcReplan",
+  "verticalDramaSeriesQualityLoopV2",
+  "verticalDramaSeriesTieInQc",
+  "verticalDramaSeriesProductionWizard",
+  "verticalDramaSeriesPresetMixV2",
+  "verticalDramaSeriesDeepStoryDrafts",
+  "verticalDramaSeriesVoiceChain",
+  "verticalDramaSeriesStoryLock",
+  "verticalDramaSeriesAdBannerOverlay",
+  "verticalDramaSeriesFormatProfiles",
+  "verticalDramaSeriesTieInReplan",
+  "verticalDramaSeriesCharacterRefV2",
+  "verticalDramaSeriesShareLinks",
+  "verticalDramaSeriesTextOverlaySuite",
+  "verticalDramaSeriesNativeAudioPrompts",
 ] as const satisfies readonly TenantFeatureFlagKey[];
 
 export type VerticalDramaSeriesFeatureFlagKey =
@@ -611,6 +702,42 @@ export function resolveVerticalDramaSeriesFeatureFlagKey(
  */
 export function areVerticalDramaSeriesFeatureFlagsRegistered(): boolean {
   return VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS.every(
+    (key) => ALLOWED_FEATURE_FLAGS.has(key) && FEATURE_FLAG_DEFAULTS[key] === false,
+  );
+}
+
+/**
+ * Canonical flag names for the Feature 132 Vertical Drama Story & Character
+ * Quality Engine (F132A-I; spec
+ * `specs/feature/132-vertical-drama-story-character-quality-engine/spec.md`
+ * §12, section-01-shared-criteria-and-flags.md). All default OFF
+ * (fail-closed) — the entire quality-engine upgrade ships dark until
+ * explicitly enabled per tenant. No alias map is needed: no legacy names
+ * exist for these flags.
+ */
+export const VERTICAL_DRAMA_QUALITY_ENGINE_FEATURE_FLAG_KEYS = [
+  "verticalDramaUserPremise",
+  "verticalDramaQualityLedgers",
+  "verticalDramaSceneContracts",
+  "verticalDramaMultiPassQc",
+  "verticalDramaTargetedRevisionV2",
+  "verticalDramaCharacterProfiles",
+  "verticalDramaCharacterVisualQuality",
+  "verticalDramaContinuityContracts",
+  "verticalDramaAngleGridQuality",
+] as const satisfies readonly TenantFeatureFlagKey[];
+
+export type VerticalDramaQualityEngineFeatureFlagKey =
+  (typeof VERTICAL_DRAMA_QUALITY_ENGINE_FEATURE_FLAG_KEYS)[number];
+
+/**
+ * True when every canonical Feature 132 quality-engine flag is registered in
+ * the allowlist and defaults OFF (fail-closed). Used by rollout-safety
+ * tests — this is the assertion surface for the flag-default snapshot test
+ * (spec §16.5 "Flag-off = current behavior").
+ */
+export function areVerticalDramaQualityEngineFeatureFlagsRegistered(): boolean {
+  return VERTICAL_DRAMA_QUALITY_ENGINE_FEATURE_FLAG_KEYS.every(
     (key) => ALLOWED_FEATURE_FLAGS.has(key) && FEATURE_FLAG_DEFAULTS[key] === false,
   );
 }

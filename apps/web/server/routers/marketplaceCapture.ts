@@ -698,6 +698,7 @@ export const marketplaceCaptureRouter = router({
           .enum(["fast_draft", "balanced", "premium_strict_qa"])
           .optional()
           .nullable(),
+        visionQaModel: z.string().min(1).max(120).optional().nullable(),
         transportMetadata: mcpTransportMetadataSchema,
         referenceAnchors: z
           .object({

@@ -52,6 +52,10 @@ import {
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
 import { debugError } from "../_core/logger";
+// Feature 132 §11 "Unified Criteria Application" (plan section-01 /
+// section-02 Finding 8) — every §11 consumer prompt must embed this greppable
+// marker; `verticalDramaQualityCriteria.agreement.test.ts` checks for it.
+import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 
 const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-preset-synthesizer");
 const MIN_SELECTIONS = 2;
@@ -137,6 +141,16 @@ export interface SynthesizeVerticalDramaPresetParams {
   productContext?: string;
   targetEpisodeCount?: number;
   toneHint?: string;
+  /**
+   * Feature 132 §4 (F132A) — free-form "โจทย์เรื่องที่อยากได้" creative-intent
+   * input. When present (non-empty after trim), it becomes the PRIMARY story
+   * spine and the selected preset(s) become supporting flavor (spec §4.3).
+   * Absent/empty reproduces today's behavior byte-for-byte. The router is
+   * responsible for tenant-flag gating (`verticalDramaUserPremise`) — this
+   * service performs no flag check of its own, mirroring every other
+   * flag-gated service in this codebase.
+   */
+  userPremise?: string;
 }
 
 export class PresetSynthesisInputError extends Error {
@@ -151,6 +165,216 @@ function clampText(value: string | undefined, maxLength: number): string | undef
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
   return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed;
+}
+
+/* -------------------------------------------------------------------------- */
+/* User Premise & Premise-Primary Preset Mix (F132A, spec §4.3)               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Builds the conditional "USER PREMISE (PRIMARY SPINE)" instruction block
+ * (spec.md §4.3, verbatim), rendered only when `userPremise` is a non-empty
+ * trimmed string. Returns `null` for an absent/blank premise so callers can
+ * use the `.filter(Boolean).join("\n")` idiom already used throughout the
+ * vertical-drama prompt builders — an absent premise must never append
+ * anything to the prompt (spec §16.1 byte-identical acceptance criterion).
+ */
+function buildUserPremisePrimaryBlock(userPremise: string | undefined): string | null {
+  const trimmed = userPremise?.trim();
+  if (!trimmed) return null;
+
+  return [
+    "USER PREMISE (PRIMARY SPINE):",
+    trimmed,
+    "",
+    "Blending rules when a user premise is present:",
+    "- The user premise is the primary story spine. Setting, protagonist, core",
+    "  conflict, and direction stated by the user are non-negotiable.",
+    "- The selected presets (1-5) are supporting flavor: use them to intensify",
+    "  drama, sharpen tropes, add contemporary texture, and fill gaps the user",
+    "  left open. Do not let any preset displace a premise-stated element.",
+    "- primarySelectionId, when also provided, selects which preset contributes",
+    "  the strongest *flavor*, not the spine.",
+    "- If a preset directly conflicts with the premise, keep the premise and",
+    "  record the dropped preset element in `warnings`.",
+    "- The synthesized draft's logline and mainPlot must be traceable to the",
+    "  premise: a reader comparing them side by side must see the user's story.",
+  ].join("\n");
+}
+
+/** Stopwords excluded from `evaluatePremiseCoverage`'s tokenizer (Thai particles/connectives + common English function words) — purely a precision aid, not a correctness requirement. */
+const PREMISE_COVERAGE_STOPWORDS = new Set([
+  "และ",
+  "หรือ",
+  "ที่",
+  "ใน",
+  "กับ",
+  "ของ",
+  "เป็น",
+  "ให้",
+  "ไป",
+  "มา",
+  "จะ",
+  "ได้",
+  "แล้ว",
+  "ก็",
+  "ไม่",
+  "อยาก",
+  "อยากได้",
+  "เรื่อง",
+  "เกี่ยวกับ",
+  "แนว",
+  "ไหน",
+  "เกิด",
+  "ใคร",
+  "คือ",
+  "ระบุ",
+  "เท่าที่",
+  "กำหนด",
+  "เหลือ",
+  "ช่วย",
+  "เติม",
+  "the",
+  "a",
+  "an",
+  "of",
+  "in",
+  "on",
+  "and",
+  "or",
+  "to",
+  "is",
+  "are",
+  "for",
+  "with",
+  "that",
+  "this",
+  "it",
+  "as",
+  "at",
+  "by",
+  "from",
+  "be",
+  "was",
+  "were",
+]);
+
+/** Character run considered "Thai script" if at least this fraction of its characters fall in the Thai Unicode block. */
+const THAI_SCRIPT_RANGE = /^[฀-๿]+$/;
+/** Character n-gram size used to make coverage matching meaningful for Thai (a script written without spaces between words, so whole runs would otherwise tokenize as one giant "word"). */
+const THAI_NGRAM_SIZE = 4;
+/** Only n-gram a Thai run once it is longer than the n-gram size itself (otherwise a short Thai word would produce zero n-grams). */
+const THAI_NGRAM_MIN_RUN_LENGTH = THAI_NGRAM_SIZE + 2;
+
+/**
+ * Splits free text into lowercase comparison tokens for `evaluatePremiseCoverage`.
+ * Latin/other-script "words" (space/punctuation-delimited) are used as-is;
+ * long, unbroken Thai script runs (Thai has no spaces between words) are
+ * additionally broken into overlapping character n-grams so overlap
+ * comparison is still meaningful without a full Thai word-segmentation
+ * dependency. Stopwords and very short tokens are dropped.
+ */
+function tokenizePremiseText(text: string): string[] {
+  const rawRuns = text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  const tokens: string[] = [];
+
+  for (const run of rawRuns) {
+    if (run.length >= THAI_NGRAM_MIN_RUN_LENGTH && THAI_SCRIPT_RANGE.test(run)) {
+      for (let i = 0; i <= run.length - THAI_NGRAM_SIZE; i++) {
+        tokens.push(run.slice(i, i + THAI_NGRAM_SIZE));
+      }
+    } else {
+      tokens.push(run);
+    }
+  }
+
+  return tokens.filter((token) => token.length >= 2 && !PREMISE_COVERAGE_STOPWORDS.has(token));
+}
+
+/** Minimum fraction of premise tokens that must reappear in the draft text for the draft to count as "covered" — deliberately conservative (spec §4.3 open question: "pick a conservative default that only warns on clear drift"). */
+const PREMISE_COVERAGE_MIN_RATIO = 0.15;
+
+export interface EvaluatePremiseCoverageResult {
+  covered: boolean;
+  warning?: { code: string; message: string };
+}
+
+/**
+ * Deterministic, keyword/entity-overlap heuristic guard (spec §4.3) — no LLM
+ * call, never blocks, only warns. Compares tokens derived from `premise`
+ * against tokens derived from the synthesized draft's `logline` + `mainPlot`
+ * + `seasonArc`; when overlap falls below a conservative threshold, returns a
+ * stable-coded warning the caller appends to `draft.warnings` (never throws).
+ * Empty/whitespace-only `premise` short-circuits to `covered: true` — this
+ * function is defensive even though callers should only invoke it when a
+ * premise is actually present.
+ *
+ * Exported for direct unit testing (mirrors `clampDraftForCreateSeries`).
+ * Reused as-is by Section 06's later `premise_drifted` season-critique
+ * finding (spec §4.3 Finding 9) — this section only calls it once, at
+ * synthesis time.
+ */
+export function evaluatePremiseCoverage(
+  premise: string,
+  draft: { logline: string; mainPlot: string; seasonArc: string },
+): EvaluatePremiseCoverageResult {
+  const trimmedPremise = premise?.trim() ?? "";
+  if (!trimmedPremise) {
+    return { covered: true };
+  }
+
+  const premiseTokens = Array.from(new Set(tokenizePremiseText(trimmedPremise)));
+  if (premiseTokens.length === 0) {
+    return { covered: true };
+  }
+
+  const draftTokens = new Set(
+    tokenizePremiseText(`${draft.logline}\n${draft.mainPlot}\n${draft.seasonArc}`),
+  );
+
+  const matchedCount = premiseTokens.filter((token) => draftTokens.has(token)).length;
+  const coverageRatio = matchedCount / premiseTokens.length;
+
+  if (coverageRatio >= PREMISE_COVERAGE_MIN_RATIO) {
+    return { covered: true };
+  }
+
+  return {
+    covered: false,
+    warning: {
+      code: "premise_coverage_low",
+      message:
+        "The synthesized draft may not sufficiently reflect the user-provided premise — review the logline/mainPlot/seasonArc against the premise.",
+    },
+  };
+}
+
+/**
+ * Appends `evaluatePremiseCoverage`'s warning (if any) to `draft.warnings`
+ * when `userPremise` is a non-empty trimmed string. No-op (returns `draft`
+ * unchanged, same reference) when `userPremise` is absent/blank, or when
+ * coverage is fine — mirrors `clampDraftForCreateSeries`/
+ * `clampTitleAndToneForCreateSeries`'s "only touch warnings when needed"
+ * shape. Generic so it works for both the v1 and v2 draft shapes.
+ */
+function appendPremiseCoverageWarning<
+  T extends {
+    logline: string;
+    mainPlot: string;
+    seasonArc: string;
+    warnings: Array<{ code: string; message: string }>;
+  },
+>(draft: T, userPremise: string | undefined): T {
+  const trimmed = userPremise?.trim();
+  if (!trimmed) return draft;
+
+  const coverage = evaluatePremiseCoverage(trimmed, draft);
+  if (coverage.covered || !coverage.warning) return draft;
+
+  return {
+    ...draft,
+    warnings: [...draft.warnings, coverage.warning],
+  };
 }
 
 function uniqueStrings(values: string[]): string[] {
@@ -247,13 +471,17 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
   };
 
   return [
+    renderCriteriaVersionMarker(),
     langInstruction,
+    buildUserPremisePrimaryBlock(params.userPremise),
     "Synthesize a new Vertical Drama Series genre preset from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
     '{"contract_version":1,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"characters":[{"name":string,"role":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}]}',
     VD_COMPACT_JSON_INSTRUCTION,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function validatePresetSynthesisSelection(params: {
@@ -298,7 +526,8 @@ export async function synthesizeVerticalDramaPreset(
     label: "Preset synthesis",
   });
 
-  const { draft } = clampDraftForCreateSeries(synthesizedDraft);
+  const { draft: clampedDraft } = clampDraftForCreateSeries(synthesizedDraft);
+  const draft = appendPremiseCoverageWarning(clampedDraft, params.userPremise);
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
@@ -537,6 +766,8 @@ export interface SynthesizeVerticalDramaPresetV2Params {
   toneHint?: string;
   /** Default `DEFAULT_MIN_FACETS_PER_PRESET` (2). */
   minFacetsPerPreset?: number;
+  /** See `SynthesizeVerticalDramaPresetParams.userPremise` (Feature 132 §4, F132A) — same contract, v2 counterpart. */
+  userPremise?: string;
 }
 
 /** Generic sibling of `clampDraftForCreateSeries` (v1) — kept SEPARATE (not shared) so v1's own code path/behavior is never touched by this file's v2 additions. */
@@ -665,13 +896,17 @@ function buildUserPromptV2(args: {
   };
 
   return [
+    renderCriteriaVersionMarker(),
     langInstruction,
+    buildUserPremisePrimaryBlock(params.userPremise),
     "Synthesize a new Vertical Drama Series genre preset (Mix and Match v2 — verifiable blend) from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
     '{"contract_version":2,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"characters":[{"name":string,"role":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}],"visualIdentity":{"styleName":string,"lighting":string,"cameraGrammar":string,"characterArchetypes":[{"role":string,"look":string}],"positiveFragments":[string]}}',
     VD_COMPACT_JSON_INSTRUCTION,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function buildCorrectiveInstruction(
@@ -850,7 +1085,8 @@ export async function synthesizeVerticalDramaPresetV2(
     ...(visualIdentity ? { visualIdentity } : {}),
   };
 
-  const { draft } = clampTitleAndToneForCreateSeries(mergedDraft);
+  const { draft: clampedDraft } = clampTitleAndToneForCreateSeries(mergedDraft);
+  const draft = appendPremiseCoverageWarning(clampedDraft, params.userPremise);
 
   const creditsUsed = calculateCreditsForLLM(totalPromptTokens, totalCompletionTokens, model);
 

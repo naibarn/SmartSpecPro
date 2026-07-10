@@ -143,3 +143,52 @@ export function findMissingCharacterIdentityWarnings(
 
   return warnings;
 }
+
+/**
+ * Formats an image prompt to explicitly map attached reference image numbers
+ * (Image 1 = Name, Image 2 = Name) and annotate character names in the prompt text
+ * so diffusion models correctly bind attached images to character identities.
+ */
+export function formatIdentityLockedImagePrompt(
+  basePrompt: string,
+  entries: readonly { name?: string | null }[]
+): string {
+  if (entries.length === 0) return basePrompt;
+
+  const uniqueCharacters: Array<{ name: string; imageIndex: number }> = [];
+  const seenNames = new Set<string>();
+  entries.forEach((e, idx) => {
+    const trimmedName = (e.name || "").trim();
+    if (trimmedName && !seenNames.has(trimmedName)) {
+      seenNames.add(trimmedName);
+      uniqueCharacters.push({ name: trimmedName, imageIndex: idx + 1 });
+    }
+  });
+
+  if (uniqueCharacters.length === 0) {
+    return `${basePrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`;
+  }
+
+  let annotatedPrompt = basePrompt;
+  const sortedChars = [...uniqueCharacters].sort(
+    (a, b) => b.name.length - a.name.length
+  );
+
+  for (const charInfo of sortedChars) {
+    const escapedName = charInfo.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(
+      `(${escapedName})(?!\\s*\\((?:see\\s+)?(?:attached\\s+)?Image\\s+\\d+)`,
+      "g"
+    );
+    annotatedPrompt = annotatedPrompt.replace(
+      regex,
+      `$1 (see attached Image ${charInfo.imageIndex})`
+    );
+  }
+
+  const mappingSummary = uniqueCharacters
+    .map(c => `Image ${c.imageIndex} = ${c.name}`)
+    .join(", ");
+
+  return `${annotatedPrompt} [Attached character reference images: ${mappingSummary}. Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.) — match face shape, skin tone, hairstyle, and distinguishing features precisely from the corresponding attached image; do not alter identity.]`;
+}

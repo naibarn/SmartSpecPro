@@ -91,13 +91,36 @@ const ACTIVE_POINTER_TTL_SECONDS = 2 * 60 * 60; // 2h
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export type VerticalDramaStoryJobKind = "deep_generate" | "extend" | "critique" | "apply_critique";
+export type VerticalDramaStoryJobKind =
+  | "deep_generate"
+  | "extend"
+  /**
+   * "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — replaces the old
+   * `critique`/`apply_critique`/`quality_loop` season-quality flow with one
+   * whole-script pass through the `drama-script-evaluate-improve` skill. See
+   * `services/verticalDramaImproveScript.ts`'s `runImproveScriptJob` for the
+   * full contract; this file only needs the kind label + job-record plumbing.
+   */
+  | "improve_script";
 
 /** Structurally compatible with `verticalDramaStoryBible.ts`'s own
  *  `VdStoryDraftProgressEvent` (same field shape, deliberately NOT imported
  *  from there — this file stays domain-agnostic and never imports the
- *  story-bible service or the router, avoiding any circular-import risk). */
-export type VerticalDramaStoryJobProgressPhase = "outline" | "draft" | "review" | "fix" | "reading";
+ *  story-bible service or the router, avoiding any circular-import risk).
+ *
+ *  Feature 132 §5 (F132B, ledgers-and-story-state) — `"ledger"` is the new
+ *  `ledger_plan` step (runs the `vertical-drama-ledger-planner` skill via
+ *  `verticalDramaLedgerPlanner.ts`), positioned after `"outline"` and before
+ *  per-episode `"draft"`ing per spec §5.1. Gated behind the
+ *  `verticalDramaQualityLedgers` tenant flag when actually wired into a
+ *  job's phase sequence — flag-off runs never emit this phase. */
+export type VerticalDramaStoryJobProgressPhase =
+  | "outline"
+  | "ledger"
+  | "draft"
+  | "review"
+  | "fix"
+  | "reading";
 
 export interface VerticalDramaStoryJobProgress {
   phase: VerticalDramaStoryJobProgressPhase;
@@ -109,6 +132,20 @@ export interface VerticalDramaStoryJobProgress {
   callsDone?: number;
   /** Episode numbers this progress event's "fix" work targets (mainly meaningful for phase "fix"). */
   episodesDone?: number[];
+  /**
+   * Auto quality loop (plan §C, added 2026-07-09) — 1-based current round
+   * number within the loop's `maxRounds` budget. `0` is used for the
+   * baseline critique/score-check BEFORE round 1 starts. Absent for every
+   * other job kind (`deep_generate`/`extend`/`critique`/`apply_critique`),
+   * which never touch these 4 fields.
+   */
+  round?: number;
+  /** Auto quality loop — the loop's configured round budget (`startQualityLoop`'s `maxRounds` input), echoed on every progress event so the client never has to remember it separately. */
+  maxRounds?: number;
+  /** Auto quality loop — the most recently known `overallScore` (baseline or latest round's re-critique), so the client can render "รอบ 2/3 — คะแนน 6.4 → 7.1" without waiting for the job to finish. */
+  lastScore?: number;
+  /** Auto quality loop — every score seen so far this run, oldest first (index 0 = baseline). */
+  scoreHistory?: number[];
 }
 
 export type VerticalDramaStoryJobStatus = "queued" | "running" | "succeeded" | "failed";
@@ -344,9 +381,212 @@ export async function getActiveVerticalDramaStoryJob(
 const STORY_JOB_KIND_LABEL_TH: Record<VerticalDramaStoryJobKind, string> = {
   deep_generate: "สร้างร่างละเอียดเนื้อเรื่อง",
   extend: "ขยายร่างเนื้อเรื่อง",
-  critique: "ตรวจสอบคุณภาพซีซัน",
-  apply_critique: "ปรับปรุงเนื้อเรื่องตามคำแนะนำ",
+  improve_script: "ปรับปรุงบทละครให้มีความสมบูรณ์",
 };
+
+function storyJobActionUrl(record: VerticalDramaStoryJobRecord): string {
+  return `/drama-series/${record.seriesId}`;
+}
+
+function storyJobRedisKey(jobId: string): string {
+  return `vd:story-job:${jobId}`;
+}
+
+function sanitizeFeedbackText(value: string): string {
+  return value
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
+/**
+ * Generic auto-filed system feedback ticket (Phase F, added 2026-07-09) —
+ * extracted from what used to be `submitFailedStoryJobFeedback`'s inline body
+ * so BOTH a whole-job terminal failure (below) AND a partial in-job failure
+ * (a job that still completes/succeeds overall but has a `systemFailures`-
+ * shaped gap — e.g. `applySeasonCritique`'s "AI call failed" chunk rejections
+ * or `generateStoryBibleDeep`'s `partial: true` stop) can file through the
+ * SAME mechanism instead of two divergent code paths. `routers/
+ * verticalDramaSeries.ts`'s partial-failure call sites import this directly.
+ *
+ * Every field here is sanitized/truncated identically to the ORIGINAL
+ * `submitFailedStoryJobFeedback` body (title: sanitize+255, description:
+ * sanitize+5000, stepsToReproduce: sanitize/no slice, expectedBehavior: NOT
+ * sanitized — every caller passes a hardcoded Thai string, never raw
+ * error/user content, actualBehavior: sanitize+2000) — callers must follow
+ * that SAME convention (put dynamic/error content only in fields that get
+ * sanitized here).
+ *
+ * `input.title` is dedupe-sensitive: `feedbackProcessor.ts`'s `findDuplicate`
+ * collapses a NEW ticket into a comment on an existing OPEN one whenever the
+ * first 50 (lowercased) chars of the title match — so callers MUST keep this
+ * title fully deterministic per "issue class" (e.g. same series + same job
+ * kind + same failure stage) and never fold volatile per-run details
+ * (specific episode numbers, timestamps, raw error text) into it.
+ */
+export interface VerticalDramaSystemFeedbackInput {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+  /** `feedbackTickets.category` — also lets admins filter by issue source. */
+  category: string;
+  title: string;
+  description: string;
+  stepsToReproduce: string;
+  /** NOT sanitized — pass a static, hardcoded Thai sentence, never raw error/user text. */
+  expectedBehavior: string;
+  actualBehavior: string;
+  contextJson: Record<string, unknown>;
+}
+
+async function insertAndProcessSystemFeedbackTicket(
+  input: VerticalDramaSystemFeedbackInput,
+  db: unknown,
+): Promise<void> {
+  const { feedbackTickets } = await import("../../drizzle/schema");
+  const { processTicket } = await import("./virtualAdmin/feedbackProcessor");
+
+  const [ticket] = await (db as {
+    insert: (table: typeof feedbackTickets) => {
+      values: (values: Record<string, unknown>) => {
+        returning: (fields: { id: typeof feedbackTickets.id }) => Promise<Array<{ id: number }>>;
+      };
+    };
+  })
+    .insert(feedbackTickets)
+    .values({
+      tenantId: input.tenantId,
+      submittedBy: input.userId,
+      submittedByType: "system",
+      ticketType: "bug",
+      priority: "high",
+      severity: "high",
+      category: input.category,
+      title: sanitizeFeedbackText(input.title).slice(0, 255),
+      description: sanitizeFeedbackText(input.description).slice(0, 5000),
+      stepsToReproduce: sanitizeFeedbackText(input.stepsToReproduce),
+      expectedBehavior: input.expectedBehavior,
+      actualBehavior: sanitizeFeedbackText(input.actualBehavior).slice(0, 2000),
+      contextJson: input.contextJson,
+    })
+    .returning({ id: feedbackTickets.id });
+
+  if (!ticket) return;
+  processTicket(ticket.id).catch((error) => {
+    debugError(
+      "verticalDramaStoryJobs",
+      `Failed to process auto feedback ticket ${ticket.id}`,
+      error,
+    );
+  });
+}
+
+/**
+ * Best-effort public entry point — NEVER throws (mirrors every other
+ * best-effort helper in this file), so a router call site never needs its
+ * own guard around this call.
+ */
+export async function submitVerticalDramaSystemFeedback(
+  input: VerticalDramaSystemFeedbackInput,
+  db: unknown,
+): Promise<void> {
+  try {
+    await insertAndProcessSystemFeedbackTicket(input, db);
+  } catch (error) {
+    debugError(
+      "verticalDramaStoryJobs",
+      "Failed to submit vertical drama system feedback ticket",
+      error,
+    );
+  }
+}
+
+async function submitFailedStoryJobFeedback(
+  record: VerticalDramaStoryJobRecord,
+  db: unknown,
+): Promise<void> {
+  const kindLabel = STORY_JOB_KIND_LABEL_TH[record.kind];
+  const actionUrl = storyJobActionUrl(record);
+  const errorMessage = record.error ?? "Unknown vertical drama story job failure";
+  const createdAt = record.createdAt ?? null;
+  const updatedAt = record.updatedAt ?? null;
+  const contextJson = {
+    source: "vertical_drama_story_jobs",
+    eventType: "system_job_failure",
+    user: {
+      id: record.userId,
+      tenantId: record.tenantId,
+    },
+    verticalDrama: {
+      seriesId: record.seriesId,
+      jobId: record.jobId,
+      kind: record.kind,
+      status: record.status,
+      input: record.input,
+      progress: record.progress,
+      createdAt,
+      updatedAt,
+    },
+    diagnostics: {
+      pageUrl: actionUrl,
+      actionUrl,
+      redisKey: storyJobRedisKey(record.jobId),
+      activePointerKey: activePointerKey(record.tenantId, record.seriesId),
+      queue: VERTICAL_DRAMA_STORY_JOBS_QUEUE,
+      ownerService: "apps/web/server/services/verticalDramaStoryJobs.ts",
+      executorBoundary: "apps/web/server/routers/verticalDramaSeries.ts:runVerticalDramaStoryJobExecutor",
+      lookupHints: [
+        `Open ${actionUrl}`,
+        `Search Redis key ${storyJobRedisKey(record.jobId)}`,
+        "Search server logs for source=vertical_drama_story_jobs and this jobId",
+        "Inspect feedback contextJson.verticalDrama for kind/input/progress",
+      ],
+      screenshotCapture: {
+        attached: false,
+        reason:
+          "This ticket was created by a server-side background worker, which has no browser viewport to capture automatically.",
+        fallback:
+          "Client-side system-error feedback can attach pasted/uploaded screenshots when a browser-visible error opens the feedback dialog.",
+      },
+    },
+    error: {
+      message: errorMessage,
+    },
+  };
+
+  const description = [
+    `ระบบ Vertical Drama background job ล้มเหลวและสร้าง feedback นี้อัตโนมัติ`,
+    `User ID: ${record.userId}`,
+    `Tenant ID: ${record.tenantId}`,
+    `Series ID: ${record.seriesId}`,
+    `Job ID: ${record.jobId}`,
+    `Kind: ${record.kind} (${kindLabel})`,
+    `Page: ${actionUrl}`,
+    `Error: ${errorMessage}`,
+  ].join("\n");
+
+  await submitVerticalDramaSystemFeedback(
+    {
+      tenantId: record.tenantId,
+      userId: record.userId,
+      seriesId: record.seriesId,
+      category: "vertical_drama_story_jobs",
+      title: `[System] ${kindLabel} ล้มเหลว (series #${record.seriesId})`,
+      description,
+      stepsToReproduce: [
+        `1. เปิดหน้า ${actionUrl}`,
+        `2. ตรวจ job ${record.jobId} ใน Redis key ${storyJobRedisKey(record.jobId)}`,
+        `3. ค้น log ด้วย jobId และ source vertical_drama_story_jobs`,
+        "4. ดู contextJson ของ ticket นี้เพื่อเทียบ kind/input/progress/error",
+      ].join("\n"),
+      expectedBehavior: `${kindLabel} ควรเสร็จหรือบันทึกผลลัพธ์บางส่วนได้โดยไม่ทำให้ workflow ล้มเหลวเงียบ`,
+      actualBehavior: errorMessage,
+      contextJson,
+    },
+    db,
+  );
+}
 
 /**
  * Best-effort push notification on a story job's terminal state (debt-
@@ -372,31 +612,76 @@ async function notifyStoryJobTerminal(record: VerticalDramaStoryJobRecord): Prom
     const db = await getDb();
     const kindLabel = STORY_JOB_KIND_LABEL_TH[record.kind];
     const succeeded = record.status === "succeeded";
-    await createNotification({
-      db,
-      userId: record.userId,
-      type: succeeded ? "system" : "alert",
-      title: succeeded ? `${kindLabel} เสร็จแล้ว` : `${kindLabel} ไม่สำเร็จ`,
-      content: succeeded
-        ? `งาน "${kindLabel}" เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`
-        : `งาน "${kindLabel}" ล้มเหลว: ${(record.error ?? "").slice(0, 200)}`,
-      priority: succeeded ? "normal" : "high",
-      // No `relatedResourceType` fits (the `ResourceType` union has no
-      // "vertical drama series/job" member) — omitted, same as any other
-      // caller with no matching category (`mapToCategory` falls back to
-      // `"business"`).
-      relatedResourceId: record.jobId,
-      actionUrl: `/drama-series/${record.seriesId}`,
-      actionLabel: "เปิดซีรีย์",
-      groupKey: `vd_story_job:${record.jobId}`,
-      metadata: {
-        source: "vertical_drama_story_jobs",
-        relatedItems: { seriesId: String(record.seriesId), kind: record.kind },
-        ...(succeeded
-          ? {}
-          : { errorDetails: { errorMessage: (record.error ?? "").slice(0, 500) } }),
-      },
-    });
+    try {
+      await createNotification({
+        db,
+        userId: record.userId,
+        type: succeeded ? "system" : "alert",
+        title: succeeded ? `${kindLabel} เสร็จแล้ว` : `${kindLabel} ไม่สำเร็จ`,
+        content: succeeded
+          ? `งาน "${kindLabel}" เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`
+          : `งาน "${kindLabel}" ล้มเหลว: ${(record.error ?? "").slice(0, 200)}`,
+        priority: succeeded ? "normal" : "high",
+        // No `relatedResourceType` fits (the `ResourceType` union has no
+        // "vertical drama series/job" member) — omitted, same as any other
+        // caller with no matching category (`mapToCategory` falls back to
+        // `"business"`).
+        relatedResourceId: record.jobId,
+        actionUrl: storyJobActionUrl(record),
+        actionLabel: "เปิดซีรีย์",
+        groupKey: `vd_story_job:${record.jobId}`,
+        metadata: {
+          source: "vertical_drama_story_jobs",
+          relatedItems: { seriesId: String(record.seriesId), kind: record.kind },
+          ...(succeeded
+            ? {}
+            : { errorDetails: { errorMessage: (record.error ?? "").slice(0, 500) } }),
+        },
+      });
+    } catch (error) {
+      debugError(
+        "verticalDramaStoryJobs",
+        `Failed to send completion notification for story job ${record.jobId}`,
+        error,
+      );
+    }
+    if (!succeeded) {
+      try {
+        await submitFailedStoryJobFeedback(record, db);
+      } catch (error) {
+        debugError(
+          "verticalDramaStoryJobs",
+          `Failed to submit auto feedback for story job ${record.jobId}`,
+          error,
+        );
+      }
+      // Fingerprinted/deduped system auto-report (task: server-side auto-
+      // report service) — separate from `submitFailedStoryJobFeedback` above,
+      // which always creates a new ticket per failure. This one dedups
+      // repeats of the "same" failure across a rolling 24h window instead of
+      // flooding the queue. Kept as an additional call (not a replacement)
+      // to avoid touching the existing, already-tested
+      // `submitFailedStoryJobFeedback` behavior/tests; see the auto-report
+      // task's Result Report for a follow-up consolidation recommendation.
+      try {
+        const { reportSystemFailure } = await import("./systemAutoReportService");
+        await reportSystemFailure({
+          source: "vertical_drama_story_jobs",
+          userId: record.userId,
+          tenantId: record.tenantId,
+          jobId: record.jobId,
+          title: `Story job failed (${record.kind})`,
+          errorMessage: record.error ?? "unknown",
+          extra: { seriesId: record.seriesId, kind: record.kind },
+        });
+      } catch (error) {
+        debugError(
+          "verticalDramaStoryJobs",
+          `Failed to file system auto-report for story job ${record.jobId}`,
+          error,
+        );
+      }
+    }
   } catch (error) {
     debugError(
       "verticalDramaStoryJobs",

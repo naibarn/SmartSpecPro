@@ -93,7 +93,7 @@ interface ProgressStep {
   status: "pending" | "active" | "done" | "error";
 }
 
-type PanelTab = "capture" | "products" | "localAI" | "production" | "storyboard" | "ask" | "config";
+type PanelTab = "capture" | "products" | "localAI" | "production" | "storyboard" | "drama" | "ask" | "config";
 type ImageFilter = "all" | ImageCandidate["kind"];
 
 interface AskResult {
@@ -246,6 +246,75 @@ interface StoryboardReviewProjectDetail extends StoryboardReviewProjectSummary {
   clips: StoryboardReviewClip[];
 }
 
+interface DramaSeriesProjectSummary {
+  id: string;
+  title: string;
+  status: string;
+  genre: string | null;
+  tone: string | null;
+  locale: string | null;
+  episodeCount: number;
+  latestEpisodeNumber: number;
+  updatedAt: string | null;
+  createdAt: string | null;
+  thumbnailUrl: string | null;
+}
+
+interface DramaEpisodeSummary {
+  id: string;
+  episodeNumber: number;
+  title: string;
+  status: string;
+  shotCount: number;
+  clipCount: number;
+  updatedAt: string | null;
+  createdAt: string | null;
+  thumbnailUrl: string | null;
+}
+
+interface DramaShotGridFrame {
+  index: number;
+  url: string;
+  thumbnailUrl: string | null;
+}
+
+interface DramaShotReferenceImage {
+  id: string;
+  url: string;
+  thumbnailUrl: string | null;
+  role: string;
+  source: string;
+  title?: string;
+}
+
+interface DramaShot {
+  shotNumber: number;
+  description: string;
+  cameraSetup: string;
+  durationSeconds: number | null;
+  imagePrompt: string;
+  negativeImagePrompt: string;
+  videoPrompt: string;
+  negativeVideoPrompt: string;
+  dialogue: string;
+  mainImageUrl: string | null;
+  mainImageThumbnailUrl: string | null;
+  gridImageUrl: string | null;
+  gridFrames: DramaShotGridFrame[];
+  referenceImages: DramaShotReferenceImage[];
+}
+
+interface DramaEpisodeDetail {
+  id: string;
+  seriesId: string;
+  seriesTitle: string;
+  episodeNumber: number;
+  title: string;
+  status: string;
+  updatedAt: string | null;
+  shots: DramaShot[];
+}
+
 interface ProductionMediaFileEntry {
   status: "loading" | "ready" | "failed";
   file?: File;
@@ -276,8 +345,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.106";
-const EXTENSION_BUILD_LABEL = "2026-06-28 18:47 +07";
+const EXTENSION_VERSION = "0.1.113";
+const EXTENSION_BUILD_LABEL = "2026-07-10 00:58 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -769,6 +838,16 @@ function startProductionMediaDrag(event: DragEvent<HTMLElement>, input: { url: s
       event.preventDefault();
       return;
     }
+  }
+  // File not ready yet — set URL as text/uri-list fallback so drop targets can still receive something
+  if (input.url && (input.url.startsWith("http") || input.url.startsWith("/"))) {
+    try {
+      event.dataTransfer.setData("text/uri-list", input.url);
+      event.dataTransfer.setData("text/plain", input.url);
+    } catch {
+      // ignore
+    }
+    return;
   }
   event.preventDefault();
 }
@@ -1994,6 +2073,17 @@ export default function App() {
   const [selectedStoryboardProject, setSelectedStoryboardProject] = useState<StoryboardReviewProjectDetail | null>(null);
   const [storyboardProjectsBusy, setStoryboardProjectsBusy] = useState(false);
   const [storyboardProjectBusy, setStoryboardProjectBusy] = useState(false);
+  const [dramaProjectSearch, setDramaProjectSearch] = useState("");
+  const [dramaProjects, setDramaProjects] = useState<DramaSeriesProjectSummary[]>([]);
+  const [dramaProjectsBusy, setDramaProjectsBusy] = useState(false);
+  const [selectedDramaProject, setSelectedDramaProject] = useState<DramaSeriesProjectSummary | null>(null);
+  const [dramaEpisodes, setDramaEpisodes] = useState<DramaEpisodeSummary[]>([]);
+  const [dramaEpisodesBusy, setDramaEpisodesBusy] = useState(false);
+  const [dramaSeriesInfo, setDramaSeriesInfo] = useState<{ id: string; title: string; status: string } | null>(null);
+  const [selectedDramaEpisode, setSelectedDramaEpisode] = useState<DramaEpisodeDetail | null>(null);
+  const [dramaEpisodeBusy, setDramaEpisodeBusy] = useState(false);
+  const [dramaGridCuts, setDramaGridCuts] = useState<Record<number, { status: "loading" | "ready" | "failed"; tiles: Array<{ index: number; dataUrl: string }> }>>({});
+  const dramaGridCutStartedRef = useRef<Set<number>>(new Set());
   const [configTestResult, setConfigTestResult] = useState<ConfigTestResult>({ status: "idle", message: "Not tested yet." });
   const [diagnosticLogs, setDiagnosticLogs] = useState<DiagnosticLogEntry[]>([]);
   const [affiliateLinkBusy, setAffiliateLinkBusy] = useState<Record<string, boolean>>({});
@@ -2105,6 +2195,11 @@ export default function App() {
   useEffect(() => {
     if (activeTab !== "storyboard" || storyboardProjects.length > 0 || storyboardProjectsBusy || !settings.token) return;
     run(() => loadStoryboardReviewProjects());
+  }, [activeTab, settings.token]);
+
+  useEffect(() => {
+    if (activeTab !== "drama" || dramaProjects.length > 0 || dramaProjectsBusy || !settings.token) return;
+    run(() => loadDramaSeriesProjects());
   }, [activeTab, settings.token]);
 
   useEffect(() => {
@@ -3588,6 +3683,150 @@ export default function App() {
     }
   }
 
+  async function loadDramaSeriesProjects(search = dramaProjectSearch) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setDramaProjectsBusy(true);
+    setStatus("Loading Drama Series projects");
+    try {
+      const params = new URLSearchParams();
+      params.set("limit", "50");
+      if (search.trim()) params.set("query", search.trim());
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/drama-series/projects?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const projects = Array.isArray(json.projects) ? json.projects as DramaSeriesProjectSummary[] : [];
+      setDramaProjects(projects);
+      setStatus(`Loaded ${projects.length} Drama Series projects`);
+    } finally {
+      setDramaProjectsBusy(false);
+    }
+  }
+
+  async function loadDramaEpisodes(project: DramaSeriesProjectSummary) {
+    if (!settings.token) throw new Error("กรุณาใส่ extension token ก่อน");
+    setSelectedDramaProject(project);
+    setSelectedDramaEpisode(null);
+    setDramaEpisodesBusy(true);
+    setStatus("Loading Drama Series episodes");
+    try {
+      const params = new URLSearchParams();
+      params.set("seriesId", project.id);
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/drama-series/episodes?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const series = (json.series ?? null) as { id: string; title: string; status: string } | null;
+      const episodes = Array.isArray(json.episodes) ? json.episodes as DramaEpisodeSummary[] : [];
+      setDramaSeriesInfo(series);
+      setDramaEpisodes(episodes);
+      setStatus(`Loaded ${episodes.length} episodes`);
+    } finally {
+      setDramaEpisodesBusy(false);
+    }
+  }
+
+  async function loadDramaEpisode(episode: DramaEpisodeSummary) {
+    if (!settings.token || !selectedDramaProject) throw new Error("กรุณาใส่ extension token ก่อน");
+    setDramaEpisodeBusy(true);
+    setProductionMediaFiles({});
+    setDramaGridCuts({});
+    dramaGridCutStartedRef.current = new Set();
+    setStatus("Loading episode storyboard");
+    try {
+      const params = new URLSearchParams();
+      params.set("seriesId", selectedDramaProject.id);
+      params.set("episodeId", episode.id);
+      const response = await fetch(`${serverBaseUrl}/api/marketplace-captures/drama-series/episode?${params.toString()}`, {
+        method: "GET",
+        headers: await extensionAuthHeaders(),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const json = await response.json();
+      const detail = json.episode as DramaEpisodeDetail | null | undefined;
+      setSelectedDramaEpisode(detail ?? null);
+      if (detail) {
+        void prepareDramaEpisodeMediaFiles(detail);
+        for (const shot of detail.shots) {
+          if (shot.gridImageUrl) void cutDramaShotGrid(shot);
+        }
+      }
+      setStatus("Episode storyboard ready");
+    } finally {
+      setDramaEpisodeBusy(false);
+    }
+  }
+
+  async function prepareDramaEpisodeMediaFiles(episode: DramaEpisodeDetail) {
+    const jobs: ProductionMediaPrepareJob[] = episode.shots.flatMap((shot) => [
+      { url: shot.mainImageUrl, title: `drama-shot-${shot.shotNumber}-main` },
+      { url: shot.mainImageThumbnailUrl, title: `drama-shot-${shot.shotNumber}-main` },
+      ...shot.gridFrames.map((frame) => ({ url: frame.url, title: `drama-shot-${shot.shotNumber}-frame-${frame.index + 1}` })),
+      ...shot.referenceImages.map((image, index) => ({ url: image.url, title: `drama-shot-${shot.shotNumber}-ref-${index + 1}` })),
+    ]);
+    await prepareDragMediaFiles(jobs);
+  }
+
+  async function cutDramaShotGrid(shot: DramaShot) {
+    const sourceUrl = shot.gridImageUrl?.trim();
+    if (!sourceUrl) return;
+    if (dramaGridCutStartedRef.current.has(shot.shotNumber)) return;
+    const existing = dramaGridCuts[shot.shotNumber];
+    if (existing?.status === "loading" || existing?.status === "ready") return;
+    dramaGridCutStartedRef.current.add(shot.shotNumber);
+    setDramaGridCuts((current) => ({ ...current, [shot.shotNumber]: { status: "loading", tiles: [] } }));
+    try {
+      const url = resolveServerUrl(serverBaseUrl, sourceUrl);
+      let blob: Blob;
+      if (url.startsWith("data:image/")) {
+        blob = dataUrlToBlob(url);
+      } else {
+        let response = await fetch(url);
+        if (!response.ok) {
+          response = await fetch(url, { headers: await extensionAuthHeaders() });
+        }
+        if (!response.ok) throw new Error(`Unable to fetch grid image ${response.status}`);
+        blob = await response.blob();
+      }
+      const bitmap = await createImageBitmap(blob);
+      const tileWidth = Math.floor(bitmap.width / 3);
+      const tileHeight = Math.floor(bitmap.height / 3);
+      if (!tileWidth || !tileHeight) throw new Error("Grid image too small to cut");
+      const tiles: Array<{ index: number; dataUrl: string }> = [];
+      for (let index = 0; index < 9; index += 1) {
+        const row = Math.floor(index / 3);
+        const col = index % 3;
+        let tileBlob: Blob | null = null;
+        if (typeof OffscreenCanvas !== "undefined") {
+          const canvas = new OffscreenCanvas(tileWidth, tileHeight);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Unable to acquire canvas context");
+          ctx.drawImage(bitmap, col * tileWidth, row * tileHeight, tileWidth, tileHeight, 0, 0, tileWidth, tileHeight);
+          tileBlob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.92 });
+        } else {
+          const canvas = document.createElement("canvas");
+          canvas.width = tileWidth;
+          canvas.height = tileHeight;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Unable to acquire canvas context");
+          ctx.drawImage(bitmap, col * tileWidth, row * tileHeight, tileWidth, tileHeight, 0, 0, tileWidth, tileHeight);
+          tileBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+        }
+        if (!tileBlob) throw new Error("Unable to export tile image");
+        const dataUrl = await blobToDataUrl(tileBlob);
+        tiles.push({ index, dataUrl });
+      }
+      setDramaGridCuts((current) => ({ ...current, [shot.shotNumber]: { status: "ready", tiles } }));
+      void prepareDragMediaFiles(tiles.map((tile) => ({ url: tile.dataUrl, title: `drama-shot-${shot.shotNumber}-frame-${tile.index + 1}` })));
+    } catch {
+      setDramaGridCuts((current) => ({ ...current, [shot.shotNumber]: { status: "failed", tiles: [] } }));
+    }
+  }
+
   function productionMediaFileName(url: string, title: string, kind: "image" | "video", mimeType: string) {
     const fallbackExtension = kind === "video" ? "mp4" : mimeType.includes("jpeg") ? "jpg" : mimeType.includes("webp") ? "webp" : "png";
     const fallback = `${title || kind}.${fallbackExtension}`.replace(/[\\/:*?"<>|]+/g, "-");
@@ -3885,7 +4124,11 @@ export default function App() {
       .map((candidate) => candidate?.trim() ?? "")
       .filter(Boolean)
       .filter((candidate, index, list) => list.indexOf(candidate) === index);
+    // Prefer a candidate that's already ready (has a file). Fall back to first non-failed.
     const rawUrl = candidateUrls.find((candidate) => {
+      const resolved = resolveServerUrl(serverBaseUrl, candidate);
+      return productionMediaFiles[resolved]?.status === "ready";
+    }) ?? candidateUrls.find((candidate) => {
       const resolved = resolveServerUrl(serverBaseUrl, candidate);
       return productionMediaFiles[resolved]?.status !== "failed";
     }) ?? candidateUrls[0] ?? "";
@@ -3900,21 +4143,47 @@ export default function App() {
     const url = resolveServerUrl(serverBaseUrl, rawUrl);
     const kind = input.kind ?? "image";
     const fileEntry = productionMediaFiles[url];
+    // Best file entry across all candidates (pick first ready one for drag)
+    const bestFileEntry = candidateUrls
+      .map((candidate) => productionMediaFiles[resolveServerUrl(serverBaseUrl, candidate)])
+      .find((entry) => entry?.status === "ready") ?? fileEntry;
     const displayUrl = fileEntry?.objectUrl || url;
+    const handleDragStart = (event: DragEvent<HTMLElement>) => {
+      // Trigger prepare for all candidates on drag start (in case not yet ready)
+      for (const candidate of candidateUrls) {
+        void prepareProductionMediaFile(candidate, input.title || input.label, kind);
+      }
+      startProductionMediaDrag(event, {
+        url,
+        title: input.title || input.label,
+        kind,
+        file: bestFileEntry?.file,
+        dragId: bestFileEntry?.dragId,
+        dataUrl: bestFileEntry?.dataUrl,
+        headers: bestFileEntry?.authHeaders,
+      });
+    };
+    const handleDragEnd = () => {
+      endProductionMediaDrag({ dragId: bestFileEntry?.dragId });
+    };
     return (
       <div
         role="button"
         tabIndex={0}
         className={`production-media-card${fileEntry?.status === "loading" ? " loading" : ""}${fileEntry?.status === "failed" ? " failed" : ""}`}
-        draggable={Boolean(fileEntry?.file)}
-        onPointerDown={() => void prepareProductionMediaFile(rawUrl, input.title || input.label, kind)}
+        draggable
+        onPointerDown={() => {
+          for (const candidate of candidateUrls) {
+            void prepareProductionMediaFile(candidate, input.title || input.label, kind);
+          }
+        }}
         onMouseEnter={() => {
           for (const candidate of candidateUrls) {
             void prepareProductionMediaFile(candidate, input.title || input.label, kind);
           }
         }}
-        onDragStart={(event) => startProductionMediaDrag(event, { url, title: input.title || input.label, kind, file: fileEntry?.file, dragId: fileEntry?.dragId, dataUrl: fileEntry?.dataUrl })}
-        onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
         onDoubleClick={() => chrome.tabs.create({ url })}
         onKeyDown={(event) => {
           if (event.key === "Enter") chrome.tabs.create({ url });
@@ -3924,7 +4193,21 @@ export default function App() {
         {kind === "video" ? (
           <div className="production-video-thumb">▶</div>
         ) : (
-          <img src={displayUrl} alt={input.title || input.label} draggable={false} />
+          <img
+            src={displayUrl}
+            alt={input.title || input.label}
+            draggable={false}
+            onPointerDown={() => {
+              for (const candidate of candidateUrls) {
+                void prepareProductionMediaFile(candidate, input.title || input.label, kind);
+              }
+            }}
+            onMouseEnter={() => {
+              for (const candidate of candidateUrls) {
+                void prepareProductionMediaFile(candidate, input.title || input.label, kind);
+              }
+            }}
+          />
         )}
         <span>{input.label}{fileEntry?.status === "loading" ? " · preparing" : fileEntry?.status === "ready" ? " · file ready" : ""}</span>
       </div>
@@ -3941,7 +4224,7 @@ export default function App() {
         alt={input.alt}
         loading={input.loading ?? "lazy"}
         decoding="async"
-        draggable={Boolean(fileEntry?.file)}
+        draggable
         onPointerDown={() => void prepareProductionMediaFile(input.url, input.title, "image")}
         onMouseEnter={() => void prepareProductionMediaFile(input.url, input.title, "image")}
         onDragStart={(event) => startProductionMediaDrag(event, {
@@ -3951,6 +4234,7 @@ export default function App() {
           file: fileEntry?.file,
           dragId: fileEntry?.dragId,
           dataUrl: fileEntry?.dataUrl,
+          headers: fileEntry?.authHeaders,
         })}
         onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
         title={fileEntry?.file ? "Drag this image as a file into an upload drop zone." : "Preparing file drag. Hover or press once, then drag after file ready."}
@@ -4022,6 +4306,14 @@ export default function App() {
           onClick={() => setActiveTab("storyboard")}
         >
           Storyboard
+        </button>
+        <button
+          className={tabButtonClass("drama")}
+          role="tab"
+          aria-selected={activeTab === "drama"}
+          onClick={() => setActiveTab("drama")}
+        >
+          Drama Series
         </button>
         <button
           className={tabButtonClass("ask")}
@@ -4610,7 +4902,7 @@ export default function App() {
                           role="button"
                           tabIndex={0}
                           className="production-reference-image"
-                          draggable={Boolean(fileEntry?.file)}
+                          draggable
                           onPointerDown={() => void prepareProductionMediaFile(image.url, image.title || image.role || image.kind)}
                           onMouseEnter={() => void prepareProductionMediaFile(image.url, image.title || image.role || image.kind)}
                           onDragStart={(event) => startProductionMediaDrag(event, {
@@ -4672,7 +4964,7 @@ export default function App() {
                                 role="button"
                                 tabIndex={0}
                                 className="production-reference-image"
-                                draggable={Boolean(fileEntry?.file)}
+                                draggable
                                 onPointerDown={() => void prepareProductionMediaFile(image.url, image.title || image.role || image.kind)}
                                 onMouseEnter={() => void prepareProductionMediaFile(image.url, image.title || image.role || image.kind)}
                                 onDragStart={(event) => startProductionMediaDrag(event, {
@@ -4876,6 +5168,294 @@ export default function App() {
             )}
           </div>
         </div>
+      </div>
+      ) : null}
+
+      {activeTab === "drama" ? (
+      <div className="tab-panel" role="tabpanel" aria-label="Drama Series">
+        {!selectedDramaProject ? (
+          <div className="section">
+            <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div>
+                <strong>Drama Series Projects</strong>
+                <div className="muted">Recent Vertical Drama Series projects from SmartAIHub, newest first. Select a project to browse its episodes.</div>
+              </div>
+              <button className="button" disabled={dramaProjectsBusy || !settings.token} onClick={() => run(() => loadDramaSeriesProjects())}>
+                {dramaProjectsBusy ? "Loading..." : "Refresh"}
+              </button>
+            </div>
+            {!settings.token ? (
+              <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Drama Series projects.</div>
+            ) : null}
+            <div className="production-search-row">
+              <input
+                className="input"
+                placeholder="Search series title"
+                value={dramaProjectSearch}
+                onChange={(event) => setDramaProjectSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") run(() => loadDramaSeriesProjects());
+                }}
+              />
+              <button className="button primary" disabled={dramaProjectsBusy || !settings.token} onClick={() => run(() => loadDramaSeriesProjects())}>Search</button>
+            </div>
+            <div className="compact-summary" style={{ marginTop: 8 }}>
+              <strong>Projects ({dramaProjects.length})</strong>
+              <span className="muted">max 50</span>
+            </div>
+            {dramaProjects.length > 0 ? dramaProjects.map((project) => (
+              <button
+                type="button"
+                className="production-project-card"
+                key={project.id}
+                onClick={() => run(() => loadDramaEpisodes(project))}
+              >
+                {project.thumbnailUrl ? (
+                  <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" />
+                ) : (
+                  <div className="production-project-thumb empty" />
+                )}
+                <span className="production-project-body">
+                  <span className="production-project-title">{project.title || project.id}</span>
+                  <span className="muted">{project.status} | {project.episodeCount} ตอน | {formatDateTime(project.updatedAt)}</span>
+                  {project.genre || project.tone ? (
+                    <span className="production-project-summary">{[project.genre, project.tone].filter(Boolean).join(" · ")}</span>
+                  ) : null}
+                </span>
+              </button>
+            )) : (
+              <div className="muted">{dramaProjectsBusy ? "Loading projects..." : "No Drama Series projects found."}</div>
+            )}
+          </div>
+        ) : !selectedDramaEpisode ? (
+          <div className="section">
+            <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setSelectedDramaProject(null);
+                    setDramaEpisodes([]);
+                    setDramaSeriesInfo(null);
+                  }}
+                >
+                  ← Projects
+                </button>
+                <div style={{ marginTop: 8 }}>
+                  <strong>{dramaSeriesInfo?.title || selectedDramaProject.title || selectedDramaProject.id}</strong>
+                  <div className="muted">{dramaSeriesInfo?.status || selectedDramaProject.status}</div>
+                </div>
+              </div>
+              <button className="button" disabled={dramaEpisodesBusy || !settings.token} onClick={() => run(() => loadDramaEpisodes(selectedDramaProject))}>
+                {dramaEpisodesBusy ? "Loading..." : "Refresh"}
+              </button>
+            </div>
+            <div className="compact-summary" style={{ marginTop: 8 }}>
+              <strong>Episodes ({dramaEpisodes.length})</strong>
+            </div>
+            {dramaEpisodesBusy ? (
+              <div className="muted">Loading episodes...</div>
+            ) : dramaEpisodes.length > 0 ? dramaEpisodes.map((episode) => (
+              <button
+                type="button"
+                className="production-project-card"
+                key={episode.id}
+                onClick={() => run(() => loadDramaEpisode(episode))}
+              >
+                {episode.thumbnailUrl ? (
+                  <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, episode.thumbnailUrl)} alt="" />
+                ) : (
+                  <div className="production-project-thumb empty" />
+                )}
+                <span className="production-project-body">
+                  <span className="production-project-title">Episode {episode.episodeNumber}: {episode.title}</span>
+                  <span className="muted">{episode.status} | {episode.shotCount} shots | {episode.clipCount} clips | {formatDateTime(episode.updatedAt)}</span>
+                </span>
+              </button>
+            )) : (
+              <div className="muted">No episodes found for this series.</div>
+            )}
+          </div>
+        ) : (
+          <div className="section">
+            <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+                <button className="button" type="button" onClick={() => setSelectedDramaEpisode(null)}>← Episodes</button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setSelectedDramaEpisode(null);
+                    setSelectedDramaProject(null);
+                    setDramaEpisodes([]);
+                    setDramaSeriesInfo(null);
+                  }}
+                >
+                  ← Projects
+                </button>
+              </div>
+            </div>
+            {dramaEpisodeBusy ? (
+              <div className="muted">Loading episode storyboard...</div>
+            ) : (
+              <>
+                <div style={{ marginTop: 8 }}>
+                  <strong>{selectedDramaEpisode.seriesTitle} — Episode {selectedDramaEpisode.episodeNumber}: {selectedDramaEpisode.title}</strong>
+                  <div className="muted">{selectedDramaEpisode.status} | {formatDateTime(selectedDramaEpisode.updatedAt)}</div>
+                </div>
+                <div className="production-shot-list">
+                  {selectedDramaEpisode.shots.length > 0 ? selectedDramaEpisode.shots.map((shot) => (
+                    <div className="production-shot-card" key={shot.shotNumber}>
+                      <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                        <div>
+                          <strong>Shot {shot.shotNumber}</strong>
+                          <div className="muted">{shot.durationSeconds ?? "-"}s</div>
+                          {shot.description ? <div className="muted">{shot.description}</div> : null}
+                          {shot.cameraSetup ? <div className="muted">{shot.cameraSetup}</div> : null}
+                        </div>
+                      </div>
+                      <div className="production-shot-assets">
+                        {productionMediaCard({
+                          label: "Main image",
+                          urls: [shot.mainImageUrl, shot.mainImageThumbnailUrl],
+                          url: shot.mainImageUrl,
+                          title: `drama-shot-${shot.shotNumber}-main`,
+                        })}
+                      </div>
+                      {(() => {
+                        const gridCut = dramaGridCuts[shot.shotNumber];
+                        if (gridCut?.status === "ready" && gridCut.tiles.length > 0) {
+                          return (
+                            <div className="production-reference-strip shot">
+                              {gridCut.tiles.map((tile) => {
+                                const fileEntry = productionMediaFiles[tile.dataUrl];
+                                const title = `drama-shot-${shot.shotNumber}-frame-${tile.index + 1}`;
+                                return (
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    className="production-reference-image"
+                                    draggable
+                                    onPointerDown={() => void prepareProductionMediaFile(tile.dataUrl, title)}
+                                    onMouseEnter={() => void prepareProductionMediaFile(tile.dataUrl, title)}
+                                    onDragStart={(event) => startProductionMediaDrag(event, {
+                                      url: tile.dataUrl,
+                                      title,
+                                      kind: "image",
+                                      file: fileEntry?.file,
+                                      dragId: fileEntry?.dragId,
+                                      dataUrl: fileEntry?.dataUrl,
+                                    })}
+                                    onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+                                    key={`${shot.shotNumber}-cut-frame-${tile.index}`}
+                                  >
+                                    <img src={tile.dataUrl} alt={`#${tile.index + 1}`} draggable={false} />
+                                    <span>#{tile.index + 1}{fileEntry?.status === "ready" ? " · file" : ""}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                        if (gridCut?.status === "loading") {
+                          return <div className="muted" style={{ marginTop: 8 }}>Cutting 3x3 grid into 9 frames...</div>;
+                        }
+                        if (shot.gridFrames.length > 0) {
+                          return (
+                            <div className="production-reference-strip shot">
+                              {shot.gridFrames.map((frame) => {
+                                const imageUrl = resolveServerUrl(serverBaseUrl, frame.url);
+                                const fileEntry = productionMediaFiles[imageUrl];
+                                return (
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    className="production-reference-image"
+                                    draggable
+                                    onPointerDown={() => void prepareProductionMediaFile(frame.url, `drama-shot-${shot.shotNumber}-frame-${frame.index + 1}`)}
+                                    onMouseEnter={() => void prepareProductionMediaFile(frame.url, `drama-shot-${shot.shotNumber}-frame-${frame.index + 1}`)}
+                                    onDragStart={(event) => startProductionMediaDrag(event, {
+                                      url: imageUrl,
+                                      title: `drama-shot-${shot.shotNumber}-frame-${frame.index + 1}`,
+                                      kind: "image",
+                                      file: fileEntry?.file,
+                                      dragId: fileEntry?.dragId,
+                                      dataUrl: fileEntry?.dataUrl,
+                                    })}
+                                    onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+                                    onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
+                                    onKeyDown={(event) => {
+                                      if (event.key === "Enter") chrome.tabs.create({ url: imageUrl });
+                                    }}
+                                    key={`${shot.shotNumber}-frame-${frame.index}`}
+                                  >
+                                    <img src={resolveServerUrl(serverBaseUrl, frame.thumbnailUrl || frame.url)} alt={`#${frame.index + 1}`} draggable={false} />
+                                    <span>#{frame.index + 1}{fileEntry?.status === "ready" ? " · file" : ""}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                      {productionPromptBox("Image prompt", shot.imagePrompt, "No image prompt saved for this shot yet.")}
+                      {productionPromptBox("Video prompt", shot.videoPrompt, "No video prompt saved for this shot yet.")}
+                      {shot.dialogue ? (
+                        <details className="story-option-video">
+                          <summary>Dialogue</summary>
+                          <div className="muted" style={{ whiteSpace: "pre-wrap" }}>{shot.dialogue}</div>
+                        </details>
+                      ) : null}
+                      {shot.referenceImages.length > 0 ? (
+                        <div className="production-reference-strip shot">
+                          {shot.referenceImages.map((image, index) => {
+                            const imageUrl = resolveServerUrl(serverBaseUrl, image.url);
+                            const fileEntry = productionMediaFiles[imageUrl];
+                            const label = image.title || image.source || image.role;
+                            return (
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                className="production-reference-image"
+                                draggable
+                                onPointerDown={() => void prepareProductionMediaFile(image.url, `drama-shot-${shot.shotNumber}-ref-${index + 1}`)}
+                                onMouseEnter={() => void prepareProductionMediaFile(image.url, `drama-shot-${shot.shotNumber}-ref-${index + 1}`)}
+                                onDragStart={(event) => startProductionMediaDrag(event, {
+                                  url: imageUrl,
+                                  title: `drama-shot-${shot.shotNumber}-ref-${index + 1}`,
+                                  kind: "image",
+                                  file: fileEntry?.file,
+                                  dragId: fileEntry?.dragId,
+                                  dataUrl: fileEntry?.dataUrl,
+                                  headers: fileEntry?.authHeaders,
+                                })}
+                                onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+                                onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") chrome.tabs.create({ url: imageUrl });
+                                }}
+                                key={`${shot.shotNumber}-${image.id}`}
+                              >
+                                <img src={resolveServerUrl(serverBaseUrl, image.thumbnailUrl || image.url)} alt={label} draggable={false} />
+                                <span>{label}{fileEntry?.status === "ready" ? " · file" : ""}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="muted">No reference images uploaded for this shot.</div>
+                      )}
+                    </div>
+                  )) : (
+                    <div className="muted">This episode has no shots yet.</div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
       ) : null}
 

@@ -17,7 +17,18 @@ import {
 } from "@smartspec/ui/src/components/ui/select";
 import { ScrollArea } from "@smartspec/ui/src/components/ui/scroll-area";
 import {
+  Dialog,
+  DialogContent,
+} from "@smartspec/ui/src/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@smartspec/ui/src/components/ui/collapsible";
+import {
   ChevronLeft,
+  ChevronRight,
+  ChevronDown,
   MessageSquare,
   Bug,
   Lightbulb,
@@ -33,6 +44,8 @@ import {
   FileText,
   Download,
   X,
+  Copy,
+  Stethoscope,
 } from "lucide-react";
 
 export default function AdminFeedbackHub() {
@@ -56,6 +69,8 @@ export default function AdminFeedbackHub() {
   }, [search]);
   const [commentText, setCommentText] = useState("");
   const [isInternal, setIsInternal] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const statsQuery = trpc.feedback.stats.useQuery();
   const ticketsQuery = trpc.feedback.list.useQuery({
@@ -101,6 +116,165 @@ export default function AdminFeedbackHub() {
   const tickets = ticketsQuery.data ?? [];
   const detail = ticketDetailQuery.data;
 
+  const attachmentsList = ((detail as any)?.attachments ?? []) as any[];
+  const imageAttachments = attachmentsList.filter((att: any) =>
+    att.mimeType?.startsWith("image/")
+  );
+
+  const openLightbox = (attachmentId: number) => {
+    const idx = imageAttachments.findIndex(
+      (a: any) => a.id === attachmentId
+    );
+    setLightboxIndex(idx >= 0 ? idx : 0);
+    setLightboxOpen(true);
+  };
+
+  const navigateLightbox = (direction: "prev" | "next") => {
+    if (imageAttachments.length === 0) return;
+    setLightboxIndex(prev => {
+      if (direction === "prev") {
+        return prev === 0 ? imageAttachments.length - 1 : prev - 1;
+      }
+      return prev === imageAttachments.length - 1 ? 0 : prev + 1;
+    });
+  };
+
+  // Keyboard navigation for the lightbox (Escape is handled by the Dialog
+  // itself; we only need Arrow keys here).
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") navigateLightbox("prev");
+      if (e.key === "ArrowRight") navigateLightbox("next");
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lightboxOpen, imageAttachments.length]);
+
+  // `contextJson` is a loosely-typed json column — it may be a full
+  // DiagnosticsBundle (see client/src/lib/systemErrorMonitor.ts), an older
+  // ad-hoc shape, or null. Extract known fields defensively; never throw.
+  const contextJson = (detail as any)?.contextJson ?? null;
+  const isAutoReport =
+    contextJson &&
+    typeof contextJson === "object" &&
+    (contextJson as any)?.kind === "system_auto_report";
+
+  const diagnostics =
+    contextJson && typeof contextJson === "object" && !isAutoReport
+      ? {
+          capturedAt: (contextJson as any).capturedAt as string | undefined,
+          traceId: (contextJson as any).primaryError?.traceId as
+            | string
+            | undefined,
+          path: (contextJson as any).primaryError?.path as
+            | string
+            | undefined,
+          code: (contextJson as any).primaryError?.code as
+            | string
+            | undefined,
+          httpStatus: (contextJson as any).primaryError?.httpStatus as
+            | number
+            | undefined,
+          message: (contextJson as any).primaryError?.message as
+            | string
+            | undefined,
+          pageUrl: (contextJson as any).page?.url as string | undefined,
+          userAgent: (contextJson as any).client?.userAgent as
+            | string
+            | undefined,
+        }
+      : null;
+
+  // Flat shape written by `server/services/systemAutoReportService.ts` — see
+  // `ReportSystemFailureParams`/`contextJson` in that file for the exact
+  // fields. Kept separate from `diagnostics` (the client-side
+  // "system_error_report" bundle shape) since the two shapes don't overlap.
+  const autoReportDiagnostics = isAutoReport
+    ? {
+        source: (contextJson as any)?.source as string | undefined,
+        occurrences: (contextJson as any)?.occurrences as
+          | number
+          | undefined,
+        firstSeenAt: (contextJson as any)?.firstSeenAt as
+          | string
+          | undefined,
+        lastSeenAt: (contextJson as any)?.lastSeenAt as string | undefined,
+        traceId: (contextJson as any)?.traceId as string | undefined,
+        path: (contextJson as any)?.path as string | undefined,
+        jobId: (contextJson as any)?.jobId as string | undefined,
+        errorMessage: (contextJson as any)?.errorMessage as
+          | string
+          | undefined,
+        stack: (contextJson as any)?.stack as string | undefined,
+        affectedUserIds: Array.isArray((contextJson as any)?.affectedUserIds)
+          ? ((contextJson as any).affectedUserIds as unknown[])
+              .filter((v): v is number => typeof v === "number")
+              .join(", ")
+          : undefined,
+      }
+    : null;
+
+  const handleCopyTraceId = (traceId: string) => {
+    navigator.clipboard.writeText(traceId);
+    toast.success("Copied traceId");
+  };
+
+  const buildAiBundle = () => {
+    if (!detail) return "";
+    const d = detail as any;
+    const lines: string[] = [];
+    lines.push(`# Error Report: ${d.title}`);
+    lines.push(
+      `- Ticket: #${d.id} | Type: ${d.ticketType} | Status: ${d.status} | Created: ${
+        d.createdAt ? new Date(d.createdAt).toISOString() : ""
+      }`
+    );
+    lines.push(
+      `- Reporter: user id ${d.submittedBy ?? "unknown"} (tenant ${
+        d.tenantId ?? "unknown"
+      })`
+    );
+    lines.push("");
+    lines.push("## User Description");
+    lines.push(d.description || "(none)");
+    lines.push("");
+    lines.push("## Diagnostics (JSON)");
+    lines.push("```json");
+    lines.push(JSON.stringify(contextJson ?? null, null, 2));
+    lines.push("```");
+    lines.push("");
+    lines.push("## Attachments");
+    if (attachmentsList.length === 0) {
+      lines.push("- (none)");
+    } else {
+      for (const att of attachmentsList) {
+        lines.push(
+          `- ${att.fileName} (${att.mimeType ?? "unknown"}, ${
+            att.fileSize ?? "?"
+          } bytes)`
+        );
+      }
+    }
+    lines.push("");
+    lines.push("## Instruction");
+    lines.push(
+      "Analyze the diagnostics above and identify the most likely root cause. " +
+        "The primaryError and recentErrors contain tRPC path, HTTP status, error " +
+        "code/message, and traceId. Suggest where to look in server logs using " +
+        "the traceId."
+    );
+    return lines.join("\n");
+  };
+
+  const handleCopyForAi = () => {
+    const bundle = buildAiBundle();
+    if (!bundle) return;
+    navigator.clipboard.writeText(bundle);
+    toast.success("Copied AI-analysis bundle to clipboard");
+  };
+
   const typeIcons: Record<string, React.ReactNode> = {
     bug: <Bug className="h-3.5 w-3.5" />,
     feature_request: <Lightbulb className="h-3.5 w-3.5" />,
@@ -141,6 +315,16 @@ export default function AdminFeedbackHub() {
     closed: "Closed",
     duplicate: "Duplicate",
     deferred: "Deferred",
+  };
+
+  // Absolute local datetime (vs. `formatDate`'s relative "Xm ago" style) —
+  // used for auto-report firstSeenAt/lastSeenAt where an exact timestamp is
+  // more useful than a relative one.
+  const formatDateTime = (d: string | Date | null | undefined) => {
+    if (!d) return "";
+    const date = new Date(d);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString();
   };
 
   const formatDate = (d: string | Date | null) => {
@@ -253,49 +437,68 @@ export default function AdminFeedbackHub() {
                   No tickets found
                 </div>
               )}
-              {tickets.map((ticket: any) => (
-                <div
-                  key={ticket.id}
-                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                    selectedTicketId === ticket.id
-                      ? "bg-blue-50 border border-blue-200"
-                      : "hover:bg-gray-50 border border-transparent"
-                  }`}
-                  onClick={() => setSelectedTicketId(ticket.id)}
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Badge
-                      className={`text-[10px] px-1.5 py-0 gap-1 ${typeColor[ticket.ticketType] ?? ""}`}
-                    >
-                      {typeIcons[ticket.ticketType]}
-                      {ticket.ticketType.replace("_", " ")}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] px-1.5 py-0 ${statusColor[ticket.status] ?? ""}`}
-                    >
-                      {statusLabel[ticket.status] ?? ticket.status}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground ml-auto">
-                      #{ticket.id}
-                    </span>
-                  </div>
-                  <div className="font-medium text-sm truncate">
-                    {ticket.title}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {formatDate(ticket.createdAt)}
-                    </span>
-                    {ticket.autoCategory && (
-                      <span className="text-[10px] text-muted-foreground">
-                        AI: {ticket.autoCategory}
+              {tickets.map((ticket: any) => {
+                const ticketIsAutoReport =
+                  ticket.title?.startsWith("[Auto]") ||
+                  ticket.contextJson?.kind === "system_auto_report";
+                const ticketOccurrences = ticket.contextJson?.occurrences as
+                  | number
+                  | undefined;
+                return (
+                  <div
+                    key={ticket.id}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedTicketId === ticket.id
+                        ? "bg-blue-50 border border-blue-200"
+                        : "hover:bg-gray-50 border border-transparent"
+                    }`}
+                    onClick={() => setSelectedTicketId(ticket.id)}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Badge
+                        className={`text-[10px] px-1.5 py-0 gap-1 ${typeColor[ticket.ticketType] ?? ""}`}
+                      >
+                        {typeIcons[ticket.ticketType]}
+                        {ticket.ticketType.replace("_", " ")}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] px-1.5 py-0 ${statusColor[ticket.status] ?? ""}`}
+                      >
+                        {statusLabel[ticket.status] ?? ticket.status}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground ml-auto">
+                        #{ticket.id}
                       </span>
-                    )}
+                    </div>
+                    <div className="font-medium text-sm truncate flex items-center gap-1.5">
+                      {ticketIsAutoReport && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0 shrink-0"
+                        >
+                          Auto
+                          {ticketOccurrences != null &&
+                            ticketOccurrences > 1 &&
+                            ` ×${ticketOccurrences}`}
+                        </Badge>
+                      )}
+                      <span className="truncate">{ticket.title}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(ticket.createdAt)}
+                      </span>
+                      {ticket.autoCategory && (
+                        <span className="text-[10px] text-muted-foreground">
+                          AI: {ticket.autoCategory}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </ScrollArea>
         </div>
@@ -345,26 +548,37 @@ export default function AdminFeedbackHub() {
                   </div>
 
                   {/* Status actions */}
-                  <div className="flex gap-1.5 flex-wrap justify-end">
-                    {(
-                      ["triaged", "in_progress", "resolved", "closed"] as const
-                    ).map(s => (
-                      <Button
-                        key={s}
-                        size="sm"
-                        variant={detail.status === s ? "default" : "outline"}
-                        className="h-7 text-xs"
-                        disabled={updateStatusMutation.isPending}
-                        onClick={() =>
-                          updateStatusMutation.mutate({
-                            ticketId: selectedTicketId,
-                            status: s,
-                          })
-                        }
-                      >
-                        {statusLabel[s]}
-                      </Button>
-                    ))}
+                  <div className="flex flex-col items-end gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={handleCopyForAi}
+                    >
+                      <Copy className="h-3 w-3" />
+                      คัดลอกสำหรับ AI
+                    </Button>
+                    <div className="flex gap-1.5 flex-wrap justify-end">
+                      {(
+                        ["triaged", "in_progress", "resolved", "closed"] as const
+                      ).map(s => (
+                        <Button
+                          key={s}
+                          size="sm"
+                          variant={detail.status === s ? "default" : "outline"}
+                          className="h-7 text-xs"
+                          disabled={updateStatusMutation.isPending}
+                          onClick={() =>
+                            updateStatusMutation.mutate({
+                              ticketId: selectedTicketId,
+                              status: s,
+                            })
+                          }
+                        >
+                          {statusLabel[s]}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -447,6 +661,232 @@ export default function AdminFeedbackHub() {
                     </div>
                   )}
 
+                  {/* Diagnostics */}
+                  {contextJson && (
+                    <div className="bg-white rounded-lg p-4 border">
+                      <h3 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                        <Stethoscope className="h-3.5 w-3.5" />
+                        ข้อมูลวินิจฉัย
+                      </h3>
+                      {diagnostics && (
+                        <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1.5 text-xs mb-3">
+                          {diagnostics.traceId && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                traceId
+                              </dt>
+                              <dd className="flex items-center gap-1.5 min-w-0">
+                                <span className="font-mono truncate">
+                                  {diagnostics.traceId}
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    handleCopyTraceId(diagnostics.traceId!)
+                                  }
+                                  className="text-muted-foreground hover:text-foreground shrink-0"
+                                  title="Copy traceId"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </dd>
+                            </>
+                          )}
+                          {diagnostics.path && (
+                            <>
+                              <dt className="text-muted-foreground">path</dt>
+                              <dd className="font-mono truncate">
+                                {diagnostics.path}
+                              </dd>
+                            </>
+                          )}
+                          {diagnostics.code && (
+                            <>
+                              <dt className="text-muted-foreground">code</dt>
+                              <dd>{diagnostics.code}</dd>
+                            </>
+                          )}
+                          {diagnostics.httpStatus != null && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                httpStatus
+                              </dt>
+                              <dd>{diagnostics.httpStatus}</dd>
+                            </>
+                          )}
+                          {diagnostics.message && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                message
+                              </dt>
+                              <dd className="whitespace-pre-wrap break-words">
+                                {diagnostics.message}
+                              </dd>
+                            </>
+                          )}
+                          {diagnostics.pageUrl && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                page.url
+                              </dt>
+                              <dd className="truncate">
+                                {diagnostics.pageUrl}
+                              </dd>
+                            </>
+                          )}
+                          {diagnostics.userAgent && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                userAgent
+                              </dt>
+                              <dd className="truncate">
+                                {diagnostics.userAgent}
+                              </dd>
+                            </>
+                          )}
+                          {diagnostics.capturedAt && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                capturedAt
+                              </dt>
+                              <dd>{formatDate(diagnostics.capturedAt)}</dd>
+                            </>
+                          )}
+                        </dl>
+                      )}
+                      {autoReportDiagnostics && (
+                        <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1.5 text-xs mb-3">
+                          {autoReportDiagnostics.source && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                source
+                              </dt>
+                              <dd className="font-mono truncate">
+                                {autoReportDiagnostics.source}
+                              </dd>
+                            </>
+                          )}
+                          {autoReportDiagnostics.occurrences != null && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                occurrences
+                              </dt>
+                              <dd>{autoReportDiagnostics.occurrences}</dd>
+                            </>
+                          )}
+                          {autoReportDiagnostics.firstSeenAt && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                firstSeenAt
+                              </dt>
+                              <dd>
+                                {formatDateTime(
+                                  autoReportDiagnostics.firstSeenAt
+                                )}
+                              </dd>
+                            </>
+                          )}
+                          {autoReportDiagnostics.lastSeenAt && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                lastSeenAt
+                              </dt>
+                              <dd>
+                                {formatDateTime(
+                                  autoReportDiagnostics.lastSeenAt
+                                )}
+                              </dd>
+                            </>
+                          )}
+                          {autoReportDiagnostics.traceId && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                traceId
+                              </dt>
+                              <dd className="flex items-center gap-1.5 min-w-0">
+                                <span className="font-mono truncate">
+                                  {autoReportDiagnostics.traceId}
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    handleCopyTraceId(
+                                      autoReportDiagnostics.traceId!
+                                    )
+                                  }
+                                  className="text-muted-foreground hover:text-foreground shrink-0"
+                                  title="Copy traceId"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                </button>
+                              </dd>
+                            </>
+                          )}
+                          {autoReportDiagnostics.path && (
+                            <>
+                              <dt className="text-muted-foreground">path</dt>
+                              <dd className="font-mono truncate">
+                                {autoReportDiagnostics.path}
+                              </dd>
+                            </>
+                          )}
+                          {autoReportDiagnostics.jobId && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                jobId
+                              </dt>
+                              <dd className="font-mono truncate">
+                                {autoReportDiagnostics.jobId}
+                              </dd>
+                            </>
+                          )}
+                          {autoReportDiagnostics.errorMessage && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                errorMessage
+                              </dt>
+                              <dd className="whitespace-pre-wrap break-words">
+                                {autoReportDiagnostics.errorMessage}
+                              </dd>
+                            </>
+                          )}
+                          {autoReportDiagnostics.affectedUserIds && (
+                            <>
+                              <dt className="text-muted-foreground">
+                                affectedUserIds
+                              </dt>
+                              <dd className="truncate">
+                                {autoReportDiagnostics.affectedUserIds}
+                              </dd>
+                            </>
+                          )}
+                        </dl>
+                      )}
+                      {autoReportDiagnostics?.stack && (
+                        <Collapsible>
+                          <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                            <ChevronDown className="h-3 w-3" />
+                            Stack trace
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <pre className="mt-2 max-h-64 overflow-auto rounded bg-muted p-2 text-[10px] leading-relaxed">
+                              {autoReportDiagnostics.stack}
+                            </pre>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                          <ChevronDown className="h-3 w-3" />
+                          Raw JSON
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <pre className="mt-2 max-h-64 overflow-auto rounded bg-muted p-2 text-[10px] leading-relaxed">
+                            {JSON.stringify(contextJson, null, 2)}
+                          </pre>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </div>
+                  )}
+
                   {/* Attachments */}
                   {((detail as any).attachments?.length ?? 0) > 0 && (
                     <div className="bg-white rounded-lg p-4 border">
@@ -462,13 +902,12 @@ export default function AdminFeedbackHub() {
                               key={att.id}
                               className="flex items-center gap-2 p-2 rounded-lg border hover:bg-muted/50 transition-colors group"
                             >
-                              <a
-                                href={att.resolvedUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 flex-1 min-w-0"
-                              >
-                                {isImage ? (
+                              {isImage ? (
+                                <button
+                                  type="button"
+                                  onClick={() => openLightbox(att.id)}
+                                  className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                                >
                                   <div className="w-10 h-10 rounded overflow-hidden bg-muted shrink-0">
                                     <img
                                       src={att.resolvedUrl}
@@ -476,23 +915,41 @@ export default function AdminFeedbackHub() {
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
-                                ) : (
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate">
+                                      {att.fileName}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {att.fileSize
+                                        ? `${(att.fileSize / 1024).toFixed(0)} KB`
+                                        : ""}
+                                    </p>
+                                  </div>
+                                  <Eye className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
+                                </button>
+                              ) : (
+                                <a
+                                  href={att.resolvedUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 flex-1 min-w-0"
+                                >
                                   <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
                                     <FileText className="h-5 w-5 text-muted-foreground" />
                                   </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium truncate">
-                                    {att.fileName}
-                                  </p>
-                                  <p className="text-[10px] text-muted-foreground">
-                                    {att.fileSize
-                                      ? `${(att.fileSize / 1024).toFixed(0)} KB`
-                                      : ""}
-                                  </p>
-                                </div>
-                                <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
-                              </a>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate">
+                                      {att.fileName}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {att.fileSize
+                                        ? `${(att.fileSize / 1024).toFixed(0)} KB`
+                                        : ""}
+                                    </p>
+                                  </div>
+                                  <Download className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0" />
+                                </a>
+                              )}
                               <button
                                 onClick={async () => {
                                   const confirmed = await confirm({
@@ -613,6 +1070,64 @@ export default function AdminFeedbackHub() {
                   </Button>
                 </div>
               </div>
+
+              {/* Image attachment lightbox */}
+              <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+                <DialogContent className="sm:max-w-6xl w-[95vw] h-[92vh] p-0 overflow-hidden flex flex-col">
+                  {imageAttachments[lightboxIndex] && (
+                    <>
+                      <div className="relative flex-1 min-h-0 bg-black flex items-center justify-center overflow-hidden">
+                        {imageAttachments.length > 1 && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                              onClick={() => navigateLightbox("prev")}
+                            >
+                              <ChevronLeft className="w-6 h-6" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 bg-black/50 hover:bg-black/70 text-white"
+                              onClick={() => navigateLightbox("next")}
+                            >
+                              <ChevronRight className="w-6 h-6" />
+                            </Button>
+                          </>
+                        )}
+                        <img
+                          key={imageAttachments[lightboxIndex].id}
+                          src={imageAttachments[lightboxIndex].resolvedUrl}
+                          alt={imageAttachments[lightboxIndex].fileName}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="flex-shrink-0 px-5 py-3 bg-background border-t flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {imageAttachments[lightboxIndex].fileName}
+                          </p>
+                          {imageAttachments.length > 1 && (
+                            <p className="text-xs text-muted-foreground">
+                              {lightboxIndex + 1} / {imageAttachments.length}
+                            </p>
+                          )}
+                        </div>
+                        <a
+                          href={imageAttachments[lightboxIndex].resolvedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline shrink-0"
+                        >
+                          เปิดในแท็บใหม่
+                        </a>
+                      </div>
+                    </>
+                  )}
+                </DialogContent>
+              </Dialog>
             </>
           )}
         </div>

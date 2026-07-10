@@ -1,0 +1,41 @@
+{
+  "feature": "132-vertical-drama-story-character-quality-engine",
+  "specVersion": "0.4",
+  "planVersion": "0.3",
+  "generatedAt": "2026-07-09",
+  "model": "sonnet (all section-writer, review, and implementation agents forced to Sonnet 5 per explicit user instruction; no Fable 5 used)",
+  "sections": [
+    { "id": "01", "title": "Shared Quality Criteria Module + Feature Flags", "flags": [], "file": "sections/section-01-shared-criteria-and-flags.md", "dependsOn": [] },
+    { "id": "02", "title": "User Premise & Premise-Primary Preset Mix", "flags": ["F132A"], "file": "sections/section-02-user-premise-preset-mix.md", "dependsOn": ["01"] },
+    { "id": "03", "title": "Ledgers & Story State", "flags": ["F132B"], "file": "sections/section-03-ledgers-and-story-state.md", "dependsOn": ["01"] },
+    { "id": "04", "title": "Scene Contracts", "flags": ["F132C"], "file": "sections/section-04-scene-contracts.md", "dependsOn": ["01", "03"] },
+    { "id": "05", "title": "Dialogue Quality Rules v2 + Character Speech Profiles", "flags": ["F132D", "F132F"], "file": "sections/section-05-dialogue-rules-and-speech-profiles.md", "dependsOn": ["01", "04"] },
+    { "id": "06", "title": "Multi-Pass QC & Scorecard v3", "flags": ["F132D", "F132H"], "file": "sections/section-06-multipass-qc-and-scorecard-v3.md", "dependsOn": ["01", "02", "03", "04", "05"] },
+    { "id": "07", "title": "Targeted Revision Engine v2", "flags": ["F132E"], "file": "sections/section-07-targeted-revision-engine.md", "dependsOn": ["01", "03", "04", "06"] },
+    { "id": "08", "title": "Character Personality & Persisted Visual Bible", "flags": ["F132F", "F132G"], "file": "sections/section-08-character-personality-and-visual-bible.md", "dependsOn": ["01", "05"] },
+    { "id": "09", "title": "Character Image QC & Cast-Level Contrast", "flags": ["F132G"], "file": "sections/section-09-character-image-qc-and-cast-contrast.md", "dependsOn": ["08"] },
+    { "id": "10", "title": "Camera Angle Set Quality (Nine-Angle Cinematic Grid)", "flags": ["F132I"], "file": "sections/section-10-camera-angle-grid-quality.md", "dependsOn": [] }
+  ],
+  "buildOrder": ["01", ["02", "03", "04", "05"], ["06", "08"], "09", "07", "10"],
+  "buildOrderNote": "Section 10 shares zero files with 01-09 and has no real dependency edge; listed last only for context-budget sequencing during implementation, not a true dependency.",
+  "review": {
+    "file": "reviews/self-review-round-1.md",
+    "findingsResolved": 11,
+    "blockingFindings": 1,
+    "resolutionMethod": "direct conductor edits to section files, no re-dispatch"
+  },
+  "completenessAudit": {
+    "file": "reviews/completeness-audit-vs-spec-round-2.md",
+    "significantFindings": 2,
+    "bugsFound": 2,
+    "resolutionMethod": "direct conductor edits to section files + spec.md clarifications (v0.2->v0.3)"
+  },
+  "ownership": {
+    "featureFlags": "01 (F132A-H); 10 (F132I, independent)",
+    "seasonCritiqueFindingKindsArray": "06",
+    "characterPersonalitySchema": "08",
+    "extractCharacterDescription": "08",
+    "ledgerPlannerSkillScaffold": "03",
+    "verticalDramaStoryBibleTsSharedFile": "02, 03, 04, 06, 07 (sequential single-owner per implementation wave, see orchestra/plan.md)"
+  }
+}

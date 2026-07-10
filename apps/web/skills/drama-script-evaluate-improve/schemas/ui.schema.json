@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/drama-script-evaluate-improve/ui.schema.json",
+  "title": "Drama Script Evaluate & Improve UI",
+  "description": "UI schema for the unified drama script evaluation and improvement skill.",
+  "type": "object",
+  "ui:order": [
+    "original_script",
+    "user_revision_request"
+  ],
+  "properties": {
+    "original_script": {
+      "ui:widget": "textarea",
+      "ui:placeholder": "วางบทละครก่อนแก้ไขทั้งหมดที่นี่ เช่น เรื่องย่อรวม โครงตอน รายช็อต บทพูด จุดค้างท้ายตอน...",
+      "ui:options": {
+        "rows": 24
+      }
+    },
+    "user_revision_request": {
+      "ui:widget": "textarea",
+      "ui:placeholder": "พิมพ์สิ่งที่ต้องการให้ปรับเพิ่ม เช่น ต้องการฉากเรือนไม้ทรงไทย / บรรยากาศริมทะเล / เพิ่มความโรแมนติก / เห็นหน้าตัวละครชัดทุกช็อต / ภาษาง่ายขึ้น...",
+      "ui:options": {
+        "rows": 8
+      }
+    }
+  }
+}

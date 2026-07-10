@@ -107,6 +107,13 @@ vi.mock("../../services/llmRouter", () => ({
   executeWithFallback: vi.fn(),
 }));
 
+const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
+  mockGetTenantFeatureFlags: vi.fn(),
+}));
+vi.mock("../../services/tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: mockGetTenantFeatureFlags,
+}));
+
 const { mockGenerateStoryBibleDeep } = vi.hoisted(() => ({
   mockGenerateStoryBibleDeep: vi.fn(),
 }));
@@ -118,6 +125,13 @@ vi.mock("../../services/verticalDramaStoryBible", async (importOriginal) => {
     generateStoryBibleDeep: mockGenerateStoryBibleDeep,
   };
 });
+
+const { mockRunVerticalDramaLedgerPlanning } = vi.hoisted(() => ({
+  mockRunVerticalDramaLedgerPlanning: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaLedgerPlanner", () => ({
+  runVerticalDramaLedgerPlanning: mockRunVerticalDramaLedgerPlanning,
+}));
 
 vi.mock("../../services/verticalDramaArcReplan", () => ({
   applyApprovedArcReplan: vi.fn(),
@@ -145,13 +159,17 @@ vi.mock("../../_core/logger", () => ({
 // exercise ONLY the fail-fast guards + enqueue call, never the real
 // Redis/BullMQ-backed implementation (covered separately by
 // `services/__tests__/verticalDramaStoryJobs.test.ts`).
-const { mockEnqueueVerticalDramaStoryJob } = vi.hoisted(() => ({
+const { mockEnqueueVerticalDramaStoryJob, mockSubmitVerticalDramaSystemFeedback } = vi.hoisted(() => ({
   mockEnqueueVerticalDramaStoryJob: vi.fn(),
+  mockSubmitVerticalDramaSystemFeedback: vi.fn(),
 }));
 vi.mock("../../services/verticalDramaStoryJobs", () => ({
   enqueueVerticalDramaStoryJob: mockEnqueueVerticalDramaStoryJob,
   getVerticalDramaStoryJobStatus: vi.fn(),
   getActiveVerticalDramaStoryJob: vi.fn(),
+  // Phase F (added 2026-07-09) — additive partial-system-failure feedback
+  // bridge; covered by its own describe block below.
+  submitVerticalDramaSystemFeedback: mockSubmitVerticalDramaSystemFeedback,
 }));
 
 import {
@@ -275,6 +293,19 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockListEvents.mockResolvedValue([]);
   mockDb.insert.mockReturnValue({ values: vi.fn(() => Promise.resolve(undefined)) });
+  mockGetTenantFeatureFlags.mockResolvedValue({});
+  mockRunVerticalDramaLedgerPlanning.mockResolvedValue({
+    ledgers: {
+      evidenceLedger: [],
+      characterActivationLedger: [],
+      threatLadder: [],
+      consequenceLedger: [],
+      threadLedger: [],
+      worldRuleLedger: [],
+      causalChainMap: [],
+    },
+    creditsUsed: 0,
+  });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -513,6 +544,7 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
     expect(callArgs.episodes.map((e: any) => e.episodeNumber)).toEqual([1, 2]);
     expect(callArgs.onProgress).toBe(onProgress);
+    expect(mockRunVerticalDramaLedgerPlanning).not.toHaveBeenCalled();
 
     // Persisted bible: one new version; episodes 1-2 carry shotDrafts,
     // episode 3 is untouched (no shotDrafts key at all).
@@ -539,6 +571,82 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     expect(result.horizonEndEpisode).toBe(2);
     expect(result.chunkSizes).toEqual([2]);
     expect(result.creditsUsed).toBe(6);
+  });
+
+  it("runs ledger_plan before draft when F132B is on, persists ledgers on the new version, and includes ledger credits", async () => {
+    const seriesRow = {
+      id: 10,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Corporate Betrayal",
+      locale: "th",
+      genre: "romance",
+      tone: "dramatic",
+      targetEpisodeCount: 3,
+      defaultEpisodeDurationSeconds: 60,
+      bible: {
+        refinedCharacters: [{ name: "Aria", role: "lead" }],
+        episodeBreakdown: [plannedItem(1), plannedItem(2), plannedItem(3)],
+      },
+    };
+    const plannedLedgers = {
+      evidenceLedger: [{ id: "e1", label: "note", introducedEpisode: 1 }],
+      characterActivationLedger: [],
+      threatLadder: [],
+      consequenceLedger: [],
+      threadLedger: [],
+      worldRuleLedger: [],
+      causalChainMap: [],
+    };
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaQualityLedgers: true });
+    mockRunVerticalDramaLedgerPlanning.mockImplementation(async (params: any) => {
+      params.onProgress?.({ phase: "ledger" });
+      return {
+        ledgers: plannedLedgers,
+        creditsUsed: 4,
+      };
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const chain = updateChain([{ ...seriesRow }]);
+    mockDb.update.mockReturnValueOnce(chain);
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1), draftedResultItem(2)],
+      chunkSizes: [2],
+      partial: false,
+      creditsUsed: 6,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: ["thread-x"],
+      missingEpisodes: [],
+    });
+
+    const phases: string[] = [];
+    const result = await runGenerateStoryBibleDeepJob(
+      {
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        horizonEpisodes: 2,
+        idempotencyKey: "deep-key",
+      },
+      (progress) => phases.push(progress.phase),
+    );
+
+    expect(mockRunVerticalDramaLedgerPlanning).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 42,
+        tenantId: "tenant-1",
+        seriesId: 10,
+        activeBreakdown: seriesRow.bible.episodeBreakdown,
+        idempotencyKey: "deep-key:ledger_plan",
+      }),
+    );
+    expect(phases[0]).toBe("ledger");
+    const setArg = chain.set.mock.calls[0][0];
+    const versions = setArg.bible.breakdownVersions as Array<Record<string, unknown>>;
+    expect(versions[0].ledgers).toEqual(plannedLedgers);
+    expect(setArg.bible.ledgers).toEqual(plannedLedgers);
+    expect(result.creditsUsed).toBe(10);
   });
 
   it("still persists completed chunks and reports partial: true when the service returns a partial result", async () => {
@@ -627,6 +735,162 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     expect(versions[0].deepDraft).toEqual(
       expect.objectContaining({ horizonEndEpisode: 9, chunkSizes: [5, 4] }),
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Phase F (added 2026-07-09) — partial-failure system audit + auto feedback  */
+/* ticket bridge for `runGenerateStoryBibleDeepJob`.                          */
+/* -------------------------------------------------------------------------- */
+
+describe("runGenerateStoryBibleDeepJob — Phase F: partial-failure system audit + feedback bridge", () => {
+  function tenEpisodeSeriesRow() {
+    return {
+      id: 10,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Corporate Betrayal",
+      locale: "th",
+      genre: null,
+      tone: null,
+      targetEpisodeCount: 10,
+      defaultEpisodeDurationSeconds: 60,
+      bible: { episodeBreakdown: Array.from({ length: 10 }, (_, i) => plannedItem(i + 1)) },
+    };
+  }
+
+  function withInsertedRows() {
+    const insertedRows: Record<string, unknown>[] = [];
+    mockDb.insert.mockImplementation(() => ({
+      values: (values: Record<string, unknown>) => {
+        insertedRows.push(values);
+        return Promise.resolve(undefined);
+      },
+    }));
+    return insertedRows;
+  }
+
+  it("partial: false (fully succeeded) never records the error audit event or files a system feedback ticket", async () => {
+    const seriesRow = tenEpisodeSeriesRow();
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [1, 2, 3].map(draftedResultItem),
+      chunkSizes: [3],
+      partial: false,
+      creditsUsed: 9,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runGenerateStoryBibleDeepJob({ tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 3 }, vi.fn());
+
+    expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
+  });
+
+  it("partial: true + error: records an ADDITIONAL error-shaped api_audit_events row (statusCode 500) and files a system feedback ticket via the shared helper", async () => {
+    const seriesRow = tenEpisodeSeriesRow();
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    const insertedRows = withInsertedRows();
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [1, 2, 3].map(draftedResultItem),
+      chunkSizes: [3],
+      partial: true,
+      creditsUsed: 9,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+      error: "second chunk failed schema validation",
+    });
+
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 10 },
+      vi.fn(),
+    );
+
+    // ONE row for the pre-existing `recordDeepStoryDraftAuditEvent` (200,
+    // unchanged), ONE additional row for the new error-shaped event (500).
+    expect(insertedRows).toHaveLength(2);
+    expect(insertedRows[0]).toMatchObject({ eventType: "vertical_drama_deep_story_draft", statusCode: 200 });
+
+    const errorRow = insertedRows[1];
+    expect(errorRow).toMatchObject({
+      eventType: "vertical_drama_deep_generate_error",
+      endpoint: "verticalDramaSeries.generateStoryBibleDeep",
+      userId: 42,
+      statusCode: 500,
+      errorMessage: "second chunk failed schema validation",
+    });
+    const errorMetadata = errorRow.metadata as Record<string, unknown>;
+    expect(errorMetadata.seriesId).toBe(10);
+    expect(errorMetadata.failedEpisodes).toEqual([4, 5, 6, 7, 8, 9, 10]);
+    expect(errorMetadata.requestedCount).toBe(10);
+    expect(errorMetadata.draftedCount).toBe(3);
+
+    expect(mockSubmitVerticalDramaSystemFeedback).toHaveBeenCalledTimes(1);
+    const [feedbackInput, feedbackDb] = mockSubmitVerticalDramaSystemFeedback.mock.calls[0];
+    expect(feedbackInput).toMatchObject({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      category: "vertical_drama_deep_generate",
+      title: "[System] สร้างร่างละเอียดเนื้อเรื่อง ล้มเหลวบางส่วน (series #10)",
+      actualBehavior: "second chunk failed schema validation",
+    });
+    expect(feedbackInput.contextJson).toMatchObject({
+      source: "vertical_drama_deep_generate",
+      eventType: "system_partial_failure",
+      seriesId: 10,
+      jobKind: "deep_generate",
+      failedEpisodes: [4, 5, 6, 7, 8, 9, 10],
+      errorMessages: ["second chunk failed schema validation"],
+    });
+    expect(feedbackDb).toBeDefined();
+  });
+
+  it("dedupe title stability: the feedback title stays IDENTICAL across two different partial-failure runs for the SAME series (only the volatile details differ)", async () => {
+    const seriesRow = tenEpisodeSeriesRow();
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValueOnce({
+      draftedItems: [1, 2, 3].map(draftedResultItem),
+      chunkSizes: [3],
+      partial: true,
+      creditsUsed: 9,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+      error: "first failure reason",
+    });
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 10 },
+      vi.fn(),
+    );
+
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValueOnce({
+      draftedItems: [1, 2, 3, 4].map(draftedResultItem),
+      chunkSizes: [4],
+      partial: true,
+      creditsUsed: 12,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+      error: "a completely different failure reason this time",
+    });
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 10 },
+      vi.fn(),
+    );
+
+    expect(mockSubmitVerticalDramaSystemFeedback).toHaveBeenCalledTimes(2);
+    const firstTitle = mockSubmitVerticalDramaSystemFeedback.mock.calls[0][0].title;
+    const secondTitle = mockSubmitVerticalDramaSystemFeedback.mock.calls[1][0].title;
+    expect(firstTitle).toBe(secondTitle);
+    expect(firstTitle.slice(0, 50).toLowerCase()).toBe(secondTitle.slice(0, 50).toLowerCase());
   });
 });
 
@@ -817,6 +1081,55 @@ describe("runExtendStoryDraftHorizonJob — worker executor", () => {
     );
   });
 
+  it("runs ledger_plan for extension versions when F132B is on and persists the new active version's ledgers", async () => {
+    const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
+    const plannedLedgers = {
+      evidenceLedger: [{ id: "e2", label: "new clue", introducedEpisode: 6 }],
+      characterActivationLedger: [],
+      threatLadder: [],
+      consequenceLedger: [],
+      threadLedger: [],
+      worldRuleLedger: [],
+      causalChainMap: [],
+    };
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaQualityLedgers: true });
+    mockRunVerticalDramaLedgerPlanning.mockResolvedValue({
+      ledgers: plannedLedgers,
+      creditsUsed: 3,
+    });
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const chain = updateChain([{ ...seriesRow }]);
+    mockDb.update.mockReturnValueOnce(chain);
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [6, 7, 8, 9, 10].map(draftedResultItem),
+      chunkSizes: [5],
+      partial: false,
+      creditsUsed: 5,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+      missingEpisodes: [],
+    });
+
+    const result = await runExtendStoryDraftHorizonJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      vi.fn(),
+    );
+
+    expect(mockRunVerticalDramaLedgerPlanning).toHaveBeenCalledWith(
+      expect.objectContaining({
+        seriesId: 10,
+        activeBreakdown: expect.any(Array),
+        totalEpisodeCount: 10,
+      }),
+    );
+    const setArg = chain.set.mock.calls[0][0];
+    const versions = setArg.bible.breakdownVersions as Array<Record<string, unknown>>;
+    expect(versions[1].ledgers).toEqual(plannedLedgers);
+    expect(setArg.bible.ledgers).toEqual(plannedLedgers);
+    expect(result.creditsUsed).toBe(8);
+  });
+
   it("live-bug fix: passes missingEpisodes through and keeps horizonEndEpisode honest (contiguous from the prior horizon, never past a still-missing gap)", async () => {
     const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
@@ -910,6 +1223,143 @@ describe("runExtendStoryDraftHorizonJob — worker executor", () => {
     const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
     expect(callArgs.episodes.map((e: any) => e.episodeNumber)).toEqual([1, 2, 3, 4, 5]);
     expect(callArgs.priorRecap.items).toEqual([]);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Phase F parity fix (deferred note, added 2026-07-09) — `runExtendStoryDraftHorizonJob` */
+/* gets the SAME error audit event + auto system feedback ticket bridge as    */
+/* `runGenerateStoryBibleDeepJob`'s own identical Phase F block above, with a */
+/* DISTINCT dedupe title so the two failure classes never collapse together. */
+/* -------------------------------------------------------------------------- */
+
+describe("runExtendStoryDraftHorizonJob — Phase F: partial-failure system audit + feedback bridge", () => {
+  function seriesRowWithDeepDraftedHorizon(horizonEndEpisode: number, totalEpisodes: number) {
+    const draftedItems = Array.from({ length: horizonEndEpisode }, (_, i) => ({
+      ...plannedItem(i + 1),
+      shotDrafts: NINE_SHOTS,
+      cliffhanger_line: `Cliff ${i + 1}`,
+      draftCompleteness: COMPLETENESS_OK,
+    }));
+    const plannedOnly = Array.from({ length: totalEpisodes - horizonEndEpisode }, (_, i) =>
+      plannedItem(horizonEndEpisode + i + 1),
+    );
+    const bible = appendBreakdownVersion(
+      {},
+      {
+        source: "generate_story",
+        items: [...draftedItems, ...plannedOnly],
+        createdByUserId: 42,
+        versionId: "v-deep-1",
+        createdAt: "2026-07-01T00:00:00.000Z",
+        deepDraft: {
+          horizonEndEpisode,
+          chunkSizes: [horizonEndEpisode],
+          generatedAt: "2026-07-01T00:00:00.000Z",
+        },
+      },
+    );
+    return {
+      id: 10,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Corporate Betrayal",
+      locale: "th",
+      genre: "romance",
+      tone: "dramatic",
+      targetEpisodeCount: totalEpisodes,
+      defaultEpisodeDurationSeconds: 60,
+      bible,
+    };
+  }
+
+  function withInsertedRows() {
+    const insertedRows: Record<string, unknown>[] = [];
+    mockDb.insert.mockImplementation(() => ({
+      values: (values: Record<string, unknown>) => {
+        insertedRows.push(values);
+        return Promise.resolve(undefined);
+      },
+    }));
+    return insertedRows;
+  }
+
+  it("partial: false (fully succeeded) never records the error audit event or files a system feedback ticket", async () => {
+    const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [6, 7, 8, 9, 10].map(draftedResultItem),
+      chunkSizes: [5],
+      partial: false,
+      creditsUsed: 5,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runExtendStoryDraftHorizonJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
+
+    expect(mockSubmitVerticalDramaSystemFeedback).not.toHaveBeenCalled();
+  });
+
+  it("partial: true + error: records an ADDITIONAL error-shaped api_audit_events row (statusCode 500) and files a system feedback ticket with a title DISTINCT from the deep-generate one", async () => {
+    const seriesRow = seriesRowWithDeepDraftedHorizon(5, 10);
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    const insertedRows = withInsertedRows();
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [6, 7, 8].map(draftedResultItem),
+      chunkSizes: [3],
+      partial: true,
+      creditsUsed: 8,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+      error: "extend chunk failed schema validation",
+    });
+
+    await runExtendStoryDraftHorizonJob({ tenantId: "tenant-1", userId: 42, seriesId: 10 }, vi.fn());
+
+    expect(insertedRows).toHaveLength(2);
+    expect(insertedRows[0]).toMatchObject({ eventType: "vertical_drama_deep_story_draft", statusCode: 200 });
+
+    const errorRow = insertedRows[1];
+    expect(errorRow).toMatchObject({
+      eventType: "vertical_drama_deep_generate_error",
+      endpoint: "verticalDramaSeries.extendStoryDraftHorizon",
+      userId: 42,
+      statusCode: 500,
+      errorMessage: "extend chunk failed schema validation",
+    });
+    const errorMetadata = errorRow.metadata as Record<string, unknown>;
+    expect(errorMetadata.seriesId).toBe(10);
+    expect(errorMetadata.failedEpisodes).toEqual([9, 10]);
+    expect(errorMetadata.stage).toBe("deep_generate_extend_chunk");
+
+    expect(mockSubmitVerticalDramaSystemFeedback).toHaveBeenCalledTimes(1);
+    const [feedbackInput] = mockSubmitVerticalDramaSystemFeedback.mock.calls[0];
+    expect(feedbackInput).toMatchObject({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      category: "vertical_drama_deep_generate",
+      title: "[System] ขยายร่างเนื้อเรื่อง ล้มเหลวบางส่วน (series #10)",
+      actualBehavior: "extend chunk failed schema validation",
+    });
+    // Distinct from `runGenerateStoryBibleDeepJob`'s own title — never
+    // collapses into the SAME feedback ticket via title-prefix dedupe.
+    expect(feedbackInput.title).not.toBe(
+      "[System] สร้างร่างละเอียดเนื้อเรื่อง ล้มเหลวบางส่วน (series #10)",
+    );
+    expect(feedbackInput.contextJson).toMatchObject({
+      source: "vertical_drama_deep_generate",
+      eventType: "system_partial_failure",
+      seriesId: 10,
+      jobKind: "extend",
+      failedEpisodes: [9, 10],
+      errorMessages: ["extend chunk failed schema validation"],
+    });
   });
 });
 

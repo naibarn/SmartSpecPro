@@ -12,36 +12,30 @@
  * no stated price, and a fantasy rule system mentioned often but never
  * codified into `world_rules`.
  *
- * Also covers `loadSeasonCritiqueSystemPrompt` (task #29, the relocation of
- * the critic's system prompt to `skills/vertical-drama-season-dramaturgy-
- * critic/skill.md`) — still no LLM/db mocking, only a local, single-method
- * `vi.spyOn(fs, "existsSync")` (restored within the same test) to exercise
- * the missing-file fallback branch; the real filesystem is used otherwise.
+ * The "apply-flow pure helpers" (`chunkSeasonCritiqueEpisodeNumbers`,
+ * `seasonCritiqueRevisionIntroducesNewFinding`) and `loadSeasonCritiqueSystemPrompt`
+ * coverage that used to live in this file were removed 2026-07-10 along with
+ * `critiqueSeasonDrafts`/`applySeasonCritique`/the quality loop themselves
+ * (replaced by "ปรับปรุงบทละครให้มีความสมบูรณ์" — see
+ * `services/verticalDramaImproveScript.ts`). `analyzeSeasonDramaturgy`/
+ * `VD_SEASON_CRITIQUE_FINDING_KINDS` and the tolerant per-item readers below
+ * are DELIBERATELY still covered here — the separate, still-active
+ * `verticalDramaQualityLedgerReconcile.ts` feature depends on them.
  */
-import { describe, expect, it, vi } from "vitest";
-import fs from "fs";
-import path from "path";
-import { parseSkillFile } from "@smartspec/skills";
-import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
+import { describe, expect, it } from "vitest";
 import {
   analyzeSeasonDramaturgy,
-  chunkSeasonCritiqueEpisodeNumbers,
-  seasonCritiqueRevisionIntroducesNewFinding,
   readItemAntagonistTactics,
   readItemCharacterDecisions,
   readItemProtagonistStake,
   readItemWorldRules,
   readItemPricePaid,
   readBibleRefinedCharacters,
-  loadSeasonCritiqueSystemPrompt,
-  SEASON_CRITIQUE_SYSTEM_PROMPT_FALLBACK,
   VD_DRAMATURGY_LATE_INTRO_DIVISOR,
   VD_DRAMATURGY_MIN_TACTIC_VARIETY,
   VD_DRAMATURGY_TACTIC_REPEAT_STREAK,
   VD_DRAMATURGY_ABSTRACT_WORD_DENSITY_THRESHOLD,
   VD_DRAMATURGY_RULE_MENTION_MIN_EPISODES,
-  VD_SEASON_CRITIQUE_APPLY_MAX_CHUNKS,
-  VD_SEASON_CRITIQUE_FINDING_KINDS,
   type VdDramaturgyFinding,
   type StoredEpisodeBreakdownItem,
 } from "../verticalDramaStoryBible";
@@ -542,119 +536,3 @@ describe("W11.5 tolerant readers — absent/malformed never throw", () => {
   });
 });
 
-/* -------------------------------------------------------------------------- */
-/* Apply-flow pure helpers                                                    */
-/* -------------------------------------------------------------------------- */
-
-describe("chunkSeasonCritiqueEpisodeNumbers", () => {
-  it("returns [] for an empty input", () => {
-    expect(chunkSeasonCritiqueEpisodeNumbers([])).toEqual([]);
-  });
-
-  it("keeps a single chunk when there is only one episode", () => {
-    expect(chunkSeasonCritiqueEpisodeNumbers([5])).toEqual([[5]]);
-  });
-
-  it(`never produces more than ${VD_SEASON_CRITIQUE_APPLY_MAX_CHUNKS} chunks, deduped and sorted ascending`, () => {
-    const chunks = chunkSeasonCritiqueEpisodeNumbers([9, 3, 5, 3, 1, 7, 2, 8]);
-    expect(chunks.length).toBeLessThanOrEqual(VD_SEASON_CRITIQUE_APPLY_MAX_CHUNKS);
-    expect(chunks.flat()).toEqual([1, 2, 3, 5, 7, 8, 9]);
-    // ascending within each chunk, and no episode number duplicated across chunks.
-    const seen = new Set<number>();
-    for (const chunk of chunks) {
-      for (let i = 1; i < chunk.length; i++) expect(chunk[i]).toBeGreaterThan(chunk[i - 1]);
-      for (const ep of chunk) {
-        expect(seen.has(ep)).toBe(false);
-        seen.add(ep);
-      }
-    }
-  });
-
-  it("splits a large set into exactly 2 roughly-equal chunks", () => {
-    const chunks = chunkSeasonCritiqueEpisodeNumbers([1, 2, 3, 4, 5, 6]);
-    expect(chunks).toHaveLength(2);
-    expect(chunks[0]).toEqual([1, 2, 3]);
-    expect(chunks[1]).toEqual([4, 5, 6]);
-  });
-});
-
-describe("seasonCritiqueRevisionIntroducesNewFinding — regression guard", () => {
-  it("returns false when the after-state has no findings the before-state didn't already have for that episode", () => {
-    const before: VdDramaturgyFinding[] = [
-      { kind: "antagonist_tactic_repetition" as const, evidenceEpisodes: [2, 3, 4], detail: "x" },
-    ];
-    const after: VdDramaturgyFinding[] = [
-      { kind: "antagonist_tactic_repetition" as const, evidenceEpisodes: [2, 3], detail: "y" },
-    ];
-    expect(seasonCritiqueRevisionIntroducesNewFinding(before, after, 3)).toBe(false);
-  });
-
-  it("returns true when the after-state introduces a finding kind for that episode the before-state never had", () => {
-    const before: VdDramaturgyFinding[] = [];
-    const after: VdDramaturgyFinding[] = [
-      { kind: "on_the_nose_dialogue" as const, evidenceEpisodes: [3], detail: "new problem" },
-    ];
-    expect(seasonCritiqueRevisionIntroducesNewFinding(before, after, 3)).toBe(true);
-  });
-
-  it("ignores findings that don't mention the target episode at all", () => {
-    const before: VdDramaturgyFinding[] = [];
-    const after: VdDramaturgyFinding[] = [
-      { kind: "on_the_nose_dialogue" as const, evidenceEpisodes: [9], detail: "unrelated episode" },
-    ];
-    expect(seasonCritiqueRevisionIntroducesNewFinding(before, after, 3)).toBe(false);
-  });
-
-  it("a resolved (no-longer-present) finding is fine — the guard only rejects NEW problems, not fixed ones", () => {
-    const before: VdDramaturgyFinding[] = [
-      { kind: "finale_no_price_paid" as const, evidenceEpisodes: [10], detail: "was missing" },
-    ];
-    const after: VdDramaturgyFinding[] = [];
-    expect(seasonCritiqueRevisionIntroducesNewFinding(before, after, 10)).toBe(false);
-  });
-});
-
-/* -------------------------------------------------------------------------- */
-/* loadSeasonCritiqueSystemPrompt — skill.md relocation (task #29)            */
-/* -------------------------------------------------------------------------- */
-
-describe("loadSeasonCritiqueSystemPrompt — relocated skill.md prompt", () => {
-  it("falls back to the inline prompt when the skill file cannot be located, then loads (and caches) the REAL skill.md body once it can", () => {
-    // Phase 1 MUST run first, before any successful load in this process —
-    // this loader only caches on SUCCESS (by design, so a transient failure
-    // can self-heal on a later call), so forcing failure here and asserting
-    // the fallback is only meaningful before the module-level cache warms.
-    const existsSpy = vi.spyOn(fs, "existsSync").mockReturnValue(false);
-    const fallbackPrompt = loadSeasonCritiqueSystemPrompt();
-    expect(fallbackPrompt).toBe(SEASON_CRITIQUE_SYSTEM_PROMPT_FALLBACK);
-    expect(fallbackPrompt).toContain("DRAMATURGY critic");
-    for (const kind of VD_SEASON_CRITIQUE_FINDING_KINDS) {
-      expect(fallbackPrompt).toContain(kind);
-    }
-    existsSpy.mockRestore();
-
-    // Phase 2: the REAL skill.md file, located exactly the way the loader
-    // itself resolves it (`resolveSkillDirCandidates`/`resolveSkillManifestPath`
-    // + `parseSkillFile`), so this is a genuine equality check against disk,
-    // not a hardcoded/duplicated copy of the expected text.
-    const realPrompt = loadSeasonCritiqueSystemPrompt();
-    let expectedBody = "";
-    for (const dir of resolveSkillDirCandidates(path.join("skills", "vertical-drama-season-dramaturgy-critic"))) {
-      const manifestPath = resolveSkillManifestPath(dir);
-      if (manifestPath && fs.existsSync(manifestPath)) {
-        expectedBody = parseSkillFile(fs.readFileSync(manifestPath, "utf-8")).content;
-        break;
-      }
-    }
-    expect(expectedBody.length).toBeGreaterThan(0);
-    expect(realPrompt).toBe(expectedBody);
-    expect(realPrompt).not.toBe(fallbackPrompt);
-    expect(realPrompt).toContain("DRAMATURGY critic");
-  });
-
-  it("caches the real prompt across repeated calls (same reference)", () => {
-    const first = loadSeasonCritiqueSystemPrompt();
-    const second = loadSeasonCritiqueSystemPrompt();
-    expect(second).toBe(first);
-  });
-});

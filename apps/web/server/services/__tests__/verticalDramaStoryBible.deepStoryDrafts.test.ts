@@ -1134,6 +1134,32 @@ describe("applyManualDialogueEdit", () => {
     }
   });
 
+  it("Feature 132 §6.2 (F132C) regression: preserves the edited shot's `contract` object unchanged (spread-based preservation, never dropped by a future explicit-field refactor)", () => {
+    const contract = {
+      storyFunction: "reveal",
+      emotionalBeat: "dread",
+      audienceTakeaway: "the note is fake",
+      tensionSource: "time pressure",
+      newClueIds: ["clue-1"],
+      dialoguePurpose: "confront",
+      anchorLine: true,
+    };
+    const shots = nineShotDrafts();
+    shots[2] = { ...shots[2], contract } as VdDeepDraftShotDraft;
+    const item = existingItem(1, { shotDrafts: shots });
+
+    const result = applyManualDialogueEdit({
+      item,
+      shotNumber: 3,
+      lines: [{ speaker: "Kai", line: "นี่คือบทพูดที่แก้ไขใหม่สำหรับช็อตนี้อย่างชัดเจน" }],
+      editedByUserId: 7,
+      editedAt: "2026-07-08T00:00:00.000Z",
+    });
+
+    const updatedShots = readItemShotDrafts(result.item)!;
+    expect(updatedShots[2].contract).toEqual(contract);
+  });
+
   it("recomputes the item's draftCompleteness from the FULL (updated) 9-shot list via the canonical estimator", () => {
     const shots = nineShotDrafts();
     const item = existingItem(1, { shotDrafts: shots });
