@@ -251,6 +251,19 @@ export interface VerticalDramaStoryJobProgressLike {
    */
   episodeIndex?: number;
   episodeCount?: number;
+  /**
+   * Retry-until-pass rewrite (2026-07-10) — `attemptIndex` (1-based current
+   * retry attempt for the CURRENT episode) and `attemptCount` (total
+   * attempts budgeted per episode,
+   * `VD_IMPROVE_SCRIPT_MAX_ATTEMPTS_PER_EPISODE` = 3). Same additive-optional
+   * pattern as `episodeIndex`/`episodeCount` above: absent for job kinds
+   * that don't retry per-episode, and absent on an in-flight `improve_script`
+   * job that was already running before this field was added — callers must
+   * not assume presence, see `VerticalDramaImproveScriptCard.tsx`'s
+   * `liveProgressText` fallback.
+   */
+  attemptIndex?: number;
+  attemptCount?: number;
 }
 
 export interface VerticalDramaStoryJobStatusLike {

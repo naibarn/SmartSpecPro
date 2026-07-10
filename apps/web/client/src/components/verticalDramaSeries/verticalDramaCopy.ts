@@ -1011,6 +1011,30 @@ export function improveScriptEpisodeRoundProgressText(
     : `Improving episode ${episodeIndex}/${episodeCount}... (round ${round}/${maxRounds})`;
 }
 
+/**
+ * Copy Contract: "กำลังปรับปรุงตอนที่ {episodeIndex}/{episodeCount}
+ * (ครั้งที่ {attemptIndex}/{attemptCount})... (รอบ {round}/{maxRounds})" —
+ * retry-aware progress text, added for the retry-until-pass rewrite
+ * (2026-07-10). Preferred over `improveScriptEpisodeRoundProgressText`
+ * whenever the poll's `attemptIndex`/`attemptCount` fields are ALSO present
+ * (on top of the existing `episodeIndex`/`episodeCount`); that function
+ * stays as the fallback for an in-flight job that predates this deploy
+ * (which reports episode fields but never attempt fields).
+ */
+export function improveScriptEpisodeAttemptRoundProgressText(
+  lang: VerticalDramaLang,
+  episodeIndex: number,
+  episodeCount: number,
+  attemptIndex: number,
+  attemptCount: number,
+  round: number,
+  maxRounds: number,
+): string {
+  return lang === "th"
+    ? `กำลังปรับปรุงตอนที่ ${episodeIndex}/${episodeCount} (ครั้งที่ ${attemptIndex}/${attemptCount})... (รอบ ${round}/${maxRounds})`
+    : `Improving episode ${episodeIndex}/${episodeCount} (attempt ${attemptIndex}/${attemptCount})... (round ${round}/${maxRounds})`;
+}
+
 /** Copy Contract: "ปรับปรุงแล้ว {n} ตอน" — the confirm success toast (same phrasing the removed apply-critique flow used). */
 export function improveScriptConfirmSuccessText(lang: VerticalDramaLang, updatedCount: number): string {
   return lang === "th"

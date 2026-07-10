@@ -149,8 +149,9 @@ import {
  * ONLY call site that ever needs it — mirroring this file's own established
  * lazy-import precedent for exactly this class of problem.
  * `VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS`/`VD_IMPROVE_SCRIPT_SKILL_ID`
- * are NOT imported here either — see `estimateImproveScriptJobCredits`'s own
- * doc comment and `confirmImproveScript`'s inline skill-id literal below.
+ * (and the straggler-redo constants) are NOT imported here either — see
+ * `estimateImproveScriptJobCredits`'s own doc comment and
+ * `confirmImproveScript`'s inline skill-id literal below.
  */
 import type { RunImproveScriptJobResult } from "../services/verticalDramaImproveScript";
 /**
@@ -672,24 +673,37 @@ function estimateDeepDraftJobCredits(episodeCount: number, mode: VerticalDramaDe
 
 /**
  * Worst-case credits pre-check for "ปรับปรุงบทละครให้มีความสมบูรณ์" — mirrors
- * the removed `estimateQualityLoopJobCredits`'s own "worst case" shape. Per
- * the per-episode rewrite (`services/verticalDramaImproveScript.ts`,
- * 2026-07-10), each drafted episode now gets its OWN full generation pass
- * (own continuation-round budget), so unlike the old whole-season-in-one-call
- * shape, cost now scales linearly with `draftedEpisodeCount` — worst case is
- * every episode independently burning its full per-episode round cap.
+ * the removed `estimateQualityLoopJobCredits`'s own "worst case" shape.
+ * Realigned (2026-07-10, whole-block restoration) to the WHOLE-BLOCK
+ * PRIMARY pass + bounded PER-EPISODE STRAGGLER REDO architecture
+ * (`services/verticalDramaImproveScript.ts`): the primary pass burns its
+ * own whole-job round budget regardless of episode count, and on top of
+ * that every drafted episode could — worst case — ALSO need a full
+ * straggler redo (its own bounded attempt/round budget). Cost is therefore
+ * a fixed whole-block worst case PLUS a per-episode straggler worst case,
+ * not purely linear-in-episodes like the per-episode-primary era's formula.
  *
- * Deliberately duplicates the LITERAL value of
- * `VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS` (`services/verticalDramaImproveScript.ts`,
- * now 2 — per episode, not per job) instead of importing it — see this
- * file's import block doc comment just above `runImproveScriptJob`'s own
- * import for why a value import of anything from that service file must
+ * Deliberately duplicates the LITERAL values of
+ * `VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS` (whole-block primary pass,
+ * now 8 — per JOB, not per episode), `VD_IMPROVE_SCRIPT_STRAGGLER_MAX_ATTEMPTS`
+ * (2), and `VD_IMPROVE_SCRIPT_STRAGGLER_MAX_ROUNDS` (3) (all
+ * `services/verticalDramaImproveScript.ts`) instead of importing them — see
+ * this file's import block doc comment just above `runImproveScriptJob`'s
+ * own import for why a value import of anything from that service file must
  * stay lazy (heavy `enabledLlmModels` -> `llmProviders` router transitive
  * chain, breaks sibling `vi.mock` tests).
  */
-const VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS_ESTIMATE = 2;
+const VD_IMPROVE_SCRIPT_WHOLE_BLOCK_ROUNDS_ESTIMATE = 8;
+const VD_IMPROVE_SCRIPT_STRAGGLER_ATTEMPTS_ESTIMATE = 2;
+const VD_IMPROVE_SCRIPT_STRAGGLER_ROUNDS_ESTIMATE = 3;
 function estimateImproveScriptJobCredits(draftedEpisodeCount: number): number {
-  return Math.max(1, draftedEpisodeCount) * VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS_ESTIMATE * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE;
+  return (
+    VD_IMPROVE_SCRIPT_WHOLE_BLOCK_ROUNDS_ESTIMATE * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE +
+    Math.max(0, draftedEpisodeCount) *
+      VD_IMPROVE_SCRIPT_STRAGGLER_ATTEMPTS_ESTIMATE *
+      VD_IMPROVE_SCRIPT_STRAGGLER_ROUNDS_ESTIMATE *
+      VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE
+  );
 }
 
 interface StoryJobExecutorOwner {

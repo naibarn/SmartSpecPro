@@ -161,6 +161,10 @@ export interface VerticalDramaStoryJobProgress {
   lastScore?: number;
   /** Auto quality loop — every score seen so far this run, oldest first (index 0 = baseline). */
   scoreHistory?: number[];
+  /** 1-based index of the current retry attempt for the CURRENT episode (added 2026-07-10, retry-until-pass). Absent for job kinds/phases that don't retry per-episode, and absent on progress events from a job started before this deploy. */
+  attemptIndex?: number;
+  /** Total retry attempts budgeted per episode (`VD_IMPROVE_SCRIPT_MAX_ATTEMPTS_PER_EPISODE`), echoed alongside `attemptIndex`. */
+  attemptCount?: number;
 }
 
 export type VerticalDramaStoryJobStatus = "queued" | "running" | "succeeded" | "failed";

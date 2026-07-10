@@ -67,6 +67,7 @@ import {
 import {
   IMPROVE_SCRIPT_DEFAULT_REQUEST_TEXT,
   improveScriptConfirmSuccessText,
+  improveScriptEpisodeAttemptRoundProgressText,
   improveScriptEpisodeRoundProgressText,
   improveScriptPartialFailureEpisodeReasonText,
   improveScriptPartialFailureHeadingText,
@@ -78,6 +79,20 @@ import {
 
 /** Server input's own `.max(4000)` on `userRevisionRequest` — mirrored here so the textarea can't even be typed past what the server would reject. */
 const IMPROVE_SCRIPT_REQUEST_MAX_LENGTH = 4000;
+
+/**
+ * Whole-block realignment (2026-07-10): improve now runs ONE whole-season
+ * pass (the skill's intended design — the validated real-data run finished a
+ * 6-episode season in a single LLM round), followed by bounded per-episode
+ * straggler retries only for episodes that come back malformed. Worst case is
+ * the whole-block continuation loop (`VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS`)
+ * plus, for every drafted episode, `VD_IMPROVE_SCRIPT_STRAGGLER_MAX_ATTEMPTS ×
+ * straggler-rounds` — still far under the prior per-episode-retry worst case,
+ * so the generous 180-minute (3hr) ceiling stays ample. Kept at 180 min per
+ * the earlier explicit instruction to leave a wide margin for slow LLM calls.
+ * At the shared helper's 2500ms interval: 180 * 60 * 1000 / 2500 = 4320.
+ */
+const IMPROVE_SCRIPT_POLL_MAX_ATTEMPTS = 4320;
 
 /**
  * Client-local mirror of `RunImproveScriptJobResult`
@@ -224,6 +239,20 @@ export function VerticalDramaImproveScriptCard({
     setStoryJobPoll({ jobId, progress: null });
     try {
       await pollVerticalDramaStoryJob({
+        // `improve_script` now runs one full generation pass PER drafted
+        // episode (was: one pass for the whole season) — a real 6-episode
+        // run observed 2026-07-10 took ~11.5 minutes end-to-end (one
+        // episode alone took ~2m49s after a provider 502 triggered a
+        // fallback retry). The shared poll helper's default budget
+        // (2500ms × 240 attempts = 10 minutes) was sized for the OLD
+        // single-pass architecture and is too short here — the backend job
+        // kept running and succeeded, but the frontend gave up first and
+        // silently reset, discarding a fully successful result the user
+        // never saw. Override to a per-episode-aware budget: up to
+        // IMPROVE_SCRIPT_POLL_MAX_ATTEMPTS attempts, sized for a
+        // worst-case ~6 min/episode (accounting for provider fallback
+        // retries) across up to 6 drafted episodes, plus margin.
+        maxAttempts: IMPROVE_SCRIPT_POLL_MAX_ATTEMPTS,
         fetchStatus: () => utils.verticalDramaSeries.getStoryJobStatus.fetch({ seriesId, jobId }),
         onProgress: (progress) => setStoryJobPoll({ jobId, progress }),
         onSucceeded: (data, kind: VerticalDramaStoryJobKind) => {
@@ -268,18 +297,33 @@ export function VerticalDramaImproveScriptCard({
   const liveProgressText = isPolling
     ? storyJobPoll?.progress?.episodeIndex != null &&
       storyJobPoll?.progress?.episodeCount != null &&
+      storyJobPoll?.progress?.attemptIndex != null &&
+      storyJobPoll?.progress?.attemptCount != null &&
       storyJobPoll?.progress?.chunkIndex != null &&
       storyJobPoll?.progress?.chunkCount != null
-      ? improveScriptEpisodeRoundProgressText(
+      ? improveScriptEpisodeAttemptRoundProgressText(
           lang,
           storyJobPoll.progress.episodeIndex,
           storyJobPoll.progress.episodeCount,
+          storyJobPoll.progress.attemptIndex,
+          storyJobPoll.progress.attemptCount,
           storyJobPoll.progress.chunkIndex,
           storyJobPoll.progress.chunkCount,
         )
-      : storyJobPoll?.progress?.chunkIndex != null && storyJobPoll?.progress?.chunkCount != null
-        ? improveScriptRoundProgressText(lang, storyJobPoll.progress.chunkIndex, storyJobPoll.progress.chunkCount)
-        : pickCopy(lang, verticalDramaCopy.storyJobQueued)
+      : storyJobPoll?.progress?.episodeIndex != null &&
+        storyJobPoll?.progress?.episodeCount != null &&
+        storyJobPoll?.progress?.chunkIndex != null &&
+        storyJobPoll?.progress?.chunkCount != null
+        ? improveScriptEpisodeRoundProgressText(
+            lang,
+            storyJobPoll.progress.episodeIndex,
+            storyJobPoll.progress.episodeCount,
+            storyJobPoll.progress.chunkIndex,
+            storyJobPoll.progress.chunkCount,
+          )
+        : storyJobPoll?.progress?.chunkIndex != null && storyJobPoll?.progress?.chunkCount != null
+          ? improveScriptRoundProgressText(lang, storyJobPoll.progress.chunkIndex, storyJobPoll.progress.chunkCount)
+          : pickCopy(lang, verticalDramaCopy.storyJobQueued)
     : null;
 
   const handleStart = async () => {

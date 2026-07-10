@@ -201,6 +201,23 @@ export interface StoryScriptParsedEpisodeBlock {
 const EPISODE_HEADER_PATTERN = /^(?:ตอนที่|Episode)\s+(\d+):/;
 
 /**
+ * Strips a single matching leading/trailing markdown-emphasis wrapper
+ * (`**...**` or `__...__`) from an already-trimmed line, tolerating the
+ * "whole header/label line wrapped in bold" drift some models produce
+ * (episode 2 incident, confirmed via raw LLM response inspection,
+ * 2026-07-10). Only strips ONE matching pair, and only when the wrapper
+ * spans the ENTIRE trimmed line (open at index 0, matching close at the
+ * very end) — inline emphasis elsewhere in real content (e.g. a bolded
+ * word mid-summary) is never touched because it doesn't span start-to-end.
+ */
+export function stripWrappingMarkdownEmphasis(line: string): string {
+  const trimmed = line.trim();
+  const match = trimmed.match(/^(\*\*|__)([\s\S]*)\1$/);
+  if (match && match[2].trim().length > 0) return match[2].trim();
+  return trimmed;
+}
+
+/**
  * Splits a full (already score/summary-stripped) script body into per-episode
  * text blocks, keyed by episode number — the mechanical inverse of joining
  * `formatStoryScriptEpisode` blocks with a blank-line separator in
@@ -233,7 +250,7 @@ export function splitStoryScriptTextIntoEpisodeBlocks(
   };
 
   for (const line of lines) {
-    const match = line.match(EPISODE_HEADER_PATTERN);
+    const match = stripWrappingMarkdownEmphasis(line).match(EPISODE_HEADER_PATTERN);
     if (match) {
       flush();
       currentEpisodeNumber = Number(match[1]);
@@ -281,20 +298,43 @@ const LANG_LABELS: Record<StoryScriptLang, StoryScriptLangLabels> = {
   },
 };
 
-/** `- speaker: line` or `- speaker: line (delivery)` -> `{speaker, line, delivery?}`; `null` when the line doesn't match the dialogue shape at all (defensive — never thrown). */
-function parseDialogueLine(text: string): StoryScriptShotDialogueLine | null {
-  const match = text.match(/^(.+?):\s(.+)$/);
-  if (!match) return null;
-  const speaker = match[1].trim();
-  let rest = match[2].trim();
+const PLACEHOLDER_SPEAKER_LITERALS = new Set(["ผู้พูด", "speaker"]);
+
+/** Shared delivery-suffix-stripping body, factored out of the former single-piece `parseDialogueLine` so the placeholder-literal defense-in-depth below can re-invoke it on a nested `speaker: line` pair. */
+function parseDialogueLineBody(speaker: string, restInput: string): StoryScriptShotDialogueLine | null {
+  let rest = restInput.trim();
   let delivery: string | undefined;
   const deliveryMatch = rest.match(/^(.*)\s\(([^()]+)\)$/);
   if (deliveryMatch) {
     rest = deliveryMatch[1].trim();
     delivery = deliveryMatch[2].trim();
   }
-  if (!speaker || !rest) return null;
-  return delivery ? { speaker, line: rest, delivery } : { speaker, line: rest };
+  const trimmedSpeaker = speaker.trim();
+  if (!trimmedSpeaker || !rest) return null;
+  return delivery ? { speaker: trimmedSpeaker, line: rest, delivery } : { speaker: trimmedSpeaker, line: rest };
+}
+
+/** `- speaker: line` or `- speaker: line (delivery)` -> `{speaker, line, delivery?}`; `null` when the line doesn't match the dialogue shape at all (defensive — never thrown). */
+function parseDialogueLine(text: string): StoryScriptShotDialogueLine | null {
+  const match = text.match(/^(.+?):\s(.+)$/);
+  if (!match) return null;
+  const speaker = match[1].trim();
+  const rest = match[2].trim();
+
+  // Defense-in-depth for the "model wrote the format example's literal
+  // placeholder word instead of the real speaker" bug (episode 4 incident,
+  // confirmed via raw LLM response, 2026-07-10): "- ผู้พูด: ใบข้าว: แม่..."
+  // — the model reproduced the prompt's format example's literal word
+  // "ผู้พูด" instead of substituting the real speaker. If the captured
+  // speaker is exactly the known placeholder literal AND the rest itself
+  // looks like a nested "speaker: line" pair, re-parse using the nested pair.
+  if (PLACEHOLDER_SPEAKER_LITERALS.has(speaker.toLowerCase())) {
+    const nested = rest.match(/^(.+?):\s(.+)$/);
+    if (nested) {
+      return parseDialogueLineBody(nested[1].trim(), nested[2].trim());
+    }
+  }
+  return parseDialogueLineBody(speaker, rest);
 }
 
 /**
@@ -310,27 +350,28 @@ function parseDialogueLine(text: string): StoryScriptShotDialogueLine | null {
 export function parseStoryScriptEpisodeBlock(
   lang: StoryScriptLang,
   block: string,
+  options?: { expectedShotCount?: number },
 ): StoryScriptParsedEpisodeBlock | null {
   const labels = LANG_LABELS[lang];
   const lines = block.split("\n");
   if (lines.length === 0) return null;
 
-  const headerMatch = lines[0].match(labels.headerPattern);
+  const headerMatch = stripWrappingMarkdownEmphasis(lines[0]).match(labels.headerPattern);
   if (!headerMatch) return null;
   const workingTitle = headerMatch[1].trim();
 
   let index = 1;
   let logline = "";
-  if (lines[index]?.startsWith(labels.summaryPrefix)) {
-    logline = lines[index].slice(labels.summaryPrefix.length).trim();
+  if (stripWrappingMarkdownEmphasis(lines[index] ?? "").startsWith(labels.summaryPrefix)) {
+    logline = stripWrappingMarkdownEmphasis(lines[index]).slice(labels.summaryPrefix.length).trim();
     index += 1;
   }
 
   const keyBeats: string[] = [];
-  if (lines[index]?.trim() === labels.keyBeatsHeader) {
+  if (stripWrappingMarkdownEmphasis(lines[index] ?? "") === labels.keyBeatsHeader) {
     index += 1;
-    while (index < lines.length && lines[index].startsWith("- ")) {
-      keyBeats.push(lines[index].slice(2).trim());
+    while (index < lines.length && stripWrappingMarkdownEmphasis(lines[index]).startsWith("- ")) {
+      keyBeats.push(stripWrappingMarkdownEmphasis(lines[index]).slice(2).trim());
       index += 1;
     }
   }
@@ -338,16 +379,31 @@ export function parseStoryScriptEpisodeBlock(
   const shots: StoryScriptParsedShot[] = [];
   let hasShotSection = false;
 
-  if (lines[index]?.trim() === labels.shotsEmptyLine) {
+  if (stripWrappingMarkdownEmphasis(lines[index] ?? "") === labels.shotsEmptyLine) {
     hasShotSection = true;
     index += 1;
-  } else if (lines[index]?.trim() === labels.shotsHeader) {
+  } else if (stripWrappingMarkdownEmphasis(lines[index] ?? "") === labels.shotsHeader) {
     hasShotSection = true;
     index += 1;
     let currentShot: StoryScriptParsedShot | null = null;
     while (index < lines.length) {
-      const trimmed = lines[index].trim();
-      if (trimmed.startsWith(labels.cliffhangerPrefix)) break;
+      const trimmed = stripWrappingMarkdownEmphasis(lines[index]);
+
+      if (trimmed.length === 0) {
+        index += 1;
+        continue;
+      }
+
+      if (trimmed.startsWith(labels.cliffhangerPrefix)) {
+        const expected = options?.expectedShotCount;
+        if (expected === undefined || shots.length >= expected) break;
+        // Stray per-shot "จุดค้าง:" line before the episode's shots are complete
+        // (episode 4 incident, confirmed via raw LLM response, 2026-07-10: the
+        // model wrote "จุดค้าง: -" after every shot, not just the last one) —
+        // treat as noise and keep scanning for more shot headers.
+        index += 1;
+        continue;
+      }
 
       const shotHeaderMatch = trimmed.match(labels.shotHeaderPattern);
       if (shotHeaderMatch) {
@@ -379,8 +435,8 @@ export function parseStoryScriptEpisodeBlock(
   if (!hasShotSection) return null;
 
   let cliffhangerLine: string | undefined;
-  if (lines[index]?.trim().startsWith(labels.cliffhangerPrefix)) {
-    const value = lines[index].trim().slice(labels.cliffhangerPrefix.length).trim();
+  if (stripWrappingMarkdownEmphasis(lines[index] ?? "").startsWith(labels.cliffhangerPrefix)) {
+    const value = stripWrappingMarkdownEmphasis(lines[index]).slice(labels.cliffhangerPrefix.length).trim();
     cliffhangerLine = value.length > 0 ? value : undefined;
   }
 

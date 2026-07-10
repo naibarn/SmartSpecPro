@@ -258,6 +258,66 @@ describe("VerticalDramaImproveScriptCard — starting the improve job", () => {
     );
   });
 
+  it("prefers the attempt-aware progress text once attemptIndex/attemptCount are ALSO present (retry-until-pass rewrite)", async () => {
+    let resolveFirstFetch!: (value: unknown) => void;
+    mockGetStoryJobStatusFetch.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveFirstFetch = resolve; }),
+    );
+    render(<VerticalDramaImproveScriptCard lang="th" seriesId="10" readOnly={false} hasDrafts={true} />);
+    fireEvent.click(screen.getByTestId("vd-improve-script-cta"));
+
+    await waitFor(() => expect(screen.getByTestId("vd-improve-script-progress")).toBeInTheDocument());
+
+    resolveFirstFetch({
+      kind: "improve_script",
+      status: "running",
+      progress: {
+        phase: "fix",
+        chunkIndex: 1,
+        chunkCount: 2,
+        episodeIndex: 2,
+        episodeCount: 3,
+        attemptIndex: 2,
+        attemptCount: 3,
+        callsDone: 2,
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("vd-improve-script-progress")).toHaveTextContent(
+        "กำลังปรับปรุงตอนที่ 2/3 (ครั้งที่ 2/3)... (รอบ 1/2)",
+      ),
+    );
+  });
+
+  it("falls back to the episode-aware progress text (no attempt fields) unchanged — regression check for an in-flight job predating this deploy", async () => {
+    let resolveFirstFetch!: (value: unknown) => void;
+    mockGetStoryJobStatusFetch.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveFirstFetch = resolve; }),
+    );
+    render(<VerticalDramaImproveScriptCard lang="th" seriesId="10" readOnly={false} hasDrafts={true} />);
+    fireEvent.click(screen.getByTestId("vd-improve-script-cta"));
+
+    await waitFor(() => expect(screen.getByTestId("vd-improve-script-progress")).toBeInTheDocument());
+
+    resolveFirstFetch({
+      kind: "improve_script",
+      status: "running",
+      progress: {
+        phase: "fix",
+        chunkIndex: 1,
+        chunkCount: 2,
+        episodeIndex: 2,
+        episodeCount: 3,
+        callsDone: 2,
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("vd-improve-script-progress")).toHaveTextContent(
+        "กำลังปรับปรุงตอนที่ 2/3... (รอบ 1/2)",
+      ),
+    );
+  });
+
   it("shows an error toast and no result card when the job fails", async () => {
     startShouldFail = true;
     render(<VerticalDramaImproveScriptCard lang="th" seriesId="10" readOnly={false} hasDrafts={true} />);
