@@ -1,20 +1,20 @@
 /**
  * Wave-5A (2026-07-07 production-grade upgrade) integration coverage for
- * `VerticalDramaStoryboardPanel.tsx`: density meter, scorecard v2 extension,
- * and the tie-in naturalness report card. Every new block is gated on its
- * own `*Enabled` flag prop (mirroring `getEpisodeDetail.flags` verbatim) —
- * the first test proves flags-off renders byte-identical to the shipped v1
- * UI; the rest exercise each flag turned on independently.
+ * `VerticalDramaStoryboardPanel.tsx`: scorecard v2 extension and the tie-in
+ * naturalness report card. Every new block is gated on its own `*Enabled`
+ * flag prop (mirroring `getEpisodeDetail.flags` verbatim) — the first test
+ * proves flags-off renders byte-identical to the shipped v1 UI; the rest
+ * exercise each flag turned on independently.
+ *
+ * The density-meter panel that used to render here (flags.speechBudget) was
+ * removed from `VerticalDramaStoryboardPanel.tsx` (see that file's history);
+ * its own compute/render logic is still fully covered directly by
+ * `VerticalDramaDensityMeter.test.tsx`, which is unaffected.
  */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { VerticalDramaStoryboardPanel } from "@/components/verticalDramaSeries/VerticalDramaStoryboardPanel";
-import { VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK } from "@shared/verticalDramaSeries/assembly";
-import {
-  MIN_EPISODE_COVERAGE_RATIO,
-  targetVerticalDramaSpeechSeconds,
-} from "@shared/verticalDramaSeries/dialogueQuality";
 
 function baseProps(overrides: Record<string, unknown> = {}) {
   return {
@@ -102,7 +102,6 @@ describe("VerticalDramaStoryboardPanel — flags-off byte-identical (Wave-5A)", 
     expect(
       screen.queryByTestId("vd-quality-loop-area")
     ).not.toBeInTheDocument();
-    expect(screen.queryByTestId("vd-density-meter")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("vd-tie-in-report-card")
     ).not.toBeInTheDocument();
@@ -125,204 +124,6 @@ describe("VerticalDramaStoryboardPanel — flags-off byte-identical (Wave-5A)", 
       screen.queryByTestId("vd-quality-density-metrics")
     ).not.toBeInTheDocument();
     expect(screen.queryByText("ความแข็งแรงของ hook")).not.toBeInTheDocument();
-  });
-});
-
-describe("VerticalDramaStoryboardPanel — density meter (flags.speechBudget)", () => {
-  it("stays hidden when the flag is off even with motionPromptPack clips present", () => {
-    render(
-      <VerticalDramaStoryboardPanel
-        {...(baseProps({
-          motionPromptPack: {
-            clips: [
-              {
-                clipNumber: 1,
-                sourceShotNumbers: [1],
-                prompt: "p",
-                durationSeconds: 60,
-                dialogue: [],
-              },
-            ],
-          },
-        }) as any)}
-      />
-    );
-    expect(screen.queryByTestId("vd-density-meter")).not.toBeInTheDocument();
-  });
-
-  it("renders once speechBudgetEnabled is on and clips exist, and suppresses the legacy simple banner", () => {
-    render(
-      <VerticalDramaStoryboardPanel
-        {...(baseProps({
-          speechBudgetEnabled: true,
-          motionPromptPack: {
-            clips: [
-              {
-                clipNumber: 1,
-                sourceShotNumbers: [1],
-                prompt: "p",
-                durationSeconds: 60,
-                dialogue: [],
-              },
-            ],
-          },
-        }) as any)}
-      />
-    );
-    expect(screen.getByTestId("vd-density-meter")).toBeInTheDocument();
-    expect(
-      screen.queryByTestId("vd-storyboard-dialogue-episode-quality-warning")
-    ).not.toBeInTheDocument();
-  });
-
-  it("calls onRepairWholeEpisodeScript from the density meter's repair CTA", () => {
-    const onRepairWholeEpisodeScript = vi.fn();
-    render(
-      <VerticalDramaStoryboardPanel
-        {...(baseProps({
-          speechBudgetEnabled: true,
-          onRepairWholeEpisodeScript,
-          motionPromptPack: {
-            clips: [
-              {
-                clipNumber: 1,
-                sourceShotNumbers: [1],
-                prompt: "p",
-                durationSeconds: 60,
-                dialogue: [],
-              },
-            ],
-          },
-        }) as any)}
-      />
-    );
-    fireEvent.click(screen.getByTestId("vd-density-repair-whole-episode"));
-    expect(onRepairWholeEpisodeScript).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("VerticalDramaStoryboardPanel — density meter episode band uses the FULL duration profile, not just generated clips (2026-07-08 fix)", () => {
-  // Real 9-shot/60s fallback duration profile (spec §7.4) — matches the bug
-  // report's "สตอรีบอร์ด — 9 ช็อต" header on a 60-second episode.
-  const durations =
-    VERTICAL_DRAMA_DURATION_PROFILE_FALLBACK.shotDurationsSeconds;
-  const shots = durations.map((duration_seconds, i) => ({
-    shot_number: i + 1,
-    visual_description: `shot ${i + 1}`,
-    characters: [] as string[],
-    duration_seconds,
-  }));
-  // Only shots 1, 2, 4 have a generated `video_motion_prompt_pack` clip so
-  // far (`generateShotVideoPrompt` builds `motionPromptPack.clips`
-  // incrementally, one shot at a time — see that procedure's doc comment in
-  // `server/routers/verticalDramaEpisodes.ts`) — matches the bug report's
-  // "per-shot chips show only shots 1/2/4".
-  const partialMotionPromptPack = {
-    clips: [
-      {
-        clipNumber: 1,
-        sourceShotNumbers: [1],
-        parentShotNumber: 1,
-        prompt: "p1",
-        durationSeconds: durations[0],
-        dialogue: [{ lineTh: "หนึ่งสองสาม" }],
-      },
-      {
-        clipNumber: 2,
-        sourceShotNumbers: [2],
-        parentShotNumber: 2,
-        prompt: "p2",
-        durationSeconds: durations[1],
-        dialogue: [{ lineTh: "สี่ห้าหก" }],
-      },
-      {
-        clipNumber: 4,
-        sourceShotNumbers: [4],
-        parentShotNumber: 4,
-        prompt: "p4",
-        durationSeconds: durations[3],
-        dialogue: [{ lineTh: "เจ็ดแปดเก้า" }],
-      },
-    ],
-  };
-
-  it("computes the episode target band from ALL 9 shots' durations (60s total), not only the 3 generated clips (~20s)", () => {
-    render(
-      <VerticalDramaStoryboardPanel
-        {...(baseProps({
-          storyboard: { shots },
-          speechBudgetEnabled: true,
-          motionPromptPack: partialMotionPromptPack,
-        }) as any)}
-      />
-    );
-    const totalSeconds = durations.reduce((a, b) => a + b, 0); // 60
-    const expectedMin = (MIN_EPISODE_COVERAGE_RATIO * totalSeconds).toFixed(0); // "35"
-    const expectedMax = durations
-      .reduce((sum, d) => sum + targetVerticalDramaSpeechSeconds(d), 0)
-      .toFixed(0); // "41"
-    const meter = screen.getByTestId("vd-density-meter");
-    // The bug summed only the 3 generated shots (8+8+4=20s), producing a
-    // band of ~"12-14" — assert the CORRECT full-episode band instead.
-    expect(meter.textContent).toContain(
-      `จากเป้า ${expectedMin}-${expectedMax} วิ`
-    );
-    expect(meter.textContent).not.toContain("จากเป้า 12-14 วิ");
-  });
-
-  it("renders a chip for every shot in the full storyboard (9), not just the 3 with generated clips", () => {
-    render(
-      <VerticalDramaStoryboardPanel
-        {...(baseProps({
-          storyboard: { shots },
-          speechBudgetEnabled: true,
-          motionPromptPack: partialMotionPromptPack,
-        }) as any)}
-      />
-    );
-    for (let shotNumber = 1; shotNumber <= 9; shotNumber += 1) {
-      expect(
-        screen.getByTestId(`vd-density-shot-chip-${shotNumber}`)
-      ).toBeInTheDocument();
-    }
-  });
-
-  it("shows a visible over-length warning on a shot whose estimated speech exceeds its clip duration", () => {
-    // 111 Thai chars ≈ 13.06s of speech (canonical 8.5 chars/sec rate) inside
-    // an 8s clip — dialogue that cannot physically fit, mirroring the bug
-    // report's "15.6s speech in an 8s clip" example.
-    const overLengthLine =
-      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
-    render(
-      <VerticalDramaStoryboardPanel
-        {...(baseProps({
-          storyboard: {
-            shots: [
-              {
-                shot_number: 1,
-                visual_description: "s1",
-                characters: [],
-                duration_seconds: 8,
-              },
-            ],
-          },
-          speechBudgetEnabled: true,
-          motionPromptPack: {
-            clips: [
-              {
-                clipNumber: 1,
-                sourceShotNumbers: [1],
-                parentShotNumber: 1,
-                prompt: "p1",
-                durationSeconds: 8,
-                dialogue: [{ lineTh: overLengthLine }],
-              },
-            ],
-          },
-        }) as any)}
-      />
-    );
-    expect(screen.getByTestId("vd-density-overlength-1")).toBeInTheDocument();
   });
 });
 
@@ -704,30 +505,17 @@ describe("VerticalDramaStoryboardPanel — meta/shot-grid disclosure split (2026
     expect(screen.getByTestId("vd-storyboard-shot-1")).toBeInTheDocument();
   });
 
-  it("hides the density meter, model row, and summarize-memory card together with the meta section when collapsed", () => {
+  it("hides the model row and summarize-memory card together with the meta section when collapsed", () => {
     render(
       <VerticalDramaStoryboardPanel
         {...(baseProps({
           productionWizardEnabled: true,
           advancedMetaOpen: false,
-          speechBudgetEnabled: true,
-          motionPromptPack: {
-            clips: [
-              {
-                clipNumber: 1,
-                sourceShotNumbers: [1],
-                prompt: "p",
-                durationSeconds: 60,
-                dialogue: [],
-              },
-            ],
-          },
           onSelectImageModel: vi.fn(),
           onSummarizeEpisodeToMemory: vi.fn(),
         }) as any)}
       />
     );
-    expect(screen.queryByTestId("vd-density-meter")).not.toBeInTheDocument();
     expect(
       screen.queryByTestId("vd-storyboard-select-image-model")
     ).not.toBeInTheDocument();
