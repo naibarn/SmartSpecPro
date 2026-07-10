@@ -110,11 +110,21 @@ async function setGrokFileInputInMainWorld(dataUrl: string, name: string, type: 
   const filesSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files")?.set;
   if (!filesSetter) return { inputSet: false, inputCount: inputs.length, error: "files_setter_unavailable" };
   filesSetter.call(input, transfer.files);
+  // Grok consumes the File in its React change handler and immediately clears
+  // the native input. Capture acceptance before dispatching that handler: a
+  // post-change `input.files` check is a false negative that replays the same
+  // upload through every fallback path.
+  const filesLengthBeforeChange = input.files?.length ?? 0;
+  if (!filesLengthBeforeChange) {
+    return { inputSet: false, inputCount: inputs.length, setStrategy: "native_files_setter", filesLengthBeforeChange };
+  }
   input.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
   return {
-    inputSet: (input.files?.length ?? 0) > 0,
+    inputSet: true,
     inputCount: inputs.length,
     setStrategy: "native_files_setter",
+    filesLengthBeforeChange,
+    filesLengthAfterChange: input.files?.length ?? 0,
   };
 }
 
@@ -451,8 +461,13 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
         .map(([key, value]) => [cleanString(key, 120), cleanString(value, 4096)])
         .filter(([key, value]) => key && value));
       const metadataOnly = message.metadataOnly === true;
-      if (!id || (!metadataOnly && !sourceUrl && (!dataUrl.startsWith("data:") || dataUrl.length > 12_000_000))) throw new Error("drag_media_invalid");
-      const item = { ...(metadataOnly || sourceUrl ? {} : { dataUrl }), sourceUrl, headers, name, type, expiresAt: Date.now() + DRAG_MEDIA_TTL_MS };
+      const hasDataUrl = dataUrl.startsWith("data:") && dataUrl.length <= 12_000_000;
+      if (!id || (!metadataOnly && !sourceUrl && !hasDataUrl)) throw new Error("drag_media_invalid");
+      // Keep a prepared payload when available. The panel may have obtained it
+      // through the app proxy because the original provider URL is not
+      // fetchable from the service worker. Preferring this payload avoids a
+      // second, lossy fetch during cross-tab drag delivery.
+      const item = { ...(metadataOnly || !hasDataUrl ? {} : { dataUrl }), sourceUrl, headers, name, type, expiresAt: Date.now() + DRAG_MEDIA_TTL_MS };
       dragMediaStore.set(id, item);
       if (sourceUrl) void ensureDragMediaChunks(item).catch(() => undefined);
       sendResponse({ ok: true });

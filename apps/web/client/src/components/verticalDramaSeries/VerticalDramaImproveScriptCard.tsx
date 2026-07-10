@@ -67,6 +67,9 @@ import {
 import {
   IMPROVE_SCRIPT_DEFAULT_REQUEST_TEXT,
   improveScriptConfirmSuccessText,
+  improveScriptEpisodeRoundProgressText,
+  improveScriptPartialFailureEpisodeReasonText,
+  improveScriptPartialFailureHeadingText,
   improveScriptRoundProgressText,
   pickCopy,
   verticalDramaCopy,
@@ -84,13 +87,23 @@ const IMPROVE_SCRIPT_REQUEST_MAX_LENGTH = 4000;
  * each entry is read the SAME tolerant way `VerticalDramaDeepStoryDraftEpisodeDetail`
  * already reads any breakdown item (`readDeepDraftShotDrafts`/
  * `readDeepDraftCliffhangerLine`), via `toStoryScriptEpisodeInput` below.
+ *
+ * Per-episode generation rewrite (2026-07-10): `improvedItems` is no longer
+ * nullable — `[]` when nothing succeeded (see `needsReview`), otherwise a
+ * SUBSET of `expectedEpisodeNumbers` (episodes that failed verification keep
+ * their original content and are surfaced separately via
+ * `partialFailureEpisodeNumbers`/`perEpisodeWarnings`, not omitted silently).
  */
 export interface VerticalDramaImproveScriptJobResultLike {
   scoreSummary: string;
   expectedEpisodeNumbers: number[];
   needsReview: boolean;
   needsReviewReasons: string[];
-  improvedItems: unknown[] | null;
+  improvedItems: unknown[];
+  /** Episode numbers that failed verification and kept their original content — non-blocking (the rest of the job can still be confirmed). */
+  partialFailureEpisodeNumbers: number[];
+  /** Per-episode failure detail for the episodes listed in `partialFailureEpisodeNumbers`, rendered under the non-blocking warning. */
+  perEpisodeWarnings: Array<{ episodeNumber: number; reasons: string[] }>;
   rawText: string;
 }
 
@@ -253,9 +266,20 @@ export function VerticalDramaImproveScriptCard({
   const isSubmitting = startMutation.isPending || isPolling;
 
   const liveProgressText = isPolling
-    ? storyJobPoll?.progress?.chunkIndex != null && storyJobPoll?.progress?.chunkCount != null
-      ? improveScriptRoundProgressText(lang, storyJobPoll.progress.chunkIndex, storyJobPoll.progress.chunkCount)
-      : pickCopy(lang, verticalDramaCopy.storyJobQueued)
+    ? storyJobPoll?.progress?.episodeIndex != null &&
+      storyJobPoll?.progress?.episodeCount != null &&
+      storyJobPoll?.progress?.chunkIndex != null &&
+      storyJobPoll?.progress?.chunkCount != null
+      ? improveScriptEpisodeRoundProgressText(
+          lang,
+          storyJobPoll.progress.episodeIndex,
+          storyJobPoll.progress.episodeCount,
+          storyJobPoll.progress.chunkIndex,
+          storyJobPoll.progress.chunkCount,
+        )
+      : storyJobPoll?.progress?.chunkIndex != null && storyJobPoll?.progress?.chunkCount != null
+        ? improveScriptRoundProgressText(lang, storyJobPoll.progress.chunkIndex, storyJobPoll.progress.chunkCount)
+        : pickCopy(lang, verticalDramaCopy.storyJobQueued)
     : null;
 
   const handleStart = async () => {
@@ -306,6 +330,18 @@ export function VerticalDramaImproveScriptCard({
       return [mapped?.episodeNumber ?? -1, mapped] as const;
     }),
   );
+  /**
+   * Per-episode generation rewrite (2026-07-10) — `improvedItems` can now be
+   * a SUBSET of `expectedEpisodeNumbers` (episodes that failed verification
+   * keep their original content and are surfaced separately via the
+   * partial-failure warning below, not as an empty diff row here). Iterate
+   * the episode numbers actually present in `improvedItems` itself — each
+   * entry carries its own `episodeNumber` — rather than assuming
+   * `expectedEpisodeNumbers` alignment.
+   */
+  const improvedEpisodeNumbers = Array.from(newByEpisode.keys())
+    .filter((episodeNumber) => episodeNumber !== -1)
+    .sort((a, b) => a - b);
 
   return (
     <div className="grid gap-2 border-t border-border/60 pt-2" data-testid="vd-improve-script-card">
@@ -433,6 +469,24 @@ export function VerticalDramaImproveScriptCard({
             </div>
           ) : (
             <div className="grid gap-2" data-testid="vd-improve-script-comparison">
+              {result.data.partialFailureEpisodeNumbers.length > 0 && (
+                <div
+                  className="grid gap-2 rounded-md border border-amber-400/60 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-400"
+                  data-testid="vd-improve-script-partial-failure-warning"
+                >
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                    {improveScriptPartialFailureHeadingText(lang, result.data.partialFailureEpisodeNumbers.length)}
+                  </p>
+                  <ul className="list-inside list-disc" data-testid="vd-improve-script-partial-failure-reasons">
+                    {result.data.perEpisodeWarnings.map((warning) => (
+                      <li key={warning.episodeNumber}>
+                        {improveScriptPartialFailureEpisodeReasonText(lang, warning.episodeNumber, warning.reasons)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {result.data.scoreSummary.trim().length > 0 && (
                 <p className="text-xs text-muted-foreground" data-testid="vd-improve-script-score-summary">
                   <span className="font-medium">
@@ -469,7 +523,7 @@ export function VerticalDramaImproveScriptCard({
                 </Button>
               </div>
               <div className="max-h-96 overflow-y-auto rounded-md border">
-                {result.data.expectedEpisodeNumbers.map((episodeNumber) => (
+                {improvedEpisodeNumbers.map((episodeNumber) => (
                   <ImproveScriptDiffRow
                     key={episodeNumber}
                     lang={lang}

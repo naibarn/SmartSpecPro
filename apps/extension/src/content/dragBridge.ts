@@ -168,6 +168,38 @@ export {};
     return { inputSet, input: describeFileInput(input) };
   }
 
+  function setControlledFileInputFiles(input: HTMLInputElement, files: FileList) {
+    try {
+      const nextFiles = freshFileList(files);
+      input.value = "";
+      const filesSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files")?.set;
+      if (filesSetter) filesSetter.call(input, nextFiles);
+      else input.files = nextFiles;
+      // Controlled uploaders (Grok and Higgsfield) clear the native input as
+      // soon as their change handler consumes the File. Capture acceptance
+      // before that reset so the bridge does not replay an accepted upload.
+      const filesLengthBeforeChange = input.files?.length ?? 0;
+      if (!filesLengthBeforeChange) {
+        return { inputSet: false, filesLengthBeforeChange, filesLengthAfterChange: 0 };
+      }
+      input.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+      return {
+        inputSet: true,
+        filesLengthBeforeChange,
+        filesLengthAfterChange: input.files?.length ?? 0,
+      };
+    } catch {
+      return { inputSet: false, filesLengthBeforeChange: 0, filesLengthAfterChange: 0 };
+    }
+  }
+
+  function setNearestControlledFileInputDetailed(target: HTMLElement, files: FileList) {
+    const input = findNearestFileInput(target, files);
+    if (!input) return { inputSet: false, input: null, filesLengthBeforeChange: 0, filesLengthAfterChange: 0 };
+    const result = setControlledFileInputFiles(input, files);
+    return { ...result, input: describeFileInput(input) };
+  }
+
   function delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -364,15 +396,19 @@ export {};
     dispatchFileDragEvents(target, file, originalEvent, ["dragenter", "dragover"]);
     const transfer = new DataTransfer();
     transfer.items.add(file);
-    const initial = setNearestFileInputDetailed(target, transfer.files);
+    const initial = setNearestControlledFileInputDetailed(target, transfer.files);
     let inputSet = initial.inputSet;
     let inputDetails = initial.input;
+    let filesLengthBeforeChange = initial.filesLengthBeforeChange;
+    let filesLengthAfterChange = initial.filesLengthAfterChange;
     let retryUsed = false;
     if (!inputSet) {
       await delay(120);
-      const retry = setNearestFileInputDetailed(target, transfer.files);
+      const retry = setNearestControlledFileInputDetailed(target, transfer.files);
       inputSet = retry.inputSet;
       inputDetails = retry.input || inputDetails;
+      filesLengthBeforeChange = retry.filesLengthBeforeChange;
+      filesLengthAfterChange = retry.filesLengthAfterChange;
       retryUsed = true;
     }
     if (!inputSet) {
@@ -391,6 +427,8 @@ export {};
       targetClass: typeof target.className === "string" ? target.className : "",
       fileInputCount: document.querySelectorAll("input[type='file']").length,
       fileInput: inputDetails,
+      filesLengthBeforeChange,
+      filesLengthAfterChange,
     });
     return inputSet;
   }
@@ -399,18 +437,22 @@ export {};
     dispatchFileDragEvents(target, file, originalEvent, ["dragenter", "dragover"]);
     const transfer = new DataTransfer();
     transfer.items.add(file);
-    const initial = setNearestFileInputDetailed(target, transfer.files);
+    const initial = setNearestControlledFileInputDetailed(target, transfer.files);
     let inputSet = initial.inputSet;
     let inputDetails = initial.input;
+    let filesLengthBeforeChange = initial.filesLengthBeforeChange;
+    let filesLengthAfterChange = initial.filesLengthAfterChange;
     let retryUsed = false;
     if (!inputSet) {
       // Grok renders its upload input lazily after its drag overlay becomes visible.
       // Wait long enough for that React state transition before falling back to a
       // synthetic drop, which Grok can display without committing a file.
       await delay(360);
-      const retry = setNearestFileInputDetailed(target, transfer.files);
+      const retry = setNearestControlledFileInputDetailed(target, transfer.files);
       inputSet = retry.inputSet;
       inputDetails = retry.input || inputDetails;
+      filesLengthBeforeChange = retry.filesLengthBeforeChange;
+      filesLengthAfterChange = retry.filesLengthAfterChange;
       retryUsed = true;
     }
     if (!inputSet) {
@@ -429,6 +471,8 @@ export {};
       targetClass: typeof target.className === "string" ? target.className : "",
       fileInputCount: document.querySelectorAll("input[type='file']").length,
       fileInput: inputDetails,
+      filesLengthBeforeChange,
+      filesLengthAfterChange,
     });
     return inputSet;
   }
@@ -629,6 +673,8 @@ export {};
         inputSet: mainWorldResult?.inputSet === true,
         inputCount: Number(mainWorldResult?.inputCount) || 0,
         setStrategy: mainWorldResult?.setStrategy || "",
+        filesLengthBeforeChange: Number(mainWorldResult?.filesLengthBeforeChange) || 0,
+        filesLengthAfterChange: Number(mainWorldResult?.filesLengthAfterChange) || 0,
         error: mainWorldResult?.error || "",
       });
       if (mainWorldResult?.ok && mainWorldResult?.inputSet) {

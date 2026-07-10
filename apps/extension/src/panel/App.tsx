@@ -345,8 +345,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.121";
-const EXTENSION_BUILD_LABEL = "2026-07-10 00:58 +07";
+const EXTENSION_VERSION = "0.1.123";
+const EXTENSION_BUILD_LABEL = "2026-07-10 15:24 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -3870,6 +3870,10 @@ export default function App() {
     setProductionMediaFiles((current) => ({ ...current, [url]: { status: "loading" } }));
     try {
       let blob: Blob;
+      // Large media cannot be retained as a data URL. If the original source
+      // needed the dashboard proxy, retain that successful URL for the
+      // background bridge instead of asking it to fetch the blocked original.
+      let bridgeSourceUrl = url;
       if (url.startsWith("data:image/")) {
         blob = dataUrlToBlob(url);
       } else {
@@ -3883,6 +3887,7 @@ export default function App() {
         if (!response?.ok && kind === "image" && /^https?:\/\//i.test(url)) {
           const proxyUrl = `${serverBaseUrl}/api/media/image-proxy?url=${encodeURIComponent(url)}`;
           response = await fetch(proxyUrl, { headers: await extensionAuthHeaders() }).catch(() => null);
+          if (response?.ok) bridgeSourceUrl = proxyUrl;
         }
         if (!response?.ok) throw new Error(`Unable to fetch media ${response?.status ?? "network"}`);
         blob = await response.blob();
@@ -3895,15 +3900,15 @@ export default function App() {
       const dragAuthHeaders = await extensionAuthHeaders();
       try {
         dataUrl = blob.size <= 8_000_000 ? await blobToDataUrl(blob) : undefined;
-        await storeDragMediaForBridge({ id: dragId, dataUrl, file, metadataOnly: !dataUrl, sourceUrl: url, headers: dragAuthHeaders });
+        await storeDragMediaForBridge({ id: dragId, dataUrl, file, metadataOnly: !dataUrl, sourceUrl: bridgeSourceUrl, headers: dragAuthHeaders });
       } catch {
         dataUrl = undefined;
-        await storeDragMediaForBridge({ id: dragId, file, metadataOnly: true, sourceUrl: url, headers: dragAuthHeaders }).catch(() => undefined);
+        await storeDragMediaForBridge({ id: dragId, file, metadataOnly: true, sourceUrl: bridgeSourceUrl, headers: dragAuthHeaders }).catch(() => undefined);
       }
       setProductionMediaFiles((current) => {
         const previous = current[url];
         if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
-        return { ...current, [url]: { status: "ready", file, objectUrl, dragId, dataUrl, sourceUrl: url, authHeaders: dragAuthHeaders } };
+        return { ...current, [url]: { status: "ready", file, objectUrl, dragId, dataUrl, sourceUrl: bridgeSourceUrl, authHeaders: dragAuthHeaders } };
       });
     } catch {
       setProductionMediaFiles((current) => ({ ...current, [url]: { status: "failed" } }));

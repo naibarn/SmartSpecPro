@@ -124,7 +124,13 @@ export type VerticalDramaStoryJobProgressPhase =
 
 export interface VerticalDramaStoryJobProgress {
   phase: VerticalDramaStoryJobProgressPhase;
-  /** 1-based index of the current call-round (chunk / revise-round) within this job, when applicable. */
+  /**
+   * 1-based index of the current call-round (chunk / revise-round) within
+   * this job, when applicable. For `improve_script` jobs (2026-07-10
+   * per-episode rewrite — see `services/verticalDramaImproveScript.ts`),
+   * this means "round within the CURRENT episode" (see `episodeIndex`/
+   * `episodeCount` below for which episode).
+   */
   chunkIndex?: number;
   /** Total call-rounds expected for this job, when known upfront. */
   chunkCount?: number;
@@ -132,6 +138,15 @@ export interface VerticalDramaStoryJobProgress {
   callsDone?: number;
   /** Episode numbers this progress event's "fix" work targets (mainly meaningful for phase "fix"). */
   episodesDone?: number[];
+  /**
+   * 1-based index of the episode currently being processed within this job
+   * (added 2026-07-10 for `improve_script`'s per-episode generation loop —
+   * `services/verticalDramaImproveScript.ts`'s `runImproveScriptEpisodePass`).
+   * Absent for every job kind that doesn't process episodes one at a time.
+   */
+  episodeIndex?: number;
+  /** Total drafted episodes this job is processing (added 2026-07-10, same `improve_script` per-episode loop as `episodeIndex`). */
+  episodeCount?: number;
   /**
    * Auto quality loop (plan §C, added 2026-07-09) — 1-based current round
    * number within the loop's `maxRounds` budget. `0` is used for the

@@ -989,11 +989,61 @@ export function improveScriptRoundProgressText(
     : `Improving... (round ${round}/${maxRounds})`;
 }
 
+/**
+ * Copy Contract: "กำลังปรับปรุงตอนที่ {episodeIndex}/{episodeCount}... (รอบ
+ * {round}/{maxRounds})" — episode-aware progress text, added for the
+ * per-episode generation rewrite (2026-07-10; each drafted episode is now
+ * its own generation pass, so `round`/`maxRounds` are scoped to the CURRENT
+ * episode, not the whole job). Preferred over `improveScriptRoundProgressText`
+ * whenever the poll's `episodeIndex`/`episodeCount` fields are present; that
+ * older function stays as a fallback for an in-flight job started before
+ * this deploy (which never reports episode fields).
+ */
+export function improveScriptEpisodeRoundProgressText(
+  lang: VerticalDramaLang,
+  episodeIndex: number,
+  episodeCount: number,
+  round: number,
+  maxRounds: number,
+): string {
+  return lang === "th"
+    ? `กำลังปรับปรุงตอนที่ ${episodeIndex}/${episodeCount}... (รอบ ${round}/${maxRounds})`
+    : `Improving episode ${episodeIndex}/${episodeCount}... (round ${round}/${maxRounds})`;
+}
+
 /** Copy Contract: "ปรับปรุงแล้ว {n} ตอน" — the confirm success toast (same phrasing the removed apply-critique flow used). */
 export function improveScriptConfirmSuccessText(lang: VerticalDramaLang, updatedCount: number): string {
   return lang === "th"
     ? `ปรับปรุงแล้ว ${updatedCount} ตอน`
     : `Updated ${updatedCount} episode${updatedCount === 1 ? "" : "s"}`;
+}
+
+/**
+ * Per-episode generation rewrite (2026-07-10) — Copy Contract for the
+ * NON-BLOCKING warning shown above the comparison list when
+ * `partialFailureEpisodeNumbers.length > 0` but `needsReview === false`
+ * (some episodes failed verification and kept their original content, while
+ * the rest succeeded — Confirm/Discard stay enabled, unlike the fail-closed
+ * `improveScriptNeedsReviewHeading` block). Same "heading + reasons list"
+ * structure as that block, just worded as informational rather than
+ * blocking, and with the count of affected episodes interpolated in.
+ */
+export function improveScriptPartialFailureHeadingText(lang: VerticalDramaLang, failedCount: number): string {
+  return lang === "th"
+    ? `${failedCount} ตอนไม่ผ่านการตรวจสอบ ใช้เนื้อหาเดิมสำหรับตอนเหล่านี้ ตอนอื่นยังยืนยันได้ตามปกติ`
+    : `${failedCount} episode${failedCount === 1 ? "" : "s"} failed verification — kept the original content for ${
+        failedCount === 1 ? "it" : "those"
+      }; the rest can still be confirmed normally`;
+}
+
+/** Copy Contract: "ตอนที่ {episodeNumber}: {reason1}, {reason2}" — one line per entry of `perEpisodeWarnings`, listed under `improveScriptPartialFailureHeadingText`. */
+export function improveScriptPartialFailureEpisodeReasonText(
+  lang: VerticalDramaLang,
+  episodeNumber: number,
+  reasons: readonly string[],
+): string {
+  const episodeLabel = lang === "th" ? `ตอนที่ ${episodeNumber}` : `Episode ${episodeNumber}`;
+  return reasons.length > 0 ? `${episodeLabel}: ${reasons.join(", ")}` : episodeLabel;
 }
 
 /* -------------------------------------------------------------------------- */

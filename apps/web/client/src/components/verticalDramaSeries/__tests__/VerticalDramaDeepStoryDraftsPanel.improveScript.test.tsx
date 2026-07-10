@@ -32,6 +32,8 @@ let improveScriptResult: unknown = {
       keyBeats: ["จุดใหม่ 1"],
     },
   ],
+  partialFailureEpisodeNumbers: [],
+  perEpisodeWarnings: [],
   rawText: "ตอนที่ 1: ตอนใหม่: จุดเริ่มต้นที่ดีขึ้น\n...",
 };
 /** Async story jobs (#28) — the series' active job, as `getActiveStoryJob` would return it. `null` (default, reset in `beforeEach`) means no resume. */
@@ -118,6 +120,8 @@ beforeEach(() => {
         keyBeats: ["จุดใหม่ 1"],
       },
     ],
+    partialFailureEpisodeNumbers: [],
+    perEpisodeWarnings: [],
     rawText: "ตอนที่ 1: ตอนใหม่: จุดเริ่มต้นที่ดีขึ้น\n...",
   };
 });
@@ -218,10 +222,39 @@ describe("VerticalDramaImproveScriptCard — starting the improve job", () => {
     resolveFirstFetch({
       kind: "improve_script",
       status: "running",
-      progress: { phase: "fix", chunkIndex: 2, chunkCount: 6, callsDone: 2 },
+      progress: { phase: "fix", chunkIndex: 2, chunkCount: 2, callsDone: 2 },
     });
     await waitFor(() =>
-      expect(screen.getByTestId("vd-improve-script-progress")).toHaveTextContent("กำลังปรับปรุง... (รอบ 2/6)"),
+      expect(screen.getByTestId("vd-improve-script-progress")).toHaveTextContent("กำลังปรับปรุง... (รอบ 2/2)"),
+    );
+  });
+
+  it("prefers the episode-aware progress text once episodeIndex/episodeCount are present (per-episode generation rewrite)", async () => {
+    let resolveFirstFetch!: (value: unknown) => void;
+    mockGetStoryJobStatusFetch.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveFirstFetch = resolve; }),
+    );
+    render(<VerticalDramaImproveScriptCard lang="th" seriesId="10" readOnly={false} hasDrafts={true} />);
+    fireEvent.click(screen.getByTestId("vd-improve-script-cta"));
+
+    await waitFor(() => expect(screen.getByTestId("vd-improve-script-progress")).toBeInTheDocument());
+
+    resolveFirstFetch({
+      kind: "improve_script",
+      status: "running",
+      progress: {
+        phase: "fix",
+        chunkIndex: 1,
+        chunkCount: 2,
+        episodeIndex: 2,
+        episodeCount: 3,
+        callsDone: 2,
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("vd-improve-script-progress")).toHaveTextContent(
+        "กำลังปรับปรุงตอนที่ 2/3... (รอบ 1/2)",
+      ),
     );
   });
 
@@ -241,7 +274,9 @@ describe("VerticalDramaImproveScriptCard — needsReview (fail-closed)", () => {
       expectedEpisodeNumbers: [1, 2],
       needsReview: true,
       needsReviewReasons: ["ขาดตอนที่ 2 ในผลลัพธ์", "พบหมายเลขตอนซ้ำในผลลัพธ์"],
-      improvedItems: null,
+      improvedItems: [],
+      partialFailureEpisodeNumbers: [],
+      perEpisodeWarnings: [],
       rawText: "ตอนที่ 1: ...\n(เนื้อหาไม่ครบ)",
     };
   });
@@ -344,6 +379,64 @@ describe("VerticalDramaImproveScriptCard — success comparison view", () => {
     );
     await waitFor(() => expect(screen.queryByTestId("vd-improve-script-result")).not.toBeInTheDocument());
     expect(mockInvalidateSeriesGet).not.toHaveBeenCalled();
+  });
+});
+
+describe("VerticalDramaImproveScriptCard — partial success (per-episode generation rewrite)", () => {
+  beforeEach(() => {
+    seriesGetData = {
+      series: {
+        bible: {
+          episodeBreakdown: [
+            { episodeNumber: 1, workingTitle: "เดิม: ตอน 1", logline: "โลจิกไลน์เดิม 1", keyBeats: ["จุดเดิม 1"] },
+            { episodeNumber: 2, workingTitle: "เดิม: ตอน 2", logline: "โลจิกไลน์เดิม 2", keyBeats: ["จุดเดิม 2"] },
+            { episodeNumber: 3, workingTitle: "เดิม: ตอน 3", logline: "โลจิกไลน์เดิม 3", keyBeats: ["จุดเดิม 3"] },
+          ],
+        },
+      },
+    };
+    improveScriptResult = {
+      scoreSummary: "ตอนที่ 1: คะแนน 8/10\nตอนที่ 2: คะแนน 8/10",
+      expectedEpisodeNumbers: [1, 2, 3],
+      needsReview: false,
+      needsReviewReasons: [],
+      improvedItems: [
+        { episodeNumber: 1, workingTitle: "ตอนใหม่ 1", logline: "โลจิกไลน์ใหม่ 1", keyBeats: ["จุดใหม่ 1"] },
+        { episodeNumber: 2, workingTitle: "ตอนใหม่ 2", logline: "โลจิกไลน์ใหม่ 2", keyBeats: ["จุดใหม่ 2"] },
+      ],
+      partialFailureEpisodeNumbers: [3],
+      perEpisodeWarnings: [{ episodeNumber: 3, reasons: ["จำนวนช็อตไม่ครบ 9 ช็อต"] }],
+      rawText: "ตอนที่ 1: ...\nตอนที่ 2: ...\nตอนที่ 3: (ไม่ผ่านการตรวจสอบ)",
+    };
+  });
+
+  async function renderAndStart() {
+    render(<VerticalDramaImproveScriptCard lang="th" seriesId="10" readOnly={false} hasDrafts={true} />);
+    fireEvent.click(screen.getByTestId("vd-improve-script-cta"));
+    await waitFor(() => expect(screen.getByTestId("vd-improve-script-comparison")).toBeInTheDocument());
+  }
+
+  it("renders the non-blocking partial-failure warning with the failed episode's reasons", async () => {
+    await renderAndStart();
+    const warning = screen.getByTestId("vd-improve-script-partial-failure-warning");
+    expect(warning).toHaveTextContent("1 ตอนไม่ผ่านการตรวจสอบ");
+    expect(screen.getByTestId("vd-improve-script-partial-failure-reasons")).toHaveTextContent(
+      "ตอนที่ 3: จำนวนช็อตไม่ครบ 9 ช็อต",
+    );
+  });
+
+  it("keeps Confirm/Discard enabled and visible alongside the partial-failure warning", async () => {
+    await renderAndStart();
+    expect(screen.getByTestId("vd-improve-script-confirm-cta")).toBeEnabled();
+    expect(screen.getByTestId("vd-improve-script-discard-cta")).toBeEnabled();
+    expect(screen.queryByTestId("vd-improve-script-needs-review")).not.toBeInTheDocument();
+  });
+
+  it("shows the comparison list for only the successfully improved episodes (not the failed one)", async () => {
+    await renderAndStart();
+    expect(screen.getByTestId("vd-improve-script-diff-row-1")).toBeInTheDocument();
+    expect(screen.getByTestId("vd-improve-script-diff-row-2")).toBeInTheDocument();
+    expect(screen.queryByTestId("vd-improve-script-diff-row-3")).not.toBeInTheDocument();
   });
 });
 

@@ -672,23 +672,24 @@ function estimateDeepDraftJobCredits(episodeCount: number, mode: VerticalDramaDe
 
 /**
  * Worst-case credits pre-check for "ปรับปรุงบทละครให้มีความสมบูรณ์" — mirrors
- * the removed `estimateQualityLoopJobCredits`'s own "worst case" shape, but
- * simpler: this flow makes at most ONE skill call per continuation round
- * (the whole script is sent in a single call already, unlike the old
- * apply-critique's per-chunk fan-out), so the estimate doesn't scale with
- * episode count — `draftedEpisodeCount` is accepted only for call-site
- * symmetry with every other estimate helper in this file.
+ * the removed `estimateQualityLoopJobCredits`'s own "worst case" shape. Per
+ * the per-episode rewrite (`services/verticalDramaImproveScript.ts`,
+ * 2026-07-10), each drafted episode now gets its OWN full generation pass
+ * (own continuation-round budget), so unlike the old whole-season-in-one-call
+ * shape, cost now scales linearly with `draftedEpisodeCount` — worst case is
+ * every episode independently burning its full per-episode round cap.
  *
  * Deliberately duplicates the LITERAL value of
- * `VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS` (`services/verticalDramaImproveScript.ts`)
- * instead of importing it — see this file's import block doc comment just
- * above `runImproveScriptJob`'s own import for why a value import of
- * anything from that service file must stay lazy (heavy `enabledLlmModels`
- * -> `llmProviders` router transitive chain, breaks sibling `vi.mock` tests).
+ * `VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS` (`services/verticalDramaImproveScript.ts`,
+ * now 2 — per episode, not per job) instead of importing it — see this
+ * file's import block doc comment just above `runImproveScriptJob`'s own
+ * import for why a value import of anything from that service file must
+ * stay lazy (heavy `enabledLlmModels` -> `llmProviders` router transitive
+ * chain, breaks sibling `vi.mock` tests).
  */
-const VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS_ESTIMATE = 6;
-function estimateImproveScriptJobCredits(_draftedEpisodeCount: number): number {
-  return VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS_ESTIMATE * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE;
+const VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS_ESTIMATE = 2;
+function estimateImproveScriptJobCredits(draftedEpisodeCount: number): number {
+  return Math.max(1, draftedEpisodeCount) * VD_IMPROVE_SCRIPT_MAX_CONTINUATION_ROUNDS_ESTIMATE * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE;
 }
 
 interface StoryJobExecutorOwner {
@@ -3415,7 +3416,7 @@ export const verticalDramaSeriesRouter = router({
       }
 
       const result = record.result as RunImproveScriptJobResult | undefined;
-      if (!result || result.needsReview !== false || !result.improvedItems) {
+      if (!result || result.improvedItems.length === 0) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
@@ -3465,7 +3466,10 @@ export const verticalDramaSeriesRouter = router({
           metadata: {
             seriesId,
             jobId: input.jobId,
-            updatedEpisodeNumbers: result.expectedEpisodeNumbers,
+            // `improvedItems`-derived, NOT `expectedEpisodeNumbers` — a
+            // partial success means not every expected episode actually got
+            // improved (see `RunImproveScriptJobResult`'s own doc comment).
+            updatedEpisodeNumbers: result.improvedItems.map((item) => item.episodeNumber),
           },
         });
       } catch (error) {
@@ -3476,7 +3480,7 @@ export const verticalDramaSeriesRouter = router({
         );
       }
 
-      return { updatedEpisodeNumbers: result.expectedEpisodeNumbers };
+      return { updatedEpisodeNumbers: result.improvedItems.map((item) => item.episodeNumber) };
     }),
 
   /**

@@ -239,6 +239,18 @@ export interface VerticalDramaStoryJobProgressLike {
   chunkCount?: number;
   callsDone?: number;
   episodesDone?: number[];
+  /**
+   * Per-episode `improve_script` generation rewrite (2026-07-10) —
+   * `episodeIndex` (1-based position of the CURRENT episode within this job)
+   * and `episodeCount` (total drafted episodes in this job). Optional and
+   * additive: absent for job kinds that don't process per-episode
+   * (`deep_generate`/`extend`), and absent on an in-flight `improve_script`
+   * job that was already running before this field was added — callers must
+   * not assume presence, see `VerticalDramaImproveScriptCard.tsx`'s
+   * `liveProgressText` fallback.
+   */
+  episodeIndex?: number;
+  episodeCount?: number;
 }
 
 export interface VerticalDramaStoryJobStatusLike {
