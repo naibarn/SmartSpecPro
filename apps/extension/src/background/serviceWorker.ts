@@ -62,6 +62,62 @@ async function ensureDragMediaChunks(item: DragMediaItem) {
   return item.chunks;
 }
 
+async function setGrokFileInputInMainWorld(dataUrl: string, name: string, type: string) {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const file = new File([blob], name || "smartaihub-image", { type: type || blob.type || "image/png" });
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  const inputs = Array.from(document.querySelectorAll<HTMLInputElement>("input[type='file']"))
+    .filter((input) => !input.disabled && (!input.accept || input.accept.split(",").some((item) => {
+      const accept = item.trim().toLowerCase();
+      return !accept || accept === file.type.toLowerCase() || (accept.endsWith("/*") && file.type.toLowerCase().startsWith(accept.slice(0, -1))) || (accept.startsWith(".") && file.name.toLowerCase().endsWith(accept));
+    })));
+  // Grok mounts hidden inputs for Uploads, Connectors, Generations, and the
+  // composer. Writing to all of them creates duplicate attachments. Select
+  // only the input structurally associated with the prompt/reference composer,
+  // rather than relying on brittle DOM order.
+  const composerInput = inputs
+    .map((candidate, index) => {
+      let ancestor: HTMLElement | null = candidate.parentElement;
+      let composerDepth = -1;
+      let depth = 0;
+      while (ancestor && depth < 12) {
+        if (ancestor.querySelector("textarea, [contenteditable='true']")) {
+          composerDepth = depth;
+          break;
+        }
+        ancestor = ancestor.parentElement;
+        depth += 1;
+      }
+      const context = [
+        candidate.accept,
+        candidate.getAttribute("aria-label"),
+        candidate.getAttribute("data-testid"),
+        candidate.className,
+        candidate.parentElement?.className,
+        ancestor?.className,
+      ].filter((value) => typeof value === "string").join(" ").toLowerCase();
+      const semanticScore = /composer|prompt|reference|imagine|attachment/.test(context) ? 100 : 0;
+      return { candidate, index, score: semanticScore + (composerDepth >= 0 ? 1_000 - composerDepth : 0) };
+    })
+    .sort((a, b) => b.score - a.score || b.index - a.index)[0]?.candidate ?? null;
+  const input = composerInput;
+  if (!input) return { inputSet: false, inputCount: 0 };
+  // Use the browser-native setter, not a potentially wrapped instance setter.
+  // Grok's controlled uploader rejects the direct assignment used previously,
+  // leaving input.files empty and forcing an unsupported synthetic drop.
+  const filesSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files")?.set;
+  if (!filesSetter) return { inputSet: false, inputCount: inputs.length, error: "files_setter_unavailable" };
+  filesSetter.call(input, transfer.files);
+  input.dispatchEvent(new Event("change", { bubbles: true, composed: true }));
+  return {
+    inputSet: (input.files?.length ?? 0) > 0,
+    inputCount: inputs.length,
+    setStrategy: "native_files_setter",
+  };
+}
+
 async function getOrCreateDeviceId(): Promise<string> {
   const result = await chrome.storage.local.get([DEVICE_ID_KEY]);
   const existing = String(result[DEVICE_ID_KEY] || "");
@@ -219,6 +275,8 @@ function isDragBridgeTargetUrl(url: unknown): boolean {
       || parsed.hostname.endsWith(".magnific.com")
       || parsed.hostname === "higgsfield.ai"
       || parsed.hostname.endsWith(".higgsfield.ai")
+      || parsed.hostname === "grok.com"
+      || parsed.hostname.endsWith(".grok.com")
     );
   } catch {
     return false;
@@ -376,6 +434,7 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
     && message?.type !== "SMARTAIHUB_END_DRAG_MEDIA"
     && message?.type !== "SMARTAIHUB_COMPLETE_DRAG_MEDIA"
     && message?.type !== "SMARTAIHUB_GET_ACTIVE_DRAG_MEDIA"
+    && message?.type !== "SMARTAIHUB_DELIVER_GROK_MEDIA_TO_MAIN_WORLD"
   ) return false;
   try {
     pruneDragMediaStore();
@@ -428,6 +487,25 @@ chrome.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (
         clearActiveDragMedia(id || null);
       }
       sendResponse({ ok: true });
+      return true;
+    }
+    if (message.type === "SMARTAIHUB_DELIVER_GROK_MEDIA_TO_MAIN_WORLD") {
+      if (!isDragBridgeContentSender(sender) || !sender.tab?.id || !isDragBridgeTargetUrl(sender.tab.url)) throw new Error("drag_media_sender_not_allowed");
+      const id = cleanString(message.id, 160);
+      const item = id ? dragMediaStore.get(id) : undefined;
+      if (!item) throw new Error("drag_media_not_found");
+      ensureDragMediaChunks(item)
+        .then(async (chunks) => {
+          const dataUrl = `data:${item.type || "application/octet-stream"};base64,${chunks.join("")}`;
+          const results = await chrome.scripting.executeScript({
+            target: { tabId: sender.tab.id, frameIds: sender.frameId == null ? undefined : [sender.frameId] },
+            world: "MAIN",
+            func: setGrokFileInputInMainWorld,
+            args: [dataUrl, item.name, item.type],
+          });
+          sendResponse({ ok: true, ...(results[0]?.result ?? { inputSet: false, inputCount: 0 }) });
+        })
+        .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : "grok_main_world_delivery_failed" }));
       return true;
     }
     if (message.type === "SMARTAIHUB_GET_ACTIVE_DRAG_MEDIA") {

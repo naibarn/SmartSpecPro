@@ -369,6 +369,37 @@ export class VerticalDramaCharacterStockService {
   }
 
   /**
+   * Same query/ordering as `getPrimaryPortraitUrl` (identity-lock convention:
+   * prefers the newest `approved` portrait, falls back to the newest of any
+   * state) but selects the `media_assets` row's own id instead of its URL —
+   * speaker-aware sub-shots task: lets a caller resolve a per-sub-shot clip's
+   * `startFrameAssetId` (a media asset id) directly, without a second
+   * URL->id lookup. No schema change (same tables/columns as
+   * `getPrimaryPortraitUrl`).
+   */
+  async getPrimaryPortraitAssetId(
+    owner: VerticalDramaCharacterStockOwner,
+    characterId: number,
+  ): Promise<number | null> {
+    const [row] = await db
+      .select({ id: mediaAssets.id })
+      .from(verticalDramaCharacterAssets)
+      .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
+      .where(
+        and(
+          eq(verticalDramaCharacterAssets.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAssets.userId, owner.userId),
+          eq(verticalDramaCharacterAssets.seriesId, owner.seriesId),
+          eq(verticalDramaCharacterAssets.characterId, characterId),
+          eq(verticalDramaCharacterAssets.role, "primary_portrait"),
+        ),
+      )
+      .orderBy(desc(verticalDramaCharacterAssets.approved), desc(verticalDramaCharacterAssets.updatedAt))
+      .limit(1);
+    return row?.id ?? null;
+  }
+
+  /**
    * The character's identity-lock reference SET for image generation (F131Z
    * `verticalDramaSeriesCharacterRefV2`, option A —
    * `planning/vertical-drama-character-consistency/research-2026-07-09.md`):

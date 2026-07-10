@@ -45,6 +45,9 @@ with zipfile.ZipFile(zip_path) as archive:
     drag_bridge_js = archive.read("assets/dragBridge.js").decode("utf-8", errors="ignore")
     for marker in [
         "google_flow_drag_delivery",
+        "grok_drag_delivery",
+        "grok_native_file_passthrough",
+        "grok_main_world_file_delivery",
         "file_input_after_preview",
         "synthetic_drop_fallback",
         "file_input_retry",
@@ -52,5 +55,31 @@ with zipfile.ZipFile(zip_path) as archive:
     ]:
         if marker not in drag_bridge_js:
             fail(f"dragBridge bundle missing marker: {marker}")
+
+    if "image-proxy" not in panel_js:
+        fail("panel bundle missing same-origin image proxy fallback")
+
+    host_permissions = set(manifest.get("host_permissions", []))
+    for grok_match in ["https://grok.com/*", "https://*.grok.com/*"]:
+        if grok_match not in host_permissions:
+            fail(f"manifest missing Grok host permission: {grok_match}")
+
+    drag_bridge_matches = {
+        match
+        for script in manifest.get("content_scripts", [])
+        if "assets/dragBridge.js" in script.get("js", [])
+        for match in script.get("matches", [])
+    }
+    for grok_match in ["https://grok.com/*", "https://*.grok.com/*"]:
+        if grok_match not in drag_bridge_matches:
+            fail(f"drag bridge is not injected on Grok: {grok_match}")
+
+    service_worker_js = archive.read("assets/serviceWorker.js").decode("utf-8", errors="ignore")
+    if "grok.com" not in service_worker_js:
+        fail("service worker does not activate the drag bridge on Grok")
+    if "MAIN" not in service_worker_js or "SMARTAIHUB_DELIVER_GROK_MEDIA_TO_MAIN_WORLD" not in service_worker_js:
+        fail("service worker missing Grok main-world file delivery")
+    if "native_files_setter" not in service_worker_js:
+        fail("service worker missing Grok native file-input setter")
 
 print(f"Verified {zip_path}")

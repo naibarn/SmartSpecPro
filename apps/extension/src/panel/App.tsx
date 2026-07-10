@@ -345,7 +345,7 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.113";
+const EXTENSION_VERSION = "0.1.121";
 const EXTENSION_BUILD_LABEL = "2026-07-10 00:58 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
@@ -3873,11 +3873,18 @@ export default function App() {
       if (url.startsWith("data:image/")) {
         blob = dataUrlToBlob(url);
       } else {
-        let response = await fetch(url);
-        if (!response.ok) {
-          response = await fetch(url, { headers: await extensionAuthHeaders() });
+        let response = await fetch(url).catch(() => null);
+        if (!response?.ok) {
+          response = await fetch(url, { headers: await extensionAuthHeaders() }).catch(() => null);
         }
-        if (!response.ok) throw new Error(`Unable to fetch media ${response.status}`);
+        // A main frame can retain a provider/CDN originalUrl that <img> can
+        // render but the extension cannot fetch because of CORS or a missing
+        // host permission. Retry through the app's safe same-origin proxy.
+        if (!response?.ok && kind === "image" && /^https?:\/\//i.test(url)) {
+          const proxyUrl = `${serverBaseUrl}/api/media/image-proxy?url=${encodeURIComponent(url)}`;
+          response = await fetch(proxyUrl, { headers: await extensionAuthHeaders() }).catch(() => null);
+        }
+        if (!response?.ok) throw new Error(`Unable to fetch media ${response?.status ?? "network"}`);
         blob = await response.blob();
       }
       const mimeType = blob.type || (kind === "video" ? "video/mp4" : "image/png");

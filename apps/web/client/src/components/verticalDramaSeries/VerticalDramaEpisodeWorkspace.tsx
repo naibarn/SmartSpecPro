@@ -338,8 +338,16 @@ export interface VerticalDramaStoryboardPanelData {
   generating?: boolean;
   /** Fired only after the user confirms the credit-spend warning. */
   onGenerateReal?: () => void;
-  /** Opens the repair dialog for `video_motion_prompt_pack`, prefilled with the current prompt. */
-  onEditVideoPrompt?: (shotNumber: number, currentPrompt: string) => void;
+  /** Opens the repair dialog for `video_motion_prompt_pack`, prefilled with
+   *  the current prompt. `clipNumber`/`subShotNumber` (2026-07-10 speaker-
+   *  aware sub-shots) — mirrors `VerticalDramaStoryboardPanel`'s own prop of
+   *  the same name. */
+  onEditVideoPrompt?: (
+    shotNumber: number,
+    clipNumber: number,
+    subShotNumber: number | undefined,
+    currentPrompt: string
+  ) => void;
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
   /** Runs `start_frame_render_plan` for real (mode "full", spends credits). */
@@ -452,7 +460,13 @@ export interface VerticalDramaStoryboardPanelData {
 
   /* ---- Phase 4.1/4.2 — one-click generate + inline prompt editing ---- */
   onSaveStartFramePrompt?: (shotNumber: number, prompt: string) => void;
-  onSaveVideoPrompt?: (shotNumber: number, prompt: string) => void;
+  /** `clipNumber` (2026-07-10 speaker-aware sub-shots) — mirrors
+   *  `VerticalDramaStoryboardPanel`'s own prop of the same name. */
+  onSaveVideoPrompt?: (
+    shotNumber: number,
+    clipNumber: number,
+    prompt: string
+  ) => void;
   onGeneratePromptAndImage?: (
     shotNumber: number,
     mode: "single" | "angles"

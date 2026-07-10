@@ -18,7 +18,14 @@
  * color-only), the credit-confirm gate is keyboard reachable.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link } from "wouter";
 import {
   AlertTriangle,
@@ -574,8 +581,19 @@ interface VerticalDramaStoryboardPanelProps {
   generating?: boolean;
   /** Called only after the user confirms the credit-spend warning. */
   onGenerateReal?: () => void;
-  /** Opens the repair dialog for `video_motion_prompt_pack`, prefilled with the current prompt as an editable template. */
-  onEditVideoPrompt?: (shotNumber: number, currentPrompt: string) => void;
+  /** Opens the repair dialog for `video_motion_prompt_pack`, prefilled with
+   *  the current prompt as an editable template. `clipNumber`/`subShotNumber`
+   *  (2026-07-10 speaker-aware sub-shots) identify the EXACT clip being
+   *  adjusted — for an unsplit shot `clipNumber === shotNumber` and
+   *  `subShotNumber` is `undefined`, matching the caller's prior single-clip
+   *  behavior byte-for-byte; for a split shot they pin the repair to just
+   *  that one sub-shot clip instead of the whole shot. */
+  onEditVideoPrompt?: (
+    shotNumber: number,
+    clipNumber: number,
+    subShotNumber: number | undefined,
+    currentPrompt: string
+  ) => void;
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
   /** Opens the Media History/Library picker scoped to a specific character's global portrait (updates that character everywhere, not just this shot). */
@@ -778,8 +796,17 @@ interface VerticalDramaStoryboardPanelProps {
   /** Saves an edited image prompt for free (no LLM call) — distinct from
    *  `onEditStartFramePrompt`, which opens the paid AI-repair dialog. */
   onSaveStartFramePrompt?: (shotNumber: number, prompt: string) => void;
-  /** Saves an edited video prompt for free — distinct from `onEditVideoPrompt`. */
-  onSaveVideoPrompt?: (shotNumber: number, prompt: string) => void;
+  /** Saves an edited video prompt for free — distinct from
+   *  `onEditVideoPrompt`. `clipNumber` (2026-07-10 speaker-aware sub-shots)
+   *  identifies the EXACT clip being saved — for an unsplit shot it equals
+   *  `shotNumber` (byte-identical to the prior single-clip behavior); for a
+   *  split shot it scopes the save to just that one sub-shot clip instead of
+   *  stomping every clip on the shot with the same text. */
+  onSaveVideoPrompt?: (
+    shotNumber: number,
+    clipNumber: number,
+    prompt: string
+  ) => void;
   /** One-click "generate prompt + image" (2026-07-05 redesign): the caller
    *  ensures an image prompt exists automatically (LLM-generated, no
    *  mandatory free-text typing from the user — see
@@ -1657,7 +1684,16 @@ export function VerticalDramaStoryboardPanel({
     if (typeof frame?.shotNumber === "number")
       frameByShot.set(frame.shotNumber, frame);
   }
-  const clipByShot = new Map<number, VerticalDramaMotionPromptClipView>();
+  // Speaker-aware sub-shots (2026-07-10): a shot's dialogue can now split
+  // into up to 3 separate clips (one per speaker window), each carrying the
+  // SAME shot number in `sourceShotNumbers`/`parentShotNumber` — so this must
+  // collect every matching clip, not just the first ("first-clip-wins" used
+  // to silently hide the 2nd/3rd sub-shot clip). Sorted by `subShotNumber`
+  // ascending (mirrors `compareClipSourceOrder` in
+  // `verticalDramaEpisodeVideoAssembly.ts`, not isomorphic-importable here)
+  // so unsplit shots (a single clip, `subShotNumber` absent) are completely
+  // unaffected and split shots render in speaker-turn order.
+  const clipByShot = new Map<number, VerticalDramaMotionPromptClipView[]>();
   for (const clip of motionPromptPack?.clips ?? []) {
     const shotNumbers =
       clip.sourceShotNumbers && clip.sourceShotNumbers.length > 0
@@ -1666,8 +1702,29 @@ export function VerticalDramaStoryboardPanel({
           ? [clip.parentShotNumber]
           : [];
     for (const shotNumber of shotNumbers) {
-      if (!clipByShot.has(shotNumber)) clipByShot.set(shotNumber, clip);
+      const existing = clipByShot.get(shotNumber);
+      if (existing) existing.push(clip);
+      else clipByShot.set(shotNumber, [clip]);
     }
+  }
+  for (const clips of clipByShot.values()) {
+    clips.sort((a, b) => (a.subShotNumber ?? 0) - (b.subShotNumber ?? 0));
+  }
+
+  /** Resolves the display label for a split shot's sub-shot clip — the
+   *  speaking character's display name (falls back to the raw
+   *  `characterKey`, then a generic "cut N" label when there's no
+   *  dialogue/characterKey at all). Only ever called for `total > 1` (single-
+   *  clip shots keep the plain "Video prompt" title, unchanged). */
+  function resolveClipSpeakerLabel(
+    clip: VerticalDramaMotionPromptClipView | undefined,
+    clipIndex: number
+  ): string {
+    const characterKey = clip?.dialogue?.[0]?.characterKey;
+    if (characterKey) {
+      return characterPortraits[characterKey]?.name ?? characterKey;
+    }
+    return t(locale, `ตัดที่ ${clipIndex + 1}`, `cut ${clipIndex + 1}`);
   }
 
   // Every character used in ANY shot, for the review strip — a single at-a-
@@ -2368,7 +2425,15 @@ export function VerticalDramaStoryboardPanel({
         {shots.map((shot, i) => {
           const shotNumber = shot.shot_number ?? i + 1;
           const frame = frameByShot.get(shotNumber);
-          const clip = clipByShot.get(shotNumber);
+          const clipsForShot = clipByShot.get(shotNumber) ?? [];
+          // A shot with no clip generated yet renders exactly one "empty"
+          // slot (`undefined`), matching the previous single-`clip` behavior
+          // byte-for-byte. A shot with one generated clip is a 1-item array
+          // — also byte-identical to before. Only `length > 1` (a split,
+          // speaker-aware sub-shot) actually changes rendered output.
+          const clipsForCard: Array<
+            VerticalDramaMotionPromptClipView | undefined
+          > = clipsForShot.length > 0 ? clipsForShot : [undefined];
           const assetId = frame?.approvedMediaAssetId;
           const asset = assetId ? assetUrls[assetId] : undefined;
 
@@ -2788,242 +2853,266 @@ export function VerticalDramaStoryboardPanel({
                     `updateEpisodeDraft` convention `generateShotVideoPrompt`
                     (router) already uses for this exact "no matching clip
                     yet" case. Hidden while a video is already
-                    rendering/uploading for this clip. */}
-                  {onUploadVideoClip ? (
-                    <label
-                      className={cn(
-                        "flex h-7 w-fit cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border px-2 text-[11px] text-muted-foreground hover:border-primary hover:text-primary",
-                        uploadingVideoClipForClip.has(
-                          clip?.clipNumber ?? shotNumber
-                        ) && "pointer-events-none opacity-60"
-                      )}
-                      data-testid={`vd-storyboard-upload-video-${shotNumber}`}
-                    >
-                      {uploadingVideoClipForClip.has(
-                        clip?.clipNumber ?? shotNumber
-                      ) ? (
-                        <Loader2
-                          aria-hidden="true"
-                          className="h-3 w-3 animate-spin"
-                        />
-                      ) : (
-                        <Upload aria-hidden="true" className="h-3 w-3" />
-                      )}
-                      {uploadingVideoClipForClip.has(
-                        clip?.clipNumber ?? shotNumber
-                      )
-                        ? t2.uploadingVideoClip
-                        : t2.uploadVideoClip}
-                      <input
-                        type="file"
-                        accept="video/mp4,video/webm,video/quicktime,video/*"
-                        className="hidden"
-                        disabled={uploadingVideoClipForClip.has(
-                          clip?.clipNumber ?? shotNumber
-                        )}
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          e.target.value = "";
-                          if (!file) return;
-                          if (!file.type.startsWith("video/")) {
-                            toast.error(t2.unsupportedVideoFileType);
-                            return;
-                          }
-                          if (file.size > VD_UPLOAD_VIDEO_FILE_MAX_BYTES) {
-                            toast.error(
-                              vdCopyWithCount(
-                                t2.videoFileTooLarge,
-                                Math.round(
-                                  VD_UPLOAD_VIDEO_FILE_MAX_BYTES / (1024 * 1024)
-                                )
-                              )
-                            );
-                            return;
-                          }
-                          onUploadVideoClip(
-                            clip?.clipNumber ?? shotNumber,
-                            file,
-                            shotNumber
-                          );
-                        }}
-                      />
-                    </label>
-                  ) : null}
+                    rendering/uploading for this clip.
 
-                  {/* Completed video-clip player (relocated 2026-07-06 — moved
-                    from the right column to sit directly under this shot's
-                    start-frame/reference column, so image + video for a shot
-                    live in one place). Only the RESULT display moved here;
-                    the "Generate video (paid)" button and the trimmed-
-                    reference notice stay in the right column next to the
-                    video prompt, since they belong with the prompt editor. */}
-                  {clip?.videoTask?.videoUrl ? (
-                    <div className="flex flex-col gap-1.5">
-                      <div className="relative w-full overflow-hidden rounded-md border border-border bg-black">
-                        <video
-                          src={clip.videoTask.videoUrl}
-                          poster={
-                            asset?.url || asset?.thumbnailUrl || undefined
-                          }
-                          controls
-                          playsInline
-                          preload="metadata"
-                          className="aspect-[9/16] w-full bg-black"
-                          data-testid={`vd-storyboard-video-player-${clip.clipNumber}`}
-                        />
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1">
-                        {clip.durationSeconds ? (
-                          <Badge
-                            variant="outline"
-                            className="px-1.5 py-0 text-[9px]"
-                          >
-                            {clip.durationSeconds}
-                            {t2.videoClipDurationLabel}
-                          </Badge>
-                        ) : null}
-                        {clip.videoTask.source === "upload" ? (
-                          <Badge
-                            variant="outline"
-                            className="gap-1 px-1.5 py-0 text-[9px]"
-                            data-testid={`vd-storyboard-video-source-upload-${clip.clipNumber}`}
-                          >
-                            <Upload
-                              aria-hidden="true"
-                              className="h-2.5 w-2.5"
-                            />
-                            {t2.videoClipSourceUpload}
-                          </Badge>
-                        ) : null}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 gap-1 px-1.5 text-[10px]"
-                          onClick={() =>
-                            setFullScreenVideoClip(clip.clipNumber)
-                          }
-                          data-testid={`vd-storyboard-video-open-full-${clip.clipNumber}`}
+                    Speaker-aware sub-shots (2026-07-10): looped over
+                    `clipsForCard` — a shot with no clip yet or exactly one
+                    clip renders exactly one iteration (`undefined` or that
+                    single clip), byte-identical to before. A split shot
+                    renders one upload/video-player block PER sub-shot clip,
+                    each keyed by its own `clipNumber` (never bare
+                    `shotNumber`, which would collide across sub-shots). */}
+                  {clipsForCard.map((clip, clipIndex) => (
+                    <Fragment key={clip?.clipNumber ?? `${shotNumber}-empty`}>
+                      {onUploadVideoClip ? (
+                        <label
+                          className={cn(
+                            "flex h-7 w-fit cursor-pointer items-center gap-1.5 rounded-md border border-dashed border-border px-2 text-[11px] text-muted-foreground hover:border-primary hover:text-primary",
+                            uploadingVideoClipForClip.has(
+                              clip?.clipNumber ?? shotNumber
+                            ) && "pointer-events-none opacity-60"
+                          )}
+                          data-testid={`vd-storyboard-upload-video-${clip?.clipNumber ?? shotNumber}`}
                         >
-                          <Expand aria-hidden="true" className="h-3 w-3" />
-                          {t2.videoClipOpenFull}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 gap-1 px-1.5 text-[10px]"
-                          onClick={() => {
-                            const filename =
-                              seriesId != null
-                                ? `series-${seriesId}-ep-${episodeNumber ?? 0}-clip-${clip.clipNumber}.mp4`
-                                : `clip-${clip.clipNumber}.mp4`;
-                            void downloadStoryboardMediaUrl(
-                              clip.videoTask!.videoUrl!,
-                              filename
-                            );
-                          }}
-                          data-testid={`vd-storyboard-video-download-${clip.clipNumber}`}
-                        >
-                          <Download aria-hidden="true" className="h-3 w-3" />
-                          {t2.download}
-                        </Button>
-                      </div>
-                      {confirmingRegenerateVideoForClip === clip.clipNumber ? (
-                        <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
-                          <p className="font-medium">
-                            {t(
-                              locale,
-                              "ใช้ AI จริง มีค่าใช้จ่าย",
-                              "Uses real AI, spends credits."
-                            )}
-                          </p>
-                          <div className="mt-1.5 flex gap-1.5">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-6 px-2 text-[11px]"
-                              onClick={() =>
-                                setConfirmingRegenerateVideoForClip(null)
-                              }
-                              disabled={generatingVideoClipForClip.has(
-                                clip.clipNumber
-                              )}
-                            >
-                              {t(locale, "ยกเลิก", "Cancel")}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="h-6 px-2 text-[11px]"
-                              onClick={() => {
-                                setConfirmingRegenerateVideoForClip(null);
-                                onGenerateVideoClip?.(clip.clipNumber);
-                              }}
-                              disabled={generatingVideoClipForClip.has(
-                                clip.clipNumber
-                              )}
-                              data-testid={`vd-confirm-regenerate-video-${clip.clipNumber}`}
-                            >
-                              {generatingVideoClipForClip.has(
-                                clip.clipNumber
-                              ) ? (
-                                <>
-                                  <Loader2
-                                    aria-hidden="true"
-                                    className="h-3 w-3 animate-spin"
-                                  />
-                                  {t2.videoClipGenerating}
-                                </>
-                              ) : (
-                                t(locale, "ยืนยัน", "Confirm")
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="w-fit gap-1.5 text-xs"
-                          onClick={() =>
-                            setConfirmingRegenerateVideoForClip(clip.clipNumber)
-                          }
-                          disabled={
-                            !clip.prompt?.trim() ||
-                            generatingVideoClipForClip.has(clip.clipNumber)
-                          }
-                          data-testid={`vd-storyboard-regenerate-video-${clip.clipNumber}`}
-                        >
-                          {generatingVideoClipForClip.has(clip.clipNumber) ? (
+                          {uploadingVideoClipForClip.has(
+                            clip?.clipNumber ?? shotNumber
+                          ) ? (
                             <Loader2
                               aria-hidden="true"
                               className="h-3 w-3 animate-spin"
                             />
                           ) : (
-                            <Sparkles aria-hidden="true" className="h-3 w-3" />
+                            <Upload aria-hidden="true" className="h-3 w-3" />
                           )}
-                          {t2.videoClipRegenerate}
-                        </Button>
-                      )}
-                    </div>
-                  ) : onGenerateVideoClip &&
-                    clip &&
-                    generatingVideoClipForClip.has(clip.clipNumber) ? (
-                    <div className="relative w-full overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
-                      <div className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
-                        <Loader2
-                          aria-hidden="true"
-                          className="h-5 w-5 animate-spin"
-                        />
-                        <span className="px-1 text-center text-[11px]">
-                          {t2.videoClipGenerating}
-                        </span>
-                      </div>
-                    </div>
-                  ) : null}
+                          {uploadingVideoClipForClip.has(
+                            clip?.clipNumber ?? shotNumber
+                          )
+                            ? t2.uploadingVideoClip
+                            : t2.uploadVideoClip}
+                          <input
+                            type="file"
+                            accept="video/mp4,video/webm,video/quicktime,video/*"
+                            className="hidden"
+                            disabled={uploadingVideoClipForClip.has(
+                              clip?.clipNumber ?? shotNumber
+                            )}
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              e.target.value = "";
+                              if (!file) return;
+                              if (!file.type.startsWith("video/")) {
+                                toast.error(t2.unsupportedVideoFileType);
+                                return;
+                              }
+                              if (file.size > VD_UPLOAD_VIDEO_FILE_MAX_BYTES) {
+                                toast.error(
+                                  vdCopyWithCount(
+                                    t2.videoFileTooLarge,
+                                    Math.round(
+                                      VD_UPLOAD_VIDEO_FILE_MAX_BYTES /
+                                        (1024 * 1024)
+                                    )
+                                  )
+                                );
+                                return;
+                              }
+                              onUploadVideoClip(
+                                clip?.clipNumber ?? shotNumber,
+                                file,
+                                shotNumber
+                              );
+                            }}
+                          />
+                        </label>
+                      ) : null}
+
+                      {/* Completed video-clip player (relocated 2026-07-06 — moved
+                        from the right column to sit directly under this shot's
+                        start-frame/reference column, so image + video for a shot
+                        live in one place). Only the RESULT display moved here;
+                        the "Generate video (paid)" button and the trimmed-
+                        reference notice stay in the right column next to the
+                        video prompt, since they belong with the prompt editor. */}
+                      {clip?.videoTask?.videoUrl ? (
+                        <div className="flex flex-col gap-1.5">
+                          <div className="relative w-full overflow-hidden rounded-md border border-border bg-black">
+                            <video
+                              src={clip.videoTask.videoUrl}
+                              poster={
+                                asset?.url || asset?.thumbnailUrl || undefined
+                              }
+                              controls
+                              playsInline
+                              preload="metadata"
+                              className="aspect-[9/16] w-full bg-black"
+                              data-testid={`vd-storyboard-video-player-${clip.clipNumber}`}
+                            />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {clip.durationSeconds ? (
+                              <Badge
+                                variant="outline"
+                                className="px-1.5 py-0 text-[9px]"
+                              >
+                                {clip.durationSeconds}
+                                {t2.videoClipDurationLabel}
+                              </Badge>
+                            ) : null}
+                            {clip.videoTask.source === "upload" ? (
+                              <Badge
+                                variant="outline"
+                                className="gap-1 px-1.5 py-0 text-[9px]"
+                                data-testid={`vd-storyboard-video-source-upload-${clip.clipNumber}`}
+                              >
+                                <Upload
+                                  aria-hidden="true"
+                                  className="h-2.5 w-2.5"
+                                />
+                                {t2.videoClipSourceUpload}
+                              </Badge>
+                            ) : null}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 gap-1 px-1.5 text-[10px]"
+                              onClick={() =>
+                                setFullScreenVideoClip(clip.clipNumber)
+                              }
+                              data-testid={`vd-storyboard-video-open-full-${clip.clipNumber}`}
+                            >
+                              <Expand aria-hidden="true" className="h-3 w-3" />
+                              {t2.videoClipOpenFull}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 gap-1 px-1.5 text-[10px]"
+                              onClick={() => {
+                                const filename =
+                                  seriesId != null
+                                    ? `series-${seriesId}-ep-${episodeNumber ?? 0}-clip-${clip.clipNumber}.mp4`
+                                    : `clip-${clip.clipNumber}.mp4`;
+                                void downloadStoryboardMediaUrl(
+                                  clip.videoTask!.videoUrl!,
+                                  filename
+                                );
+                              }}
+                              data-testid={`vd-storyboard-video-download-${clip.clipNumber}`}
+                            >
+                              <Download
+                                aria-hidden="true"
+                                className="h-3 w-3"
+                              />
+                              {t2.download}
+                            </Button>
+                          </div>
+                          {confirmingRegenerateVideoForClip ===
+                          clip.clipNumber ? (
+                            <div className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-[11px] dark:bg-amber-950/30">
+                              <p className="font-medium">
+                                {t(
+                                  locale,
+                                  "ใช้ AI จริง มีค่าใช้จ่าย",
+                                  "Uses real AI, spends credits."
+                                )}
+                              </p>
+                              <div className="mt-1.5 flex gap-1.5">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-[11px]"
+                                  onClick={() =>
+                                    setConfirmingRegenerateVideoForClip(null)
+                                  }
+                                  disabled={generatingVideoClipForClip.has(
+                                    clip.clipNumber
+                                  )}
+                                >
+                                  {t(locale, "ยกเลิก", "Cancel")}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-6 px-2 text-[11px]"
+                                  onClick={() => {
+                                    setConfirmingRegenerateVideoForClip(null);
+                                    onGenerateVideoClip?.(clip.clipNumber);
+                                  }}
+                                  disabled={generatingVideoClipForClip.has(
+                                    clip.clipNumber
+                                  )}
+                                  data-testid={`vd-confirm-regenerate-video-${clip.clipNumber}`}
+                                >
+                                  {generatingVideoClipForClip.has(
+                                    clip.clipNumber
+                                  ) ? (
+                                    <>
+                                      <Loader2
+                                        aria-hidden="true"
+                                        className="h-3 w-3 animate-spin"
+                                      />
+                                      {t2.videoClipGenerating}
+                                    </>
+                                  ) : (
+                                    t(locale, "ยืนยัน", "Confirm")
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="w-fit gap-1.5 text-xs"
+                              onClick={() =>
+                                setConfirmingRegenerateVideoForClip(
+                                  clip.clipNumber
+                                )
+                              }
+                              disabled={
+                                !clip.prompt?.trim() ||
+                                generatingVideoClipForClip.has(clip.clipNumber)
+                              }
+                              data-testid={`vd-storyboard-regenerate-video-${clip.clipNumber}`}
+                            >
+                              {generatingVideoClipForClip.has(
+                                clip.clipNumber
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3 w-3 animate-spin"
+                                />
+                              ) : (
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-3 w-3"
+                                />
+                              )}
+                              {t2.videoClipRegenerate}
+                            </Button>
+                          )}
+                        </div>
+                      ) : onGenerateVideoClip &&
+                        clip &&
+                        generatingVideoClipForClip.has(clip.clipNumber) ? (
+                        <div className="relative w-full overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
+                          <div className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
+                            <Loader2
+                              aria-hidden="true"
+                              className="h-5 w-5 animate-spin"
+                            />
+                            <span className="px-1 text-center text-[11px]">
+                              {t2.videoClipGenerating}
+                            </span>
+                          </div>
+                        </div>
+                      ) : null}
+                    </Fragment>
+                  ))}
                 </div>
 
                 <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -3321,218 +3410,293 @@ export function VerticalDramaStoryboardPanel({
                     />
                   ) : null}
 
-                  <InlineEditablePromptBox
-                    locale={locale}
-                    t={t2}
-                    title={t(locale, "พรอมต์วิดีโอ", "Video prompt")}
-                    prompt={clip?.prompt ?? ""}
-                    emptyLabel={t(
-                      locale,
-                      "ยังไม่มีพรอมต์วิดีโอ",
-                      "No video prompt yet."
-                    )}
-                    isEditing={editingVideoPromptForShot === shotNumber}
-                    draft={editingVideoPromptDraft}
-                    onStartEdit={() => {
-                      setEditingVideoPromptForShot(shotNumber);
-                      setEditingVideoPromptDraft(clip?.prompt ?? "");
-                    }}
-                    onDraftChange={setEditingVideoPromptDraft}
-                    onSave={() => {
-                      onSaveVideoPrompt?.(shotNumber, editingVideoPromptDraft);
-                      setEditingVideoPromptForShot(null);
-                    }}
-                    onCancelEdit={() => setEditingVideoPromptForShot(null)}
-                    canSaveFree={Boolean(onSaveVideoPrompt)}
-                    onAiAdjust={
-                      onEditVideoPrompt
-                        ? () =>
-                            onEditVideoPrompt(shotNumber, clip?.prompt ?? "")
-                        : undefined
-                    }
-                    testIdPrefix={`vd-storyboard-video-prompt-${shotNumber}`}
-                    maxChars={VD_VIDEO_PROMPT_MAX}
-                  />
+                  {/* Speaker-aware sub-shots (2026-07-10): looped over
+                    `clipsForCard` exactly like the left-column video block
+                    above — a shot with no clip yet or exactly one clip
+                    renders exactly one iteration, byte-identical to before
+                    this feature. A split shot renders one prompt box +
+                    audio-direction line + dialogue box + generate-video
+                    button PER sub-shot clip, each independently editable and
+                    keyed by its own `clipNumber`. The shared "Generate video
+                    prompt (AI)" button (regenerates ALL of this shot's
+                    clip(s) at once, since the LLM call is one-shot per shot)
+                    stays shot-level — rendered only on the first iteration,
+                    in the exact same relative position it held before this
+                    loop existed. */}
+                  {clipsForCard.map((clip, clipIndex) => {
+                    const totalClipsForShot = clipsForCard.length;
+                    const isSplitShot = totalClipsForShot > 1;
+                    const clipKey = clip?.clipNumber ?? shotNumber;
+                    const videoPromptTitle = isSplitShot
+                      ? t(
+                          locale,
+                          `พรอมต์วิดีโอ — ตัดไปหา ${resolveClipSpeakerLabel(clip, clipIndex)} (${clipIndex + 1}/${totalClipsForShot})`,
+                          `Video prompt — cut to ${resolveClipSpeakerLabel(clip, clipIndex)} (${clipIndex + 1}/${totalClipsForShot})`
+                        )
+                      : t(locale, "พรอมต์วิดีโอ", "Video prompt");
 
-                  {/* Native audio direction (task #36) — read-only muted
-                    line under the video prompt box; the actual append onto
-                    the provider-submitted prompt happens server-side at
-                    request-build time (`formatVideoClipRequest`), so this
-                    is purely informational here. Absent for every clip that
-                    never opted into the option. */}
-                  {clip?.audioDirection ? (
-                    <p
-                      className="text-[11px] text-muted-foreground"
-                      data-testid={`vd-storyboard-audio-direction-${shotNumber}`}
-                    >
-                      <span className="font-medium">
-                        {t2.nativeAudioDirectionChipLabel}
-                      </span>{" "}
-                      {clip.audioDirection}
-                    </p>
-                  ) : null}
-
-                  {/* Per-shot video prompt generation (Phase 6.6) — the LLM
-                    analyzes the shot's ACTUAL approved image (image-grounded,
-                    not just character/description text), so this is disabled
-                    until an approved image exists. Repeatable: changing the
-                    image and clicking again regenerates the prompt from the
-                    new image. */}
-                  {onGenerateShotVideoPrompt ? (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="w-fit gap-1.5 text-xs"
-                        onClick={() => onGenerateShotVideoPrompt(shotNumber)}
-                        disabled={
-                          !asset?.url ||
-                          generatingShotVideoPromptForShot.has(shotNumber)
-                        }
-                        title={
-                          !asset?.url
-                            ? t2.generateShotVideoPromptNeedsImage
-                            : undefined
-                        }
-                        data-testid={`vd-storyboard-generate-shot-video-prompt-${shotNumber}`}
-                      >
-                        {generatingShotVideoPromptForShot.has(shotNumber) ? (
-                          <Loader2
-                            aria-hidden="true"
-                            className="h-3 w-3 animate-spin"
-                          />
-                        ) : (
-                          <Sparkles aria-hidden="true" className="h-3 w-3" />
-                        )}
-                        {generatingShotVideoPromptForShot.has(shotNumber)
-                          ? t2.generatingShotVideoPrompt
-                          : t2.generateShotVideoPrompt}
-                      </Button>
-                      {!asset?.url ? (
-                        <span className="text-[10px] text-muted-foreground">
-                          {t2.generateShotVideoPromptNeedsImage}
-                        </span>
-                      ) : usedVisionByShot[shotNumber] ? (
-                        <Badge
-                          variant="outline"
-                          className="gap-1 px-1.5 py-0 text-[9px]"
-                        >
-                          <Sparkles
-                            aria-hidden="true"
-                            className="h-2.5 w-2.5"
-                          />
-                          {t2.usedVisionNote}
-                        </Badge>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  {/* Dialogue box (Phase 3.4) — surfaces `clip.dialogue[]`,
-                    synced automatically from `dialogueAudioPlan` onto the
-                    motion prompt pack when it's generated. */}
-                  {clip ? (
-                    <ClipDialogueBox
-                      locale={locale}
-                      t={t2}
-                      clip={clip}
-                      characterPortraits={characterPortraits}
-                      nativeAudio={
-                        // `ttsFallbackByClip` (from `generateVideoClip`'s
-                        // response) is authoritative once this clip has been
-                        // generated at least once — some models fall back to
-                        // TTS even when nominally native-audio-capable. Before
-                        // that, fall back to the selected model's static
-                        // capability as a best-effort preview.
-                        clip.clipNumber in ttsFallbackByClip
-                          ? !ttsFallbackByClip[clip.clipNumber]
-                          : Boolean(
-                              videoModels.find(
-                                m => m.modelId === selectedVideoModelId
-                              )?.nativeAudioDialogue
-                            )
-                      }
-                      isEditing={editingDialogueForClip === clip.clipNumber}
-                      draft={editingDialogueDraft}
-                      saving={savingDialogueForClip === clip.clipNumber}
-                      onStartEdit={() => {
-                        setEditingDialogueForClip(clip.clipNumber);
-                        setEditingDialogueDraft(clip.dialogue ?? []);
-                      }}
-                      onDraftChange={setEditingDialogueDraft}
-                      onSave={() => {
-                        onSaveClipDialogue?.(
-                          clip.clipNumber,
-                          editingDialogueDraft
-                        );
-                        setEditingDialogueForClip(null);
-                      }}
-                      onCancelEdit={() => setEditingDialogueForClip(null)}
-                      canEdit={Boolean(onSaveClipDialogue)}
-                      onRegenerateDialogue={
-                        onRegenerateClipDialogue
-                          ? (instruction: string) =>
-                              onRegenerateClipDialogue(shotNumber, instruction)
-                          : undefined
-                      }
-                      regenerating={regeneratingDialogueForShot.has(shotNumber)}
-                    />
-                  ) : null}
-
-                  {/* Video clip generation (`generateVideoClip`) — async
-                    submit + poll, same convention as start-frame image
-                    generation. The RESULT display (player, duration badge,
-                    full-screen, regenerate) lives in the left column next to
-                    the start frame (relocated 2026-07-06); this button only
-                    submits a new render when none exists yet. */}
-                  {clip && onGenerateVideoClip ? (
-                    <div className="mt-1 flex flex-col gap-1.5">
-                      {!clip.videoTask?.videoUrl ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="w-fit gap-1.5 text-xs"
-                          onClick={() => onGenerateVideoClip(clip.clipNumber)}
-                          disabled={
-                            !clip.prompt?.trim() ||
-                            generatingVideoClipForClip.has(clip.clipNumber)
+                    return (
+                      <Fragment key={`video-prompt-${clipKey}`}>
+                        <InlineEditablePromptBox
+                          locale={locale}
+                          t={t2}
+                          title={videoPromptTitle}
+                          titleBadge={
+                            isSplitShot && clip?.durationSeconds
+                              ? `${clip.durationSeconds}${t2.videoClipDurationLabel}`
+                              : undefined
                           }
-                          data-testid={`vd-storyboard-generate-video-${clip.clipNumber}`}
-                        >
-                          {generatingVideoClipForClip.has(clip.clipNumber) ? (
-                            <Loader2
-                              aria-hidden="true"
-                              className="h-3 w-3 animate-spin"
-                            />
-                          ) : (
-                            <Sparkles aria-hidden="true" className="h-3 w-3" />
-                          )}
-                          {generatingVideoClipForClip.has(clip.clipNumber)
-                            ? t2.videoClipGenerating
-                            : t(
-                                locale,
-                                "สร้างวิดีโอ (มีค่าใช้จ่าย)",
-                                "Generate video (paid)"
-                              )}
-                        </Button>
-                      ) : null}
-                      {(trimmedReferenceCountByClip[clip.clipNumber] ?? 0) >
-                      0 ? (
-                        <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
-                          <AlertTriangle
-                            aria-hidden="true"
-                            className="h-3 w-3 shrink-0"
-                          />
-                          {t(
+                          prompt={clip?.prompt ?? ""}
+                          emptyLabel={t(
                             locale,
-                            `ภาพอ้างอิงเกินขีดจำกัดของโมเดล ${trimmedReferenceCountByClip[clip.clipNumber]} ภาพถูกตัดออกก่อนส่ง`,
-                            `${trimmedReferenceCountByClip[clip.clipNumber]} reference image(s) exceeded the model limit and were not sent`
+                            "ยังไม่มีพรอมต์วิดีโอ",
+                            "No video prompt yet."
                           )}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : null}
+                          isEditing={editingVideoPromptForShot === clipKey}
+                          draft={editingVideoPromptDraft}
+                          onStartEdit={() => {
+                            setEditingVideoPromptForShot(clipKey);
+                            setEditingVideoPromptDraft(clip?.prompt ?? "");
+                          }}
+                          onDraftChange={setEditingVideoPromptDraft}
+                          onSave={() => {
+                            onSaveVideoPrompt?.(
+                              shotNumber,
+                              clipKey,
+                              editingVideoPromptDraft
+                            );
+                            setEditingVideoPromptForShot(null);
+                          }}
+                          onCancelEdit={() =>
+                            setEditingVideoPromptForShot(null)
+                          }
+                          canSaveFree={Boolean(onSaveVideoPrompt)}
+                          onAiAdjust={
+                            onEditVideoPrompt
+                              ? () =>
+                                  onEditVideoPrompt(
+                                    shotNumber,
+                                    clipKey,
+                                    clip?.subShotNumber,
+                                    clip?.prompt ?? ""
+                                  )
+                              : undefined
+                          }
+                          testIdPrefix={`vd-storyboard-video-prompt-${clipKey}`}
+                          maxChars={VD_VIDEO_PROMPT_MAX}
+                        />
+
+                        {/* Native audio direction (task #36) — read-only muted
+                          line under the video prompt box; the actual append onto
+                          the provider-submitted prompt happens server-side at
+                          request-build time (`formatVideoClipRequest`), so this
+                          is purely informational here. Absent for every clip that
+                          never opted into the option. */}
+                        {clip?.audioDirection ? (
+                          <p
+                            className="text-[11px] text-muted-foreground"
+                            data-testid={`vd-storyboard-audio-direction-${clipKey}`}
+                          >
+                            <span className="font-medium">
+                              {t2.nativeAudioDirectionChipLabel}
+                            </span>{" "}
+                            {clip.audioDirection}
+                          </p>
+                        ) : null}
+
+                        {/* Per-shot video prompt generation (Phase 6.6) — the
+                          LLM analyzes the shot's ACTUAL approved image
+                          (image-grounded, not just character/description
+                          text), so this is disabled until an approved image
+                          exists. Repeatable: changing the image and clicking
+                          again regenerates the prompt from the new image.
+                          Shot-level (regenerates every sub-shot clip at
+                          once), so it's rendered only once per shot — on the
+                          first loop iteration, same position it held before
+                          this loop existed. */}
+                        {clipIndex === 0 && onGenerateShotVideoPrompt ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="w-fit gap-1.5 text-xs"
+                              onClick={() =>
+                                onGenerateShotVideoPrompt(shotNumber)
+                              }
+                              disabled={
+                                !asset?.url ||
+                                generatingShotVideoPromptForShot.has(shotNumber)
+                              }
+                              title={
+                                !asset?.url
+                                  ? t2.generateShotVideoPromptNeedsImage
+                                  : undefined
+                              }
+                              data-testid={`vd-storyboard-generate-shot-video-prompt-${shotNumber}`}
+                            >
+                              {generatingShotVideoPromptForShot.has(
+                                shotNumber
+                              ) ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="h-3 w-3 animate-spin"
+                                />
+                              ) : (
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-3 w-3"
+                                />
+                              )}
+                              {generatingShotVideoPromptForShot.has(shotNumber)
+                                ? t2.generatingShotVideoPrompt
+                                : t2.generateShotVideoPrompt}
+                            </Button>
+                            {!asset?.url ? (
+                              <span className="text-[10px] text-muted-foreground">
+                                {t2.generateShotVideoPromptNeedsImage}
+                              </span>
+                            ) : usedVisionByShot[shotNumber] ? (
+                              <Badge
+                                variant="outline"
+                                className="gap-1 px-1.5 py-0 text-[9px]"
+                              >
+                                <Sparkles
+                                  aria-hidden="true"
+                                  className="h-2.5 w-2.5"
+                                />
+                                {t2.usedVisionNote}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        {/* Dialogue box (Phase 3.4) — surfaces
+                          `clip.dialogue[]`, synced automatically from
+                          `dialogueAudioPlan` onto the motion prompt pack when
+                          it's generated. */}
+                        {clip ? (
+                          <ClipDialogueBox
+                            locale={locale}
+                            t={t2}
+                            clip={clip}
+                            characterPortraits={characterPortraits}
+                            nativeAudio={
+                              // `ttsFallbackByClip` (from `generateVideoClip`'s
+                              // response) is authoritative once this clip has been
+                              // generated at least once — some models fall back to
+                              // TTS even when nominally native-audio-capable. Before
+                              // that, fall back to the selected model's static
+                              // capability as a best-effort preview.
+                              clip.clipNumber in ttsFallbackByClip
+                                ? !ttsFallbackByClip[clip.clipNumber]
+                                : Boolean(
+                                    videoModels.find(
+                                      m => m.modelId === selectedVideoModelId
+                                    )?.nativeAudioDialogue
+                                  )
+                            }
+                            isEditing={
+                              editingDialogueForClip === clip.clipNumber
+                            }
+                            draft={editingDialogueDraft}
+                            saving={savingDialogueForClip === clip.clipNumber}
+                            onStartEdit={() => {
+                              setEditingDialogueForClip(clip.clipNumber);
+                              setEditingDialogueDraft(clip.dialogue ?? []);
+                            }}
+                            onDraftChange={setEditingDialogueDraft}
+                            onSave={() => {
+                              onSaveClipDialogue?.(
+                                clip.clipNumber,
+                                editingDialogueDraft
+                              );
+                              setEditingDialogueForClip(null);
+                            }}
+                            onCancelEdit={() => setEditingDialogueForClip(null)}
+                            canEdit={Boolean(onSaveClipDialogue)}
+                            onRegenerateDialogue={
+                              onRegenerateClipDialogue
+                                ? (instruction: string) =>
+                                    onRegenerateClipDialogue(
+                                      shotNumber,
+                                      instruction
+                                    )
+                                : undefined
+                            }
+                            regenerating={regeneratingDialogueForShot.has(
+                              shotNumber
+                            )}
+                          />
+                        ) : null}
+
+                        {/* Video clip generation (`generateVideoClip`) —
+                          async submit + poll, same convention as start-frame
+                          image generation. The RESULT display (player,
+                          duration badge, full-screen, regenerate) lives in
+                          the left column next to the start frame (relocated
+                          2026-07-06); this button only submits a new render
+                          when none exists yet. */}
+                        {clip && onGenerateVideoClip ? (
+                          <div className="mt-1 flex flex-col gap-1.5">
+                            {!clip.videoTask?.videoUrl ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="w-fit gap-1.5 text-xs"
+                                onClick={() =>
+                                  onGenerateVideoClip(clip.clipNumber)
+                                }
+                                disabled={
+                                  !clip.prompt?.trim() ||
+                                  generatingVideoClipForClip.has(
+                                    clip.clipNumber
+                                  )
+                                }
+                                data-testid={`vd-storyboard-generate-video-${clip.clipNumber}`}
+                              >
+                                {generatingVideoClipForClip.has(
+                                  clip.clipNumber
+                                ) ? (
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="h-3 w-3 animate-spin"
+                                  />
+                                ) : (
+                                  <Sparkles
+                                    aria-hidden="true"
+                                    className="h-3 w-3"
+                                  />
+                                )}
+                                {generatingVideoClipForClip.has(clip.clipNumber)
+                                  ? t2.videoClipGenerating
+                                  : t(
+                                      locale,
+                                      "สร้างวิดีโอ (มีค่าใช้จ่าย)",
+                                      "Generate video (paid)"
+                                    )}
+                              </Button>
+                            ) : null}
+                            {(trimmedReferenceCountByClip[clip.clipNumber] ??
+                              0) > 0 ? (
+                              <p className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400">
+                                <AlertTriangle
+                                  aria-hidden="true"
+                                  className="h-3 w-3 shrink-0"
+                                />
+                                {t(
+                                  locale,
+                                  `ภาพอ้างอิงเกินขีดจำกัดของโมเดล ${trimmedReferenceCountByClip[clip.clipNumber]} ภาพถูกตัดออกก่อนส่ง`,
+                                  `${trimmedReferenceCountByClip[clip.clipNumber]} reference image(s) exceeded the model limit and were not sent`
+                                )}
+                              </p>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -5451,6 +5615,7 @@ function InlineEditablePromptBox({
   locale,
   t: t2,
   title,
+  titleBadge,
   prompt,
   emptyLabel,
   isEditing,
@@ -5467,6 +5632,12 @@ function InlineEditablePromptBox({
   locale: Lang;
   t: ReturnType<typeof vdCopy>;
   title: string;
+  /** Optional small badge rendered next to the title (2026-07-10 speaker-
+   *  aware sub-shots) — e.g. a per-clip duration (`"4s"`) for a split shot's
+   *  sub-shot clip, since sub-shots no longer share the parent shot's single
+   *  duration display 1:1. Absent for every existing caller today, so
+   *  nothing renders unless a caller opts in. */
+  titleBadge?: string;
   prompt: string;
   emptyLabel: string;
   isEditing: boolean;
@@ -5493,7 +5664,18 @@ function InlineEditablePromptBox({
   return (
     <div className="mt-1 flex flex-col gap-1 rounded-md bg-muted/50 p-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-foreground">{title}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium text-foreground">{title}</span>
+          {titleBadge ? (
+            <Badge
+              variant="outline"
+              className="px-1.5 py-0 text-[9px]"
+              data-testid={`${testIdPrefix}-duration-badge`}
+            >
+              {titleBadge}
+            </Badge>
+          ) : null}
+        </div>
         <div className="flex items-center gap-1">
           {!isEditing && prompt ? (
             <Button

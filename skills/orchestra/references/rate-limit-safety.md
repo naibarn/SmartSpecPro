@@ -29,7 +29,8 @@ Stop dispatching immediately and do NOT blind-retry when any of these occur:
 
 - Keep first-wave width at the concurrency cap only when tasks are truly disjoint;
   otherwise start narrower.
-- Route bounded/mechanical work to `lightweight-default` (Haiku on Claude Code) per
-  `references/model-routing.md` to reduce heavy-model pressure.
+- Route all non-planning work to GPT-5.6 Terra per `references/model-routing.md`; reserve
+  GPT-5.6 Sol for planning-only packets so a broad agent wave does not consume planning
+  capacity unnecessarily.
 - Remember subagent-heavy runs can use ~7x the tokens of a single thread — treat a
   sudden burst of 429s as a signal to serialize, not to retry harder.

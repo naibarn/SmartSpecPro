@@ -227,6 +227,63 @@ describe("extractClipSourcesFromMotionPromptPack", () => {
       { clipNumber: 3, videoUrl: undefined },
     ]);
   });
+
+  /**
+   * Speaker-aware sub-shots task (Package 4) — assembly-ordering regression
+   * guard: a shot that split into sub-shots (`clipNumber = parentShotNumber *
+   * 100 + subShotNumber`, e.g. shot 3 -> 301/302/303) must still sort
+   * BETWEEN shot 2 and shot 4 by SHOT order, not after shot 4 by raw
+   * `clipNumber` ascending (301 > 4 numerically, which used to corrupt
+   * concat order before `compareClipSourceOrder` was introduced).
+   */
+  it("sorts a split shot's sub-shot clips into correct shot order alongside unsplit shots (Package 4)", () => {
+    const pack: any = {
+      clips: [
+        { clipNumber: 4, sourceShotNumbers: [4], videoTask: { videoUrl: "/4.mp4" } },
+        {
+          clipNumber: 303,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 3,
+          videoTask: { videoUrl: "/303.mp4" },
+        },
+        { clipNumber: 1, sourceShotNumbers: [1], videoTask: { videoUrl: "/1.mp4" } },
+        {
+          clipNumber: 301,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          videoTask: { videoUrl: "/301.mp4" },
+        },
+        { clipNumber: 2, sourceShotNumbers: [2], videoTask: { videoUrl: "/2.mp4" } },
+        {
+          clipNumber: 302,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 2,
+          videoTask: { videoUrl: "/302.mp4" },
+        },
+      ],
+    };
+    const ordered = extractClipSourcesFromMotionPromptPack(pack);
+    expect(ordered.map(c => c.clipNumber)).toEqual([1, 2, 301, 302, 303, 4]);
+  });
+
+  it("produces byte-identical order to raw clipNumber ascending for a pack with no split shots", () => {
+    const pack: any = {
+      clips: [
+        { clipNumber: 3, sourceShotNumbers: [3], videoTask: { videoUrl: "/c.mp4" } },
+        { clipNumber: 1, sourceShotNumbers: [1], videoTask: { videoUrl: "/a.mp4" } },
+        { clipNumber: 2, sourceShotNumbers: [2], videoTask: { videoUrl: "/b.mp4" } },
+      ],
+    };
+    const ordered = extractClipSourcesFromMotionPromptPack(pack);
+    const rawSorted = pack.clips
+      .slice()
+      .sort((a: any, b: any) => a.clipNumber - b.clipNumber)
+      .map((c: any) => c.clipNumber);
+    expect(ordered.map(c => c.clipNumber)).toEqual(rawSorted);
+  });
 });
 
 describe("buildConcatListFileContent", () => {

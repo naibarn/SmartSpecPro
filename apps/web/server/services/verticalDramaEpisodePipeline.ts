@@ -15,7 +15,7 @@
  * provider credentials.
  */
 
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   verticalDramaEpisodes,
@@ -24,6 +24,7 @@ import {
   verticalDramaApprovalCheckpoints,
   verticalDramaSeries,
   verticalDramaCharacters,
+  mediaAssets,
   type VerticalDramaEpisodeRow,
   type VerticalDramaRunArtifactRow,
   type VerticalDramaEpisodeRunRow,
@@ -34,6 +35,13 @@ import {
   computeAutoSubShotCount,
   validateSubShotsForParent,
   VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT,
+  // Speaker-aware sub-shots task (Package 5) — SAME deterministic gate
+  // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses
+  // (Package 3), reused here rather than reimplemented.
+  computeSpeakerSwitchSubShotPlan,
+  type SpeakerSwitchSubShotWindow,
+  type VerticalDramaStartFramePlan,
+  type VerticalDramaSeriesLocale,
   type RunResult,
   type VerticalDramaPipelineStage,
   type VerticalDramaWarning,
@@ -88,6 +96,10 @@ import {
   generateVideoMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
+  // Speaker-aware sub-shots task (Package 5) — SAME per-shot sub-shot
+  // generator `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt`
+  // mutation uses (Package 3), reused here rather than reimplemented.
+  generateVerticalDramaShotVideoPromptSubShots,
   InsufficientCreditsError as MotionPromptInsufficientCreditsError,
   VdSchemaValidationError as MotionPromptVdSchemaValidationError,
   type VideoMotionPromptPackProjection,
@@ -1286,6 +1298,328 @@ async function resolveEpisodeTieInPlacement(
   const { getActiveBreakdown } = await import("./verticalDramaStoryBible");
   const item = getActiveBreakdown(bible).find(i => i.episodeNumber === episodeNumber);
   return item?.tieIn ?? undefined;
+}
+
+/**
+ * Speaker-aware sub-shots task (Package 5) — batch-path bug fix + speaker-
+ * aware wiring, SAME wave. For each REAL clip `generateRealMotionPromptPack`
+ * just produced (their `dialogue[]` already populated by
+ * `syncDialogueOntoMotionPromptClips`, called just before this runs in
+ * `runStage`) whose dialogue deterministically requires a shot-reverse-shot
+ * split (`computeSpeakerSwitchSubShotPlan` — the SAME gate
+ * `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses,
+ * reused here rather than reimplemented), replaces that ONE clip with N
+ * speaker-anchored sub-shot clips
+ * (`generateVerticalDramaShotVideoPromptSubShots` — the SAME generator,
+ * reused). Every other clip (dialogue-free, or dialogue that doesn't need
+ * splitting) passes through completely UNCHANGED.
+ *
+ * THIS is the fix for the pre-existing bug: the OLD call site (still present
+ * further below, for the `dry_run`/`plan_only` PLACEHOLDER builder only —
+ * see `buildStagePayload`'s `video_motion_prompt_pack` case, deliberately
+ * untouched) re-derived sub-shot clips from `buildStoryboard()`'s DRY-RUN
+ * PLACEHOLDER shots even for REAL runs, silently overwriting real generated
+ * clips with placeholder text whenever a shot split. This function instead
+ * operates on the REAL `pack` already produced by `generateRealMotionPromptPack`,
+ * and is called from `runStage`'s real (non-dry-run/non-plan-only) branch
+ * INSTEAD of the placeholder `planSubShots` expansion.
+ *
+ * `flagOn === false` is a no-op (returns `pack` unchanged) — same fail-
+ * closed default as every other sub-shot gate. A single shot's sub-shot
+ * generation failure is swallowed (that shot keeps its real, unsplit
+ * pack-level clip) so one bad shot never aborts the whole
+ * `video_motion_prompt_pack` stage run — the OUTER `runStage` try/catch
+ * around this whole override already has its own failed/repair convention
+ * for a total failure; this is the same philosophy applied per-shot.
+ *
+ * Dynamic `import()`s below (model registry / media defaults / tenant
+ * flags) are short-circuited BEFORE they run by `flagOn` and by "does this
+ * pack even have any dialogue-bearing clip" — mirrors
+ * `resolveEpisodeDraftHydration`'s established convention in this same file
+ * (a static import here would load those modules' heavier transitive
+ * chains, unmocked, in this file's own test suite; the lazy import only
+ * ever executes when the `verticalDramaSeriesSubShots` flag is actually on,
+ * which no pre-existing test enables).
+ */
+async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
+  owner: EpisodeRunOwner,
+  episode: VerticalDramaEpisodeRow,
+  pack: VideoMotionPromptPackProjection,
+  flagOn: boolean,
+  subShotPolicy: VerticalDramaSubShotPolicy,
+): Promise<VideoMotionPromptPackProjection> {
+  if (!flagOn) return pack;
+
+  const splitCandidateClips = pack.clips.filter(
+    clip => (clip.dialogue?.length ?? 0) > 0 && typeof clip.sourceShotNumbers?.[0] === "number",
+  );
+  if (splitCandidateClips.length === 0) return pack;
+
+  const [{ getModelsByTypeAsync }, { DEFAULT_MODELS }, { getTenantFeatureFlags }] =
+    await Promise.all([
+      import("./modelRegistry"),
+      import("./mediaGenerationService"),
+      import("./tenantFeatureFlagService"),
+    ]);
+
+  const storyboard = (episode.storyboard as Record<string, unknown> | null) ?? null;
+  const storyboardShots: Array<Record<string, unknown>> = Array.isArray(storyboard?.shots)
+    ? (storyboard!.shots as Array<Record<string, unknown>>)
+    : [];
+  const storyboardShotByNumber = new Map(
+    storyboardShots.map(s => [Number(s.shotNumber ?? s.shot_number ?? 0), s]),
+  );
+
+  const startFramePlan =
+    (episode.startFramePlan as VerticalDramaStartFramePlan | null) ?? null;
+  const frameByShotNumber = new Map(
+    (startFramePlan?.frames ?? []).map(f => [f.shotNumber, f]),
+  );
+
+  // Model resolution — mirrors `verticalDramaEpisodes.ts`'s
+  // `resolveEpisodeVideoModel` (duplicated minimally here rather than
+  // imported: importing FROM the router would invert this file's dependency
+  // direction, since the router already depends on THIS file for the
+  // pipeline runner).
+  const models = await getModelsByTypeAsync("video");
+  const requestedModelId = pack.selectedVideoModelId?.trim();
+  const selectedVideoModel =
+    (requestedModelId &&
+      models.find(m => m.id === requestedModelId && m.isEnabled !== false)) ||
+    models.find(m => m.id === DEFAULT_MODELS.video) || {
+      id: DEFAULT_MODELS.video,
+      type: "video" as const,
+      name: DEFAULT_MODELS.video,
+      provider: "unknown",
+      description: "",
+      aliases: [],
+      creditCost: 10,
+    };
+
+  // Native audio direction — same flag key `verticalDramaEpisodes.ts`'s
+  // `resolveVerticalDramaNativeAudioPromptsFlag` checks, ANDed with the
+  // episode's own persisted preference. Read from `episode.motionPromptPack`
+  // (the PRIOR persisted pack, set via `setEpisodeVideoPromptLanguage`'s
+  // sibling mutation) rather than the freshly-built `pack` param — the
+  // `VideoMotionPromptPackProjection` this function receives doesn't carry
+  // `nativeAudioEnabled` (only the final `VerticalDramaMotionPromptPack`
+  // wire shape does; the router applies the identical "read prior pack's
+  // preference" convention for the SAME reason — see
+  // `generateShotVideoPrompt`'s `requestedNativeAudioEnabled`). Same
+  // "rollout gate AND user preference" resolution as the per-shot mutation,
+  // just without an `input.nativeAudioEnabled` override (no per-call UI
+  // toggle exists for the whole-episode batch path).
+  const priorPersistedPack = episode.motionPromptPack as
+    | { nativeAudioEnabled?: boolean }
+    | null;
+  const flags = await getTenantFeatureFlags(owner.tenantId).catch(() => null);
+  const nativeAudioEnabled =
+    flags?.verticalDramaSeriesNativeAudioPrompts === true &&
+    priorPersistedPack?.nativeAudioEnabled === true;
+
+  const [localeSeriesRow] = await db
+    .select({ locale: verticalDramaSeries.locale })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, owner.seriesId),
+        eq(verticalDramaSeries.tenantId, owner.tenantId),
+        eq(verticalDramaSeries.userId, owner.userId),
+      ),
+    )
+    .limit(1);
+  const locale: VerticalDramaSeriesLocale = normalizeVerticalDramaSeriesLocale(
+    localeSeriesRow?.locale,
+  );
+
+  // Product tie-in context — same source the `start_frame_render_plan`
+  // override above already reads from; resolved ONCE for the whole episode,
+  // reused per split shot below.
+  const scriptPayload = (episode.script as Record<string, unknown> | null) ?? null;
+  const tieInPlacements = extractShotProductPlacements(
+    scriptPayload?.product_tie_in_plan,
+  );
+  let tieInProductName: string | undefined;
+  let tieInProductCategory: string | undefined;
+  if (tieInPlacements.length > 0) {
+    const [tieInSeriesRow] = await db
+      .select({ productTieIn: verticalDramaSeries.productTieIn })
+      .from(verticalDramaSeries)
+      .where(
+        and(
+          eq(verticalDramaSeries.id, owner.seriesId),
+          eq(verticalDramaSeries.tenantId, owner.tenantId),
+          eq(verticalDramaSeries.userId, owner.userId),
+        ),
+      )
+      .limit(1);
+    const rawProductTieIn =
+      (tieInSeriesRow?.productTieIn as Record<string, unknown> | null) ?? null;
+    tieInProductName =
+      typeof rawProductTieIn?.productName === "string"
+        ? rawProductTieIn.productName
+        : undefined;
+    tieInProductCategory =
+      typeof rawProductTieIn?.productCategory === "string"
+        ? rawProductTieIn.productCategory
+        : undefined;
+  }
+
+  let updatedClips = pack.clips.slice();
+
+  for (const clip of splitCandidateClips) {
+    const shotNumber = clip.sourceShotNumbers[0]!;
+    const decision = computeSpeakerSwitchSubShotPlan(
+      clip.dialogue ?? [],
+      clip.durationSeconds,
+      subShotPolicy,
+    );
+    if (!decision.needsSplit) continue;
+
+    const frame = frameByShotNumber.get(shotNumber);
+    const approvedAssetId = frame?.approvedMediaAssetId
+      ? Number(frame.approvedMediaAssetId)
+      : undefined;
+    if (!approvedAssetId || !Number.isInteger(approvedAssetId) || approvedAssetId <= 0) {
+      // No approved start frame yet for this shot — cannot ground a
+      // vision-based sub-shot generation call. Graceful degrade: this
+      // shot's existing REAL (single, unsplit) clip from
+      // `generateRealMotionPromptPack` is left exactly as-is, never
+      // replaced with placeholder text.
+      continue;
+    }
+    const [imageAssetRow] = await db
+      .select({ url: mediaAssets.originalUrl })
+      .from(mediaAssets)
+      .where(
+        and(
+          eq(mediaAssets.id, approvedAssetId),
+          eq(mediaAssets.tenantId, owner.tenantId),
+          eq(mediaAssets.userId, owner.userId),
+        ),
+      )
+      .limit(1);
+    if (!imageAssetRow?.url) continue;
+
+    const storyboardShot = storyboardShotByNumber.get(shotNumber);
+    const tieInPlacement = findPlacementForShot(tieInPlacements, shotNumber);
+
+    try {
+      const subShotGeneration = await generateVerticalDramaShotVideoPromptSubShots({
+        userId: owner.userId,
+        tenantId: owner.tenantId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        shotNumber,
+        imageUrl: imageAssetRow.url,
+        imagePrompt: frame?.imagePrompt,
+        shotContext: {
+          description:
+            typeof storyboardShot?.description === "string"
+              ? storyboardShot.description
+              : undefined,
+          camera:
+            typeof storyboardShot?.cameraSetup === "string"
+              ? storyboardShot.cameraSetup
+              : undefined,
+          dialogueLines: clip.dialogue,
+          productContext: tieInPlacement
+            ? {
+                productName: tieInProductName,
+                benefitTalkingPoint: tieInPlacement.benefitTalkingPoint,
+                placementStyle: tieInPlacement.placementStyle,
+                productCategory: tieInProductCategory,
+              }
+            : undefined,
+        },
+        selectedVideoModelId: selectedVideoModel.id,
+        selectedVideoModel,
+        locale,
+        promptLanguage: pack.promptLanguage,
+        dialogueLanguage: pack.dialogueLanguage,
+        thaiAccent: pack.thaiAccent,
+        nativeAudioEnabled,
+        idempotencyKey: `${owner.episodeId}:video_motion_prompt_pack:subshots:${shotNumber}`,
+        subShotWindows: decision.windows,
+      });
+
+      const distinctCharacterKeys = Array.from(
+        new Set(
+          subShotGeneration.subShots
+            .map(s => s.characterKey)
+            .filter((k): k is string => Boolean(k)),
+        ),
+      );
+      const startFrameAssetIdByCharacterKey = new Map<string, string>();
+      if (distinctCharacterKeys.length > 0) {
+        const characterRows = await db
+          .select({
+            id: verticalDramaCharacters.id,
+            characterKey: verticalDramaCharacters.characterKey,
+          })
+          .from(verticalDramaCharacters)
+          .where(
+            and(
+              eq(verticalDramaCharacters.tenantId, owner.tenantId),
+              eq(verticalDramaCharacters.seriesId, owner.seriesId),
+              inArray(verticalDramaCharacters.characterKey, distinctCharacterKeys),
+            ),
+          );
+        for (const characterRow of characterRows) {
+          const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
+            { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
+            characterRow.id,
+          );
+          if (assetId) {
+            startFrameAssetIdByCharacterKey.set(characterRow.characterKey, String(assetId));
+          }
+        }
+      }
+
+      const newClips = subShotGeneration.subShots.map((subShot, index) => {
+        const isLastWindow = index === subShotGeneration.subShots.length - 1;
+        return {
+          clipNumber: shotNumber * 100 + subShot.subShotNumber,
+          sourceShotNumbers: [shotNumber],
+          parentShotNumber: shotNumber,
+          subShotNumber: subShot.subShotNumber,
+          durationSeconds: subShot.durationSeconds,
+          prompt: subShot.prompt,
+          negativeMotionPrompt: subShot.negativeMotionPrompt,
+          startFrameAssetId: startFrameAssetIdByCharacterKey.get(subShot.characterKey),
+          dialogue: subShot.dialogue,
+          ...(isLastWindow
+            ? {
+                requiredDisclosure: subShotGeneration.requiredDisclosure,
+                audioDirection: subShotGeneration.audioDirection,
+              }
+            : {}),
+        };
+      });
+
+      // Replace, don't append — same convention as
+      // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` persistence
+      // (Package 3): remove every existing clip for this shot before
+      // inserting the new sub-shot set.
+      updatedClips = [
+        ...updatedClips.filter(
+          c =>
+            !(
+              c.sourceShotNumbers?.includes(shotNumber) ||
+              c.parentShotNumber === shotNumber
+            ),
+        ),
+        ...newClips,
+      ];
+    } catch {
+      // Best-effort per shot — never abort the whole batch over one shot's
+      // generation failure; that shot keeps its real (unsplit) pack-level
+      // clip exactly as `generateRealMotionPromptPack` produced it.
+      continue;
+    }
+  }
+
+  return { ...pack, clips: updatedClips };
 }
 
 export class VerticalDramaEpisodePipeline {
@@ -2783,12 +3117,28 @@ export class VerticalDramaEpisodePipeline {
     // `vertical-drama-video-motion-prompt-pack` skill). Credit-gated
     // *planning* call only — `video_motion_prompt_pack` is NOT in
     // `VERTICAL_DRAMA_PAID_STAGES` (the paid video render happens later, in
-    // `render_or_import_video_clips`). The existing sub-shot expansion
-    // (`planSubShots`) below is left untouched: when the sub-shot flag is on,
-    // it still re-derives `clips` from the (now real) base storyboard shots,
-    // so this override only replaces the base clips/model/mode fields before
-    // that expansion runs. A generation failure never throws out of
-    // `runStage` — same failed/repair convention as above.
+    // `render_or_import_video_clips`).
+    //
+    // Speaker-aware sub-shots task (Package 5) — bug fix: the sub-shot
+    // expansion used to be applied ONLY to the `payload` variable (the
+    // stage's artifact-ledger record) via `planSubShots`/`buildStoryboard()`
+    // — the DRY-RUN PLACEHOLDER shot generator — and NEVER to `generated.pack`
+    // itself (the object actually persisted to
+    // `verticalDramaEpisodes.motionPromptPack`, the source of truth the
+    // storyboard panel and `render_or_import_video_clips` both read from).
+    // That meant real runs (a) never actually split a shot's REAL clip into
+    // sub-shots in the data that matters, and (b) whenever they DID append a
+    // `sub_shot_plan`, it was placeholder text in the artifact record. Fixed
+    // by calling `applySpeakerSwitchSubShotsToRealMotionPromptPack` (Package
+    // 5) on the REAL `generated.pack` BEFORE it is used for either `payload`
+    // or persistence — reuses the exact same deterministic gate
+    // (`computeSpeakerSwitchSubShotPlan`) and per-shot generator
+    // (`generateVerticalDramaShotVideoPromptSubShots`) the per-shot
+    // `generateShotVideoPrompt` mutation uses (Package 3), operating on the
+    // REAL clips' own `dialogue[]` (already populated by
+    // `syncDialogueOntoMotionPromptClips` just below) instead of
+    // `buildStoryboard()`'s placeholder shots. A generation failure never
+    // throws out of `runStage` — same failed/repair convention as above.
     if (stage === "video_motion_prompt_pack" && paidModeAllowed) {
       try {
         const generated = await this.generateRealMotionPromptPack(
@@ -2833,24 +3183,20 @@ export class VerticalDramaEpisodePipeline {
             }),
           ),
         };
+        // Speaker-aware sub-shots (Package 5) — operates on the REAL clips'
+        // own `dialogue[]` (populated above), replacing any shot whose
+        // dialogue needs a shot-reverse-shot split with real, speaker-
+        // anchored sub-shot clips. No-op (`generated.pack` unchanged) when
+        // `subShotFlagOn` is false — same fail-closed default as every other
+        // sub-shot gate.
+        generated.pack = await applySpeakerSwitchSubShotsToRealMotionPromptPack(
+          owner,
+          episode,
+          generated.pack,
+          subShotFlagOn,
+          subShotPolicy
+        );
         payload = { stage, ...generated.pack, warnings: [] };
-        if (subShotFlagOn && subShotPolicy.enabled) {
-          const storyboard = buildStoryboard(
-            episode.targetDurationSeconds ?? 60
-          );
-          const plan = planSubShots(storyboard.shots, subShotPolicy);
-          payload.sub_shot_plan = plan;
-          payload.clips = plan.shots.flatMap(ps =>
-            ps.subShots.map(ss => ({
-              clipNumber: ps.parentShotNumber * 100 + ss.subShotNumber,
-              sourceShotNumbers: [ps.parentShotNumber],
-              prompt: ss.prompt,
-              durationSeconds: ss.durationSeconds,
-              parentShotNumber: ps.parentShotNumber,
-              subShotNumber: ss.subShotNumber,
-            }))
-          );
-        }
         // Persist to the episode's own `motionPromptPack` jsonb column.
         await db
           .update(verticalDramaEpisodes)

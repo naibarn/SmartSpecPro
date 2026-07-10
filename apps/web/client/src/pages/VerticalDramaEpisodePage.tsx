@@ -2061,17 +2061,24 @@ function EpisodeWorkspaceShell({
     });
   }
 
-  function handleSaveVideoPrompt(shotNumber: number, prompt: string) {
+  /** Speaker-aware sub-shots (2026-07-10) fix: a shot can now have MULTIPLE
+   *  clips (`sourceShotNumbers`/`parentShotNumber` all pointing at the same
+   *  shot). This used to `.map()`-overwrite every clip matching the shot
+   *  number with the SAME edited text — harmless while a shot only ever had
+   *  one clip, but a real bug once split (it would stomp all N sub-shots
+   *  with one clip's edit). Now scoped to the exact `clipNumber` the caller
+   *  is editing; for an unsplit shot `clipNumber === shotNumber`, so this is
+   *  byte-identical to the previous behavior. */
+  function handleSaveVideoPrompt(
+    shotNumber: number,
+    clipNumber: number,
+    prompt: string
+  ) {
     const pack = episodeDetailQuery.data?.motionPromptPack;
     if (!pack) return;
-    const updatedClips = (pack.clips ?? []).map(clip => {
-      const shotNumbers = clip.sourceShotNumbers?.length
-        ? clip.sourceShotNumbers
-        : clip.parentShotNumber != null
-          ? [clip.parentShotNumber]
-          : [];
-      return shotNumbers.includes(shotNumber) ? { ...clip, prompt } : clip;
-    });
+    const updatedClips = (pack.clips ?? []).map(clip =>
+      clip.clipNumber === clipNumber ? { ...clip, prompt } : clip
+    );
     updateEpisodeDraftMutation.mutate({
       seriesId,
       episodeId,
@@ -4224,10 +4231,15 @@ function EpisodeWorkspaceShell({
                 stage: "storyboard_shotgrid",
                 mode: "full",
               }),
-            onEditVideoPrompt: (shotNumber, currentPrompt) =>
+            onEditVideoPrompt: (
+              shotNumber,
+              clipNumber,
+              subShotNumber,
+              currentPrompt
+            ) =>
               openRepair(
                 "video_motion_prompt_pack",
-                { parentShotNumber: shotNumber },
+                { parentShotNumber: shotNumber, subShotNumber, clipNumber },
                 currentPrompt
               ),
             onChangeStartFrame: shotNumber =>

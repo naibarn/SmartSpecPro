@@ -103,6 +103,46 @@ export interface EpisodeClipSource {
   /** `videoTask.videoUrl` — may be a same-origin `/api/storage/...` path or an
    *  absolute external provider URL. */
   videoUrl?: string;
+  /**
+   * Speaker-aware sub-shots task (Package 4, assembly-ordering fix) — present
+   * only on sub-shot clips (`clipNumber = parentShotNumber * 100 +
+   * subShotNumber`, e.g. shot 3 -> 301/302/303). See
+   * `compareClipSourceOrder`'s doc comment for why raw `clipNumber` ascending
+   * order is no longer safe to assume encodes playback order once any shot
+   * uses this scheme.
+   */
+  parentShotNumber?: number;
+  /** Speaker-aware sub-shots task — 1-based order WITHIN `parentShotNumber` (see `compareClipSourceOrder`). */
+  subShotNumber?: number;
+  /** Speaker-aware sub-shots task — fallback source for the shot-order sort key when `parentShotNumber` is absent (single, unsplit clips still carry this). */
+  sourceShotNumbers?: number[];
+}
+
+/**
+ * Playback-order comparator for `EpisodeClipSource[]` (Package 4, speaker-
+ * aware sub-shots task — REQUIRED correctness fix, not optional). Sorting by
+ * raw ascending `clipNumber` was only ever safe because `clipNumber ===
+ * shotNumber` 1:1 for every clip before this feature. Once a shot splits
+ * into sub-shots (`clipNumber = parentShotNumber * 100 + subShotNumber`,
+ * e.g. shot 3 -> 301/302/303), a LATER un-split shot's bare `clipNumber`
+ * (e.g. shot 4 -> `4`) would sort BEFORE those sub-shot clips under raw
+ * numeric order, corrupting concat order. Sorting instead by the tuple
+ * `(parentShotNumber ?? sourceShotNumbers[0] ?? clipNumber, subShotNumber ?? 0)`
+ * recovers the correct shot-then-sub-shot order for BOTH split and unsplit
+ * clips, and is BYTE-IDENTICAL to plain `clipNumber` ascending for any pack
+ * that contains no split shots (every clip's `parentShotNumber` is then
+ * either absent — falls back to `sourceShotNumbers[0]`, which already equals
+ * `clipNumber` for a 1:1 pack — or, when present, still equals `clipNumber`
+ * itself since unsplit clips are never sub-numbered).
+ */
+export function compareClipSourceOrder(
+  a: EpisodeClipSource,
+  b: EpisodeClipSource
+): number {
+  const aShot = a.parentShotNumber ?? a.sourceShotNumbers?.[0] ?? a.clipNumber;
+  const bShot = b.parentShotNumber ?? b.sourceShotNumbers?.[0] ?? b.clipNumber;
+  if (aShot !== bShot) return aShot - bShot;
+  return (a.subShotNumber ?? 0) - (b.subShotNumber ?? 0);
 }
 
 export type CompiledVideoStatus = "pending" | "completed" | "failed";
@@ -133,7 +173,7 @@ export interface MissingClip {
 export function findMissingClips(clips: EpisodeClipSource[]): MissingClip[] {
   return clips
     .slice()
-    .sort((a, b) => a.clipNumber - b.clipNumber)
+    .sort(compareClipSourceOrder)
     .filter(c => !c.videoUrl || !c.videoUrl.trim())
     .map(c => ({ clipNumber: c.clipNumber }));
 }
@@ -148,7 +188,7 @@ export function resolveClipsForAssembly(
   clips: EpisodeClipSource[],
   opts: { allowPartial?: boolean } = {}
 ): { ordered: EpisodeClipSource[]; missing: MissingClip[] } {
-  const ordered = clips.slice().sort((a, b) => a.clipNumber - b.clipNumber);
+  const ordered = clips.slice().sort(compareClipSourceOrder);
   const missing = findMissingClips(ordered);
 
   if (missing.length > 0 && !opts.allowPartial) {
@@ -1506,8 +1546,14 @@ export function extractClipSourcesFromMotionPromptPack(
   if (!pack?.clips?.length) return [];
   return pack.clips
     .slice()
-    .sort((a, b) => a.clipNumber - b.clipNumber)
-    .map(c => ({ clipNumber: c.clipNumber, videoUrl: c.videoTask?.videoUrl }));
+    .sort(compareClipSourceOrder)
+    .map(c => ({
+      clipNumber: c.clipNumber,
+      videoUrl: c.videoTask?.videoUrl,
+      parentShotNumber: c.parentShotNumber,
+      subShotNumber: c.subShotNumber,
+      sourceShotNumbers: c.sourceShotNumbers,
+    }));
 }
 
 /* -------------------------------------------------------------------------- */

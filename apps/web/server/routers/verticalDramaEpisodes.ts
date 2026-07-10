@@ -111,6 +111,7 @@ import {
 } from "../services/verticalDramaVideoPromptFormatter";
 import {
   generateVerticalDramaShotVideoPrompt,
+  generateVerticalDramaShotVideoPromptSubShots,
   generateVerticalDramaClipDialogue,
   InsufficientCreditsError as ClipDialogueInsufficientCreditsError,
   VdSchemaValidationError as ClipDialogueSchemaValidationError,
@@ -120,6 +121,7 @@ import {
 import {
   extractShotProductPlacements,
   findPlacementForShot,
+  type VerticalDramaShotProductPlacement,
   tieInShotNumberSet,
   evaluateFatigue,
   screenClaims,
@@ -240,6 +242,11 @@ import type {
 import {
   VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT,
   normalizeVerticalDramaSeriesLocale,
+  // Speaker-aware sub-shots task — deterministic (no LLM call) split-decision
+  // gate + the window shape it produces. See `resolveSubShotPolicy`'s own
+  // doc comment for why the tenant flag is resolved separately from this.
+  computeSpeakerSwitchSubShotPlan,
+  type SpeakerSwitchSubShotWindow,
 } from "@shared/verticalDramaSeries";
 // W12-A voice chain wave — imported by DIRECT PATH (not the shared barrel),
 // same convention `audio.ts`'s own doc comment documents for itself: its
@@ -2177,13 +2184,27 @@ function assertResolutionOption(
   }
 }
 
-/** Resolve the effective sub-shot policy for a tenant (flag-gated, fail-closed). */
+/**
+ * Resolve the effective sub-shot policy for a tenant (flag-gated, fail-closed).
+ *
+ * Uses OPTIONAL CHAINING on `flags?.verticalDramaSeriesSubShots` (speaker-
+ * aware sub-shots task fix — this was previously a direct, non-optional
+ * access) for the SAME reason `resolveVerticalDramaDensityFlags`'s own doc
+ * comment documents: `generateShotVideoPrompt` is an ALREADY-COVERED
+ * procedure whose existing unit tests mock `getTenantFeatureFlags` as a bare
+ * `vi.fn()` (no resolved value) — a direct property access on `undefined`
+ * would throw the instant this function is called from that procedure's new
+ * split-gate wiring, crashing every pre-existing test for it. Optional
+ * chaining resolves to "flag off" for that `undefined` case, which is the
+ * correct fail-closed default anyway (identical behavior to before for every
+ * already-passing test that configures a real flags object).
+ */
 async function resolveSubShotPolicy(
   tenantId: string,
   override?: Partial<VerticalDramaSubShotPolicy>
 ): Promise<{ flagOn: boolean; policy: VerticalDramaSubShotPolicy }> {
   const flags = await getTenantFeatureFlags(tenantId);
-  const flagOn = flags.verticalDramaSeriesSubShots === true;
+  const flagOn = flags?.verticalDramaSeriesSubShots === true;
   const policy: VerticalDramaSubShotPolicy = {
     ...VERTICAL_DRAMA_SUB_SHOT_POLICY_DEFAULT,
     ...(override ?? {}),
@@ -5031,6 +5052,288 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
     stagesRepaired,
     staleStages: Array.from(staleStagesSet),
     warning,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Speaker-aware sub-shots (Package 3) — split-path generation + persistence  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The split-shot ("shot-reverse-shot") counterpart of `generateShotVideoPrompt`'s
+ * single-clip generation + persistence — called instead of
+ * `generateVerticalDramaShotVideoPrompt` whenever
+ * `computeSpeakerSwitchSubShotPlan` decided this shot's dialogue needs
+ * splitting (see that mutation's own call site). Applies the SAME brand-
+ * sanitize -> length-cap-QC -> preset-visual-identity-token passes the
+ * single-clip path applies, once per sub-shot prompt, then REPLACES every
+ * existing clip for this shot (`sourceShotNumbers.includes(shotNumber)` OR
+ * `parentShotNumber === shotNumber`) with the newly generated sub-shot clips
+ * — never appends alongside a stale single clip or a stale prior split.
+ */
+async function generateAndPersistSplitShotVideoPrompt(args: {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+  episodeId: number;
+  shotNumber: number;
+  idempotencyKey?: string;
+  row: Awaited<ReturnType<typeof loadOwnedEpisode>>;
+  pack: VerticalDramaMotionPromptPack | null;
+  imageUrl: string;
+  imagePrompt?: string;
+  storyboardShot: VerticalDramaShotgrid["shots"][number] | undefined;
+  shotVideoCharacterIdentityMapBlock: string | undefined;
+  dialogueLines: ShotDialogueLine[];
+  tieInPlacement: VerticalDramaShotProductPlacement | undefined;
+  tieInProductName: string | undefined;
+  tieInProductCategory: string | undefined;
+  selectedVideoModel: Awaited<ReturnType<typeof resolveEpisodeVideoModel>>;
+  locale: VerticalDramaSeriesLocale;
+  shotDurationSeconds: number;
+  speechBudgetEnabled: boolean;
+  effectiveNativeAudioEnabled: boolean;
+  requestedNativeAudioEnabled: boolean;
+  extraDialogueCreditsUsed: number;
+  subShotWindows: SpeakerSwitchSubShotWindow[];
+}) {
+  const {
+    tenantId,
+    userId,
+    seriesId,
+    episodeId,
+    shotNumber,
+    idempotencyKey,
+    row,
+    pack,
+    imageUrl,
+    imagePrompt,
+    storyboardShot,
+    shotVideoCharacterIdentityMapBlock,
+    dialogueLines,
+    tieInPlacement,
+    tieInProductName,
+    tieInProductCategory,
+    selectedVideoModel,
+    locale,
+    shotDurationSeconds,
+    speechBudgetEnabled,
+    effectiveNativeAudioEnabled,
+    requestedNativeAudioEnabled,
+    extraDialogueCreditsUsed,
+    subShotWindows,
+  } = args;
+
+  const subShotGeneration = await generateVerticalDramaShotVideoPromptSubShots({
+    userId,
+    tenantId,
+    seriesId,
+    episodeId,
+    shotNumber,
+    imageUrl,
+    imagePrompt,
+    shotContext: {
+      description: storyboardShot?.description,
+      camera: storyboardShot?.cameraSetup,
+      emotion: undefined,
+      dialogueLines: dialogueLines.length ? dialogueLines : undefined,
+      characterIdentityMap: shotVideoCharacterIdentityMapBlock,
+      productContext: tieInPlacement
+        ? {
+            productName: tieInProductName,
+            benefitTalkingPoint: tieInPlacement.benefitTalkingPoint,
+            placementStyle: tieInPlacement.placementStyle,
+            productCategory: tieInProductCategory,
+          }
+        : undefined,
+    },
+    selectedVideoModelId: selectedVideoModel.id,
+    selectedVideoModel,
+    locale,
+    promptLanguage: pack?.promptLanguage,
+    dialogueLanguage: pack?.dialogueLanguage,
+    thaiAccent: pack?.thaiAccent,
+    ...(speechBudgetEnabled
+      ? {
+          shotDurationSeconds,
+          targetSpeechSeconds: targetVerticalDramaSpeechSeconds(shotDurationSeconds),
+        }
+      : {}),
+    nativeAudioEnabled: effectiveNativeAudioEnabled,
+    idempotencyKey,
+    subShotWindows,
+  });
+
+  // Same 3 passes the single-clip path applies (brand sanitize -> length-cap
+  // QC -> preset-visual-identity tokens), looped per sub-shot prompt.
+  const { presetMixV2Enabled } = await resolveVerticalDramaQualityLoopFlags(tenantId);
+  const presetVisualIdentity = presetMixV2Enabled
+    ? await loadSeriesPresetVisualIdentity(tenantId, userId, seriesId)
+    : null;
+
+  const processedSubShots = await Promise.all(
+    subShotGeneration.subShots.map(async subShot => {
+      let prompt = subShot.prompt;
+      let negativeMotionPrompt = subShot.negativeMotionPrompt;
+      if (tieInPlacement) {
+        prompt = sanitizeBrandMentionsInPrompt(
+          prompt,
+          [tieInProductName],
+          tieInProductCategory
+        );
+        if (negativeMotionPrompt) {
+          negativeMotionPrompt = sanitizeBrandMentionsInPrompt(
+            negativeMotionPrompt,
+            [tieInProductName],
+            tieInProductCategory
+          );
+        }
+      }
+      const qc = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt,
+        userId,
+        tenantId,
+        idempotencyKey: idempotencyKey
+          ? `${idempotencyKey}:subshot-${subShot.subShotNumber}:prompt-qc`
+          : undefined,
+        label: `shot video prompt (episode #${episodeId}, shot ${shotNumber}, sub-shot ${subShot.subShotNumber})`,
+      });
+      prompt = qc.prompt;
+      if (presetVisualIdentity) {
+        prompt = appendPresetVisualIdentityStyleTokensToMotionPrompt(
+          prompt,
+          presetVisualIdentity
+        );
+      }
+      return { ...subShot, prompt, negativeMotionPrompt };
+    })
+  );
+
+  // Resolve each window's anchor-character start frame asset id (Package 3
+  // step 4) — the character's own approved primary-portrait media asset id;
+  // omitted (falls back to the shot's existing single approved start frame
+  // at render time) when the character has no portrait yet. No image
+  // generation happens here — bounded scope per the task's plan.
+  const distinctCharacterKeys = Array.from(
+    new Set(processedSubShots.map(s => s.characterKey).filter(Boolean))
+  );
+  const startFrameAssetIdByCharacterKey = new Map<string, string>();
+  if (distinctCharacterKeys.length > 0) {
+    const characterRows = await db
+      .select({
+        id: verticalDramaCharacters.id,
+        characterKey: verticalDramaCharacters.characterKey,
+      })
+      .from(verticalDramaCharacters)
+      .where(
+        and(
+          eq(verticalDramaCharacters.tenantId, tenantId),
+          eq(verticalDramaCharacters.seriesId, seriesId),
+          inArray(verticalDramaCharacters.characterKey, distinctCharacterKeys)
+        )
+      );
+    for (const characterRow of characterRows) {
+      const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
+        { tenantId, userId, seriesId },
+        characterRow.id
+      );
+      if (assetId) {
+        startFrameAssetIdByCharacterKey.set(characterRow.characterKey, String(assetId));
+      }
+    }
+  }
+
+  // Clip numbering: `shotNumber * 100 + subShotNumber` (e.g. shot 3 -> 301,
+  // 302, 303) — collision-free with every other shot's bare `clipNumber`
+  // (1-9) so writing this shot's clips never disturbs any other shot's
+  // already-rendered `videoTask`.
+  const newClips = processedSubShots.map((subShot, index) => {
+    const isLastWindow = index === processedSubShots.length - 1;
+    return {
+      clipNumber: shotNumber * 100 + subShot.subShotNumber,
+      sourceShotNumbers: [shotNumber],
+      parentShotNumber: shotNumber,
+      subShotNumber: subShot.subShotNumber,
+      durationSeconds: subShot.durationSeconds,
+      prompt: subShot.prompt,
+      negativeMotionPrompt: subShot.negativeMotionPrompt,
+      startFrameAssetId: startFrameAssetIdByCharacterKey.get(subShot.characterKey),
+      dialogue: subShot.dialogue,
+      // Any tie-in disclosure / native-audio direction is computed ONCE for
+      // the whole (split) shot — attached only to the LAST window's clip
+      // (closest to end-of-shot), never duplicated onto every sub-shot.
+      ...(isLastWindow
+        ? {
+            requiredDisclosure: subShotGeneration.requiredDisclosure,
+            audioDirection: subShotGeneration.audioDirection,
+          }
+        : {}),
+    };
+  });
+
+  // Replace, don't append: remove every existing clip for this shot
+  // (whether it was previously a single clip or a prior split's sub-shots)
+  // before inserting the new set — same "regenerate overwrites" convention
+  // the single-clip path already has.
+  let updatedPack: VerticalDramaMotionPromptPack;
+  if (pack) {
+    const remainingClips = pack.clips.filter(
+      c =>
+        !(
+          c.sourceShotNumbers?.includes(shotNumber) ||
+          c.parentShotNumber === shotNumber
+        )
+    );
+    updatedPack = {
+      ...pack,
+      clips: [...remainingClips, ...newClips],
+      nativeAudioEnabled: requestedNativeAudioEnabled,
+    };
+  } else {
+    updatedPack = {
+      selectedVideoModelId: selectedVideoModel.id,
+      durationProfileId:
+        row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      nativeAudioEnabled: requestedNativeAudioEnabled,
+      clips: newClips,
+      warnings: [],
+    };
+  }
+
+  await db
+    .update(verticalDramaEpisodes)
+    .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+    .where(
+      and(
+        eq(verticalDramaEpisodes.id, episodeId),
+        eq(verticalDramaEpisodes.tenantId, tenantId),
+        eq(verticalDramaEpisodes.userId, userId),
+        eq(verticalDramaEpisodes.seriesId, seriesId)
+      )
+    );
+
+  return {
+    // Additive/backward-compatible top-level fields for callers that only
+    // read the single-clip shape (pre-existing UI does not know about
+    // sub-shots yet — see the task's frontend work package): a joined
+    // preview of every sub-shot's prompt/dialogue. Real per-clip access is
+    // via `subShots` below.
+    prompt: processedSubShots.map(s => s.prompt).join("\n\n"),
+    dialogue: processedSubShots.flatMap(s => s.dialogue),
+    creditsUsed: subShotGeneration.creditsUsed + extraDialogueCreditsUsed,
+    usedVision: subShotGeneration.usedVision,
+    audioDirection: subShotGeneration.audioDirection,
+    subShots: processedSubShots.map(s => ({
+      clipNumber: shotNumber * 100 + s.subShotNumber,
+      subShotNumber: s.subShotNumber,
+      characterKey: s.characterKey,
+      durationSeconds: s.durationSeconds,
+      prompt: s.prompt,
+      negativeMotionPrompt: s.negativeMotionPrompt,
+      dialogue: s.dialogue,
+    })),
   };
 }
 
@@ -9073,6 +9376,22 @@ export const verticalDramaEpisodesRouter = router({
         sourceBeatIndexes: shotSourceBeatIndexes,
       });
 
+      // Speaker-aware sub-shots (speaker-aware sub-shots task, Package 3) —
+      // resolve the tenant's opt-in flag right after dialogue resolution
+      // (existing `resolveSubShotPolicy` helper, unchanged). The actual
+      // split DECISION (`computeSpeakerSwitchSubShotPlan`) is computed
+      // further below, AFTER the dialogue-refresh block (see there), so it
+      // always sees the FINAL dialogue lines for this shot rather than a
+      // stale pre-refresh set. Flag off => `subShotFlagOn` stays false and
+      // every code path below this point behaves exactly as it did before
+      // this feature (this shot always falls through to the pre-existing
+      // single-prompt path).
+      const { flagOn: subShotFlagOn, policy: subShotPolicy } =
+        await resolveSubShotPolicy(tenantId);
+
+      const shotDurationSeconds =
+        matchingClip?.durationSeconds ?? storyboardShot?.durationSeconds ?? 8;
+
       // Resolve the episode-selected video model (Phase 1.2 resolution order).
       const selectedVideoModel = await resolveEpisodeVideoModel(pack);
 
@@ -9109,8 +9428,6 @@ export const verticalDramaEpisodesRouter = router({
         frame?.requiredCharacterRefs ?? [],
         shotVideoCharacterIdentitySources
       );
-      const shotDurationSeconds =
-        matchingClip?.durationSeconds ?? storyboardShot?.durationSeconds ?? 8;
 
       let extraDialogueCreditsUsed = 0;
       if (
@@ -9169,6 +9486,20 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
+      // Speaker-aware sub-shots (Package 3) — the deterministic split
+      // decision, now that `dialogueLines` reflects any dialogue-refresh
+      // above. `subShotDecision` stays `null` whenever the tenant flag is
+      // off (`subShotFlagOn === false`), so `subShotDecision?.needsSplit` is
+      // always falsy and every branch below this point is unchanged from
+      // before this feature.
+      const subShotDecision = subShotFlagOn
+        ? computeSpeakerSwitchSubShotPlan(
+            dialogueLines,
+            shotDurationSeconds,
+            subShotPolicy
+          )
+        : null;
+
       const [localeSeriesRow] = await db
         .select({ locale: verticalDramaSeries.locale })
         .from(verticalDramaSeries)
@@ -9180,6 +9511,35 @@ export const verticalDramaEpisodesRouter = router({
           )
         )
         .limit(1);
+
+      if (subShotDecision?.needsSplit) {
+        return generateAndPersistSplitShotVideoPrompt({
+          tenantId,
+          userId,
+          seriesId,
+          episodeId,
+          shotNumber: input.shotNumber,
+          idempotencyKey: input.idempotencyKey,
+          row,
+          pack,
+          imageUrl,
+          imagePrompt: frame?.imagePrompt,
+          storyboardShot,
+          shotVideoCharacterIdentityMapBlock,
+          dialogueLines,
+          tieInPlacement,
+          tieInProductName,
+          tieInProductCategory,
+          selectedVideoModel,
+          locale: normalizeVerticalDramaSeriesLocale(localeSeriesRow?.locale),
+          shotDurationSeconds,
+          speechBudgetEnabled,
+          effectiveNativeAudioEnabled,
+          requestedNativeAudioEnabled,
+          extraDialogueCreditsUsed,
+          subShotWindows: subShotDecision.windows,
+        });
+      }
 
       const result = await generateVerticalDramaShotVideoPrompt({
         userId,

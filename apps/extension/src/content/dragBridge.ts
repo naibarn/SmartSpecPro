@@ -151,7 +151,7 @@ export {};
       ...(target instanceof HTMLInputElement && target.type === "file" ? [target] : []),
       ...Array.from(target.querySelectorAll?.("input[type='file']") ?? []) as HTMLInputElement[],
       ...Array.from(document.querySelectorAll<HTMLInputElement>("input[type='file']")),
-    ]));
+    ])).filter((input) => !input.disabled);
     return candidates.find((input) => fileInputAcceptsFile(input, files[0])) || candidates[0] || null;
   }
 
@@ -202,6 +202,11 @@ export {};
       || hostname.endsWith(".higgsfield.ai");
   }
 
+  function isGrokHost(hostname: string) {
+    return hostname === "grok.com"
+      || hostname.endsWith(".grok.com");
+  }
+
   function isFacebookHost(hostname: string) {
     return hostname === "facebook.com" || hostname.endsWith(".facebook.com");
   }
@@ -223,7 +228,8 @@ export {};
     if (isGoogleFlowContext()) return Boolean(findNearestFileInput(target, files));
     if (target instanceof HTMLInputElement && target.type === "file") return true;
     if (isFacebookHost(hostname) || isTikTokStudioContext()) return Boolean(findNearestFileInput(target, files));
-    return isMagnificHost(hostname) && Boolean(findNearestFileInput(target, files));
+    return (isMagnificHost(hostname) || isHiggsfieldHost(hostname) || isGrokHost(hostname))
+      && Boolean(findNearestFileInput(target, files));
   }
 
   function dataTransferTypes(event: DragEvent) {
@@ -257,12 +263,16 @@ export {};
 
   function isBridgeTargetHost() {
     const hostname = location.hostname.toLowerCase();
-    return isGoogleFlowContext() || isMagnificHost(hostname) || isHiggsfieldHost(hostname) || isFacebookHost(hostname) || isTikTokStudioContext();
+    return isGoogleFlowContext() || isMagnificHost(hostname) || isHiggsfieldHost(hostname) || isGrokHost(hostname) || isFacebookHost(hostname) || isTikTokStudioContext();
   }
 
   function isPotentialFileDrag(event: DragEvent) {
     const types = dataTransferTypes(event);
     return types.includes("files") || types.includes(SMARTAIHUB_DRAG_MEDIA_MIME) || types.length === 0;
+  }
+
+  function shouldPreserveNativeGrokFileDrag(event: DragEvent) {
+    return isGrokHost(location.hostname.toLowerCase()) && Boolean(fileFromDragEvent(event));
   }
 
   function dispatchFileDragEvents(target: HTMLElement, file: File, originalEvent: DragEvent, types: Array<"dragenter" | "dragover" | "dragleave" | "dragend" | "drop">) {
@@ -371,6 +381,44 @@ export {};
       await dispatchGoogleFlowDragCleanup(target, file, originalEvent);
     }
     void recordDiagnosticLog("higgsfield_drag_delivery", {
+      strategy: inputSet ? "file_input_after_preview" : "synthetic_drop_fallback",
+      fallbackStep: retryUsed ? "file_input_retry" : "file_input_initial",
+      cleanupStep: inputSet ? "dragleave_dragend" : "drop",
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      targetTag: target.tagName,
+      targetClass: typeof target.className === "string" ? target.className : "",
+      fileInputCount: document.querySelectorAll("input[type='file']").length,
+      fileInput: inputDetails,
+    });
+    return inputSet;
+  }
+
+  async function deliverGrokFileDrop(target: HTMLElement, file: File, originalEvent: DragEvent) {
+    dispatchFileDragEvents(target, file, originalEvent, ["dragenter", "dragover"]);
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const initial = setNearestFileInputDetailed(target, transfer.files);
+    let inputSet = initial.inputSet;
+    let inputDetails = initial.input;
+    let retryUsed = false;
+    if (!inputSet) {
+      // Grok renders its upload input lazily after its drag overlay becomes visible.
+      // Wait long enough for that React state transition before falling back to a
+      // synthetic drop, which Grok can display without committing a file.
+      await delay(360);
+      const retry = setNearestFileInputDetailed(target, transfer.files);
+      inputSet = retry.inputSet;
+      inputDetails = retry.input || inputDetails;
+      retryUsed = true;
+    }
+    if (!inputSet) {
+      dispatchFileDragEvents(target, file, originalEvent, ["drop"]);
+    } else {
+      await dispatchGoogleFlowDragCleanup(target, file, originalEvent);
+    }
+    void recordDiagnosticLog("grok_drag_delivery", {
       strategy: inputSet ? "file_input_after_preview" : "synthetic_drop_fallback",
       fallbackStep: retryUsed ? "file_input_retry" : "file_input_initial",
       cleanupStep: inputSet ? "dragleave_dragend" : "drop",
@@ -524,6 +572,10 @@ export {};
 
   function primeSmartAIHubDrop(event: DragEvent) {
     if (bridgedDragEvents.has(event)) return;
+    // A real File survives the side-panel-to-tab drag in Chromium. Do not
+    // intercept it on Grok: its trusted drag events are what cause the native
+    // "Drop images to upload" surface to appear and commit the upload.
+    if (shouldPreserveNativeGrokFileDrag(event)) return;
     const bridgePayload = hasBridgePayload(event);
     const id = eventDragMediaId(event);
     if (!id) {
@@ -549,6 +601,13 @@ export {};
 
   async function handleSmartAIHubMediaDrop(event: DragEvent) {
     if (bridgedDragEvents.has(event)) return;
+    if (shouldPreserveNativeGrokFileDrag(event)) {
+      void recordDiagnosticLog("grok_native_file_passthrough", {
+        fileName: fileFromDragEvent(event)?.name || "",
+        fileType: fileFromDragEvent(event)?.type || "",
+      });
+      return;
+    }
     const bridgePayload = hasBridgePayload(event);
     const reservePotentialBridgeDrop = isBridgeTargetHost() && isPotentialFileDrag(event);
     const passiveSocialFileDrop = isSocialUploadContext() && reservePotentialBridgeDrop && !bridgePayload;
@@ -564,6 +623,19 @@ export {};
       event.preventDefault();
       event.stopPropagation();
     }
+    if (isGrokHost(location.hostname.toLowerCase())) {
+      const mainWorldResult = await chrome.runtime.sendMessage({ type: "SMARTAIHUB_DELIVER_GROK_MEDIA_TO_MAIN_WORLD", id }).catch(() => null);
+      void recordDiagnosticLog("grok_main_world_file_delivery", {
+        inputSet: mainWorldResult?.inputSet === true,
+        inputCount: Number(mainWorldResult?.inputCount) || 0,
+        setStrategy: mainWorldResult?.setStrategy || "",
+        error: mainWorldResult?.error || "",
+      });
+      if (mainWorldResult?.ok && mainWorldResult?.inputSet) {
+        finishSmartAIHubDrag(id);
+        return;
+      }
+    }
     const file = await dragMediaFileFromBackground(id) || fileFromDragEvent(event);
     if (!file) return;
     const target = findUploadTarget(event.target);
@@ -573,6 +645,8 @@ export {};
       await deliverGoogleFlowFileDrop(target, file, event);
     } else if (isHiggsfieldHost(location.hostname.toLowerCase())) {
       await deliverHiggsfieldFileDrop(target, file, event);
+    } else if (isGrokHost(location.hostname.toLowerCase())) {
+      await deliverGrokFileDrop(target, file, event);
     } else if (isFacebookHost(location.hostname.toLowerCase()) || isTikTokStudioContext()) {
       await deliverSocialFileDrop(target, file, event);
     } else {
