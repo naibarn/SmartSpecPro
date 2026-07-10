@@ -107,10 +107,6 @@ import {
   type VdLocale,
 } from "./verticalDramaWorkspaceCopy";
 import {
-  VerticalDramaDensityMeter,
-  type VerticalDramaDensityMeterClipInput,
-} from "./VerticalDramaDensityMeter";
-import {
   VerticalDramaTieInReportCard,
   type VerticalDramaTieInReportView,
   type VerticalDramaSeasonTieInPlacementView,
@@ -397,7 +393,7 @@ interface StoryboardShotView {
   /** Declared visual-only intent (spec §7.7.2 Layer 3, section-13) — persisted
    *  by the `vertical-drama-storyboard-shotgrid` skill superset when
    *  `verticalDramaSeriesSpeechBudget` is on; absent on legacy/flag-off
-   *  storyboards. Drives `VerticalDramaDensityMeter`'s per-shot exemption. */
+   *  storyboards. */
   silence_intent?: VerticalDramaSilenceIntent;
 }
 
@@ -1173,77 +1169,6 @@ export function VerticalDramaStoryboardPanel({
   );
 
   /**
-   * Density meter input (section-13) — SAME source data as
-   * `episodeDialogueQuality` above (`motionPromptPack?.clips`), joined with
-   * each storyboard shot's own declared `silence_intent` by shot number so
-   * `VerticalDramaDensityMeter` can exempt declared visual-only shots from
-   * its per-clip warnings. Only computed while the flag is on — nothing new
-   * is rendered from it otherwise.
-   *
-   * 2026-07-08 fix (episode target-band bug): `motionPromptPack.clips` is
-   * built INCREMENTALLY, one clip per shot, as the user calls
-   * `generateShotVideoPrompt` for each shot individually (see that
-   * procedure's own doc comment in `server/routers/verticalDramaEpisodes.ts`
-   * — it creates a minimal clip/pack entry only for the shot being
-   * generated). Using ONLY `motionPromptPack.clips` as the density meter's
-   * input therefore summed the episode target band
-   * (`minTargetSeconds`/`maxTargetSeconds`, both derived from the input
-   * clips' TOTAL duration) from whatever PARTIAL subset of shots had already
-   * been generated (e.g. 3 of 9 shots = ~20s) instead of the full episode
-   * duration (60s) — producing a band far below the real one (reported as
-   * "14-16 วิ" instead of the correct ~35-41s). `storyboard.shots` is the
-   * FULL, stable per-shot duration profile (set once at storyboard-
-   * generation time, independent of per-shot video-prompt production
-   * progress) — the SAME source the server's own
-   * `buildEpisodeDialogueQualityForWizard` (`verticalDramaEpisodes.ts`)
-   * already uses for the wizard's equivalent episode-level snapshot. Every
-   * already-generated clip's own data (duration, dialogue, clip number) is
-   * kept EXACTLY as before — this only ADDS a placeholder entry (using the
-   * storyboard's planned duration, no dialogue yet) for shots that don't
-   * have a motion-prompt-pack clip yet, so the episode total always reflects
-   * every shot in the duration profile.
-   */
-  const densityMeterClips = useMemo<
-    VerticalDramaDensityMeterClipInput[]
-  >(() => {
-    if (!speechBudgetEnabled) return [];
-    const clips = motionPromptPack?.clips ?? [];
-    const shotsList = storyboard?.shots ?? [];
-    if (clips.length === 0 && shotsList.length === 0) return [];
-    const silenceIntentByShot = new Map<number, VerticalDramaSilenceIntent>();
-    for (const shot of shotsList) {
-      if (typeof shot.shot_number === "number" && shot.silence_intent) {
-        silenceIntentByShot.set(shot.shot_number, shot.silence_intent);
-      }
-    }
-    const fromClips = clips.map(clip => {
-      const shotNumber =
-        clip.parentShotNumber ?? clip.sourceShotNumbers?.[0] ?? clip.clipNumber;
-      return {
-        shotNumber,
-        clipNumber: clip.clipNumber,
-        durationSeconds: clip.durationSeconds ?? 8,
-        dialogue: clip.dialogue,
-        silenceIntent: silenceIntentByShot.get(shotNumber),
-      };
-    });
-    const clipShotNumbers = new Set(fromClips.map(c => c.shotNumber));
-    const fromUngeneratedShots = shotsList
-      .filter(
-        shot =>
-          typeof shot.shot_number === "number" &&
-          !clipShotNumbers.has(shot.shot_number)
-      )
-      .map(shot => ({
-        shotNumber: shot.shot_number as number,
-        durationSeconds: shot.duration_seconds ?? 8,
-        dialogue: undefined,
-        silenceIntent: silenceIntentByShot.get(shot.shot_number as number),
-      }));
-    return [...fromClips, ...fromUngeneratedShots];
-  }, [speechBudgetEnabled, motionPromptPack?.clips, storyboard?.shots]);
-
-  /**
    * Reads a drag-and-drop payload that may be a real OS file (dropped
    * straight from the user's computer) or the codebase's own unified URL
    * drag contract, and resolves it to a single URL string every existing
@@ -1805,31 +1730,6 @@ export function VerticalDramaStoryboardPanel({
           ) : null}
         </header>
 
-        {/* Density meter (section-13, flags.speechBudget) — episode-level
-          status placed right under the header, next to where the legacy
-          simple underfilled banner (below, now suppressed while this flag is
-          on) already lived. Hidden entirely while the flag is off or no
-          clips exist yet (never a fake all-zero meter). */}
-        {speechBudgetEnabled ? (
-          <VerticalDramaDensityMeter
-            locale={locale as VdLocale}
-            clips={densityMeterClips}
-            onRepairWholeEpisode={onRepairWholeEpisodeScript}
-            // 2026-07-08 wizard cross-link wave (spec owner confusion #1) —
-            // this panel already receives `motionPromptPack`; a REAL
-            // dialogue/audio plan means at least one clip carries a
-            // dialogue line that is NOT `origin: "script_fallback"` (the
-            // auto-recovered-from-script placeholder synced in even before
-            // the dialogue/audio step has actually run). Minimal derived
-            // prop, no new wiring beyond this one existing prop.
-            dialoguePlanExists={Boolean(
-              motionPromptPack?.clips?.some(clip =>
-                clip.dialogue?.some(line => line.origin !== "script_fallback")
-              )
-            )}
-          />
-        ) : null}
-
         {/* Episode-level model selection (Phase 1.3) — a single control per
           episode, deliberately NOT per-shot/per-clip (2026-07-05 product
           decision). Changing a model here only affects the NEXT generation;
@@ -1976,9 +1876,10 @@ export function VerticalDramaStoryboardPanel({
               </p>
             ) : null}
             {/* Legacy simple underfilled banner — suppressed once
-              `speechBudgetEnabled` is on (the density meter above already
-              covers this, with more detail) so the two never show
-              redundant/conflicting messaging. Flags-off condition is
+              `speechBudgetEnabled` is on (the density meter panel that used
+              to cover this in more detail has been removed from this view;
+              the server-side underfilled-script protection is independent
+              of this UI and is unaffected). Flags-off condition is
               UNCHANGED (speechBudgetEnabled defaults false), so this stays
               byte-identical to today when the flag is off. */}
             {episodeDialogueUnderfilled &&

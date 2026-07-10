@@ -2,7 +2,8 @@
  * Wave-5A (2026-07-07 production-grade upgrade) coverage for
  * `VerticalDramaEpisodeWorkspace.tsx`'s Production Wizard INFRASTRUCTURE:
  * flags-off byte-identical layout and the "Advanced stages" disclosure
- * (default collapsed, localStorage-persisted per series).
+ * (default EXPANDED as of 2026-07-10, localStorage-persisted per series —
+ * only an explicit "false" stored by the user collapses it on restore).
  *
  * Part A2 (planning/`polished-toasting-gadget.md`) removed the
  * `VerticalDramaProductionWizard` mount itself (the stepper + primaryCta ->
@@ -115,7 +116,7 @@ describe("VerticalDramaEpisodeWorkspace — Advanced stages disclosure", () => {
     window.localStorage.clear();
   });
 
-  it("defaults to collapsed and persists the open state to localStorage per series", () => {
+  it("defaults to expanded (no stored preference) and persists an explicit collapse to localStorage per series", () => {
     render(
       <VerticalDramaEpisodeWorkspace
         episode={baseEpisode}
@@ -125,24 +126,36 @@ describe("VerticalDramaEpisodeWorkspace — Advanced stages disclosure", () => {
       />
     );
     const toggle = screen.getByTestId("vd-advanced-stages-toggle");
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByTestId("vd-advanced-toggle")).not.toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("vd-advanced-toggle")).toBeInTheDocument();
 
     fireEvent.click(toggle);
     expect(
       window.localStorage.getItem("vd-advanced-stages-open:series-42")
-    ).toBe("true");
-    expect(screen.getByTestId("vd-advanced-toggle")).toBeInTheDocument();
+    ).toBe("false");
+    expect(screen.queryByTestId("vd-advanced-toggle")).not.toBeInTheDocument();
   });
 
-  it("restores an already-open state from localStorage on mount", () => {
-    window.localStorage.setItem("vd-advanced-stages-open:series-7", "true");
+  it("restores an explicitly-closed state from localStorage on mount", () => {
+    window.localStorage.setItem("vd-advanced-stages-open:series-7", "false");
     render(
       <VerticalDramaEpisodeWorkspace
         episode={baseEpisode}
         wizard={makeWizard("episode_script", "generate_script")}
         productionWizardEnabled
         seriesId="series-7"
+      />
+    );
+    expect(screen.queryByTestId("vd-advanced-toggle")).not.toBeInTheDocument();
+  });
+
+  it("stays expanded on mount when localStorage has no stored preference for the series", () => {
+    render(
+      <VerticalDramaEpisodeWorkspace
+        episode={baseEpisode}
+        wizard={makeWizard("episode_script", "generate_script")}
+        productionWizardEnabled
+        seriesId="series-99"
       />
     );
     expect(screen.getByTestId("vd-advanced-toggle")).toBeInTheDocument();
@@ -166,7 +179,7 @@ describe("VerticalDramaEpisodeWorkspace — meta/shot-grid disclosure split (202
     },
   };
 
-  it("keeps the per-shot production grid ALWAYS visible even while the meta disclosure is collapsed", () => {
+  it("shows the storyboard panel's meta header by default (disclosure now defaults to expanded) alongside the always-visible per-shot grid", () => {
     render(
       <VerticalDramaEpisodeWorkspace
         episode={baseEpisode}
@@ -176,18 +189,16 @@ describe("VerticalDramaEpisodeWorkspace — meta/shot-grid disclosure split (202
         storyboardPanel={storyboardPanelWithOneShot}
       />
     );
-    // Disclosure defaults to collapsed.
+    // Disclosure defaults to expanded.
     expect(screen.getByTestId("vd-advanced-stages-toggle")).toHaveAttribute(
       "aria-expanded",
-      "false"
+      "true"
     );
-    // The storyboard panel's own meta header is hidden…
-    expect(screen.queryByText(/Storyboard —/)).not.toBeInTheDocument();
-    // …but the per-shot production card is always rendered.
+    expect(screen.getByText(/Storyboard —/)).toBeInTheDocument();
     expect(screen.getByTestId("vd-storyboard-shot-1")).toBeInTheDocument();
   });
 
-  it("reveals the storyboard panel's meta header once the shared toggle is opened", () => {
+  it("keeps the per-shot production grid ALWAYS visible even after the meta disclosure is collapsed, and reveals the meta header again once reopened", () => {
     render(
       <VerticalDramaEpisodeWorkspace
         episode={baseEpisode}
@@ -197,7 +208,15 @@ describe("VerticalDramaEpisodeWorkspace — meta/shot-grid disclosure split (202
         storyboardPanel={storyboardPanelWithOneShot}
       />
     );
-    fireEvent.click(screen.getByTestId("vd-advanced-stages-toggle"));
+    const toggle = screen.getByTestId("vd-advanced-stages-toggle");
+
+    // Collapse it explicitly.
+    fireEvent.click(toggle);
+    expect(screen.queryByText(/Storyboard —/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("vd-storyboard-shot-1")).toBeInTheDocument();
+
+    // Reopen it.
+    fireEvent.click(toggle);
     expect(screen.getByText(/Storyboard —/)).toBeInTheDocument();
     expect(screen.getByTestId("vd-storyboard-shot-1")).toBeInTheDocument();
   });
