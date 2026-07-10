@@ -127,6 +127,30 @@ describe("parseStoryScriptEpisodeBlock", () => {
     expect(parsedWithoutOptions).toEqual(parsedWithOptions);
   });
 
+  it("tolerates a blank line between top-level sections AND a missing จุดดำเนินเรื่อง section (whole-block incident, 2026-07-10)", () => {
+    // Real whole-block LLM output put a blank line right after เรื่องย่อ and
+    // jumped straight to บทพูดรายช็อต (no key-beats section). Previously that
+    // blank line was neither the key-beats header nor the shots header, so
+    // hasShotSection stayed false → null → all 6 episodes failed to parse.
+    const block = [
+      "ตอนที่ 2: หัวใจเมือง",
+      "เรื่องย่อ: เรื่องราวการเริ่มต้นใหม่",
+      "", // blank line between sections, and NO จุดดำเนินเรื่อง section
+      "บทพูดรายช็อต:",
+      "ช็อต 1: เปิดฉาก",
+      "- แม่: สวัสดีจ้ะ",
+      "ช็อต 2: ปิดฉาก",
+      "- ลูก: หนูรักแม่ค่ะ (ยิ้ม)",
+      "จุดค้าง: จะเกิดอะไรขึ้นต่อไป",
+    ].join("\n");
+    const parsed = parseStoryScriptEpisodeBlock("th", block, { expectedShotCount: 2 });
+    expect(parsed).not.toBeNull();
+    expect(parsed!.logline).toBe("เรื่องราวการเริ่มต้นใหม่");
+    expect(parsed!.keyBeats).toEqual([]);
+    expect(parsed!.shots.map((s) => s.shot_number)).toEqual([1, 2]);
+    expect(parsed!.cliffhangerLine).toBe("จะเกิดอะไรขึ้นต่อไป");
+  });
+
   it("bold-wrapped header/labels/shot-headers/dialogue-bullets/cliffhanger all still parse correctly (episode 2 incident)", () => {
     const bolded = baselineBlock
       .split("\n")

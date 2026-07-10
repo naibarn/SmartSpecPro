@@ -361,21 +361,39 @@ export function parseStoryScriptEpisodeBlock(
   const workingTitle = headerMatch[1].trim();
 
   let index = 1;
+
+  // Skip blank lines BETWEEN the block's top-level sections. Some model
+  // outputs separate เรื่องย่อ / จุดดำเนินเรื่อง / บทพูดรายช็อต with a blank
+  // line, and may omit จุดดำเนินเรื่อง entirely (confirmed via real whole-block
+  // LLM output, 2026-07-10: a run put a blank line right after เรื่องย่อ and
+  // jumped straight to บทพูดรายช็อต — previously that blank line was neither
+  // the key-beats header nor the shots header, so hasShotSection stayed false
+  // → null → "แยกโครงสร้างช็อตจากผลลัพธ์ไม่ได้" for every episode). The in-shots
+  // loop already tolerates blank lines; this does the same between sections.
+  const skipBlankLines = () => {
+    while (index < lines.length && (lines[index] ?? "").trim().length === 0) index += 1;
+  };
+
+  skipBlankLines();
   let logline = "";
   if (stripWrappingMarkdownEmphasis(lines[index] ?? "").startsWith(labels.summaryPrefix)) {
     logline = stripWrappingMarkdownEmphasis(lines[index]).slice(labels.summaryPrefix.length).trim();
     index += 1;
   }
 
+  skipBlankLines();
   const keyBeats: string[] = [];
   if (stripWrappingMarkdownEmphasis(lines[index] ?? "") === labels.keyBeatsHeader) {
     index += 1;
+    skipBlankLines();
     while (index < lines.length && stripWrappingMarkdownEmphasis(lines[index]).startsWith("- ")) {
       keyBeats.push(stripWrappingMarkdownEmphasis(lines[index]).slice(2).trim());
       index += 1;
+      skipBlankLines();
     }
   }
 
+  skipBlankLines();
   const shots: StoryScriptParsedShot[] = [];
   let hasShotSection = false;
 
