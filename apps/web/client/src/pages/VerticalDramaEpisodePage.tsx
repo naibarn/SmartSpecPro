@@ -1722,6 +1722,46 @@ function EpisodeWorkspaceShell({
     );
   }
 
+  /**
+   * Per-shot character/variant reference override (planning/vertical-drama-
+   * twin-variant-completeness/plan.md, W6 frontend) — separate from and
+   * additive to the series-wide "change reference image" swap. Sends the
+   * shot's FULL replacement `requiredCharacterRefs` array (empty array
+   * clears every reference for this shot). Refetches `getEpisodeDetail` on
+   * success (same convention as `saveShotProductReferencesMutation` above)
+   * so the shot's character chips re-render from the newly-patched
+   * `startFramePlan` without any manual cache surgery.
+   */
+  const [
+    savingShotCharacterReferencesForShot,
+    setSavingShotCharacterReferencesForShot,
+  ] = useState<number | null>(null);
+  const setShotCharacterReferenceMutation =
+    trpc.verticalDramaEpisodes.setShotCharacterReference.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "อัปเดตตัวละครอ้างอิงของช็อตนี้แล้ว"
+            : "This shot's character reference(s) updated."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleSetShotCharacterReferences(
+    shotNumber: number,
+    characterRefs: string[]
+  ) {
+    setSavingShotCharacterReferencesForShot(shotNumber);
+    setShotCharacterReferenceMutation.mutate(
+      { seriesId, episodeId, shotNumber, characterRefs },
+      {
+        onSettled: () => setSavingShotCharacterReferencesForShot(null),
+      }
+    );
+  }
+
   const handleSelectImageModel = (modelId: string) => {
     storeSeriesModelDefault(seriesId, "image", modelId);
     setEpisodeModelSelectionMutation.mutate({
@@ -4308,6 +4348,8 @@ function EpisodeWorkspaceShell({
             onChangeCharacterReference: characterId =>
               setImageSwapTarget({ type: "characterPortrait", characterId }),
             onDropCharacterReference: handleDropCharacterReference,
+            onSetShotCharacterReferences: handleSetShotCharacterReferences,
+            savingShotCharacterReferencesForShot,
             onDropStartFrame: handleDropStartFrame,
             onGenerateAngleVariations: shotNumber => {
               if (!requireMcpConnectionOrToast("image")) return;

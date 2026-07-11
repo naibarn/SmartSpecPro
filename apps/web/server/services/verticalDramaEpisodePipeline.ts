@@ -1233,6 +1233,23 @@ export interface RunStageOptions {
    * byte-identical.
    */
   sceneContractsEnabled?: boolean;
+  /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W1,
+   * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — same
+   * "router resolves the tenant flag, the pipeline stays flag-agnostic
+   * beyond this bag" convention as `deepStoryDraftsFlagOn`/
+   * `sceneContractsEnabled` above. When on:
+   *  - `plan_episode_script`'s real-generation call (`generateRealScript`/
+   *    `generateEpisodeScript`) threads the series' `genre` fact and renders
+   *    skill.md's genre-conditional retention-loop/open-loop/
+   *    no-intro-opening guidance (W1/W2);
+   *  - `storyboard_shotgrid`'s real-generation call
+   *    (`generateRealStoryboard`/`generateStoryboardShotgrid`) threads the
+   *    SAME `genre` fact for shot styling (W3).
+   * Defaults to off when omitted, so every existing caller/test is
+   * byte-identical.
+   */
+  retentionHooksEnabled?: boolean;
 }
 
 export interface RunStageOutcome {
@@ -1746,6 +1763,15 @@ export class VerticalDramaEpisodePipeline {
    * param's doc comment in `verticalDramaScriptGeneration.ts`). Omitted for
    * every `runStage` call site, which is byte-identical to before this
    * parameter existed.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W1, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag" convention as
+   * `sceneContractsEnabled` above. Threads the ALREADY-LOADED `seriesRow`'s
+   * `genre` column into `generateEpisodeScript` unconditionally (cheap,
+   * additive fact) and gates rendering it (plus skill.md's new
+   * genre-conditional retention-loop guidance) via `opts.retentionHooksEnabled`.
+   * Defaults to false, so every existing caller is byte-identical.
    */
   private async generateRealScript(
     owner: EpisodeRunOwner,
@@ -1753,7 +1779,8 @@ export class VerticalDramaEpisodePipeline {
     deepStoryDraftsFlagOn: boolean = false,
     repairInstruction?: string,
     tieInReplanFlagOn: boolean = false,
-    sceneContractsEnabled: boolean = false
+    sceneContractsEnabled: boolean = false,
+    retentionHooksEnabled: boolean = false
   ): Promise<{
     script: ScriptBuilderOutput;
     creditsUsed: number;
@@ -1866,9 +1893,17 @@ export class VerticalDramaEpisodePipeline {
       productTieIn,
       episodeDraft: episodeDraft ?? undefined,
       episodeTieInPlacement,
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W1) — the series' free-text `genre` column, already available on
+      // the full `seriesRow` select above. Passed unconditionally (cheap
+      // additive fact); only RENDERED into the prompt when
+      // `opts.retentionHooksEnabled` is true (see
+      // `verticalDramaScriptGeneration.ts`'s `genre` param doc comment).
+      genre: seriesRow?.genre ?? undefined,
       opts: {
         episodeDraftHydrationEnabled: episodeDraft !== null,
         sceneContractsEnabled,
+        retentionHooksEnabled,
       },
       storySource: {
         logline:
@@ -2045,13 +2080,23 @@ export class VerticalDramaEpisodePipeline {
    * `generateStoryboardShotgrid`'s `repairContext`. Omitted for every
    * `runStage` call site, which is byte-identical to before this parameter
    * existed.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W3, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag" convention as
+   * `sceneContractsEnabled` above and as `generateRealScript`'s identical
+   * parameter (W1). Threads the ALREADY-LOADED `seriesRow`'s `genre` column
+   * into `generateStoryboardShotgrid` unconditionally (cheap, additive
+   * fact) and gates rendering it via `opts.retentionHooksEnabled`. Defaults
+   * to false, so every existing caller is byte-identical.
    */
   private async generateRealStoryboard(
     owner: EpisodeRunOwner,
     episode: VerticalDramaEpisodeRow,
     deepStoryDraftsFlagOn: boolean = false,
     repairInstruction?: string,
-    sceneContractsEnabled: boolean = false
+    sceneContractsEnabled: boolean = false,
+    retentionHooksEnabled: boolean = false
   ): Promise<{
     storyboard: StoryboardShotgridOutput;
     creditsUsed: number;
@@ -2087,6 +2132,7 @@ export class VerticalDramaEpisodePipeline {
         parentCharacterId: verticalDramaCharacters.parentCharacterId,
         variantLabel: verticalDramaCharacters.variantLabel,
         variantType: verticalDramaCharacters.variantType,
+        sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
         data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
@@ -2157,6 +2203,34 @@ export class VerticalDramaEpisodePipeline {
       variantsByParentId.set(v.parentCharacterId as number, list);
     });
 
+    // Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
+    // plan.md W5) — twins are independent base characters (parentCharacterId
+    // == null, already partitioned into `characterRows` above), never
+    // variant rows, that happen to share an identical face with another
+    // base character (`sharesFaceWithCharacterId`). Build a flat,
+    // order-independent list of `{characterKeyA, characterKeyB}` pairs from
+    // the same base-character roster already in scope — dedupe so a pair
+    // that could be discovered from either character's own
+    // `sharesFaceWithCharacterId` pointer (or, defensively, both sides
+    // pointing at each other) is only listed once. `characters[]` sent to
+    // `generateStoryboardShotgrid` is unaffected — this is purely additive,
+    // sibling to `variants` above, so a series with no twins produces an
+    // empty list and a byte-identical prompt to before this field existed.
+    const characterKeyById = new Map<number, string>(
+      characterRows.map((c: VdCharacterRosterRow) => [c.id, c.characterKey])
+    );
+    const twinPairs: NonNullable<GenerateStoryboardShotgridParams["twinPairs"]> = [];
+    const seenTwinPairKeys = new Set<string>();
+    for (const c of characterRows) {
+      if (c.sharesFaceWithCharacterId == null) continue;
+      const otherKey = characterKeyById.get(c.sharesFaceWithCharacterId);
+      if (!otherKey || otherKey === c.characterKey) continue;
+      const pairKey = [c.characterKey, otherKey].sort().join("::");
+      if (seenTwinPairKeys.has(pairKey)) continue;
+      seenTwinPairKeys.add(pairKey);
+      twinPairs.push({ characterKeyA: c.characterKey, characterKeyB: otherKey });
+    }
+
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
     // Part B1 (planning/`polished-toasting-gadget.md`) — resolve from the
     // series bible's ACTIVE breakdown version via `getActiveBreakdown`
@@ -2224,9 +2298,17 @@ export class VerticalDramaEpisodePipeline {
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
       episodeDraft: episodeDraft ?? undefined,
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W3) — the series' free-text `genre` column, already available on
+      // the full `seriesRow` select above. Passed unconditionally (cheap
+      // additive fact); only RENDERED into the prompt when
+      // `opts.retentionHooksEnabled` is true (see
+      // `verticalDramaStoryboardGeneration.ts`'s `genre` param doc comment).
+      genre: seriesRow?.genre ?? undefined,
       opts: {
         episodeDraftHydrationEnabled: episodeDraft !== null,
         sceneContractsEnabled,
+        retentionHooksEnabled,
       },
       storySource: {
         logline: matchingBreakdown?.logline,
@@ -2262,6 +2344,7 @@ export class VerticalDramaEpisodePipeline {
           variants: variantsByParentId.get(c.id),
         })
       ),
+      twinPairs: twinPairs.length > 0 ? twinPairs : undefined,
       repairContext: repairInstruction
         ? {
             currentStoryboard: (episode.storyboard as Record<string, unknown> | null) ?? {},
@@ -2609,10 +2692,22 @@ export class VerticalDramaEpisodePipeline {
    * Build the `generateVideoMotionPromptPack` params from the episode's own
    * `storyboard` jsonb column and invoke it. Only called from `runStage` for
    * `video_motion_prompt_pack` when the mode is not dry_run/plan_only.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W7, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag, the pipeline stays
+   * flag-agnostic beyond this bag" convention as every other
+   * `RunStageOptions` field; threaded straight through to
+   * `generateVideoMotionPromptPack`'s own `retentionHooksEnabled` param,
+   * which self-derives `is_opening_shot`/`is_retention_ending_shot` from the
+   * `storyboardShots[]` already built below (min/max `shotNumber`) — no
+   * extra shot-count math needed here. Defaults to `false`, so every
+   * existing caller/test is byte-identical.
    */
   private async generateRealMotionPromptPack(
     owner: EpisodeRunOwner,
-    episode: VerticalDramaEpisodeRow
+    episode: VerticalDramaEpisodeRow,
+    retentionHooksEnabled: boolean = false
   ): Promise<{
     pack: VideoMotionPromptPackProjection;
     creditsUsed: number;
@@ -2699,6 +2794,7 @@ export class VerticalDramaEpisodePipeline {
       dialogueLanguage: existingLanguagePlan?.dialogueLanguage,
       thaiAccent: existingLanguagePlan?.thaiAccent,
       episodePlanContext,
+      retentionHooksEnabled,
       storyboardShots: shots.map(s => ({
         shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
         description: String(s.description ?? s.visual_description ?? ""),
@@ -2918,7 +3014,8 @@ export class VerticalDramaEpisodePipeline {
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
           opts.tieInReplanFlagOn ?? false,
-          opts.sceneContractsEnabled ?? false
+          opts.sceneContractsEnabled ?? false,
+          opts.retentionHooksEnabled ?? false
         );
         payload = { stage, ...generated.script };
         // Persist to the episode's own `script` jsonb column.
@@ -3021,7 +3118,8 @@ export class VerticalDramaEpisodePipeline {
           episode,
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
-          opts.sceneContractsEnabled ?? false
+          opts.sceneContractsEnabled ?? false,
+          opts.retentionHooksEnabled ?? false
         );
         payload = { stage, ...generated.storyboard };
         // Persist to the episode's own `storyboard` jsonb column (not
@@ -3298,7 +3396,8 @@ export class VerticalDramaEpisodePipeline {
       try {
         const generated = await this.generateRealMotionPromptPack(
           owner,
-          episode
+          episode,
+          opts.retentionHooksEnabled ?? false
         );
         // Phase 3.1: sync `dialogueAudioPlan` lines onto `clips[j].dialogue`
         // when the skill's own `.passthrough()` output didn't already carry
@@ -3825,6 +3924,17 @@ export class VerticalDramaEpisodePipeline {
        * caller is byte-identical to before this field existed.
        */
       sceneContractsEnabled?: boolean;
+      /**
+       * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+       * W1/W3, tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) —
+       * same router-resolves-the-flag convention as `sceneContractsEnabled`
+       * above. Threaded into BOTH `generateRealScript`'s
+       * `plan_episode_script` repair branch (W1) AND
+       * `generateRealStoryboard`'s `storyboard_shotgrid` repair branch (W3)
+       * below. Defaults to false, so every existing caller is byte-identical
+       * to before this field existed.
+       */
+      retentionHooksEnabled?: boolean;
     }
   ): Promise<RunStageOutcome> {
     const episode = await this.loadEpisode(owner);
@@ -3863,7 +3973,10 @@ export class VerticalDramaEpisodePipeline {
             owner,
             episode,
             false,
-            args.instruction
+            args.instruction,
+            false,
+            false,
+            args.retentionHooksEnabled ?? false
           );
           payload = { stage, ...generated.script };
           await db
@@ -3876,7 +3989,8 @@ export class VerticalDramaEpisodePipeline {
             episode,
             false,
             args.instruction,
-            args.sceneContractsEnabled ?? false
+            args.sceneContractsEnabled ?? false,
+            args.retentionHooksEnabled ?? false
           );
           payload = { stage, ...generated.storyboard };
           await db

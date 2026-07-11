@@ -213,6 +213,10 @@
         "ai_prompt_lock"
       ]
     },
+    "has_own_reference_image": {
+      "type": "boolean",
+      "description": "True when the render step will attach an existing, already-approved image of THIS EXACT character (not a parent/twin) as a reference image alongside the authored prompt. When true, every authored prompt field must explicitly lock face shape, skin tone, hairstyle, outfit, clothing, accessories, and shoes to that attached reference per skill.md's 'Own reference image locking' section. Absent/false = legacy/default behavior (character's first portrait, nothing to reference yet), unchanged."
+    },
     "preset_visual_identity": {
       "type": ["object", "null"],
       "additionalProperties": true,

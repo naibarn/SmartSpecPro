@@ -154,6 +154,29 @@ The caller tells you two independent language settings for this shot:
    "altered product design, wrong product color, distorted logo, modified
    packaging, redesigned product" among the artifacts `negative_motion_prompt`
    guards against for this shot.
+9. **Hook shot / retention-ending shot motion energy — MANDATORY WHEN the
+   caller states `is_opening_shot: true` or `is_retention_ending_shot: true`
+   for this shot:**
+   - When `is_opening_shot: true` (this clip is the episode's FIRST shot —
+     the hook): open the clip on immediate kinetic or visual interest that
+     matches the hook's energy — a sudden movement, a sharp reaction, an
+     object or action already in motion. NEVER open with a slow establishing
+     pan, a static held pose, or a scene-setting drift; the very first
+     instant of motion must already feel like something is happening, not
+     about to happen.
+   - When `is_retention_ending_shot: true` (this clip is the episode's FINAL
+     shot — the retention-loop ending): the motion must LAND and HOLD the
+     unresolved image or emotional turn — push in, hold the beat, let an
+     expression settle, or freeze the tension into an unanswered moment.
+     NEVER cut away flatly or resolve the tension mid-motion; the clip
+     should feel like it leaves the audience mid-breath, not like it closes
+     the scene. Use your own judgment for the specific camera move (a hold,
+     a slow push, a held reaction) that best serves this shot's own content.
+   Both facts are structural markers about this shot's ROLE in the episode,
+   not stage directions by themselves — combine them with the shot's own
+   description/camera/emotion above, and never let this rule override rule 5
+   (camera continuation) or produce a physically inconsistent jump from the
+   start frame.
 
 ## NATIVE AUDIO DIRECTION (conditional — only when the caller states `native_audio: true` for this shot)
 

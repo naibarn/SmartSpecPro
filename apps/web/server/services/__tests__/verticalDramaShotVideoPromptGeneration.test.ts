@@ -863,4 +863,178 @@ describe("generateVerticalDramaShotVideoPrompt — duration-aware prompt (spec �
       expect(result.audioDirection).toBeUndefined();
     });
   });
+
+  // Retention hooks (planning/vertical-drama-retention-hooks/plan.md W7,
+  // added 2026-07-11) — `retentionHooksEnabled` gates whether
+  // `is_opening_shot`/`is_retention_ending_shot` (derived from
+  // `shotNumber`/`totalShotCount`) are rendered into the prompt. No router
+  // call site sets either field yet (out of scope here) — these tests cover
+  // the service-level contract directly.
+  describe("retentionHooksEnabled (W7 — hook shot / retention-ending shot facts)", () => {
+    it("omits both facts when retentionHooksEnabled is not set (byte-identical default)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(baseParams({ shotNumber: 1, totalShotCount: 9 }));
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).not.toContain("is_opening_shot");
+      expect(textPart.text).not.toContain("is_retention_ending_shot");
+    });
+
+    it("omits both facts when retentionHooksEnabled is true but totalShotCount is absent and shotNumber is not 1", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({ shotNumber: 3, retentionHooksEnabled: true }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).not.toContain("is_opening_shot");
+      expect(textPart.text).not.toContain("is_retention_ending_shot");
+    });
+
+    it("states is_opening_shot: true when retentionHooksEnabled is true and shotNumber is 1", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({ shotNumber: 1, totalShotCount: 9, retentionHooksEnabled: true }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).toContain("is_opening_shot: true");
+      expect(textPart.text).not.toContain("is_retention_ending_shot");
+    });
+
+    it("states is_retention_ending_shot: true when retentionHooksEnabled is true and shotNumber equals totalShotCount", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({ shotNumber: 9, totalShotCount: 9, retentionHooksEnabled: true }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).toContain("is_retention_ending_shot: true");
+      expect(textPart.text).not.toContain("is_opening_shot");
+    });
+
+    it("states BOTH facts when the episode has exactly one shot (shotNumber === 1 === totalShotCount)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({ shotNumber: 1, totalShotCount: 1, retentionHooksEnabled: true }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).toContain("is_opening_shot: true");
+      expect(textPart.text).toContain("is_retention_ending_shot: true");
+    });
+
+    // Retention hooks W7 (router-wiring package, added 2026-07-11) —
+    // `hookText`/`retentionLoopDescription` grounding text, the ONE
+    // additive param this package added to this file (R7 deferred it).
+    it("omits hookText/retentionLoopDescription text even when supplied, if the flag is off (byte-identical default)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          shotNumber: 1,
+          totalShotCount: 9,
+          hookText: "A phone rings in an empty house.",
+          retentionLoopDescription: "The door creaks open.",
+        }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).not.toContain("Episode hook");
+      expect(textPart.text).not.toContain("Episode retention loop");
+    });
+
+    it("renders hookText on the opening shot when the flag is on", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          shotNumber: 1,
+          totalShotCount: 9,
+          retentionHooksEnabled: true,
+          hookText: "A phone rings in an empty house.",
+        }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).toContain(
+        "Episode hook (verbatim, from the script"
+      );
+      expect(textPart.text).toContain("A phone rings in an empty house.");
+      expect(textPart.text).not.toContain("Episode retention loop");
+    });
+
+    it("renders retentionLoopDescription on the retention-ending shot when the flag is on", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          shotNumber: 9,
+          totalShotCount: 9,
+          retentionHooksEnabled: true,
+          retentionLoopDescription: "The door creaks open.",
+        }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).toContain(
+        "Episode retention loop (verbatim, from the script"
+      );
+      expect(textPart.text).toContain("The door creaks open.");
+      expect(textPart.text).not.toContain("Episode hook");
+    });
+
+    it("omits the hook/retention-loop text lines when neither string is supplied, even with the flag on", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({ shotNumber: 1, totalShotCount: 1, retentionHooksEnabled: true }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
+      expect(textPart.text).not.toContain("Episode hook");
+      expect(textPart.text).not.toContain("Episode retention loop");
+    });
+  });
 });

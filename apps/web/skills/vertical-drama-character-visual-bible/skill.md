@@ -196,6 +196,133 @@ consistent identity anchors; a full-body prompt describes pose and head-to-toe f
 expression-sheet prompt names the actual expressions in the grid; an outfit-sheet prompt
 names the actual outfits shown).
 
+## Own reference image locking — MANDATORY when `has_own_reference_image` is true
+
+When the input carries `has_own_reference_image: true`, the render step will attach an
+existing, ALREADY-APPROVED image of THIS EXACT character (not a parent/twin — see "Face
+reference locking" below for that separate case) as a reference image alongside your
+prompt: this is the character's own definitive, previously-approved likeness, not a new
+look for you to invent. Every prompt field you author for this character
+(`primary_portrait_prompt`, `turnaround_prompt`, `full_body_prompt`,
+`expression_sheet_prompt`, `outfit_sheet_prompt`, and `sheet_prompt` when also present)
+MUST explicitly state, in your own natural prose — never append a boilerplate sentence
+verbatim, same "facts in, natural prose out" convention as "Preset visual identity" and
+"Face reference locking" — that the attached reference image is this character's exact,
+definitive identity, and that the lock ALWAYS covers, completely and every time, never
+partially: **face shape, skin tone, hairstyle, outfit, clothing, accessories, and shoes**.
+Never lock face/hair/skin only and leave wardrobe free to vary — an attached reference
+photo whose call-out omits the outfit is exactly the bug this instruction exists to
+prevent: an image model given an incomplete reference call-out will readily invent a new
+outfit even while faithfully keeping the face, because nothing told it not to.
+
+This is a genuinely stricter instruction than "Face reference locking" below's
+`lock_strength: "hard"` case: that section deliberately does NOT lock clothing, hairstyle,
+or makeup, because an outfit variant's whole point is a different outfit on the same face.
+`has_own_reference_image` is the opposite situation — this is the SAME character, and
+their entire established look, face and outfit alike, should read as unchanged from the
+reference. When BOTH `has_own_reference_image` and `face_source_reference` are present on
+the same input (e.g. a variant/twin character regenerating its own already-approved
+sheet), weave both naturally together rather than treating them as mutually exclusive:
+lock this character's own established identity — face, hair, skin, outfit, accessories,
+shoes — to its OWN attached reference image per this section, while still honoring
+whatever hairstyle/wardrobe divergence "Face reference locking" instructs relative to the
+parent/twin source character.
+
+When `has_own_reference_image` is absent or false, ignore this section entirely — the
+legacy/default behavior for a character's very first portrait (nothing to reference yet),
+unchanged.
+
+Good example (`has_own_reference_image: true`, description says "late-20s silk-shop owner
+ฝ้าย, regenerating her pose-library sheet"):
+> "solo portrait, exactly one person in frame: cinematic vertical portrait of ฝ้าย — the
+> attached reference image is her exact, definitive identity: match her face shape, skin
+> tone, and hairstyle precisely, and keep her outfit, clothing, accessories, and shoes
+> IDENTICAL to what she is wearing in the reference — do not invent, alter, or restyle any
+> part of her wardrobe. Warm confident expression, 85mm f/1.8 portrait lens, shallow depth
+> of field, warm cinematic color grade, subtle film grain, soft key light with a gentle rim
+> light for separation, out-of-focus silk-market background, 9:16"
+
+Bad example (locks face but silently drops outfit — do NOT do this; this is the exact
+production bug this section fixes):
+> "cinematic vertical portrait of ฝ้าย, matching the attached reference image's face
+> shape, skin tone, and hairstyle. Wearing a red silk dress with gold jewelry, standing
+> confidently, 9:16" — this invents a brand-new described outfit instead of locking to
+> whatever the reference photo is actually wearing.
+
+### Worked example — own reference image lock, `has_own_reference_image: true`
+
+Input:
+
+```json
+{
+  "characters": [
+    {
+      "character_id": "char_fai",
+      "name": "ฝ้าย",
+      "role": "lead",
+      "description": "late-20s silk-shop owner, warm and resourceful, regenerating her pose-library sheet after her first approved portrait"
+    }
+  ],
+  "story_context": "Series title: Sisters of the Silk Market | Genre: family drama | Tone: warm, bittersweet",
+  "output_options": {
+    "include_image_generation_prompts": true,
+    "include_plain_text_summary": true,
+    "include_storyboard_attachment_manifest": true,
+    "generate_primary_portrait_prompt": true
+  },
+  "has_own_reference_image": true
+}
+```
+
+Output:
+
+```json
+{
+  "contract_version": 1,
+  "visual_bible_summary": {
+    "story_title": "Sisters of the Silk Market",
+    "overall_style": "warm family drama, natural lighting",
+    "consistency_strategy": "lock ฝ้าย's face, hair, skin, and full wardrobe exactly to her own attached reference image"
+  },
+  "characters": [
+    {
+      "character_id": "char_fai",
+      "name": "ฝ้าย",
+      "role": "lead",
+      "visual_identity_summary": "late-20s silk-shop owner, warm and resourceful, identity and full wardrobe locked exactly to her own approved reference portrait",
+      "identity_anchors": ["face shape, skin tone, and hairstyle match the attached reference exactly", "outfit, accessories, and shoes match the attached reference exactly"],
+      "signature_wardrobe": "as shown in the attached reference image — locked, not restyled",
+      "hair_makeup_notes": "as shown in the attached reference image — locked, not restyled",
+      "performance_energy": "warm, resourceful, quietly confident",
+      "primary_portrait_prompt": "solo portrait, exactly one person in frame: cinematic vertical portrait of ฝ้าย — the attached reference image is her exact, definitive identity; match her face shape, skin tone, and hairstyle precisely, and keep her outfit, clothing, accessories, and shoes IDENTICAL to the reference, do not invent, alter, or restyle any part of her wardrobe. Warm, resourceful, quietly confident expression, 85mm f/1.8 portrait lens, shallow depth of field, warm cinematic color grade, subtle film grain, soft key light with a gentle rim light for separation, out-of-focus silk-shop background, 9:16",
+      "full_body_prompt": "solo portrait, exactly one person in frame: full body of ฝ้าย standing in her silk shop, head to toe visible — face shape, skin tone, and hairstyle locked exactly to the attached reference image, and her outfit, accessories, and shoes kept IDENTICAL to the reference, no wardrobe changes, warm confident stance, out-of-focus shop-interior background, 9:16",
+      "expression_sheet_prompt": "solo portrait, exactly one person in frame: grid of ฝ้าย's facial expressions on a single sheet — neutral, warm smile, concerned, determined — identical framing and lighting across every panel, face/hair/skin and the exact outfit/accessories/shoes from the attached reference image held constant in every panel, 9:16",
+      "outfit_sheet_prompt": "solo portrait, exactly one person in frame: outfit sheet of ฝ้าย wearing the exact outfit, accessories, and shoes shown in the attached reference image in three consistent poses, face/hair/skin locked exactly to the reference in all three, no invented or alternate wardrobe, 9:16",
+      "turnaround_prompt": "solo portrait, exactly one person in frame: 360-degree turnaround of ฝ้าย showing front, three-quarter, and back-of-head angles, face shape/skin tone/hairstyle locked exactly to the attached reference image at every angle, and her outfit, accessories, and shoes held IDENTICAL to the reference across every angle, 9:16",
+      "negative_prompt": "identity drift, wrong face, wardrobe change, invented outfit, different clothing, different accessories, no other people, no second person, no children, no extra person, no crowd, no background figures, no hands of others",
+      "attachment_package": [
+        {
+          "asset_type": "primary_portrait",
+          "purpose": "identity lock reference",
+          "recommended_filename": "fai_primary_portrait.png"
+        }
+      ]
+    }
+  ],
+  "plain_text_summary": "ฝ้าย's pose-library sheet locks her face, hair, skin, and complete wardrobe (outfit, accessories, shoes) exactly to her own already-approved reference image — nothing about her look is reinvented.",
+  "storyboard_attachment_manifest": {
+    "handoff_type": "character_reference_package",
+    "characters": [
+      {
+        "character_id": "char_fai",
+        "reference_filenames": ["fai_primary_portrait.png"]
+      }
+    ],
+    "usage_note": "Attach ฝ้าย's own reference image to every generation for this character."
+  }
+}
+```
+
 ## Character Design Bible sheet types — used only when requested_sheet_type is present
 
 When the input carries `requested_sheet_type`, it selects ONE additional deliverable on top

@@ -14,7 +14,7 @@
  *  - inline Thai/English copy driven by the shared language hook.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -24,10 +24,14 @@ import {
   Grid3x3,
   Loader2,
   Plus,
+  Shirt,
   Sparkles,
   Trash2,
+  UploadCloud,
   User,
+  UserPlus,
   Users,
+  Wand2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -35,6 +39,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -234,6 +246,168 @@ export function resolveCharacterCardPortraitAsset(
   return null;
 }
 
+/** A single candidate the reference-image picker
+ *  (planning/vertical-drama-reference-picker-outfit-lock/plan.md, Phase D3)
+ *  can offer for the identity-lock reference of the NEXT
+ *  generateCharacterImage/generateCharacterSheet call. */
+export interface VdReferenceCandidate {
+  assetLinkId: string;
+  thumbnailUrl: string;
+  /** `"own"` — one of this character's own `primary_portrait` assets.
+   *  `"parent"` — a variant borrowing its parent character's portrait.
+   *  `"twin"` — a twin (`sharesFaceWithCharacterId`, either direction)
+   *  sharing a face with the source character. `"variant"` — one of THIS
+   *  character's own outfit/age-stage variants (reverse of `"parent"` —
+   *  shown when viewing the PARENT, offering a child variant's portrait). */
+  sourceLabel: "own" | "parent" | "twin" | "variant";
+  /** Set for every candidate except `"own"` — the source character's
+   *  display name (`"parent"`/`"twin"`) or variant label (`"variant"`), for
+   *  the "จาก {name}" / "from {name}" caption. */
+  sourceName?: string;
+}
+
+/** Minimum shape {@link buildReferenceCandidates} needs from a character
+ *  DTO — deliberately narrower than {@link VdRosterCharacterFields} (no
+ *  `name`/`variantLabel`) since the picker only needs to know THIS
+ *  character's id and which other character (if any) it borrows its
+ *  identity reference from. */
+export interface VdReferenceCandidateCharacterFields {
+  characterId: string;
+  parentCharacterId?: string;
+  sharesFaceWithCharacterId?: string;
+}
+
+/** Lookup entry {@link buildReferenceCandidates} needs for every OTHER
+ *  character in the series — carries the relationship fields too (not just
+ *  `characterId`/`name`) so the function can scan for characters that
+ *  borrow identity FROM the one being viewed (reverse direction), not just
+ *  resolve the name of a source the viewed character itself points at. */
+export interface VdReferenceCandidateLookupEntry {
+  characterId: string;
+  name: string;
+  parentCharacterId?: string;
+  sharesFaceWithCharacterId?: string;
+  variantLabel?: string;
+}
+
+/**
+ * Candidate reference images for the character-detail-panel picker: every
+ * one of this character's OWN `primary_portrait` assets (not just the
+ * auto-picked one — show every candidate when there's more than one), PLUS
+ * two symmetric cross-character cases:
+ *  - UPWARD: when the character IS a variant (`parentCharacterId` set) or
+ *    twin (`sharesFaceWithCharacterId` set), the resolved source
+ *    character's own `primary_portrait` assets too.
+ *  - DOWNWARD (2026-07-11 fix — a parent/twin-source character's own detail
+ *    panel used to show ONLY its own portrait, never its variants'/twins'
+ *    portraits, even though they're the exact same face): every OTHER
+ *    character that points AT this one — this character's own outfit/
+ *    age-stage variants, and any twin that shares ITS face with this
+ *    character — offered the same way, labeled with the variant's
+ *    `variantLabel` (variants share the parent's `name`, so the label is
+ *    what actually distinguishes them) or the twin's `name`.
+ * This is the UI surface that lets a variant/twin with no portrait of its
+ * own yet actually attach a reference image at render time (see the plan
+ * doc's "real, confirmed gap" note — `getPrimaryPortraitUrl` never
+ * consulted the face-source relationship server-side, so a brand-new
+ * variant/twin got ZERO reference image attached before this picker
+ * existed) — and, symmetrically, lets a parent character borrow a look from
+ * one of its own variants when regenerating its base portrait.
+ *
+ * Deliberately does NOT dedupe or cap the "own" list to one entry — every
+ * approved/generated/imported `primary_portrait` this character has is
+ * offered, so the user can pick an older look on purpose.
+ */
+export function buildReferenceCandidates(
+  assets: VerticalDramaCharacterAsset[],
+  character: VdReferenceCandidateCharacterFields,
+  charactersById: Map<string, VdReferenceCandidateLookupEntry>
+): VdReferenceCandidate[] {
+  const ownPortraits = assets.filter(
+    a =>
+      a.characterId === character.characterId &&
+      a.role === "primary_portrait" &&
+      a.thumbnailUrl
+  );
+  const candidates: VdReferenceCandidate[] = ownPortraits.map(a => ({
+    assetLinkId: a.assetLinkId,
+    thumbnailUrl: a.thumbnailUrl!,
+    sourceLabel: "own",
+  }));
+
+  const crossSourceId =
+    character.sharesFaceWithCharacterId ?? character.parentCharacterId;
+  if (crossSourceId) {
+    const sourceName = charactersById.get(crossSourceId)?.name;
+    const crossPortraits = assets.filter(
+      a =>
+        a.characterId === crossSourceId &&
+        a.role === "primary_portrait" &&
+        a.thumbnailUrl
+    );
+    candidates.push(
+      ...crossPortraits.map(a => ({
+        assetLinkId: a.assetLinkId,
+        thumbnailUrl: a.thumbnailUrl!,
+        sourceLabel: character.sharesFaceWithCharacterId
+          ? ("twin" as const)
+          : ("parent" as const),
+        sourceName,
+      }))
+    );
+  }
+
+  for (const entry of charactersById.values()) {
+    if (entry.characterId === character.characterId) continue;
+    const isVariantOfThis = entry.parentCharacterId === character.characterId;
+    const isTwinOfThis =
+      entry.sharesFaceWithCharacterId === character.characterId;
+    if (!isVariantOfThis && !isTwinOfThis) continue;
+    const reversePortraits = assets.filter(
+      a =>
+        a.characterId === entry.characterId &&
+        a.role === "primary_portrait" &&
+        a.thumbnailUrl
+    );
+    candidates.push(
+      ...reversePortraits.map(a => ({
+        assetLinkId: a.assetLinkId,
+        thumbnailUrl: a.thumbnailUrl!,
+        sourceLabel: isTwinOfThis ? ("twin" as const) : ("variant" as const),
+        sourceName: isTwinOfThis ? entry.name : (entry.variantLabel ?? entry.name),
+      }))
+    );
+  }
+
+  return candidates;
+}
+
+/**
+ * Mirrors the backend's `getPrimaryPortraitUrl` selection ordering exactly
+ * (approved-first, then newest-updated — same rule
+ * {@link resolveCharacterCardPortraitAsset} already applies for the roster
+ * card thumbnail) so the picker's default/pre-selected candidate always
+ * matches today's auto-resolution behavior byte-for-byte until the user
+ * actively picks a different one. Returns `null` when the character has no
+ * `primary_portrait` of its own yet (matches the real "no reference
+ * attached" auto behavior for a brand-new variant/twin — see
+ * {@link buildReferenceCandidates}'s doc comment).
+ */
+export function resolveDefaultReferenceAssetLinkId(
+  assets: VerticalDramaCharacterAsset[],
+  characterId: string
+): string | null {
+  const own = assets
+    .filter(a => a.characterId === characterId && a.role === "primary_portrait")
+    .sort((a, b) => {
+      const aApproved = a.state === "approved";
+      const bApproved = b.state === "approved";
+      if (aApproved !== bApproved) return aApproved ? -1 : 1;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  return own[0]?.assetLinkId ?? null;
+}
+
 /** Minimum shape `buildCharacterRosterEntries` needs from a character DTO
  *  (planning/vertical-drama-character-variants/plan.md Phase E) — kept
  *  separate from the full `characterRowToDto` response shape so this stays
@@ -297,6 +471,142 @@ export function buildCharacterRosterEntries<T extends VdRosterCharacterFields>(
         ? characters.find(other => other.characterId === c.sharesFaceWithCharacterId)?.name
         : undefined,
     }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* W2 manual CRUD (plan: vertical-drama-twin-variant-completeness, F6) —      */
+/* pure mutation-input builders + copy helpers, kept separate from the        */
+/* dialog JSX below so they stay testable with plain fixtures (matches this   */
+/* file's own established convention — see `buildCharacterRosterEntries`/     */
+/* `buildReferenceCandidates` above and their sibling `__tests__/*.test.ts`   */
+/* files — a full render test of this ~4000-line panel is impractical).       */
+/* -------------------------------------------------------------------------- */
+
+/** Exact payload shape `verticalDramaCharacters.createCharacterVariant`
+ *  expects (`server/routers/verticalDramaCharacters.ts`, ~line 977) — kept as
+ *  a local literal type rather than importing the router's Zod-inferred type
+ *  directly, since that file pulls in server-only modules that must never
+ *  reach the client bundle (same rationale as `VD_CHARACTER_SHEET_TYPE_VALUES`
+ *  above). If the router's input schema ever changes, update this to match. */
+export interface VdCreateCharacterVariantInput {
+  seriesId: string;
+  parentCharacterId: string;
+  variantLabel: string;
+  variantType: "outfit" | "age_stage";
+  customDescription?: string;
+  referenceMediaAssetId?: string;
+}
+
+/** Builds the `createCharacterVariant` mutation payload from the "เพิ่มลุค"
+ *  dialog's raw form state: trims `variantLabel`/`customDescription`, and
+ *  omits `customDescription`/`referenceMediaAssetId` entirely when empty/null
+ *  rather than sending an empty string (matches the input schema's own
+ *  `.optional()` — an empty string would otherwise pass Zod's `.max(2000)`
+ *  but pointlessly override the mutation's own `variantLabel` fallback for
+ *  `data.description`, see that mutation's doc comment). */
+export function buildCreateCharacterVariantInput(params: {
+  seriesId: string;
+  parentCharacterId: string;
+  variantLabel: string;
+  variantType: "outfit" | "age_stage";
+  customDescription: string;
+  referenceMediaAssetId: string | null;
+}): VdCreateCharacterVariantInput {
+  const variantLabel = params.variantLabel.trim();
+  const customDescription = params.customDescription.trim();
+  return {
+    seriesId: params.seriesId,
+    parentCharacterId: params.parentCharacterId,
+    variantLabel,
+    variantType: params.variantType,
+    ...(customDescription ? { customDescription } : {}),
+    ...(params.referenceMediaAssetId
+      ? { referenceMediaAssetId: params.referenceMediaAssetId }
+      : {}),
+  };
+}
+
+/** Exact payload shape `verticalDramaCharacters.createCharacterTwin` expects
+ *  (`server/routers/verticalDramaCharacters.ts`, ~line 1057) — same rationale
+ *  as `VdCreateCharacterVariantInput` above for why this isn't imported from
+ *  the router file directly. */
+export interface VdCreateCharacterTwinInput {
+  seriesId: string;
+  sharesFaceWithCharacterId: string;
+  name: string;
+  role?: string;
+  customDescription?: string;
+  referenceMediaAssetId?: string;
+}
+
+/** Builds the `createCharacterTwin` mutation payload from the "เพิ่มแฝด"
+ *  dialog's raw form state — same trim/omit-when-empty convention as
+ *  `buildCreateCharacterVariantInput` above. */
+export function buildCreateCharacterTwinInput(params: {
+  seriesId: string;
+  sharesFaceWithCharacterId: string;
+  name: string;
+  role: string;
+  customDescription: string;
+  referenceMediaAssetId: string | null;
+}): VdCreateCharacterTwinInput {
+  const name = params.name.trim();
+  const role = params.role.trim();
+  const customDescription = params.customDescription.trim();
+  return {
+    seriesId: params.seriesId,
+    sharesFaceWithCharacterId: params.sharesFaceWithCharacterId,
+    name,
+    ...(role ? { role } : {}),
+    ...(customDescription ? { customDescription } : {}),
+    ...(params.referenceMediaAssetId
+      ? { referenceMediaAssetId: params.referenceMediaAssetId }
+      : {}),
+  };
+}
+
+/** Bilingual summary toast copy for a `detectCharacterVariantsNow` success
+ *  response — matches the exact wording confirmed in the task brief. All
+ *  three counts at 0 gets its own "nothing found" message rather than
+ *  "Created 0 variant(s), 0 twin(s), updated 0", which reads as a bug/error
+ *  even though the call succeeded. */
+export function buildDetectCharacterVariantsSummaryMessage(
+  lang: Lang,
+  result: {
+    variantsCreated: number;
+    variantsUpdated: number;
+    twinsCreated: number;
+  }
+): string {
+  if (
+    result.variantsCreated === 0 &&
+    result.variantsUpdated === 0 &&
+    result.twinsCreated === 0
+  ) {
+    return t(
+      lang,
+      "ไม่พบ variant/แฝดใหม่จากเนื้อเรื่องปัจจุบัน",
+      "No new variants/twins found in the current story"
+    );
+  }
+  return t(
+    lang,
+    `สร้าง variant ${result.variantsCreated} รายการ, แฝด ${result.twinsCreated} รายการ, อัปเดต ${result.variantsUpdated} รายการ`,
+    `Created ${result.variantsCreated} variant(s), ${result.twinsCreated} twin(s), updated ${result.variantsUpdated}`
+  );
+}
+
+/** Shared error-message resolution for every mutation's `onError` in this
+ *  panel — extracted to a pure, exported function so it's independently
+ *  testable (e.g. that `deleteCharacter`'s PRECONDITION_FAILED Thai message
+ *  passes straight through unmodified) without needing a full component
+ *  render. Byte-identical logic to what `onError` inlined before this
+ *  extraction. */
+export function resolveVdCharacterMutationErrorMessage(
+  err: { message?: string } | null | undefined,
+  lang: Lang
+): string {
+  return err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong");
 }
 
 function extractCharacterDescriptionForDisplay(
@@ -691,6 +1001,19 @@ export function VerticalDramaCharacterStockPanel({
   const pollingCharacterKey = (characterId: string, role: string) =>
     `${characterId}::${role}`;
 
+  /** Reference-image-picker (vertical-drama-reference-picker-outfit-lock
+   *  plan, Phase D3): explicit per-character override of which
+   *  `primary_portrait` asset is attached as the identity-lock reference on
+   *  the next `generateCharacterImage`/`generateCharacterSheet` call for
+   *  that character. Keyed by characterId so switching characters never
+   *  clobbers another character's choice; absent key = "use auto-
+   *  resolution" (today's exact default backend behavior, unchanged).
+   *  In-memory only, matches this file's existing per-character state
+   *  convention (see `generatedImageUrls`/`pollingCharacters` above) — not
+   *  persisted, not reset when the character selection changes. */
+  const [referenceOverrideByCharacter, setReferenceOverrideByCharacter] =
+    useState<Record<string, string>>({});
+
   /** Persistent right-side sidebar column (Library / History / Grid cutter
    *  reference picker) — mirrors Media Studio's own collapsible right panel
    *  (`isRightPanelCollapsed` in MediaStudio.tsx) so the pattern reads the
@@ -789,9 +1112,7 @@ export function VerticalDramaCharacterStockPanel({
     utils.verticalDramaCharacters.listCharacters.invalidate({ seriesId });
 
   const onError = (err: { message?: string }) =>
-    toast.error(
-      err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong")
-    );
+    toast.error(resolveVdCharacterMutationErrorMessage(err, lang));
 
   /* ---- W12-B voice chain — per-character voice casting ----
    * Series-scoped (not per-character), so this query is fetched once
@@ -1052,6 +1373,122 @@ export function VerticalDramaCharacterStockPanel({
   const [confirmingDeleteAssetLinkId, setConfirmingDeleteAssetLinkId] =
     useState<string | null>(null);
 
+  /* ------------------------------------------------------------------ */
+  /* W2 manual CRUD (plan: vertical-drama-twin-variant-completeness, F6) */
+  /* ------------------------------------------------------------------ */
+
+  /** "เพิ่มลุค" dialog — `null` when closed, else the BASE character it's
+   *  being opened for (`buildCharacterRosterEntries`'s top-level entry). */
+  const [variantDialogCharacter, setVariantDialogCharacter] = useState<{
+    characterId: string;
+    name: string;
+  } | null>(null);
+  const [variantLabelInput, setVariantLabelInput] = useState("");
+  const [variantTypeInput, setVariantTypeInput] = useState<
+    "outfit" | "age_stage"
+  >("outfit");
+  const [variantDescriptionInput, setVariantDescriptionInput] = useState("");
+  const [variantReferenceMediaAssetId, setVariantReferenceMediaAssetId] =
+    useState<string | null>(null);
+  const [variantReferencePreviewUrl, setVariantReferencePreviewUrl] =
+    useState<string | null>(null);
+  const [variantReferenceResolving, setVariantReferenceResolving] =
+    useState(false);
+  const [variantReferenceDragOver, setVariantReferenceDragOver] =
+    useState(false);
+  const variantReferenceInputRef = useRef<HTMLInputElement>(null);
+
+  const openVariantDialog = (character: { characterId: string; name: string }) => {
+    setVariantDialogCharacter(character);
+    setVariantLabelInput("");
+    setVariantTypeInput("outfit");
+    setVariantDescriptionInput("");
+    setVariantReferenceMediaAssetId(null);
+    setVariantReferencePreviewUrl(null);
+  };
+  const closeVariantDialog = () => setVariantDialogCharacter(null);
+
+  /** "เพิ่มแฝด" dialog — same open/closed convention as the variant dialog
+   *  above, holding the SOURCE (face-sharing) character it was opened for. */
+  const [twinDialogCharacter, setTwinDialogCharacter] = useState<{
+    characterId: string;
+    name: string;
+  } | null>(null);
+  const [twinNameInput, setTwinNameInput] = useState("");
+  const [twinRoleInput, setTwinRoleInput] = useState("");
+  const [twinDescriptionInput, setTwinDescriptionInput] = useState("");
+  const [twinReferenceMediaAssetId, setTwinReferenceMediaAssetId] = useState<
+    string | null
+  >(null);
+  const [twinReferencePreviewUrl, setTwinReferencePreviewUrl] = useState<
+    string | null
+  >(null);
+  const [twinReferenceResolving, setTwinReferenceResolving] = useState(false);
+  const [twinReferenceDragOver, setTwinReferenceDragOver] = useState(false);
+  const twinReferenceInputRef = useRef<HTMLInputElement>(null);
+
+  const openTwinDialog = (character: { characterId: string; name: string }) => {
+    setTwinDialogCharacter(character);
+    setTwinNameInput("");
+    setTwinRoleInput("");
+    setTwinDescriptionInput("");
+    setTwinReferenceMediaAssetId(null);
+    setTwinReferencePreviewUrl(null);
+  };
+  const closeTwinDialog = () => setTwinDialogCharacter(null);
+
+  /** Delete-CHARACTER confirm state (distinct from `confirmingDeleteAssetLinkId`
+   *  above, which only ever deletes a reference IMAGE) — same 2-step
+   *  inline-confirm convention, shared across the base-character card, twin
+   *  card, and variant-chip delete affordances below. */
+  const [confirmingDeleteCharacterId, setConfirmingDeleteCharacterId] =
+    useState<string | null>(null);
+
+  const createVariantMutation =
+    trpc.verticalDramaCharacters.createCharacterVariant.useMutation({
+      onSuccess: res => {
+        invalidate();
+        setSelectedCharacterId(res.character.characterId);
+        toast.success(t(lang, "เพิ่มลุคแล้ว", "Look added"));
+        closeVariantDialog();
+      },
+      onError,
+    });
+
+  const createTwinMutation =
+    trpc.verticalDramaCharacters.createCharacterTwin.useMutation({
+      onSuccess: res => {
+        invalidate();
+        setSelectedCharacterId(res.character.characterId);
+        toast.success(t(lang, "เพิ่มแฝดแล้ว", "Twin added"));
+        closeTwinDialog();
+      },
+      onError,
+    });
+
+  const deleteCharacterMutation =
+    trpc.verticalDramaCharacters.deleteCharacter.useMutation({
+      onSuccess: () => {
+        invalidate();
+        toast.success(t(lang, "ลบตัวละครแล้ว", "Character deleted"));
+      },
+      onError,
+    });
+
+  /** "ตรวจจับ variant/แฝด" (`detectCharacterVariantsNow`) — a real, slow LLM
+   *  call (seconds, costs credits), so it's deliberately NOT folded into the
+   *  shared `mutating` flag below (would needlessly disable every other
+   *  roster control for the whole duration); its own button carries its own
+   *  `isPending` spinner instead. */
+  const detectVariantsMutation =
+    trpc.verticalDramaCharacters.detectCharacterVariantsNow.useMutation({
+      onSuccess: res => {
+        invalidate();
+        toast.success(buildDetectCharacterVariantsSummaryMessage(lang, res));
+      },
+      onError,
+    });
+
   /**
    * Poll a submitted character portrait/sheet generation task
    * (`generateCharacterImage`/`generateCharacterSheet` return `{taskId,
@@ -1304,6 +1741,13 @@ export function VerticalDramaCharacterStockPanel({
       ...(negativePrompt ? { approvedNegativePrompt: negativePrompt } : {}),
       ...(selectedImageModelId ? { selectedImageModelId } : {}),
       ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+      // Reference-image-picker (Phase D3) — only passed when the user has
+      // explicitly overridden the reference for this character; omitted
+      // entirely otherwise so existing auto-resolution behavior is
+      // byte-identical to before this feature.
+      ...(referenceOverrideByCharacter[characterId]
+        ? { referenceAssetLinkId: referenceOverrideByCharacter[characterId] }
+        : {}),
     });
   };
 
@@ -1362,34 +1806,48 @@ export function VerticalDramaCharacterStockPanel({
   const cardResolveMutation =
     trpc.verticalDramaCharacters.resolveMediaAssetForImport.useMutation();
 
+  /** Resolves a dropped/uploaded image (a `data:` URL from a file/grid-cutter
+   *  tile, or an already-hosted URL from Library/History) into a canonical
+   *  `media_assets` id, via `resolveMediaAssetForImport` — same 2-branch
+   *  resolution `assignDroppedReference` below already performed inline;
+   *  extracted here so the "เพิ่มลุค"/"เพิ่มแฝด" dialogs' optional reference-
+   *  image attach (W2, plan: vertical-drama-twin-variant-completeness) can
+   *  reuse the EXACT same resolution without also calling `linkAsset` — those
+   *  dialogs create the character first and pass `referenceMediaAssetId` to
+   *  `createCharacterVariant`/`createCharacterTwin`, which best-effort-link
+   *  it themselves server-side. */
+  const resolveReferenceImageToMediaAssetId = async (
+    url: string
+  ): Promise<string> => {
+    if (url.startsWith("data:")) {
+      // Grid-cutter tiles carry client-side data URLs — upload first
+      // (mirrors `VerticalDramaCharacterReferencePanel.resolveAndLinkFromDataUrl`).
+      const uploadResult = await cardUploadMutation.mutateAsync({
+        fileName: `character-reference-${Date.now()}.jpg`,
+        fileType: "image/jpeg",
+        fileBase64: url,
+      });
+      const resolved = await cardResolveMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: uploadResult.url,
+        mimeType: uploadResult.fileType,
+      });
+      return resolved.mediaAssetId;
+    }
+    const resolved = await cardResolveMutation.mutateAsync({
+      seriesId,
+      source: "url",
+      url,
+      mimeType: "image/jpeg",
+    });
+    return resolved.mediaAssetId;
+  };
+
   const assignDroppedReference = async (characterId: string, url: string) => {
     setAssigningCharacterId(characterId);
     try {
-      let mediaAssetId: string;
-      if (url.startsWith("data:")) {
-        // Grid-cutter tiles carry client-side data URLs — upload first
-        // (mirrors `VerticalDramaCharacterReferencePanel.resolveAndLinkFromDataUrl`).
-        const uploadResult = await cardUploadMutation.mutateAsync({
-          fileName: `character-reference-${Date.now()}.jpg`,
-          fileType: "image/jpeg",
-          fileBase64: url,
-        });
-        const resolved = await cardResolveMutation.mutateAsync({
-          seriesId,
-          source: "url",
-          url: uploadResult.url,
-          mimeType: uploadResult.fileType,
-        });
-        mediaAssetId = resolved.mediaAssetId;
-      } else {
-        const resolved = await cardResolveMutation.mutateAsync({
-          seriesId,
-          source: "url",
-          url,
-          mimeType: "image/jpeg",
-        });
-        mediaAssetId = resolved.mediaAssetId;
-      }
+      const mediaAssetId = await resolveReferenceImageToMediaAssetId(url);
       linkMutation.mutate({
         seriesId,
         characterId,
@@ -1411,6 +1869,109 @@ export function VerticalDramaCharacterStockPanel({
       setAssigningCharacterId(null);
     }
   };
+
+  /** Factory for the "เพิ่มลุค"/"เพิ่มแฝด" dialogs' reference-image drop
+   *  zone + upload-button handlers — parameterized by that dialog's own
+   *  `mediaAssetId`/`previewUrl`/`resolving` setters so the variant and twin
+   *  dialogs can each get their own independent instance without duplicating
+   *  the drag/drop validation + resolve-and-store logic twice. Mirrors
+   *  `VerticalDramaCharacterReferencePanel`'s own drop-zone + "อัปโหลดภาพ"
+   *  button validation copy exactly (unsupported type / too-large / no-image
+   *  messages), just resolving to a stored `mediaAssetId` instead of
+   *  immediately linking it (no character exists yet to link onto). */
+  const makeReferenceAttachHandlers = (
+    setMediaAssetId: (id: string | null) => void,
+    setPreviewUrl: (url: string | null) => void,
+    setResolving: (resolving: boolean) => void
+  ) => {
+    const resolve = async (url: string) => {
+      setResolving(true);
+      try {
+        const mediaAssetId = await resolveReferenceImageToMediaAssetId(url);
+        setMediaAssetId(mediaAssetId);
+        setPreviewUrl(url);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t(lang, "นำเข้าอ้างอิงไม่สำเร็จ", "Failed to import reference")
+        );
+      } finally {
+        setResolving(false);
+      }
+    };
+    const handleDrop = (event: React.DragEvent) => {
+      event.preventDefault();
+      const { input, error } = readDroppedImageInput(event);
+      if (error) {
+        if (error.kind === "unsupported-file-type") {
+          toast.error(
+            t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported")
+          );
+        } else {
+          toast.error(
+            t(
+              lang,
+              `ไฟล์ภาพใหญ่เกินไป (สูงสุด ${Math.round(error.maxBytes / (1024 * 1024))}MB)`,
+              `Image is too large (max ${Math.round(error.maxBytes / (1024 * 1024))}MB)`
+            )
+          );
+        }
+        return;
+      }
+      if (!input) {
+        toast.error(
+          t(
+            lang,
+            "ไม่พบภาพที่ลากมา — ลองใหม่อีกครั้ง",
+            "No draggable image found — please try again"
+          )
+        );
+        return;
+      }
+      if (input.kind === "url") {
+        void resolve(input.url);
+      } else {
+        void readFileAsDataUrl(input.file).then(dataUrl => resolve(dataUrl));
+      }
+    };
+    const handleFileInput = (
+      event: React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast.error(
+          t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported")
+        );
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        toast.error(
+          t(
+            lang,
+            "ไฟล์ภาพใหญ่เกินไป (สูงสุด 15MB)",
+            "Image is too large (max 15MB)"
+          )
+        );
+        return;
+      }
+      void readFileAsDataUrl(file).then(dataUrl => resolve(dataUrl));
+    };
+    return { handleDrop, handleFileInput };
+  };
+
+  const variantReferenceHandlers = makeReferenceAttachHandlers(
+    setVariantReferenceMediaAssetId,
+    setVariantReferencePreviewUrl,
+    setVariantReferenceResolving
+  );
+  const twinReferenceHandlers = makeReferenceAttachHandlers(
+    setTwinReferenceMediaAssetId,
+    setTwinReferencePreviewUrl,
+    setTwinReferenceResolving
+  );
 
   const characters = listQuery.data?.characters ?? [];
   const manifest = listQuery.data?.manifest;
@@ -1439,6 +2000,28 @@ export function VerticalDramaCharacterStockPanel({
 
   // Auto-select the first character once data loads.
   type VdCharacterListItem = (typeof characters)[number];
+
+  /** Reference-picker (Phase D3, widened 2026-07-11 for the reverse/
+   *  "downward" case) reusable `characterId -> VdReferenceCandidateLookupEntry`
+   *  lookup — the same resolution `buildCharacterRosterEntries`'s own inline
+   *  `shareFaceSourceName` computation already does per-twin (see below),
+   *  built once as a `Map` so `buildReferenceCandidates` can resolve a
+   *  variant/twin's source character name AND scan for characters that
+   *  point back at the one being viewed, without re-scanning the flat list
+   *  for every character. */
+  const charactersById = useMemo(() => {
+    const map = new Map<string, VdReferenceCandidateLookupEntry>();
+    for (const c of characters as VdCharacterListItem[]) {
+      map.set(c.characterId, {
+        characterId: c.characterId,
+        name: c.name,
+        parentCharacterId: c.parentCharacterId,
+        sharesFaceWithCharacterId: c.sharesFaceWithCharacterId,
+        variantLabel: c.variantLabel,
+      });
+    }
+    return map;
+  }, [characters]);
 
   /** planning/vertical-drama-character-variants/plan.md Phase E — the flat
    *  `characters` list now mixes plain characters, variant rows
@@ -1517,7 +2100,10 @@ export function VerticalDramaCharacterStockPanel({
   const mutating =
     createMutation.isPending ||
     linkMutation.isPending ||
-    deleteAssetMutation.isPending;
+    deleteAssetMutation.isPending ||
+    createVariantMutation.isPending ||
+    createTwinMutation.isPending ||
+    deleteCharacterMutation.isPending;
 
   const requireModelSelected = (): boolean => {
     if (selectedImageModelId) return true;
@@ -1583,13 +2169,53 @@ export function VerticalDramaCharacterStockPanel({
           visible so users know which region/ethnicity default is currently
           applied to every generated character image. Changed from the
           Series Settings tab. */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-muted-foreground">
           {t(lang, "ตัวละครในซีรีย์", "Series characters")}
         </span>
-        <Badge variant="outline" className="gap-1 text-xs font-normal">
-          {t(lang, "กลุ่มผู้ชมเป้าหมาย", "Target audience")}: {targetAudienceRegionLabel}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="gap-1 text-xs font-normal">
+            {t(lang, "กลุ่มผู้ชมเป้าหมาย", "Target audience")}: {targetAudienceRegionLabel}
+          </Badge>
+          {/* W2 "ตรวจจับ variant/แฝดตอนนี้" (plan: vertical-drama-twin-
+          variant-completeness, F6) — manual on-demand trigger for the same
+          detection `runImproveScriptJob` already runs automatically after a
+          script-improve pass, so a user doesn't have to re-run improve-
+          script just to pick up variants/twins from the current draft. Real
+          LLM call (seconds, costs credits) — button carries its own
+          `isPending` spinner rather than the shared `mutating` flag (see that
+          flag's own doc comment). */}
+          {!readOnly && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              disabled={detectVariantsMutation.isPending}
+              aria-label={t(
+                lang,
+                "ตรวจจับ variant/แฝดตอนนี้",
+                "Detect variants/twins now"
+              )}
+              title={t(
+                lang,
+                "สแกนเนื้อเรื่องปัจจุบันหา variant/แฝดใหม่ (ใช้ LLM จริง อาจใช้เวลาสักครู่)",
+                "Scans the current story for new variants/twins (real LLM call, may take a moment)"
+              )}
+              onClick={() => detectVariantsMutation.mutate({ seriesId })}
+            >
+              {detectVariantsMutation.isPending ? (
+                <Loader2
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin"
+                />
+              ) : (
+                <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+              )}
+              {t(lang, "ตรวจจับ variant/แฝด", "Detect variants/twins")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Top-level 2-column layout (fix-round-4): the reference/import panel
@@ -1669,6 +2295,12 @@ export function VerticalDramaCharacterStockPanel({
                     const isDropTarget = dragOverCharacterId === c.characterId;
                     const isAssigningThis =
                       assigningCharacterId === c.characterId;
+                    const confirmingThisCharacterDelete =
+                      confirmingDeleteCharacterId === c.characterId;
+                    const deletingThisCharacter =
+                      deleteCharacterMutation.isPending &&
+                      deleteCharacterMutation.variables?.characterId ===
+                        c.characterId;
                     const portraitAsset = getCharacterCardPortraitAsset(
                       c.characterId
                     );
@@ -1983,6 +2615,13 @@ export function VerticalDramaCharacterStockPanel({
                                   t(lang, "ตัวแปร", "Variant");
                                 const isVariantDropTarget =
                                   dragOverCharacterId === v.characterId;
+                                const confirmingThisVariantCharacterDelete =
+                                  confirmingDeleteCharacterId ===
+                                  v.characterId;
+                                const deletingThisVariantCharacter =
+                                  deleteCharacterMutation.isPending &&
+                                  deleteCharacterMutation.variables
+                                    ?.characterId === v.characterId;
                                 return (
                                   /* Card-level image controls (2026-07-11):
                                   a variant chip used to be ONE `<button>`
@@ -2004,7 +2643,7 @@ export function VerticalDramaCharacterStockPanel({
                                   <div
                                     key={v.characterId}
                                     className={cn(
-                                      "group/variant relative flex max-w-[7.5rem] items-center gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
+                                      "group/variant relative flex max-w-[10rem] items-center gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
                                       variantActive
                                         ? "border-purple-400 bg-purple-50/60 ring-1 ring-purple-100"
                                         : "border-border hover:border-muted-foreground/40",
@@ -2105,14 +2744,14 @@ export function VerticalDramaCharacterStockPanel({
                                           <img
                                             src={variantThumbnailUrl}
                                             alt=""
-                                            className="aspect-[9/16] h-9 w-6 shrink-0 rounded object-cover"
+                                            className="aspect-[9/16] h-20 w-14 shrink-0 rounded object-cover"
                                           />
                                         </button>
                                       ) : (
-                                        <span className="flex aspect-[9/16] h-9 w-6 shrink-0 items-center justify-center rounded border border-dashed border-border text-muted-foreground">
+                                        <span className="flex aspect-[9/16] h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-border text-muted-foreground">
                                           <User
                                             aria-hidden="true"
-                                            className="h-3 w-3"
+                                            className="h-5 w-5"
                                           />
                                         </span>
                                       )}
@@ -2129,7 +2768,7 @@ export function VerticalDramaCharacterStockPanel({
                                               type="button"
                                               size="icon"
                                               variant="ghost"
-                                              className="h-4 w-4"
+                                              className="h-5 w-5"
                                               disabled={mutating}
                                               aria-label={t(
                                                 lang,
@@ -2150,14 +2789,14 @@ export function VerticalDramaCharacterStockPanel({
                                             >
                                               <X
                                                 aria-hidden="true"
-                                                className="h-2.5 w-2.5"
+                                                className="h-3 w-3"
                                               />
                                             </Button>
                                             <Button
                                               type="button"
                                               size="icon"
                                               variant="destructive"
-                                              className="h-4 w-4"
+                                              className="h-5 w-5"
                                               disabled={mutating}
                                               aria-label={t(
                                                 lang,
@@ -2184,12 +2823,12 @@ export function VerticalDramaCharacterStockPanel({
                                               {deletingThisVariant ? (
                                                 <Loader2
                                                   aria-hidden="true"
-                                                  className="h-2.5 w-2.5 animate-spin"
+                                                  className="h-3 w-3 animate-spin"
                                                 />
                                               ) : (
                                                 <Trash2
                                                   aria-hidden="true"
-                                                  className="h-2.5 w-2.5"
+                                                  className="h-3 w-3"
                                                 />
                                               )}
                                             </Button>
@@ -2199,7 +2838,7 @@ export function VerticalDramaCharacterStockPanel({
                                             type="button"
                                             size="icon"
                                             variant="secondary"
-                                            className="absolute -right-1 -top-1 h-4 w-4 opacity-0 shadow transition-opacity group-hover/variant:opacity-100 focus-visible:opacity-100"
+                                            className="absolute -right-1 -top-1 h-5 w-5 opacity-0 shadow transition-opacity group-hover/variant:opacity-100 focus-visible:opacity-100"
                                             disabled={mutating}
                                             aria-label={t(
                                               lang,
@@ -2220,7 +2859,7 @@ export function VerticalDramaCharacterStockPanel({
                                           >
                                             <Trash2
                                               aria-hidden="true"
-                                              className="h-2.5 w-2.5"
+                                              className="h-3 w-3"
                                             />
                                           </Button>
                                         ))}
@@ -2241,7 +2880,7 @@ export function VerticalDramaCharacterStockPanel({
                                     >
                                       <span
                                         className={cn(
-                                          "truncate text-[10px]",
+                                          "truncate text-xs",
                                           variantActive
                                             ? "font-semibold"
                                             : "font-medium"
@@ -2250,6 +2889,111 @@ export function VerticalDramaCharacterStockPanel({
                                         {variantLabel}
                                       </span>
                                     </button>
+                                    {/* W2 delete-CHARACTER for this variant
+                                    row (distinct from the portrait-image
+                                    delete on the thumbnail above) — same
+                                    2-step inline confirm convention as the
+                                    top-level card's own delete-character
+                                    button. */}
+                                    {confirmingThisVariantCharacterDelete ? (
+                                      <div
+                                        className="flex shrink-0 items-center gap-0.5"
+                                        onClick={event =>
+                                          event.stopPropagation()
+                                        }
+                                      >
+                                        <Button
+                                          type="button"
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-5 w-5"
+                                          disabled={mutating}
+                                          aria-label={t(
+                                            lang,
+                                            "ยกเลิก",
+                                            "Cancel"
+                                          )}
+                                          title={t(lang, "ยกเลิก", "Cancel")}
+                                          onClick={() =>
+                                            setConfirmingDeleteCharacterId(
+                                              null
+                                            )
+                                          }
+                                        >
+                                          <X
+                                            aria-hidden="true"
+                                            className="h-3 w-3"
+                                          />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="icon"
+                                          variant="destructive"
+                                          className="h-5 w-5"
+                                          disabled={mutating}
+                                          aria-label={t(
+                                            lang,
+                                            `ยืนยันลบลุค ${variantLabel} ของ ${c.name}`,
+                                            `Confirm delete ${c.name}'s ${variantLabel} look`
+                                          )}
+                                          title={t(
+                                            lang,
+                                            "ยืนยันลบลุคนี้ทั้งตัว",
+                                            "Confirm delete this look"
+                                          )}
+                                          onClick={() => {
+                                            setConfirmingDeleteCharacterId(
+                                              null
+                                            );
+                                            deleteCharacterMutation.mutate({
+                                              seriesId,
+                                              characterId: v.characterId,
+                                            });
+                                          }}
+                                        >
+                                          {deletingThisVariantCharacter ? (
+                                            <Loader2
+                                              aria-hidden="true"
+                                              className="h-3 w-3 animate-spin"
+                                            />
+                                          ) : (
+                                            <Trash2
+                                              aria-hidden="true"
+                                              className="h-3 w-3"
+                                            />
+                                          )}
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-5 w-5 shrink-0 opacity-0 transition-opacity group-hover/variant:opacity-100 focus-visible:opacity-100"
+                                        disabled={mutating}
+                                        aria-label={t(
+                                          lang,
+                                          `ลบลุค ${variantLabel} ของ ${c.name}`,
+                                          `Delete ${c.name}'s ${variantLabel} look`
+                                        )}
+                                        title={t(
+                                          lang,
+                                          "ลบลุคนี้ทั้งตัว",
+                                          "Delete this look"
+                                        )}
+                                        onClick={event => {
+                                          event.stopPropagation();
+                                          setConfirmingDeleteCharacterId(
+                                            v.characterId
+                                          );
+                                        }}
+                                      >
+                                        <Trash2
+                                          aria-hidden="true"
+                                          className="h-3 w-3"
+                                        />
+                                      </Button>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -2345,6 +3089,161 @@ export function VerticalDramaCharacterStockPanel({
                                   />
                                 )}
                               </Button>
+                              {/* W2 "เพิ่มลุค"/"เพิ่มแฝด" (plan: vertical-
+                              drama-twin-variant-completeness, F6) — only on
+                              BASE characters (no `sharesFaceWithCharacterId`;
+                              `c.parentCharacterId` is always unset here since
+                              `buildCharacterRosterEntries` already filters
+                              variant rows out of the top-level list, see that
+                              function's own doc comment). A twin is an
+                              independent person, not itself a face-source for
+                              a further look/twin, so it doesn't get these. */}
+                              {!c.sharesFaceWithCharacterId && (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(
+                                      lang,
+                                      `เพิ่มลุคให้ ${c.name}`,
+                                      `Add a look for ${c.name}`
+                                    )}
+                                    title={t(lang, "เพิ่มลุค", "Add look")}
+                                    onClick={() =>
+                                      openVariantDialog({
+                                        characterId: c.characterId,
+                                        name: c.name,
+                                      })
+                                    }
+                                  >
+                                    <Shirt
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(
+                                      lang,
+                                      `เพิ่มแฝดของ ${c.name}`,
+                                      `Add a twin for ${c.name}`
+                                    )}
+                                    title={t(lang, "เพิ่มแฝด", "Add twin")}
+                                    onClick={() =>
+                                      openTwinDialog({
+                                        characterId: c.characterId,
+                                        name: c.name,
+                                      })
+                                    }
+                                  >
+                                    <UserPlus
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
+                                  </Button>
+                                </>
+                              )}
+                              {/* W2 delete-CHARACTER (distinct from the
+                              portrait-image delete button above this card's
+                              thumbnail) — 2-step inline confirm, same
+                              convention as `confirmingDeleteAssetLinkId`.
+                              Available on every top-level card (base
+                              characters AND twins); `deleteCharacter` itself
+                              throws `PRECONDITION_FAILED` (surfaced via the
+                              shared `onError` toast) when this character
+                              still has variants/twins pointing at it. */}
+                              {confirmingThisCharacterDelete ? (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(lang, "ยกเลิก", "Cancel")}
+                                    title={t(lang, "ยกเลิก", "Cancel")}
+                                    onClick={() =>
+                                      setConfirmingDeleteCharacterId(null)
+                                    }
+                                  >
+                                    <X
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="destructive"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(
+                                      lang,
+                                      `ยืนยันลบตัวละคร ${c.name}`,
+                                      `Confirm delete character ${c.name}`
+                                    )}
+                                    title={t(
+                                      lang,
+                                      "ยืนยันลบตัวละครนี้ทั้งตัว",
+                                      "Confirm delete this character"
+                                    )}
+                                    onClick={() => {
+                                      setConfirmingDeleteCharacterId(null);
+                                      deleteCharacterMutation.mutate({
+                                        seriesId,
+                                        characterId: c.characterId,
+                                      });
+                                    }}
+                                  >
+                                    {deletingThisCharacter ? (
+                                      <Loader2
+                                        aria-hidden="true"
+                                        className="h-3.5 w-3.5 animate-spin"
+                                      />
+                                    ) : (
+                                      <Trash2
+                                        aria-hidden="true"
+                                        className="h-3.5 w-3.5"
+                                      />
+                                    )}
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 shrink-0"
+                                  disabled={mutating}
+                                  aria-label={t(
+                                    lang,
+                                    `ลบตัวละคร ${c.name}`,
+                                    `Delete character ${c.name}`
+                                  )}
+                                  title={t(
+                                    lang,
+                                    "ลบตัวละครนี้ทั้งตัว",
+                                    "Delete this character"
+                                  )}
+                                  onClick={() =>
+                                    setConfirmingDeleteCharacterId(
+                                      c.characterId
+                                    )
+                                  }
+                                >
+                                  <Trash2
+                                    aria-hidden="true"
+                                    className="h-3.5 w-3.5"
+                                  />
+                                </Button>
+                              )}
                             </div>
                           )}
 
@@ -2567,6 +3466,96 @@ export function VerticalDramaCharacterStockPanel({
                       );
                     })()}
 
+                    {/* Reference-image picker (vertical-drama-reference-
+                    picker-outfit-lock plan, Phase D3) — shows which
+                    `primary_portrait` asset(s) are available as the
+                    identity-lock reference for the NEXT generate call, and
+                    which one is currently selected (explicit override, or
+                    the same asset the backend would auto-pick). Rendered
+                    UNCONDITIONALLY (not gated on `!readOnly`) so a
+                    read-only viewer still sees what would be used, for
+                    transparency — only the click-to-select interaction is
+                    disabled when `readOnly`. Renders nothing when there are
+                    no candidates at all (nothing to show/pick). */}
+                    {(() => {
+                      const referenceCandidates = buildReferenceCandidates(
+                        assets,
+                        selectedCharacter,
+                        charactersById
+                      );
+                      if (referenceCandidates.length === 0) return null;
+                      const defaultReferenceAssetLinkId =
+                        resolveDefaultReferenceAssetLinkId(
+                          assets,
+                          selectedCharacter.characterId
+                        );
+                      const selectedReferenceAssetLinkId =
+                        referenceOverrideByCharacter[
+                          selectedCharacter.characterId
+                        ] ?? defaultReferenceAssetLinkId ?? undefined;
+                      return (
+                        <div className="mt-1 flex flex-col gap-1">
+                          <span className="text-[11px] font-medium text-foreground/80">
+                            {t(lang, "ภาพอ้างอิงตัวตน", "Identity reference")}
+                          </span>
+                          <div className="flex flex-wrap items-start gap-2">
+                            {referenceCandidates.map(candidate => {
+                              const isSelected =
+                                candidate.assetLinkId ===
+                                selectedReferenceAssetLinkId;
+                              return (
+                                <button
+                                  key={candidate.assetLinkId}
+                                  type="button"
+                                  disabled={readOnly}
+                                  aria-pressed={isSelected}
+                                  aria-label={t(
+                                    lang,
+                                    "เลือกภาพนี้เป็นภาพอ้างอิงตัวตน",
+                                    "Select this identity reference image"
+                                  )}
+                                  className={cn(
+                                    "flex flex-col items-center gap-0.5",
+                                    readOnly
+                                      ? "cursor-default"
+                                      : "cursor-pointer"
+                                  )}
+                                  onClick={() => {
+                                    if (readOnly) return;
+                                    setReferenceOverrideByCharacter(prev => ({
+                                      ...prev,
+                                      [selectedCharacter.characterId]:
+                                        candidate.assetLinkId,
+                                    }));
+                                  }}
+                                >
+                                  <img
+                                    src={candidate.thumbnailUrl}
+                                    alt=""
+                                    className={cn(
+                                      "h-10 w-10 rounded border border-border object-cover",
+                                      isSelected &&
+                                        "border-primary ring-2 ring-primary"
+                                    )}
+                                  />
+                                  {candidate.sourceLabel !== "own" &&
+                                    candidate.sourceName && (
+                                      <span className="max-w-[48px] truncate text-center text-[9px] text-muted-foreground">
+                                        {t(
+                                          lang,
+                                          `จาก ${candidate.sourceName}`,
+                                          `from ${candidate.sourceName}`
+                                        )}
+                                      </span>
+                                    )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {!readOnly && (
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Button
@@ -2676,6 +3665,19 @@ export function VerticalDramaCharacterStockPanel({
                               sheetLanguage,
                               ...(selectedImageModelId ? { selectedImageModelId } : {}),
                               ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+                              // Reference-image-picker (Phase D3) — same
+                              // override/omit rule as `generateImageMutation`
+                              // above.
+                              ...(referenceOverrideByCharacter[
+                                selectedCharacter.characterId
+                              ]
+                                ? {
+                                    referenceAssetLinkId:
+                                      referenceOverrideByCharacter[
+                                        selectedCharacter.characterId
+                                      ],
+                                  }
+                                : {}),
                             });
                           }}
                           data-testid="vd-generate-character-sheet"
@@ -3694,6 +4696,368 @@ export function VerticalDramaCharacterStockPanel({
           </div>
         )}
       </div>
+
+      {/* W2 "เพิ่มลุค" dialog (plan: vertical-drama-twin-variant-
+      completeness, F6) — manual counterpart of the AI-only
+      `detectCharacterVariantsNow`/`reconcileCharacterVariantPlan` path (see
+      `createCharacterVariant`'s doc comment, `server/routers/
+      verticalDramaCharacters.ts`). */}
+      <Dialog
+        open={variantDialogCharacter !== null}
+        onOpenChange={open => {
+          if (!open) closeVariantDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t(
+                lang,
+                `เพิ่มลุคให้ ${variantDialogCharacter?.name ?? ""}`,
+                `Add a look for ${variantDialogCharacter?.name ?? ""}`
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                lang,
+                "สร้างตัวละคร variant ใหม่ — คนเดิม หน้าเดิม แค่ลุค/ช่วงวัยต่างออกไป มีภาพอ้างอิงของตัวเอง",
+                "Creates a new variant character — same person, same identity, just a different look/life-stage, with its own reference image."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-variant-label" className="text-xs">
+                {t(lang, "ชื่อลุค", "Look name")}
+              </Label>
+              <Input
+                id="vd-variant-label"
+                value={variantLabelInput}
+                onChange={e => setVariantLabelInput(e.target.value)}
+                placeholder={t(lang, "เช่น ชุดทำงาน", "e.g. Work outfit")}
+                maxLength={64}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-variant-type" className="text-xs">
+                {t(lang, "ประเภทลุค", "Look type")}
+              </Label>
+              <Select
+                value={variantTypeInput}
+                onValueChange={value =>
+                  setVariantTypeInput(value as "outfit" | "age_stage")
+                }
+              >
+                <SelectTrigger id="vd-variant-type" className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="outfit">
+                    {t(lang, "ชุด/ลุค (outfit)", "Outfit")}
+                  </SelectItem>
+                  <SelectItem value="age_stage">
+                    {t(lang, "ช่วงอายุ (age_stage)", "Age stage")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {variantTypeInput === "outfit"
+                  ? t(
+                      lang,
+                      "ชุด/ลุค (outfit) — หน้าเหมือนเดิม 100% เปลี่ยนเฉพาะการแต่งตัว",
+                      "Outfit — face stays 100% identical, only the clothing changes."
+                    )
+                  : t(
+                      lang,
+                      "ช่วงอายุ (age_stage) — คนเดิมต่างวัย หน้าอ้างอิงหลวมๆ ไม่ล็อก 100%",
+                      "Age stage — same person at a different life stage; the face reference is loose, not locked 100%."
+                    )}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-variant-description" className="text-xs">
+                {t(lang, "คำอธิบาย (ไม่บังคับ)", "Description (optional)")}
+              </Label>
+              <Textarea
+                id="vd-variant-description"
+                value={variantDescriptionInput}
+                onChange={e => setVariantDescriptionInput(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder={
+                  variantTypeInput === "outfit"
+                    ? t(
+                        lang,
+                        "อธิบายชุด/สไตล์ที่ต้องการ เช่น ชุดยูนิฟอร์มสีขาว มัดผมหางม้า",
+                        "Describe the outfit/style, e.g. white uniform, hair in a ponytail"
+                      )
+                    : t(
+                        lang,
+                        "อธิบายช่วงวัย/ลักษณะที่เปลี่ยนไป เช่น วัยกลางคน ผมสั้นแซมสีเทา",
+                        "Describe the life-stage/appearance change, e.g. middle-aged, short greying hair"
+                      )
+                }
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">
+                {t(lang, "ภาพอ้างอิง (ไม่บังคับ)", "Reference image (optional)")}
+              </Label>
+              <div
+                onDragOver={event => {
+                  event.preventDefault();
+                  setVariantReferenceDragOver(true);
+                }}
+                onDragLeave={() => setVariantReferenceDragOver(false)}
+                onDrop={event => {
+                  setVariantReferenceDragOver(false);
+                  variantReferenceHandlers.handleDrop(event);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-3 text-center text-xs text-muted-foreground transition-colors",
+                  variantReferenceDragOver
+                    ? "border-purple-400 bg-purple-50/60"
+                    : "border-border"
+                )}
+              >
+                {variantReferencePreviewUrl ? (
+                  <img
+                    src={variantReferencePreviewUrl}
+                    alt=""
+                    className="aspect-[9/16] h-20 w-14 rounded object-cover"
+                  />
+                ) : variantReferenceResolving ? (
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                ) : (
+                  <UploadCloud aria-hidden="true" className="h-4 w-4" />
+                )}
+                <span>
+                  {t(lang, "ลากภาพมาวาง หรือ", "Drag an image here, or")}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs"
+                  disabled={variantReferenceResolving}
+                  onClick={() => variantReferenceInputRef.current?.click()}
+                >
+                  <UploadCloud aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t(lang, "อัปโหลดภาพ", "Upload image")}
+                </Button>
+                <input
+                  ref={variantReferenceInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={variantReferenceHandlers.handleFileInput}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={closeVariantDialog}>
+              {t(lang, "ยกเลิก", "Cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={
+                !variantDialogCharacter ||
+                variantLabelInput.trim() === "" ||
+                createVariantMutation.isPending
+              }
+              onClick={() => {
+                if (!variantDialogCharacter) return;
+                createVariantMutation.mutate(
+                  buildCreateCharacterVariantInput({
+                    seriesId,
+                    parentCharacterId: variantDialogCharacter.characterId,
+                    variantLabel: variantLabelInput,
+                    variantType: variantTypeInput,
+                    customDescription: variantDescriptionInput,
+                    referenceMediaAssetId: variantReferenceMediaAssetId,
+                  })
+                );
+              }}
+            >
+              {createVariantMutation.isPending ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus aria-hidden="true" className="h-4 w-4" />
+              )}
+              {t(lang, "เพิ่มลุค", "Add look")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* W2 "เพิ่มแฝด" dialog — manual counterpart of `createCharacterTwin`
+      (`server/routers/verticalDramaCharacters.ts`), same pattern as the
+      variant dialog above. */}
+      <Dialog
+        open={twinDialogCharacter !== null}
+        onOpenChange={open => {
+          if (!open) closeTwinDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t(
+                lang,
+                `เพิ่มแฝดของ ${twinDialogCharacter?.name ?? ""}`,
+                `Add a twin for ${twinDialogCharacter?.name ?? ""}`
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                lang,
+                "สร้างตัวละครใหม่ที่เป็นคนละคน (ชื่อ/id ของตัวเอง) แต่ใช้ใบหน้าเดียวกัน — เช่น พี่น้องแฝด",
+                "Creates a brand-new, independent character (its own name/id) that shares the same face reference — e.g. identical siblings."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-twin-name" className="text-xs">
+                {t(lang, "ชื่อ", "Name")}
+              </Label>
+              <Input
+                id="vd-twin-name"
+                value={twinNameInput}
+                onChange={e => setTwinNameInput(e.target.value)}
+                placeholder={t(lang, "เช่น มีนา", "e.g. Mina")}
+                maxLength={255}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-twin-role" className="text-xs">
+                {t(lang, "บทบาท (ไม่บังคับ)", "Role (optional)")}
+              </Label>
+              <Input
+                id="vd-twin-role"
+                value={twinRoleInput}
+                onChange={e => setTwinRoleInput(e.target.value)}
+                placeholder={t(lang, "น้องสาวฝาแฝด", "Twin sister")}
+                maxLength={100}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-twin-description" className="text-xs">
+                {t(lang, "คำอธิบาย (ไม่บังคับ)", "Description (optional)")}
+              </Label>
+              <Textarea
+                id="vd-twin-description"
+                value={twinDescriptionInput}
+                onChange={e => setTwinDescriptionInput(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder={t(
+                  lang,
+                  "อธิบายจุดที่ทำให้แฝดคนนี้ดูต่างจากตัวต้นแบบ เช่น ทรงผม สไตล์เสื้อผ้า",
+                  "Describe what makes this twin look distinct from the source, e.g. hairstyle, clothing style"
+                )}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">
+                {t(lang, "ภาพอ้างอิง (ไม่บังคับ)", "Reference image (optional)")}
+              </Label>
+              <div
+                onDragOver={event => {
+                  event.preventDefault();
+                  setTwinReferenceDragOver(true);
+                }}
+                onDragLeave={() => setTwinReferenceDragOver(false)}
+                onDrop={event => {
+                  setTwinReferenceDragOver(false);
+                  twinReferenceHandlers.handleDrop(event);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-3 text-center text-xs text-muted-foreground transition-colors",
+                  twinReferenceDragOver
+                    ? "border-purple-400 bg-purple-50/60"
+                    : "border-border"
+                )}
+              >
+                {twinReferencePreviewUrl ? (
+                  <img
+                    src={twinReferencePreviewUrl}
+                    alt=""
+                    className="aspect-[9/16] h-20 w-14 rounded object-cover"
+                  />
+                ) : twinReferenceResolving ? (
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                ) : (
+                  <UploadCloud aria-hidden="true" className="h-4 w-4" />
+                )}
+                <span>
+                  {t(lang, "ลากภาพมาวาง หรือ", "Drag an image here, or")}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs"
+                  disabled={twinReferenceResolving}
+                  onClick={() => twinReferenceInputRef.current?.click()}
+                >
+                  <UploadCloud aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t(lang, "อัปโหลดภาพ", "Upload image")}
+                </Button>
+                <input
+                  ref={twinReferenceInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={twinReferenceHandlers.handleFileInput}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={closeTwinDialog}>
+              {t(lang, "ยกเลิก", "Cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={
+                !twinDialogCharacter ||
+                twinNameInput.trim() === "" ||
+                createTwinMutation.isPending
+              }
+              onClick={() => {
+                if (!twinDialogCharacter) return;
+                createTwinMutation.mutate(
+                  buildCreateCharacterTwinInput({
+                    seriesId,
+                    sharesFaceWithCharacterId: twinDialogCharacter.characterId,
+                    name: twinNameInput,
+                    role: twinRoleInput,
+                    customDescription: twinDescriptionInput,
+                    referenceMediaAssetId: twinReferenceMediaAssetId,
+                  })
+                );
+              }}
+            >
+              {createTwinMutation.isPending ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus aria-hidden="true" className="h-4 w-4" />
+              )}
+              {t(lang, "เพิ่มแฝด", "Add twin")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ImageLightbox
         images={lightboxImage ? [lightboxImage] : []}

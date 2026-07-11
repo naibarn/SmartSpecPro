@@ -618,6 +618,22 @@ export interface GenerateVideoMotionPromptPackParams {
    * Optional — omitted when the active breakdown has no matching item.
    */
   episodePlanContext?: string;
+  /**
+   * Feature flag `verticalDramaRetentionHooks` (`planning/vertical-drama-
+   * retention-hooks/plan.md` W7, added 2026-07-11) — gates whether each
+   * `storyboardShots[]` line in `buildUserPrompt`'s `shotLines` block is
+   * annotated with `is_opening_shot: true` / `is_retention_ending_shot:
+   * true`. Both facts are fully derivable from `storyboardShots` this
+   * function ALREADY receives (opening = the minimum `shotNumber`, ending =
+   * the maximum) — no new caller wiring needed for this pack-level
+   * generator, unlike the per-shot sibling
+   * (`GenerateVerticalDramaShotVideoPromptParams.totalShotCount`). See
+   * `vertical-drama-video-motion-prompt-pack/skill.md`'s "Hook +
+   * retention-ending clip motion energy" rule for the actual creative
+   * instruction (skill-first — no rule text lives here). Omitted/false
+   * preserves today's byte-identical prompt.
+   */
+  retentionHooksEnabled?: boolean;
 }
 
 function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
@@ -625,10 +641,32 @@ function buildUserPrompt(params: GenerateVideoMotionPromptPackParams): string {
   const dialogueLanguage = params.dialogueLanguage ?? "th";
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
+  // Retention hooks (W7) — see `retentionHooksEnabled`'s doc comment above.
+  // Only computed/rendered when the flag is on; `undefined` otherwise so no
+  // shot line ever gets a marker, matching this builder's flag-off
+  // byte-identical contract.
+  const retentionHooksEnabled = params.retentionHooksEnabled === true;
+  const openingShotNumber =
+    retentionHooksEnabled && params.storyboardShots.length > 0
+      ? Math.min(...params.storyboardShots.map((s) => s.shotNumber))
+      : undefined;
+  const endingShotNumber =
+    retentionHooksEnabled && params.storyboardShots.length > 0
+      ? Math.max(...params.storyboardShots.map((s) => s.shotNumber))
+      : undefined;
   const shotLines = params.storyboardShots
     .map((s) => {
       const dialogue = s.dialogueExcerpt ? ` | dialogue: "${s.dialogueExcerpt}"` : "";
-      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description}${dialogue}`;
+      const retentionMarkers = [
+        s.shotNumber === openingShotNumber ? "is_opening_shot: true (episode's hook shot)" : null,
+        s.shotNumber === endingShotNumber
+          ? "is_retention_ending_shot: true (episode's retention-loop ending shot)"
+          : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      const retentionMarkersSuffix = retentionMarkers ? ` | ${retentionMarkers}` : "";
+      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description}${dialogue}${retentionMarkersSuffix}`;
     })
     .join("\n");
 
@@ -1038,6 +1076,57 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
   seriesId: number;
   episodeId: number;
   shotNumber: number;
+  /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W7,
+   * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — the
+   * episode's total shot count, used ONLY to derive `is_retention_ending_shot`
+   * (true when `shotNumber === totalShotCount`). `is_opening_shot` needs no
+   * extra param — `shotNumber === 1` is already derivable from the existing
+   * `shotNumber` field above. Optional; no current call site
+   * (`verticalDramaEpisodes.ts`'s `generateShotVideoPrompt`) supplies this
+   * yet — wiring the router is a LATER round, out of scope here per the plan.
+   * Omitted, this stays `undefined` and `is_retention_ending_shot` is never
+   * asserted, so every existing caller's prompt is byte-identical.
+   */
+  totalShotCount?: number;
+  /**
+   * Feature flag `verticalDramaRetentionHooks` (`planning/vertical-drama-
+   * retention-hooks/plan.md` W7, added 2026-07-11) — gates whether the
+   * `is_opening_shot`/`is_retention_ending_shot` facts (derived from
+   * `shotNumber`/`totalShotCount` above) are rendered into the prompt at all
+   * (see `buildShotVideoPromptUserPrompt`). Resolved by the CALLER from the
+   * tenant feature flag — this function never calls `getTenantFeatureFlags`
+   * itself, same "caller resolves, function just uses the boolean"
+   * convention as `nativeAudioEnabled` below. All of the actual RULE TEXT for
+   * how the model should treat an opening/ending shot's motion energy lives
+   * in skill.md's "Hook + retention-ending shot motion energy" rule —
+   * skill-first architecture, no creative rule text duplicated here.
+   * Omitted/false preserves today's byte-identical prompt.
+   */
+  retentionHooksEnabled?: boolean;
+  /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W7,
+   * router-wiring package, added 2026-07-11) — the episode script's
+   * top-level `hook` string, verbatim. Skill-first architecture (no rule
+   * TEXT lives in this file) — this is purely a structured FACT the caller
+   * already has loaded (the episode's persisted script artifact), passed
+   * through so the "hook shot" rule above can ground itself in the ACTUAL
+   * hook rather than inferring "some kind of hook" purely from this shot's
+   * own `description`/`camera`/`emotion`. Only rendered when
+   * `retentionHooksEnabled` is true AND this shot is the opening shot
+   * (`shotNumber === 1`); omitted otherwise or when absent — every existing
+   * caller (which never supplies this) gets a byte-identical prompt.
+   */
+  hookText?: string;
+  /**
+   * Retention hooks (W7, added 2026-07-11) — the episode script's
+   * `retention_loop.description` string, verbatim. Same grounding-context
+   * role as `hookText` above, but for the retention-ending-shot rule. Only
+   * rendered when `retentionHooksEnabled` is true AND this shot is the
+   * retention-ending shot (`shotNumber === totalShotCount`); omitted
+   * otherwise or when absent.
+   */
+  retentionLoopDescription?: string;
   /** Publicly-fetchable URL of the shot's current approved main image (the start frame this clip continues from). */
   imageUrl: string;
   /** The prompt that generated `imageUrl` — always folded in as a textual proxy, see this module's vision doc comment. */
@@ -1216,6 +1305,20 @@ function buildShotVideoPromptUserPrompt(
         .join("\n")
     : "(no source dialogue line was found for this shot — see the NO-SOURCE-DIALOGUE instruction below for what to do)";
 
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W7) —
+  // derived purely from position facts already/optionally available on
+  // `params` (see `totalShotCount`/`retentionHooksEnabled`'s doc comments
+  // above); gated behind the flag so every existing caller (which never sets
+  // either field) gets a byte-identical prompt. Only asserted when true —
+  // omitted (not stated as `false`) when not applicable, matching this
+  // builder's existing conditional-fact convention.
+  const retentionHooksEnabled = params.retentionHooksEnabled === true;
+  const isOpeningShot = retentionHooksEnabled && params.shotNumber === 1;
+  const isRetentionEndingShot =
+    retentionHooksEnabled &&
+    typeof params.totalShotCount === "number" &&
+    params.shotNumber === params.totalShotCount;
+
   return [
     `Shot number: ${params.shotNumber}`,
     typeof params.shotDurationSeconds === "number"
@@ -1231,6 +1334,24 @@ function buildShotVideoPromptUserPrompt(
     shotContext.description ? `Shot description: ${shotContext.description}` : null,
     shotContext.camera ? `Camera setup: ${shotContext.camera}` : null,
     shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
+    // Retention hooks (W7) — structured facts only, see the skill's "Hook +
+    // retention-ending shot motion energy" rule for the actual creative
+    // instruction (skill-first; no rule text lives here).
+    isOpeningShot
+      ? `is_opening_shot: true — this clip is the EPISODE'S FIRST SHOT (the hook shot).`
+      : null,
+    isRetentionEndingShot
+      ? `is_retention_ending_shot: true — this clip is the EPISODE'S FINAL SHOT (the retention-loop ending).`
+      : null,
+    // Retention hooks (W7, router-wiring package) — grounding TEXT context
+    // (see `hookText`/`retentionLoopDescription`'s own doc comments above),
+    // only ever rendered alongside the structural marker it supports.
+    isOpeningShot && params.hookText
+      ? `Episode hook (verbatim, from the script — ground this shot's opening energy in it, do not invent a different hook): ${params.hookText}`
+      : null,
+    isRetentionEndingShot && params.retentionLoopDescription
+      ? `Episode retention loop (verbatim, from the script — this shot must land/hold this exact unresolved beat): ${params.retentionLoopDescription}`
+      : null,
     // Part B3 — reference-only episode scene-setting context, same
     // "do not copy verbatim" contract as the start-frame/pack-level builders.
     params.episodePlanContext

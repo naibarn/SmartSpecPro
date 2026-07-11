@@ -108,6 +108,7 @@ import {
   extractCharacterRosterDescription,
   logCharacterVariantPlanningFailure,
   type CharacterVariantReconciliationSummary,
+  type CharacterVariantPlannerCharacterInput,
 } from "./verticalDramaCharacterVariantPlanner";
 
 /** The skill this whole feature is built around — already shipped, previously unused. */
@@ -1399,19 +1400,39 @@ export async function runImproveScriptJob(
             eq(verticalDramaCharacters.seriesId, seriesId),
           ),
         );
-      // Standalone/parent rows only — existing variant rows (parentCharacterId
-      // set) are the OUTPUT of this same process, never re-sent as fresh
-      // roster input on a later run.
-      const characterInputs = characterRows
-        .filter((row) => row.parentCharacterId == null)
-        .map((row) => ({
+      // W3 stable-ID reconcile
+      // (`planning/vertical-drama-twin-variant-completeness/plan.md` W3):
+      // EVERY row (base characters, existing variants, existing twins alike)
+      // is sent back into the roster now — a prior run's variant/twin rows
+      // are no longer filtered out, they carry `existing*CharacterKey`
+      // markers instead (resolved below via `characterKeyById`) so the skill
+      // can recognize "this is already known" and echo it back via
+      // `existing_character_key` rather than re-describing a duplicate (see
+      // `verticalDramaCharacterVariantPlanner.ts`'s
+      // `reconcileCharacterVariantPlan` doc comment for the matching side).
+      const characterKeyById = new Map<number, string>(
+        characterRows.map((row) => [row.id, row.characterKey]),
+      );
+      const characterInputs: CharacterVariantPlannerCharacterInput[] = characterRows.map((row) => {
+        const input: CharacterVariantPlannerCharacterInput = {
           characterKey: row.characterKey,
           name: row.name,
           role: row.role ?? "",
           description: extractCharacterRosterDescription(
             (row.data as Record<string, unknown> | null) ?? null,
           ),
-        }));
+        };
+        if (row.parentCharacterId != null) {
+          const parentKey = characterKeyById.get(row.parentCharacterId);
+          if (parentKey) input.existingParentCharacterKey = parentKey;
+          if (row.variantLabel) input.existingVariantLabel = row.variantLabel;
+        }
+        if (row.sharesFaceWithCharacterId != null) {
+          const sourceKey = characterKeyById.get(row.sharesFaceWithCharacterId);
+          if (sourceKey) input.existingSharesFaceWithCharacterKey = sourceKey;
+        }
+        return input;
+      });
 
       // The (now-improved) whole season's content: improved episodes win,
       // any episode the straggler path never fixed falls back to its

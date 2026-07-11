@@ -88,4 +88,58 @@ describe("vertical-drama-script-builder skill.md examples validate against the o
     const passOutput = loadJson("fixtures/pass.output.json");
     expect(() => scriptBuilderOutputSchema.parse(passOutput)).not.toThrow();
   });
+
+  /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W2,
+   * added 2026-07-11) — skill.md's main "Output skeleton" example now
+   * includes worked `open_loops[]`/`retention_loop` entries, and the
+   * "Product Tie-In" section gained a second worked example (problem→result
+   * placement shape). Mirrors both JSON blocks verbatim.
+   */
+  it("skill.md's new open_loops/retention_loop worked example (from the Output skeleton) validates", () => {
+    const example = loadJson("examples/example.output.sample.json") as Record<string, unknown>;
+    const withRetentionHooks = {
+      ...example,
+      open_loops: [
+        {
+          question: "who tipped the rival's own backers off to call the emergency vote",
+          planted_at_beat: 3,
+          expected_resolution: "future_episode",
+        },
+      ],
+      retention_loop: {
+        type: "threat",
+        description:
+          "the rival's own backers just called an emergency vote — the reversal Aria pulled off has put his own board on his neck next",
+        ties_to_beat: 3,
+      },
+    };
+
+    const result = scriptBuilderOutputSchema.safeParse(withRetentionHooks);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.open_loops).toHaveLength(1);
+      expect(result.data.open_loops![0].expected_resolution).toBe("future_episode");
+      expect(result.data.retention_loop?.type).toBe("threat");
+    }
+  });
+
+  it("skill.md's new problem→result product tie-in worked example validates when spliced into a full script", () => {
+    const problemResultTieIn = {
+      tie_ins: [
+        {
+          shot_numbers: [3],
+          story_function: "daily_use",
+          placement_style: "in_use_moment",
+          benefit_talking_point:
+            "her hands are visibly chapped from the cold case files, but one pump of the hand cream and she flexes her fingers, ready to keep working",
+        },
+      ],
+    };
+
+    const example = loadJson("examples/example.output.sample.json") as Record<string, unknown>;
+    const withProblemResultTieIn = { ...example, product_tie_in_plan: problemResultTieIn };
+
+    expect(() => scriptBuilderOutputSchema.parse(withProblemResultTieIn)).not.toThrow();
+  });
 });

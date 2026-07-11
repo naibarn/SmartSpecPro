@@ -197,6 +197,20 @@ const storyboardShotSchema = z
     body_language: storyboardActingDirectionSchema.optional(),
     gaze_direction: storyboardActingDirectionSchema.optional(),
     /**
+     * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W3,
+     * added 2026-07-11) — per-shot declaration of which dimension(s) changed
+     * vs. the PREVIOUS shot (shot 1 is `["visual","emotional","informational"]`
+     * by definition — see skill.md's "Change cadence" section). Optional so
+     * a shot generated before this rule existed, or a flag-off/legacy
+     * response, still validates unchanged. This is a declared FACT the LLM
+     * reports honestly, never something this schema/service computes or
+     * enforces (skill-first — no hard-gate on cadence in this file; the
+     * review LLM, a later round, is the enforcement point).
+     */
+    change_type: z
+      .array(z.enum(["visual", "emotional", "informational", "none"]))
+      .optional(),
+    /**
      * Feature 132 §6.1 (F132C, scene contracts) — see
      * `storyboardContractSchema`'s own doc comment. Absent on every shot
      * from a flag-off/legacy response, or a shot generated before this
@@ -322,6 +336,33 @@ export interface GenerateStoryboardShotgridParams {
     }>;
   }>;
   /**
+   * Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
+   * plan.md W5) — sibling to `characters[].variants` above, but a DIFFERENT
+   * relationship: a twin is not an outfit/age-stage "look" of one
+   * character, it is a separate, independently-generated character row
+   * (its own `characterKey`, its own portrait) that happens to share an
+   * identical face with another character row
+   * (`sharesFaceWithCharacterId` in `vertical_drama_characters`). Supplied
+   * as input FACTS only, mirroring the `vertical-drama-character-visual-bible`
+   * skill's "Face reference locking" twin case's `lock_strength: "hard"` +
+   * mandatory distinct-styling requirement for a twin's own solo portrait —
+   * this field carries the same relationship down to the storyboard/shot
+   * level, where `skill.md`'s "Twin-aware shot styling" section teaches the
+   * LLM to check each shot's own `characters` selection against these pairs
+   * and, when a shot puts both twins on screen together, explicitly write
+   * that shot's styling (hair, outfit, accessories — never face) as
+   * clearly, visibly distinct between the two. A flat, order-independent
+   * list — each pair appears once regardless of which character's row the
+   * `sharesFaceWithCharacterId` pointer originates from. Optional/empty for
+   * the vast majority of series (no twins registered yet) — `buildUserPrompt`
+   * renders nothing new for those, so their prompt stays byte-identical to
+   * before this field existed.
+   */
+  twinPairs?: Array<{
+    characterKeyA: string;
+    characterKeyB: string;
+  }>;
+  /**
    * Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
    * 2026-07-08) — same `episode_draft` payload
    * `verticalDramaScriptGeneration.ts`'s `GenerateEpisodeScriptParams`
@@ -337,6 +378,25 @@ export interface GenerateStoryboardShotgridParams {
     shots: VdDeepDraftShotDraft[];
     cliffhanger_line?: string;
   };
+  /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W3,
+   * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — the
+   * series' own free-text `genre` fact (`verticalDramaSeries.genre`), the
+   * SAME field `verticalDramaScriptGeneration.ts`'s
+   * `GenerateEpisodeScriptParams.genre` already accepts (see that file's doc
+   * comment for the full rationale — this is the identical decoupled
+   * payload-vs-flag convention, not a second design). Passed through
+   * unconditionally by `generateRealStoryboard` (`seriesRow?.genre` is
+   * already loaded there via the full-row `select()`), but only RENDERED
+   * into the prompt (as the `genre` key) when `opts.retentionHooksEnabled`
+   * is true — every existing caller omits/leaves this undefined, and every
+   * caller with the flag off gets a byte-identical prompt regardless of
+   * this value. Lets shot styling/lighting lean into the genre's tone where
+   * natural; the heavy genre-conditional retention-loop logic lives
+   * entirely in `vertical-drama-script-builder`'s skill.md, not here
+   * (skill-first — no genre-mapping logic in this file).
+   */
+  genre?: string | null;
   /**
    * Repair-mode override — see `GenerateEpisodeScriptParams.repairContext`'s
    * doc comment (`verticalDramaScriptGeneration.ts`) for the shared
@@ -376,6 +436,18 @@ export interface GenerateStoryboardShotgridParams {
      * byte-identical prompt to before this flag existed.
      */
     sceneContractsEnabled?: boolean;
+    /**
+     * Feature flag `verticalDramaRetentionHooks`
+     * (`planning/vertical-drama-retention-hooks/plan.md` W3, added
+     * 2026-07-11) — renders the `genre` fact (see `genre` above) into the
+     * prompt. All of the actual RULE TEXT for shot-1 hook realization and
+     * change cadence lives in skill.md's own "Shot 1 hook realization"/
+     * "Change cadence" sections — this flag only gates which structured
+     * facts are sent, per the skill-first architecture (no creative rule
+     * text is duplicated here). Omitted/false preserves today's
+     * byte-identical prompt.
+     */
+    retentionHooksEnabled?: boolean;
   };
 }
 
@@ -411,10 +483,35 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
         })
         .join("\n")
     : "(no characters registered yet — invent minimal placeholder character ids consistent with the story context)";
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W3,
+  // tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — additive;
+  // only rendered when `opts.retentionHooksEnabled` is true, so the flag-off
+  // prompt is byte-identical to before this change. `genre` is a free-text
+  // fact only — see skill.md's "Shot 1 hook realization"/"Change cadence"
+  // sections for the actual rule text (skill-first: no genre-mapping logic
+  // in this file).
+  const retentionHooksEnabled = params.opts?.retentionHooksEnabled === true;
+  const genreSection =
+    retentionHooksEnabled && params.genre ? `genre: ${params.genre}` : null;
+
   const identityLockInstruction = charactersWithRef.length
     ? `Identity lock: ${charactersWithRef.map(c => c.characterId).join(", ")} ${
         charactersWithRef.length === 1 ? "has" : "have"
       } an approved reference image attached below. List them in "required_character_refs" for every shot they appear in, and write each "image_prompt" so a downstream image model can keep face, hair, and wardrobe consistent with that reference — do not invent a different appearance for these characters.\n${VD_CHARACTER_LOCK_INSTRUCTION}`
+    : null;
+
+  // Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
+  // plan.md W5) — additive; only rendered when `twinPairs` is non-empty, so
+  // a series with no registered twins produces the exact same prompt as
+  // before this field existed. See skill.md "Twin-aware shot styling" for
+  // the per-shot instruction these lines feed.
+  const twinPairLines = params.twinPairs?.length
+    ? params.twinPairs
+        .map(p => `- ${p.characterKeyA} and ${p.characterKeyB} are twins — they share an identical face but are different people.`)
+        .join("\n")
+    : null;
+  const twinPairInstruction = twinPairLines
+    ? `Twin pairs (see "Twin-aware shot styling" below):\n${twinPairLines}`
     : null;
 
   const sceneBeatLines = params.sceneBeats?.length
@@ -487,6 +584,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     `Episode number: ${params.episodeNumber}`,
     `Episode duration: ${params.durationSeconds} seconds`,
     langInstruction,
+    genreSection,
     storySource.workingTitle ? `Working title: ${storySource.workingTitle}` : null,
     storySource.logline ? `Logline: ${storySource.logline}` : null,
     storySource.mainPlot ? `Main plot: ${storySource.mainPlot}` : null,
@@ -498,6 +596,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     storySource.cliffhanger ? `Cliffhanger: ${storySource.cliffhanger}` : null,
     sceneBeatInstruction,
     `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
+    twinPairInstruction,
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
     episodeDraftSection,
     sceneContractSection,

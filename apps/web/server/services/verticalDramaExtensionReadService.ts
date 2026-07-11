@@ -359,6 +359,14 @@ export interface DramaShotGridFrame {
   thumbnailUrl: string | null;
 }
 
+/** Safe, extension-facing dialogue projection. Voice and audio-task data stay server-side. */
+export interface DramaShotDialogueLine {
+  speaker: string;
+  emotion: string | null;
+  text: string;
+  durationSeconds: number | null;
+}
+
 export interface DramaShot {
   shotNumber: number;
   description: string;
@@ -369,6 +377,7 @@ export interface DramaShot {
   videoPrompt: string;
   negativeVideoPrompt: string;
   dialogue: string;
+  dialogueLines: DramaShotDialogueLine[];
   mainImageUrl: string | null;
   mainImageThumbnailUrl: string | null;
   gridImageUrl: string | null;
@@ -385,6 +394,66 @@ export interface DramaSeriesEpisodeDetail {
   status: string;
   updatedAt: string | null;
   shots: DramaShot[];
+}
+
+/**
+ * Projects the minimal dialogue data required by the extension. Durations are
+ * returned only when they exist in the authored audio plan; clip-only dialogue
+ * intentionally has no derived duration.
+ */
+export function projectDramaShotDialogueLinesForExtension(input: {
+  dialogueAudioPlan: unknown;
+  clipDialogue: unknown;
+  shotNumber: number;
+}): DramaShotDialogueLine[] {
+  const clipLines = Array.isArray(input.clipDialogue)
+    ? input.clipDialogue
+      .map((value) => asRecord(value))
+      .filter((value): value is Record<string, unknown> => Boolean(value))
+    : [];
+  const clipLineForText = (text: string) => clipLines.find((line) => line.lineTh === text);
+  const plan = asRecord(input.dialogueAudioPlan);
+  const planLines = Array.isArray(plan?.dialogueLines) ? plan.dialogueLines : [];
+  const timedLines = planLines.flatMap((value): DramaShotDialogueLine[] => {
+    const line = asRecord(value);
+    if (!line || Number(line.shotNumber) !== input.shotNumber) return [];
+    const text = typeof line.text === "string" ? line.text.trim() : "";
+    if (!text) return [];
+    const clipLine = clipLineForText(text);
+    const duration = typeof line.targetDurationSeconds === "number" && line.targetDurationSeconds >= 0
+      ? line.targetDurationSeconds
+      : typeof line.start === "number" && typeof line.end === "number" && line.end >= line.start
+        ? line.end - line.start
+        : null;
+    return [{
+      speaker: typeof line.speakerName === "string" && line.speakerName.trim()
+        ? line.speakerName.trim()
+        : typeof clipLine?.characterKey === "string" && clipLine.characterKey.trim()
+          ? clipLine.characterKey.trim()
+          : line.isNarration === true ? "ผู้บรรยาย" : "ไม่ระบุผู้พูด",
+      emotion: typeof line.emotion === "string" && line.emotion.trim()
+        ? line.emotion.trim()
+        : typeof clipLine?.emotion === "string" && clipLine.emotion.trim()
+          ? clipLine.emotion.trim()
+          : null,
+      text,
+      durationSeconds: duration,
+    }];
+  });
+  if (timedLines.length > 0) return timedLines;
+
+  return clipLines.flatMap((line): DramaShotDialogueLine[] => {
+    const text = typeof line.lineTh === "string" ? line.lineTh.trim() : "";
+    if (!text) return [];
+    return [{
+      speaker: typeof line.characterKey === "string" && line.characterKey.trim()
+        ? line.characterKey.trim()
+        : "ไม่ระบุผู้พูด",
+      emotion: typeof line.emotion === "string" && line.emotion.trim() ? line.emotion.trim() : null,
+      text,
+      durationSeconds: null,
+    }];
+  });
 }
 
 export async function getDramaSeriesEpisodeDetailForExtension(
@@ -416,6 +485,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       title: verticalDramaEpisodes.title,
       status: verticalDramaEpisodes.status,
       storyboard: verticalDramaEpisodes.storyboard,
+      dialogueAudioPlan: verticalDramaEpisodes.dialogueAudioPlan,
       startFramePlan: verticalDramaEpisodes.startFramePlan,
       motionPromptPack: verticalDramaEpisodes.motionPromptPack,
       updatedAt: verticalDramaEpisodes.updatedAt,
@@ -588,9 +658,12 @@ export async function getDramaSeriesEpisodeDetailForExtension(
       const frame = frames.find((f) => f.shotNumber === shotNumber);
       const clip = clips.find((c) => Array.isArray(c.sourceShotNumbers) && c.sourceShotNumbers.includes(shotNumber));
 
-      const dialogue = Array.isArray(clip?.dialogue) && clip!.dialogue.length > 0
-        ? clip!.dialogue.map((line) => `${line.characterKey ?? ""}: ${line.lineTh}`).join("\n")
-        : "";
+      const dialogueLines = projectDramaShotDialogueLinesForExtension({
+        dialogueAudioPlan: episodeRow.dialogueAudioPlan,
+        clipDialogue: clip?.dialogue,
+        shotNumber,
+      });
+      const dialogue = dialogueLines.map((line) => `${line.speaker}: ${line.text}`).join("\n");
 
       let mainImageUrl: string | null = null;
       let mainImageThumbnailUrl: string | null = null;
@@ -687,6 +760,7 @@ export async function getDramaSeriesEpisodeDetailForExtension(
         videoPrompt: clip?.prompt ?? "",
         negativeVideoPrompt: clip?.negativeMotionPrompt ?? "",
         dialogue,
+        dialogueLines,
         mainImageUrl,
         mainImageThumbnailUrl,
         gridImageUrl: frame?.angleGrid?.imageUrl ?? null,

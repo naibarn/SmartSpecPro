@@ -968,6 +968,54 @@ describe("generateCharacterVisualPrompts — face_source_reference flow-through 
   });
 });
 
+/**
+ * has_own_reference_image flow-through (vertical-drama-reference-picker-
+ * outfit-lock plan, Phase D2 — section B): the router resolves
+ * `referencePortraitUrl` and passes `hasOwnReferenceImage: Boolean(...)` in —
+ * this module's only job is to forward that fact to the skill as
+ * `has_own_reference_image: true`, never author any instruction text itself
+ * (that would recreate the exact hardcoded-router-sentence bug this feature
+ * fixes).
+ */
+describe("generateCharacterVisualPrompts — has_own_reference_image flow-through to the LLM call", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+  });
+
+  it("sends has_own_reference_image: true when hasOwnReferenceImage is true", async () => {
+    await generateCharacterVisualPrompts(baseParams({ hasOwnReferenceImage: true }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain('"has_own_reference_image": true');
+  });
+
+  it("omits has_own_reference_image entirely when hasOwnReferenceImage is false (byte-identical to pre-feature behavior)", async () => {
+    await generateCharacterVisualPrompts(baseParams({ hasOwnReferenceImage: false }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).not.toContain("has_own_reference_image");
+  });
+
+  it("omits has_own_reference_image entirely when hasOwnReferenceImage is absent (legacy tolerant)", async () => {
+    await generateCharacterVisualPrompts(baseParams());
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).not.toContain("has_own_reference_image");
+  });
+});
+
 /* -------------------------------------------------------------------------- */
 /* Character Design Bible sheet types (vertical-drama-character-sheet-        */
 /* consolidation plan, Phase B) — requestedSheetType / sheet_prompt.          */

@@ -5,6 +5,10 @@
   "type": "object",
   "additionalProperties": true,
   "properties": {
+    "genre": {
+      "description": "Optional free-text genre fact (planning/vertical-drama-retention-hooks/plan.md W3, added 2026-07-11) — the series' own `genre` column (varchar, NOT a fixed enum; may be Thai/English/mixed, e.g. 'romance', 'educational', 'ดราม่า'), the SAME fact `vertical-drama-script-builder`'s input schema already accepts. Only rendered when the retention-hooks flag is on. Lets shot styling/lighting lean into the genre's tone where natural — the heavy genre-conditional retention-loop logic lives in `vertical-drama-script-builder`'s skill.md, not here.",
+      "type": "string"
+    },
     "story_source": {
       "type": "object",
       "additionalProperties": true,
@@ -281,6 +285,26 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "twinPairs": {
+      "description": "App-side twin-pair facts (NOT part of the imported upstream contract; rendered into the free-text prompt by verticalDramaStoryboardGeneration.ts's buildUserPrompt, planning/vertical-drama-twin-variant-completeness/plan.md W5). Each entry names two BASE characterKeys that are twins — separate, independently-generated character rows that share an identical face (sharesFaceWithCharacterId). Supplied as input facts only; the skill decides per-shot whether both twins appear together and, when they do, must explicitly call for distinct styling. See skill.md 'Twin-aware shot styling'.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "characterKeyA",
+          "characterKeyB"
+        ],
+        "properties": {
+          "characterKeyA": {
+            "type": "string"
+          },
+          "characterKeyB": {
+            "type": "string"
           }
         }
       }

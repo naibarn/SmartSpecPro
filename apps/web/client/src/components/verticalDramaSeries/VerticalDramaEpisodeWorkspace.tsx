@@ -374,6 +374,14 @@ export interface VerticalDramaStoryboardPanelData {
   savingProductReferencesForShot?: number | null;
   onChangeCharacterReference?: (characterId: string) => void;
   onDropCharacterReference?: (characterId: string, url: string) => void;
+  /** See `VerticalDramaStoryboardPanelProps.onSetShotCharacterReferences`
+   *  (W6 frontend) — per-shot character/variant reference override, distinct
+   *  from `onChangeCharacterReference` above. */
+  onSetShotCharacterReferences?: (
+    shotNumber: number,
+    characterRefs: string[]
+  ) => void;
+  savingShotCharacterReferencesForShot?: number | null;
   onDropStartFrame?: (shotNumber: number, url: string) => void;
   onGenerateAngleVariations?: (shotNumber: number) => void;
   generatingAngleVariationsForShot?: number | null;
@@ -1122,6 +1130,12 @@ export function VerticalDramaEpisodeWorkspace({
             storyboardPanel?.onChangeCharacterReference
           }
           onDropCharacterReference={storyboardPanel?.onDropCharacterReference}
+          onSetShotCharacterReferences={
+            storyboardPanel?.onSetShotCharacterReferences
+          }
+          savingShotCharacterReferencesForShot={
+            storyboardPanel?.savingShotCharacterReferencesForShot
+          }
           onDropStartFrame={storyboardPanel?.onDropStartFrame}
           onGenerateAngleVariations={storyboardPanel?.onGenerateAngleVariations}
           generatingAngleVariationsForShot={

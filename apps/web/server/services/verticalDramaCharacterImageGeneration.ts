@@ -548,6 +548,25 @@ export interface GenerateCharacterVisualPromptsParams {
     relationshipNote: string;
   } | null;
   /**
+   * Whether an existing approved image of this EXACT character (not a
+   * parent/twin) will be attached as a render-time identity-lock reference
+   * (vertical-drama-reference-picker-outfit-lock plan, Phase D2 — section B).
+   * Computed by the caller as `Boolean(referencePortraitUrl)` from
+   * `resolveReferencePortraitUrl` — this module never resolves the reference
+   * image itself, only receives the fact. Sent to the skill as
+   * `has_own_reference_image: true` (omitted when false/absent — same
+   * "facts in, natural prose out" convention as `faceSourceReference` above);
+   * the skill's own "Own reference image locking" section is the sole author
+   * of how this fact is woven into every generated prompt, including the
+   * outfit/clothing/accessories/shoes lock language this fixes (previously a
+   * hardcoded router sentence that omitted outfit entirely — the exact bug
+   * this field's addition fixes). Orthogonal to `faceSourceReference`: a
+   * variant/twin character can carry BOTH facts at once (its own prior
+   * render AND a parent/twin source reference) — the skill weaves both in
+   * together rather than treating them as mutually exclusive.
+   */
+  hasOwnReferenceImage?: boolean;
+  /**
    * Requests ONE additional Character Design Bible sheet deliverable on top
    * of the 5 always-required prompt fields (vertical-drama-character-sheet-
    * consolidation plan, Phase B) — sent to the skill as `requested_sheet_type`
@@ -766,6 +785,7 @@ export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterV
         }
       : {}),
     ...(params.requestedSheetType ? { requested_sheet_type: params.requestedSheetType } : {}),
+    ...(params.hasOwnReferenceImage ? { has_own_reference_image: true } : {}),
   };
 
   return [

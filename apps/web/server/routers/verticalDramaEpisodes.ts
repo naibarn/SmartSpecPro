@@ -12,7 +12,7 @@
 import crypto from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
@@ -30,6 +30,7 @@ import {
 import {
   mediaGenerationService,
   DEFAULT_MODELS,
+  resolveReferenceUrl,
 } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
 import {
@@ -63,11 +64,16 @@ import {
 import {
   runVerticalDramaEpisodeQualityReview,
   computeVerticalDramaDensityMetrics,
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W6,
+  // added 2026-07-11) — same "deterministic fact computed in TS, fed to the
+  // review LLM" role as `computeVerticalDramaDensityMetrics` above.
+  computeRetentionMetrics,
   InsufficientCreditsError as QualityReviewInsufficientCreditsError,
   VdSchemaValidationError as QualityReviewVdSchemaValidationError,
   RateLimitExceededError as QualityReviewRateLimitExceededError,
   type EpisodeQualityReviewOutput,
   type VerticalDramaDensityMetrics,
+  type VerticalDramaRetentionMetrics,
 } from "../services/verticalDramaEpisodeQualityReview";
 import {
   groupQualityReviewIssuesByStage,
@@ -1033,7 +1039,15 @@ async function repairVerticalDramaStageWithStoryLockGuard(
   owner: EpisodeRunOwner,
   stage: VerticalDramaPipelineStage,
   instruction: string,
-  storyLockEnabled: boolean
+  storyLockEnabled: boolean,
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W1/W3,
+  // router-wiring package, added 2026-07-11) — threaded straight through to
+  // `repairStage`'s own `args.retentionHooksEnabled` (see that method's doc
+  // comment: it threads into BOTH the `plan_episode_script` and
+  // `storyboard_shotgrid` real-regeneration branches). Defaults to `false`
+  // so every pre-existing caller of this wrapper (before this param existed)
+  // stays byte-identical.
+  retentionHooksEnabled: boolean = false
 ): Promise<{
   outcome: Awaited<ReturnType<typeof verticalDramaEpisodePipeline.repairStage>>;
   storyLockViolated: boolean;
@@ -1057,6 +1071,7 @@ async function repairVerticalDramaStageWithStoryLockGuard(
 
   const outcome = await verticalDramaEpisodePipeline.repairStage(owner, stage, {
     instruction: finalInstruction,
+    retentionHooksEnabled,
   });
 
   if (!guarded) {
@@ -1244,6 +1259,18 @@ async function resolveMediaAssetUrlsByIds(
  * "which character(s) does this shot need" directly on the shot card, so
  * identity-lock is visible/correctable per shot instead of only happening
  * invisibly inside generation calls.
+ *
+ * planning/vertical-drama-twin-variant-completeness/plan.md (W6 backend) —
+ * additive relationship metadata (`parentCharacterId`/`variantLabel`/
+ * `variantType`/`sharesFaceWithCharacterId`), same fields/projection
+ * convention `verticalDramaCharacters.ts`'s `characterRowToDto` already uses
+ * for the Characters tab. Purely additive: every field is `undefined` (not
+ * present as an own-enumerable key with a value, but present in the type) for
+ * a plain base character with no variant/twin relationships, so every
+ * existing consumer that only reads `{characterId, name, portraitUrl}`
+ * continues to work unchanged. Lets a per-shot character picker (built
+ * later) group variant/twin entries under their parent instead of showing an
+ * undifferentiated flat list of unrelated-looking character keys.
  */
 async function resolveSeriesCharacterPortraits(
   tenantId: string,
@@ -1252,7 +1279,15 @@ async function resolveSeriesCharacterPortraits(
 ): Promise<
   Record<
     string,
-    { characterId: string; name: string; portraitUrl: string | null }
+    {
+      characterId: string;
+      name: string;
+      portraitUrl: string | null;
+      parentCharacterId?: string;
+      variantLabel?: string;
+      variantType?: "outfit" | "age_stage";
+      sharesFaceWithCharacterId?: string;
+    }
   >
 > {
   const characterRows = await db
@@ -1260,6 +1295,11 @@ async function resolveSeriesCharacterPortraits(
       id: verticalDramaCharacters.id,
       characterKey: verticalDramaCharacters.characterKey,
       name: verticalDramaCharacters.name,
+      parentCharacterId: verticalDramaCharacters.parentCharacterId,
+      variantLabel: verticalDramaCharacters.variantLabel,
+      variantType: verticalDramaCharacters.variantType,
+      sharesFaceWithCharacterId:
+        verticalDramaCharacters.sharesFaceWithCharacterId,
     })
     .from(verticalDramaCharacters)
     .where(
@@ -1280,14 +1320,41 @@ async function resolveSeriesCharacterPortraits(
 
   const result: Record<
     string,
-    { characterId: string; name: string; portraitUrl: string | null }
+    {
+      characterId: string;
+      name: string;
+      portraitUrl: string | null;
+      parentCharacterId?: string;
+      variantLabel?: string;
+      variantType?: "outfit" | "age_stage";
+      sharesFaceWithCharacterId?: string;
+    }
   > = {};
   characterRows.forEach(
-    (c: { id: number; characterKey: string; name: string }, i: number) => {
+    (
+      c: {
+        id: number;
+        characterKey: string;
+        name: string;
+        parentCharacterId: number | null;
+        variantLabel: string | null;
+        variantType: string | null;
+        sharesFaceWithCharacterId: number | null;
+      },
+      i: number
+    ) => {
       result[c.characterKey] = {
         characterId: String(c.id),
         name: c.name,
         portraitUrl: portraitUrls[i],
+        parentCharacterId:
+          c.parentCharacterId != null ? String(c.parentCharacterId) : undefined,
+        variantLabel: c.variantLabel ?? undefined,
+        variantType: (c.variantType as "outfit" | "age_stage" | null) ?? undefined,
+        sharesFaceWithCharacterId:
+          c.sharesFaceWithCharacterId != null
+            ? String(c.sharesFaceWithCharacterId)
+            : undefined,
       };
     }
   );
@@ -2400,6 +2467,82 @@ async function resolveVerticalDramaTextOverlaySuiteFlag(
 ): Promise<boolean> {
   const flags = await getTenantFeatureFlags(tenantId);
   return flags?.verticalDramaSeriesTextOverlaySuite === true;
+}
+
+/**
+ * Resolve the `verticalDramaRetentionHooks` tenant flag (`planning/vertical-
+ * drama-retention-hooks/plan.md`, router-wiring package, added 2026-07-11) —
+ * mirrors `resolveVerticalDramaTextOverlaySuiteFlag` exactly (same "one
+ * focused helper per flag-group" convention, optional-chaining fail-closed
+ * default). This is the SINGLE flag that gates every retention-hooks
+ * behavior across the pipeline (W1/W2/W3 script+shotgrid genre/retention-
+ * loop guidance, W6 quality-review scorecard v4 + `retention_metrics`, W7
+ * video-prompt hook/retention-ending motion energy) — every downstream
+ * service param this resolves into (`RunStageOptions.retentionHooksEnabled`,
+ * `repairStage`'s `args.retentionHooksEnabled`,
+ * `RunEpisodeQualityReviewParams.scoreRetentionDimensions`,
+ * `GenerateVerticalDramaShotVideoPromptParams.retentionHooksEnabled`,
+ * `GenerateVideoMotionPromptPackParams.retentionHooksEnabled`) already
+ * defaults to `false`/byte-identical when omitted, so resolving this ONCE
+ * per request and threading the same boolean everywhere is safe.
+ */
+async function resolveVerticalDramaRetentionHooksFlag(
+  tenantId: string
+): Promise<boolean> {
+  const flags = await getTenantFeatureFlags(tenantId);
+  return flags?.verticalDramaRetentionHooks === true;
+}
+
+/**
+ * Retention hooks W5/W6 (`planning/vertical-drama-retention-hooks/plan.md`)
+ * — nearest-first `retention_loop.type` of this series' last `limit` PRIOR
+ * episodes' persisted script artifacts (`episodeNumber` strictly less than
+ * `currentEpisodeNumber`), read directly off the
+ * `verticalDramaEpisodes.script` jsonb column. No dedicated "last N
+ * episodes' scripts" helper exists in this file today (the pipeline's
+ * `prior_episode_recap`/memory-bundle assembly goes through
+ * `memoryService.buildEpisodeMemoryBundle`, a durable memory-EVENT read, not
+ * a raw script-column read) — per the plan's explicit "a simple scoped
+ * DB query is fine, don't over-engineer" guidance, this is a small,
+ * read-only, tenant/user/series-scoped query instead of a new shared
+ * service. Feeds `computeRetentionMetrics`'s `recentRetentionLoopTypes`
+ * ADVISORY rotation fact ONLY (never gates/blocks anything — see that
+ * function's own doc comment). Tolerant of episodes with no script yet, or
+ * a script whose `retention_loop.type` is missing/malformed/not a string
+ * (skipped, never coerced to `null`), so the returned array can be shorter
+ * than `limit` (including empty, e.g. episode 1) rather than ever erroring.
+ */
+async function loadRecentVerticalDramaRetentionLoopTypes(
+  owner: EpisodeRunOwner,
+  currentEpisodeNumber: number,
+  limit = 3
+): Promise<string[]> {
+  const rows = await db
+    .select({ script: verticalDramaEpisodes.script })
+    .from(verticalDramaEpisodes)
+    .where(
+      and(
+        eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+        eq(verticalDramaEpisodes.userId, owner.userId),
+        eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+        lt(verticalDramaEpisodes.episodeNumber, currentEpisodeNumber)
+      )
+    )
+    .orderBy(desc(verticalDramaEpisodes.episodeNumber))
+    .limit(limit);
+
+  const types: string[] = [];
+  for (const row of rows) {
+    const script = row.script as Record<string, unknown> | null;
+    const retentionLoop = script?.retention_loop as
+      | Record<string, unknown>
+      | undefined;
+    const type = retentionLoop?.type;
+    if (typeof type === "string" && type.length > 0) {
+      types.push(type);
+    }
+  }
+  return types;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -4885,6 +5028,13 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
   );
   const { tieInQcEnabled, storyLockEnabled } =
     await resolveVerticalDramaQualityLoopFlags(tenantId);
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`,
+  // router-wiring package, added 2026-07-11) — resolved ONCE for the whole
+  // bounded loop (every round's `effects.runReview`/`effects.repairStage`
+  // reuse this same boolean), same "resolve once per request" convention as
+  // every other flag above.
+  const retentionHooksEnabled =
+    await resolveVerticalDramaRetentionHooksFlag(tenantId);
 
   // Credit pre-check for the WHOLE bounded loop, shown/enforced up-front —
   // each round's own LLM call is separately credit-checked/deducted inside
@@ -4972,6 +5122,24 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
         string,
         unknown
       > | null;
+      // Retention hooks (W6) — same conditional-computation convention as
+      // `densityMetrics` (computed by `runVerticalDramaQualityLoop`'s own
+      // caller, only ever supplied when its gating flag is on): only build
+      // `retentionMetrics` when the flag is actually on, so a flag-off round
+      // never even calls `computeRetentionMetrics` (zero observable side
+      // effect either way — it's a pure function — but this keeps the
+      // "nothing extra happens when the flag is off" contract literal).
+      const retentionMetrics: VerticalDramaRetentionMetrics | undefined =
+        retentionHooksEnabled
+          ? computeRetentionMetrics({
+              script,
+              storyboard,
+              recentRetentionLoopTypes: await loadRecentVerticalDramaRetentionLoopTypes(
+                owner,
+                refreshed.episodeNumber
+              ),
+            })
+          : undefined;
       const outcome = await runVerticalDramaEpisodeQualityReview({
         userId,
         tenantId,
@@ -4992,6 +5160,10 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
         // as `runEpisodeQualityReview`; omitted (byte-identical prompt)
         // whenever the tenant flag is off.
         reviewMode: storyLockEnabled ? "execution" : undefined,
+        // Retention hooks (W6) — omitted (both) whenever the flag is off,
+        // reproducing the exact prior prompt/contract_version unchanged.
+        scoreRetentionDimensions: retentionHooksEnabled,
+        retentionMetrics,
       });
       // `EpisodeQualityReviewOutput` is a structural superset of
       // `VerticalDramaQualityLoopReviewLike` (scorecard + issues) — returned
@@ -5021,7 +5193,8 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
             owner,
             "plan_episode_script",
             `[ปรับเฉพาะส่วนสินค้า ห้ามแก้โครงเรื่องหลัก] ${instruction}`,
-            storyLockEnabled
+            storyLockEnabled,
+            retentionHooksEnabled
           );
         // W11.6 "Story Lock" — a REJECTED round already reverted the live
         // content back to prior (see `repairVerticalDramaStageWithStoryLockGuard`),
@@ -5039,7 +5212,8 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
           owner,
           stage,
           instruction,
-          storyLockEnabled
+          storyLockEnabled,
+          retentionHooksEnabled
         );
       if (!storyLockViolated) {
         stagesRepaired.push(stage);
@@ -6060,12 +6234,17 @@ export const verticalDramaEpisodesRouter = router({
         );
       }
 
-      const [{ flagOn, policy }, deepStoryDraftsFlagOn, tieInReplanFlagOn] =
-        await Promise.all([
-          resolveSubShotPolicy(tenantId, input.subShotPolicy),
-          resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
-          resolveVerticalDramaTieInReplanFlag(tenantId),
-        ]);
+      const [
+        { flagOn, policy },
+        deepStoryDraftsFlagOn,
+        tieInReplanFlagOn,
+        retentionHooksEnabled,
+      ] = await Promise.all([
+        resolveSubShotPolicy(tenantId, input.subShotPolicy),
+        resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
+        resolveVerticalDramaTieInReplanFlag(tenantId),
+        resolveVerticalDramaRetentionHooksFlag(tenantId),
+      ]);
       const outcome = await pipelineForMode(input.mode).runStage(
         owner,
         input.stage,
@@ -6076,6 +6255,7 @@ export const verticalDramaEpisodesRouter = router({
           idempotencyKey: input.idempotencyKey,
           deepStoryDraftsFlagOn,
           tieInReplanFlagOn,
+          retentionHooksEnabled,
         }
       );
       return outcome;
@@ -6213,12 +6393,17 @@ export const verticalDramaEpisodesRouter = router({
           );
       }
 
-      const [{ flagOn, policy }, deepStoryDraftsFlagOn, tieInReplanFlagOn] =
-        await Promise.all([
-          resolveSubShotPolicy(tenantId, input.subShotPolicy),
-          resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
-          resolveVerticalDramaTieInReplanFlag(tenantId),
-        ]);
+      const [
+        { flagOn, policy },
+        deepStoryDraftsFlagOn,
+        tieInReplanFlagOn,
+        retentionHooksEnabled,
+      ] = await Promise.all([
+        resolveSubShotPolicy(tenantId, input.subShotPolicy),
+        resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
+        resolveVerticalDramaTieInReplanFlag(tenantId),
+        resolveVerticalDramaRetentionHooksFlag(tenantId),
+      ]);
       const outcome = await pipelineForMode("full").runStage(
         owner,
         input.stage,
@@ -6229,6 +6414,7 @@ export const verticalDramaEpisodesRouter = router({
           idempotencyKey: input.idempotencyKey,
           deepStoryDraftsFlagOn,
           tieInReplanFlagOn,
+          retentionHooksEnabled,
         }
       );
       return outcome;
@@ -6279,12 +6465,25 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      const [{ flagOn, policy }, deepStoryDraftsFlagOn, tieInReplanFlagOn] =
-        await Promise.all([
-          resolveSubShotPolicy(tenantId, input.subShotPolicy),
-          resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
-          resolveVerticalDramaTieInReplanFlag(tenantId),
-        ]);
+      const [
+        { flagOn, policy },
+        deepStoryDraftsFlagOn,
+        tieInReplanFlagOn,
+        retentionHooksEnabled,
+      ] = await Promise.all([
+        resolveSubShotPolicy(tenantId, input.subShotPolicy),
+        resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
+        resolveVerticalDramaTieInReplanFlag(tenantId),
+        // Retention hooks — `runEpisode` shares the SAME `RunStageOptions`
+        // bag every per-stage call in this router resolves this flag for
+        // (`runStage`/`regenerateStage` above); not one of the 4 call sites
+        // explicitly enumerated by the router-wiring plan, but wiring it
+        // here too keeps a full sequential episode run consistent with a
+        // single-stage run of the exact same stages (otherwise a tenant
+        // with the flag on would get retention-hooks guidance one stage at
+        // a time but not via "run whole episode").
+        resolveVerticalDramaRetentionHooksFlag(tenantId),
+      ]);
       return pipelineForMode(input.mode).runEpisode(owner, {
         mode: input.mode as never,
         fromStage: input.fromStage,
@@ -6293,6 +6492,7 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
         deepStoryDraftsFlagOn,
         tieInReplanFlagOn,
+        retentionHooksEnabled,
       });
     }),
 
@@ -6439,6 +6639,8 @@ export const verticalDramaEpisodesRouter = router({
       // so this is inert for every other stage regardless of the flag.
       const { storyLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
+      const retentionHooksEnabled =
+        await resolveVerticalDramaRetentionHooksFlag(tenantId);
       const instruction = storyLockEnabled
         ? appendVerticalDramaStoryLockRepairConstraint(
             input.instruction,
@@ -6454,6 +6656,7 @@ export const verticalDramaEpisodesRouter = router({
           instruction,
           subShotFlagOn: flagOn,
           subShotPolicy: policy,
+          retentionHooksEnabled,
         }
       );
       return outcome;
@@ -7327,6 +7530,108 @@ export const verticalDramaEpisodesRouter = router({
         row.motionPromptPack
       );
       return { startFramePlan: updatedPlan, assetUrls };
+    }),
+
+  /**
+   * Manually override which character(s) — or which specific
+   * variant/age-stage/twin `characterKey` of a character — are used as the
+   * identity-lock reference(s) for ONE shot only (planning/vertical-drama-
+   * twin-variant-completeness/plan.md, W6 backend). Today
+   * `requiredCharacterRefs` is only ever set by the storyboard/start-frame-
+   * plan LLM generation stages; this is a pure, cheap, direct data patch —
+   * no LLM/skill call, no regeneration of any kind. Patches ONLY the
+   * matching entry's `requiredCharacterRefs` in `startFramePlan.frames[]`,
+   * same "find by shotNumber, replace one array entry, write the whole
+   * jsonb column back" pattern as `setApprovedStartFrameAsset` above.
+   *
+   * `characterRefs` is the shot's new FULL `requiredCharacterRefs` array
+   * (full replacement, not a merge/append) — every key must already exist
+   * in this series' character roster (base character OR one of its
+   * variant/twin rows' own `characterKey`), otherwise the whole call is
+   * rejected with BAD_REQUEST rather than silently persisting a key that
+   * would later resolve to zero reference images.
+   */
+  setShotCharacterReference: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        characterRefs: z.array(z.string().min(1)),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      if (!plan || !Array.isArray(plan.frames)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No start-frame plan exists yet for this episode",
+        });
+      }
+      const frameIndex = plan.frames.findIndex(
+        f => f.shotNumber === input.shotNumber
+      );
+      if (frameIndex === -1) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `No start-frame plan entry for shot ${input.shotNumber}`,
+        });
+      }
+
+      // Every requested characterKey must exist in this series' roster —
+      // reject unknown keys instead of silently persisting garbage that
+      // would later resolve to zero reference images at render time.
+      const uniqueKeys = Array.from(new Set(input.characterRefs));
+      if (uniqueKeys.length > 0) {
+        const rosterRows = await db
+          .select({ characterKey: verticalDramaCharacters.characterKey })
+          .from(verticalDramaCharacters)
+          .where(
+            and(
+              eq(verticalDramaCharacters.tenantId, tenantId),
+              eq(verticalDramaCharacters.seriesId, seriesId),
+              inArray(verticalDramaCharacters.characterKey, uniqueKeys)
+            )
+          );
+        const foundKeys = new Set(
+          rosterRows.map((r: { characterKey: string }) => r.characterKey)
+        );
+        const unknownKeys = uniqueKeys.filter(k => !foundKeys.has(k));
+        if (unknownKeys.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown character key(s): ${unknownKeys.join(", ")}`,
+          });
+        }
+      }
+
+      const updatedFrames = plan.frames.slice();
+      updatedFrames[frameIndex] = {
+        ...updatedFrames[frameIndex],
+        requiredCharacterRefs: input.characterRefs,
+      };
+      const updatedPlan: VerticalDramaStartFramePlan = {
+        ...plan,
+        frames: updatedFrames,
+      };
+
+      await db
+        .update(verticalDramaEpisodes)
+        .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+        .where(eq(verticalDramaEpisodes.id, episodeId));
+
+      return { startFramePlan: updatedPlan };
     }),
 
   /**
@@ -9649,13 +9954,22 @@ export const verticalDramaEpisodesRouter = router({
       const urlsByAssetId = await resolveMediaAssetUrlsByIds(tenantId, userId, [
         approvedMediaAssetId,
       ]);
-      const imageUrl = urlsByAssetId.get(approvedMediaAssetId);
-      if (!imageUrl) {
+      const rawImageUrl = urlsByAssetId.get(approvedMediaAssetId);
+      if (!rawImageUrl) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "ต้องมีภาพหลักของช็อตก่อน",
         });
       }
+      // `resolveMediaAssetUrlsByIds` returns `mediaAssets.originalUrl` as
+      // stored — a relative storage path (e.g. `/api/storage/files/...`).
+      // This URL goes straight into a vision-capable LLM's `image_url`
+      // content part below (`buildVisionAwareContent`), which the provider
+      // rejects as an invalid URL format unless it's absolute — same
+      // relative-to-absolute conversion every other reference-image call
+      // site in this router already applies via `mediaGenerationService`'s
+      // internal `resolveReferenceUrl`.
+      const imageUrl = resolveReferenceUrl(rawImageUrl, ctx.publicUrl ?? undefined);
 
       // Story-density reform (spec §7.7.2 Layer 3/4, section-13, added
       // 2026-07-07) — gates BOTH the beat-index dialogue mapping and the
@@ -9665,11 +9979,23 @@ export const verticalDramaEpisodesRouter = router({
       const { speechBudgetEnabled } =
         await resolveVerticalDramaDensityFlags(tenantId);
 
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W7, router-wiring package, added 2026-07-11) — resolved once for
+      // this mutation.
+      const retentionHooksEnabled =
+        await resolveVerticalDramaRetentionHooksFlag(tenantId);
+
       // Shot context: description/camera/emotion from the storyboard shot.
       const storyboard = row.storyboard as VerticalDramaShotgrid | null;
       const storyboardShot = storyboard?.shots?.find(
         s => s.shotNumber === input.shotNumber
       );
+      // Retention hooks (W7) — this episode's total shot count, used ONLY to
+      // derive `is_retention_ending_shot` (see
+      // `GenerateVerticalDramaShotVideoPromptParams.totalShotCount`'s doc
+      // comment). `undefined` whenever the storyboard has no shots yet, same
+      // as every other storyboard-derived optional fact in this mutation.
+      const shotVideoTotalShotCount = storyboard?.shots?.length || undefined;
       // Additive/defensive: today's shotgrid output does not populate this
       // field yet (W1-B shotgrid schema superset, a different file/wave) —
       // read tolerantly off the raw shot object so this wiring activates
@@ -9691,6 +10017,21 @@ export const verticalDramaEpisodesRouter = router({
       // `product_tie_in_plan.tie_ins[]`. Drives the mandatory natural
       // product/benefit mention in `generateVerticalDramaShotVideoPrompt`.
       const scriptPayload = row.script as Record<string, unknown> | null;
+      // Retention hooks (W7) — grounding TEXT context for the opening/
+      // retention-ending shot rules (see `GenerateVerticalDramaShotVideoPromptParams
+      // .hookText`/`.retentionLoopDescription`'s own doc comments). Read
+      // straight off the already-loaded `scriptPayload` — tolerant of a
+      // pre-retention-hooks script artifact that has neither field.
+      const shotVideoHookText =
+        typeof scriptPayload?.hook === "string" ? scriptPayload.hook : undefined;
+      const shotVideoRetentionLoopDescription = (() => {
+        const retentionLoop = scriptPayload?.retention_loop as
+          | Record<string, unknown>
+          | undefined;
+        return typeof retentionLoop?.description === "string"
+          ? retentionLoop.description
+          : undefined;
+      })();
       const tieInPlacements = extractShotProductPlacements(
         scriptPayload?.product_tie_in_plan
       );
@@ -9960,6 +10301,12 @@ export const verticalDramaEpisodesRouter = router({
               }
             : undefined,
         },
+        // Retention hooks (W7) — omitted (all four) whenever the tenant flag
+        // is off, reproducing the exact prior prompt byte-for-byte.
+        retentionHooksEnabled,
+        totalShotCount: shotVideoTotalShotCount,
+        hookText: shotVideoHookText,
+        retentionLoopDescription: shotVideoRetentionLoopDescription,
         selectedVideoModelId: selectedVideoModel.id,
         selectedVideoModel,
         locale: normalizeVerticalDramaSeriesLocale(localeSeriesRow?.locale),
@@ -10601,6 +10948,11 @@ export const verticalDramaEpisodesRouter = router({
         await resolveVerticalDramaDensityFlags(tenantId);
       const { qualityLoopV2Enabled, tieInQcEnabled, storyLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W6, router-wiring package, added 2026-07-11) — resolved once for
+      // this mutation, same convention as every other flag above.
+      const retentionHooksEnabled =
+        await resolveVerticalDramaRetentionHooksFlag(tenantId);
       const resolvedPolicy = resolveQualityPolicy(
         (qualityReviewSeriesRow?.qualityPolicy as Partial<VerticalDramaQualityPolicy> | null) ??
           null,
@@ -10634,6 +10986,22 @@ export const verticalDramaEpisodesRouter = router({
           ? { ...seriesTieInConfig, enabled: true as const }
           : undefined;
 
+      // Retention hooks (W6) — same conditional-computation convention as
+      // `densityMetrics` above: only built when the flag is actually on, so
+      // a flag-off request never even calls `computeRetentionMetrics` or
+      // queries prior episodes.
+      const retentionMetrics: VerticalDramaRetentionMetrics | undefined =
+        retentionHooksEnabled
+          ? computeRetentionMetrics({
+              script,
+              storyboard,
+              recentRetentionLoopTypes: await loadRecentVerticalDramaRetentionLoopTypes(
+                owner,
+                row.episodeNumber
+              ),
+            })
+          : undefined;
+
       let outcome: {
         review: EpisodeQualityReviewOutput;
         creditsUsed: number;
@@ -10661,6 +11029,10 @@ export const verticalDramaEpisodesRouter = router({
           // (story dims still scored as usual). Omitted (byte-identical
           // prompt) whenever the tenant flag is off.
           reviewMode: storyLockEnabled ? "execution" : undefined,
+          // Retention hooks (W6) — omitted (both, byte-identical prompt)
+          // whenever the tenant flag is off.
+          scoreRetentionDimensions: retentionHooksEnabled,
+          retentionMetrics,
         });
       } catch (err) {
         if (err instanceof QualityReviewInsufficientCreditsError) {
@@ -10785,6 +11157,14 @@ export const verticalDramaEpisodesRouter = router({
 
       const { qualityLoopV2Enabled, storyLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`,
+      // router-wiring package, added 2026-07-11) — resolved ONCE for this
+      // mutation, reused by both the repair loop below and the auto
+      // re-review call. `runApplyQualityReviewSuggestionsLoop` resolves its
+      // own copy internally (separate function, separate request-scoped
+      // resolution), same convention as `storyLockEnabled` above.
+      const retentionHooksEnabled =
+        await resolveVerticalDramaRetentionHooksFlag(tenantId);
 
       if (input.loop) {
         if (qualityLoopV2Enabled) {
@@ -10824,7 +11204,8 @@ export const verticalDramaEpisodesRouter = router({
             owner,
             group.stage,
             instruction,
-            storyLockEnabled
+            storyLockEnabled,
+            retentionHooksEnabled
           );
         if (storyLockViolated) {
           storyLockRejectionsThisApply++;
@@ -10863,6 +11244,21 @@ export const verticalDramaEpisodesRouter = router({
               )
             )
             .limit(1);
+          // Retention hooks (W6) — same conditional-computation convention
+          // as the loop's `effects.runReview` above: only built when the
+          // flag is actually on.
+          const reReviewRetentionMetrics: VerticalDramaRetentionMetrics | undefined =
+            retentionHooksEnabled
+              ? computeRetentionMetrics({
+                  script,
+                  storyboard,
+                  recentRetentionLoopTypes:
+                    await loadRecentVerticalDramaRetentionLoopTypes(
+                      owner,
+                      refreshedRow.episodeNumber
+                    ),
+                })
+              : undefined;
           const reReviewOutcome = await runVerticalDramaEpisodeQualityReview({
             userId,
             tenantId,
@@ -10879,6 +11275,9 @@ export const verticalDramaEpisodesRouter = router({
               : undefined,
             // W11.6 "Story Lock" — see `runEpisodeQualityReview`'s identical wiring.
             reviewMode: storyLockEnabled ? "execution" : undefined,
+            // Retention hooks (W6) — omitted (both) whenever the flag is off.
+            scoreRetentionDimensions: retentionHooksEnabled,
+            retentionMetrics: reReviewRetentionMetrics,
           });
           newReview = reReviewOutcome.review;
           await persistQualityReviewArtifact(owner, newReview);

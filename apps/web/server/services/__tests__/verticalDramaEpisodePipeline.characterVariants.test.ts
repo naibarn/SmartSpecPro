@@ -252,3 +252,72 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     expect(callArgs.characters[0].variants).toBeUndefined();
   });
 });
+
+describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-variant-completeness/plan.md W5)", () => {
+  it("emits one twinPairs entry (by characterKey) for two base characters whose sharesFaceWithCharacterId points one-way at each other", async () => {
+    const characterRows = [
+      { id: 1, characterKey: "char-fai", name: "ฝ้าย", role: "lead", parentCharacterId: null, variantLabel: null, variantType: null, sharesFaceWithCharacterId: null, data: null },
+      { id: 2, characterKey: "char-baitong", name: "ใบตอง", role: "support", parentCharacterId: null, variantLabel: null, variantType: null, sharesFaceWithCharacterId: 1, data: null },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain(characterRows));
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+
+    await pipeline.generateRealStoryboard(owner, episode, false);
+
+    const callArgs = mockGenerateStoryboardShotgrid.mock.calls[0][0];
+    expect(callArgs.twinPairs).toEqual([
+      { characterKeyA: "char-baitong", characterKeyB: "char-fai" },
+    ]);
+  });
+
+  it("dedupes a twin pair when BOTH rows point sharesFaceWithCharacterId at each other (defensive bidirectional data)", async () => {
+    const characterRows = [
+      { id: 1, characterKey: "char-fai", name: "ฝ้าย", role: "lead", parentCharacterId: null, variantLabel: null, variantType: null, sharesFaceWithCharacterId: 2, data: null },
+      { id: 2, characterKey: "char-baitong", name: "ใบตอง", role: "support", parentCharacterId: null, variantLabel: null, variantType: null, sharesFaceWithCharacterId: 1, data: null },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain(characterRows));
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+
+    await pipeline.generateRealStoryboard(owner, episode, false);
+
+    const callArgs = mockGenerateStoryboardShotgrid.mock.calls[0][0];
+    expect(callArgs.twinPairs).toHaveLength(1);
+    expect(callArgs.twinPairs).toEqual([
+      { characterKeyA: "char-fai", characterKeyB: "char-baitong" },
+    ]);
+  });
+
+  it("sends twinPairs: undefined when the series has no twins at all (byte-identical to before this field existed)", async () => {
+    const characterRows = [
+      { id: 1, characterKey: "char-1", name: "Alice", role: "lead", parentCharacterId: null, variantLabel: null, variantType: null, sharesFaceWithCharacterId: null, data: null },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain(characterRows));
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+
+    await pipeline.generateRealStoryboard(owner, episode, false);
+
+    const callArgs = mockGenerateStoryboardShotgrid.mock.calls[0][0];
+    expect(callArgs.twinPairs).toBeUndefined();
+  });
+
+  it("also works when character rows omit the sharesFaceWithCharacterId column entirely (older mocks/rows — treated as no twins)", async () => {
+    const characterRows = [
+      { id: 1, characterKey: "char-1", name: "Alice", role: "lead" },
+    ];
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain(characterRows));
+    mockGetPrimaryPortraitUrl.mockResolvedValue(null);
+
+    await pipeline.generateRealStoryboard(owner, episode, false);
+
+    const callArgs = mockGenerateStoryboardShotgrid.mock.calls[0][0];
+    expect(callArgs.twinPairs).toBeUndefined();
+  });
+});

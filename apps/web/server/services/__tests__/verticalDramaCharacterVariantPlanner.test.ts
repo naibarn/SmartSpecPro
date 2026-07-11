@@ -327,6 +327,54 @@ describe("buildCharacterVariantPlannerUserPrompt", () => {
     const prompt = buildCharacterVariantPlannerUserPrompt(baseParams({ lang: undefined }));
     expect(prompt).toContain("locale: th");
   });
+
+  it("appends existing_parent_character_key/existing_variant_label markers for a variant roster entry", () => {
+    const prompt = buildCharacterVariantPlannerUserPrompt(
+      baseParams({
+        characters: [
+          {
+            characterKey: "character-1-school-uniform",
+            name: "หนูนา",
+            role: "protagonist",
+            description: "school uniform",
+            existingParentCharacterKey: "character-1",
+            existingVariantLabel: "ชุดนักเรียน",
+          },
+        ],
+      }),
+    );
+
+    expect(prompt).toContain(
+      "- character_key=character-1-school-uniform name=หนูนา role=protagonist description=school uniform existing_parent_character_key=character-1 existing_variant_label=ชุดนักเรียน",
+    );
+  });
+
+  it("appends existing_shares_face_with_character_key marker for a twin roster entry", () => {
+    const prompt = buildCharacterVariantPlannerUserPrompt(
+      baseParams({
+        characters: [
+          {
+            characterKey: "character-4-twin",
+            name: "ใบตอง",
+            role: "supporting",
+            description: "wears glasses",
+            existingSharesFaceWithCharacterKey: "character-4",
+          },
+        ],
+      }),
+    );
+
+    expect(prompt).toContain(
+      "- character_key=character-4-twin name=ใบตอง role=supporting description=wears glasses existing_shares_face_with_character_key=character-4",
+    );
+  });
+
+  it("does not append any existing_* marker for a base character roster entry", () => {
+    const prompt = buildCharacterVariantPlannerUserPrompt(baseParams());
+    expect(prompt).not.toContain("existing_parent_character_key");
+    expect(prompt).not.toContain("existing_variant_label");
+    expect(prompt).not.toContain("existing_shares_face_with_character_key");
+  });
 });
 
 /* -------------------------------------------------------------------------- */
@@ -621,5 +669,201 @@ describe("reconcileCharacterVariantPlan", () => {
     expect(summary.createdCharacters).toEqual([]);
     expect(summary.updatedCharacters).toEqual([]);
     expect(hoisted.characterRows).toHaveLength(1);
+  });
+
+  /* ------------------------------------------------------------------ */
+  /* W3 stable-ID reconcile                                              */
+  /* (planning/vertical-drama-twin-variant-completeness/plan.md W3)      */
+  /* ------------------------------------------------------------------ */
+
+  it("matches/updates an existing variant row via existing_character_key even when variant_label text differs from what's stored", async () => {
+    hoisted.characterRows = [
+      makeCharacterRow({ id: 1, characterKey: "character-1", name: "หนูนา" }),
+      makeCharacterRow({
+        id: 2,
+        characterKey: "character-1-school-uniform",
+        name: "หนูนา",
+        role: "protagonist",
+        parentCharacterId: 1,
+        variantLabel: "ชุดนักเรียน (เก่า)", // stored label differs from the plan's phrasing below
+        variantType: "outfit",
+        data: { description: "old description" },
+      }),
+    ];
+    hoisted.pendingUpdateTargetId = 2;
+
+    const plan: CharacterVariantPlan = validOutput({
+      character_plans: [
+        {
+          character_key: "character-1",
+          variants: [
+            {
+              variant_label: "ชุดไปโรงเรียน", // deliberately different phrasing from the stored label
+              variant_type: "outfit",
+              description: "updated description via stable ID",
+              applies_to_episodes: [],
+              existing_character_key: "character-1-school-uniform",
+            },
+          ],
+        },
+      ],
+    } as any);
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    // Matched via existing_character_key, not the (now-mismatched) text
+    // comparison — no duplicate row created.
+    expect(summary.createdCharacters).toEqual([]);
+    expect(summary.updatedCharacters).toEqual([{ name: "หนูนา", variantLabel: "ชุดไปโรงเรียน" }]);
+    expect(hoisted.characterRows).toHaveLength(2);
+    expect(hoisted.updateCalls).toHaveLength(1);
+    expect(hoisted.updateCalls[0].id).toBe(2);
+    expect((hoisted.updateCalls[0].patch.data as any).description).toBe(
+      "updated description via stable ID",
+    );
+  });
+
+  it("falls through gracefully (no crash) to the text-match path when existing_character_key on a variant doesn't resolve to any known row", async () => {
+    hoisted.characterRows = [
+      makeCharacterRow({ id: 1, characterKey: "character-1", name: "หนูนา" }),
+      makeCharacterRow({
+        id: 2,
+        characterKey: "character-1-school-uniform",
+        name: "หนูนา",
+        role: "protagonist",
+        parentCharacterId: 1,
+        variantLabel: "ชุดนักเรียน",
+        variantType: "outfit",
+        data: { description: "old description" },
+      }),
+    ];
+    hoisted.pendingUpdateTargetId = 2;
+
+    const plan: CharacterVariantPlan = validOutput({
+      character_plans: [
+        {
+          character_key: "character-1",
+          variants: [
+            {
+              variant_label: "ชุดนักเรียน", // matches stored label — text-match fallback succeeds
+              variant_type: "outfit",
+              description: "updated via text-match fallback",
+              applies_to_episodes: [],
+              existing_character_key: "character-does-not-exist",
+            },
+          ],
+        },
+      ],
+    } as any);
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    expect(summary.createdCharacters).toEqual([]);
+    expect(summary.updatedCharacters).toEqual([{ name: "หนูนา", variantLabel: "ชุดนักเรียน" }]);
+    expect(hoisted.characterRows).toHaveLength(2);
+  });
+
+  it("matches an existing IDENTICAL twin row via existing_character_key even when name text differs, leaving it untouched (never re-created)", async () => {
+    hoisted.characterRows = [
+      makeCharacterRow({ id: 1, characterKey: "character-1", name: "ใบเฟิร์น" }),
+      makeCharacterRow({
+        id: 2,
+        characterKey: "character-1-twin",
+        name: "ใบตอง (เดิม)", // stored name differs from the plan's phrasing below
+        sharesFaceWithCharacterId: 1,
+      }),
+    ];
+
+    const plan: CharacterVariantPlan = {
+      contract_version: 1,
+      character_plans: [],
+      twin_detections: [
+        {
+          description: "identical twin",
+          source_character_key: "character-1",
+          new_characters: [
+            {
+              name: "ใบตอง", // different phrasing from stored "ใบตอง (เดิม)"
+              shares_face_with: "character-1",
+              existing_character_key: "character-1-twin",
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    expect(summary.createdCharacters).toEqual([]);
+    expect(summary.updatedCharacters).toEqual([]);
+    expect(hoisted.characterRows).toHaveLength(2);
+  });
+
+  it("matches an existing FRATERNAL twin row via existing_character_key even when name text differs, leaving it untouched (never re-created)", async () => {
+    hoisted.characterRows = [
+      makeCharacterRow({ id: 1, characterKey: "character-1", name: "ใบเฟิร์น" }),
+      makeCharacterRow({
+        id: 2,
+        characterKey: "character-1-sibling",
+        name: "กันต์ (เดิม)", // stored name differs from the plan's phrasing below
+      }),
+    ];
+
+    const plan: CharacterVariantPlan = {
+      contract_version: 1,
+      character_plans: [],
+      twin_detections: [
+        {
+          description: "fraternal sibling",
+          source_character_key: "character-1",
+          new_characters: [
+            {
+              name: "กันต์", // different phrasing from stored "กันต์ (เดิม)"
+              existing_character_key: "character-1-sibling",
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    expect(summary.createdCharacters).toEqual([]);
+    expect(summary.updatedCharacters).toEqual([]);
+    expect(hoisted.characterRows).toHaveLength(2);
+  });
+
+  it("falls through gracefully (no crash) to the text-match path when existing_character_key on a twin doesn't resolve to any known row", async () => {
+    hoisted.characterRows = [makeCharacterRow({ id: 1, characterKey: "character-1", name: "ใบเฟิร์น" })];
+
+    const plan: CharacterVariantPlan = {
+      contract_version: 1,
+      character_plans: [],
+      twin_detections: [
+        {
+          description: "identical twin",
+          source_character_key: "character-1",
+          new_characters: [
+            {
+              character_key_suggestion: "character-1-twin",
+              name: "ใบตอง",
+              role: "supporting",
+              shares_face_with: "character-1",
+              distinguishing_notes: "always wears glasses, short hair",
+              existing_character_key: "character-does-not-exist",
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const summary = await reconcileCharacterVariantPlan(owner, plan);
+
+    // No existing row matched (neither stable-ID nor text-match, since no
+    // row exists yet at all) — falls through to a normal INSERT, same as the
+    // no-marker case. Never throws.
+    expect(summary.createdCharacters).toEqual([{ name: "ใบตอง", variantLabel: null }]);
+    const twinRow = hoisted.characterRows.find((row) => row.name === "ใบตอง");
+    expect(twinRow?.sharesFaceWithCharacterId).toBe(1);
   });
 });

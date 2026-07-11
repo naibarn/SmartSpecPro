@@ -602,6 +602,46 @@ describe("generateStoryboardShotgrid", () => {
       expect(result.storyboard.shots[0].characters).toEqual(["char-1"]);
     });
 
+    it("renders no twin-pair lines and produces a byte-identical prompt for a call with no twinPairs", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+      await generateStoryboardShotgrid(baseParams());
+      const withoutTwinPairsPrompt = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+
+      mockExecute.mockClear();
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+      await generateStoryboardShotgrid(baseParams({ twinPairs: undefined }));
+      const withUndefinedTwinPairsPrompt = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+
+      expect(withUndefinedTwinPairsPrompt).toBe(withoutTwinPairsPrompt);
+      expect(withoutTwinPairsPrompt).not.toMatch(/Twin pairs/);
+      expect(withoutTwinPairsPrompt).not.toMatch(/Twin-aware shot styling/);
+    });
+
+    it("renders each twinPairs entry as a 'are twins' fact line when present", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+      await generateStoryboardShotgrid(
+        baseParams({
+          twinPairs: [{ characterKeyA: "char-fai", characterKeyB: "char-baitong" }],
+        })
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+      expect(userMessage).toMatch(/Twin pairs \(see "Twin-aware shot styling" below\):/);
+      expect(userMessage).toMatch(
+        /char-fai and char-baitong are twins — they share an identical face but are different people\./
+      );
+    });
+
     it("does not strip a variant's characterKey from a shot's characters/required_character_refs (variant ids are real ids, not LLM-invented junk)", async () => {
       mockHasEnoughCredits.mockResolvedValue(true);
       mockExecute.mockResolvedValue(

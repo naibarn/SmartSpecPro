@@ -212,6 +212,79 @@ describe("vertical-drama-character-visual-bible/skill.md — Face reference lock
 });
 
 /**
+ * Own reference image locking (vertical-drama-reference-picker-outfit-lock
+ * plan, Phase D2 — section B): fixes the diagnosed bug where a hardcoded
+ * router sentence locked identity to an attached reference image but never
+ * mentioned outfit/clothing/accessories, so image models felt free to invent
+ * a new outfit even with a reference photo attached. Mirrors the "example
+ * completeness" regression-test style used throughout this file.
+ */
+describe("vertical-drama-character-visual-bible/skill.md — Own reference image locking section", () => {
+  const body = readSkillMdBody();
+
+  it("contains an 'Own reference image locking' MANDATORY section gated on has_own_reference_image", () => {
+    expect(body).toMatch(/Own reference image locking.*MANDATORY when `has_own_reference_image` is true/i);
+    expect(body).toMatch(/has_own_reference_image/);
+  });
+
+  it("requires the identity lock to always cover face shape, skin tone, hairstyle, outfit, clothing, accessories, and shoes", () => {
+    const section = body.split("## Own reference image locking")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/face shape/i);
+    expect(section).toMatch(/skin tone/i);
+    expect(section).toMatch(/hairstyle/i);
+    expect(section).toMatch(/outfit/i);
+    expect(section).toMatch(/clothing/i);
+    expect(section).toMatch(/accessories/i);
+    expect(section).toMatch(/shoes/i);
+  });
+
+  it("explains this is stricter than the hard-lock face_source_reference case (which deliberately does NOT lock wardrobe)", () => {
+    const section = body.split("## Own reference image locking")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/does NOT lock clothing/i);
+    expect(section).toMatch(/stricter/i);
+  });
+
+  it("instructs weaving has_own_reference_image and face_source_reference together when both are present (not mutually exclusive)", () => {
+    const section = body.split("## Own reference image locking")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/BOTH.*has_own_reference_image.*face_source_reference/is);
+    expect(section).toMatch(/mutually exclusive/i);
+  });
+
+  it("never append a boilerplate sentence verbatim — same facts-in, natural-prose-out convention", () => {
+    const section = body.split("## Own reference image locking")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/never append a boilerplate sentence\s+verbatim/i);
+  });
+
+  it("contains a worked example demonstrating has_own_reference_image: true with outfit explicitly locked in every prompt field", () => {
+    const match = body.match(
+      /Worked example — own reference image lock, `has_own_reference_image: true`[\s\S]*?```json\n([\s\S]*?)\n```[\s\S]*?```json\n([\s\S]*?)\n```/,
+    );
+    expect(match).not.toBeNull();
+    const [, inputJson, outputJson] = match!;
+    const input = JSON.parse(inputJson) as { has_own_reference_image: boolean };
+    expect(input.has_own_reference_image).toBe(true);
+
+    const output = JSON.parse(outputJson) as { characters: Array<Record<string, unknown>> };
+    const character = output.characters[0];
+    for (const field of [
+      "primary_portrait_prompt",
+      "turnaround_prompt",
+      "full_body_prompt",
+      "expression_sheet_prompt",
+      "outfit_sheet_prompt",
+    ]) {
+      const value = character[field] as string;
+      expect(typeof value).toBe("string");
+      expect(value.trim().length).toBeGreaterThan(0);
+      // The exact fix: every one of these fields must explicitly lock outfit
+      // (or a synonym: clothing/accessories/shoes/wardrobe), not just
+      // face/skin/hair, whenever has_own_reference_image is true.
+      expect(value).toMatch(/outfit|clothing|accessories|shoes|wardrobe/i);
+    }
+  });
+});
+
+/**
  * Character Design Bible sheet types (planning/vertical-drama-character-sheet-
  * consolidation/plan.md Phase A) — `requested_sheet_type` selects one
  * additional `sheet_prompt`/`sheet_type` pair on top of the 5 always-required

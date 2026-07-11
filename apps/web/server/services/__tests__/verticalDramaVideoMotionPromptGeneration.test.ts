@@ -368,6 +368,78 @@ describe("generateVideoMotionPromptPack", () => {
     expect(result.pack.clips).toHaveLength(2);
   });
 
+  // Retention hooks (planning/vertical-drama-retention-hooks/plan.md W7,
+  // added 2026-07-11) — `retentionHooksEnabled` gates whether the shot lines
+  // sent to the LLM are annotated with `is_opening_shot`/
+  // `is_retention_ending_shot`. Both facts are derived purely from
+  // `storyboardShots[].shotNumber` (min/max), which this function already
+  // receives — no new caller wiring required for this pack-level path.
+  describe("retentionHooksEnabled (W7 — hook shot / retention-ending shot facts)", () => {
+    it("omits is_opening_shot/is_retention_ending_shot markers when the flag is absent (byte-identical default)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(9)));
+
+      await generateVideoMotionPromptPack(baseParams());
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).not.toContain("is_opening_shot");
+      expect(userMessage.content).not.toContain("is_retention_ending_shot");
+    });
+
+    it("omits both markers when the flag is explicitly false (byte-identical)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(9)));
+
+      await generateVideoMotionPromptPack(baseParams({ retentionHooksEnabled: false }));
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).not.toContain("is_opening_shot");
+      expect(userMessage.content).not.toContain("is_retention_ending_shot");
+    });
+
+    it("annotates the first shot line with is_opening_shot and the last with is_retention_ending_shot when the flag is on", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(9)));
+
+      await generateVideoMotionPromptPack(baseParams({ retentionHooksEnabled: true }));
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      const content = userMessage.content as string;
+      expect(content).toContain("- Shot 1 (10s): Shot 1 | is_opening_shot: true (episode's hook shot)");
+      expect(content).toContain(
+        "- Shot 9 (10s): Shot 9 | is_retention_ending_shot: true (episode's retention-loop ending shot)",
+      );
+      // No shot in between should be marked.
+      expect(content).not.toMatch(/Shot 5 \(10s\).*is_opening_shot/);
+      expect(content).not.toMatch(/Shot 5 \(10s\).*is_retention_ending_shot/);
+    });
+
+    it("marks a single-shot episode's only shot line with BOTH facts when the flag is on", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(1)));
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          retentionHooksEnabled: true,
+          storyboardShots: [{ shotNumber: 1, description: "Only shot", durationSeconds: 60 }],
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      const content = userMessage.content as string;
+      expect(content).toContain("is_opening_shot: true (episode's hook shot)");
+      expect(content).toContain("is_retention_ending_shot: true (episode's retention-loop ending shot)");
+    });
+  });
+
   it("retries once with a higher token ceiling when the first response is truncated JSON, and succeeds on the retry", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute

@@ -47,6 +47,11 @@
                   "type": "array",
                   "items": { "type": "integer", "minimum": 1 },
                   "default": []
+                },
+                "existing_character_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Set ONLY when you recognize this variant as the SAME one an input roster entry's existing_parent_character_key/existing_variant_label already describes — echo that roster entry's own character_key here instead of proposing a fresh-sounding duplicate. Omit when there is no such overlap."
                 }
               }
             }
@@ -94,6 +99,11 @@
                 "distinguishing_notes": {
                   "type": "string",
                   "description": "Concrete details that keep this sibling visually distinct from the source. Required in practice whenever shares_face_with is set."
+                },
+                "existing_character_key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Set ONLY when you recognize this sibling as the SAME one an input roster entry's existing_shares_face_with_character_key already describes — echo that roster entry's own character_key here instead of proposing a fresh-sounding duplicate. Omit when there is no such overlap."
                 }
               }
             }

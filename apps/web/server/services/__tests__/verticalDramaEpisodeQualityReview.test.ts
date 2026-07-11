@@ -84,8 +84,10 @@ import {
   runVerticalDramaEpisodeQualityReview,
   InsufficientCreditsError,
   computeVerticalDramaDensityMetrics,
+  computeRetentionMetrics,
   episodeQualityReviewOutputSchema,
   type VerticalDramaDensityMetrics,
+  type VerticalDramaRetentionMetrics,
 } from "../verticalDramaEpisodeQualityReview";
 import { analyzeVerticalDramaEpisodeDialogueQuality } from "@shared/verticalDramaSeries/dialogueQuality";
 
@@ -694,5 +696,274 @@ describe("computeVerticalDramaDensityMetrics — Section 05 additions (spec §7.
     };
     const result = computeVerticalDramaDensityMetrics({ dialoguePlan, clipDurations });
     expect(result.abstract_line_ungrounded_count).toBe(0);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Retention-hooks scorecard v4                                               */
+/* (`planning/vertical-drama-retention-hooks/plan.md` W6, added 2026-07-11)   */
+/* -------------------------------------------------------------------------- */
+
+const SAMPLE_RETENTION_METRICS: VerticalDramaRetentionMetrics = {
+  subtitle_line_facts: { max_line_chars: 12, longest_line_excerpt: "อย่าทิ้งฉันไปนะ" },
+  retention_structure_facts: {
+    open_loop_count: 1,
+    retention_loop_type: "clue",
+    retention_loop_present: true,
+  },
+  shot_change_cadence_facts: {
+    max_static_streak: 2,
+    windows_without_change: 0,
+    declared_change_mismatch_count: 0,
+  },
+  retention_loop_rotation_facts: { repeated_streak: 0 },
+};
+
+describe("episodeQualityReviewOutputSchema — retention-hooks v4 superset (W6)", () => {
+  const V4_SKILL_FIXTURE = {
+    contract_version: 4,
+    episode_title: "Midnight Verdict",
+    scorecard: {
+      reversal_count: 2,
+      reversal_sharpness: 4,
+      emotion_variety: 4,
+      dialogue_naturalness: 4,
+      pacing: 4,
+      overall: 4,
+      open_loop_quality: 4,
+      retention_loop_quality: 5,
+      change_cadence: 3,
+    },
+    summary: "Open loop planted at beat 3; retention loop lands as a concrete clue.",
+    issues: [
+      {
+        location: "beat 3",
+        problem: "the open loop's question is vague — 'something is wrong' rather than a concrete stake.",
+        suggested_fix: "sharpen beat 3's open loop into a specific unanswered question tied to a visible object.",
+      },
+    ],
+    retention_metrics: SAMPLE_RETENTION_METRICS,
+    warnings: [],
+    repair_queue: [],
+  };
+
+  it("parses a v4 fixture with open_loop_quality/retention_loop_quality/change_cadence and retention_metrics", () => {
+    const result = episodeQualityReviewOutputSchema.safeParse(V4_SKILL_FIXTURE);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.scorecard.open_loop_quality).toBe(4);
+      expect(result.data.scorecard.retention_loop_quality).toBe(5);
+      expect(result.data.scorecard.change_cadence).toBe(3);
+      expect(result.data.retention_metrics?.retention_structure_facts?.open_loop_count).toBe(1);
+    }
+  });
+
+  it("rejects an out-of-range v4 dimension (change_cadence must be 1-5)", () => {
+    const result = episodeQualityReviewOutputSchema.safeParse({
+      ...V4_SKILL_FIXTURE,
+      scorecard: { ...V4_SKILL_FIXTURE.scorecard, change_cadence: 0 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("still parses a v1 fixture unchanged (v4 fields absent)", () => {
+    const result = episodeQualityReviewOutputSchema.safeParse(V1_SKILL_FIXTURE);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.scorecard.open_loop_quality).toBeUndefined();
+      expect(result.data.retention_metrics).toBeUndefined();
+    }
+  });
+});
+
+describe("runVerticalDramaEpisodeQualityReview — retention-hooks v4 prompt injection (W6)", () => {
+  function capturedUserPrompt(): string {
+    return mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+  }
+
+  it("byte-identical: no retention_metrics/contract_version:4 text when scoreRetentionDimensions is omitted", async () => {
+    mockSuccessfulLlmResponse();
+
+    await runVerticalDramaEpisodeQualityReview(baseParams());
+
+    const userPrompt = capturedUserPrompt();
+    expect(userPrompt).not.toContain("retention_metrics:");
+    expect(userPrompt).not.toContain('"contract_version": 4');
+    expect(userPrompt).not.toContain("open_loop_quality");
+  });
+
+  it("byte-identical: no retention_metrics/contract_version:4 text when scoreRetentionDimensions is explicitly false", async () => {
+    mockSuccessfulLlmResponse();
+
+    await runVerticalDramaEpisodeQualityReview(
+      baseParams({ scoreRetentionDimensions: false, retentionMetrics: SAMPLE_RETENTION_METRICS }),
+    );
+
+    const userPrompt = capturedUserPrompt();
+    expect(userPrompt).not.toContain("retention_metrics:");
+    expect(userPrompt).not.toContain('"contract_version": 4');
+  });
+
+  it("instructs contract_version 4 + the three new dimensions when scoreRetentionDimensions is true, even without retentionMetrics", async () => {
+    mockSuccessfulLlmResponse();
+
+    await runVerticalDramaEpisodeQualityReview(
+      baseParams({ scoreRetentionDimensions: true }),
+    );
+
+    const userPrompt = capturedUserPrompt();
+    expect(userPrompt).toContain('"contract_version": 4');
+    expect(userPrompt).toContain("open_loop_quality");
+    expect(userPrompt).toContain("retention_loop_quality");
+    expect(userPrompt).toContain("change_cadence");
+    // retentionMetrics was not supplied — no fact block to echo.
+    expect(userPrompt).not.toContain("retention_metrics:");
+  });
+
+  it("injects retention_metrics into the prompt (ground-truth instruction) when both scoreRetentionDimensions and retentionMetrics are supplied", async () => {
+    mockSuccessfulLlmResponse();
+
+    await runVerticalDramaEpisodeQualityReview(
+      baseParams({
+        scoreRetentionDimensions: true,
+        retentionMetrics: SAMPLE_RETENTION_METRICS,
+      }),
+    );
+
+    const userPrompt = capturedUserPrompt();
+    expect(userPrompt).toContain("retention_metrics:");
+    expect(userPrompt).toContain(JSON.stringify(SAMPLE_RETENTION_METRICS));
+    expect(userPrompt).toContain("never recompute, round differently, or second-guess");
+    expect(userPrompt).toContain('"contract_version": 4');
+  });
+
+  it("does not inject retention_metrics when retentionMetrics is supplied but scoreRetentionDimensions is not true", async () => {
+    mockSuccessfulLlmResponse();
+
+    await runVerticalDramaEpisodeQualityReview(
+      baseParams({ retentionMetrics: SAMPLE_RETENTION_METRICS }),
+    );
+
+    const userPrompt = capturedUserPrompt();
+    expect(userPrompt).not.toContain("retention_metrics:");
+    expect(userPrompt).not.toContain('"contract_version": 4');
+  });
+
+  it("force-overwrites the LLM-returned retention_metrics with the caller-supplied value, verbatim", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_REVIEW,
+                contract_version: 4,
+                retention_metrics: {
+                  subtitle_line_facts: { max_line_chars: 999, longest_line_excerpt: "wrong" },
+                  retention_structure_facts: {
+                    open_loop_count: 999,
+                    retention_loop_type: "wrong",
+                    retention_loop_present: false,
+                  },
+                  shot_change_cadence_facts: {
+                    max_static_streak: 999,
+                    windows_without_change: 999,
+                    declared_change_mismatch_count: 999,
+                  },
+                  retention_loop_rotation_facts: { repeated_streak: 999 },
+                },
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const result = await runVerticalDramaEpisodeQualityReview(
+      baseParams({
+        scoreRetentionDimensions: true,
+        retentionMetrics: SAMPLE_RETENTION_METRICS,
+      }),
+    );
+
+    expect(result.review.retention_metrics).toEqual(SAMPLE_RETENTION_METRICS);
+  });
+});
+
+describe("computeRetentionMetrics (`planning/vertical-drama-retention-hooks/plan.md` W6) — no LLM, deterministic", () => {
+  it("returns the all-zero/empty facts for completely empty input without crashing", () => {
+    expect(computeRetentionMetrics({})).toEqual({
+      subtitle_line_facts: { max_line_chars: 0, longest_line_excerpt: "" },
+      retention_structure_facts: {
+        open_loop_count: 0,
+        retention_loop_type: null,
+        retention_loop_present: false,
+      },
+      shot_change_cadence_facts: {
+        max_static_streak: 0,
+        windows_without_change: 0,
+        declared_change_mismatch_count: 0,
+      },
+      retention_loop_rotation_facts: { repeated_streak: 0 },
+    });
+  });
+
+  it("computes subtitle_line_facts from script.structure.beats[].dialogue_lines[].line", () => {
+    const script = {
+      structure: {
+        beats: [
+          { beat: 1, dialogue_lines: [{ speaker: "A", line: "สั้น" }] },
+          { beat: 2, dialogue_lines: [{ speaker: "B", line: "ประโยคที่ยาวกว่ามาก" }] },
+        ],
+      },
+    };
+    const result = computeRetentionMetrics({ script });
+    expect(result.subtitle_line_facts.longest_line_excerpt).toBe("ประโยคที่ยาวกว่ามาก");
+    expect(result.subtitle_line_facts.max_line_chars).toBeGreaterThan(0);
+  });
+
+  it("computes retention_structure_facts from script.open_loops[] / retention_loop", () => {
+    const script = {
+      open_loops: [{ question: "who sent the letter?", planted_at_beat: 2 }],
+      retention_loop: { type: "clue", description: "a torn photo on the floor", ties_to_beat: 9 },
+    };
+    const result = computeRetentionMetrics({ script });
+    expect(result.retention_structure_facts).toEqual({
+      open_loop_count: 1,
+      retention_loop_type: "clue",
+      retention_loop_present: true,
+    });
+  });
+
+  it("computes shot_change_cadence_facts from storyboard.shots[].change_type, sorted by shot_number", () => {
+    const storyboard = {
+      shots: [
+        { shot_number: 3, change_type: ["none"] },
+        { shot_number: 1, change_type: ["visual", "emotional", "informational"] },
+        { shot_number: 2, change_type: ["none"] },
+      ],
+    };
+    const result = computeRetentionMetrics({ storyboard });
+    expect(result.shot_change_cadence_facts.max_static_streak).toBe(2);
+  });
+
+  it("computes retention_loop_rotation_facts from the current episode's retention_loop.type vs. recentRetentionLoopTypes", () => {
+    const script = { retention_loop: { type: "clue" } };
+    const result = computeRetentionMetrics({
+      script,
+      recentRetentionLoopTypes: ["clue", "clue", "threat"],
+    });
+    expect(result.retention_loop_rotation_facts.repeated_streak).toBe(2);
+  });
+
+  it("degrades gracefully when script/storyboard predate open_loops/retention_loop/change_type (no throw)", () => {
+    const script = { episode_title: "Legacy Episode", hook: "..." };
+    const storyboard = { shots: [{ shot_number: 1, emotion: "tense" }] };
+    expect(() => computeRetentionMetrics({ script, storyboard })).not.toThrow();
+    const result = computeRetentionMetrics({ script, storyboard });
+    expect(result.retention_structure_facts.retention_loop_present).toBe(false);
+    expect(result.shot_change_cadence_facts.max_static_streak).toBe(0);
   });
 });

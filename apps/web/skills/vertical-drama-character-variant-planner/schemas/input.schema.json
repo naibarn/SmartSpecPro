@@ -10,7 +10,7 @@
     "contract_version": { "const": 1 },
     "characters": {
       "type": "array",
-      "description": "The series' current character roster (standalone/parent characters only — existing variant rows are not re-sent as separate roster entries).",
+      "description": "The series' current character roster — EVERY row (base characters, existing variants, and existing twins alike). A roster entry that is itself an already-known variant or twin carries the existing_* marker fields below so you can recognize a continuation of something you've already proposed instead of re-describing it (see skill.md).",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -22,6 +22,18 @@
           "description": {
             "type": "string",
             "description": "Best-effort free-text description drawn from the character's stored data (physical traits, personality, wardrobe notes). May be empty."
+          },
+          "existing_parent_character_key": {
+            "type": "string",
+            "description": "Set ONLY when this roster entry is ITSELF an existing variant row — the character_key of the parent character it is a variant of."
+          },
+          "existing_variant_label": {
+            "type": "string",
+            "description": "Companion to existing_parent_character_key — this variant row's own already-stored variant_label."
+          },
+          "existing_shares_face_with_character_key": {
+            "type": "string",
+            "description": "Set ONLY when this roster entry is ITSELF an existing twin row — the character_key of the face-source character it shares a face with."
           }
         }
       },

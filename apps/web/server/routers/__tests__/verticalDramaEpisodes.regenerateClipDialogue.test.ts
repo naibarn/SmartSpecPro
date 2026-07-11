@@ -56,6 +56,9 @@ vi.mock("../../middleware/requireFeatureFlag", () => ({
 vi.mock("../../services/mediaGenerationService", () => ({
   mediaGenerationService: { generateImageAsync: vi.fn(), generateVideoAsync: vi.fn() },
   DEFAULT_MODELS: { image: "google-nano-banana-pro", video: "veo3/generate-veo-3-video-lite" },
+  resolveReferenceUrl: vi.fn((url: string, publicUrl?: string | null) =>
+    url.startsWith("http") ? url : `${publicUrl ?? ""}${url}`
+  ),
 }));
 
 vi.mock("../../services/pricingCalculator", () => ({

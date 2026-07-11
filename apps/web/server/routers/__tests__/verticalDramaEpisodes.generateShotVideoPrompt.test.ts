@@ -60,6 +60,9 @@ vi.mock("../../middleware/requireFeatureFlag", () => ({
 vi.mock("../../services/mediaGenerationService", () => ({
   mediaGenerationService: { generateImageAsync: vi.fn(), generateVideoAsync: vi.fn() },
   DEFAULT_MODELS: { image: "google-nano-banana-pro", video: "veo3/generate-veo-3-video-lite" },
+  resolveReferenceUrl: vi.fn((url: string, publicUrl?: string | null) =>
+    url.startsWith("http") ? url : `${publicUrl ?? ""}${url}`
+  ),
 }));
 
 vi.mock("../../services/pricingCalculator", () => ({
@@ -1211,5 +1214,122 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
 
     expect(mockAppendPresetVisualIdentityStyleTokensToMotionPrompt).not.toHaveBeenCalled();
     expect(result.prompt).toBe("generated motion prompt");
+  });
+
+  describe("retention hooks router wiring (planning/vertical-drama-retention-hooks/plan.md W7)", () => {
+    function episodeRowWithScript(over: Record<string, unknown> = {}) {
+      return baseEpisodeRow({
+        script: {
+          hook: "A phone rings in an empty house.",
+          retention_loop: {
+            type: "unresolved_image",
+            description: "The phone keeps ringing as the door creaks open.",
+          },
+        },
+        storyboard: {
+          gridLayout: "3x3",
+          shotCount: 2,
+          shots: [
+            {
+              shotNumber: 1,
+              description: "Hero stands in the rain, looking up",
+              cameraSetup: "wide shot, low angle",
+              characterIds: ["hero"],
+              continuityNotes: [],
+              durationSeconds: 6,
+            },
+            {
+              shotNumber: 2,
+              description: "Hero looks back one last time",
+              cameraSetup: "close up",
+              characterIds: ["hero"],
+              continuityNotes: [],
+              durationSeconds: 6,
+            },
+          ],
+        },
+        ...over,
+      });
+    }
+
+    it("flag off: retentionHooksEnabled is false (byte-identical prompt, per the service's own flag gate)", async () => {
+      // `vi.clearAllMocks()` (top-level `beforeEach`) clears call history but
+      // NOT a previously configured `mockResolvedValue` — explicitly reset
+      // to "everything off" so this test is robust to file ordering (same
+      // rationale as `verticalDramaEpisodes.shotReferencesAndQualityReview
+      // .test.ts`'s identical `beforeEach` comment).
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      const episodeRow = episodeRowWithScript();
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ retentionHooksEnabled: false }),
+      );
+    });
+
+    it("flag on: resolves verticalDramaRetentionHooks and threads retentionHooksEnabled/totalShotCount/hookText/retentionLoopDescription", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      const episodeRow = episodeRowWithScript();
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGetTenantFeatureFlags).toHaveBeenCalledWith("tenant-1");
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          retentionHooksEnabled: true,
+          totalShotCount: 2,
+          hookText: "A phone rings in an empty house.",
+          retentionLoopDescription:
+            "The phone keeps ringing as the door creaks open.",
+        }),
+      );
+    });
+
+    it("omits hookText/retentionLoopDescription when the script has neither field yet (pre-retention-hooks artifact)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      const episodeRow = baseEpisodeRow({});
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          retentionHooksEnabled: true,
+          hookText: undefined,
+          retentionLoopDescription: undefined,
+        }),
+      );
+    });
   });
 });

@@ -881,11 +881,17 @@ describe("runImproveScriptJob — character-variant-planning final phase", () =>
     expect(result.characterVariantSummary).toBeNull();
   });
 
-  it("excludes existing variant rows (parentCharacterId set) from the roster sent to the planner", async () => {
+  it("includes an existing variant row in the roster sent to the planner, carrying existing_parent_character_key/existing_variant_label markers (W3 stable-ID reconcile)", async () => {
     hoisted.seriesRows = [buildSeriesRow([1])];
     hoisted.characterRows = [
       characterRow(),
-      characterRow({ id: 2, characterKey: "character-1-school", variantLabel: "ชุดนักเรียน", parentCharacterId: 1 }),
+      characterRow({
+        id: 2,
+        characterKey: "character-1-school",
+        variantLabel: "ชุดนักเรียน",
+        parentCharacterId: 1,
+        data: { description: "school uniform" },
+      }),
     ];
     mockExecuteSkillLlmWithFallback.mockResolvedValue(makeSuccessResult(buildWholeSeasonBody([1])));
     mockGenerateCharacterVariantPlan.mockResolvedValue({
@@ -901,8 +907,57 @@ describe("runImproveScriptJob — character-variant-planning final phase", () =>
     );
 
     const callArgs = mockGenerateCharacterVariantPlan.mock.calls[0][0];
-    expect(callArgs.characters).toHaveLength(1);
-    expect(callArgs.characters[0].characterKey).toBe("character-1");
+    expect(callArgs.characters).toHaveLength(2);
+    expect(callArgs.characters[0]).toEqual({
+      characterKey: "character-1",
+      name: "หนูนา",
+      role: "protagonist",
+      description: "หญิงสาววัย 22 ปี",
+    });
+    expect(callArgs.characters[1]).toEqual({
+      characterKey: "character-1-school",
+      name: "หนูนา",
+      role: "protagonist",
+      description: "school uniform",
+      existingParentCharacterKey: "character-1",
+      existingVariantLabel: "ชุดนักเรียน",
+    });
+  });
+
+  it("includes an existing twin row in the roster sent to the planner, carrying an existing_shares_face_with_character_key marker (W3 stable-ID reconcile)", async () => {
+    hoisted.seriesRows = [buildSeriesRow([1])];
+    hoisted.characterRows = [
+      characterRow(),
+      characterRow({
+        id: 3,
+        characterKey: "character-1-twin",
+        name: "ใบตอง",
+        data: { description: "wears glasses" },
+        sharesFaceWithCharacterId: 1,
+      }),
+    ];
+    mockExecuteSkillLlmWithFallback.mockResolvedValue(makeSuccessResult(buildWholeSeasonBody([1])));
+    mockGenerateCharacterVariantPlan.mockResolvedValue({
+      plan: { contract_version: 1, character_plans: [], twin_detections: [] },
+      creditsUsed: 0,
+      model: "variant-planner-model",
+    });
+    mockReconcileCharacterVariantPlan.mockResolvedValue(planSummary({ createdCharacters: [], updatedCharacters: [] }));
+
+    await runImproveScriptJob(
+      { tenantId: "tenant-1", userId: 1, seriesId: 6, userRevisionRequest: "ทำให้ดีขึ้น" },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateCharacterVariantPlan.mock.calls[0][0];
+    expect(callArgs.characters).toHaveLength(2);
+    expect(callArgs.characters[1]).toEqual({
+      characterKey: "character-1-twin",
+      name: "ใบตอง",
+      role: "protagonist",
+      description: "wears glasses",
+      existingSharesFaceWithCharacterKey: "character-1",
+    });
   });
 
   it("best-effort: a failure in generateCharacterVariantPlan never fails the overall job — characterVariantSummary is null, everything else unaffected", async () => {

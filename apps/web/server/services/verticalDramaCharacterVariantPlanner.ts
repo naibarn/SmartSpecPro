@@ -113,6 +113,16 @@ const characterVariantEntrySchema = z.object({
   variant_type: z.enum(["outfit", "age_stage"]),
   description: z.string().trim().min(1),
   applies_to_episodes: z.array(z.number().int()).optional().default([]),
+  // W3 stable-ID reconcile
+  // (`planning/vertical-drama-twin-variant-completeness/plan.md` W3): when
+  // the skill recognizes this variant as the SAME one a roster entry already
+  // carries (`existing_parent_character_key`/`existing_variant_label` on the
+  // input roster), it echoes that roster entry's own `character_key` here
+  // instead of re-describing a fresh-sounding proposal.
+  // `reconcileCharacterVariantPlan` consults this FIRST (stable-ID lookup)
+  // before falling back to its old `(parentCharacterId, variantLabel)` text
+  // match.
+  existing_character_key: z.string().trim().min(1).optional(),
 });
 
 const characterPlanEntrySchema = z.object({
@@ -126,6 +136,11 @@ const twinNewCharacterSchema = z.object({
   role: z.string().trim().optional().default(""),
   shares_face_with: z.string().trim().min(1).nullable().optional(),
   distinguishing_notes: z.string().trim().optional().default(""),
+  // W3 stable-ID reconcile — same contract as
+  // `characterVariantEntrySchema.existing_character_key` above, applied to
+  // twin detections: echoes an already-known twin roster entry's
+  // `character_key` back instead of re-describing it.
+  existing_character_key: z.string().trim().min(1).optional(),
 });
 
 const twinDetectionEntrySchema = z
@@ -171,6 +186,23 @@ export interface CharacterVariantPlannerCharacterInput {
   name: string;
   role: string;
   description: string;
+  /**
+   * W3 stable-ID reconcile
+   * (`planning/vertical-drama-twin-variant-completeness/plan.md` W3): set
+   * ONLY when this roster entry is itself an existing VARIANT row
+   * (`parentCharacterId` set on the DB row) — the parent's own
+   * `characterKey`. Omitted for base characters and twin rows.
+   */
+  existingParentCharacterKey?: string;
+  /** Companion to `existingParentCharacterKey` — the variant row's own `variantLabel`. */
+  existingVariantLabel?: string;
+  /**
+   * Set ONLY when this roster entry is itself an existing TWIN row
+   * (`sharesFaceWithCharacterId` set on the DB row) — the face-source
+   * character's own `characterKey`. Omitted for base characters and variant
+   * rows.
+   */
+  existingSharesFaceWithCharacterKey?: string;
 }
 
 export interface GenerateCharacterVariantPlanParams {
@@ -201,10 +233,26 @@ export function buildCharacterVariantPlannerUserPrompt(
   const lang: StoryScriptLang = params.lang ?? "th";
 
   const characterLines = params.characters
-    .map(
-      (character) =>
-        `- character_key=${character.characterKey} name=${character.name} role=${character.role || "(unspecified)"} description=${character.description || "(none)"}`,
-    )
+    .map((character) => {
+      const base = `- character_key=${character.characterKey} name=${character.name} role=${character.role || "(unspecified)"} description=${character.description || "(none)"}`;
+      // W3 stable-ID reconcile — append markers, when present, telling the
+      // skill this roster entry is ITSELF an already-known variant/twin (see
+      // `CharacterVariantPlannerCharacterInput`'s doc comments). Omitted
+      // entirely for base characters (no trailing noise on the common case).
+      const extras: string[] = [];
+      if (character.existingParentCharacterKey) {
+        extras.push(`existing_parent_character_key=${character.existingParentCharacterKey}`);
+      }
+      if (character.existingVariantLabel) {
+        extras.push(`existing_variant_label=${character.existingVariantLabel}`);
+      }
+      if (character.existingSharesFaceWithCharacterKey) {
+        extras.push(
+          `existing_shares_face_with_character_key=${character.existingSharesFaceWithCharacterKey}`,
+        );
+      }
+      return extras.length > 0 ? `${base} ${extras.join(" ")}` : base;
+    })
     .join("\n");
 
   const episodesText = params.episodes
@@ -371,23 +419,39 @@ export function extractCharacterRosterDescription(data: Record<string, unknown> 
  * this on a series that already has variant/twin rows from a prior run
  * reconciles rather than duplicates:
  *
- *  - **Variants** (`plan.character_plans[].variants[]`) — matched against an
- *    EXISTING row by `(parentCharacterId, variantLabel)` (exact, case-
- *    sensitive label match). A match is UPDATED (its `data`/`variantType`
- *    refreshed to the plan) — its `characterKey` is NEVER touched once
- *    created, since downstream shots/assets address it directly. No match ->
- *    INSERT a new row: `characterKey = ${parentCharacterKey}-${slugify(variantLabel)}`
+ *  - **Stable-ID match first** (W3,
+ *    `planning/vertical-drama-twin-variant-completeness/plan.md`) — every
+ *    variant/twin entry MAY carry `existing_character_key` (the skill's echo
+ *    of a roster entry it recognized as already-known — see
+ *    `CharacterVariantPlannerCharacterInput`'s doc comment and `skill.md`).
+ *    When present, it is looked up directly via `rowsByCharacterKey` (built
+ *    below); a hit is treated as the match immediately, and the old
+ *    text-comparison match below is skipped entirely for that entry. A MISS
+ *    (an `existing_character_key` that doesn't resolve to any row in the
+ *    current roster — e.g. stale/best-effort) falls through gracefully to
+ *    the text-match path rather than erroring. Absent entirely (older-shaped
+ *    output, or the model didn't comply), the text-match path runs exactly
+ *    as before — this is a pure backward-compatible ADDITION, not a
+ *    replacement.
+ *  - **Variants** (`plan.character_plans[].variants[]`) — text-match
+ *    fallback: matched against an EXISTING row by `(parentCharacterId,
+ *    variantLabel)` (exact, case-sensitive label match). A match (by either
+ *    path) is UPDATED (its `data`/`variantType` refreshed to the plan) —
+ *    its `characterKey` is NEVER touched once created, since downstream
+ *    shots/assets address it directly. No match -> INSERT a new row:
+ *    `characterKey = ${parentCharacterKey}-${slugify(variantLabel)}`
  *    (deduplicated against every characterKey already in the series),
  *    `name`/`role` copied from the parent (same person, different look),
  *    `parentCharacterId`/`variantLabel`/`variantType` set from the plan,
  *    `data.description` (and, for `"outfit"` variants, also
  *    `data.wardrobeRules`) populated from the variant's own `description`.
- *  - **Twins** (`plan.twin_detections[].new_characters[]`) — an IDENTICAL
- *    twin (`shares_face_with` set) is matched against an existing row by
- *    `(sharesFaceWithCharacterId = source row id, name)`; a FRATERNAL sibling
- *    (`shares_face_with` unset) has no natural cross-run stable key, so it is
- *    matched by `name` among the series' other independent (non-variant,
- *    non-face-sharing) rows, excluding the source itself. A match is left
+ *  - **Twins** (`plan.twin_detections[].new_characters[]`) — text-match
+ *    fallback: an IDENTICAL twin (`shares_face_with` set) is matched against
+ *    an existing row by `(sharesFaceWithCharacterId = source row id, name)`;
+ *    a FRATERNAL sibling (`shares_face_with` unset) has no natural cross-run
+ *    stable key via text alone, so it is matched by `name` among the
+ *    series' other independent (non-variant, non-face-sharing) rows,
+ *    excluding the source itself. A match (by either path) is left
  *    completely as-is (never re-created, never overwritten). No match ->
  *    INSERT a new independent character row: `characterKey` from
  *    `character_key_suggestion` when given (else `${sourceCharacterKey}-twin`),
@@ -441,9 +505,16 @@ export async function reconcileCharacterVariantPlan(
     if (!parentRow) continue; // Unknown character_key — best-effort skip.
 
     for (const variant of characterPlan.variants) {
-      const existing = [...rowsById.values()].find(
-        (row) => row.parentCharacterId === parentRow.id && row.variantLabel === variant.variant_label,
-      );
+      // Stable-ID match first (W3) — falls through to the text-match below
+      // when absent or unresolvable. See this function's doc comment.
+      let existing = variant.existing_character_key
+        ? rowsByCharacterKey.get(variant.existing_character_key)
+        : undefined;
+      if (!existing) {
+        existing = [...rowsById.values()].find(
+          (row) => row.parentCharacterId === parentRow.id && row.variantLabel === variant.variant_label,
+        );
+      }
 
       const dataPatch: Record<string, unknown> = { description: variant.description };
       if (variant.variant_type === "outfit") {
@@ -495,17 +566,24 @@ export async function reconcileCharacterVariantPlan(
     for (const newCharacter of twin.new_characters) {
       const isIdentical = Boolean(newCharacter.shares_face_with);
 
-      const existing = isIdentical
-        ? [...rowsById.values()].find(
-            (row) => row.sharesFaceWithCharacterId === sourceRow.id && row.name === newCharacter.name,
-          )
-        : [...rowsById.values()].find(
-            (row) =>
-              row.name === newCharacter.name &&
-              row.id !== sourceRow.id &&
-              row.parentCharacterId == null &&
-              row.sharesFaceWithCharacterId == null,
-          );
+      // Stable-ID match first (W3) — falls through to the text-match below
+      // when absent or unresolvable. See this function's doc comment.
+      let existing = newCharacter.existing_character_key
+        ? rowsByCharacterKey.get(newCharacter.existing_character_key)
+        : undefined;
+      if (!existing) {
+        existing = isIdentical
+          ? [...rowsById.values()].find(
+              (row) => row.sharesFaceWithCharacterId === sourceRow.id && row.name === newCharacter.name,
+            )
+          : [...rowsById.values()].find(
+              (row) =>
+                row.name === newCharacter.name &&
+                row.id !== sourceRow.id &&
+                row.parentCharacterId == null &&
+                row.sharesFaceWithCharacterId == null,
+            );
+      }
 
       if (existing) {
         // Leave as-is — per contract, a matched twin row is never re-created
