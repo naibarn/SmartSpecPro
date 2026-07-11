@@ -603,6 +603,94 @@ describe("generateShotVideoPrompt", () => {
     );
   });
 
+  it("2026-07-11 dup-clip fix: collapses a stale split's leftover sub-shot clips into exactly one clip when the shot no longer needs a split", async () => {
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber: 301,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          prompt: "stale sub-shot 1 prompt",
+          durationSeconds: 3,
+        },
+        {
+          clipNumber: 302,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 2,
+          prompt: "stale sub-shot 2 prompt",
+          durationSeconds: 3,
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({
+      motionPromptPack: pack,
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 3,
+            imagePrompt: "a hero standing in the rain",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "900",
+          },
+        ],
+      },
+      storyboard: {
+        gridLayout: "3x3",
+        shotCount: 9,
+        shots: [
+          {
+            shotNumber: 3,
+            description: "Hero stands in the rain, looking up",
+            cameraSetup: "wide shot, low angle",
+            characterIds: ["hero"],
+            continuityNotes: [],
+            durationSeconds: 6,
+          },
+        ],
+      },
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 3 },
+    });
+
+    // Exactly one clip for shot 3 survives — no stale clipNumber 302.
+    expect(capturedSet.motionPromptPack.clips).toHaveLength(1);
+    expect(capturedSet.motionPromptPack.clips[0]).toMatchObject({
+      clipNumber: 3,
+      sourceShotNumbers: [3],
+      prompt: "generated motion prompt",
+    });
+    expect(
+      capturedSet.motionPromptPack.clips.find((c: any) => c.clipNumber === 302),
+    ).toBeUndefined();
+  });
+
   it("uses the requested shot's image, storyboard context, and matching clip when regenerating shot 2", async () => {
     const pack = {
       selectedVideoModelId: "veo-3-1",
@@ -1426,5 +1514,91 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
         }),
       );
     });
+  });
+});
+
+/**
+ * Cliffhanger-bleed fix (confirmed production bug, 2026-07-11) — the NEXT
+ * episode's teased `cliffhanger_line` (intentionally authored to preview
+ * the following episode, see `readItemCliffhangerLine`'s doc comment) must
+ * never be included in the `episodePlanContext` this per-shot mutation
+ * builds and passes to `generateVerticalDramaShotVideoPrompt`, because that
+ * service runs once PER SHOT — every independent LLM call for every shot
+ * previously saw the next episode's theme as "reference" context, and
+ * cheaper models did not reliably honor the "reference only, do not copy"
+ * instruction, bleeding next-episode dialogue into unrelated current-episode
+ * shots (confirmed: series 6 / episode 41, shots 2/3/6). Real-world data
+ * confirmed across a full 6-episode series that every episode's own
+ * `cliffhanger_line` matches the FOLLOWING episode's actual topic — so this
+ * suite deliberately sets the current episode's own `logline`/`keyBeats` to
+ * one topic (e.g. diaper testing) and the `cliffhanger_line` to a
+ * DIFFERENT, unrelated topic (e.g. hand cleanliness) to mirror the real
+ * incident shape.
+ */
+describe("generateShotVideoPrompt — episodePlanContext excludes the next-episode cliffhanger (cliffhanger-bleed fix)", () => {
+  function diaperEpisodeBreakdownItem(over: Record<string, unknown> = {}) {
+    return {
+      episodeNumber: 1,
+      workingTitle: "กางเกงผ้าอ้อมทำงานยังไงถึงต้องมี",
+      logline: "ฝ้ายกับใบข้าวทดสอบกางเกงผ้าอ้อมกันน้ำ",
+      keyBeats: ["เปิดฉากทดสอบกางเกงผ้าอ้อม", "สรุปผลการทดสอบ"],
+      // The NEXT episode's (unrelated) teased theme — intentionally authored
+      // this way, must never reach this per-shot call's LLM context.
+      cliffhanger_line: "แล้วถ้ามือดูสะอาด แต่จริงๆ ยังสกปรกอยู่ล่ะ",
+      ...over,
+    };
+  }
+
+  it("omits the cliffhanger line from episodePlanContext while keeping title/logline/keyBeats", async () => {
+    mockGetActiveBreakdown.mockReturnValue([diaperEpisodeBreakdownItem()]);
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    const callArgs = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
+    const episodePlanContext: string | undefined = callArgs.episodePlanContext;
+    expect(episodePlanContext).toBeDefined();
+    // The bleed vector — must be gone.
+    expect(episodePlanContext).not.toContain("จุดค้าง");
+    expect(episodePlanContext).not.toContain("แล้วถ้ามือดูสะอาด");
+    // Legitimate current-episode continuity grounding — must stay.
+    expect(episodePlanContext).toContain("กางเกงผ้าอ้อมทำงานยังไงถึงต้องมี");
+    expect(episodePlanContext).toContain("ฝ้ายกับใบข้าวทดสอบกางเกงผ้าอ้อมกันน้ำ");
+    expect(episodePlanContext).toContain("เปิดฉากทดสอบกางเกงผ้าอ้อม");
+    expect(episodePlanContext).toContain("สรุปผลการทดสอบ");
+    // `readItemCliffhangerLine` must not even be consulted for this call
+    // site anymore — the router omits `cliffhangerLine` outright.
+    expect(mockReadItemCliffhangerLine).not.toHaveBeenCalled();
+  });
+
+  it("still omits the cliffhanger line even when the breakdown item has no cliffhanger_line at all", async () => {
+    mockGetActiveBreakdown.mockReturnValue([
+      diaperEpisodeBreakdownItem({ cliffhanger_line: undefined }),
+    ]);
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    const callArgs = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
+    expect(callArgs.episodePlanContext).not.toContain("จุดค้าง");
+    expect(callArgs.episodePlanContext).toContain("กางเกงผ้าอ้อมทำงานยังไงถึงต้องมี");
   });
 });

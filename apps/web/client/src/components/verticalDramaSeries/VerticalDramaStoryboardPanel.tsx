@@ -495,6 +495,10 @@ export interface VerticalDramaMotionPromptClipView {
   negativeMotionPrompt?: string;
   startFrameAssetId?: string;
   endFrameAssetId?: string;
+  /** See `VerticalDramaMotionPromptPack["clips"][number].extraReferenceAssetIds`'s
+   *  doc comment (`@shared/verticalDramaSeries/contracts.ts`) — type parity
+   *  only, the client never reads this value. */
+  extraReferenceAssetIds?: string[];
   durationSeconds?: number;
   parentShotNumber?: number;
   subShotNumber?: number;

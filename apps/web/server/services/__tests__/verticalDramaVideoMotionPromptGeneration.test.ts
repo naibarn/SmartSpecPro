@@ -55,6 +55,21 @@ vi.mock("../verticalDramaLlmModelPolicy", () => ({
     (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
   ),
 }));
+// Speaker-switch consolidated-prompt generator
+// (`generateVerticalDramaShotVideoPromptSpeakerSwitch`) resolves its model
+// via `resolveShotVideoPromptModel` (`loadEnabledLlmModelRows` ->
+// `selectBestLlmModel`), a DIFFERENT path than `generateVideoMotionPromptPack`'s
+// `resolveStoryBibleModel` above — mocked here so its own test block can
+// force the vision-capable branch directly without touching the DB.
+vi.mock("../enabledLlmModels", () => ({
+  loadEnabledLlmModelRows: vi.fn(),
+}));
+vi.mock("../intelligentModelSelector", () => ({
+  selectBestLlmModel: vi.fn(),
+}));
+vi.mock("../modelRegistry", () => ({
+  resolveVerticalDramaCapabilities: vi.fn(),
+}));
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -64,8 +79,10 @@ import {
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
+  generateVerticalDramaShotVideoPromptSpeakerSwitch,
   RateLimitExceededError,
   type VideoMotionPromptPackProjection,
+  type GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams,
 } from "../verticalDramaVideoMotionPromptGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
@@ -76,6 +93,9 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
 } from "../verticalDramaStoryBible";
+import { loadEnabledLlmModelRows } from "../enabledLlmModels";
+import { selectBestLlmModel } from "../intelligentModelSelector";
+import { resolveVerticalDramaCapabilities } from "../modelRegistry";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
@@ -89,6 +109,9 @@ const mockResolveSkillManifestPath = vi.mocked(resolveSkillManifestPath);
 const mockExistsSync = vi.mocked(fs.existsSync);
 const mockReadFileSync = vi.mocked(fs.readFileSync);
 const mockParseSkillFile = vi.mocked(parseSkillFile);
+const mockLoadEnabledLlmModelRows = vi.mocked(loadEnabledLlmModelRows);
+const mockSelectBestLlmModel = vi.mocked(selectBestLlmModel);
+const mockResolveVerticalDramaCapabilities = vi.mocked(resolveVerticalDramaCapabilities);
 
 function baseParams(
   overrides: Partial<Parameters<typeof generateVideoMotionPromptPack>[0]> = {},
@@ -468,6 +491,57 @@ describe("generateVideoMotionPromptPack", () => {
     expect(mockExecute).toHaveBeenCalledTimes(2);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
+
+  /**
+   * Cliffhanger-bleed fix (confirmed production bug, 2026-07-11) — regression
+   * guard for the judgment call made in this generator's own
+   * `episodePlanContext` doc comment: UNLIKE the per-shot generator
+   * (`generateVerticalDramaShotVideoPrompt`, whose caller now deliberately
+   * omits `cliffhangerLine`), this whole-EPISODE-PACK generator renders
+   * `episodePlanContext` as exactly ONE global block for the whole episode
+   * (not per-shot), so its caller (`generateRealMotionPromptPack` in
+   * `verticalDramaEpisodePipeline.ts`) still legitimately passes the
+   * cliffhanger through untouched. These tests prove that decision is still
+   * honored (byte-identical to before the fix) — a real regression here
+   * would mean the whole-pack generator lost its own ending-beat context.
+   */
+  describe("episodePlanContext (Part B3, cliffhanger-bleed judgment call — this generator KEEPS it)", () => {
+    it("includes the cliffhanger line, once, in the single global scene-setting block", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(9)));
+
+      await generateVideoMotionPromptPack(
+        baseParams({
+          episodePlanContext: [
+            "ตอนที่ 1: กางเกงผ้าอ้อมทำงานยังไงถึงต้องมี",
+            "เรื่องย่อ: ฝ้ายกับใบข้าวทดสอบกางเกงผ้าอ้อมกันน้ำ",
+            "จุดค้าง: แล้วถ้ามือดูสะอาด แต่จริงๆ ยังสกปรกอยู่ล่ะ",
+          ].join("\n"),
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      const content = userMessage.content as string;
+      expect(content).toContain("จุดค้าง: แล้วถ้ามือดูสะอาด แต่จริงๆ ยังสกปรกอยู่ล่ะ");
+      // Rendered exactly once — a single global block, not repeated per shot line.
+      expect(content.split("จุดค้าง:")).toHaveLength(2);
+    });
+
+    it("omits the scene-setting block entirely when episodePlanContext is not provided (byte-identical)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput(9)));
+
+      await generateVideoMotionPromptPack(baseParams());
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).not.toContain("จุดค้าง");
+      expect(userMessage.content).not.toContain("บริบทฉากของตอน");
+    });
+  });
 });
 
 describe("projectMotionPromptPack", () => {
@@ -696,5 +770,186 @@ describe("syncStartFramesOntoMotionPromptClips (video MCP submission fix)", () =
       ],
     });
     expect(result.clips[0].startFrameAssetId).toBe("70");
+  });
+});
+
+describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch consolidated prompt, 2026-07-11 redesign)", () => {
+  function baseSpeakerSwitchParams(
+    overrides: Partial<GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams> = {},
+  ): GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams {
+    return {
+      userId: 1,
+      tenantId: "tenant-1",
+      seriesId: 42,
+      episodeId: 7,
+      shotNumber: 3,
+      imageUrl: "https://example.com/shot3.png",
+      shotContext: {
+        description: "Two characters argue in a kitchen",
+        camera: "medium two-shot",
+        dialogueLines: [
+          { characterKey: "alice", lineTh: "Why didn't you tell me?" },
+          { characterKey: "bob", lineTh: "I was going to." },
+          { characterKey: "alice", lineTh: "That's not good enough." },
+        ],
+      },
+      selectedVideoModelId: "kling-2.0",
+      selectedVideoModel: {
+        id: "kling-2.0",
+        type: "video",
+        aspectRatios: ["9:16"],
+        configJson: {},
+        provider: "test-provider",
+        aliases: [],
+      } as any,
+      locale: "en",
+      subShotWindows: [
+        { subShotNumber: 1, characterKey: "alice", lineIndexes: [0], durationSeconds: 3 },
+        { subShotNumber: 2, characterKey: "bob", lineIndexes: [1], durationSeconds: 5 },
+        { subShotNumber: 3, characterKey: "alice", lineIndexes: [2], durationSeconds: 2 },
+      ],
+      ...overrides,
+    };
+  }
+
+  function speakerSwitchOutput(overrides: Record<string, unknown> = {}) {
+    return {
+      prompt: "A continuous kitchen argument, cutting between Alice and Bob across the clip.",
+      negative_motion_prompt: "identity drift, warping",
+      dialogue: [
+        { characterKey: "alice", lineTh: "Why didn't you tell me?" },
+        { characterKey: "bob", lineTh: "I was going to." },
+        { characterKey: "alice", lineTh: "That's not good enough." },
+      ],
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockIsAllowed.mockReturnValue(true);
+    mockCalculateCredits.mockReturnValue(9);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockResolveSkillDirCandidates.mockReturnValue([
+      "/fake/skills/vertical-drama-shot-video-prompt-subshots",
+    ]);
+    mockResolveSkillManifestPath.mockReturnValue(
+      "/fake/skills/vertical-drama-shot-video-prompt-subshots/skill.md",
+    );
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({
+      metadata: {} as any,
+      content: "System prompt body",
+    });
+    // Force the vision-capable branch of `resolveShotVideoPromptModel`
+    // directly, bypassing the non-vision fallback chain (which itself would
+    // otherwise reach `resolveVerticalDramaSeriesModel`/DB).
+    mockLoadEnabledLlmModelRows.mockResolvedValue([{ modelId: "vision-model" } as any]);
+    mockSelectBestLlmModel.mockReturnValue("vision-model");
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      nativeAudioDialogue: false,
+      supportsNativeAudio: false,
+    } as any);
+  });
+
+  it("returns ONE combined prompt/dialogue/durationSeconds result (not subShots[]), validated against the reused single-shot output schema", async () => {
+    mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams(),
+    );
+
+    expect(result).not.toHaveProperty("subShots");
+    expect(result.prompt).toBe(speakerSwitchOutput().prompt);
+    expect(result.dialogue).toHaveLength(3);
+    expect(result.durationSeconds).toBe(10); // 3 + 5 + 2
+    expect(result.creditsUsed).toBe(9);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("orders distinctSpeakerCharacterKeys with the anchor (first window) speaker first, then each subsequent NEW speaker in first-appearance order, without duplicates", async () => {
+    mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams(),
+    );
+
+    // windows: alice (anchor), bob, alice again -> expect ["alice", "bob"]
+    expect(result.distinctSpeakerCharacterKeys).toEqual(["alice", "bob"]);
+  });
+
+  it("flattens every window's dialogue lines in chronological order", async () => {
+    mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams(),
+    );
+
+    expect(result.dialogue.map(l => l.characterKey)).toEqual(["alice", "bob", "alice"]);
+    expect(result.dialogue.map(l => l.lineTh)).toEqual([
+      "Why didn't you tell me?",
+      "I was going to.",
+      "That's not good enough.",
+    ]);
+  });
+
+  it("succeeds even when the LLM response carries NO subShots[] array (proves schema reuse -- the old sub-shot-array-requiring schema is gone)", async () => {
+    const output = speakerSwitchOutput();
+    expect(output).not.toHaveProperty("subShots");
+    mockExecute.mockResolvedValue(successResponse(output));
+
+    await expect(
+      generateVerticalDramaShotVideoPromptSpeakerSwitch(baseSpeakerSwitchParams()),
+    ).resolves.toBeDefined();
+  });
+
+  it("throws RateLimitExceededError before checking credits or calling the LLM", async () => {
+    mockIsAllowed.mockReturnValue(false);
+    mockGetResetTime.mockReturnValue(5000);
+
+    await expect(
+      generateVerticalDramaShotVideoPromptSpeakerSwitch(baseSpeakerSwitchParams()),
+    ).rejects.toThrow(RateLimitExceededError);
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it("throws InsufficientCreditsError and never calls the LLM when credits are insufficient", async () => {
+    mockHasEnoughCredits.mockResolvedValue(false);
+
+    await expect(
+      generateVerticalDramaShotVideoPromptSpeakerSwitch(baseSpeakerSwitchParams()),
+    ).rejects.toThrow(InsufficientCreditsError);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
+
+  it("throws VdSchemaValidationError on malformed LLM output (missing required prompt field) and does not deduct credits", async () => {
+    mockExecute.mockResolvedValue(successResponse({ dialogue: [] }));
+
+    await expect(
+      generateVerticalDramaShotVideoPromptSpeakerSwitch(baseSpeakerSwitchParams()),
+    ).rejects.toThrow(VdSchemaValidationError);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("folds native audio direction onto the prompt as an appended SFX cue when native audio direction is enabled and the model supports it", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      nativeAudioDialogue: false,
+      supportsNativeAudio: true,
+    } as any);
+    mockExecute.mockResolvedValue(
+      successResponse(
+        speakerSwitchOutput({ audio_direction: "A kettle whistles in the background." }),
+      ),
+    );
+
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams({ nativeAudioEnabled: true }),
+    );
+
+    expect(result.prompt).toContain("SFX cues: A kettle whistles in the background.");
+    expect(result.audioDirection).toBe("A kettle whistles in the background.");
   });
 });

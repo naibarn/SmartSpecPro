@@ -3554,6 +3554,94 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     );
   });
 
+  it("2026-07-11 speaker-switch redesign: merges clip.extraReferenceAssetIds IN FRONT OF shot-level manual references (kept first when trimmed)", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+    mockShotReferencesService.listForShot.mockResolvedValue([
+      shotReference({ mediaAssetId: "5", sortOrder: 0 }),
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithPack({ extraReferenceAssetIds: ["3"] })])
+      ) // loadOwnedEpisode — clip carries one additional speaker portrait
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 900, originalUrl: "https://cdn/900.png" },
+          { id: 3, originalUrl: "https://cdn/3.png" },
+          { id: 5, originalUrl: "https://cdn/5.png" },
+        ])
+      ) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+    const result = await router.generateVideoClip({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+    });
+
+    // extraReferenceAssetIds (1) + shot-level reference (1) = 2, within
+    // maxReferenceImages(3) -> nothing trimmed, extra reference ordered
+    // BEFORE the shot-level manual reference.
+    expect(result.trimmedReferenceCount).toBe(0);
+    expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: [
+          "https://cdn/900.png",
+          "https://cdn/3.png",
+          "https://cdn/5.png",
+        ],
+      }),
+      expect.any(String)
+    );
+  });
+
+  it("2026-07-11 speaker-switch redesign: extraReferenceAssetIds are kept first when trimmed to maxReferenceImages, dropping the shot-level manual reference instead", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 2,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+    mockShotReferencesService.listForShot.mockResolvedValue([
+      shotReference({ mediaAssetId: "5", sortOrder: 0 }),
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithPack({ extraReferenceAssetIds: ["3", "4"] })])
+      ) // loadOwnedEpisode — 2 additional speaker portraits
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 900, originalUrl: "https://cdn/900.png" },
+          { id: 3, originalUrl: "https://cdn/3.png" },
+          { id: 4, originalUrl: "https://cdn/4.png" },
+        ])
+      ) // resolveMediaAssetUrlsByIds — only start frame + the 2 kept extra references (shot-level "5" trimmed away)
+      .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+    const result = await router.generateVideoClip({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+    });
+
+    // extraReferenceAssetIds (2) + shot-level reference (1) = 3, trimmed to
+    // maxReferenceImages(2) -> the shot-level manual reference (lower
+    // priority) is the one dropped, not either extra reference.
+    expect(result.trimmedReferenceCount).toBe(1);
+    expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: [
+          "https://cdn/900.png",
+          "https://cdn/3.png",
+          "https://cdn/4.png",
+        ],
+      }),
+      expect.any(String)
+    );
+  });
+
   it("forwards idempotencyKey through to deductCredits (T2)", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: true,

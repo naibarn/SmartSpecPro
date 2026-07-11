@@ -358,6 +358,88 @@ describe("regenerateClipDialogue", () => {
     ]);
   });
 
+  it("2026-07-11 dup-clip fix: collapses a stale split's leftover sub-shot clips into exactly one clip, seeded from the first matching sub-shot", async () => {
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        { clipNumber: 1, sourceShotNumbers: [1], prompt: "shot 1 prompt", durationSeconds: 6 },
+        {
+          clipNumber: 301,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          prompt: "stale sub-shot 1 prompt",
+          durationSeconds: 3,
+          dialogue: [{ lineTh: "stale sub-shot 1 line" }],
+        },
+        {
+          clipNumber: 302,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 2,
+          prompt: "stale sub-shot 2 prompt",
+          durationSeconds: 3,
+          dialogue: [{ lineTh: "stale sub-shot 2 line" }],
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({
+      motionPromptPack: pack,
+      storyboard: {
+        gridLayout: "3x3",
+        shotCount: 9,
+        shots: [
+          {
+            shotNumber: 3,
+            description: "Two characters argue",
+            cameraSetup: "medium shot",
+            characterIds: ["a", "b"],
+            continuityNotes: [],
+            durationSeconds: 6,
+          },
+        ],
+      },
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    await router.regenerateClipDialogue({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 3 },
+    });
+
+    const shot3Clips = capturedSet.motionPromptPack.clips.filter(
+      (c: any) => c.sourceShotNumbers?.includes(3) || c.parentShotNumber === 3,
+    );
+    // Exactly one clip survives for shot 3 — the stale sub-shot 2 clip
+    // (clipNumber 302) must be gone, not left behind as a duplicate.
+    expect(shot3Clips).toHaveLength(1);
+    expect(shot3Clips[0]).toMatchObject({
+      prompt: "stale sub-shot 1 prompt",
+      dialogue: [{ lineTh: "อย่าไปไหนนะยาย รอฉันกลับมาก่อน", characterKey: "หนูนา" }],
+    });
+    // No longer a sub-shot once collapsed.
+    expect(shot3Clips[0].parentShotNumber).toBeUndefined();
+    expect(shot3Clips[0].subShotNumber).toBeUndefined();
+    // Shot 1's own clip is untouched.
+    expect(capturedSet.motionPromptPack.clips).toContainEqual(
+      expect.objectContaining({ clipNumber: 1, prompt: "shot 1 prompt" }),
+    );
+  });
+
   it("passes the optional instruction through to the service call", async () => {
     const pack = {
       selectedVideoModelId: "veo-3-1",

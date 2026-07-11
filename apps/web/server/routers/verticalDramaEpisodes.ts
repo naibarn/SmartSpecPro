@@ -117,7 +117,7 @@ import {
 } from "../services/verticalDramaVideoPromptFormatter";
 import {
   generateVerticalDramaShotVideoPrompt,
-  generateVerticalDramaShotVideoPromptSubShots,
+  generateVerticalDramaShotVideoPromptSpeakerSwitch,
   generateVerticalDramaClipDialogue,
   InsufficientCreditsError as ClipDialogueInsufficientCreditsError,
   VdSchemaValidationError as ClipDialogueSchemaValidationError,
@@ -5322,20 +5322,27 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Speaker-aware sub-shots (Package 3) — split-path generation + persistence  */
+/* Speaker-switch consolidated clip (Package 3, 2026-07-11 redesign) —        */
+/* split-path generation + persistence, now producing exactly ONE clip       */
 /* -------------------------------------------------------------------------- */
 
 /**
- * The split-shot ("shot-reverse-shot") counterpart of `generateShotVideoPrompt`'s
- * single-clip generation + persistence — called instead of
- * `generateVerticalDramaShotVideoPrompt` whenever
+ * The split-shot ("speaker-switch consolidated clip") counterpart of
+ * `generateShotVideoPrompt`'s single-clip generation + persistence — called
+ * instead of `generateVerticalDramaShotVideoPrompt` whenever
  * `computeSpeakerSwitchSubShotPlan` decided this shot's dialogue needs
  * splitting (see that mutation's own call site). Applies the SAME brand-
  * sanitize -> length-cap-QC -> preset-visual-identity-token passes the
- * single-clip path applies, once per sub-shot prompt, then REPLACES every
- * existing clip for this shot (`sourceShotNumbers.includes(shotNumber)` OR
- * `parentShotNumber === shotNumber`) with the newly generated sub-shot clips
- * — never appends alongside a stale single clip or a stale prior split.
+ * single-clip path applies, once (not looped — this path produces exactly
+ * ONE combined timed prompt now, see `generateVerticalDramaShotVideoPromptSpeakerSwitch`),
+ * then REPLACES every existing clip for this shot
+ * (`sourceShotNumbers.includes(shotNumber)` OR `parentShotNumber ===
+ * shotNumber`) with exactly ONE new clip, shaped IDENTICALLY to a normal
+ * single-shot clip (`clipNumber: shotNumber`, no `parentShotNumber`/
+ * `subShotNumber`) — never appends alongside a stale single clip or a stale
+ * legacy (pre-2026-07-11) N-clip split. Identity for every referenced
+ * speaker rides `extraReferenceAssetIds` (multi-reference-image support on
+ * ONE `generateVideoClip` call) instead of a per-clip reference switch.
  */
 async function generateAndPersistSplitShotVideoPrompt(args: {
   tenantId: string;
@@ -5390,7 +5397,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     subShotWindows,
   } = args;
 
-  const subShotGeneration = await generateVerticalDramaShotVideoPromptSubShots({
+  const speakerSwitchGeneration = await generateVerticalDramaShotVideoPromptSpeakerSwitch({
     userId,
     tenantId,
     seriesId,
@@ -5430,62 +5437,51 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     subShotWindows,
   });
 
-  // Same 3 passes the single-clip path applies (brand sanitize -> length-cap
-  // QC -> preset-visual-identity tokens), looped per sub-shot prompt.
+  // Same 2 passes the single-clip path applies (brand sanitize -> length-cap
+  // QC), applied ONCE — no loop, this path now produces exactly one combined
+  // prompt.
+  let prompt = speakerSwitchGeneration.prompt;
+  let negativeMotionPrompt = speakerSwitchGeneration.negativeMotionPrompt;
+  if (tieInPlacement) {
+    prompt = sanitizeBrandMentionsInPrompt(prompt, [tieInProductName], tieInProductCategory);
+    if (negativeMotionPrompt) {
+      negativeMotionPrompt = sanitizeBrandMentionsInPrompt(
+        negativeMotionPrompt,
+        [tieInProductName],
+        tieInProductCategory
+      );
+    }
+  }
+  const qc = await ensurePromptWithinLimit({
+    kind: "video",
+    prompt,
+    userId,
+    tenantId,
+    seriesId,
+    idempotencyKey: idempotencyKey ? `${idempotencyKey}:prompt-qc` : undefined,
+    label: `shot video prompt (episode #${episodeId}, shot ${shotNumber})`,
+  });
+  prompt = qc.prompt;
+
   const { presetMixV2Enabled } = await resolveVerticalDramaQualityLoopFlags(tenantId);
-  const presetVisualIdentity = presetMixV2Enabled
-    ? await loadSeriesPresetVisualIdentity(tenantId, userId, seriesId)
-    : null;
+  if (presetMixV2Enabled) {
+    const presetVisualIdentity = await loadSeriesPresetVisualIdentity(tenantId, userId, seriesId);
+    if (presetVisualIdentity) {
+      prompt = appendPresetVisualIdentityStyleTokensToMotionPrompt(prompt, presetVisualIdentity);
+    }
+  }
 
-  const processedSubShots = await Promise.all(
-    subShotGeneration.subShots.map(async subShot => {
-      let prompt = subShot.prompt;
-      let negativeMotionPrompt = subShot.negativeMotionPrompt;
-      if (tieInPlacement) {
-        prompt = sanitizeBrandMentionsInPrompt(
-          prompt,
-          [tieInProductName],
-          tieInProductCategory
-        );
-        if (negativeMotionPrompt) {
-          negativeMotionPrompt = sanitizeBrandMentionsInPrompt(
-            negativeMotionPrompt,
-            [tieInProductName],
-            tieInProductCategory
-          );
-        }
-      }
-      const qc = await ensurePromptWithinLimit({
-        kind: "video",
-        prompt,
-        userId,
-        tenantId,
-        seriesId,
-        idempotencyKey: idempotencyKey
-          ? `${idempotencyKey}:subshot-${subShot.subShotNumber}:prompt-qc`
-          : undefined,
-        label: `shot video prompt (episode #${episodeId}, shot ${shotNumber}, sub-shot ${subShot.subShotNumber})`,
-      });
-      prompt = qc.prompt;
-      if (presetVisualIdentity) {
-        prompt = appendPresetVisualIdentityStyleTokensToMotionPrompt(
-          prompt,
-          presetVisualIdentity
-        );
-      }
-      return { ...subShot, prompt, negativeMotionPrompt };
-    })
-  );
-
-  // Resolve each window's anchor-character start frame asset id (Package 3
-  // step 4) — the character's own approved primary-portrait media asset id;
-  // omitted (falls back to the shot's existing single approved start frame
-  // at render time) when the character has no portrait yet. No image
-  // generation happens here — bounded scope per the task's plan.
-  const distinctCharacterKeys = Array.from(
-    new Set(processedSubShots.map(s => s.characterKey).filter(Boolean))
-  );
-  const startFrameAssetIdByCharacterKey = new Map<string, string>();
+  // Resolve every distinct speaker's own approved primary-portrait media
+  // asset id, in `distinctSpeakerCharacterKeys` order (anchor speaker
+  // first) — anchor becomes `startFrameAssetId`, the rest become
+  // `extraReferenceAssetIds` so identity for every referenced speaker rides
+  // the video model's multi-reference-image support on this ONE
+  // `generateVideoClip` call instead of switching the reference image per
+  // segment. Omitted (falls back to the shot's existing single approved
+  // start frame at render time) for any character with no portrait yet. No
+  // image generation happens here — bounded scope per the task's plan.
+  const distinctCharacterKeys = speakerSwitchGeneration.distinctSpeakerCharacterKeys;
+  const portraitAssetIdByCharacterKey = new Map<string, string>();
   if (distinctCharacterKeys.length > 0) {
     const characterRows = await db
       .select({
@@ -5500,107 +5496,117 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
           inArray(verticalDramaCharacters.characterKey, distinctCharacterKeys)
         )
       );
-    for (const characterRow of characterRows) {
+    const characterRowByKey = new Map<string, (typeof characterRows)[number]>();
+    for (const c of characterRows) {
+      characterRowByKey.set(c.characterKey, c);
+    }
+    for (const key of distinctCharacterKeys) {
+      const characterRow = characterRowByKey.get(key);
+      if (!characterRow) continue;
       const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
         { tenantId, userId, seriesId },
         characterRow.id
       );
       if (assetId) {
-        startFrameAssetIdByCharacterKey.set(characterRow.characterKey, String(assetId));
+        portraitAssetIdByCharacterKey.set(key, String(assetId));
       }
     }
   }
+  const orderedPortraitAssetIds = distinctCharacterKeys
+    .map(key => portraitAssetIdByCharacterKey.get(key))
+    .filter((id): id is string => Boolean(id));
+  const [anchorStartFrameAssetId, ...extraReferenceAssetIds] = orderedPortraitAssetIds;
 
-  // Clip numbering: `shotNumber * 100 + subShotNumber` (e.g. shot 3 -> 301,
-  // 302, 303) — collision-free with every other shot's bare `clipNumber`
-  // (1-9) so writing this shot's clips never disturbs any other shot's
-  // already-rendered `videoTask`.
-  const newClips = processedSubShots.map((subShot, index) => {
-    const isLastWindow = index === processedSubShots.length - 1;
-    return {
-      clipNumber: shotNumber * 100 + subShot.subShotNumber,
-      sourceShotNumbers: [shotNumber],
-      parentShotNumber: shotNumber,
-      subShotNumber: subShot.subShotNumber,
-      durationSeconds: subShot.durationSeconds,
-      prompt: subShot.prompt,
-      negativeMotionPrompt: subShot.negativeMotionPrompt,
-      startFrameAssetId: startFrameAssetIdByCharacterKey.get(subShot.characterKey),
-      dialogue: subShot.dialogue,
-      // Any tie-in disclosure / native-audio direction is computed ONCE for
-      // the whole (split) shot — attached only to the LAST window's clip
-      // (closest to end-of-shot), never duplicated onto every sub-shot.
-      ...(isLastWindow
-        ? {
-            requiredDisclosure: subShotGeneration.requiredDisclosure,
-            audioDirection: subShotGeneration.audioDirection,
-          }
-        : {}),
-    };
+  // Exactly ONE clip, shaped IDENTICALLY to a normal single-shot clip —
+  // `clipNumber: shotNumber` (never `shotNumber * 100 + n`), no
+  // `parentShotNumber`/`subShotNumber` — this is what makes the frontend's
+  // existing generic per-clip render loop need ZERO changes.
+  const newClip = {
+    clipNumber: shotNumber,
+    sourceShotNumbers: [shotNumber],
+    durationSeconds: speakerSwitchGeneration.durationSeconds,
+    prompt,
+    negativeMotionPrompt,
+    startFrameAssetId: anchorStartFrameAssetId,
+    extraReferenceAssetIds: extraReferenceAssetIds.length ? extraReferenceAssetIds : undefined,
+    dialogue: speakerSwitchGeneration.dialogue,
+    requiredDisclosure: speakerSwitchGeneration.requiredDisclosure,
+    audioDirection: speakerSwitchGeneration.audioDirection,
+  };
+
+  // 2026-07-11 lost-update race fix, applied to this path for the same
+  // reason `generateShotVideoPrompt`'s own persist step below was fixed
+  // (see that mutation's transaction block doc comment for the full
+  // incident) — this path never had a lock before. A SEPARATE, parallel
+  // transaction block (NOT shared with that fix's code) — both call sites
+  // now converge on "replace this shot's clip(s) with exactly ONE fresh
+  // clip", so both deserve the same row-lock protection against concurrent
+  // overlapping calls for the same episode.
+  await db.transaction(async tx => {
+    const [freshRow] = await tx
+      .select({ motionPromptPack: verticalDramaEpisodes.motionPromptPack })
+      .from(verticalDramaEpisodes)
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, episodeId),
+          eq(verticalDramaEpisodes.tenantId, tenantId),
+          eq(verticalDramaEpisodes.userId, userId),
+          eq(verticalDramaEpisodes.seriesId, seriesId)
+        )
+      )
+      .for("update")
+      .limit(1);
+    const freshPack =
+      (freshRow?.motionPromptPack as VerticalDramaMotionPromptPack | null) ?? pack;
+
+    let updatedPack: VerticalDramaMotionPromptPack;
+    if (freshPack) {
+      // Replace, don't append: remove every existing clip for this shot
+      // (whether it was previously a single clip or a legacy N-clip split)
+      // before inserting exactly ONE fresh clip.
+      const remainingClips = freshPack.clips.filter(
+        c =>
+          !(
+            c.sourceShotNumbers?.includes(shotNumber) ||
+            c.parentShotNumber === shotNumber
+          )
+      );
+      updatedPack = {
+        ...freshPack,
+        clips: [...remainingClips, newClip],
+        nativeAudioEnabled: requestedNativeAudioEnabled,
+      };
+    } else {
+      updatedPack = {
+        selectedVideoModelId: selectedVideoModel.id,
+        durationProfileId:
+          row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+        motionMode: "first_frame_to_video",
+        nativeAudioEnabled: requestedNativeAudioEnabled,
+        clips: [newClip],
+        warnings: [],
+      };
+    }
+
+    await tx
+      .update(verticalDramaEpisodes)
+      .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, episodeId),
+          eq(verticalDramaEpisodes.tenantId, tenantId),
+          eq(verticalDramaEpisodes.userId, userId),
+          eq(verticalDramaEpisodes.seriesId, seriesId)
+        )
+      );
   });
 
-  // Replace, don't append: remove every existing clip for this shot
-  // (whether it was previously a single clip or a prior split's sub-shots)
-  // before inserting the new set — same "regenerate overwrites" convention
-  // the single-clip path already has.
-  let updatedPack: VerticalDramaMotionPromptPack;
-  if (pack) {
-    const remainingClips = pack.clips.filter(
-      c =>
-        !(
-          c.sourceShotNumbers?.includes(shotNumber) ||
-          c.parentShotNumber === shotNumber
-        )
-    );
-    updatedPack = {
-      ...pack,
-      clips: [...remainingClips, ...newClips],
-      nativeAudioEnabled: requestedNativeAudioEnabled,
-    };
-  } else {
-    updatedPack = {
-      selectedVideoModelId: selectedVideoModel.id,
-      durationProfileId:
-        row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
-      motionMode: "first_frame_to_video",
-      nativeAudioEnabled: requestedNativeAudioEnabled,
-      clips: newClips,
-      warnings: [],
-    };
-  }
-
-  await db
-    .update(verticalDramaEpisodes)
-    .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
-    .where(
-      and(
-        eq(verticalDramaEpisodes.id, episodeId),
-        eq(verticalDramaEpisodes.tenantId, tenantId),
-        eq(verticalDramaEpisodes.userId, userId),
-        eq(verticalDramaEpisodes.seriesId, seriesId)
-      )
-    );
-
   return {
-    // Additive/backward-compatible top-level fields for callers that only
-    // read the single-clip shape (pre-existing UI does not know about
-    // sub-shots yet — see the task's frontend work package): a joined
-    // preview of every sub-shot's prompt/dialogue. Real per-clip access is
-    // via `subShots` below.
-    prompt: processedSubShots.map(s => s.prompt).join("\n\n"),
-    dialogue: processedSubShots.flatMap(s => s.dialogue),
-    creditsUsed: subShotGeneration.creditsUsed + extraDialogueCreditsUsed,
-    usedVision: subShotGeneration.usedVision,
-    audioDirection: subShotGeneration.audioDirection,
-    subShots: processedSubShots.map(s => ({
-      clipNumber: shotNumber * 100 + s.subShotNumber,
-      subShotNumber: s.subShotNumber,
-      characterKey: s.characterKey,
-      durationSeconds: s.durationSeconds,
-      prompt: s.prompt,
-      negativeMotionPrompt: s.negativeMotionPrompt,
-      dialogue: s.dialogue,
-    })),
+    prompt: newClip.prompt,
+    dialogue: newClip.dialogue,
+    creditsUsed: speakerSwitchGeneration.creditsUsed + extraDialogueCreditsUsed,
+    usedVision: speakerSwitchGeneration.usedVision,
+    audioDirection: speakerSwitchGeneration.audioDirection,
   };
 }
 
@@ -9387,10 +9393,21 @@ export const verticalDramaEpisodesRouter = router({
         configJson: model.configJson,
       });
       const maxReferenceImages = capabilities.maxReferenceImages ?? 0;
-      const orderedReferenceAssetIds = shotReferences
-        .slice()
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map(r => Number(r.mediaAssetId));
+      // Speaker-switch consolidated clips (2026-07-11 redesign) carry one
+      // portrait per additional speaker in `clip.extraReferenceAssetIds`
+      // (ordered by priority, anchor speaker already covered by
+      // `startFrameAssetId` below) — merged IN FRONT OF the shot-level
+      // manual reference list so they're kept first when trimmed to this
+      // model's `maxReferenceImages`. A clip without the field (every clip
+      // predating this task, and every non-speaker-switch clip) behaves
+      // byte-identically: `?? []` contributes nothing.
+      const orderedReferenceAssetIds = [
+        ...(clip.extraReferenceAssetIds ?? []).map(id => Number(id)),
+        ...shotReferences
+          .slice()
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map(r => Number(r.mediaAssetId)),
+      ];
       const trimmedReferenceCount = Math.max(
         0,
         orderedReferenceAssetIds.length - maxReferenceImages
@@ -10230,7 +10247,32 @@ export const verticalDramaEpisodesRouter = router({
       // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
       // scene-setting plan context, resolved from the ALREADY-loaded
       // `localeSeriesRow.bible` above (no extra DB round trip).
-      const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+      //
+      // Cliffhanger-bleed fix (confirmed production bug, 2026-07-11):
+      // `cliffhangerLine` is intentionally the NEXT episode's teased theme
+      // (good serialized-drama writing — see `readItemCliffhangerLine`'s own
+      // doc comment / the story bible), so it must NEVER be included in the
+      // context sent to THIS per-shot generator. This call site builds
+      // `episodePlanContext` for `generateVerticalDramaShotVideoPrompt`
+      // below, which runs once per shot (`generateShotVideoPrompt` mutation)
+      // — including the next episode's cliffhanger here meant every single
+      // shot's independent LLM call saw next-episode content as "reference"
+      // context, and cheaper models (observed: `openai/gpt-5.4-nano`) did
+      // not reliably honor the "reference only, do not copy" instruction,
+      // bleeding next-episode dialogue/themes into unrelated current-episode
+      // shots (confirmed: series 6 / episode 41, shots 2/3/6). A single shot
+      // never needs forward-looking plot info — `storyboardShot` already
+      // supplies everything this generation needs — so `cliffhangerLine` is
+      // deliberately omitted (`undefined`) here. `logline`/`keyBeats`/
+      // `workingTitle` are legitimate current-episode continuity grounding
+      // and stay included. Contrast with the whole-EPISODE-PACK generator
+      // (`generateVideoMotionPromptPack`, built in
+      // `verticalDramaEpisodePipeline.ts`'s `generateRealMotionPromptPack`),
+      // which renders this context as ONE global block for the whole
+      // episode (not per-shot) and legitimately keeps the cliffhanger to
+      // shape the episode's own ending beat — see the reasoning comment at
+      // `verticalDramaVideoMotionPromptGeneration.ts`'s `buildUserPrompt`.
+      const { getActiveBreakdown } = await import(
         "../services/verticalDramaStoryBible"
       );
       const shotEpisodePlanItem = getActiveBreakdown(
@@ -10244,7 +10286,7 @@ export const verticalDramaEpisodesRouter = router({
               workingTitle: shotEpisodePlanItem.workingTitle,
               logline: shotEpisodePlanItem.logline,
               keyBeats: shotEpisodePlanItem.keyBeats,
-              cliffhangerLine: readItemCliffhangerLine(shotEpisodePlanItem),
+              cliffhangerLine: undefined,
             }
           )
         : undefined;
@@ -10441,12 +10483,30 @@ export const verticalDramaEpisodesRouter = router({
 
         let updatedPack: VerticalDramaMotionPromptPack;
         if (freshPack) {
-          const existingIndex = freshPack.clips.findIndex(c =>
-            c.sourceShotNumbers?.includes(input.shotNumber)
+          // Replace, don't in-place-overwrite: remove every existing clip
+          // for this shot (whether it was previously a single clip or a
+          // prior split's 2-3 sub-shot clips, matched by EITHER
+          // `sourceShotNumbers` OR `parentShotNumber` — a stale split
+          // sub-shot clip's `sourceShotNumbers` still includes this shot
+          // even though it's not the first match) before inserting exactly
+          // ONE fresh clip. This mirrors
+          // `generateAndPersistSplitShotVideoPrompt`'s own
+          // "regenerate overwrites" convention, and is required here
+          // because a shot can transition from split -> single between two
+          // calls (the split decision is recomputed fresh every call), in
+          // which case a `findIndex`-based in-place overwrite only touches
+          // the FIRST matching sub-shot clip and leaves the rest behind as
+          // stale duplicates (2026-07-11 dup-clip bug fix).
+          const remainingClips = freshPack.clips.filter(
+            c =>
+              !(
+                c.sourceShotNumbers?.includes(input.shotNumber) ||
+                c.parentShotNumber === input.shotNumber
+              )
           );
-          const updatedClips = freshPack.clips.slice();
-          if (existingIndex === -1) {
-            updatedClips.push({
+          const updatedClips = [
+            ...remainingClips,
+            {
               clipNumber: input.shotNumber,
               sourceShotNumbers: [input.shotNumber],
               prompt: result.prompt,
@@ -10455,17 +10515,8 @@ export const verticalDramaEpisodesRouter = router({
               dialogue: result.dialogue,
               requiredDisclosure: result.requiredDisclosure,
               audioDirection: result.audioDirection,
-            });
-          } else {
-            updatedClips[existingIndex] = {
-              ...updatedClips[existingIndex],
-              prompt: result.prompt,
-              negativeMotionPrompt: result.negativeMotionPrompt,
-              dialogue: result.dialogue,
-              requiredDisclosure: result.requiredDisclosure,
-              audioDirection: result.audioDirection,
-            };
-          }
+            },
+          ];
           // Vertical Drama task #36 — persist the RAW user preference
           // (independent of the rollout gate) so it survives the flag
           // switching on later; see `requestedNativeAudioEnabled`'s own doc
@@ -10660,24 +10711,48 @@ export const verticalDramaEpisodesRouter = router({
       // `generateShotVideoPrompt`'s create-minimal-pack convention.
       let updatedPack: VerticalDramaMotionPromptPack;
       if (pack) {
-        const existingIndex = pack.clips.findIndex(c =>
-          c.sourceShotNumbers?.includes(input.shotNumber)
+        // Replace, don't in-place-overwrite: this mutation has no concept
+        // of per-sub-shot dialogue (the caller only ever passes a bare
+        // `shotNumber`, never a `subShotNumber` — see
+        // `handleRegenerateClipDialogue` in `VerticalDramaEpisodePage.tsx`),
+        // so writing a dialogue result here always COLLAPSES whatever is
+        // currently on this shot (one single clip, or a stale/live split's
+        // 2-3 sub-shot clips) down to exactly ONE clip. A `findIndex`-based
+        // in-place overwrite only touched the FIRST matching sub-shot clip
+        // and left any remaining sub-shot clips behind as stale duplicates
+        // (2026-07-11 dup-clip bug fix) — mirrors
+        // `generateAndPersistSplitShotVideoPrompt`'s own
+        // "regenerate overwrites" filter convention.
+        //
+        // The survivor is seeded from `matchingClip` (the first match,
+        // i.e. whichever sub-shot the user was actually looking at) so its
+        // `prompt`/other fields carry over as the merged clip's baseline —
+        // then `parentShotNumber`/`subShotNumber` are cleared since it's no
+        // longer a sub-shot once collapsed.
+        const remainingClips = pack.clips.filter(
+          c =>
+            !(
+              c.sourceShotNumbers?.includes(input.shotNumber) ||
+              c.parentShotNumber === input.shotNumber
+            )
         );
-        const updatedClips = pack.clips.slice();
-        if (existingIndex === -1) {
-          updatedClips.push({
+        const { parentShotNumber: _droppedParentShotNumber, subShotNumber: _droppedSubShotNumber, ...matchingClipRest } =
+          matchingClip ?? {};
+        const updatedClips = [
+          ...remainingClips,
+          {
+            ...matchingClipRest,
+            // Explicit overrides AFTER the spread — must win over whatever
+            // `matchingClip` (the pre-collapse sub-shot) happened to carry,
+            // since the collapsed clip is scoped to the whole shot, not the
+            // sub-shot `matchingClip` came from.
             clipNumber: input.shotNumber,
             sourceShotNumbers: [input.shotNumber],
             prompt: matchingClip?.prompt ?? "",
             durationSeconds: storyboardShot?.durationSeconds ?? 8,
             dialogue: result.dialogue,
-          });
-        } else {
-          updatedClips[existingIndex] = {
-            ...updatedClips[existingIndex],
-            dialogue: result.dialogue,
-          };
-        }
+          },
+        ];
         updatedPack = { ...pack, clips: updatedClips };
       } else {
         const fallbackVideoModel = await resolveEpisodeVideoModel(null);

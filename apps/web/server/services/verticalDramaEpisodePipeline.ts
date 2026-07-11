@@ -102,10 +102,11 @@ import {
   generateVideoMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
-  // Speaker-aware sub-shots task (Package 5) — SAME per-shot sub-shot
-  // generator `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt`
-  // mutation uses (Package 3), reused here rather than reimplemented.
-  generateVerticalDramaShotVideoPromptSubShots,
+  // Speaker-aware sub-shots task (Package 5, 2026-07-11 consolidated-clip
+  // redesign) — SAME per-shot speaker-switch generator
+  // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses
+  // (Package 3), reused here rather than reimplemented.
+  generateVerticalDramaShotVideoPromptSpeakerSwitch,
   InsufficientCreditsError as MotionPromptInsufficientCreditsError,
   VdSchemaValidationError as MotionPromptVdSchemaValidationError,
   type VideoMotionPromptPackProjection,
@@ -1324,18 +1325,20 @@ async function resolveEpisodeTieInPlacement(
 }
 
 /**
- * Speaker-aware sub-shots task (Package 5) — batch-path bug fix + speaker-
- * aware wiring, SAME wave. For each REAL clip `generateRealMotionPromptPack`
- * just produced (their `dialogue[]` already populated by
- * `syncDialogueOntoMotionPromptClips`, called just before this runs in
- * `runStage`) whose dialogue deterministically requires a shot-reverse-shot
- * split (`computeSpeakerSwitchSubShotPlan` — the SAME gate
+ * Speaker-aware sub-shots task (Package 5, 2026-07-11 consolidated-clip
+ * redesign) — batch-path bug fix + speaker-aware wiring, SAME wave. For each
+ * REAL clip `generateRealMotionPromptPack` just produced (their
+ * `dialogue[]` already populated by `syncDialogueOntoMotionPromptClips`,
+ * called just before this runs in `runStage`) whose dialogue
+ * deterministically requires cutting between speakers
+ * (`computeSpeakerSwitchSubShotPlan` — the SAME gate
  * `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses,
- * reused here rather than reimplemented), replaces that ONE clip with N
- * speaker-anchored sub-shot clips
- * (`generateVerticalDramaShotVideoPromptSubShots` — the SAME generator,
- * reused). Every other clip (dialogue-free, or dialogue that doesn't need
- * splitting) passes through completely UNCHANGED.
+ * reused here rather than reimplemented), REPLACES that clip in place with
+ * ONE combined, timed motion-prompt clip carrying `extraReferenceAssetIds`
+ * for every additional speaker (`generateVerticalDramaShotVideoPromptSpeakerSwitch`
+ * — the SAME generator `verticalDramaEpisodes.ts`'s split-shot persistence
+ * path uses, reused). Every other clip (dialogue-free, or dialogue that
+ * doesn't need splitting) passes through completely UNCHANGED.
  *
  * THIS is the fix for the pre-existing bug: the OLD call site (still present
  * further below, for the `dry_run`/`plan_only` PLACEHOLDER builder only —
@@ -1528,7 +1531,7 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
     const tieInPlacement = findPlacementForShot(tieInPlacements, shotNumber);
 
     try {
-      const subShotGeneration = await generateVerticalDramaShotVideoPromptSubShots({
+      const speakerSwitchGeneration = await generateVerticalDramaShotVideoPromptSpeakerSwitch({
         userId: owner.userId,
         tenantId: owner.tenantId,
         seriesId: owner.seriesId,
@@ -1566,14 +1569,12 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
         subShotWindows: decision.windows,
       });
 
-      const distinctCharacterKeys = Array.from(
-        new Set(
-          subShotGeneration.subShots
-            .map(s => s.characterKey)
-            .filter((k): k is string => Boolean(k)),
-        ),
-      );
-      const startFrameAssetIdByCharacterKey = new Map<string, string>();
+      // Resolve every distinct speaker's own approved primary-portrait media
+      // asset id, in `distinctSpeakerCharacterKeys` order (anchor speaker
+      // first) — same resolution convention as
+      // `verticalDramaEpisodes.ts`'s `generateAndPersistSplitShotVideoPrompt`.
+      const distinctCharacterKeys = speakerSwitchGeneration.distinctSpeakerCharacterKeys;
+      const portraitAssetIdByCharacterKey = new Map<string, string>();
       if (distinctCharacterKeys.length > 0) {
         const characterRows = await db
           .select({
@@ -1588,42 +1589,49 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
               inArray(verticalDramaCharacters.characterKey, distinctCharacterKeys),
             ),
           );
-        for (const characterRow of characterRows) {
+        const characterRowByKey = new Map<string, (typeof characterRows)[number]>();
+        for (const c of characterRows) {
+          characterRowByKey.set(c.characterKey, c);
+        }
+        for (const key of distinctCharacterKeys) {
+          const characterRow = characterRowByKey.get(key);
+          if (!characterRow) continue;
           const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
             { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
             characterRow.id,
           );
           if (assetId) {
-            startFrameAssetIdByCharacterKey.set(characterRow.characterKey, String(assetId));
+            portraitAssetIdByCharacterKey.set(key, String(assetId));
           }
         }
       }
+      const orderedPortraitAssetIds = distinctCharacterKeys
+        .map(key => portraitAssetIdByCharacterKey.get(key))
+        .filter((id): id is string => Boolean(id));
+      const [anchorStartFrameAssetId, ...extraReferenceAssetIds] = orderedPortraitAssetIds;
 
-      const newClips = subShotGeneration.subShots.map((subShot, index) => {
-        const isLastWindow = index === subShotGeneration.subShots.length - 1;
-        return {
-          clipNumber: shotNumber * 100 + subShot.subShotNumber,
-          sourceShotNumbers: [shotNumber],
-          parentShotNumber: shotNumber,
-          subShotNumber: subShot.subShotNumber,
-          durationSeconds: subShot.durationSeconds,
-          prompt: subShot.prompt,
-          negativeMotionPrompt: subShot.negativeMotionPrompt,
-          startFrameAssetId: startFrameAssetIdByCharacterKey.get(subShot.characterKey),
-          dialogue: subShot.dialogue,
-          ...(isLastWindow
-            ? {
-                requiredDisclosure: subShotGeneration.requiredDisclosure,
-                audioDirection: subShotGeneration.audioDirection,
-              }
-            : {}),
-        };
-      });
+      // Exactly ONE clip, shaped IDENTICALLY to a normal single-shot clip
+      // (`clipNumber: shotNumber`, no `parentShotNumber`/`subShotNumber`) —
+      // same "consolidated clip" shape as
+      // `generateAndPersistSplitShotVideoPrompt`'s persistence path.
+      const newClip = {
+        clipNumber: shotNumber,
+        sourceShotNumbers: [shotNumber],
+        durationSeconds: speakerSwitchGeneration.durationSeconds,
+        prompt: speakerSwitchGeneration.prompt,
+        negativeMotionPrompt: speakerSwitchGeneration.negativeMotionPrompt,
+        startFrameAssetId: anchorStartFrameAssetId,
+        extraReferenceAssetIds: extraReferenceAssetIds.length ? extraReferenceAssetIds : undefined,
+        dialogue: speakerSwitchGeneration.dialogue,
+        requiredDisclosure: speakerSwitchGeneration.requiredDisclosure,
+        audioDirection: speakerSwitchGeneration.audioDirection,
+      };
 
       // Replace, don't append — same convention as
-      // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` persistence
-      // (Package 3): remove every existing clip for this shot before
-      // inserting the new sub-shot set.
+      // `verticalDramaEpisodes.ts`'s `generateAndPersistSplitShotVideoPrompt`
+      // (Package 3): remove every existing clip for this shot (whether a
+      // single clip or a legacy pre-2026-07-11 N-clip split) before
+      // inserting the one new consolidated clip.
       updatedClips = [
         ...updatedClips.filter(
           c =>
@@ -1632,7 +1640,7 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
               c.parentShotNumber === shotNumber
             ),
         ),
-        ...newClips,
+        newClip,
       ];
     } catch {
       // Best-effort per shot — never abort the whole batch over one shot's
@@ -3386,7 +3394,7 @@ export class VerticalDramaEpisodePipeline {
     // 5) on the REAL `generated.pack` BEFORE it is used for either `payload`
     // or persistence — reuses the exact same deterministic gate
     // (`computeSpeakerSwitchSubShotPlan`) and per-shot generator
-    // (`generateVerticalDramaShotVideoPromptSubShots`) the per-shot
+    // (`generateVerticalDramaShotVideoPromptSpeakerSwitch`) the per-shot
     // `generateShotVideoPrompt` mutation uses (Package 3), operating on the
     // REAL clips' own `dialogue[]` (already populated by
     // `syncDialogueOntoMotionPromptClips` just below) instead of
@@ -3440,10 +3448,10 @@ export class VerticalDramaEpisodePipeline {
         };
         // Speaker-aware sub-shots (Package 5) — operates on the REAL clips'
         // own `dialogue[]` (populated above), replacing any shot whose
-        // dialogue needs a shot-reverse-shot split with real, speaker-
-        // anchored sub-shot clips. No-op (`generated.pack` unchanged) when
-        // `subShotFlagOn` is false — same fail-closed default as every other
-        // sub-shot gate.
+        // dialogue needs cutting between speakers with ONE real, combined,
+        // timed motion-prompt clip carrying `extraReferenceAssetIds`. No-op
+        // (`generated.pack` unchanged) when `subShotFlagOn` is false — same
+        // fail-closed default as every other sub-shot gate.
         generated.pack = await applySpeakerSwitchSubShotsToRealMotionPromptPack(
           owner,
           episode,

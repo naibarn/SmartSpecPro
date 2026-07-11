@@ -51,10 +51,12 @@ import type {
   VerticalDramaDialogueLanguage,
   VerticalDramaSeriesLocale,
   VerticalDramaThaiAccent,
-  // Speaker-aware sub-shots task — the split-window shape decided by
+  // Speaker-aware sub-shots task (consolidated to a single combined prompt,
+  // 2026-07-11 redesign) — the timed-window shape decided by
   // `computeSpeakerSwitchSubShotPlan` (pure, no LLM call); this module's
-  // `generateVerticalDramaShotVideoPromptSubShots` only writes prose for
-  // windows it's given, it never re-decides the split itself.
+  // `generateVerticalDramaShotVideoPromptSpeakerSwitch` only writes ONE
+  // combined timed-narrative prose prompt for the windows it's given, it
+  // never re-decides the split itself.
   SpeakerSwitchSubShotWindow,
 } from "@shared/verticalDramaSeries";
 import {
@@ -261,14 +263,16 @@ export interface VideoMotionPromptPackProjection {
     durationSeconds: number;
     /** Dialogue line(s) spoken during this clip (Phase 3.1) — optional, empty/omitted for silent clips. */
     dialogue?: VerticalDramaMotionPromptClipDialogueLine[];
-    /** Speaker-aware sub-shots task (Package 5) — present only on a sub-shot clip produced by splitting a parent shot; mirrors `VerticalDramaMotionPromptPack["clips"][number].parentShotNumber` in `@shared/verticalDramaSeries/contracts.ts`. */
+    /** Speaker-aware sub-shots task (Package 5) — legacy field, no longer written by `applySpeakerSwitchSubShotsToRealMotionPromptPack` after the 2026-07-11 consolidated-clip redesign (kept for typing any still-persisted legacy pre-redesign rows read back through this projection). Mirrors `VerticalDramaMotionPromptPack["clips"][number].parentShotNumber` in `@shared/verticalDramaSeries/contracts.ts`. */
     parentShotNumber?: number;
-    /** Speaker-aware sub-shots task (Package 5) — 1-based order within `parentShotNumber`. */
+    /** Speaker-aware sub-shots task (Package 5) — legacy field, see `parentShotNumber`'s doc comment above. */
     subShotNumber?: number;
-    /** Speaker-aware sub-shots task (Package 5) — see `VerticalDramaMotionPromptPack["clips"][number].requiredDisclosure`'s doc comment; attached only to the last sub-shot window's clip. */
+    /** Speaker-aware sub-shots task (Package 5) — see `VerticalDramaMotionPromptPack["clips"][number].requiredDisclosure`'s doc comment. */
     requiredDisclosure?: string;
-    /** Speaker-aware sub-shots task (Package 5) — see `VerticalDramaMotionPromptPack["clips"][number].audioDirection`'s doc comment; attached only to the last sub-shot window's clip. */
+    /** Speaker-aware sub-shots task (Package 5) — see `VerticalDramaMotionPromptPack["clips"][number].audioDirection`'s doc comment. */
     audioDirection?: string;
+    /** 2026-07-11 consolidated-clip redesign — see `VerticalDramaMotionPromptPack["clips"][number].extraReferenceAssetIds`'s doc comment in `@shared/verticalDramaSeries/contracts.ts`. */
+    extraReferenceAssetIds?: string[];
   }>;
 }
 
@@ -616,6 +620,22 @@ export interface GenerateVideoMotionPromptPackParams {
    * .episodePlanContext` — keeps clip prompts consistent with the episode's
    * planned scene without being pasted into any clip's own `prompt`.
    * Optional — omitted when the active breakdown has no matching item.
+   *
+   * Cliffhanger-bleed judgment call (2026-07-11, same incident as the
+   * per-shot sibling `GenerateVerticalDramaShotVideoPromptParams
+   * .episodePlanContext`'s doc comment): UNLIKE the per-shot generator, this
+   * function's caller (`generateRealMotionPromptPack` in
+   * `verticalDramaEpisodePipeline.ts`) deliberately KEEPS
+   * `cliffhangerLine` in the context it builds. Reasoning: `buildUserPrompt`
+   * below renders `episodePlanContext` as exactly ONE global block for the
+   * WHOLE episode in a single LLM call (not repeated per shot line, see
+   * `episodePlanContextBlock`) — the confirmed bleed vector was N
+   * INDEPENDENT per-shot LLM calls each risking drift, which does not apply
+   * here. A single whole-episode pass can legitimately use the episode's own
+   * ending beat/cliffhanger to shape its last clip(s) appropriately (same
+   * spirit as the `is_retention_ending_shot` marker below). If future
+   * evidence shows this whole-pack path also bleeds cliffhanger content into
+   * non-final clips, revisit this decision.
    */
   episodePlanContext?: string;
   /**
@@ -948,10 +968,10 @@ export type ShotVideoPromptOutput = z.infer<typeof shotVideoPromptOutputSchema>;
 /* Shared vision-aware executeWithFallback -> extractJson -> schema-validate  */
 /* retry harness (speaker-aware sub-shots task) — used by BOTH               */
 /* `generateVerticalDramaShotVideoPrompt` and                                 */
-/* `generateVerticalDramaShotVideoPromptSubShots` below, so the "one retry on */
-/* truncated/invalid JSON with a raised token ceiling" pattern is defined     */
-/* exactly once instead of copy-pasted per generator. Deliberately local to   */
-/* this file (NOT the shared `executeJsonPlanningCallWithRetry` in            */
+/* `generateVerticalDramaShotVideoPromptSpeakerSwitch` below, so the "one     */
+/* retry on truncated/invalid JSON with a raised token ceiling" pattern is    */
+/* defined exactly once instead of copy-pasted per generator. Deliberately    */
+/* local to this file (NOT the shared `executeJsonPlanningCallWithRetry` in   */
 /* `verticalDramaStoryBible.ts`) — that helper only accepts a plain string     */
 /* `userPrompt`, but both callers here need the vision-aware `image_url`      */
 /* content shape (see this module's earlier vision-support doc comment).      */
@@ -1245,6 +1265,22 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * at the top of this params object alongside `locale`/`promptLanguage`
    * rather than inside `shotContext`. Optional — omitted when the active
    * breakdown has no matching item.
+   *
+   * Cliffhanger-bleed fix (confirmed production bug, 2026-07-11): the
+   * ONLY caller of this per-shot generator (the `generateShotVideoPrompt`
+   * mutation in `server/routers/verticalDramaEpisodes.ts`) deliberately
+   * omits `cliffhangerLine` when building this string via
+   * `formatStoryScriptEpisodePlanContext`, because this function runs once
+   * PER SHOT — a single shot never needs the NEXT episode's teased theme,
+   * and cheaper models did not reliably honor the "reference only, do not
+   * copy" instruction below, bleeding next-episode content into unrelated
+   * shots. (The sub-shot/speaker-switch path,
+   * `generateAndPersistSplitShotVideoPrompt` ->
+   * `generateVerticalDramaShotVideoPromptSpeakerSwitch`, is a SEPARATE function
+   * that never received `episodePlanContext` in the first place — nothing
+   * to fix there.) See the caller's own doc comment for the full incident.
+   * Contrast with `GenerateVideoMotionPromptPackParams.episodePlanContext`, which
+   * legitimately keeps the cliffhanger (whole-episode, single global block).
    */
   episodePlanContext?: string;
 }
@@ -1578,16 +1614,21 @@ export async function generateVerticalDramaShotVideoPrompt(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Speaker-switch sub-shots (shot-reverse-shot split, speaker-aware sub-shots  */
-/* task) — generates ALL of a split shot's sub-shot prompts in ONE LLM call,  */
-/* so the model can write a coherent reverse-shot arc across the whole shot   */
-/* instead of N independent, context-blind calls. Sibling to                  */
-/* `generateVerticalDramaShotVideoPrompt` above (which stays completely       */
-/* untouched — every shot that does NOT need splitting keeps using it exactly */
-/* as before); the SPLIT DECISION itself is made deterministically, with no   */
-/* LLM call, by `computeSpeakerSwitchSubShotPlan`                             */
-/* (`@shared/verticalDramaSeries/subShots.ts`) — the caller (router) computes  */
-/* the `subShotWindows` BEFORE calling this function.                         */
+/* Speaker-switch consolidated prompt (2026-07-11 redesign of the             */
+/* speaker-aware sub-shots task) — generates ONE combined, timed motion       */
+/* prompt (and ONE consolidated clip's worth of dialogue/duration) for a shot */
+/* whose dialogue requires cutting between 2-3 speakers, instead of the prior */
+/* N-separate-clips design. Sibling to `generateVerticalDramaShotVideoPrompt` */
+/* above (which stays completely untouched — every shot that does NOT need   */
+/* splitting keeps using it exactly as before); the SPLIT DECISION itself is  */
+/* made deterministically, with no LLM call, by                              */
+/* `computeSpeakerSwitchSubShotPlan` (`@shared/verticalDramaSeries/           */
+/* subShots.ts`) — the caller (router) computes the `subShotWindows` BEFORE   */
+/* calling this function. Identity for every referenced speaker now rides    */
+/* the video model's multi-reference-image support (the caller resolves one  */
+/* portrait per distinct speaker and sends them all on the SAME generation   */
+/* call) instead of switching the reference image per segment — see the      */
+/* skill's own "no-appearance-description" rule for the full rationale.      */
 /* -------------------------------------------------------------------------- */
 
 const SHOT_VIDEO_PROMPT_SUBSHOTS_SKILL_FOLDER_PATH = path.join(
@@ -1597,7 +1638,7 @@ const SHOT_VIDEO_PROMPT_SUBSHOTS_SKILL_FOLDER_PATH = path.join(
 
 let cachedShotVideoPromptSubShotsSystemPrompt: string | null = null;
 
-/** Same skill.md-loader resolution strategy as `loadShotVideoPromptSystemPrompt()` — separate cache/function because this is a distinct skill file (different response contract: N sub-shots per call, not one). */
+/** Same skill.md-loader resolution strategy as `loadShotVideoPromptSystemPrompt()` — separate cache/function because this is a distinct skill file (different framing: a timed multi-speaker narrative in one prompt, not a single-speaker shot). */
 function loadShotVideoPromptSubShotsSystemPrompt(): string {
   if (cachedShotVideoPromptSubShotsSystemPrompt) return cachedShotVideoPromptSubShotsSystemPrompt;
 
@@ -1618,69 +1659,46 @@ function loadShotVideoPromptSubShotsSystemPrompt(): string {
   );
 }
 
-const speakerSwitchSubShotOutputSchema = z
-  .object({
-    subShots: z
-      .array(
-        z.object({
-          subShotNumber: z.number().int().positive(),
-          cameraSetup: z.string().min(1),
-          prompt: z.string().min(1),
-          negative_motion_prompt: z.string().optional().default(""),
-          transitionIn: z.enum(["cut", "match_cut", "smash_cut", "continuous"]),
-        }),
-      )
-      .min(2)
-      .max(3),
-    /**
-     * Additive over the brief's literal schema (deviation, documented in the
-     * task's final report): the category-mandated tie-in disclosure and the
-     * native-audio-direction cue are properties of the PARENT shot as a
-     * whole (one product tie-in, one native-audio decision per shot), not
-     * per sub-shot-window — so this schema asks the LLM for them ONCE,
-     * mirroring `shotVideoPromptOutputSchema`'s `requiredDisclosure`/
-     * `audio_direction` fields, so the router can still copy them onto the
-     * LAST window's clip (see `verticalDramaEpisodes.ts`'s
-     * `generateShotVideoPrompt` persistence step). Omitted entirely when not
-     * applicable — same conditional-presence convention as the single-shot
-     * schema.
-     */
-    requiredDisclosure: z.string().optional(),
-    audio_direction: z.string().optional(),
-  })
-  .passthrough();
+/** Rounds to 2 decimal places — local copy of `subShots.ts`'s file-private `round2` (not exported there), used here only to keep cumulative segment-boundary seconds tidy in the fact blocks sent to the LLM. */
+function round2(x: number): number {
+  return Math.round(x * 100) / 100;
+}
 
-export type SpeakerSwitchSubShotOutput = z.infer<typeof speakerSwitchSubShotOutputSchema>;
-
-export interface GenerateVerticalDramaShotVideoPromptSubShotsParams
+export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams
   extends GenerateVerticalDramaShotVideoPromptParams {
-  /** Speaker-anchored cut windows already decided by `computeSpeakerSwitchSubShotPlan` — this function only writes prose for them, it never re-decides the split. */
+  /** Speaker-anchored timed windows already decided by `computeSpeakerSwitchSubShotPlan` — this function only writes ONE combined timed-narrative prompt describing them, it never re-decides the split. */
   subShotWindows: SpeakerSwitchSubShotWindow[];
 }
 
-export interface GenerateVerticalDramaShotVideoPromptSubShotsResult {
-  subShots: Array<{
-    subShotNumber: number;
-    characterKey: string;
-    durationSeconds: number;
-    cameraSetup: string;
-    prompt: string;
-    negativeMotionPrompt?: string;
-    transitionIn: "cut" | "match_cut" | "smash_cut" | "continuous";
-    dialogue: VerticalDramaMotionPromptClipDialogueLine[];
-  }>;
+export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
+  prompt: string;
+  negativeMotionPrompt?: string;
+  /** Every window's dialogue lines flattened in chronological order. */
+  dialogue: VerticalDramaMotionPromptClipDialogueLine[];
+  /** Sum of every window's `durationSeconds` — always equals the full shot duration by `computeSpeakerSwitchSubShotPlan`'s own invariant. */
+  durationSeconds: number;
+  /** Anchor speaker (the first window's `characterKey`) first, then each subsequent NEW speaker in first-appearance order across windows. Drives the caller's reference-portrait resolution order (`startFrameAssetId` = first entry, `extraReferenceAssetIds` = the rest). */
+  distinctSpeakerCharacterKeys: string[];
   creditsUsed: number;
   model: string;
   /** True when the resolved model actually received the image (vision path); false when only the textual `imagePrompt` proxy was used. */
   usedVision: boolean;
-  /** See `speakerSwitchSubShotOutputSchema`'s doc comment — computed once for the whole (split) shot; the router copies this onto the LAST sub-shot's clip. */
   requiredDisclosure?: string;
-  /** See `speakerSwitchSubShotOutputSchema`'s doc comment — computed once for the whole (split) shot; the router copies this onto the LAST sub-shot's clip. */
   audioDirection?: string;
 }
 
-function buildSpeakerSwitchSubShotUserPrompt(
-  params: GenerateVerticalDramaShotVideoPromptSubShotsParams,
+/**
+ * Cumulative-timestamp FACT builder — walks `subShotWindows` in order,
+ * accumulating `startSeconds`/`endSeconds` (a running total of each window's
+ * `durationSeconds`), and emits one structured FACT block per window: the
+ * anchor `characterKey`, the `[start, end)` seconds range, and that window's
+ * own dialogue lines. This is pure structured fact, never authored prose —
+ * turning these facts into ONE flowing timed-cut narrative is entirely the
+ * skill.md system prompt's job (skill-first architecture; no prompt-
+ * construction/creative-authoring logic lives in this file).
+ */
+function buildSpeakerSwitchUserPrompt(
+  params: GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams,
   nativeAudioDialogue: boolean,
   nativeAudioDirectionEnabled: boolean,
 ): string {
@@ -1691,8 +1709,12 @@ function buildSpeakerSwitchSubShotUserPrompt(
   const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
   const allDialogueLines = shotContext.dialogueLines ?? [];
 
-  const windowBlocks = subShotWindows
+  let cursorSeconds = 0;
+  const segmentBlocks = subShotWindows
     .map((w) => {
+      const startSeconds = round2(cursorSeconds);
+      cursorSeconds += w.durationSeconds;
+      const endSeconds = round2(cursorSeconds);
       const lines = w.lineIndexes
         .map((idx) => allDialogueLines[idx])
         .filter((l): l is NonNullable<typeof l> => Boolean(l));
@@ -1709,56 +1731,45 @@ function buildSpeakerSwitchSubShotUserPrompt(
               return parts.join(" | ");
             })
             .join("\n")
-        : "(no dialogue lines assigned to this window)";
-      const otherSpeakers = Array.from(
-        new Set(
-          allDialogueLines
-            .map((l) => l.characterKey)
-            .filter((k): k is string => Boolean(k) && k !== w.characterKey),
-        ),
-      );
-      const cutInstruction = otherSpeakers.length
-        ? `cut to ${w.characterKey}, over-the-shoulder/reaction framing, medium close-up on ${w.characterKey}'s face — ${otherSpeakers.join(", ")} is off-frame or only partially visible for this cut`
-        : `cut to ${w.characterKey}`;
+        : "(no dialogue lines assigned to this segment)";
       return [
-        `SUB-SHOT ${w.subShotNumber} of ${subShotWindows.length} (${w.durationSeconds}s): ${cutInstruction}.`,
-        `Dialogue for this sub-shot:\n${linesText}`,
+        `SEGMENT ${w.subShotNumber} of ${subShotWindows.length} — [${startSeconds}s, ${endSeconds}s) (${w.durationSeconds}s), anchor speaker: ${w.characterKey}`,
+        `Dialogue lines in this segment:\n${linesText}`,
       ].join("\n");
     })
     .join("\n\n");
+  const totalDurationSeconds = round2(cursorSeconds);
 
   return [
     `Shot number: ${params.shotNumber}`,
-    `This shot is being split into ${subShotWindows.length} shot-reverse-shot sub-shots because 2+ characters go back and forth in dialogue during it — each sub-shot becomes its own separate clip, anchored on whichever character is speaking during that window, to avoid identity/costume drift on the non-speaking character across one long continuous clip.`,
+    `Total clip duration: ${totalDurationSeconds}s across ${subShotWindows.length} timed segments (this shot's dialogue requires cutting between speakers — see the segment facts below; write ONE combined "prompt" narrating all segments in order, per your instructions).`,
     shotContext.description ? `Shot description: ${shotContext.description}` : null,
-    shotContext.camera ? `Overall scene camera setup (base framing before the reverse-shot cuts): ${shotContext.camera}` : null,
+    shotContext.camera ? `Overall scene camera setup (base framing before the timed cuts): ${shotContext.camera}` : null,
     shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
     params.imagePrompt
       ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
       : null,
     shotContext.characterIdentityMap ?? null,
-    `Sub-shot windows (produce exactly one camera-direction + video-motion "prompt" for EACH, matching "subShotNumber" — return exactly ${subShotWindows.length} entries in "subShots"):\n${windowBlocks}`,
-    `SHOT-REVERSE-SHOT CONTINUITY (MANDATORY): write the ${subShotWindows.length} prompts so together they read as one coherent cutaway sequence — a later sub-shot's "prompt" may reference cutting back from an earlier sub-shot's framing (e.g. "cutting back to X after the previous reaction shot"), but each sub-shot's own "prompt" must also stand alone as a complete, self-sufficient motion direction for its own clip.`,
-    `Never describe character appearance in any sub-shot's "prompt" — each sub-shot's own start-frame reference image (not this prompt text) carries that character's identity/wardrobe. Focus only on movement, emotion, camera motion, and dialogue delivery.`,
+    `Timed segment facts (structured facts only, in chronological order — return exactly ONE combined "prompt" for the whole shot):\n${segmentBlocks}`,
     shotContext.productContext
-      ? `PRODUCT TIE-IN (MANDATORY for this shot): the tied-in product is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product GENERICALLY (e.g. "the product", a category descriptor — NEVER the brand/product name itself, which must never appear in any "prompt"/"negative_motion_prompt"/dialogue text) or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in whichever sub-shot's dialogue/acting beat fits it best — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. Brand identity comes ONLY from the attached/locked reference image, never from prompt or dialogue text. ${VD_PRODUCT_LOCK_VIDEO_INSTRUCTION} Return the category-mandated disclosure line (if any) ONCE in the top-level "requiredDisclosure" field — do not repeat it per sub-shot.`
+      ? `PRODUCT TIE-IN (MANDATORY for this shot): the tied-in product is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product GENERICALLY (e.g. "the product", a category descriptor — NEVER the brand/product name itself, which must never appear in "prompt"/"negative_motion_prompt"/dialogue text) or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in whichever segment's dialogue/acting beat fits it best — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. Brand identity comes ONLY from the attached/locked reference image, never from prompt or dialogue text. ${VD_PRODUCT_LOCK_VIDEO_INSTRUCTION}`
       : null,
     shotContext.productContext
       ? buildThaiAdComplianceInstruction(shotContext.productContext.productCategory)
       : null,
     shotContext.productContext
-      ? "Public-figure/brand guard (MANDATORY): never name a real public figure, celebrity, or real company/brand anywhere in any \"prompt\", \"negative_motion_prompt\", or dialogue text."
+      ? "Public-figure/brand guard (MANDATORY): never name a real public figure, celebrity, or real company/brand anywhere in the \"prompt\", \"negative_motion_prompt\", or dialogue text."
       : null,
-    `PROMPT LANGUAGE (MANDATORY): write every sub-shot's "prompt" and "negative_motion_prompt" entirely in ${promptLanguageName} — every word of the motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
-    `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video. Any literal quoted dialogue embedded in a sub-shot's prompt (native-audio models) must be in ${dialogueLanguageName}, adapted/translated naturally into ${dialogueLanguageName} if the source line shown above is in a different language.`,
+    `PROMPT LANGUAGE (MANDATORY): write the "prompt" and "negative_motion_prompt" fields entirely in ${promptLanguageName} — every word of the motion/acting/camera direction must be in ${promptLanguageName}, regardless of what language the dialogue is in.`,
+    `SPEECH LANGUAGE (MANDATORY): the character(s) speak in ${dialogueLanguageName} in this video. Any literal quoted dialogue embedded in "prompt" (native-audio models) must be in ${dialogueLanguageName}, adapted/translated naturally into ${dialogueLanguageName} if the source line shown above is in a different language.`,
     dialogueLanguage === "th" && params.thaiAccent
       ? `SPEECH ACCENT (MANDATORY): ${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every spoken line.`
       : null,
     nativeAudioDialogue
-      ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — for any sub-shot with dialogue, embed that window's line(s) VERBATIM (in the SPEECH LANGUAGE) in its own "prompt", with matching mouth/lip movement and delivery direction.`
-      : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — for any sub-shot with dialogue, describe mouth movement + acting direction only in its own "prompt" (in the PROMPT LANGUAGE, no literal transcript embedded).`,
+      ? `The selected video model (${params.selectedVideoModelId}) supports native lip-synced audio — at the point in "prompt" where each segment is narrated, embed that segment's dialogue line(s) VERBATIM (in the SPEECH LANGUAGE) with matching mouth/lip movement and delivery direction, and return every line again, in chronological order across all segments, in the "dialogue" array.`
+      : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — describe mouth movement + acting direction only in "prompt" (in the PROMPT LANGUAGE, no literal transcript embedded), and return the resolved ${dialogueLanguageName} lines, in chronological order across all segments, in the "dialogue" array so the caller can route them to text-to-speech.`,
     nativeAudioDirectionEnabled
-      ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively — return an additional top-level "audio_direction" field (ONCE for the whole shot, not per sub-shot) directing the model's own in-clip audio: SFX cues tied to this shot's visible on-screen actions FIRST, then a brief ambient soundscape matched to the scene's mood/location and emotional-beat intensity SECOND. NEVER include speech/dialogue/voices/vocals and NEVER include music/melody/lyrics/score in "audio_direction".`
+      ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot (ONCE for the whole shot, not per segment): SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
       : null,
     `Locale: ${params.locale}`,
     VD_COMPACT_JSON_INSTRUCTION,
@@ -1768,19 +1779,24 @@ function buildSpeakerSwitchSubShotUserPrompt(
 }
 
 /**
- * Generate a whole SPLIT shot's shot-reverse-shot sub-shot prompts in ONE
- * LLM call (Package 2, speaker-aware sub-shots task) — sibling to
- * `generateVerticalDramaShotVideoPrompt`, reusing the same vision-aware
- * retry harness (`executeVisionAwareJsonCallWithRetry`), credit-check/rate-
- * limit gating, and model-resolution convention. The CALLER (router) is
+ * Generate ONE combined, timed motion prompt for a shot whose dialogue
+ * requires cutting between 2-3 speakers (2026-07-11 redesign, speaker-aware
+ * sub-shots task) — sibling to `generateVerticalDramaShotVideoPrompt`,
+ * reusing the SAME vision-aware retry harness
+ * (`executeVisionAwareJsonCallWithRetry`), credit-check/rate-limit gating,
+ * model-resolution convention, AND output schema (`shotVideoPromptOutputSchema`
+ * — the contract is now IDENTICAL in shape to the single-shot skill's, so
+ * there is no separate sub-shot schema to maintain). The CALLER (router) is
  * responsible for deciding whether a shot needs splitting at all
- * (`computeSpeakerSwitchSubShotPlan`) and for resolving each window's
- * `startFrameAssetId` (the character's own portrait) — this function only
- * writes the prose for the windows it's given.
+ * (`computeSpeakerSwitchSubShotPlan`) and for resolving every distinct
+ * speaker's own portrait as a reference image on the SAME generation call
+ * (`distinctSpeakerCharacterKeys` on the result, anchor first) — this
+ * function only writes the ONE combined timed-narrative prompt for the
+ * windows it's given.
  */
-export async function generateVerticalDramaShotVideoPromptSubShots(
-  params: GenerateVerticalDramaShotVideoPromptSubShotsParams,
-): Promise<GenerateVerticalDramaShotVideoPromptSubShotsResult> {
+export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
+  params: GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams,
+): Promise<GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult> {
   const rateLimitKey = `user:${params.userId}`;
   if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
     throw new RateLimitExceededError(mediaGenerationLimiter.getResetTime(rateLimitKey));
@@ -1803,20 +1819,20 @@ export async function generateVerticalDramaShotVideoPromptSubShots(
   const nativeAudioDirectionEnabled =
     params.nativeAudioEnabled === true && capabilities.supportsNativeAudio === true;
 
-  const userPromptText = buildSpeakerSwitchSubShotUserPrompt(
+  const userPromptText = buildSpeakerSwitchUserPrompt(
     params,
     nativeAudioDialogue,
     nativeAudioDirectionEnabled,
   );
 
-  const { data, response } = await executeVisionAwareJsonCallWithRetry<SpeakerSwitchSubShotOutput>({
+  const { data, response } = await executeVisionAwareJsonCallWithRetry<ShotVideoPromptOutput>({
     model,
     systemPrompt,
     userPromptText,
     hasVision,
     imageUrl: params.imageUrl,
     userId: params.userId,
-    schema: speakerSwitchSubShotOutputSchema,
+    schema: shotVideoPromptOutputSchema,
     firstAttemptMaxTokens: 3000,
     retryMaxTokens: 6000,
   });
@@ -1832,7 +1848,7 @@ export async function generateVerticalDramaShotVideoPromptSubShots(
     userId: params.userId,
     tenantId: params.tenantId,
     amount: creditsUsed,
-    description: `Vertical Drama — generate shot video prompt sub-shots (episode #${params.episodeId}, shot #${params.shotNumber})`,
+    description: `Vertical Drama — generate shot video prompt (speaker switch) (episode #${params.episodeId}, shot #${params.shotNumber})`,
     sourceType: "skill",
     idempotencyKey: params.idempotencyKey,
     metadata: {
@@ -1843,7 +1859,7 @@ export async function generateVerticalDramaShotVideoPromptSubShots(
       episodeId: params.episodeId,
       shotNumber: params.shotNumber,
       usedVision: hasVision,
-      subShotCount: data.subShots.length,
+      segmentCount: params.subShotWindows.length,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
     },
@@ -1853,42 +1869,44 @@ export async function generateVerticalDramaShotVideoPromptSubShots(
     ? data.audio_direction || undefined
     : undefined;
 
-  const windowByNumber = new Map(params.subShotWindows.map((w) => [w.subShotNumber, w]));
-  const allDialogueLines = params.shotContext.dialogueLines ?? [];
-  const sortedSubShots = data.subShots.slice().sort((a, b) => a.subShotNumber - b.subShotNumber);
+  // Anchor speaker (the FIRST window's characterKey) first, then each
+  // subsequent NEW speaker in first-appearance order across windows.
+  const distinctSpeakerCharacterKeys: string[] = [];
+  for (const w of params.subShotWindows) {
+    if (!distinctSpeakerCharacterKeys.includes(w.characterKey)) {
+      distinctSpeakerCharacterKeys.push(w.characterKey);
+    }
+  }
 
-  const subShots = sortedSubShots.map((s, i) => {
-    const window = windowByNumber.get(s.subShotNumber);
-    const dialogue: VerticalDramaMotionPromptClipDialogueLine[] = window
-      ? window.lineIndexes
-          .map((idx) => allDialogueLines[idx])
-          .filter((l): l is NonNullable<typeof l> => Boolean(l))
-          .map((l) => ({
-            characterKey: l.characterKey,
-            lineTh: l.lineTh,
-            emotion: l.emotion,
-            delivery: l.delivery,
-            subtext: l.subtext,
-          }))
-      : [];
-    const isLastSubShot = i === sortedSubShots.length - 1;
-    return {
-      subShotNumber: s.subShotNumber,
-      characterKey: window?.characterKey ?? "",
-      durationSeconds: window?.durationSeconds ?? 0,
-      cameraSetup: s.cameraSetup,
-      prompt:
-        isLastSubShot && resolvedAudioDirection
-          ? `${s.prompt} SFX cues: ${resolvedAudioDirection}`
-          : s.prompt,
-      negativeMotionPrompt: s.negative_motion_prompt || undefined,
-      transitionIn: s.transitionIn,
-      dialogue,
-    };
-  });
+  // Flatten every window's dialogue lines in chronological order (windows are
+  // already chronological per `computeSpeakerSwitchSubShotPlan`'s contract).
+  const allDialogueLines = params.shotContext.dialogueLines ?? [];
+  const dialogue: VerticalDramaMotionPromptClipDialogueLine[] = params.subShotWindows.flatMap(
+    (w) =>
+      w.lineIndexes
+        .map((idx) => allDialogueLines[idx])
+        .filter((l): l is NonNullable<typeof l> => Boolean(l))
+        .map((l) => ({
+          characterKey: l.characterKey,
+          lineTh: l.lineTh,
+          emotion: l.emotion,
+          delivery: l.delivery,
+          subtext: l.subtext,
+        })),
+  );
+
+  const durationSeconds = round2(
+    params.subShotWindows.reduce((sum, w) => sum + w.durationSeconds, 0),
+  );
 
   return {
-    subShots,
+    prompt: resolvedAudioDirection
+      ? `${data.prompt} SFX cues: ${resolvedAudioDirection}`
+      : data.prompt,
+    negativeMotionPrompt: data.negative_motion_prompt || undefined,
+    dialogue,
+    durationSeconds,
+    distinctSpeakerCharacterKeys,
     creditsUsed,
     model,
     usedVision: hasVision,
