@@ -1016,6 +1016,54 @@ describe("generateCharacterVisualPrompts — has_own_reference_image flow-throug
   });
 });
 
+/**
+ * custom_instruction flow-through (vertical-drama-character-custom-
+ * instruction plan): the router threads the caller's raw free-text framing/
+ * pose hint straight through as `customInstruction` — this module's only job
+ * is to forward it to the skill as `custom_instruction`, never author any
+ * prompt-construction logic itself (skill-first — `skill.md`'s own "Custom
+ * instruction" section is the sole author of how the fact is used). Mirrors
+ * the `has_own_reference_image` flow-through coverage above exactly.
+ */
+describe("generateCharacterVisualPrompts — custom_instruction flow-through to the LLM call", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+  });
+
+  it("sends custom_instruction as a raw string when customInstruction is set", async () => {
+    await generateCharacterVisualPrompts(baseParams({ customInstruction: "half-body shot, front-facing" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain('"custom_instruction": "half-body shot, front-facing"');
+  });
+
+  it("omits custom_instruction entirely when customInstruction is empty (byte-identical to pre-feature behavior)", async () => {
+    await generateCharacterVisualPrompts(baseParams({ customInstruction: "" }));
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).not.toContain("custom_instruction");
+  });
+
+  it("omits custom_instruction entirely when customInstruction is absent (legacy tolerant)", async () => {
+    await generateCharacterVisualPrompts(baseParams());
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).not.toContain("custom_instruction");
+  });
+});
+
 /* -------------------------------------------------------------------------- */
 /* Character Design Bible sheet types (vertical-drama-character-sheet-        */
 /* consolidation plan, Phase B) — requestedSheetType / sheet_prompt.          */

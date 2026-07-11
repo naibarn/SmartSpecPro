@@ -285,6 +285,74 @@ describe("vertical-drama-character-visual-bible/skill.md — Own reference image
 });
 
 /**
+ * Custom instruction (vertical-drama-character-custom-instruction plan): lets
+ * a user-typed free-text framing/pose hint (e.g. "front-facing", "half-body
+ * shot", "full-body") get woven into the generated portrait prompt, so
+ * repeated clicks of "generate character image" produce genuinely varied
+ * images instead of near-identical ones. Skill-first: this section is the
+ * SOLE author of how the raw `custom_instruction` fact is used — the backend
+ * code only threads the string through, never templates or interprets it.
+ * Mirrors the "example completeness" regression-test style used throughout
+ * this file.
+ */
+describe("vertical-drama-character-visual-bible/skill.md — Custom instruction section", () => {
+  const body = readSkillMdBody();
+
+  it("contains a 'Custom instruction' section gated on custom_instruction", () => {
+    expect(body).toMatch(/Custom instruction.*WHEN custom_instruction is provided/i);
+    expect(body).toMatch(/custom_instruction/);
+  });
+
+  it("describes it as a raw framing\\/pose hint for this generation only, never a command that can rewrite identity, wardrobe-lock, role-tier, or safety rules", () => {
+    const section = body.split("## Custom instruction")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/framing/i);
+    expect(section).toMatch(/pose/i);
+    expect(section).toMatch(/never.*rewrite.*identity/is);
+  });
+
+  it("instructs weaving the hint naturally into primary_portrait_prompt and other genuinely relevant fields, never mechanically appending it to every field", () => {
+    const section = body.split("## Custom instruction")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/primary_portrait_prompt/);
+    expect(section).toMatch(/full_body_prompt/);
+    expect(section).toMatch(/never append the literal string verbatim|never mechanically append/i);
+  });
+
+  it("explicitly subordinates this section to Own reference image locking, Face reference locking, the role-tier table, and the child-safety subsection", () => {
+    const section = body.split("## Custom instruction")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/ALWAYS subordinate to/i);
+    expect(section).toMatch(/Own reference image locking/);
+    expect(section).toMatch(/Face reference locking/);
+    expect(section).toMatch(/role-tier/i);
+    expect(section).toMatch(/child-safety/i);
+  });
+
+  it("grants the LLM latitude to vary phrasing across repeated calls with the same hint (the actual fix for near-identical repeated generations), not verbatim-append language", () => {
+    const section = body.split("## Custom instruction")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/latitude/i);
+    expect(section).toMatch(/vary|different each time|interpret.*differently/i);
+    expect(section).toMatch(/near-identical/i);
+  });
+
+  it("states absent/empty custom_instruction means legacy/default behavior, unchanged", () => {
+    const section = body.split("## Custom instruction")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/absent or empty/i);
+    expect(section).toMatch(/legacy\/default\s+behavior, unchanged/i);
+  });
+
+  it("contains a worked example demonstrating custom_instruction: \"half-body shot, front-facing\" with the resulting primary_portrait_prompt reflecting that framing", () => {
+    const match = body.match(
+      /Worked example \(`custom_instruction: "half-body shot, front-facing"`[\s\S]*?```json\n([\s\S]*?)\n```[\s\S]*?> "([\s\S]*?)"/,
+    );
+    expect(match).not.toBeNull();
+    const [, inputJson, promptText] = match!;
+    const input = JSON.parse(inputJson) as { custom_instruction: string };
+    expect(input.custom_instruction).toBe("half-body shot, front-facing");
+    expect(promptText).toMatch(/half-body/i);
+    expect(promptText).toMatch(/front-facing/i);
+  });
+});
+
+/**
  * Character Design Bible sheet types (planning/vertical-drama-character-sheet-
  * consolidation/plan.md Phase A) — `requested_sheet_type` selects one
  * additional `sheet_prompt`/`sheet_type` pair on top of the 5 always-required

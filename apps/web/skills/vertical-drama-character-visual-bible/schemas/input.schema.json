@@ -217,6 +217,10 @@
       "type": "boolean",
       "description": "True when the render step will attach an existing, already-approved image of THIS EXACT character (not a parent/twin) as a reference image alongside the authored prompt. When true, every authored prompt field must explicitly lock face shape, skin tone, hairstyle, outfit, clothing, accessories, and shoes to that attached reference per skill.md's 'Own reference image locking' section. Absent/false = legacy/default behavior (character's first portrait, nothing to reference yet), unchanged."
     },
+    "custom_instruction": {
+      "type": "string",
+      "description": "Raw, unvalidated, user-typed free-text hint about framing/pose/crop/composition/mood for THIS generation only (e.g. 'front-facing', 'half-body shot', 'full-body', 'wider shot', 'different angle') — ground truth the skill cannot invent, never a pre-authored instruction. Woven naturally into primary_portrait_prompt and any other prompt field it genuinely relates to, per skill.md's 'Custom instruction' section. ALWAYS subordinate to identity-lock/reference-lock/role-tier/child-safety rules; never overrides them. Absent = legacy/default behavior, unchanged."
+    },
     "preset_visual_identity": {
       "type": ["object", "null"],
       "additionalProperties": true,

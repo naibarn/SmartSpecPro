@@ -1644,7 +1644,18 @@ export const verticalDramaCharactersRouter = router({
    * formats.
    */
   previewCharacterPrompt: verticalDramaProcedure
-    .input(seriesScope.extend({ characterId: z.string().min(1) }))
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        // Free-text framing/pose/crop/mood hint for THIS generation only
+        // (vertical-drama-character-custom-instruction plan) — threaded
+        // straight through to `generateCharacterVisualPrompts` as a raw fact;
+        // see that function's `customInstruction` doc comment. This is the
+        // PRIMARY path this field works through, since the UI always calls
+        // preview before confirm (see this procedure's own doc comment).
+        customInstruction: z.string().trim().max(500).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -1704,6 +1715,7 @@ export const verticalDramaCharactersRouter = router({
           targetAudienceRegion,
           presetVisualIdentity,
           faceSourceReference,
+          customInstruction: input.customInstruction,
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -1779,6 +1791,14 @@ export const verticalDramaCharactersRouter = router({
         // `primary_portrait` via `getPrimaryPortraitUrl`. Absent: behavior is
         // byte-identical to today's auto-resolution.
         referenceAssetLinkId: z.string().min(1).optional(),
+        // Free-text framing/pose/crop/mood hint for THIS generation only
+        // (vertical-drama-character-custom-instruction plan) — only consumed
+        // on the no-`approvedPrompt` fallback path below, since the normal UI
+        // flow always calls `previewCharacterPrompt` first (which already
+        // ran the LLM leg with this hint applied) and supplies its output as
+        // `approvedPrompt` here. Kept here too so a future caller that skips
+        // preview still gets the hint applied.
+        customInstruction: z.string().trim().max(500).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1882,6 +1902,7 @@ export const verticalDramaCharactersRouter = router({
             presetVisualIdentity,
             faceSourceReference,
             hasOwnReferenceImage: Boolean(referencePortraitUrl),
+            customInstruction: input.customInstruction,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {

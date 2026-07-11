@@ -10403,51 +10403,50 @@ export const verticalDramaEpisodesRouter = router({
       // itself is entirely absent (mirrors `setEpisodeModelSelection`'s
       // create-minimal-pack convention so the user's selected video model
       // stays intact).
-      let updatedPack: VerticalDramaMotionPromptPack;
-      if (pack) {
-        const existingIndex = pack.clips.findIndex(c =>
-          c.sourceShotNumbers?.includes(input.shotNumber)
-        );
-        const updatedClips = pack.clips.slice();
-        if (existingIndex === -1) {
-          updatedClips.push({
-            clipNumber: input.shotNumber,
-            sourceShotNumbers: [input.shotNumber],
-            prompt: result.prompt,
-            negativeMotionPrompt: result.negativeMotionPrompt,
-            durationSeconds: storyboardShot?.durationSeconds ?? 8,
-            dialogue: result.dialogue,
-            requiredDisclosure: result.requiredDisclosure,
-            audioDirection: result.audioDirection,
-          });
-        } else {
-          updatedClips[existingIndex] = {
-            ...updatedClips[existingIndex],
-            prompt: result.prompt,
-            negativeMotionPrompt: result.negativeMotionPrompt,
-            dialogue: result.dialogue,
-            requiredDisclosure: result.requiredDisclosure,
-            audioDirection: result.audioDirection,
-          };
-        }
-        // Vertical Drama task #36 — persist the RAW user preference
-        // (independent of the rollout gate) so it survives the flag
-        // switching on later; see `requestedNativeAudioEnabled`'s own doc
-        // comment above.
-        updatedPack = {
-          ...pack,
-          clips: updatedClips,
-          nativeAudioEnabled: requestedNativeAudioEnabled,
-        };
-      } else {
-        updatedPack = {
-          selectedVideoModelId: selectedVideoModel.id,
-          durationProfileId:
-            row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
-          motionMode: "first_frame_to_video",
-          nativeAudioEnabled: requestedNativeAudioEnabled,
-          clips: [
-            {
+      //
+      // 2026-07-11 lost-update race fix (bug report: "clicking generate on
+      // several shots at once — only some shots show a result, no error").
+      // This mutation is slow (LLM vision call above can take many
+      // seconds), and every call for this episode read `pack` from the SAME
+      // `loadOwnedEpisode` snapshot taken near the top of this procedure.
+      // When two shots' calls overlap, both built their `updatedClips` off
+      // that same stale `pack.clips` and then did a blind whole-column
+      // `UPDATE ... SET motionPromptPack = updatedPack`, so whichever call's
+      // write landed LAST silently clobbered the earlier call's
+      // just-persisted clip — each individual call still returned 200 (no
+      // TRPCError, hence no toast), so the data loss was invisible until
+      // the next `getEpisodeDetail` refetch. Fix: lock the row and re-read
+      // the FRESHEST `motionPromptPack` inside a transaction immediately
+      // before merging + writing, so the merge is always based on
+      // up-to-date data and concurrent writers serialize instead of
+      // clobbering each other. The slow LLM call itself still runs OUTSIDE
+      // the transaction/lock (only the final merge+write is atomic).
+      await db.transaction(async tx => {
+        const [freshRow] = await tx
+          .select({ motionPromptPack: verticalDramaEpisodes.motionPromptPack })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          )
+          .for("update")
+          .limit(1);
+        const freshPack =
+          (freshRow?.motionPromptPack as VerticalDramaMotionPromptPack | null) ??
+          pack;
+
+        let updatedPack: VerticalDramaMotionPromptPack;
+        if (freshPack) {
+          const existingIndex = freshPack.clips.findIndex(c =>
+            c.sourceShotNumbers?.includes(input.shotNumber)
+          );
+          const updatedClips = freshPack.clips.slice();
+          if (existingIndex === -1) {
+            updatedClips.push({
               clipNumber: input.shotNumber,
               sourceShotNumbers: [input.shotNumber],
               prompt: result.prompt,
@@ -10456,23 +10455,61 @@ export const verticalDramaEpisodesRouter = router({
               dialogue: result.dialogue,
               requiredDisclosure: result.requiredDisclosure,
               audioDirection: result.audioDirection,
-            },
-          ],
-          warnings: [],
-        };
-      }
+            });
+          } else {
+            updatedClips[existingIndex] = {
+              ...updatedClips[existingIndex],
+              prompt: result.prompt,
+              negativeMotionPrompt: result.negativeMotionPrompt,
+              dialogue: result.dialogue,
+              requiredDisclosure: result.requiredDisclosure,
+              audioDirection: result.audioDirection,
+            };
+          }
+          // Vertical Drama task #36 — persist the RAW user preference
+          // (independent of the rollout gate) so it survives the flag
+          // switching on later; see `requestedNativeAudioEnabled`'s own doc
+          // comment above.
+          updatedPack = {
+            ...freshPack,
+            clips: updatedClips,
+            nativeAudioEnabled: requestedNativeAudioEnabled,
+          };
+        } else {
+          updatedPack = {
+            selectedVideoModelId: selectedVideoModel.id,
+            durationProfileId:
+              row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+            motionMode: "first_frame_to_video",
+            nativeAudioEnabled: requestedNativeAudioEnabled,
+            clips: [
+              {
+                clipNumber: input.shotNumber,
+                sourceShotNumbers: [input.shotNumber],
+                prompt: result.prompt,
+                negativeMotionPrompt: result.negativeMotionPrompt,
+                durationSeconds: storyboardShot?.durationSeconds ?? 8,
+                dialogue: result.dialogue,
+                requiredDisclosure: result.requiredDisclosure,
+                audioDirection: result.audioDirection,
+              },
+            ],
+            warnings: [],
+          };
+        }
 
-      await db
-        .update(verticalDramaEpisodes)
-        .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
-        .where(
-          and(
-            eq(verticalDramaEpisodes.id, episodeId),
-            eq(verticalDramaEpisodes.tenantId, tenantId),
-            eq(verticalDramaEpisodes.userId, userId),
-            eq(verticalDramaEpisodes.seriesId, seriesId)
-          )
-        );
+        await tx
+          .update(verticalDramaEpisodes)
+          .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          );
+      });
 
       return {
         prompt: result.prompt,

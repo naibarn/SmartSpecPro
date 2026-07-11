@@ -3,6 +3,7 @@ import {
   buildCreateCharacterVariantInput,
   buildCreateCharacterTwinInput,
   buildDetectCharacterVariantsSummaryMessage,
+  buildPreviewCharacterPromptInput,
   resolveVdCharacterMutationErrorMessage,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 
@@ -157,6 +158,40 @@ describe("buildDetectCharacterVariantsSummaryMessage", () => {
         twinsCreated: 0,
       })
     ).toBe("สร้าง variant 0 รายการ, แฝด 0 รายการ, อัปเดต 3 รายการ");
+  });
+});
+
+describe("buildPreviewCharacterPromptInput", () => {
+  it("omits customInstruction entirely when blank", () => {
+    const result = buildPreviewCharacterPromptInput({
+      seriesId: "10",
+      characterId: "5",
+      customInstruction: "",
+    });
+    expect(result).toEqual({ seriesId: "10", characterId: "5" });
+    expect(result.customInstruction).toBeUndefined();
+  });
+
+  it("omits customInstruction when whitespace-only", () => {
+    const result = buildPreviewCharacterPromptInput({
+      seriesId: "10",
+      characterId: "5",
+      customInstruction: "   ",
+    });
+    expect(result).toEqual({ seriesId: "10", characterId: "5" });
+  });
+
+  it("includes a trimmed customInstruction when non-blank", () => {
+    const result = buildPreviewCharacterPromptInput({
+      seriesId: "10",
+      characterId: "5",
+      customInstruction: "  หน้าตรง ภาพเต็มตัว  ",
+    });
+    expect(result).toEqual({
+      seriesId: "10",
+      characterId: "5",
+      customInstruction: "หน้าตรง ภาพเต็มตัว",
+    });
   });
 });
 

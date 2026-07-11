@@ -820,6 +820,14 @@ export const VD_COPY = {
     shotCharacterRefPickerSave: "Save",
     shotCharacterRefPickerSelectedCount: "{n} selected",
     shotCharacterRefPickerSaved: "This shot's character reference(s) updated.",
+
+    /* ---- Character portrait "additional details" hint (planning/vertical-
+       drama-character-custom-instruction/plan.md) — optional free-text fact
+       sent to `previewCharacterPrompt` so repeated portrait generations vary
+       instead of producing near-identical prompts every click. ---- */
+    characterCustomInstructionLabel: "Additional details (optional)",
+    characterCustomInstructionPlaceholder:
+      "e.g. front-facing, half-body, full-body",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
@@ -1410,6 +1418,14 @@ export const VD_COPY = {
     shotCharacterRefPickerSave: "บันทึก",
     shotCharacterRefPickerSelectedCount: "เลือกแล้ว {n} รายการ",
     shotCharacterRefPickerSaved: "อัปเดตตัวละครอ้างอิงของช็อตนี้แล้ว",
+
+    /* ---- Character portrait "additional details" hint (planning/vertical-
+       drama-character-custom-instruction/plan.md) — optional free-text fact
+       sent to `previewCharacterPrompt` so repeated portrait generations vary
+       instead of producing near-identical prompts every click. ---- */
+    characterCustomInstructionLabel: "รายละเอียดเพิ่มเติม (ไม่บังคับ)",
+    characterCustomInstructionPlaceholder:
+      "เช่น หน้าตรง, ภาพครึ่งตัว, ภาพเต็มตัว",
   },
 } as const;
 

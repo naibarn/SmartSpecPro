@@ -579,6 +579,27 @@ export interface GenerateCharacterVisualPromptsParams {
    * requested — legacy-tolerant, byte-identical to pre-feature behavior.
    */
   requestedSheetType?: string;
+  /**
+   * Free-text, user-typed hint about framing/pose/crop/composition/mood for
+   * THIS generation only (vertical-drama-character-custom-instruction plan —
+   * lets repeated clicks of "generate character image" produce genuinely
+   * varied images instead of near-identical ones). Sent to the skill as
+   * `custom_instruction` (omitted entirely when absent/empty — same "facts
+   * in, natural prose out" convention as `hasOwnReferenceImage` above). This
+   * is a RAW FACT ONLY: this module never validates, sanitizes, rewords, or
+   * builds any prompt-construction logic around it beyond the trim + 500-char
+   * cap already enforced by the router's Zod schema — `skill.md`'s own
+   * "Custom instruction" section is the SOLE author of how (and whether)
+   * this fact is woven into any generated prompt field, and it must never be
+   * allowed to override identity-lock, wardrobe-lock, role-tier, or
+   * child-safety rules (the skill's own precedence rule, not this module's).
+   * Deliberately EPHEMERAL per-generation UI state — unlike `customDescription`
+   * on `createCharacterVariant` (which IS persisted into
+   * `verticalDramaCharacters.data`), this field is never written to the
+   * database; it only exists for the duration of this one prompt-generation
+   * call.
+   */
+  customInstruction?: string;
 }
 
 /**
@@ -786,6 +807,7 @@ export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterV
       : {}),
     ...(params.requestedSheetType ? { requested_sheet_type: params.requestedSheetType } : {}),
     ...(params.hasOwnReferenceImage ? { has_own_reference_image: true } : {}),
+    ...(params.customInstruction ? { custom_instruction: params.customInstruction } : {}),
   };
 
   return [

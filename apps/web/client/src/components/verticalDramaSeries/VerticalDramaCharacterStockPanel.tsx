@@ -61,6 +61,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
+import { VD_COPY } from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
 import { VerticalDramaCharacterVoiceCastingCard } from "@/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard";
 import type {
@@ -565,6 +566,37 @@ export function buildCreateCharacterTwinInput(params: {
   };
 }
 
+/** Exact payload shape `verticalDramaCharacters.previewCharacterPrompt`
+ *  expects (`server/routers/verticalDramaCharacters.ts`) — the
+ *  `customInstruction` field name/cap (500 chars, enforced server-side via
+ *  `z.string().trim().max(500).optional()`) is fixed by
+ *  `planning/vertical-drama-character-custom-instruction/plan.md` and must
+ *  match the backend exactly. */
+export interface VdPreviewCharacterPromptInput {
+  seriesId: string;
+  characterId: string;
+  customInstruction?: string;
+}
+
+/** Builds the `previewCharacterPrompt` mutation payload from the optional
+ *  per-character "additional details" hint (roster-card compact input +
+ *  detail-panel textarea) — same trim/omit-when-blank convention as
+ *  `buildCreateCharacterVariantInput` above: never sends an empty string,
+ *  so omitting the field entirely preserves today's exact default backend
+ *  behavior when the user types nothing. */
+export function buildPreviewCharacterPromptInput(params: {
+  seriesId: string;
+  characterId: string;
+  customInstruction: string;
+}): VdPreviewCharacterPromptInput {
+  const customInstruction = params.customInstruction.trim();
+  return {
+    seriesId: params.seriesId,
+    characterId: params.characterId,
+    ...(customInstruction ? { customInstruction } : {}),
+  };
+}
+
 /** Bilingual summary toast copy for a `detectCharacterVariantsNow` success
  *  response — matches the exact wording confirmed in the task brief. All
  *  three counts at 0 gets its own "nothing found" message rather than
@@ -1012,6 +1044,19 @@ export function VerticalDramaCharacterStockPanel({
    *  convention (see `generatedImageUrls`/`pollingCharacters` above) — not
    *  persisted, not reset when the character selection changes. */
   const [referenceOverrideByCharacter, setReferenceOverrideByCharacter] =
+    useState<Record<string, string>>({});
+
+  /** Optional free-text hint (framing/pose/crop, e.g. "หน้าตรง"/"ภาพเต็มตัว")
+   *  sent alongside the `previewCharacterPrompt` call as a raw
+   *  `customInstruction` fact — lets the LLM vary repeated portrait
+   *  generations instead of producing near-identical prompts every click
+   *  (planning/vertical-drama-character-custom-instruction/plan.md). Keyed
+   *  by characterId, same rationale and lifecycle as
+   *  `referenceOverrideByCharacter` above: in-memory only, per-character, not
+   *  reset on selection change, absent key = today's exact default (no
+   *  `customInstruction` sent). Shared by both the roster-card compact input
+   *  and the detail-panel textarea for the same character. */
+  const [customInstructionByCharacter, setCustomInstructionByCharacter] =
     useState<Record<string, string>>({});
 
   /** Persistent right-side sidebar column (Library / History / Grid cutter
@@ -1707,7 +1752,11 @@ export function VerticalDramaCharacterStockPanel({
     if (!requireMcpConnectionOrToast()) return;
     setPendingPreviewTarget({ characterId });
     previewCharacterPromptMutation.mutate(
-      { seriesId, characterId },
+      buildPreviewCharacterPromptInput({
+        seriesId,
+        characterId,
+        customInstruction: customInstructionByCharacter[characterId] ?? "",
+      }),
       {
         onSuccess: res => {
           setPendingPreviewTarget(null);
@@ -3247,6 +3296,43 @@ export function VerticalDramaCharacterStockPanel({
                             </div>
                           )}
 
+                          {/* Optional "additional details" hint for the
+                          portrait generate button above — compact single-line
+                          input since the roster card is narrow (`sm:grid-
+                          cols-2 lg:grid-cols-3`, no room for a multi-row
+                          textarea; the wider detail panel below gets a full
+                          Textarea instead). Keyed by characterId so typing in
+                          one card never leaks into another's field (see
+                          `customInstructionByCharacter` doc comment).
+                          planning/vertical-drama-character-custom-
+                          instruction/plan.md */}
+                          {!readOnly && (
+                            <Input
+                              value={
+                                customInstructionByCharacter[c.characterId] ??
+                                ""
+                              }
+                              onChange={e =>
+                                setCustomInstructionByCharacter(prev => ({
+                                  ...prev,
+                                  [c.characterId]: e.target.value,
+                                }))
+                              }
+                              maxLength={500}
+                              className="h-7 text-xs"
+                              placeholder={t(
+                                lang,
+                                VD_COPY.th.characterCustomInstructionPlaceholder,
+                                VD_COPY.en.characterCustomInstructionPlaceholder
+                              )}
+                              aria-label={t(
+                                lang,
+                                VD_COPY.th.characterCustomInstructionLabel,
+                                VD_COPY.en.characterCustomInstructionLabel
+                              )}
+                            />
+                          )}
+
                           {/* Rendered here only when this card's character is NOT the
                           currently-selected one — the detail column below has
                           its own copy (more width) for the selected character,
@@ -3555,6 +3641,50 @@ export function VerticalDramaCharacterStockPanel({
                         </div>
                       );
                     })()}
+
+                    {/* Optional "additional details" hint for the portrait
+                    generate button below — sent as `customInstruction` on
+                    `previewCharacterPrompt` so repeated clicks vary the
+                    generated prompt instead of producing near-identical
+                    images every time (planning/vertical-drama-character-
+                    custom-instruction/plan.md). Shares
+                    `customInstructionByCharacter` state, keyed by
+                    characterId, with the roster-card compact input above. */}
+                    {!readOnly && (
+                      <div className="mt-1 flex flex-col gap-1">
+                        <Label
+                          htmlFor="vd-character-custom-instruction"
+                          className="text-xs"
+                        >
+                          {t(
+                            lang,
+                            VD_COPY.th.characterCustomInstructionLabel,
+                            VD_COPY.en.characterCustomInstructionLabel
+                          )}
+                        </Label>
+                        <Textarea
+                          id="vd-character-custom-instruction"
+                          value={
+                            customInstructionByCharacter[
+                              selectedCharacter.characterId
+                            ] ?? ""
+                          }
+                          onChange={e =>
+                            setCustomInstructionByCharacter(prev => ({
+                              ...prev,
+                              [selectedCharacter.characterId]: e.target.value,
+                            }))
+                          }
+                          maxLength={500}
+                          rows={2}
+                          placeholder={t(
+                            lang,
+                            VD_COPY.th.characterCustomInstructionPlaceholder,
+                            VD_COPY.en.characterCustomInstructionPlaceholder
+                          )}
+                        />
+                      </div>
+                    )}
 
                     {!readOnly && (
                       <div className="mt-1 flex flex-wrap items-center gap-2">

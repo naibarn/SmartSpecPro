@@ -32,6 +32,7 @@ const { mockDb } = vi.hoisted(() => ({
     update: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
+    transaction: vi.fn(),
     instance: {},
   },
 }));
@@ -279,6 +280,9 @@ function selectChain(rows: unknown[]) {
     leftJoin: vi.fn(() => chain),
     where: vi.fn(() => chain),
     orderBy: vi.fn(() => chain),
+    // `.for("update")` — row-lock modifier used by the 2026-07-11
+    // lost-update race fix's transaction re-read (`generateShotVideoPrompt`).
+    for: vi.fn(() => chain),
     limit: vi.fn(() => Promise.resolve(rows)),
     then: (resolve: any) => Promise.resolve(rows).then(resolve),
   };
@@ -336,6 +340,25 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // 2026-07-11 lost-update race fix — `generateShotVideoPrompt`'s final
+  // persist step now runs inside `db.transaction(...)`, re-reading +
+  // locking the row (`tx.select(...).for("update")`) right before merging
+  // the new clip, instead of reusing the (possibly-stale) `pack` captured
+  // near the top of the request. Default stub: `tx.select` resolves to an
+  // empty row (so the merge falls back to the outer `pack`, i.e. byte
+  // identical to every pre-fix test's expectations below), and `tx.update`
+  // delegates straight through to `mockDb.update` so the existing
+  // `mockDb.update.mockReturnValueOnce({ set: ... })` / `capturedSet`
+  // convention every test below already uses keeps working unchanged. The
+  // dedicated race-fix test further down overrides this per-case to prove
+  // a concurrently-written fresh row is actually honored.
+  mockDb.transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+    const tx = {
+      select: (...args: unknown[]) => selectChain([]),
+      update: (...args: unknown[]) => (mockDb.update as any)(...args),
+    };
+    return fn(tx);
+  });
   mockGetModelsByTypeAsync.mockResolvedValue([
     { id: "veo-3-1", type: "video", isEnabled: true, creditCost: 50, aliases: [], configJson: {} },
   ]);
@@ -425,6 +448,78 @@ describe("generateShotVideoPrompt", () => {
         dialogue: [{ lineTh: "สวัสดี", characterKey: "hero" }],
       }),
     ]);
+  });
+
+  it("2026-07-11 lost-update race fix: merges against the freshly row-locked pack, not the stale snapshot loaded earlier — a concurrent call's already-persisted clip survives", async () => {
+    // The `pack` this call's `loadOwnedEpisode` read near the top of the
+    // request — a STALE snapshot taken BEFORE a concurrent
+    // `generateShotVideoPrompt` call for a different shot (shot 3) finished
+    // and persisted its own clip.
+    const stalePack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        { clipNumber: 1, sourceShotNumbers: [1], prompt: "old shot 1 prompt", durationSeconds: 6 },
+      ],
+      warnings: [],
+    };
+    // What's ACTUALLY in the DB by the time this call reaches its final
+    // write — the concurrent shot-3 call already committed its clip.
+    const freshPackFromConcurrentWrite = {
+      ...stalePack,
+      clips: [
+        ...stalePack.clips,
+        {
+          clipNumber: 3,
+          sourceShotNumbers: [3],
+          prompt: "shot 3 prompt from a concurrent call",
+          durationSeconds: 6,
+        },
+      ],
+    };
+    const episodeRow = baseEpisodeRow({ motionPromptPack: stalePack });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode (stale snapshot)
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    // The row-lock read inside the transaction sees the FRESH, already
+    // concurrently-updated pack — not the stale outer snapshot.
+    mockDb.transaction.mockImplementationOnce(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        select: () => selectChain([{ motionPromptPack: freshPackFromConcurrentWrite }]),
+        update: (...args: unknown[]) => (mockDb.update as any)(...args),
+      };
+      return fn(tx);
+    });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    // Shot 3's concurrently-persisted clip must survive this write...
+    expect(capturedSet.motionPromptPack.clips).toContainEqual(
+      expect.objectContaining({
+        clipNumber: 3,
+        prompt: "shot 3 prompt from a concurrent call",
+      }),
+    );
+    // ...alongside this call's own shot-1 update.
+    expect(capturedSet.motionPromptPack.clips).toContainEqual(
+      expect.objectContaining({ clipNumber: 1, prompt: "generated motion prompt" }),
+    );
   });
 
   it("throws PRECONDITION_FAILED when the shot has no approved image yet", async () => {
