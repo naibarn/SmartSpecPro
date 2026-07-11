@@ -86,6 +86,86 @@ these into concrete, varied visual direction per shot:
    describe this per-beat variation policy, not lock the whole episode to one
    dark palette.
 
+## Character variant selection — MANDATORY WHEN a character has variants
+
+Some entries in the "Characters" list carry a nested "Variants available for
+`<id>`" block — alternate looks (a different outfit, or a different
+age-stage) of the exact SAME person, each with its own id and its own
+approved reference image, e.g.:
+
+```
+- char_nuna: หนูนา (นักเรียนหญิง) [has an approved reference image — identity lock applies]
+  Variants available for char_nuna — see "Character variant selection" below:
+  - char_nuna_school (ชุดนักเรียน, outfit variant of char_nuna): school uniform, white shirt and blue skirt, hair tied back, worn for scenes at school or on the way to school [has an approved reference image]
+  - char_nuna_sleep (ชุดนอน, outfit variant of char_nuna): pastel pajamas, hair loose, worn for scenes at home at night or first thing in the morning before school [has an approved reference image]
+```
+
+A character with NO variants listed works exactly as before — always use its
+own id, nothing else to consider.
+
+For every shot, and for every required character that DOES have variants
+listed:
+
+1. Read THIS shot's own scene content only — its own location/action/
+   visual context, whatever the input actually specifies for this shot.
+   Never borrow another shot's scene, and never reason from the episode's
+   overall premise alone.
+2. Compare that scene against each variant's description (what makes that
+   variant's look different — outfit, age-stage, the situations it is worn/
+   used for) and pick the ONE variant whose description most clearly matches.
+   Only variants marked `[has an approved reference image]` are usable —
+   never emit a variant id that is not listed, and never invent a variant
+   that was not given to you.
+3. Emit that VARIANT's own id (never the base character's id) in this shot's
+   `characters` and `required_character_refs`, and write `visual_description`/
+   `image_prompt` to match the picked variant's actual look (its outfit/
+   age-stage), not the base character's default appearance.
+4. When no variant's description clearly matches this shot's scene — an
+   ambiguous scene, or every variant's description is about a different
+   situation — fall back to the base character's own id. Never fabricate a
+   fit that the variant's stated description does not actually support.
+5. This is a per-shot decision, not a per-episode one: the SAME base
+   character may use a different variant in different shots of the same
+   episode as the scene changes (school variant in a morning shot, sleepwear
+   variant in a night shot later in the same episode), and may also fall back
+   to its own base id in shots that match no variant at all.
+
+### Worked example
+
+Given the character list above (`char_nuna` with the `char_nuna_school` and
+`char_nuna_sleep` variants):
+
+- Shot scene: "Nuna scolds her sister across the breakfast table before
+  school, still in her pajamas." — the description talks about the outfit/
+  setting (home, pajamas), not the destination, so this matches
+  `char_nuna_sleep` far more clearly than the school-uniform variant even
+  though the scene happens right before school:
+  ```json
+  {
+    "characters": ["char_nuna_sleep"],
+    "required_character_refs": ["char_nuna_sleep"],
+    "visual_description": "หนูนาในชุดนอนสีพาสเทล ผมปล่อย นั่งโต๊ะอาหารเช้า ต่อว่าน้องสาว"
+  }
+  ```
+- A later shot in the same episode, set in a school hallway between classes,
+  instead clearly matches the school-uniform variant's description:
+  ```json
+  {
+    "characters": ["char_nuna_school"],
+    "required_character_refs": ["char_nuna_school"],
+    "visual_description": "หนูนาในชุดนักเรียน เดินอยู่ในทางเดินโรงเรียนระหว่างคาบเรียน"
+  }
+  ```
+- A third shot with an ambiguous or neutral setting that matches neither
+  variant's description (e.g. a phone call in an unspecified room, no visible
+  outfit/setting cue) falls back to the base character's own id:
+  ```json
+  {
+    "characters": ["char_nuna"],
+    "required_character_refs": ["char_nuna"]
+  }
+  ```
+
 ## Shot-to-beat attribution and silence budget — MANDATORY (story-density reform)
 
 The input script's beats may be dialogue-complete (`structure.beats[]` carry

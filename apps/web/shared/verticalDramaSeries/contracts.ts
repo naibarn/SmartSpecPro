@@ -220,6 +220,22 @@ export const VERTICAL_DRAMA_GENERATION_MODES = [
 ] as const;
 export type VerticalDramaGenerationMode = (typeof VERTICAL_DRAMA_GENERATION_MODES)[number];
 
+/**
+ * Manual LLM model override for the "generate start-frame render plan" /
+ * "generate storyboard" pipeline stages (added 2026-07-11 — see
+ * `/home/dev/.claude/plans/polished-toasting-gadget.md`). Persisted on the
+ * series' `llmModelPolicy` jsonb column. Absent/`null` field = "automatic"
+ * (the stage's own quality/large-context model selector, shared with
+ * "improve script", picks the model). A non-null field pins that stage to a
+ * specific model id, as long as it's still enabled/eligible at resolution
+ * time — see `server/services/verticalDramaImproveScript.ts`'s
+ * `resolveStartFramePlanModel`/`resolveStoryboardModel`.
+ */
+export type VerticalDramaSeriesLlmModelPolicy = {
+  startFramePlanModelId?: string | null;
+  storyboardModelId?: string | null;
+};
+
 /* -------------------------------------------------------------------------- */
 /* Minimal input contracts (spec §7.2.1)                                      */
 /* -------------------------------------------------------------------------- */

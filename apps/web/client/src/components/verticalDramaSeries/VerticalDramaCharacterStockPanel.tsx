@@ -27,6 +27,7 @@ import {
   Sparkles,
   Trash2,
   User,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -168,6 +169,71 @@ export function dedupeCharacterAssetsForDisplay(
     }
   }
   return order.map(key => byGroup.get(key)!);
+}
+
+/** Minimum shape `buildCharacterRosterEntries` needs from a character DTO
+ *  (planning/vertical-drama-character-variants/plan.md Phase E) — kept
+ *  separate from the full `characterRowToDto` response shape so this stays
+ *  testable with plain fixtures rather than the full tRPC response type. */
+export interface VdRosterCharacterFields {
+  characterId: string;
+  name: string;
+  parentCharacterId?: string;
+  variantLabel?: string;
+  sharesFaceWithCharacterId?: string;
+}
+
+export interface VdRosterEntry<T extends VdRosterCharacterFields> {
+  character: T;
+  /** Variant rows (`parentCharacterId` === this entry's `characterId`), in
+   *  the same relative order they appear in the source list. Empty for
+   *  plain characters and twins — a variant row is never itself a
+   *  top-level roster entry (see the filter below). */
+  variants: T[];
+  /** Resolved `name` of the character this row shares a face with (twins),
+   *  or `undefined` when this row isn't a twin OR the source character
+   *  can't be found in the same list — defensive, never throws; the caller
+   *  should simply omit the shares-face badge in that case rather than
+   *  render broken text. */
+  shareFaceSourceName: string | undefined;
+}
+
+/**
+ * Partitions a flat character list (as returned by
+ * `verticalDramaCharacters.listCharacters`) into roster grid entries:
+ * - one entry per TOP-LEVEL character (no `parentCharacterId`) — this
+ *   includes plain standalone characters, parent characters that HAVE
+ *   variants (their variants nest inside the SAME entry, not separate
+ *   top-level entries), and twins (independent people who just share a
+ *   face reference, annotated via `shareFaceSourceName`);
+ * - variant rows (`parentCharacterId` set) are grouped onto their parent's
+ *   entry and never produce their own top-level entry.
+ *
+ * Pure/derived from the already-fetched flat list — callers should NOT run
+ * a separate query for this.
+ */
+export function buildCharacterRosterEntries<T extends VdRosterCharacterFields>(
+  characters: T[]
+): VdRosterEntry<T>[] {
+  const variantsByParentId = new Map<string, T[]>();
+  for (const c of characters) {
+    if (!c.parentCharacterId) continue;
+    const existing = variantsByParentId.get(c.parentCharacterId);
+    if (existing) {
+      existing.push(c);
+    } else {
+      variantsByParentId.set(c.parentCharacterId, [c]);
+    }
+  }
+  return characters
+    .filter(c => !c.parentCharacterId)
+    .map(c => ({
+      character: c,
+      variants: variantsByParentId.get(c.characterId) ?? [],
+      shareFaceSourceName: c.sharesFaceWithCharacterId
+        ? characters.find(other => other.characterId === c.sharesFaceWithCharacterId)?.name
+        : undefined,
+    }));
 }
 
 function extractCharacterDescriptionForDisplay(
@@ -1187,6 +1253,22 @@ export function VerticalDramaCharacterStockPanel({
 
   // Auto-select the first character once data loads.
   type VdCharacterListItem = (typeof characters)[number];
+
+  /** planning/vertical-drama-character-variants/plan.md Phase E — the flat
+   *  `characters` list now mixes plain characters, variant rows
+   *  (`parentCharacterId` set — same person, different outfit/age-stage
+   *  look, each with its OWN portrait) and twin rows
+   *  (`sharesFaceWithCharacterId` set — a different, independent person who
+   *  just shares a face reference). `buildCharacterRosterEntries` groups
+   *  variant rows under their parent's entry so the roster grid can nest
+   *  them as chips instead of rendering every row as an unrelated
+   *  top-level card; twins deliberately stay top-level (independent
+   *  people) with their shares-face source resolved for the badge. Derived
+   *  purely from the already-fetched flat list — no extra query. */
+  const rosterEntries = useMemo(
+    () => buildCharacterRosterEntries(characters as VdCharacterListItem[]),
+    [characters]
+  );
   const effectiveSelectedId = useMemo(() => {
     if (
       selectedCharacterId &&
@@ -1387,7 +1469,12 @@ export function VerticalDramaCharacterStockPanel({
                   className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
                   aria-label={t(lang, "รายชื่อตัวละคร", "Character list")}
                 >
-                  {characters.map((c: (typeof characters)[number]) => {
+                  {rosterEntries.map(
+                    ({
+                      character: c,
+                      variants,
+                      shareFaceSourceName,
+                    }: VdRosterEntry<VdCharacterListItem>) => {
                     const active = c.characterId === effectiveSelectedId;
                     const generatingThis = isImageGeneratingFor(c.characterId);
                     const generatingTurnaroundThis = isTurnaroundGeneratingFor(
@@ -1520,8 +1607,124 @@ export function VerticalDramaCharacterStockPanel({
                                   {c.role}
                                 </Badge>
                               )}
+                              {/* Phase E — twin annotation: a character that
+                              shares its face reference with another
+                              (independent) character in the roster, e.g.
+                              identical siblings. Omitted entirely if the
+                              source character can't be resolved from the
+                              current list rather than showing broken text. */}
+                              {shareFaceSourceName && (
+                                <Badge
+                                  variant="outline"
+                                  className="w-fit gap-1 border-sky-200 bg-sky-50 text-[10px] text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300"
+                                >
+                                  <Users
+                                    aria-hidden="true"
+                                    className="h-3 w-3 shrink-0"
+                                  />
+                                  <span className="truncate">
+                                    {t(
+                                      lang,
+                                      `ใช้ใบหน้าเดียวกับ ${shareFaceSourceName}`,
+                                      `Shares face with ${shareFaceSourceName}`
+                                    )}
+                                  </span>
+                                </Badge>
+                              )}
+                              {/* Phase E — discoverability hint when this
+                              character is a parent with variant looks
+                              (outfit/age-stage rows nested below). */}
+                              {variants.length > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="w-fit text-[10px] text-muted-foreground"
+                                >
+                                  {t(
+                                    lang,
+                                    `${variants.length} ลุค`,
+                                    `${variants.length} looks`
+                                  )}
+                                </Badge>
+                              )}
                             </button>
                           </div>
+
+                          {/* Phase E — variant chips: each row shares this
+                          same person's identity but has its own portrait
+                          (different outfit/age-stage look). Nested under the
+                          parent's card instead of rendering as separate
+                          top-level roster items. Clicking a chip reuses the
+                          exact same selection call as clicking a top-level
+                          card (`setSelectedCharacterId`), just
+                          `stopPropagation`-ed so it doesn't also trigger the
+                          parent card's own onClick. */}
+                          {variants.length > 0 && (
+                            <div
+                              className="flex flex-wrap gap-1.5 border-t border-dashed border-border pt-2"
+                              aria-label={t(
+                                lang,
+                                `ลุคของ ${c.name}`,
+                                `${c.name}'s looks`
+                              )}
+                            >
+                              {variants.map(v => {
+                                const variantActive =
+                                  v.characterId === effectiveSelectedId;
+                                const variantThumbnailUrl =
+                                  getCharacterCardThumbnail(v.characterId);
+                                const variantLabel =
+                                  v.variantLabel ??
+                                  t(lang, "ตัวแปร", "Variant");
+                                return (
+                                  <button
+                                    key={v.characterId}
+                                    type="button"
+                                    aria-pressed={variantActive}
+                                    aria-label={t(
+                                      lang,
+                                      `เลือกลุค ${variantLabel} ของ ${c.name}`,
+                                      `Select ${c.name}'s ${variantLabel} look`
+                                    )}
+                                    onClick={event => {
+                                      event.stopPropagation();
+                                      setSelectedCharacterId(v.characterId);
+                                    }}
+                                    className={cn(
+                                      "flex max-w-[7.5rem] items-center gap-1.5 rounded-md border px-1.5 py-1 text-left transition-colors",
+                                      variantActive
+                                        ? "border-purple-400 bg-purple-50/60 ring-1 ring-purple-100"
+                                        : "border-border hover:border-muted-foreground/40"
+                                    )}
+                                  >
+                                    {variantThumbnailUrl ? (
+                                      <img
+                                        src={variantThumbnailUrl}
+                                        alt=""
+                                        className="aspect-[9/16] h-9 w-6 shrink-0 rounded object-cover"
+                                      />
+                                    ) : (
+                                      <span className="flex aspect-[9/16] h-9 w-6 shrink-0 items-center justify-center rounded border border-dashed border-border text-muted-foreground">
+                                        <User
+                                          aria-hidden="true"
+                                          className="h-3 w-3"
+                                        />
+                                      </span>
+                                    )}
+                                    <span
+                                      className={cn(
+                                        "truncate text-[10px]",
+                                        variantActive
+                                          ? "font-semibold"
+                                          : "font-medium"
+                                      )}
+                                    >
+                                      {variantLabel}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
 
                           {!readOnly && (
                             <div className="flex items-center justify-end gap-1">

@@ -77,6 +77,7 @@ import {
   InsufficientCreditsError as StoryboardInsufficientCreditsError,
   VdSchemaValidationError as StoryboardVdSchemaValidationError,
   type StoryboardShotgridOutput,
+  type GenerateStoryboardShotgridParams,
 } from "./verticalDramaStoryboardGeneration";
 // Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
 // at compile time, zero runtime import). The VALUES (`getActiveBreakdown`/
@@ -2068,12 +2069,25 @@ export class VerticalDramaEpisodePipeline {
       )
       .limit(1);
 
-    const characterRows = await db
+    // Character variants (planning/vertical-drama-character-variants/plan.md
+    // Phase D) — fetch the WHOLE roster in one query (unchanged query shape
+    // otherwise) and partition it in-memory into base characters
+    // (`parentCharacterId == null` — includes twins, which are independent
+    // characters, not variants) and variant rows (`parentCharacterId` set).
+    // Only base characters are sent as top-level `characters` entries below
+    // (unchanged, byte-identical for a series with no variant rows yet); each
+    // base character's variant rows are attached under its own `variants[]`
+    // (see the `characters.map(...)` block below).
+    const allCharacterRows = await db
       .select({
         id: verticalDramaCharacters.id,
         characterKey: verticalDramaCharacters.characterKey,
         name: verticalDramaCharacters.name,
         role: verticalDramaCharacters.role,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        variantLabel: verticalDramaCharacters.variantLabel,
+        variantType: verticalDramaCharacters.variantType,
+        data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
       .where(
@@ -2082,6 +2096,13 @@ export class VerticalDramaEpisodePipeline {
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
+    type VdCharacterRosterRow = (typeof allCharacterRows)[number];
+    const characterRows = allCharacterRows.filter(
+      (c: VdCharacterRosterRow) => c.parentCharacterId == null
+    );
+    const variantRows = allCharacterRows.filter(
+      (c: VdCharacterRosterRow) => c.parentCharacterId != null
+    );
 
     // Identity-lock (upstream parity, see `referenceImageUrl` doc comment on
     // `GenerateStoryboardShotgridParams`) — reuses the same
@@ -2094,6 +2115,47 @@ export class VerticalDramaEpisodePipeline {
         verticalDramaCharacterStockService.getPrimaryPortraitUrl(owner, c.id)
       )
     );
+
+    // Each variant row is a normal `vertical_drama_characters` row with its
+    // OWN `vertical_drama_character_assets` entries (Phase A doc comment,
+    // `drizzle/schema.ts:20466-20487`) — resolve its portrait the SAME way as
+    // any base character, keyed by the VARIANT row's own id, never the
+    // parent's. A variant with no approved portrait yet (normal mid-flight
+    // state while Phase C's portrait-generation skill is still catching up)
+    // is EXCLUDED from the available-variants list entirely below — an
+    // unusable reference-less variant would only confuse the storyboard
+    // skill's per-shot pick, unlike a base character with no portrait (which
+    // still participates, just without `referenceImageUrl`, per the existing
+    // doc comment on `GenerateStoryboardShotgridParams.characters`).
+    const variantPortraitUrls = await Promise.all(
+      variantRows.map((v: { id: number }) =>
+        verticalDramaCharacterStockService.getPrimaryPortraitUrl(owner, v.id)
+      )
+    );
+    const variantsByParentId = new Map<
+      number,
+      NonNullable<GenerateStoryboardShotgridParams["characters"][number]["variants"]>
+    >();
+    variantRows.forEach((v: VdCharacterRosterRow, i: number) => {
+      const referenceImageUrl = variantPortraitUrls[i];
+      if (!referenceImageUrl) return; // no approved portrait yet — exclude
+      if (v.variantType !== "outfit" && v.variantType !== "age_stage") return; // defensive: malformed/unset row
+      if (!v.variantLabel) return; // defensive: malformed row
+      const variantData = (v.data as Record<string, unknown> | null) ?? null;
+      const description =
+        typeof variantData?.description === "string" && variantData.description.trim().length > 0
+          ? variantData.description
+          : v.variantLabel;
+      const list = variantsByParentId.get(v.parentCharacterId as number) ?? [];
+      list.push({
+        characterKey: v.characterKey,
+        variantLabel: v.variantLabel,
+        variantType: v.variantType,
+        description,
+        referenceImageUrl,
+      });
+      variantsByParentId.set(v.parentCharacterId as number, list);
+    });
 
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
     // Part B1 (planning/`polished-toasting-gadget.md`) — resolve from the
@@ -2190,13 +2252,14 @@ export class VerticalDramaEpisodePipeline {
       sceneBeats: sceneBeats.length > 0 ? sceneBeats : undefined,
       characters: characterRows.map(
         (
-          c: { characterKey: string; name: string; role: string | null },
+          c: { id: number; characterKey: string; name: string; role: string | null },
           i: number
         ) => ({
           characterId: c.characterKey,
           name: c.name,
           role: c.role,
           referenceImageUrl: referenceImageUrls[i],
+          variants: variantsByParentId.get(c.id),
         })
       ),
       repairContext: repairInstruction

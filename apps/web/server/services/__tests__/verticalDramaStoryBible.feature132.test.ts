@@ -4,8 +4,12 @@
  * `verticalDramaStoryBible.ts`:
  *  - F132A (user premise): `buildPrompts`/`buildDeepDraftPrompts` prepend a
  *    "USER PREMISE (PRIMARY)" block when present, byte-identical when
- *    absent; `evaluatePremiseCoverage` wired into `generateStoryBible`'s and
- *    `generateStoryBibleDeep`'s result-warnings path.
+ *    absent. `generateStoryBibleDeep`'s result-warnings path still uses the
+ *    deterministic `evaluatePremiseCoverage` heuristic (unchanged).
+ *    `generateStoryBible`'s own result-warnings path was migrated
+ *    (`vertical-drama-skill-first-architecture` plan, Phase 4 item 2) to the
+ *    generation call's OWN `premise_coverage` self-assessment instead of
+ *    that heuristic — see the tests below.
  *  - F132B (ledgers): `appendBreakdownVersion`/`readBreakdownVersionLedgers`
  *    round-trip a version's ledgers and mirror them onto `bible.ledgers`;
  *    `worldRuleSchema`'s upgraded-in-place shape stays back-compatible with
@@ -142,18 +146,51 @@ describe("generateStoryBible — user premise (F132A)", () => {
     expect(systemPrompt).toContain(renderCriteriaVersionMarker());
   });
 
-  it("wires evaluatePremiseCoverage into the result's warnings when the premise drifts", async () => {
+  it("requests a premise_coverage self-assessment in the system prompt only when userPremise is present", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ userPremise: "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล" }));
+    const systemPromptWithPremise = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPromptWithPremise).toContain("premise_coverage");
+
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const systemPromptWithoutPremise = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPromptWithoutPremise).not.toContain("premise_coverage");
+  });
+
+  it("wires the generation call's OWN premise_coverage self-assessment into the result's warnings (vertical-drama-skill-first-architecture Phase 4 item 2 — replaces the deterministic evaluatePremiseCoverage heuristic for this call site)", async () => {
     mockLlmResponse({
       expandedSeasonArc: "A season about competitive baking contests",
       refinedCharacters: [{ name: "Aria", role: "lead", description: "A baker" }],
       episodeBreakdown: [
         { episodeNumber: 1, workingTitle: "Bake Off", logline: "Cakes everywhere", keyBeats: ["Beat 1"] },
       ],
+      premise_coverage: {
+        sufficient: false,
+        note: "เนื้อเรื่องกลายเป็นการแข่งขันทำขนม ไม่เกี่ยวกับคดีฆาตกรรมที่โจทย์ระบุไว้เลย",
+      },
     });
     const result = await generateStoryBible(
       baseParams({ userPremise: "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาลลับ องค์กรอาชญากรรม" }),
     );
-    expect(result.warnings?.[0]?.code).toBeDefined();
+    expect(result.warnings?.[0]?.code).toBe("premise_coverage_low");
+    expect(result.warnings?.[0]?.message).toBe(
+      "เนื้อเรื่องกลายเป็นการแข่งขันทำขนม ไม่เกี่ยวกับคดีฆาตกรรมที่โจทย์ระบุไว้เลย",
+    );
+  });
+
+  it("omits warnings when the generation call self-reports sufficient premise coverage", async () => {
+    mockLlmResponse({
+      ...validExpandedResponse(),
+      premise_coverage: { sufficient: true, note: "ครอบคลุมโจทย์ครบถ้วน" },
+    });
+    const result = await generateStoryBible(
+      baseParams({ userPremise: "ตำรวจสาวสืบคดีฆาตกรรมในโรงพยาบาล" }),
+    );
+    expect(result.warnings).toBeUndefined();
   });
 
   it("omits warnings entirely when userPremise is absent", async () => {

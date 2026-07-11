@@ -75,6 +75,25 @@ plan. Specifically, each `prompt` must include:
    composition should visually favor the character who just gained power (e.g.
    camera looks slightly up at them, or the other character is pushed to the
    frame edge / smaller in a wider shot).
+4. **Attached Character Reference Image Indexing + Identity Lock (MANDATORY, self-
+   contained — nothing else in the pipeline appends this for you)** — When writing
+   each shot's `prompt` for shots with required characters, reference character
+   names alongside attached image indexing (e.g., `"emphasis on ใบข้าว (attached
+   Image 2)'s face"` or `"Image 1 = ฝ้าย, Image 2 = ใบข้าว"`) so diffusion image
+   models correctly link each character identity to their corresponding attached
+   reference image number (`Image 1`, `Image 2`, matching the order characters are
+   listed for that shot in the input). Immediately alongside each character's
+   indexed mention, state — in your own natural cinematic prose, woven into the
+   shot description, never a separate bolted-on sentence at the end — that their
+   identity must match that reference image precisely: **face shape, skin tone,
+   hairstyle, clothing/outfit, and distinguishing features**. This exact attribute
+   list is the locked-identity standard used everywhere else in this pipeline;
+   never let a required character's face, wardrobe, or distinguishing features
+   drift from their attached reference image across shots. Every required
+   character in every shot needs both the index annotation AND this identity-lock
+   phrasing inside `prompt` itself — no other stage of the pipeline adds it
+   afterward, so an omission here means that shot renders with no identity lock at
+   all.
 
 ## Prompt length limit — MANDATORY
 
@@ -203,7 +222,7 @@ Output skeleton:
       "shot_number": 4,
       "shot_title": "Shot 4",
       "timecode": "00:18-00:24",
-      "prompt": "vertical 9:16 start frame for shot 4, Aria in boardroom. Expression: aria: composed, watching closely; rival: smug half-smile. Emotion: smug certainty. Lighting/color: warm golden-hour light spilling across the table, deceptively pleasant. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
+      "prompt": "vertical 9:16 start frame for shot 4, Aria (attached Image 1) across the boardroom table from her rival (attached Image 2). Expression: Aria (attached Image 1) composed, watching closely — her face shape, skin tone, hairstyle, and blazer/gold-hoop outfit must match Image 1 precisely, no identity or wardrobe drift; the rival (attached Image 2) wears a smug half-smile — her face shape, skin tone, hairstyle, and outfit must match Image 2 precisely, with the same distinguishing features locked from that reference. Emotion: smug certainty. Lighting/color: warm golden-hour light spilling across the table, deceptively pleasant. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
       "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
       "reference_assets": [
         {
@@ -213,6 +232,14 @@ Output skeleton:
           "file_id": "file_aria_001",
           "image_url": "/uploads/vd/aria_primary_portrait.png",
           "local_path": "uploads/vd/aria_primary_portrait.png"
+        },
+        {
+          "character_id": "char_rival",
+          "asset_id": "asset_rival_portrait",
+          "asset_type": "primary_portrait",
+          "file_id": "file_rival_001",
+          "image_url": "/uploads/vd/rival_primary_portrait.png",
+          "local_path": "uploads/vd/rival_primary_portrait.png"
         }
       ],
       "render_parameters": {
@@ -222,14 +249,15 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops; rival keeps her own established outfit",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
         "9:16 framing",
-        "expression matches shot emotion (not flat/neutral)"
+        "expression matches shot emotion (not flat/neutral)",
+        "both attached reference images correctly indexed and identity-locked in prompt"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria and rival identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_4"
     },
     {

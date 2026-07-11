@@ -203,11 +203,74 @@ plot (a new beat, an expanded confrontation, an additional reversal) so the
 extra seconds carry story weight, then re-total `estimated_speech_seconds`.
 Note any remaining shortfall in `warnings`/`repair_queue` rather than silently
 under-filling; downstream, an episode below the platform's minimum coverage
-ratio is returned for repair before the storyboard stage.
+ratio is returned for repair before the storyboard stage. Every entry in
+`repair_queue` MUST be a JSON object with the SAME `{code, message}` shape as
+`warnings` items (see the `warnings` example below) — never a bare string.
 
 When NEITHER `speech_budget` nor `content_budget` is present in the input,
 `dialogue_lines` and beat-level `estimated_speech_seconds` remain fully
 optional — legacy callers are unaffected.
+
+## Product Tie-In — placement craft + output shape (spec §13)
+
+The input may include a `product_tie_in_policy` object (`product_name`,
+`product_description`, `allowed_story_functions`, `forbidden_claims`)
+whenever this episode's series has product tie-in enabled. It always arrives
+paired with an accompanying instruction line telling you whether this
+episode's placement is routine/opportunistic ("MANDATORY when enabled" — an
+escape hatch is allowed, see below) or REQUIRED (the season plan explicitly
+assigned this episode a placement — no escape hatch; find a natural
+placement rather than returning an empty result). Follow whichever framing
+the input actually states; the craft rules and output shape below apply in
+both cases.
+
+When `product_tie_in_policy` is present, populate `product_tie_in_plan.tie_ins`
+as an array of 1 or more objects, each with EXACTLY these fields:
+
+- `shot_numbers` — array of integers (the specific storyboard shots — 1
+  through however many shots the episode's duration profile has, typically
+  1-9 — that carry this placement).
+- `story_function` — one of the values listed in the input's
+  `allowed_story_functions` (required, never empty). Describes the narrative
+  role the product serves in that shot (e.g. `daily_use`) — never invent a
+  value outside the allowed list.
+- `placement_style` — one of `"hero_prop"`, `"background"`,
+  `"in_use_moment"` — how the product physically appears in the shot.
+- `benefit_talking_point` — a short, natural benefit the dialogue in that
+  shot can reference — never hard-sell copy, must fit the scene's emotion.
+
+**Placement craft, always:** weave the product into the scene like real
+TV-drama product placement — in-scene and natural, never a forced insert,
+never ad copy, never dialogue that reads like a commercial. It must serve an
+explicit story function (never unrealistically resolve the main conflict)
+and must never use any claim listed in `forbidden_claims`. Any line a
+placement touches still has to pass the speakability/spoken-register rules
+above — a `benefit_talking_point` is a beat for dialogue to reference
+naturally, not a slogan pasted verbatim into a `dialogue_lines[].line`.
+
+**Escape hatch (only when the input's framing is NOT "REQUIRED"):** if the
+tie-in genuinely cannot be placed naturally this episode, return
+`"product_tie_in_plan": { "tie_ins": [], "note": "<reason>" }` instead of
+forcing an unnatural placement.
+
+When `product_tie_in_policy` is absent from the input entirely, return
+`"product_tie_in_plan": { "tie_ins": [], "note": "no product this episode" }`
+(see the output skeleton below, and `fixtures/pass.output.json`).
+
+### Worked example — a populated placement
+
+```json
+"product_tie_in_plan": {
+  "tie_ins": [
+    {
+      "shot_numbers": [2, 6],
+      "story_function": "daily_use",
+      "placement_style": "in_use_moment",
+      "benefit_talking_point": "the serum absorbs fast enough that Aria can apply it between meetings without smudging her makeup"
+    }
+  ]
+}
+```
 
 ## Episode draft (refine mode) — MANDATORY WHEN PROVIDED (W10-B)
 
@@ -240,6 +303,40 @@ register, preserve speakability rules; do NOT invent a divergent plot.**
 
 When `episode_draft` is absent, this section does not apply — generate the
 episode from the story brief as usual.
+
+## Repair Mode — MANDATORY WHEN PROVIDED
+
+The input may include `current_script` (the episode's own previously
+generated, already-persisted script — the full output schema shape) together
+with `repair_instruction` (free text describing the targeted change to
+make). **When both are present, you are REPAIRING an existing episode script
+that was already generated — you are NOT writing a new one from scratch.**
+
+1. **Apply the requested change precisely.** Read `repair_instruction`
+   literally; if it is ambiguous, make the smallest reasonable interpretation
+   rather than a sweeping rewrite.
+2. **Preserve everything else exactly as-is.** Every other beat, dialogue
+   line, hook, cliffhanger, `character_state_delta`, `product_tie_in_plan`
+   entry, and continuity note from `current_script` carries over unchanged
+   unless the instruction specifically requires changing it — do not rewrite
+   unrelated content, and do not "improve" or reinterpret details the
+   instruction did not ask you to touch.
+3. **Still produce the complete output schema.** A repair returns the FULL
+   script object (`contract_version`, `episode_title`, `hook`, `structure`,
+   `scene_dialogue_summary`, `cliffhanger`, `character_state_deltas`,
+   `product_tie_in_plan`, `continuity_notes`, `warnings`, `repair_queue` —
+   and `character_emotional_arcs` too, when applicable) — never a partial
+   diff, a changelog, or a description of the change. Every other rule in
+   this document (narrative grammar, dialogue quality/speakability, speech
+   budget when present, product tie-in when present) still applies in full
+   to the repaired result, including to content you did not touch.
+4. **Do not introduce a new violation while fixing one thing** — e.g. if the
+   instruction only asks to change the cliffhanger, do not accidentally drop
+   an existing `is_reversal` beat or a character's emotional-arc entry while
+   producing the new JSON.
+
+When `current_script`/`repair_instruction` are absent, this section does not
+apply — generate the episode from the story brief as usual.
 
 Output skeleton:
 
@@ -344,7 +441,12 @@ Output skeleton:
       "message": "no blocking issues"
     }
   ],
-  "repair_queue": []
+  "repair_queue": [
+    {
+      "code": "speech_budget_shortfall",
+      "message": "beat 2 dialogue is still under the speech-budget target after adding all available real plot — needs a follow-up pass"
+    }
+  ]
 }
 ```
 

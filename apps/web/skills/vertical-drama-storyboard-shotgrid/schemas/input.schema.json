@@ -221,6 +221,70 @@
       "type": "object",
       "additionalProperties": true
     },
+    "characters": {
+      "description": "App-side character roster — NOT part of the imported upstream contract; rendered into the free-text prompt by verticalDramaStoryboardGeneration.ts's buildUserPrompt, one entry per BASE character (documented here for parity with GenerateStoryboardShotgridParams.characters, planning/vertical-drama-character-variants/plan.md Phase D).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "characterId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "referenceImageUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "variants": {
+            "description": "This base character's available outfit/age-stage 'looks' (Phase A/B variant rows: same person, different characterKey, own approved portrait), supplied as input facts only — the skill picks whichever variant's description best matches a shot's own scene and emits THAT variant's characterKey in the shot's characters/required_character_refs instead of the base character's. Empty/absent for a character with no variant rows (unchanged legacy behavior). See skill.md 'Character variant selection'.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "characterKey",
+                "variantLabel",
+                "variantType",
+                "description",
+                "referenceImageUrl"
+              ],
+              "properties": {
+                "characterKey": {
+                  "type": "string"
+                },
+                "variantLabel": {
+                  "type": "string"
+                },
+                "variantType": {
+                  "type": "string",
+                  "enum": [
+                    "outfit",
+                    "age_stage"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "referenceImageUrl": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "episode_draft": {
       "description": "Optional deep-story-drafts refine base (W10-B, added 2026-07-08): the same vetted per-shot draft carried over from the season-planning stage that the script-builder skill accepts. When present, REFINE it into the full storyboard shot schema — preserve the 9-shot allocation and shot_number alignment, pass through silence_intent — instead of building the 9 shots from the script/scene beats alone. See skill.md 'Episode draft (refine mode)'.",
       "type": "object",

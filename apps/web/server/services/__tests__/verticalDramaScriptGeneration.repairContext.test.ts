@@ -2,11 +2,16 @@
  * Coverage for `verticalDramaScriptGeneration.ts`'s `repairContext`
  * (real-repair wiring for `verticalDramaEpisodePipeline.ts`'s `repairStage`,
  * see that method's doc comment):
- *  - `repairContext` injects a REPAIR MODE framing + the current script +
- *    the instruction into the prompt, flag-free/decoupled exactly like
+ *  - `repairContext` injects the raw `current_script`/`repair_instruction`
+ *    facts into the prompt, flag-free/decoupled exactly like
  *    `episode_draft`/`speech_budget` (see
  *    `verticalDramaScriptGeneration.episodeDraft.test.ts`'s identical
- *    convention);
+ *    convention). The "you are REPAIRING, not writing from scratch; apply
+ *    only the requested change" behavioral contract itself now lives in
+ *    skill.md's "Repair Mode" section (skill-first architecture, see
+ *    `planning/vertical-drama-skill-first-architecture/plan.md` Tier 5) —
+ *    this file no longer authors that instruction text, so these tests
+ *    assert on the raw facts reaching the prompt, not on authored sentences;
  *  - a fresh-generation call (no `repairContext`) produces a byte-identical
  *    prompt to before this parameter existed;
  *  - the credit-check/deduct + coverage-gate flow is completely unaffected
@@ -137,7 +142,7 @@ beforeEach(() => {
 });
 
 describe("generateEpisodeScript — repairContext (real-repair wiring for repairStage)", () => {
-  it("injects REPAIR MODE framing + the current script + the instruction when repairContext is supplied", async () => {
+  it("injects the raw current_script + repair_instruction facts when repairContext is supplied", async () => {
     await generateEpisodeScript(
       baseParams({
         repairContext: {
@@ -148,8 +153,6 @@ describe("generateEpisodeScript — repairContext (real-repair wiring for repair
     );
 
     const content = userMessageContent();
-    expect(content).toContain("REPAIR MODE");
-    expect(content).toContain("Apply ONLY the targeted change");
     expect(content).toContain("repair_instruction: ทำให้ cliffhanger น่าตื่นเต้นกว่านี้");
 
     const match = content.match(/current_script: (\{.*?\})\nrepair_instruction/);
@@ -157,11 +160,10 @@ describe("generateEpisodeScript — repairContext (real-repair wiring for repair
     expect(JSON.parse(match![1])).toEqual(CURRENT_SCRIPT);
   });
 
-  it("omits REPAIR MODE entirely when repairContext is absent (fresh generation, byte-identical to before this field existed)", async () => {
+  it("omits current_script/repair_instruction entirely when repairContext is absent (fresh generation, byte-identical to before this field existed)", async () => {
     await generateEpisodeScript(baseParams());
 
     const content = userMessageContent();
-    expect(content).not.toContain("REPAIR MODE");
     expect(content).not.toContain("repair_instruction");
     expect(content).not.toContain("current_script");
   });

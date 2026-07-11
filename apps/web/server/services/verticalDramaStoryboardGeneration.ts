@@ -35,7 +35,6 @@ import {
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -62,6 +61,7 @@ import {
   // `verticalDramaStoryBible.ts`) for whoever next revisits that file.
   type VdSceneContract,
 } from "./verticalDramaStoryBible";
+import { resolveStoryboardModel } from "./verticalDramaImproveScript";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 
 // Re-exported so callers only need to import from this one module.
@@ -214,7 +214,18 @@ export const storyboardShotgridOutputSchema = z
     shot_grid_plan: z.object({}).passthrough(),
     shots: z.array(storyboardShotSchema).length(9),
     plain_text_storyboard: z.string().min(1),
-    storyboard_handoff_json: z.object({}).passthrough(),
+    // Optional at the schema level: `generateStoryboardShotgrid` below
+    // deterministically constructs this field's required inner shape
+    // (`schema_version` / `handoff_type` / `grid_layout` / `shots`) from the
+    // already-validated `shots` array unconditionally, regardless of
+    // whether the LLM emitted it — see that block's doc comment. This is
+    // NOT a relaxation of the skill's own documented contract (skill.md /
+    // output.schema.json still list it as required); it just removes the
+    // runtime's dependency on the model re-emitting data it already
+    // produced, which was observed live to be omitted even when nowhere
+    // near the token ceiling (not a truncation issue — see traceId
+    // `L2fd3oiEUm_j5RsmaVXYZ`).
+    storyboard_handoff_json: z.object({}).passthrough().optional(),
   })
   .passthrough();
 
@@ -284,6 +295,31 @@ export interface GenerateStoryboardShotgridParams {
     name: string;
     role: string | null;
     referenceImageUrl?: string | null;
+    /**
+     * Character variants (planning/vertical-drama-character-variants/plan.md
+     * Phase D) — this BASE character's available outfit/age-stage "looks"
+     * (Phase A/B variant rows: same person, different `characterKey`, own
+     * approved portrait), supplied as input FACTS only. Code never decides
+     * which variant fits which shot — `skill.md`'s "Character variant
+     * selection" section teaches the LLM to read each shot's own scene
+     * content and pick whichever variant's `description` actually matches,
+     * emitting that variant's OWN `characterKey` in that shot's
+     * `characters`/`required_character_refs` instead of this base
+     * character's. Empty/absent for the vast majority of characters today
+     * (no variant rows yet) — `buildUserPrompt` renders nothing new for
+     * those, so their prompt stays byte-identical to before this field
+     * existed. Only variants with an already-resolved `referenceImageUrl`
+     * are ever included here (a variant with no approved portrait yet is
+     * excluded upstream — see `verticalDramaEpisodePipeline.ts`'s
+     * `generateRealStoryboard`).
+     */
+    variants?: Array<{
+      characterKey: string;
+      variantLabel: string;
+      variantType: "outfit" | "age_stage";
+      description: string;
+      referenceImageUrl: string;
+    }>;
   }>;
   /**
    * Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
@@ -357,7 +393,21 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
           const refNote = c.referenceImageUrl
             ? " [has an approved reference image — identity lock applies]"
             : "";
-          return `- ${c.characterId}: ${c.name}${c.role ? ` (${c.role})` : ""}${refNote}`;
+          const baseLine = `- ${c.characterId}: ${c.name}${c.role ? ` (${c.role})` : ""}${refNote}`;
+          // Character variants (planning/vertical-drama-character-variants/
+          // plan.md Phase D) — additive; only rendered when this character
+          // has `variants`, so a character with none (the vast majority
+          // today) produces the exact same line as before this field
+          // existed. See skill.md "Character variant selection" for the
+          // per-shot pick instruction these lines feed.
+          if (!c.variants?.length) return baseLine;
+          const variantLines = c.variants
+            .map(v => {
+              const typeLabel = v.variantType === "age_stage" ? "age-stage" : "outfit";
+              return `  - ${v.characterKey} (${v.variantLabel}, ${typeLabel} variant of ${c.characterId}): ${v.description} [has an approved reference image]`;
+            })
+            .join("\n");
+          return `${baseLine}\n  Variants available for ${c.characterId} — see "Character variant selection" below:\n${variantLines}`;
         })
         .join("\n")
     : "(no characters registered yet — invent minimal placeholder character ids consistent with the story context)";
@@ -492,7 +542,7 @@ export async function generateStoryboardShotgrid(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveStoryboardModel(params.seriesId);
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
@@ -533,7 +583,18 @@ export async function generateStoryboardShotgrid(
   // any real character whose actual name is mentioned directly in the
   // shot's Thai/English narrative text, which the model reliably writes
   // even when it gets the id field wrong.
-  const validCharacterIds = new Set(params.characters.map(c => c.characterId));
+  // Character variants (Phase D) — a variant's own `characterKey` (never the
+  // base character's) is a legitimate id the LLM may emit per
+  // `buildUserPrompt`'s "Character variant selection" instruction, so it
+  // must survive this real-id filter the same as any base `characterId`.
+  // No-op (empty flatMap contribution) for every character with no
+  // `variants`, so this stays byte-identical to before this field existed.
+  const validCharacterIds = new Set(
+    params.characters.flatMap(c => [
+      c.characterId,
+      ...(c.variants?.map(v => v.characterKey) ?? []),
+    ])
+  );
   for (const shot of storyboardData.shots) {
     const shotRecord = shot as unknown as Record<string, unknown>;
     const narrativeText = [
@@ -545,16 +606,65 @@ export async function generateStoryboardShotgrid(
     ]
       .filter((v): v is string => typeof v === "string" && v.length > 0)
       .join(" ");
-    const nameMatches = params.characters
-      .filter(c => narrativeText.includes(c.name))
-      .map(c => c.characterId);
     const validLlmIds = [...shot.characters, ...shot.required_character_refs].filter(
       id => validCharacterIds.has(id),
     );
+    // Character variants (Phase D) — a base character and its variants share
+    // the SAME `name` (same person, different look), so the name-match
+    // fallback below can no longer assume "name mentioned -> add the base
+    // id" is safe: when the LLM already deliberately picked ONE specific
+    // family member (base OR a variant — evidenced by it appearing in the
+    // LLM's own `validLlmIds`), force-adding the base id too would attach a
+    // SECOND, contradictory reference image (e.g. both the sleepwear base
+    // portrait and the school-uniform variant portrait) for what is meant to
+    // be a single person in a single look for this shot. Only fall back to
+    // the base id via name-match when NO family member is already present —
+    // for a character with no variants, its "family" is just itself, so this
+    // reduces to the exact original check and stays byte-identical.
+    const nameMatches = params.characters
+      .filter(c => narrativeText.includes(c.name))
+      .filter(c => {
+        const familyIds = [c.characterId, ...(c.variants?.map(v => v.characterKey) ?? [])];
+        return !familyIds.some(id => validLlmIds.includes(id));
+      })
+      .map(c => c.characterId);
     const resolvedIds = Array.from(new Set([...nameMatches, ...validLlmIds]));
     shot.characters = resolvedIds;
     shot.required_character_refs = resolvedIds;
   }
+
+  // `storyboard_handoff_json` deterministic reconstruction (root-cause fix,
+  // 2026-07-10 — traceId `L2fd3oiEUm_j5RsmaVXYZ`): the LLM was observed to
+  // consistently OMIT this field even well under the token ceiling (not a
+  // truncation issue — outputTokens were ~6500 against a 32000 ceiling on
+  // retry). Its documented required inner shape is entirely derivable from
+  // data the model already produced in the top-level `shots` array
+  // (`schema_version` / `handoff_type` / `grid_layout` are constants, and
+  // its own `shots` sub-array is just `{shot_number, image_prompt}` pairs —
+  // see the skill's `output.schema.json`), so rather than depending on the
+  // model to redundantly re-emit it, always construct it here from ground
+  // truth. This mirrors the existing `character_attachment_manifest`
+  // precedent below (never trust the model's own guess for data the code
+  // can derive authoritatively) and runs unconditionally — unlike the
+  // manifest, the base handoff fields must exist even when no character has
+  // a reference image.
+  const existingHandoff = (storyboardData.storyboard_handoff_json ??
+    {}) as Record<string, unknown>;
+  storyboardData.storyboard_handoff_json = {
+    ...existingHandoff,
+    schema_version: "1.0",
+    handoff_type: "storyboard_shot_prompts",
+    grid_layout: "3x3",
+    shots: storyboardData.shots.map(s => ({
+      shot_number: s.shot_number,
+      image_prompt: s.image_prompt,
+    })),
+    rendering_notes:
+      typeof existingHandoff.rendering_notes === "string" &&
+      existingHandoff.rendering_notes.length > 0
+        ? existingHandoff.rendering_notes
+        : "Handoff shot list re-derived server-side from the validated storyboard shots.",
+  };
 
   // Identity-lock plumbing (upstream parity — see the `referenceImageUrl` doc
   // comment on `GenerateStoryboardShotgridParams` above): the LLM has no way
@@ -567,10 +677,8 @@ export async function generateStoryboardShotgrid(
       Boolean(c.referenceImageUrl)
   );
   if (charactersWithRef.length > 0) {
-    const existingHandoff = (storyboardData.storyboard_handoff_json ??
-      {}) as Record<string, unknown>;
     storyboardData.storyboard_handoff_json = {
-      ...existingHandoff,
+      ...(storyboardData.storyboard_handoff_json as Record<string, unknown>),
       character_attachment_manifest: charactersWithRef.map(c => ({
         character_id: c.characterId,
         name: c.name,

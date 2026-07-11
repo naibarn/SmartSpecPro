@@ -252,6 +252,46 @@ vi.mock("../../services/verticalDramaStartFrameGeneration", () => ({
     mockMergePresetVisualIdentityNegativeFragments,
 }));
 
+// vertical-drama-skill-first-architecture plan, Phase 1 items 1-2 —
+// `generateStartFrameAngleVariations`/`repairShotImage` now dynamically
+// `import("../services/verticalDramaShotImageAction")` (same "adminProcedure
+// transitive dependency" reasoning as every other dynamic import in this
+// file) to author the grid/repair prompt via the
+// `vertical-drama-shot-image-action` skill instead of hand-built strings.
+// The mock ECHOES `shot.currentPrompt`/`repair_instruction` back into its
+// returned `prompt` (and `shot.currentNegativePrompt` back into
+// `negativePrompt`) so every pre-existing assertion about facts flowing
+// THROUGH this call (preset-visual-identity fragments, the user's repair
+// instruction, the shot's own negative prompt) keeps working unchanged —
+// only the assertions that checked literal ROUTER-authored instructional
+// text (grid layout wording, "no text" warning, character-identity-lock
+// wording) move to this skill's own fixtures/skill.md, since the router no
+// longer authors that text at all.
+const { mockGenerateShotImageAction } = vi.hoisted(() => ({
+  mockGenerateShotImageAction: vi.fn(
+    async (params: {
+      action: "multi_angle_grid" | "repair";
+      shot: { currentPrompt: string; currentNegativePrompt: string };
+      repairInstruction?: string | null;
+    }) => ({
+      prompt:
+        params.action === "repair"
+          ? [params.shot.currentPrompt, params.repairInstruction]
+              .filter(Boolean)
+              .join(" ")
+          : `${params.shot.currentPrompt} [multi_angle_grid authored by skill]`,
+      negativePrompt: params.shot.currentNegativePrompt || "",
+      creditsUsed: 0,
+      model: "mock-model",
+    })
+  ),
+}));
+vi.mock("../../services/verticalDramaShotImageAction", () => ({
+  generateShotImageAction: mockGenerateShotImageAction,
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+}));
+
 const { mockShotReferencesService, MockVerticalDramaShotReferenceError } =
   vi.hoisted(() => {
     class MockVerticalDramaShotReferenceError extends Error {
@@ -3595,7 +3635,18 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
     mockDeriveModelResolutionOptions.mockReturnValue(undefined);
   });
 
-  it("instructs no text/captions/labels/watermarks anywhere in the image, both in the prompt and the negative prompt", async () => {
+  // vertical-drama-skill-first-architecture plan, Phase 1 item 1 — the
+  // literal "no text/captions/labels/watermarks" grid-instruction wording
+  // is now authored entirely by the `vertical-drama-shot-image-action`
+  // skill (see that skill's `skill.md` "Action: multi_angle_grid" section
+  // and its fixtures for that wording's own coverage), not by this router.
+  // These tests now verify the ROUTER's responsibility instead: it must ask
+  // the skill for a `multi_angle_grid` action with the right grid layout and
+  // the shot's own current prompt/negative-prompt as facts, and must forward
+  // the skill's returned prompt/negative-prompt through to the actual render
+  // call unmutated (via this file's `mockGenerateShotImageAction`, which
+  // echoes those facts back into its return value).
+  it("calls the shot-image-action skill with action=multi_angle_grid, a 3x3/9-panel grid_layout, and the shot's own prompt/negative-prompt facts", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
@@ -3609,28 +3660,29 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
 
+    expect(mockGenerateShotImageAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "multi_angle_grid",
+        shot: expect.objectContaining({
+          shotNumber: 1,
+          currentPrompt: "a prompt",
+          currentNegativePrompt: "blurry",
+        }),
+        repairInstruction: null,
+        gridLayout: { panelCount: 9, layout: "3x3" },
+      })
+    );
+
     const call = (
       mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
     ).mock.calls[0][0];
-
-    // Prompt must explicitly forbid on-image text and must NOT phrase angle
-    // names as something to render as a label (still lists example angle
-    // names for diversity, but the "no text" instruction must be present and
-    // unambiguous).
-    expect(call.prompt).toMatch(/no text/i);
-    expect(call.prompt).toMatch(/caption/i);
-    expect(call.prompt).toMatch(/watermark/i);
-    expect(call.prompt).toMatch(/3x3 grid of 9 panels/i);
-
-    // Negative prompt must also enforce it (defense in depth), while still
-    // preserving the shot's own negativePrompt.
+    // Skill-authored prompt (mocked, echoes the input facts) flows through
+    // to the render call, and the shot's own negativePrompt is preserved.
+    expect(call.prompt).toMatch(/a prompt/);
     expect(call.negativePrompt).toMatch(/blurry/);
-    expect(call.negativePrompt).toMatch(/text/i);
-    expect(call.negativePrompt).toMatch(/caption/i);
-    expect(call.negativePrompt).toMatch(/watermark/i);
   });
 
-  it("still includes negative-prompt no-text terms even when the shot has no negativePrompt of its own", async () => {
+  it("passes an empty current_negative_prompt fact (never undefined) when the shot has no negativePrompt of its own", async () => {
     mockDb.select
       .mockReturnValueOnce(
         selectChain([
@@ -3648,10 +3700,11 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
 
-    const call = (
-      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
-    ).mock.calls[0][0];
-    expect(call.negativePrompt).toMatch(/text/i);
+    expect(mockGenerateShotImageAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shot: expect.objectContaining({ currentNegativePrompt: "" }),
+      })
+    );
   });
 
   it("Wave-7D: appends the series' preset visual identity fragments onto the grid prompt/negative-prompt when verticalDramaSeriesPresetMixV2 is on", async () => {
@@ -3942,15 +3995,23 @@ describe("repairShotImage (Phase 6.5)", () => {
       }),
       expect.any(String)
     );
-    const call = (
-      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
-    ).mock.calls[0][0];
-    // Repair prompt now uses the standardized two-tier character-lock
-    // instruction (2026-07-06 prompt-safety upgrade) instead of an inline
-    // "same character identity" sentence.
-    expect(call.prompt).toMatch(/CHARACTER IDENTITY LOCK/i);
-    expect(call.prompt).toMatch(/PERSISTENT/);
-    expect(call.prompt).toMatch(/VARIABLE/);
+    // vertical-drama-skill-first-architecture plan, Phase 1 item 2 — the
+    // character-identity-lock wording is now authored entirely by the
+    // `vertical-drama-shot-image-action` skill (see that skill's `skill.md`
+    // "Action: repair" section), not by this router. Verify instead that the
+    // router asked the skill for a `repair` action with the shot's current
+    // prompt and the user's own instruction as facts.
+    expect(mockGenerateShotImageAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "repair",
+        shot: expect.objectContaining({
+          shotNumber: 1,
+          currentPrompt: "a prompt",
+        }),
+        repairInstruction: "change the jacket to red",
+        gridLayout: null,
+      })
+    );
   });
 
   it("refunds credits when generation submission fails", async () => {

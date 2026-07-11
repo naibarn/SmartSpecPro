@@ -20384,6 +20384,19 @@ export const verticalDramaSeries = pgTable(
     policy: jsonb("policy"),
     /** VerticalDramaQualityPolicy (spec 131 §16.1) — null → tenant default → built-in defaults */
     qualityPolicy: jsonb("qualityPolicy"),
+    /**
+     * VerticalDramaSeriesLlmModelPolicy (manual LLM model override for the
+     * "generate start-frame render plan" / "generate storyboard" pipeline
+     * stages, added 2026-07-11 — see
+     * `/home/dev/.claude/plans/polished-toasting-gadget.md`). Nullable JSONB,
+     * additive; absent/null field(s) mean "automatic" (the stage's own
+     * quality/large-context model selector picks the model). See
+     * `@shared/verticalDramaSeries/contracts.ts` for the field shape and
+     * `server/services/verticalDramaImproveScript.ts`'s
+     * `resolveStartFramePlanModel`/`resolveStoryboardModel` for the
+     * resolution logic.
+     */
+    llmModelPolicy: jsonb("llmModelPolicy"),
     /** VerticalDramaSeriesTrailerState (series-level narrated trailer, Bible tab) */
     trailer: jsonb("trailer"),
     /**
@@ -20450,6 +20463,35 @@ export const verticalDramaCharacters = pgTable(
      * (flag-gated on `verticalDramaSeriesVoiceChain`, W12-A).
      */
     voiceConfig: jsonb("voiceConfig"),
+    /**
+     * Character variant/twin relationships (planning/vertical-drama-character-variants/plan.md
+     * Phase A). These support 3 relationships:
+     * - `parentCharacterId`+`variantLabel`+`variantType` — this row is a
+     *   variant of another character row (same person): `variantType:
+     *   "outfit"` = same age/face, different look; `variantType:
+     *   "age_stage"` = same identity, different life-stage appearance
+     *   (loose face reference, not locked).
+     * - `sharesFaceWithCharacterId` — this row is a DIFFERENT person (e.g. a
+     *   twin) whose face reference should be resolved from another
+     *   character row.
+     * All four columns nullable/additive; `null` = a standalone character or
+     * a parent itself. Hand-applied via
+     * `manual_vertical_drama_character_variant_columns.sql` — same "hand-
+     * authored migration, schema.ts catches up separately" convention as
+     * this table's sibling `voiceConfig` column (drizzle-kit generate is
+     * blocked for this table lineage by the pre-existing meta-journal
+     * collision documented on that column and its sibling
+     * `manual_vertical_drama_*.sql` files).
+     */
+    parentCharacterId: bigint("parentCharacterId", {
+      mode: "number",
+    }).references((): AnyPgColumn => verticalDramaCharacters.id),
+    variantLabel: varchar("variantLabel", { length: 64 }),
+    /** "outfit" | "age_stage" | null — plain varchar, matches this table's `role` column style. */
+    variantType: varchar("variantType", { length: 16 }),
+    sharesFaceWithCharacterId: bigint("sharesFaceWithCharacterId", {
+      mode: "number",
+    }).references((): AnyPgColumn => verticalDramaCharacters.id),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),

@@ -130,12 +130,14 @@ import {
   mergeAndTrimReferenceImageUrls,
   mergeProductLockNegativePrompt,
   sanitizeBrandMentionsInPrompt,
-  VD_PRODUCT_LOCK_INSTRUCTION,
+  // vertical-drama-skill-first-architecture plan, Phase 1 item 2 —
+  // `VD_PRODUCT_LOCK_INSTRUCTION` (the authored positive-prompt sentence) is
+  // no longer used by `repairShotImage`/`generateStartFrameAngleVariations`;
+  // the `vertical-drama-shot-image-action` skill now phrases the product
+  // lock instruction itself from raw product facts. Still used by other,
+  // out-of-scope call sites via `verticalDramaProductTieIn.ts` directly.
 } from "../services/verticalDramaProductTieIn";
 import {
-  softenCharacterLockPrompt,
-  softenCharacterLockNegativePrompt,
-  VD_CHARACTER_LOCK_INSTRUCTION,
   VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
 } from "@shared/verticalDramaSeries/characterLock";
 import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
@@ -162,6 +164,7 @@ import {
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import {
   buildCharacterIdentityMapBlock,
+  stripExistingIdentityLockSuffix,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
 import {
@@ -263,8 +266,16 @@ import type {
   VerticalDramaSeparateTtsPlanItem,
 } from "@shared/verticalDramaSeries/audio";
 import {
-  buildTargetAudienceRegionInstruction,
   readTargetAudienceRegionFromBible,
+  // vertical-drama-skill-first-architecture plan, Phase 1 items 1-2 — the
+  // FACT (descriptor label) is passed to `vertical-drama-shot-image-action`
+  // as skill input; the old `buildTargetAudienceRegionInstruction`'s full
+  // authored sentence (with the "apply only as default" policy prose) is no
+  // longer used at those two call sites, since the skill now phrases that
+  // policy itself (taught once in skill.md rather than re-sent as prose per
+  // call). Still used by other, out-of-scope call sites that import it
+  // directly from `@shared/verticalDramaSeries/targetAudienceRegion`.
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import {
   verticalDramaEpisodePipeline,
@@ -531,6 +542,44 @@ async function loadSeriesTargetAudienceRegion(
   return readTargetAudienceRegionFromBible(
     (row?.bible as Record<string, unknown> | null) ?? null
   );
+}
+
+/**
+ * Series-level product tie-in NAME/DESCRIPTION facts (vertical-drama
+ * skill-first-architecture plan, Phase 1 item 2) — read for a caller-owned
+ * series ONLY when the caller already knows this shot has a product
+ * reference attached (`hasProductReference`), so a non-tie-in shot never
+ * pays for the extra query. Returns `null` on no product tie-in configured /
+ * `hasProductReference` false — never throws. Used by
+ * `generateStartFrameAngleVariations`/`repairShotImage` to pass real product
+ * FACTS (name/description) as skill input, instead of the code-authored
+ * `VD_PRODUCT_LOCK_INSTRUCTION` sentence — the skill now phrases the lock
+ * instruction itself from these facts.
+ */
+async function loadSeriesProductTieInFacts(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  hasProductReference: boolean
+): Promise<{ productName: string | null; productDescription: string | null } | null> {
+  if (!hasProductReference) return null;
+  const [row] = await db
+    .select({ productTieIn: verticalDramaSeries.productTieIn })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, seriesId),
+        eq(verticalDramaSeries.tenantId, tenantId),
+        eq(verticalDramaSeries.userId, userId)
+      )
+    )
+    .limit(1);
+  const config = row?.productTieIn as VerticalDramaProductTieInConfig | null;
+  if (!config) return null;
+  return {
+    productName: config.productName ?? null,
+    productDescription: config.productDescription ?? null,
+  };
 }
 
 /**
@@ -1286,66 +1335,17 @@ interface ShotCharacterRefEntry {
   url: string;
 }
 
-/**
- * Formats a start-frame or multi-angle image prompt when character reference
- * images are attached (`entries`).
- *
- * Diffusion image models receive reference images as an indexed array (`Image 1`,
- * `Image 2`, etc.) alongside the text prompt. Without an explicit mapping, a
- * prompt stating "fast close-up emphasis on ใบข้าว's face" leaves the model
- * unable to determine which attached image corresponds to ใบข้าว vs other
- * attached characters (e.g. ฝ้าย).
- *
- * This function:
- * 1. Annotates occurrences of each character's name in the prompt with their
- *    attached image index (e.g., "ใบข้าว (see attached Image 2)").
- * 2. Appends an explicit, numbered reference mapping instruction block at the end
- *    of the prompt so diffusion models clearly bind each attached image index to
- *    the exact character identity.
- */
-function formatIdentityLockedImagePrompt(
-  basePrompt: string,
-  entries: ShotCharacterRefEntry[]
-): string {
-  if (entries.length === 0) return basePrompt;
-
-  const uniqueCharacters: Array<{ name: string; imageIndex: number }> = [];
-  const seenNames = new Set<string>();
-  entries.forEach((e, idx) => {
-    const trimmedName = (e.name || "").trim();
-    if (trimmedName && !seenNames.has(trimmedName)) {
-      seenNames.add(trimmedName);
-      uniqueCharacters.push({ name: trimmedName, imageIndex: idx + 1 });
-    }
-  });
-
-  if (uniqueCharacters.length === 0) {
-    return `${basePrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`;
-  }
-
-  let annotatedPrompt = basePrompt;
-  const sortedChars = [...uniqueCharacters].sort(
-    (a, b) => b.name.length - a.name.length
-  );
-
-  for (const charInfo of sortedChars) {
-    const escapedName = charInfo.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(
-      `(${escapedName})(?!\\s*\\((?:see\\s+)?(?:attached\\s+)?Image\\s+\\d+)`,
-      "g"
-    );
-    annotatedPrompt = annotatedPrompt.replace(
-      regex,
-      `$1 (see attached Image ${charInfo.imageIndex})`
-    );
-  }
-
-  const mappingSummary = uniqueCharacters
-    .map(c => `Image ${c.imageIndex} = ${c.name}`)
-    .join(", ");
-
-  return `${annotatedPrompt} [Attached character reference images: ${mappingSummary}. Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.) — match face shape, skin tone, hairstyle, and distinguishing features precisely from the corresponding attached image; do not alter identity.]`;
-}
+// `formatIdentityLockedImagePrompt` (formerly defined here, a near-duplicate
+// of `@shared/verticalDramaSeries/characterIdentityMap.ts`'s canonical copy)
+// was removed (vertical-drama-skill-first-architecture plan, Phase 3, item
+// 2) — its only caller (`generateStartFrameImage`'s `effectiveSoftenLevel
+// === 0` branch) now uses the planning skill's own prompt text unmodified,
+// since `vertical-drama-shot-start-frame-render/skill.md` now authors the
+// full identity-lock constraint itself. `stripExistingIdentityLockSuffix`
+// (imported from the shared module) is UNRELATED and still used below — it
+// is a back-compat safety net that strips a stale bracket-style suffix a
+// PRE-migration stored prompt may still carry, so it is never echoed back as
+// if it were story content.
 
 async function resolveShotCharacterReferenceEntries(
   tenantId: string,
@@ -4805,13 +4805,17 @@ async function runArcDriftCheckAndProposeIfNeeded(params: {
 
 const idempotencyKey = z.string().trim().min(1).max(128).optional();
 /**
- * Character-lock auto-soften level (2026-07-06 prompt-safety upgrade) — 0/
- * absent = full lock (default/first attempt), 1 = softened wording, 2 =
- * minimal lock. The client resubmits the SAME mutation with `softenLevel + 1`
- * (capped at `VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL`) when a generation task
- * fails with a policy/content/safety-category provider error — see
- * `isCharacterLockPolicyFailureMessage` / `softenCharacterLockPrompt` in
- * `@shared/verticalDramaSeries/characterLock`.
+ * Character-lock auto-soften level (2026-07-06 prompt-safety upgrade,
+ * skill-authored per `vertical-drama-skill-first-architecture` plan Phase
+ * 1.3) — 0/absent = full lock (default/first attempt), 1 = softened wording,
+ * 2 = minimal lock. The client resubmits the SAME mutation with
+ * `softenLevel + 1` (capped at `VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL`) when a
+ * generation task fails with a policy/content/safety-category provider
+ * error — see `isCharacterLockPolicyFailureMessage` in
+ * `@shared/verticalDramaSeries/characterLock`. The actual softening is now
+ * authored by the `vertical-drama-shot-image-action` skill's `soften_level`
+ * input (`server/services/verticalDramaShotImageAction.ts`), not a regex
+ * ladder in this file.
  */
 const softenLevel = z
   .number()
@@ -7692,20 +7696,27 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // Character-lock auto-soften (2026-07-06 prompt-safety upgrade) — a
-      // no-op at `softenLevel` 0/absent (the default/first attempt). Applied
-      // to the STORED prompt text before any further appends below, so a
-      // softened retry also carries through to the product-lock/QC steps
-      // untouched.
+      // Content-policy-risk soften level (vertical-drama-skill-first-
+      // architecture plan, Phase 1.3) — `effectiveSoftenLevel` 0/absent is
+      // the default/first-attempt path and MUST stay a zero-extra-LLM-call
+      // no-op: this mutation runs on EVERY normal image render, not just
+      // retries. `effectiveSoftenLevel > 0` is an explicit client resubmit
+      // after a provider content-policy rejection; that branch calls the
+      // `vertical-drama-shot-image-action` skill's `"soften"` action further
+      // below, once `keptCharEntries` (the identity-lock facts) are
+      // resolved — see that block's doc comment. (Phase 3, item 2:
+      // `formatIdentityLockedImagePrompt` no longer exists at all — the
+      // level-0 branch below now uses `softenedImagePrompt` unmodified,
+      // since the planning skill already authored the identity-lock text.)
       const effectiveSoftenLevel = input.softenLevel ?? 0;
-      let softenedImagePrompt = softenCharacterLockPrompt(
-        frame.imagePrompt,
-        effectiveSoftenLevel
-      );
-      let softenedNegativePrompt = softenCharacterLockNegativePrompt(
-        frame.negativePrompt,
-        effectiveSoftenLevel
-      );
+      // `stripExistingIdentityLockSuffix` is NOT part of the soften
+      // mechanism — it is the unrelated, always-on idempotency fix
+      // (2026-07-10 incident) that strips a stale identity-lock suffix a
+      // PRIOR call may have persisted onto this shot's stored prompt, so it
+      // is never echoed back as if it were story content on ANY call,
+      // softened or not.
+      let softenedImagePrompt = stripExistingIdentityLockSuffix(frame.imagePrompt);
+      let softenedNegativePrompt: string | undefined = frame.negativePrompt;
 
       // Wave-4A (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
       // — deterministically append the series' preset visual identity's
@@ -7848,21 +7859,134 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
       });
 
-      // Identity-lock prompt reinforcement — explicitly map attached reference
-      // images by number (Image 1 = Name, Image 2 = Name) and annotate character
-      // names in prompt so diffusion models correctly bind attached images to
-      // character identities.
+      // Identity-lock references — which character entries actually have a
+      // reference image attached, after `mergeAndTrimReferenceImageUrls`'s
+      // `maxReferenceImages` trimming. Still needed below (the soften>0
+      // branch's `characterReferenceManifest` input), even though the
+      // level-0 branch no longer formats a prompt from it — see that doc
+      // comment.
       const keptCharCount = Math.min(
         characterRefEntries.length,
         referenceImageUrls.length
       );
       const keptCharEntries = characterRefEntries.slice(0, keptCharCount);
-      const renderStartFramePrompt =
-        keptCharEntries.length > 0
-          ? formatIdentityLockedImagePrompt(softenedImagePrompt, keptCharEntries)
-          : characterRefUrls.length > 0
-            ? `${softenedImagePrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`
-            : softenedImagePrompt;
+
+      let renderStartFramePrompt: string;
+      if (effectiveSoftenLevel === 0) {
+        // Default/first-attempt path (vertical-drama-skill-first-
+        // architecture plan, Phase 3, item 2) — `softenedImagePrompt` IS the
+        // final render prompt now: the `vertical-drama-shot-start-frame-
+        // render` skill's own output already states the full identity-lock
+        // constraint (face shape, skin tone, hairstyle, clothing/outfit,
+        // distinguishing features) per required character in its own prose
+        // (skill.md's "Attached Character Reference Image Indexing"
+        // instruction), so no code-side `formatIdentityLockedImagePrompt`
+        // append is needed here anymore. Zero extra LLM calls, same as
+        // before.
+        renderStartFramePrompt = softenedImagePrompt;
+      } else {
+        // Explicit client retry after a provider content-policy rejection
+        // (vertical-drama-skill-first-architecture plan, Phase 1.3) — the
+        // `vertical-drama-shot-image-action` skill's `"soften"` action
+        // authors BOTH the softened wording AND its own appropriately-toned
+        // identity-lock phrase from `characterReferenceManifest` in one
+        // call. `formatIdentityLockedImagePrompt` is deliberately SKIPPED on
+        // this branch only: running it afterward at full strength would
+        // immediately overwrite the skill's toned-down identity language
+        // with the strict version, defeating the soften request. This is
+        // not a broader Phase-3 migration — softening and identity-lock
+        // phrasing are inherently the same decision at reduced intensity.
+        const softenRegionCode = await loadSeriesTargetAudienceRegion(
+          tenantId,
+          userId,
+          seriesId
+        );
+        const softenProductLockFacts = await loadSeriesProductTieInFacts(
+          tenantId,
+          userId,
+          seriesId,
+          productRefUrls.length > 0
+        );
+        const {
+          generateShotImageAction,
+          InsufficientCreditsError: ShotImageActionInsufficientCreditsError,
+          VdSchemaValidationError: ShotImageActionSchemaValidationError,
+        } = await import("../services/verticalDramaShotImageAction");
+
+        let softenActionResult: { prompt: string; negativePrompt: string };
+        try {
+          softenActionResult = await generateShotImageAction({
+            userId,
+            tenantId,
+            action: "soften",
+            softenLevel: effectiveSoftenLevel,
+            shot: {
+              shotNumber: input.shotNumber,
+              currentPrompt: softenedImagePrompt,
+              currentNegativePrompt: softenedNegativePrompt ?? "",
+            },
+            repairInstruction: null,
+            characterReferenceManifest: keptCharEntries.map((e, idx) => ({
+              index: idx + 1,
+              characterId: null,
+              name: e.name,
+            })),
+            targetAudienceRegion: {
+              code: softenRegionCode,
+              descriptor:
+                VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[
+                  softenRegionCode
+                ],
+            },
+            productLock: {
+              active: productRefUrls.length > 0,
+              productName: softenProductLockFacts?.productName ?? null,
+              productDescription:
+                softenProductLockFacts?.productDescription ?? null,
+            },
+            gridLayout: null,
+            idempotencyKey: input.idempotencyKey,
+          });
+        } catch (err) {
+          if (shouldChargeImageCredits) {
+            await refundCredits({
+              userId,
+              amount: imageCreditCost,
+              description: `Refund: start-frame soften prompt authoring failed (episode #${episodeId}, shot ${input.shotNumber})`,
+              sourceType: "media_image",
+              metadata: {
+                feature: "vertical_drama_series",
+                seriesId,
+                episodeId,
+                shotNumber: input.shotNumber,
+                error: err instanceof Error ? err.message : "Unknown error",
+              },
+            });
+          }
+          if (err instanceof ShotImageActionInsufficientCreditsError) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Insufficient credits to author the softened image prompt",
+            });
+          }
+          if (err instanceof ShotImageActionSchemaValidationError) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to author the softened image prompt — try again",
+            });
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              err instanceof Error
+                ? err.message
+                : "Failed to author the softened image prompt",
+          });
+        }
+
+        renderStartFramePrompt = softenActionResult.prompt;
+        softenedNegativePrompt = softenActionResult.negativePrompt || softenedNegativePrompt;
+      }
 
       // Final-prompt QC (hard length cap) — enforced right before the
       // outgoing image render call. No-op (zero LLM calls / zero credits)
@@ -8042,25 +8166,28 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // Character-lock auto-soften — same convention as `generateStartFrameImage`.
+      // Content-policy-risk soften level (vertical-drama-skill-first-
+      // architecture plan, Phase 1.3) — no longer applied here via a regex
+      // ladder; `effectiveSoftenLevel` is instead passed straight through
+      // as `softenLevel` on the SAME `generateShotImageAction({action:
+      // "multi_angle_grid", ...})` call below, which authors the grid
+      // prompt AND the soften wording together in one skill call. See that
+      // call site's doc comment.
       const effectiveSoftenLevel = input.softenLevel ?? 0;
-      let softenedImagePrompt = softenCharacterLockPrompt(
-        frame.imagePrompt,
-        effectiveSoftenLevel
-      );
-      let softenedNegativePrompt = softenCharacterLockNegativePrompt(
-        frame.negativePrompt,
-        effectiveSoftenLevel
-      );
+      // `stripExistingIdentityLockSuffix` is NOT part of the soften
+      // mechanism — see the matching comment in `generateStartFrameImage`.
+      let softenedImagePrompt = stripExistingIdentityLockSuffix(frame.imagePrompt);
+      let softenedNegativePrompt: string | undefined = frame.negativePrompt;
 
       // Wave-7D (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
       // — same deterministic append `generateStartFrameImage` already does,
-      // anchored the same way (before the grid prompt is assembled below —
-      // the grid's `gridPrompt` starts with this same `softenedImagePrompt`,
-      // so the fragments flow straight through into the 9-panel grid render
-      // too). Dynamic `import()` for the same reason documented on this
-      // file's `appendPresetVisualIdentityFragmentsToImagePrompt` import-site
-      // doc comment near the top of the file.
+      // anchored the same way (before the grid prompt is authored below — the
+      // grid skill call's `shot.currentPrompt` input is this same
+      // `softenedImagePrompt`, so the fragments flow straight through into
+      // the 9-panel grid render too). Dynamic `import()` for the same reason
+      // documented on this file's
+      // `appendPresetVisualIdentityFragmentsToImagePrompt` import-site doc
+      // comment near the top of the file.
       const { presetMixV2Enabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
       if (presetMixV2Enabled) {
@@ -8099,9 +8226,10 @@ export const verticalDramaEpisodesRouter = router({
 
       // Character identity map (2026-07-07 non-human-character-vanishing
       // fix) — re-injected directly into the grid prompt (not just relying
-      // on the base `imagePrompt` already carrying it) since
-      // `softenCharacterLockPrompt` may progressively relax identity-lock
-      // wording on repeated policy-failure retries. See
+      // on the base `imagePrompt` already carrying it) since the
+      // `vertical-drama-shot-image-action` skill's `soften_level` input may
+      // progressively relax identity-lock wording on repeated
+      // policy-failure retries. See
       // `@shared/verticalDramaSeries/characterIdentityMap.ts`.
       const angleGridCharacterIdentitySources =
         await resolveShotCharacterIdentitySources(
@@ -8182,27 +8310,23 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // Series-level target-audience region — continuity-only note (the
-      // region is already baked into `frame.imagePrompt` by the start-frame
-      // planner; this is just a reminder so the 9-panel grid never drifts
-      // the region/ethnicity across panels).
+      // Series-level target-audience region — passed to the skill as a raw
+      // FACT (code, descriptor), not a pre-authored instruction sentence.
       const gridRegion = await loadSeriesTargetAudienceRegion(
         tenantId,
         userId,
         seriesId
       );
 
-      // Storyboard-complete plan Phase 6.3: the previous prompt listed each
-      // angle by NAME ("wide establishing shot", "close-up (pan)", etc.)
-      // inside the same sentence the image model renders — several image
-      // models interpret that as an instruction to actually PRINT that label
-      // as on-image text/caption per panel, producing burned-in text that
-      // makes the grid unusable as a Veo start frame (start frames must be
-      // pure photographic content, no overlay text). Fix: keep the angle
-      // DIVERSITY instruction (still lists example angles so the model still
-      // varies framing) but make the "no text anywhere in the image" rule
-      // extremely explicit and repeated, and mirror it into the negative
-      // prompt too so it's enforced on both sides of the request.
+      // vertical-drama-skill-first-architecture plan, Phase 1 item 1: the
+      // `vertical-drama-shot-image-action` skill authors the ENTIRE grid
+      // prompt (scene restatement, 3x3 grid-layout instruction, camera-angle
+      // diversity, identity lock, and the "no text anywhere in the image"
+      // warning — a real production failure this wording was hand-tuned
+      // against once via a code/redeploy cycle; the skill now owns that
+      // wording so future tuning happens in skill.md, not here) from these
+      // ground-truth facts. Code no longer authors any instructional prompt
+      // text for this call site.
       const keptAngleCharCount = Math.min(
         characterRefEntries.length,
         referenceImageUrls.length
@@ -8211,31 +8335,111 @@ export const verticalDramaEpisodesRouter = router({
         0,
         keptAngleCharCount
       );
-      const identityLockInstruction =
-        keptAngleCharEntries.length > 0
-          ? `[Attached character reference images: ${keptAngleCharEntries.map((e, idx) => `Image ${idx + 1} = ${e.name}`).join(", ")}. Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.) — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.]`
-          : characterRefUrls.length > 0
-            ? "Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity."
-            : null;
-      const gridPrompt = [
-        softenedImagePrompt,
-        identityLockInstruction,
-        "",
-        "Render this EXACT same scene, subject, wardrobe, lighting, and moment as a single image containing a 3x3 grid of 9 panels — 3 rows, 3 columns, each panel a full 9:16 vertical frame with a thin visible divider between panels.",
-        "Each of the 9 panels must show the SAME moment from a DIFFERENT camera angle/framing (for example: wide establishing shot, medium shot, close-up, over-the-shoulder, low angle, high angle, dutch angle, extreme close-up, three-quarter profile) — vary ONLY the camera position/framing per panel, purely through the photographed composition itself.",
-        "Keep character identity, wardrobe, and lighting perfectly consistent across all 9 panels — only the camera position/framing changes.",
-        `Continuity note (region/ethnicity): ${buildTargetAudienceRegionInstruction(gridRegion)}`,
+      const gridProductLockFacts = await loadSeriesProductTieInFacts(
+        tenantId,
+        userId,
+        seriesId,
+        productRefUrls.length > 0
+      );
+
+      const {
+        generateShotImageAction,
+        InsufficientCreditsError: ShotImageActionInsufficientCreditsError,
+        VdSchemaValidationError: ShotImageActionSchemaValidationError,
+      } = await import("../services/verticalDramaShotImageAction");
+
+      let gridActionResult: { prompt: string; negativePrompt: string };
+      try {
+        gridActionResult = await generateShotImageAction({
+          userId,
+          tenantId,
+          action: "multi_angle_grid",
+          // Content-policy-risk soften level (Phase 1.3) — the skill
+          // authors the grid prompt AND the soften wording together in this
+          // one call; no separate softening pass runs before or after it.
+          softenLevel: effectiveSoftenLevel,
+          shot: {
+            shotNumber: input.shotNumber,
+            currentPrompt: softenedImagePrompt,
+            currentNegativePrompt: softenedNegativePrompt ?? "",
+          },
+          repairInstruction: null,
+          characterReferenceManifest: keptAngleCharEntries.map((e, idx) => ({
+            index: idx + 1,
+            characterId: null,
+            name: e.name,
+          })),
+          targetAudienceRegion: {
+            code: gridRegion,
+            descriptor:
+              VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[gridRegion],
+          },
+          productLock: {
+            active: productRefUrls.length > 0,
+            productName: gridProductLockFacts?.productName ?? null,
+            productDescription:
+              gridProductLockFacts?.productDescription ?? null,
+          },
+          gridLayout: { panelCount: 9, layout: "3x3" },
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (err) {
+        if (shouldChargeGridCredits) {
+          await refundCredits({
+            userId,
+            amount: gridCreditCost,
+            description: `Refund: multi-angle grid prompt authoring failed (episode #${episodeId}, shot ${input.shotNumber})`,
+            sourceType: "media_image",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
+        if (err instanceof ShotImageActionInsufficientCreditsError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Insufficient credits to author the multi-angle grid prompt",
+          });
+        }
+        if (err instanceof ShotImageActionSchemaValidationError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "Failed to author the multi-angle grid prompt — try again",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to author the multi-angle grid prompt",
+        });
+      }
+
+      // The non-human/species-aware character-identity-map FACT block
+      // (`buildCharacterIdentityMapBlock`) stays a deterministic, unauthored
+      // append here — it is shared verbatim with the planning-time skill
+      // call and is out of scope for this work package (Phase 3 of
+      // `planning/vertical-drama-skill-first-architecture/plan.md`).
+      const gridPromptWithIdentityMap = [
+        gridActionResult.prompt,
         angleGridCharacterIdentityMapBlock,
-        "ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: do not render any captions, labels, titles, shot-type names, camera-angle names, panel numbers, watermarks, logos, subtitles, or any other typography or lettering in any panel or in the grid dividers. The grid must contain photographic content ONLY — no on-image text of any kind, in any language, anywhere in the frame.",
       ]
         .filter((part): part is string => Boolean(part))
         .join(" ");
+
       // Final-prompt QC (hard length cap) — enforced on the FINAL grid
-      // prompt (base imagePrompt + fixed grid instructions), since that
-      // concatenated string is what actually gets sent to the provider.
+      // prompt (skill-authored prompt + the identity-map fact block), since
+      // that concatenated string is what actually gets sent to the provider.
       const gridPromptQc = await ensurePromptWithinLimit({
         kind: "image",
-        prompt: gridPrompt,
+        prompt: gridPromptWithIdentityMap,
         userId,
         tenantId,
         idempotencyKey: input.idempotencyKey
@@ -8244,52 +8448,14 @@ export const verticalDramaEpisodesRouter = router({
         label: `multi-angle grid prompt (episode #${episodeId}, shot ${input.shotNumber})`,
       });
 
-      const identityLockedShotPrompt =
-        keptAngleCharEntries.length > 0
-          ? formatIdentityLockedImagePrompt(softenedImagePrompt, keptAngleCharEntries)
-          : characterRefUrls.length > 0
-            ? `${softenedImagePrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`
-            : softenedImagePrompt;
-
-      if (
-        identityLockedShotPrompt !== frame.imagePrompt &&
-        Array.isArray(plan.frames)
-      ) {
-        const updatedFrames = plan.frames.map(
-          (f: { shotNumber: number; imagePrompt: string }) =>
-            f.shotNumber === input.shotNumber
-              ? { ...f, imagePrompt: identityLockedShotPrompt }
-              : f
-        );
-        const updatedPlan = { ...plan, frames: updatedFrames };
-        await db
-          .update(verticalDramaEpisodes)
-          .set({
-            startFramePlan: updatedPlan,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, episodeId),
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId)
-            )
-          );
-      }
-
-      // Product lock (spec follow-up to tie-in) — same negative-prompt guard
-      // as `generateStartFrameImage`, applied only when this shot actually
-      // has product reference image(s) attached to the grid call.
-      const gridNegativePrompt = [
-        mergeProductLockNegativePrompt(
-          softenedNegativePrompt,
-          productRefUrls.length > 0
-        ),
-        "text, caption, captions, label, labels, title, titles, watermark, watermarks, logo, subtitle, subtitles, typography, lettering, writing, words, on-screen text, panel numbers, shot names, camera angle names",
-      ]
-        .filter((part): part is string => Boolean(part?.trim()))
-        .join(", ");
+      // Product-lock negative-prompt TERM merge (data, not authored prose)
+      // stays a deterministic append here — same convention as
+      // `generateStartFrameImage`; out of scope for this work package (Phase
+      // 3 of the plan referenced above).
+      const gridNegativePrompt = mergeProductLockNegativePrompt(
+        gridActionResult.negativePrompt,
+        productRefUrls.length > 0
+      );
 
       // MCP-transport models — see the matching comment in `generateStartFrameImage`.
       const transportMetadata = await resolveVdMcpTransportMetadata({
@@ -8545,10 +8711,12 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
       });
 
-      // Series-level target-audience region — preservation directive so an
-      // image-to-image repair never drifts the character's region/ethnicity
-      // away from the series' configured default (the character's own
-      // description, already baked into the reference image, still wins).
+      // vertical-drama-skill-first-architecture plan, Phase 1 item 2: the
+      // `vertical-drama-shot-image-action` skill authors the ENTIRE repair
+      // prompt (applying the user's free-text `repair_instruction` to the
+      // shot's current prompt while preserving identity/region/product-lock
+      // facts) from these ground-truth facts. Code no longer authors any
+      // instructional prompt text for this call site.
       const repairRegion = await loadSeriesTargetAudienceRegion(
         tenantId,
         userId,
@@ -8560,27 +8728,118 @@ export const verticalDramaEpisodesRouter = router({
       // either (e.g. an instruction like "change the lighting" must not also
       // let the model reinterpret the product sitting in frame).
       const repairIsTieInShot = Boolean(frame.productReferenceAssetIds?.length);
-
-      const repairPrompt = [
-        input.instruction.trim(),
-        VD_CHARACTER_LOCK_INSTRUCTION,
-        "Pose, composition, and framing should follow the requested change; apply ONLY the requested change beyond the identity lock above.",
-        `Preservation directive (region/ethnicity): ${buildTargetAudienceRegionInstruction(repairRegion)}`,
-        repairIsTieInShot ? VD_PRODUCT_LOCK_INSTRUCTION : null,
-      ]
-        .filter((part): part is string => Boolean(part))
-        .join(" ");
-
-      // Character-lock auto-soften — same convention as `generateStartFrameImage`.
-      const effectiveSoftenLevel = input.softenLevel ?? 0;
-      let softenedRepairPrompt = softenCharacterLockPrompt(
-        repairPrompt,
-        effectiveSoftenLevel
-      );
-      let repairNegativePrompt = mergeProductLockNegativePrompt(
-        undefined,
+      const repairProductLockFacts = await loadSeriesProductTieInFacts(
+        tenantId,
+        userId,
+        seriesId,
         repairIsTieInShot
       );
+      const repairCharacterIdentitySources =
+        await resolveShotCharacterIdentitySources(
+          tenantId,
+          seriesId,
+          frame.requiredCharacterRefs
+        );
+      // Strip any leftover identity-lock suffix `generateStartFrameImage` may
+      // have persisted onto this shot's stored prompt (see
+      // `stripExistingIdentityLockSuffix`'s doc comment) before handing it to
+      // the skill as scene ground truth — never repeat stale boilerplate back
+      // as if it were story content.
+      const repairBasePrompt = stripExistingIdentityLockSuffix(
+        frame.imagePrompt
+      );
+
+      // Content-policy-risk soften level (vertical-drama-skill-first-
+      // architecture plan, Phase 1.3) — passed straight through as
+      // `softenLevel` on the SAME `generateShotImageAction({action:
+      // "repair", ...})` call below, which authors the repair edit AND the
+      // soften wording together in one skill call. No separate regex
+      // softening pass runs on the skill's result afterward.
+      const effectiveSoftenLevel = input.softenLevel ?? 0;
+
+      const {
+        generateShotImageAction,
+        InsufficientCreditsError: ShotImageActionInsufficientCreditsError,
+        VdSchemaValidationError: ShotImageActionSchemaValidationError,
+      } = await import("../services/verticalDramaShotImageAction");
+
+      let repairActionResult: { prompt: string; negativePrompt: string };
+      try {
+        repairActionResult = await generateShotImageAction({
+          userId,
+          tenantId,
+          action: "repair",
+          softenLevel: effectiveSoftenLevel,
+          shot: {
+            shotNumber: input.shotNumber,
+            currentPrompt: repairBasePrompt,
+            currentNegativePrompt: frame.negativePrompt ?? "",
+          },
+          repairInstruction: input.instruction,
+          characterReferenceManifest: repairCharacterIdentitySources.map(
+            c => ({
+              index: null,
+              characterId: c.characterKey,
+              name: c.name ?? c.characterKey,
+            })
+          ),
+          targetAudienceRegion: {
+            code: repairRegion,
+            descriptor:
+              VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[repairRegion],
+          },
+          productLock: {
+            active: repairIsTieInShot,
+            productName: repairProductLockFacts?.productName ?? null,
+            productDescription:
+              repairProductLockFacts?.productDescription ?? null,
+          },
+          gridLayout: null,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (err) {
+        if (shouldChargeImageCredits) {
+          await refundCredits({
+            userId,
+            amount: imageCreditCost,
+            description: `Refund: image repair prompt authoring failed (episode #${episodeId}, shot ${input.shotNumber})`,
+            sourceType: "media_image",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
+        if (err instanceof ShotImageActionInsufficientCreditsError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Insufficient credits to author the image repair prompt",
+          });
+        }
+        if (err instanceof ShotImageActionSchemaValidationError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to author the image repair prompt — try again",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to author the image repair prompt",
+        });
+      }
+
+      // The skill already authored the softened wording (if any) as part of
+      // the `generateShotImageAction` call above — no separate soften pass
+      // runs on its output.
+      let softenedRepairPrompt = repairActionResult.prompt;
+      let repairNegativePrompt: string | undefined =
+        repairActionResult.negativePrompt || undefined;
 
       // Wave-7D (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
       // — same deterministic append `generateStartFrameImage` already does,

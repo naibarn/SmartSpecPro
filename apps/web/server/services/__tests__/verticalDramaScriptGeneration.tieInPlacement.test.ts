@@ -140,12 +140,16 @@ const ENABLED_PRODUCT_TIE_IN = {
 };
 
 describe("generateEpisodeScript — episodeTieInPlacement (task #31, spec §7.7.2/§7.7.3)", () => {
-  it("grandfather: absent episodeTieInPlacement + productTieIn.enabled -> today's MANDATORY-when-enabled behavior with the escape hatch", async () => {
+  it("grandfather: absent episodeTieInPlacement + productTieIn.enabled -> today's MANDATORY-when-enabled framing (no REQUIRED override)", async () => {
+    // The escape-hatch instruction itself ("If tie-in cannot be placed
+    // naturally...") is now authored once in skill.md's "Product Tie-In"
+    // section (skill-first architecture) rather than restated in the
+    // prompt — this test only asserts on the raw MANDATORY-vs-REQUIRED
+    // framing fact `buildUserPrompt` still supplies.
     const content = await promptContent(baseParams({ productTieIn: ENABLED_PRODUCT_TIE_IN }));
 
     expect(content).toContain("product_tie_in_policy");
     expect(content).toContain("MANDATORY when enabled");
-    expect(content).toContain("If tie-in cannot be placed naturally this episode");
     expect(content).not.toContain("REQUIRED this episode");
   });
 
@@ -160,7 +164,7 @@ describe("generateEpisodeScript — episodeTieInPlacement (task #31, spec §7.7.
     expect(content).not.toContain("product_tie_in_policy");
   });
 
-  it("planned: true FORCES the tie-in section and removes the escape hatch", async () => {
+  it("planned: true FORCES the tie-in section with the REQUIRED framing", async () => {
     const content = await promptContent(
       baseParams({
         productTieIn: ENABLED_PRODUCT_TIE_IN,
@@ -170,7 +174,7 @@ describe("generateEpisodeScript — episodeTieInPlacement (task #31, spec §7.7.
 
     expect(content).toContain("product_tie_in_policy");
     expect(content).toContain("REQUIRED this episode");
-    expect(content).not.toContain("If tie-in cannot be placed naturally this episode");
+    expect(content).not.toContain("MANDATORY when enabled");
   });
 
   it("planned: true injects benefitFocus and intensity guidance when supplied", async () => {

@@ -35,10 +35,7 @@ import {
   buildTargetAudienceRegionInstruction,
   type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
-import {
-  VD_CHARACTER_LOCK_INSTRUCTION,
-  VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT,
-} from "@shared/verticalDramaSeries/characterLock";
+import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
 // section-15 change D, added 2026-07-07) — imported DIRECTLY from the
 // submodule (not the shared barrel, which does not yet re-export it), same
@@ -51,6 +48,15 @@ import {
   type VerticalDramaPresetCharacterArchetype,
   type VerticalDramaPresetVisualIdentity,
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
+// Face reference locking (planning/vertical-drama-character-variants/plan.md
+// Phase C) — reuses the SAME `getPrimaryPortraitUrl` resolution every other
+// consumer (storyboard, start-frame) already goes through; no new resolution
+// path. `verticalDramaCharacterStock.ts` does not import this module, so this
+// is a one-directional dependency — no circular-import risk.
+import {
+  verticalDramaCharacterStockService,
+  type VerticalDramaCharacterStockOwner,
+} from "./verticalDramaCharacterStock";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -104,20 +110,22 @@ const characterVisualBibleCharacterSchema = z
     visual_identity_summary: z.string().min(1),
     primary_portrait_prompt: z.string().min(1),
     negative_prompt: z.string().optional(),
-    // Optional — read from the same LLM response as `primary_portrait_prompt`
-    // (see skill.md's own example output) but not present in every provider
-    // response, so it must not fail the whole call when omitted. Falls back
-    // to a portrait-derived turnaround instruction (see `generateCharacterVisualPrompts`).
-    turnaround_prompt: z.string().min(1).optional(),
-    // The skill's schema has always computed these three (see
-    // schemas/output.schema.json), but until now nothing in this module
-    // extracted them past `.passthrough()` — the LLM produced them and they
-    // were silently discarded. Surfaced now for the full-spec Character
-    // Sheet generation mode (combines portrait + turnaround + expressions +
-    // outfit into one multi-panel image).
-    full_body_prompt: z.string().min(1).optional(),
-    expression_sheet_prompt: z.string().min(1).optional(),
-    outfit_sheet_prompt: z.string().min(1).optional(),
+    // REQUIRED (matches schemas/output.schema.json's own `required` list,
+    // and skill.md's "Required prompt fields" section) — these four used to
+    // be `.optional()` with a code-authored fallback (`${primary_portrait_prompt},
+    // <hardcoded suffix>`) whenever the LLM omitted them, the same
+    // "code invents a fallback for an unreliable skill" anti-pattern the
+    // `repair_queue`/`storyboard_handoff_json` incidents this session
+    // already fixed via a better skill.md example rather than a code
+    // fallback (vertical-drama-skill-first-architecture plan, Phase 2, item
+    // 3). skill.md's own worked example has always shown all four populated
+    // with concrete, non-empty prompts; the fix here is enforcing that via
+    // schema + an explicit "never omit" instruction, not inventing text in
+    // code when the model under-delivers.
+    turnaround_prompt: z.string().min(1),
+    full_body_prompt: z.string().min(1),
+    expression_sheet_prompt: z.string().min(1),
+    outfit_sheet_prompt: z.string().min(1),
     // Optional — same rationale as the sibling prompt fields above: nothing
     // in `generateCharacterVisualPrompts` reads `attachment_package` (it is
     // pass-through-only bookkeeping data for the storyboard handoff), yet it
@@ -147,8 +155,16 @@ export type CharacterVisualBibleOutput = z.infer<typeof characterVisualBibleOutp
 export type CharacterVisualBibleCharacter = z.infer<typeof characterVisualBibleCharacterSchema>;
 
 /* -------------------------------------------------------------------------- */
-/* Role-tier mapping — leads get star-quality directives, villains get        */
-/* attractive-but-sharp directives, everyone else stays natural.              */
+/* Role-tier classification — kept as a pure, exported, unit-tested keyword    */
+/* classifier for callers that need a role-tier LABEL for non-prompt purposes  */
+/* (e.g. UI display, analytics). As of the vertical-drama-skill-first-        */
+/* architecture plan (Phase 2, item 1), this module no longer feeds the       */
+/* result into the LLM prompt as a "MANDATORY... authoritative" directive —    */
+/* `skills/vertical-drama-character-visual-bible/skill.md`'s own role-tier    */
+/* archetype table (including the same child-precedence rule) is now the      */
+/* SOLE author of that appearance guidance. The removed `ROLE_TIER_DIRECTIVES`/ */
+/* `ROLE_TIER_NEGATIVE_TERMS` code constants used to duplicate — and override  */
+/* — the skill's own judgment; see the plan doc for the full incident.        */
 /* -------------------------------------------------------------------------- */
 
 export type CharacterRoleTier =
@@ -446,161 +462,6 @@ export function resolveCharacterRoleTier(
   return "other";
 }
 
-/**
- * Concise (prompt-budget-friendly — see the 3500-char image-prompt cap)
- * appearance directive per role tier. Injected into the visual-bible LLM
- * user-prompt payload as `appearance_directive` so the skill's system prompt
- * (which already builds `primary_portrait_prompt` etc.) carries it straight
- * through into every generated prompt (portrait, turnaround, full-body,
- * expression sheet, outfit sheet — they all derive from the same LLM call).
- *
- * IMPORTANT: this directive must never override the character's stored
- * `description` (age, e.g. a child character) — it only shapes attractiveness
- * within whatever age/identity the description already establishes. The
- * wording below says so explicitly so the LLM does not "age up" a minor.
- */
-const ROLE_TIER_DIRECTIVES: Record<CharacterRoleTier, string | undefined> = {
-  child: (
-    "Age-appropriate and memorable child character: expressive eyes, curious gaze, natural " +
-    "childlike charm, brave but vulnerable expression, clever observant personality, simple " +
-    "modest everyday outfit, natural hairstyle; realistic skin. This character MUST be depicted " +
-    "strictly age-appropriately — no adult styling, no glamour, no romantic framing — " +
-    "REGARDLESS of any 'lead'/'ตัวเอก'/'นางเอก'/'พระเอก' role label; the described child age " +
-    "always wins and is never changed or aged up."
-  ),
-  lead_female: (
-    "Modern vertical-drama heroine (นางเอก): หญิงสาวสวยสง่า อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น " +
-    "(Warm natural lighting, beautiful appearance), emotionally magnetic, natural beauty with strong " +
-    "screen presence, expressive eyes capable of tears, vulnerable yet determined expression, " +
-    "soft delicate features, relatable but unforgettable, quiet strength, clean bright warm lighting, " +
-    "romantic-drama tension; simple elegant outfit; realistic skin texture. Apply this WITHIN the age and " +
-    "identity already given in the character's description — never change or imply an " +
-    "older/younger age than described."
-  ),
-  lead_male: (
-    "Modern vertical-drama male lead (พระเอก): ชายหนุ่มหล่อเหลาชวนหลงใหล อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น " +
-    "(Warm natural lighting, handsome appearance), magnetic and intense, cold-CEO energy, sharp " +
-    "realistic facial structure, intense eyes, quiet dominance, protective yet inviting, clean bright warm lighting, " +
-    "emotionally restrained with hidden pain; elegant outfit; realistic skin texture. " +
-    "Apply this WITHIN the age and identity already given in the character's description — " +
-    "never change or imply an older/younger age than described."
-  ),
-  lead: (
-    "Modern vertical-drama lead (gender-neutral / ตัวเอก): ตัวเอกรูปร่างหน้าตาดี สง่างาม อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น " +
-    "(Warm natural lighting, beautiful/handsome appearance), emotionally magnetic with strong screen " +
-    "presence, natural realistic features with clean bright warm lighting, expressive eyes, relatable but " +
-    "unforgettable, understated elegant styling; realistic skin texture. Apply this WITHIN the " +
-    "age and identity already given in the character's description — never change or imply an " +
-    "older/younger age than described."
-  ),
-  villain_female: (
-    "Modern vertical-drama female antagonist (ตัวร้ายหญิง/นางร้าย): beautiful and sharp-featured, " +
-    "elegant high-status aura, refined features, confident gaze, subtle half-smile, emotionally " +
-    "controlled expression, hidden agenda, quiet calculation, polished high-society rival " +
-    "energy, elegant tension; realistic skin."
-  ),
-  villain_male: (
-    "Modern vertical-drama male antagonist (ตัวร้ายชาย): dangerously attractive, sharp predatory " +
-    "gaze, calm but threatening presence, faint manipulative smile, elegant menace, quiet " +
-    "intimidation, luxury villain energy, dark tailored suit, controlled dominant posture; " +
-    "realistic skin."
-  ),
-  villain: (
-    "Striking antagonist: strikingly attractive but with a sharp, cold, dangerous aura " +
-    "(elegant menace, not cartoonish evil) — magnetic and photogenic, not merely attractive-neutral."
-  ),
-  support: undefined,
-  other: undefined,
-};
-
-/** Negative-prompt terms to merge in for tiers that need to actively steer
- *  the image model away from the wrong look — a "fashion model / corporate
- *  portrait" look for star-quality tiers, a "cartoon villain" look for
- *  antagonist tiers, or (for `child`) any adult/glamour styling at all. The
- *  neutral `villain` fallback and support/other tiers have no special
- *  negatives (`undefined`). */
-const ROLE_TIER_NEGATIVE_TERMS: Record<CharacterRoleTier, string | undefined> = {
-  child: VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT,
-  lead_female: "fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty face",
-  lead_male: "model photoshoot, corporate portrait, influencer smile, boyband look, generic handsome face",
-  lead: "fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty/handsome face",
-  villain_female:
-    "exaggerated evil face, fantasy villain styling, overly seductive styling, revealing outfit, " +
-    "beauty pageant pose, generic influencer look, plastic skin",
-  villain_male:
-    "cartoon villain, exaggerated anger, fantasy costume, generic handsome model, corporate portrait, " +
-    "plastic skin",
-  villain: undefined,
-  support: undefined,
-  other: undefined,
-};
-
-/** Returns the directive string for a role (and optional description, used
- *  for child-safety/gender-aware tier detection — see
- *  `resolveCharacterRoleTier`), or `undefined` when the tier has no special
- *  directive (support/other) — callers should omit the field. */
-export function getRoleTierAppearanceDirective(
-  role: string | null | undefined,
-  description?: string | null,
-): string | undefined {
-  const tier = resolveCharacterRoleTier(role, description);
-  return ROLE_TIER_DIRECTIVES[tier];
-}
-
-/** Returns the tier-specific negative-prompt terms to merge for a role (and
- *  optional description), or `undefined` when the tier has no special
- *  negatives (support/other/neutral-villain). */
-export function getRoleTierNegativeTerms(
-  role: string | null | undefined,
-  description?: string | null,
-): string | undefined {
-  const tier = resolveCharacterRoleTier(role, description);
-  return ROLE_TIER_NEGATIVE_TERMS[tier];
-}
-
-/* -------------------------------------------------------------------------- */
-/* Solo-portrait rule — MANDATORY (2026-07-06 quality fix).                   */
-/*                                                                            */
-/* Live evidence: a generated นางเอก portrait came out with a CHILD in frame  */
-/* because the visual-bible prompt narrated "single mother sacrificing for   */
-/* her child" straight from the character's backstory. Portrait/turnaround/  */
-/* sheet prompts are IDENTITY REFERENCES — they must contain exactly ONE     */
-/* person, no matter what the backstory mentions. The backstory may still    */
-/* shape mood/expression, it must never add people to the frame.            */
-/* -------------------------------------------------------------------------- */
-
-/** Appended to every visual-bible user prompt (all three generation paths —
- *  portrait/turnaround/full-body/expression/outfit sheet share this one LLM
- *  call, so one instruction here covers all of them). */
-export const VD_SOLO_PORTRAIT_INSTRUCTION =
-  "MANDATORY solo-portrait rule: every generated prompt (primary_portrait_prompt, " +
-  "turnaround_prompt, full_body_prompt, expression_sheet_prompt, outfit_sheet_prompt) is an " +
-  "IDENTITY REFERENCE and must depict EXACTLY ONE person — solo portrait, exactly one person " +
-  "in frame, no other people, no children, no second person, no hands of others, no crowd, no " +
-  "background figures. If the character's backstory or personality mentions other people " +
-  "(e.g. a child, a spouse, a rival), use that ONLY to inform this one character's mood, " +
-  "expression, or emotional state — NEVER render, imply, or add another person, body part of " +
-  "another person, or silhouette of another person into the frame.";
-
-/** Appended to the negative_prompt field for every generated prompt. */
-export const VD_SOLO_PORTRAIT_NEGATIVE_TERMS =
-  "no other people, no second person, no children, no extra person, no crowd, " +
-  "no background figures, no hands of others";
-
-/**
- * Concise cinematic-language guidance (portrait lens spec, color grade, film
- * grain/texture, key/rim lighting, out-of-focus storytelling background) —
- * kept short enough to fit the shared 3500-char image-prompt cap alongside
- * everything else already injected into this same LLM call.
- */
-export const VD_CINEMATIC_LANGUAGE_INSTRUCTION =
-  "Render every portrait/turnaround/sheet prompt with full cinematic language: a portrait " +
-  "lens look (e.g. 85mm f/1.8, shallow depth of field), a cinematic color grade matching the " +
-  "series' tone/genre, subtle film grain and skin texture (not overly smooth/plastic), " +
-  "professional key light with a soft rim/edge light for separation, and a background that " +
-  "hints at story/location but stays clearly out of focus (bokeh) so it never competes with " +
-  "the subject.";
-
 /* -------------------------------------------------------------------------- */
 /* User-prompt construction — matches schemas/input.schema.json's shape       */
 /* (`story_context` is a STRING per that schema, not an object).              */
@@ -651,12 +512,31 @@ export interface GenerateCharacterVisualPromptsParams {
    * (see `readPresetVisualIdentityFromBible` / `verticalDramaSeries.ts`'s
    * `create`), already flag-gated by the caller (undefined when the
    * tenant's `verticalDramaSeriesPresetMixV2` flag is off, or the series
-   * carries no preset identity — legacy tolerant). When present, the
-   * archetype `look` matching this character's role, `wardrobeGrammar`, and
-   * `palette` are woven into every generated prompt (portrait/turnaround/
-   * full-body/expression/outfit), same as the appearance directive above.
+   * carries no preset identity — legacy tolerant). When present, the raw
+   * facts (`styleName`/`palette`/`wardrobeGrammar`/matched archetype `look`)
+   * are sent to the skill as a `preset_visual_identity` input field — the
+   * skill itself (not this module) weaves them into every generated prompt
+   * (portrait/turnaround/full-body/expression/outfit); see skill.md's
+   * "Preset visual identity" section.
    */
   presetVisualIdentity?: VerticalDramaPresetVisualIdentity;
+  /**
+   * Face-reference input for a variant/twin character row
+   * (planning/vertical-drama-character-variants/plan.md Phase C) — resolved
+   * by the caller via `resolveFaceSourceReferenceForCharacter` (below) from
+   * the character row's `parentCharacterId`/`sharesFaceWithCharacterId`.
+   * Sent to the skill as a `face_source_reference` FACT object (raw facts
+   * only — the skill's own "Face reference locking" section in skill.md is
+   * the sole author of how these facts get woven into prose, same
+   * "code supplies facts, never authored instruction text" convention as
+   * `presetVisualIdentity` above). `undefined`/`null` for a standalone
+   * character (today's default, unchanged) — the vast majority of rows.
+   */
+  faceSourceReference?: {
+    imageUrl: string;
+    lockStrength: "hard" | "loose";
+    relationshipNote: string;
+  } | null;
 }
 
 /**
@@ -673,6 +553,96 @@ export function readPresetVisualIdentityFromBible(
   if (!raw || typeof raw !== "object") return undefined;
   const parsed = verticalDramaPresetVisualIdentitySchema.safeParse(raw);
   return parsed.success ? (parsed.data as VerticalDramaPresetVisualIdentity) : undefined;
+}
+
+/**
+ * Minimal shape this resolver needs off a `vertical_drama_characters` row —
+ * a `Pick` of `drizzle/schema.ts`'s `VerticalDramaCharacterRow` rather than
+ * importing the full row type, so this module stays decoupled from the
+ * Drizzle schema import graph (callers pass their already-loaded row
+ * straight through; any object with these four fields satisfies this type).
+ */
+export interface VerticalDramaCharacterVariantFields {
+  parentCharacterId: number | null;
+  variantType: string | null;
+  sharesFaceWithCharacterId: number | null;
+}
+
+/** Result shape returned by `resolveFaceSourceReferenceForCharacter`, and the
+ *  same shape `GenerateCharacterVisualPromptsParams.faceSourceReference`
+ *  expects — kept as a named type so callers (the router) can type a local
+ *  variable without re-declaring the inline object type. */
+export type VerticalDramaFaceSourceReference = NonNullable<
+  GenerateCharacterVisualPromptsParams["faceSourceReference"]
+>;
+
+/**
+ * Resolves the face-reference input for a character row that is a variant
+ * or twin of another character (planning/vertical-drama-character-variants/
+ * plan.md Phase C). Reuses `getPrimaryPortraitUrl` — the SAME identity-lock
+ * resolution point every other consumer (storyboard, start-frame) already
+ * goes through — never a new/parallel resolution path.
+ *
+ * Three cases, checked in this order:
+ * 1. `sharesFaceWithCharacterId` set (a twin) — resolve THAT character's
+ *    approved portrait, `lockStrength: "hard"`, twin-flavored
+ *    `relationshipNote`.
+ * 2. `parentCharacterId` set (a variant) — resolve the PARENT's approved
+ *    portrait; `lockStrength` follows `variantType`: `"outfit"` → `"hard"`,
+ *    `"age_stage"` → `"loose"` (any other/missing `variantType` on a variant
+ *    row falls back to `"hard"`, the safer/stricter default).
+ * 3. Neither set (a standalone character or a parent itself — today's
+ *    default, the vast majority of rows) — returns `null`, meaning
+ *    `generateCharacterVisualPrompts` gets no `faceSourceReference` and
+ *    produces byte-identical prompts to before this feature existed.
+ *
+ * Also returns `null` (rather than throwing) when the referenced
+ * character has no approved portrait yet (e.g. the parent/twin-source row's
+ * own portrait hasn't been generated first) — this is a legitimate ordering
+ * case (the caller may generate the source portrait after the variant row is
+ * created), not an error; the variant's portrait generation simply proceeds
+ * without a face reference that round, same as a standalone character.
+ */
+export async function resolveFaceSourceReferenceForCharacter(
+  owner: VerticalDramaCharacterStockOwner,
+  characterRow: VerticalDramaCharacterVariantFields,
+): Promise<VerticalDramaFaceSourceReference | null> {
+  if (characterRow.sharesFaceWithCharacterId != null) {
+    const imageUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+      owner,
+      characterRow.sharesFaceWithCharacterId,
+    );
+    if (!imageUrl) return null;
+    return {
+      imageUrl,
+      lockStrength: "hard",
+      relationshipNote: "twin sibling — face must match exactly, styling must be clearly distinct",
+    };
+  }
+
+  if (characterRow.parentCharacterId != null) {
+    const imageUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+      owner,
+      characterRow.parentCharacterId,
+    );
+    if (!imageUrl) return null;
+    if (characterRow.variantType === "age_stage") {
+      return {
+        imageUrl,
+        lockStrength: "loose",
+        relationshipNote: "age-stage variant of the same person, different life stage",
+      };
+    }
+    // "outfit" (or any other/missing variantType on a variant row — the
+    // safer/stricter default) — same-age outfit variant, hard face lock.
+    return {
+      imageUrl,
+      lockStrength: "hard",
+      relationshipNote: "outfit variant of the same person, different scene context",
+    };
+  }
+
+  return null;
 }
 
 /**
@@ -706,36 +676,38 @@ export function pickMatchingCharacterArchetype(
 }
 
 /**
- * Builds the preset-visual-identity instruction block appended to the user
- * prompt (spec §8.2.2 flow-through rule, section-15 change D) — surgical
- * addition, only present when `identity` is supplied (undefined when the
- * flag is off or the series carries no preset identity).
+ * Builds the preset-visual-identity FACT object added to the skill's input
+ * payload (spec §8.2.2 flow-through rule, section-15 change D) — raw facts
+ * only (`style_name`/`palette`/`wardrobe_grammar`/`matched_archetype_look`),
+ * never an authored connective sentence. `skill.md`'s "Preset visual
+ * identity" section is the sole author of how these facts get woven into
+ * prose (vertical-drama-skill-first-architecture plan, Phase 2, item 4 — this
+ * function used to return a pre-written instruction string; the code cannot
+ * invent that prose, only supply the ground-truth facts the LLM can't know
+ * on its own). Only called when `identity` is supplied (caller omits the
+ * field entirely when the flag is off or the series carries no preset
+ * identity).
  */
-function buildPresetVisualIdentityInstruction(
+function buildPresetVisualIdentityFacts(
   identity: VerticalDramaPresetVisualIdentity,
   role: string | null | undefined,
   description?: string | null,
-): string {
+): {
+  style_name: string;
+  palette: string[];
+  wardrobe_grammar: string[];
+  matched_archetype_look?: string;
+} {
   const archetype = pickMatchingCharacterArchetype(identity, role, description);
-  const parts = [
-    `This series uses a preset visual identity ("${identity.styleName}") that every character reference must match:`,
-    `palette ${identity.palette.join(", ")};`,
-    `wardrobe grammar ${identity.wardrobeGrammar.join(", ")};`,
-    archetype ? `matched archetype look for this character's role: ${archetype.look};` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
-  return (
-    `${parts} Blend this consistently into primary_portrait_prompt, turnaround_prompt, ` +
-    "full_body_prompt, expression_sheet_prompt, and outfit_sheet_prompt — WITHOUT contradicting " +
-    "the character's own description/age/identity above (the character's own description always wins " +
-    "on age/identity; the preset identity governs style/wardrobe/palette/lighting mood only)."
-  );
+  return {
+    style_name: identity.styleName,
+    palette: identity.palette,
+    wardrobe_grammar: identity.wardrobeGrammar,
+    ...(archetype ? { matched_archetype_look: archetype.look } : {}),
+  };
 }
 
 export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterVisualPromptsParams): string {
-  const appearanceDirective = getRoleTierAppearanceDirective(params.role, params.description);
-  const tierNegativeTerms = getRoleTierNegativeTerms(params.role, params.description);
   const inputPayload = {
     characters: [
       {
@@ -743,7 +715,6 @@ export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterV
         name: params.name,
         role: params.role ?? "supporting",
         ...(params.description ? { description: params.description } : {}),
-        ...(appearanceDirective ? { appearance_directive: appearanceDirective } : {}),
       },
     ],
     story_context: buildStoryContextString(params.storyContext),
@@ -753,29 +724,34 @@ export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterV
       include_storyboard_attachment_manifest: true,
       generate_primary_portrait_prompt: true,
     },
+    ...(params.presetVisualIdentity
+      ? {
+          preset_visual_identity: buildPresetVisualIdentityFacts(
+            params.presetVisualIdentity,
+            params.role,
+            params.description,
+          ),
+        }
+      : {}),
+    ...(params.faceSourceReference
+      ? {
+          face_source_reference: {
+            image_url: params.faceSourceReference.imageUrl,
+            lock_strength: params.faceSourceReference.lockStrength,
+            relationship_note: params.faceSourceReference.relationshipNote,
+          },
+        }
+      : {}),
   };
 
   return [
     renderCriteriaVersionMarker(),
     "Generate the character visual bible for exactly ONE character using the following input",
-    "(matches this skill's schemas/input.schema.json shape):",
+    "(matches this skill's schemas/input.schema.json shape). Derive this character's role",
+    "tier (child/lead/villain/support) and every appearance/negative-prompt directive from",
+    "your own role-tier archetype table and instructions — the input below carries only facts,",
+    "no pre-authored appearance directive:",
     JSON.stringify(inputPayload, null, 2),
-    ...(appearanceDirective
-      ? [
-          `MANDATORY appearance directive for this character's role: ${appearanceDirective} ` +
-            "Weave this into primary_portrait_prompt, turnaround_prompt, full_body_prompt, " +
-            "expression_sheet_prompt, and outfit_sheet_prompt — every generated prompt for this " +
-            "character must reflect it.",
-        ]
-      : []),
-    ...(tierNegativeTerms
-      ? [
-          `Also append these role-appearance negative terms to every generated negative_prompt: "${tierNegativeTerms}".`,
-        ]
-      : []),
-    VD_SOLO_PORTRAIT_INSTRUCTION,
-    `Also append these solo-portrait negative terms to every generated negative_prompt: "${VD_SOLO_PORTRAIT_NEGATIVE_TERMS}".`,
-    VD_CINEMATIC_LANGUAGE_INSTRUCTION,
     // Two-tier identity lock (2026-07-06 prompt-safety upgrade): this
     // character's portrait/turnaround/full-body/expression/outfit prompts are
     // the CANONICAL identity reference every downstream generation (start
@@ -784,9 +760,6 @@ export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterV
     // traits are the persistent identity anchor vs. the free-to-vary staging.
     VD_CHARACTER_LOCK_INSTRUCTION,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
-    ...(params.presetVisualIdentity
-      ? [buildPresetVisualIdentityInstruction(params.presetVisualIdentity, params.role, params.description)]
-      : []),
     "Return ONLY the JSON object described in your instructions — no markdown fences, no commentary.",
     VD_COMPACT_JSON_INSTRUCTION,
   ].join("\n\n");
@@ -808,15 +781,15 @@ export interface GenerateCharacterVisualPromptsResult {
   negativePrompt: string | undefined;
   /**
    * 360/multi-angle "character sheet" turnaround prompt, for reference imagery
-   * that prevents likeness drift across scenes. Read from the same LLM
-   * response as `portraitPrompt` (`turnaround_prompt`, see skill.md's own
-   * example output). Falls back to a portrait-derived turnaround instruction
-   * when the LLM response omits the field, so this degrades gracefully
-   * instead of failing the whole call.
+   * that prevents likeness drift across scenes. Read directly from the LLM
+   * response (`turnaround_prompt`, REQUIRED per `schemas/output.schema.json`
+   * and skill.md's own "Required prompt fields" section — a schema-validation
+   * failure now surfaces as `VdSchemaValidationError` if the model omits it,
+   * rather than the code silently inventing a fallback value).
    */
   turnaroundPrompt: string;
-  /** Full-body pose prompt — for the full-spec Character Sheet. Falls back to
-   *  a portrait-derived instruction when the LLM omits it. */
+  /** Full-body pose prompt — for the full-spec Character Sheet. Required;
+   *  see `turnaroundPrompt`'s doc comment. */
   fullBodyPrompt: string;
   /** Facial-expression grid prompt — for the full-spec Character Sheet. */
   expressionSheetPrompt: string;
@@ -896,32 +869,29 @@ export async function generateCharacterVisualPrompts(
     },
   });
 
-  const turnaroundPrompt =
-    matched.turnaround_prompt ??
-    `${matched.primary_portrait_prompt}, 360 degree turnaround, multiple angles, consistent identity`;
-  const fullBodyPrompt =
-    matched.full_body_prompt ??
-    `${matched.primary_portrait_prompt}, full body, standing pose, head to toe visible`;
-  const expressionSheetPrompt =
-    matched.expression_sheet_prompt ??
-    `${matched.primary_portrait_prompt}, grid of facial expressions: neutral, happy, surprised, sad, thinking`;
-  const outfitSheetPrompt =
-    matched.outfit_sheet_prompt ??
-    `${matched.primary_portrait_prompt}, wearing their signature outfit, full body`;
+  // Read directly from the LLM response — no code-authored fallback. These
+  // four fields are REQUIRED by `characterVisualBibleCharacterSchema` (see
+  // above), so `matched.turnaround_prompt` etc. are already guaranteed
+  // non-empty strings by the time execution reaches here; a model that omits
+  // them fails schema validation (`VdSchemaValidationError`) upstream instead
+  // of silently receiving a code-invented prompt (vertical-drama-skill-first-
+  // architecture plan, Phase 2, item 3).
+  const turnaroundPrompt = matched.turnaround_prompt;
+  const fullBodyPrompt = matched.full_body_prompt;
+  const expressionSheetPrompt = matched.expression_sheet_prompt;
+  const outfitSheetPrompt = matched.outfit_sheet_prompt;
 
-  // Defensive merge (belt-and-suspenders alongside the system/user-prompt
-  // instructions above): guarantee the solo-portrait negative terms, the
-  // role-tier appearance negatives (e.g. "fashion model look, corporate
-  // portrait" for leads), AND the preset visual identity's own
-  // `imagePromptFragments.negative` (spec §8.2.2 flow-through rule,
-  // section-15 change D) are present even if the LLM response omits them,
-  // for every one of the three generation paths (portrait/turnaround/sheet)
-  // that read this single `negative_prompt` field.
+  // Merge in the preset visual identity's own `imagePromptFragments.negative`
+  // (spec §8.2.2 flow-through rule, section-15 change D) — this is a
+  // ground-truth data flow-through (the raw fact array the LLM was given as
+  // input), not code-authored text, so it stays. The role-tier negative
+  // terms and solo-portrait negative terms that used to be force-merged here
+  // are now solely the skill's responsibility (skill.md's role-tier table and
+  // "Solo-portrait identity reference" section instruct it to include them in
+  // `negative_prompt` itself) — trust the skill's own output.
   const negativePrompt = [
     matched.negative_prompt,
-    getRoleTierNegativeTerms(params.role, params.description),
     params.presetVisualIdentity?.imagePromptFragments.negative.join(", "),
-    VD_SOLO_PORTRAIT_NEGATIVE_TERMS,
   ]
     .filter((part): part is string => Boolean(part && part.trim()))
     .join(", ");

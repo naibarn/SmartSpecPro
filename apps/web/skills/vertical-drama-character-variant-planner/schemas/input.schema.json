@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-character-variant-planner/input",
+  "title": "Character Variant Planner Input",
+  "description": "Whole-season character-variant/twin planning request — the series' current character roster plus every drafted episode's story content. Code supplies only ground-truth facts here; this skill authors the entire variant/twin plan.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "characters", "episodes"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "characters": {
+      "type": "array",
+      "description": "The series' current character roster (standalone/parent characters only — existing variant rows are not re-sent as separate roster entries).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["character_key", "name", "role"],
+        "properties": {
+          "character_key": { "type": "string", "minLength": 1 },
+          "name": { "type": "string", "minLength": 1 },
+          "role": { "type": "string" },
+          "description": {
+            "type": "string",
+            "description": "Best-effort free-text description drawn from the character's stored data (physical traits, personality, wardrobe notes). May be empty."
+          }
+        }
+      },
+      "default": []
+    },
+    "episodes": {
+      "type": "array",
+      "description": "Every drafted episode's story content for the WHOLE season (not a subset) — same StoryScriptEpisodeInput shape used by the sibling drama-script-evaluate-improve skill.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["episode_number", "working_title", "logline"],
+        "properties": {
+          "episode_number": { "type": "integer", "minimum": 1 },
+          "working_title": { "type": "string" },
+          "logline": { "type": "string" },
+          "key_beats": {
+            "type": "array",
+            "items": { "type": "string" },
+            "default": []
+          },
+          "shot_drafts": {
+            "type": ["array", "null"],
+            "description": "Per-shot summary + dialogue, when this episode has been deep-drafted. Null when the episode has no shot-level draft yet.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["shot_number", "summary"],
+              "properties": {
+                "shot_number": { "type": "integer", "minimum": 1 },
+                "summary": { "type": "string" },
+                "dialogue_lines": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["speaker", "line"],
+                    "properties": {
+                      "speaker": { "type": "string" },
+                      "line": { "type": "string" },
+                      "delivery": { "type": "string" }
+                    }
+                  },
+                  "default": []
+                }
+              }
+            }
+          }
+        }
+      },
+      "default": []
+    }
+  }
+}

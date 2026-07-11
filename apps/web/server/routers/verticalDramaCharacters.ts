@@ -51,6 +51,7 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
   readPresetVisualIdentityFromBible,
+  resolveFaceSourceReferenceForCharacter,
 } from "../services/verticalDramaCharacterImageGeneration";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
@@ -393,6 +394,14 @@ function characterRowToDto(row: VerticalDramaCharacterRow, options: { includeVoi
     name: row.name,
     role: row.role ?? undefined,
     data: (row.data as Record<string, unknown> | null) ?? undefined,
+    // planning/vertical-drama-character-variants/plan.md Phase E — expose the
+    // Phase A schema columns so the Characters tab can group variant rows
+    // under their parent and badge twin (shares-face) rows.
+    parentCharacterId: row.parentCharacterId != null ? String(row.parentCharacterId) : undefined,
+    variantLabel: row.variantLabel ?? undefined,
+    variantType: (row.variantType as "outfit" | "age_stage" | null) ?? undefined,
+    sharesFaceWithCharacterId:
+      row.sharesFaceWithCharacterId != null ? String(row.sharesFaceWithCharacterId) : undefined,
     createdAt: (row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt)).toISOString(),
     updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
     ...(options.includeVoiceConfig
@@ -1017,6 +1026,10 @@ export const verticalDramaCharactersRouter = router({
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
       );
+      const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
+        { tenantId, userId, seriesId },
+        character,
+      );
 
       let promptResult;
       try {
@@ -1034,6 +1047,7 @@ export const verticalDramaCharactersRouter = router({
             : undefined,
           targetAudienceRegion,
           presetVisualIdentity,
+          faceSourceReference,
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -1161,6 +1175,10 @@ export const verticalDramaCharactersRouter = router({
         portraitPrompt = input.approvedPrompt;
         negativePrompt = input.approvedNegativePrompt;
       } else {
+        const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
+          { tenantId, userId, seriesId },
+          character,
+        );
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -1177,6 +1195,7 @@ export const verticalDramaCharactersRouter = router({
               : undefined,
             targetAudienceRegion,
             presetVisualIdentity,
+            faceSourceReference,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1427,6 +1446,10 @@ export const verticalDramaCharactersRouter = router({
         turnaroundPrompt = input.approvedPrompt;
         negativePrompt = input.approvedNegativePrompt;
       } else {
+        const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
+          { tenantId, userId, seriesId },
+          character,
+        );
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -1443,6 +1466,7 @@ export const verticalDramaCharactersRouter = router({
               : undefined,
             targetAudienceRegion,
             presetVisualIdentity,
+            faceSourceReference,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1676,6 +1700,10 @@ export const verticalDramaCharactersRouter = router({
         outfitSheetPrompt = "";
         negativePrompt = input.approvedNegativePrompt;
       } else {
+        const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
+          { tenantId, userId, seriesId },
+          character,
+        );
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -1692,6 +1720,7 @@ export const verticalDramaCharactersRouter = router({
               : undefined,
             targetAudienceRegion,
             presetVisualIdentity,
+            faceSourceReference,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {

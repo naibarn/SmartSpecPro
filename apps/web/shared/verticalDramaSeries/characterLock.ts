@@ -1,25 +1,35 @@
 /**
  * Vertical Drama Series — two-tier character identity lock + policy-failure
- * auto-soften ladder (spec follow-up, 2026-07-06 prompt-safety upgrade).
+ * detection (spec follow-up, 2026-07-06 prompt-safety upgrade; soften ladder
+ * moved to the `vertical-drama-shot-image-action` skill's `soften_level`
+ * input per `planning/vertical-drama-skill-first-architecture/plan.md` Phase
+ * 1.3 — see that skill's `skill.md` "Soften levels" section for the
+ * LLM-authored replacement of the old regex ladder that used to live here).
  *
- * Two independent, composable pieces:
+ * Two independent pieces remain:
  *
  *  1. `VD_CHARACTER_LOCK_INSTRUCTION` — the standardized two-tier identity
  *     lock text (PERSISTENT vs VARIABLE traits), appended wherever a
  *     character reference image is attached to an image-generation call:
- *     character portrait/turnaround/sheet prompts, the start-frame
- *     single/3x3-grid/repair prompt paths, and the storyboard/start-frame
- *     PLANNING LLM calls that instruct a downstream image model to honor a
- *     reference. Pure text constants — no I/O.
+ *     character portrait/turnaround/sheet prompts and the storyboard/
+ *     start-frame PLANNING LLM calls that instruct a downstream image model
+ *     to honor a reference. Pure text constants — no I/O.
  *
- *  2. `softenCharacterLockPrompt` — a rule-based (NO extra LLM call, NO model
- *     switching) prompt softening ladder invoked when a generation task fails
- *     with a policy/content/safety-category provider error. `isPolicyFailure`
- *     is the matcher the client/router uses to detect that class of failure
- *     from `media.getTask`'s `errorMessage` (mirrors the existing
+ *  2. `isCharacterLockPolicyFailure`/`isCharacterLockPolicyFailureMessage` —
+ *     the policy/content/safety-category provider-error matcher the
+ *     client/router uses to detect that class of failure from
+ *     `media.getTask`'s `errorMessage` (mirrors the existing
  *     `getMediaRetryDelayMsFromError` provider-capacity matcher pattern in
  *     `deferredMediaRetryService.ts` — keyword/regex matching over the raw
- *     error text, no new schema/DB column required).
+ *     error text, no new schema/DB column required) and decide whether to
+ *     resubmit with a higher `soften_level`.
+ *
+ * `CHILD_SAFETY_DIRECTIVE_MARKER` is exported so
+ * `server/services/verticalDramaShotImageAction.ts` can run the same
+ * deterministic post-generation child-safety assertion this module used to
+ * run internally as part of the soften ladder — that ONE hard rule is
+ * legitimate deterministic policy, not content authorship, and stays in code
+ * (see the plan's Phase 1.3 item).
  *
  * Pure module — importable from both client and server (no db/server
  * imports), same convention as `targetAudienceRegion.ts`.
@@ -84,76 +94,22 @@ export const VD_CHILD_SAFETY_NEGATIVE_TERMS = [
 export const VD_CHILD_SAFETY_NEGATIVE_PROMPT_FRAGMENT = VD_CHILD_SAFETY_NEGATIVE_TERMS.join(", ");
 
 /* -------------------------------------------------------------------------- */
-/* Soften ladder (rule-based, no LLM cost, no model switching)                */
+/* Soften levels (authoring now belongs to the skill; see file doc comment)   */
 /* -------------------------------------------------------------------------- */
 
 /** 0 = full lock (default/first attempt), 1 = softened wording, 2 = minimal lock. */
 export const VD_CHARACTER_LOCK_SOFTEN_LEVELS = [0, 1, 2] as const;
 export type VerticalDramaCharacterLockSoftenLevel = (typeof VD_CHARACTER_LOCK_SOFTEN_LEVELS)[number];
 
+/**
+ * Upper bound for the `softenLevel` client-retry parameter — still enforced
+ * here as the single source of truth for the router's Zod input validation
+ * bound (`softenLevel: z.number().int().min(0).max(VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL)`),
+ * even though the actual softening is now authored by the
+ * `vertical-drama-shot-image-action` skill's `soften_level` input rather
+ * than the regex ladder that used to live in this file.
+ */
 export const VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL: VerticalDramaCharacterLockSoftenLevel = 2;
-
-/**
- * Level-1 soften: replace hard/absolute lock verbs with softer paraphrases,
- * and drop skin-tone/ethnicity-emphasis wording plus "flawless"-type
- * perfection words some providers' content-policy classifiers flag. Order
- * matters — longer/more specific patterns are matched before their shorter
- * substrings so e.g. "exactly identical" is replaced as a whole, not left
- * with a dangling "exactly".
- */
-const LEVEL_1_REPLACEMENTS: Array<[RegExp, string]> = [
-  [/\bexactly identical\b/gi, "closely resembling the reference"],
-  [/\bidentical\b/gi, "closely resembling the reference"],
-  [/\bmust match the attached reference image exactly\b/gi, "should closely resemble the attached reference image"],
-  [/\bmust appear EXACTLY as-is\b/gi, "should closely resemble the reference"],
-  [/\bEXACTLY\b/g, "closely"],
-  [/\bexactly\b/gi, "closely"],
-  [/\bnever altered\b/gi, "kept consistent where possible"],
-  [/\bflawless\b/gi, "clean"],
-  [/\bperfect(ly)?\b/gi, "natural"],
-  [/\bskin tone,?\s*/gi, ""],
-  [/,?\s*skin tone\b/gi, ""],
-];
-
-/**
- * Level-2 soften: everything level-1 does, PLUS collapse the whole
- * PERSISTENT/VARIABLE block down to one minimal recognizability instruction
- * and strip every remaining risky descriptor (ethnicity/ethnic, race,
- * skin/complexion words) that a stricter content-policy classifier may still
- * flag even after level-1's softening.
- */
-const LEVEL_2_STRIP_PATTERNS: RegExp[] = [
-  /\b(ethnicity|ethnic|race|racial)\b/gi,
-  /\b(skin|complexion)\b/gi,
-];
-
-/** Level-2 replacement text for the full two-tier lock block specifically. */
-const VD_CHARACTER_LOCK_MINIMAL_INSTRUCTION =
-  "CHARACTER IDENTITY (minimal lock): maintain the same person's recognizable appearance from " +
-  "the reference images — pose, expression, camera angle, and scene are free to change.";
-
-function applyLevel1(prompt: string): string {
-  let result = prompt;
-  for (const [pattern, replacement] of LEVEL_1_REPLACEMENTS) {
-    result = result.replace(pattern, replacement);
-  }
-  return result.replace(/\s{2,}/g, " ").trim();
-}
-
-function applyLevel2(prompt: string): string {
-  // Collapse the full two-tier lock block (if present verbatim) down to the
-  // minimal instruction first, then run level-1 replacements (in case the
-  // caller's prompt embeds the lock text inline rather than as a a separate
-  // block), then strip any remaining risky descriptors.
-  let result = prompt.includes(VD_CHARACTER_LOCK_INSTRUCTION)
-    ? prompt.replace(VD_CHARACTER_LOCK_INSTRUCTION, VD_CHARACTER_LOCK_MINIMAL_INSTRUCTION)
-    : prompt;
-  result = applyLevel1(result);
-  for (const pattern of LEVEL_2_STRIP_PATTERNS) {
-    result = result.replace(pattern, "");
-  }
-  return result.replace(/\s{2,}/g, " ").replace(/\s+([,.])/g, "$1").trim();
-}
 
 /**
  * True when `prompt` contains the age-appropriateness safety instruction the
@@ -161,73 +117,17 @@ function applyLevel2(prompt: string): string {
  * `verticalDramaCharacterImageGeneration.ts`). Matched by a stable, distinctive
  * substring of that directive rather than the whole string, so the guard
  * still fires even if the directive's surrounding wording is later edited.
- */
-const CHILD_SAFETY_DIRECTIVE_MARKER = /depicted\s+strictly\s+age-appropriately/i;
-
-/**
- * Apply the rule-based soften ladder to an outgoing prompt string. Pure,
- * deterministic, no I/O — safe to call on both the main prompt and the
- * negative prompt. `level` is clamped to `[0, VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL]`;
- * `0` is a no-op (returns the input unchanged).
  *
- * Child-safety guard: if `prompt` contains the `child` role tier's
- * age-appropriateness directive (see `CHILD_SAFETY_DIRECTIVE_MARKER`), the
- * soften ladder is skipped entirely and the prompt is returned unchanged —
- * child-safety wording must never be softened or corrupted by the generic
- * identity-lock relaxation rules below.
+ * Exported (rather than module-private) so
+ * `server/services/verticalDramaShotImageAction.ts` can reuse this exact
+ * regex as a deterministic post-generation safety net over the
+ * `vertical-drama-shot-image-action` skill's soften-authored output: if this
+ * marker matches the INPUT `shot.currentPrompt` but not the skill's returned
+ * `prompt`, the service falls back to the original unsoftened prompt rather
+ * than trusting a response that silently dropped the child-safety clause.
+ * Never duplicate this regex elsewhere — import it from here.
  */
-export function softenCharacterLockPrompt(
-  prompt: string,
-  level: number,
-): string {
-  const clamped = Math.max(0, Math.min(VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL, Math.trunc(level)));
-  if (clamped <= 0) return prompt;
-  if (CHILD_SAFETY_DIRECTIVE_MARKER.test(prompt)) return prompt;
-  if (clamped === 1) return applyLevel1(prompt);
-  return applyLevel2(prompt);
-}
-
-/**
- * Same ladder, for the negative-prompt string (level 2 drops the
- * character-lock negative terms entirely — a shorter negative prompt is less
- * likely to itself trip a policy classifier).
- *
- * Child-safety guard: every term in `VD_CHILD_SAFETY_NEGATIVE_TERMS` is
- * preserved verbatim through every soften level — these terms are extracted
- * before softening/stripping runs and re-appended afterward, so they can
- * never be weakened, reworded, or dropped by the generic ladder (e.g. level
- * 2's bare "skin"/"complexion" strip, which would otherwise corrupt
- * "plastic skin" into "plastic").
- */
-export function softenCharacterLockNegativePrompt(
-  negativePrompt: string | undefined,
-  level: number,
-): string | undefined {
-  if (!negativePrompt) return negativePrompt;
-  const clamped = Math.max(0, Math.min(VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL, Math.trunc(level)));
-  if (clamped <= 0) return negativePrompt;
-
-  const childSafetyTermsLower = new Set(VD_CHILD_SAFETY_NEGATIVE_TERMS.map((t) => t.toLowerCase()));
-  const parts = negativePrompt.split(",").map((part) => part.trim());
-  const preserved = parts.filter((part) => childSafetyTermsLower.has(part.toLowerCase()));
-  const rest = parts.filter((part) => !childSafetyTermsLower.has(part.toLowerCase())).join(", ");
-
-  let softenedRest: string;
-  if (clamped === 2) {
-    // Strip the character-lock negative terms specifically; keep any other
-    // negative-prompt content (e.g. product-lock terms) intact.
-    const terms = VD_CHARACTER_LOCK_NEGATIVE_TERMS.map((t) => t.toLowerCase());
-    softenedRest = rest
-      .split(",")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0 && !terms.includes(part.toLowerCase()))
-      .join(", ");
-  } else {
-    softenedRest = applyLevel1(rest);
-  }
-
-  return [softenedRest, ...preserved].filter((part) => part && part.trim().length > 0).join(", ");
-}
+export const CHILD_SAFETY_DIRECTIVE_MARKER = /depicted\s+strictly\s+age-appropriately/i;
 
 /* -------------------------------------------------------------------------- */
 /* Policy-failure matcher                                                     */

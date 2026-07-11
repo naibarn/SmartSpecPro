@@ -287,6 +287,32 @@ export interface VideoMotionPromptPackProjection {
  *
  * No-op (returns `prompt` unchanged) when `identity` is absent (flag off, or
  * the series carries no preset visual identity).
+ *
+ * DEFERRED for vertical-drama-skill-first-architecture plan, Phase 3, item 3
+ * (2026-07-11) — NOT converted to skill input this phase, despite all 3
+ * current call sites (`server/routers/verticalDramaEpisodes.ts`'s
+ * `generateShotVideoPrompt`'s sub-shots loop, `generateShotVideoPrompt`'s
+ * single-clip path, and `generateVideoClip`'s render-time formatter) living
+ * in in-scope files. Investigation found this append is ALREADY only
+ * partially "generation time": `generateShotVideoPrompt` persists the
+ * preset-appended prompt onto `motionPromptPack.clips[]` (so it is really a
+ * one-time planning-side append, same shape as the identity-lock fix this
+ * phase DID complete), while `generateVideoClip` re-applies the SAME
+ * non-idempotent append again at every render — a latent literal-duplicate-
+ * text bug ("Preset style tokens (...)" appearing twice) independent of this
+ * phase's scope. Properly completing this conversion requires: (a) threading
+ * preset style/lighting facts into BOTH producing skills' own inputs —
+ * `vertical-drama-video-motion-prompt-pack` (bulk planning, which today
+ * never receives these tokens at all — confirmed via
+ * `verticalDramaEpisodePipeline.ts`'s `generateRealMotionPromptPack`, out of
+ * scope for this phase) and `vertical-drama-shot-video-prompt` (per-shot);
+ * (b) rewriting skill.md for both; (c) removing all 3 call sites together so
+ * the bulk-pack path doesn't regress to never carrying preset tokens at all.
+ * That is substantial new cross-cutting work across the video pipeline, not
+ * a pure deletion — deferred to a dedicated follow-up rather than rushed
+ * alongside this phase's start-frame image changes (this phase's own
+ * instructions: "be conservative... prefer... documented, low-risk
+ * exception").
  */
 export function appendPresetVisualIdentityStyleTokensToMotionPrompt(
   prompt: string,

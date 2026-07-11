@@ -27,27 +27,46 @@ import {
 
 const hoisted = vi.hoisted(() => ({
   seriesRows: [] as unknown[],
+  // `planning/vertical-drama-character-variants/plan.md` Phase B — the
+  // job's new final phase queries `vertical_drama_characters` directly (see
+  // `runImproveScriptJob`'s step (g)). Defaults to `[]` so every PRE-EXISTING
+  // test in this file (none of which set this) never triggers the new
+  // phase's `generateCharacterVariantPlan`/`reconcileCharacterVariantPlan`
+  // calls at all (both empty-guarded on `characterInputs.length > 0`) —
+  // zero behavior change for this file's original whole-block/straggler
+  // coverage.
+  characterRows: [] as unknown[],
 }));
 
-vi.mock("../../db", () => {
-  function makeBuilder(getData: () => unknown[]) {
-    const builder: Record<string, unknown> = {};
-    builder.from = () => builder;
-    builder.where = () => builder;
-    builder.limit = () => builder;
-    builder.orderBy = () => builder;
-    builder.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
-      try {
-        resolve(getData());
-      } catch (err) {
-        reject?.(err);
-      }
-    };
-    return builder;
-  }
+vi.mock("../../db", async () => {
+  const { verticalDramaCharacters } = await vi.importActual<typeof import("../../../drizzle/schema")>(
+    "../../../drizzle/schema",
+  );
   return {
     db: {
-      select: vi.fn(() => makeBuilder(() => hoisted.seriesRows)),
+      // Table-aware: `.from(verticalDramaCharacters)` resolves to
+      // `hoisted.characterRows`, everything else (only `verticalDramaSeries`
+      // in this file) resolves to `hoisted.seriesRows`, same as before this
+      // Phase B addition.
+      select: vi.fn(() => {
+        const builder: Record<string, unknown> = {};
+        let table: unknown = null;
+        builder.from = (t: unknown) => {
+          table = t;
+          return builder;
+        };
+        builder.where = () => builder;
+        builder.limit = () => builder;
+        builder.orderBy = () => builder;
+        builder.then = (resolve: (v: unknown) => void, reject?: (e: unknown) => void) => {
+          try {
+            resolve(table === verticalDramaCharacters ? hoisted.characterRows : hoisted.seriesRows);
+          } catch (err) {
+            reject?.(err);
+          }
+        };
+        return builder;
+      }),
     },
   };
 });
@@ -67,7 +86,25 @@ vi.mock("../enabledLlmModels", () => ({
 vi.mock("../creditService", () => ({
   deductCreditsForModel: vi.fn(),
 }));
+// Phase B's final-phase wiring — fully mocked (never real) in this
+// JOB-LEVEL test file; the service's own detailed reconciliation/prompt
+// behavior is covered by `verticalDramaCharacterVariantPlanner.test.ts`.
+// `extractCharacterRosterDescription` gets a small real-ish stand-in (not
+// `vi.importActual`, to avoid re-entering the real
+// `verticalDramaCharacterVariantPlanner.ts` <-> `verticalDramaImproveScript.ts`
+// circular pair during this file's own module load) since it's called
+// directly inside `runImproveScriptJob`'s wiring code, not just by the
+// mocked `generateCharacterVariantPlan`.
+vi.mock("../verticalDramaCharacterVariantPlanner", () => ({
+  generateCharacterVariantPlan: vi.fn(),
+  reconcileCharacterVariantPlan: vi.fn(),
+  extractCharacterRosterDescription: vi.fn((data: Record<string, unknown> | null) =>
+    data && typeof data.description === "string" ? data.description : "",
+  ),
+  logCharacterVariantPlanningFailure: vi.fn(),
+}));
 
+import { db } from "../../db";
 import { getSkillByIdAsync } from "../skillRegistry";
 import { resolveSkillExecutionPolicy } from "../skillExecutionPolicy";
 import { executeSkillLlmWithFallback } from "../skillModelFallback";
@@ -75,8 +112,15 @@ import { loadEnabledLlmModelRows } from "../enabledLlmModels";
 import type { EnabledLlmModelRow } from "../enabledLlmModels";
 import { deductCreditsForModel } from "../creditService";
 import {
+  generateCharacterVariantPlan,
+  reconcileCharacterVariantPlan,
+} from "../verticalDramaCharacterVariantPlanner";
+import {
   runImproveScriptJob,
   resolveQualityLargeContextModelId,
+  selectQualityLargeContextEligibleModels,
+  resolveStartFramePlanModel,
+  resolveStoryboardModel,
   VD_IMPROVE_SCRIPT_SKILL_ID,
 } from "../verticalDramaImproveScript";
 
@@ -85,6 +129,8 @@ const mockResolveSkillExecutionPolicy = vi.mocked(resolveSkillExecutionPolicy);
 const mockExecuteSkillLlmWithFallback = vi.mocked(executeSkillLlmWithFallback);
 const mockLoadEnabledLlmModelRows = vi.mocked(loadEnabledLlmModelRows);
 const mockDeductCreditsForModel = vi.mocked(deductCreditsForModel);
+const mockGenerateCharacterVariantPlan = vi.mocked(generateCharacterVariantPlan);
+const mockReconcileCharacterVariantPlan = vi.mocked(reconcileCharacterVariantPlan);
 
 /* -------------------------------------------------------------------------- */
 /* Fixtures                                                                    */
@@ -250,6 +296,7 @@ function makeModelRow(overrides: Partial<EnabledLlmModelRow>): EnabledLlmModelRo
 beforeEach(() => {
   vi.clearAllMocks();
   hoisted.seriesRows = [];
+  hoisted.characterRows = [];
 
   mockGetSkillByIdAsync.mockResolvedValue(makeSkillDefinition() as never);
   // Explicit pin — `resolveImproveScriptExecutionPolicy` returns this as-is,
@@ -560,5 +607,335 @@ describe("resolveQualityLargeContextModelId", () => {
     const modelId = await resolveQualityLargeContextModelId();
 
     expect(modelId).toBeNull();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* selectQualityLargeContextEligibleModels / resolveStartFramePlanModel /     */
+/* resolveStoryboardModel — manual LLM model override (2026-07-11, see       */
+/* /home/dev/.claude/plans/polished-toasting-gadget.md)                      */
+/* -------------------------------------------------------------------------- */
+
+describe("selectQualityLargeContextEligibleModels", () => {
+  it("returns the FULL eligible set, sorted cheapest-first (not just the single winner)", () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "ineligible-non-thinking",
+        contextLength: 2_000_000,
+        pricingInput: "0.01",
+        pricingOutput: "0.01",
+        supportsThinking: false,
+      }),
+      makeModelRow({
+        modelId: "eligible-expensive",
+        contextLength: 1_050_000,
+        pricingInput: "5.00",
+        pricingOutput: "5.00",
+        supportsThinking: true,
+      }),
+      makeModelRow({
+        modelId: "eligible-cheapest",
+        contextLength: 1_050_000,
+        pricingInput: "0.10",
+        pricingOutput: "0.10",
+        supportsThinking: true,
+      }),
+    ];
+
+    const eligible = selectQualityLargeContextEligibleModels(rows);
+
+    expect(eligible.map((row) => row.modelId)).toEqual(["eligible-cheapest", "eligible-expensive"]);
+  });
+
+  it("is the exact same filter resolveQualityLargeContextModelId delegates to (single source of truth)", async () => {
+    const rows: EnabledLlmModelRow[] = [
+      makeModelRow({
+        modelId: "eligible-cheapest",
+        contextLength: 1_050_000,
+        pricingInput: "0.10",
+        pricingOutput: "0.10",
+        supportsThinking: true,
+      }),
+      makeModelRow({
+        modelId: "eligible-expensive",
+        contextLength: 1_050_000,
+        pricingInput: "5.00",
+        pricingOutput: "5.00",
+        supportsThinking: true,
+      }),
+    ];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(rows);
+
+    const winner = await resolveQualityLargeContextModelId();
+
+    expect(winner).toBe(selectQualityLargeContextEligibleModels(rows)[0]?.modelId);
+  });
+});
+
+describe("resolveStartFramePlanModel / resolveStoryboardModel", () => {
+  const ELIGIBLE_ROWS: EnabledLlmModelRow[] = [
+    makeModelRow({
+      modelId: "auto-cheapest-eligible",
+      contextLength: 1_050_000,
+      pricingInput: "0.10",
+      pricingOutput: "0.10",
+      supportsThinking: true,
+    }),
+    makeModelRow({
+      modelId: "override-expensive-eligible",
+      contextLength: 1_050_000,
+      pricingInput: "5.00",
+      pricingOutput: "5.00",
+      supportsThinking: true,
+    }),
+  ];
+
+  it("uses the series' startFramePlanModelId override when it's set and still eligible", async () => {
+    hoisted.seriesRows = [
+      { llmModelPolicy: { startFramePlanModelId: "override-expensive-eligible" } },
+    ];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
+
+    const modelId = await resolveStartFramePlanModel(6);
+
+    expect(modelId).toBe("override-expensive-eligible");
+  });
+
+  it("uses the series' storyboardModelId override when it's set and still eligible", async () => {
+    hoisted.seriesRows = [{ llmModelPolicy: { storyboardModelId: "override-expensive-eligible" } }];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
+
+    const modelId = await resolveStoryboardModel(6);
+
+    expect(modelId).toBe("override-expensive-eligible");
+  });
+
+  it("falls back to automatic selection when the pinned override model is disabled/removed", async () => {
+    hoisted.seriesRows = [
+      { llmModelPolicy: { startFramePlanModelId: "no-longer-in-catalog" } },
+    ];
+    // The override id is NOT present in this eligible set (simulating a
+    // model that was disabled/removed after being pinned).
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
+
+    const modelId = await resolveStartFramePlanModel(6);
+
+    expect(modelId).toBe("auto-cheapest-eligible");
+  });
+
+  it("uses automatic selection when no override is configured (llmModelPolicy null)", async () => {
+    hoisted.seriesRows = [{ llmModelPolicy: null }];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
+
+    const modelId = await resolveStoryboardModel(6);
+
+    expect(modelId).toBe("auto-cheapest-eligible");
+  });
+
+  it("uses automatic selection when the series row itself is missing", async () => {
+    hoisted.seriesRows = [];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
+
+    const modelId = await resolveStartFramePlanModel(999);
+
+    expect(modelId).toBe("auto-cheapest-eligible");
+  });
+
+  it("never throws and falls all the way back to resolveStoryBibleModel's last resort when nothing is eligible at all", async () => {
+    hoisted.seriesRows = [{ llmModelPolicy: null }];
+    // Empty catalog: resolveQualityLargeContextModelId -> null,
+    // resolveStoryBibleModel (LAST_RESORT_MODEL) is the final fallback.
+    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+
+    const modelId = await resolveStoryboardModel(6);
+
+    expect(modelId).toBe("gpt-4o-mini");
+  });
+
+  it("never throws and falls back to automatic selection when the DB read itself fails", async () => {
+    hoisted.seriesRows = [{ llmModelPolicy: { startFramePlanModelId: "override-expensive-eligible" } }];
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
+    vi.mocked(db.select).mockImplementationOnce(() => {
+      throw new Error("connection reset");
+    });
+
+    const modelId = await resolveStartFramePlanModel(6);
+
+    expect(modelId).toBe("auto-cheapest-eligible");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* `planning/vertical-drama-character-variants/plan.md` Phase B —             */
+/* runImproveScriptJob's new FINAL, best-effort character-variant-planning    */
+/* phase. `generateCharacterVariantPlan`/`reconcileCharacterVariantPlan` are   */
+/* fully mocked (see the top-of-file `vi.mock` block) — this file only        */
+/* verifies the JOB-LEVEL wiring (when the phase runs, what it's called with, */
+/* how its result merges in, and that a failure never fails the job); the     */
+/* service's own prompt/reconciliation behavior is covered by                 */
+/* `verticalDramaCharacterVariantPlanner.test.ts`.                            */
+/* -------------------------------------------------------------------------- */
+
+describe("runImproveScriptJob — character-variant-planning final phase", () => {
+  function characterRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 1,
+      characterKey: "character-1",
+      name: "หนูนา",
+      role: "protagonist",
+      data: { description: "หญิงสาววัย 22 ปี" },
+      parentCharacterId: null,
+      ...overrides,
+    };
+  }
+
+  function planSummary(overrides: Record<string, unknown> = {}) {
+    return {
+      createdCharacters: [{ name: "หนูนา", variantLabel: "ชุดนักเรียน" }],
+      updatedCharacters: [],
+      ...overrides,
+    };
+  }
+
+  it("runs after a successful whole-block pass, sends the standalone roster + merged episode content, and merges the summary + credits into the job result", async () => {
+    hoisted.seriesRows = [buildSeriesRow([1, 2])];
+    hoisted.characterRows = [characterRow()];
+    mockExecuteSkillLlmWithFallback.mockResolvedValue(makeSuccessResult(buildWholeSeasonBody([1, 2])));
+    mockGenerateCharacterVariantPlan.mockResolvedValue({
+      plan: { contract_version: 1, character_plans: [], twin_detections: [] },
+      creditsUsed: 2,
+      model: "variant-planner-model",
+    });
+    mockReconcileCharacterVariantPlan.mockResolvedValue(planSummary());
+
+    const result = await runImproveScriptJob(
+      { tenantId: "tenant-1", userId: 1, seriesId: 6, userRevisionRequest: "ทำให้ดีขึ้น" },
+      vi.fn(),
+    );
+
+    expect(mockGenerateCharacterVariantPlan).toHaveBeenCalledTimes(1);
+    const callArgs = mockGenerateCharacterVariantPlan.mock.calls[0][0];
+    expect(callArgs.characters).toEqual([
+      { characterKey: "character-1", name: "หนูนา", role: "protagonist", description: "หญิงสาววัย 22 ปี" },
+    ]);
+    expect(callArgs.episodes.map((e: { episodeNumber: number }) => e.episodeNumber)).toEqual([1, 2]);
+
+    expect(mockReconcileCharacterVariantPlan).toHaveBeenCalledTimes(1);
+    expect(mockReconcileCharacterVariantPlan).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 1, seriesId: 6 },
+      { contract_version: 1, character_plans: [], twin_detections: [] },
+    );
+
+    expect(result.characterVariantSummary).toEqual(planSummary());
+    // Baseline job credits (1 whole-block round, mocked at 1 credit) + the
+    // variant-planning phase's own 2 credits.
+    expect(result.creditsUsed).toBe(3);
+  });
+
+  it("does not invoke the phase when the improve pass produced nothing usable (needsReview)", async () => {
+    hoisted.seriesRows = [buildSeriesRow([1])];
+    hoisted.characterRows = [characterRow()];
+
+    const built = buildStoryScriptText({
+      lang: "th",
+      episodes: [improvedEpisodeInput(1, 8)],
+      fromEpisode: 1,
+      toEpisode: 1,
+    });
+    const primaryBody = ["# ผลลัพธ์สุดท้าย", "", "**คะแนนหลังปรับปรุง: 5.0/10**", "", "---", "", built.text].join("\n");
+    mockExecuteSkillLlmWithFallback.mockImplementation(async (request) => {
+      const userContent = String(request.messages[1]?.content ?? "");
+      const episodeNumber = extractEpisodeNumberFromUserContent(userContent);
+      const block = formatStoryScriptEpisode("th", improvedEpisodeInput(episodeNumber, 8));
+      return makeSuccessResult(["# ผลลัพธ์สุดท้าย", "", "**คะแนนหลังปรับปรุง: 5.0/10**", "", "---", "", block].join("\n"));
+    });
+    mockExecuteSkillLlmWithFallback.mockResolvedValueOnce(makeSuccessResult(primaryBody));
+
+    const result = await runImproveScriptJob(
+      { tenantId: "tenant-1", userId: 1, seriesId: 6, userRevisionRequest: "ทำให้ดีขึ้น" },
+      vi.fn(),
+    );
+
+    expect(result.needsReview).toBe(true);
+    expect(mockGenerateCharacterVariantPlan).not.toHaveBeenCalled();
+    expect(mockReconcileCharacterVariantPlan).not.toHaveBeenCalled();
+    expect(result.characterVariantSummary).toBeNull();
+  });
+
+  it("does not invoke the phase when the series has no standalone characters", async () => {
+    hoisted.seriesRows = [buildSeriesRow([1])];
+    hoisted.characterRows = []; // no roster at all
+    mockExecuteSkillLlmWithFallback.mockResolvedValue(makeSuccessResult(buildWholeSeasonBody([1])));
+
+    const result = await runImproveScriptJob(
+      { tenantId: "tenant-1", userId: 1, seriesId: 6, userRevisionRequest: "ทำให้ดีขึ้น" },
+      vi.fn(),
+    );
+
+    expect(result.needsReview).toBe(false);
+    expect(mockGenerateCharacterVariantPlan).not.toHaveBeenCalled();
+    expect(result.characterVariantSummary).toBeNull();
+  });
+
+  it("excludes existing variant rows (parentCharacterId set) from the roster sent to the planner", async () => {
+    hoisted.seriesRows = [buildSeriesRow([1])];
+    hoisted.characterRows = [
+      characterRow(),
+      characterRow({ id: 2, characterKey: "character-1-school", variantLabel: "ชุดนักเรียน", parentCharacterId: 1 }),
+    ];
+    mockExecuteSkillLlmWithFallback.mockResolvedValue(makeSuccessResult(buildWholeSeasonBody([1])));
+    mockGenerateCharacterVariantPlan.mockResolvedValue({
+      plan: { contract_version: 1, character_plans: [], twin_detections: [] },
+      creditsUsed: 0,
+      model: "variant-planner-model",
+    });
+    mockReconcileCharacterVariantPlan.mockResolvedValue(planSummary({ createdCharacters: [], updatedCharacters: [] }));
+
+    await runImproveScriptJob(
+      { tenantId: "tenant-1", userId: 1, seriesId: 6, userRevisionRequest: "ทำให้ดีขึ้น" },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateCharacterVariantPlan.mock.calls[0][0];
+    expect(callArgs.characters).toHaveLength(1);
+    expect(callArgs.characters[0].characterKey).toBe("character-1");
+  });
+
+  it("best-effort: a failure in generateCharacterVariantPlan never fails the overall job — characterVariantSummary is null, everything else unaffected", async () => {
+    hoisted.seriesRows = [buildSeriesRow([1, 2])];
+    hoisted.characterRows = [characterRow()];
+    mockExecuteSkillLlmWithFallback.mockResolvedValue(makeSuccessResult(buildWholeSeasonBody([1, 2])));
+    mockGenerateCharacterVariantPlan.mockRejectedValue(new Error("variant planner boom"));
+
+    const result = await runImproveScriptJob(
+      { tenantId: "tenant-1", userId: 1, seriesId: 6, userRevisionRequest: "ทำให้ดีขึ้น" },
+      vi.fn(),
+    );
+
+    expect(result.needsReview).toBe(false);
+    expect(result.improvedItems.map((item) => item.episodeNumber)).toEqual([1, 2]);
+    expect(result.characterVariantSummary).toBeNull();
+    expect(mockReconcileCharacterVariantPlan).not.toHaveBeenCalled();
+  });
+
+  it("best-effort: a failure in reconcileCharacterVariantPlan never fails the overall job", async () => {
+    hoisted.seriesRows = [buildSeriesRow([1, 2])];
+    hoisted.characterRows = [characterRow()];
+    mockExecuteSkillLlmWithFallback.mockResolvedValue(makeSuccessResult(buildWholeSeasonBody([1, 2])));
+    mockGenerateCharacterVariantPlan.mockResolvedValue({
+      plan: { contract_version: 1, character_plans: [], twin_detections: [] },
+      creditsUsed: 1,
+      model: "variant-planner-model",
+    });
+    mockReconcileCharacterVariantPlan.mockRejectedValue(new Error("db write boom"));
+
+    const result = await runImproveScriptJob(
+      { tenantId: "tenant-1", userId: 1, seriesId: 6, userRevisionRequest: "ทำให้ดีขึ้น" },
+      vi.fn(),
+    );
+
+    expect(result.needsReview).toBe(false);
+    expect(result.improvedItems.map((item) => item.episodeNumber)).toEqual([1, 2]);
+    expect(result.characterVariantSummary).toBeNull();
   });
 });
