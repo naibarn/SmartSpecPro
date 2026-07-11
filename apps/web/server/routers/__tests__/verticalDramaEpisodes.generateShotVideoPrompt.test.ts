@@ -249,13 +249,24 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 // `adminProcedure` chain" reasoning as every other mock in this file above)
 // with a safe empty-array default; tests exercising the plan-context
 // injection itself override `mockGetActiveBreakdown`'s return value per-case.
-const { mockGetActiveBreakdown, mockReadItemCliffhangerLine } = vi.hoisted(() => ({
-  mockGetActiveBreakdown: vi.fn(() => []),
-  mockReadItemCliffhangerLine: vi.fn(() => undefined),
-}));
+//
+// Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`) —
+// `readItemShotDrafts` is dynamically imported from the SAME module
+// (destructured alongside `getActiveBreakdown` in one `import()` call, not a
+// separate one) to resolve `deepDraftShotForDialogue`; default `null` so
+// every pre-existing test (which never opts into
+// `verticalDramaSeriesDeepStoryDrafts`) never even calls this function
+// (the router only calls it when that tenant flag is on).
+const { mockGetActiveBreakdown, mockReadItemCliffhangerLine, mockReadItemShotDrafts } =
+  vi.hoisted(() => ({
+    mockGetActiveBreakdown: vi.fn(() => []),
+    mockReadItemCliffhangerLine: vi.fn(() => undefined),
+    mockReadItemShotDrafts: vi.fn(() => null),
+  }));
 vi.mock("../../services/verticalDramaStoryBible", () => ({
   getActiveBreakdown: mockGetActiveBreakdown,
   readItemCliffhangerLine: mockReadItemCliffhangerLine,
+  readItemShotDrafts: mockReadItemShotDrafts,
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
@@ -398,8 +409,8 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup (no tie-in placement -> no productTieIn select)
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -483,8 +494,8 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode (stale snapshot)
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -571,8 +582,8 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -663,8 +674,8 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -779,8 +790,8 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -824,7 +835,18 @@ describe("generateShotVideoPrompt", () => {
         clipNumber: 2,
         sourceShotNumbers: [2],
         prompt: "generated motion prompt for shot 2",
-        dialogue: [{ lineTh: "บทใหม่ช็อตสอง", characterKey: "grandmother" }],
+        // Persist-pin (planning/`polished-toasting-gadget.md`) — the
+        // PERSISTED dialogue is pinned back to the resolved source
+        // (`dialogueLines`, asserted above as the `shotContext.dialogueLines`
+        // sent to the LLM) rather than the LLM's own echoed
+        // `dialogue: [{ lineTh: "บทใหม่ช็อตสอง", ... }]` from the mock above —
+        // this is the exact class of drift the fix eliminates.
+        dialogue: [
+          {
+            lineTh: "ยายทวดจันมองตู้กระจกแล้วพูดเบา ๆ ว่าของในนั้นไม่ควรถูกแตะอีก",
+            characterKey: "grandmother",
+          },
+        ],
       }),
     ]);
   });
@@ -908,8 +930,8 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -965,8 +987,8 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -998,8 +1020,8 @@ describe("generateShotVideoPrompt", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
     mockDb.update.mockReturnValueOnce({
       set: vi.fn(() => updateChain([episodeRow])),
     });
@@ -1034,8 +1056,8 @@ describe("generateShotVideoPrompt", () => {
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-        .mockReturnValueOnce(selectChain([]))
-        .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+        .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
       mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
       await router.generateShotVideoPrompt({
@@ -1076,8 +1098,8 @@ describe("generateShotVideoPrompt", () => {
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-        .mockReturnValueOnce(selectChain([]))
-        .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+        .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
       let capturedSet: any;
       mockDb.update.mockReturnValueOnce({
         set: vi.fn((v: any) => {
@@ -1105,8 +1127,8 @@ describe("generateShotVideoPrompt", () => {
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-        .mockReturnValueOnce(selectChain([]))
-        .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+        .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
       let capturedSet: any;
       mockDb.update.mockReturnValueOnce({
         set: vi.fn((v: any) => {
@@ -1151,8 +1173,8 @@ describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)",
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     await router.generateShotVideoPrompt({
@@ -1171,8 +1193,8 @@ describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)",
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     await router.generateShotVideoPrompt({
@@ -1233,8 +1255,8 @@ describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)",
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     await router.generateShotVideoPrompt({
@@ -1266,8 +1288,8 @@ describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)",
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     await router.generateShotVideoPrompt({
@@ -1326,8 +1348,8 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
       .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
       .mockReturnValueOnce(selectChain([{ bible: presetVisualIdentityBible() }])); // loadSeriesPresetVisualIdentity
 
     let capturedSet: any;
@@ -1363,8 +1385,8 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     const result = await router.generateShotVideoPrompt({
@@ -1384,8 +1406,8 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
       .mockReturnValueOnce(selectChain([{ bible: null }])); // no presetVisualIdentity stamped
 
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
@@ -1446,8 +1468,8 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+        .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
       mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
       await router.generateShotVideoPrompt({
@@ -1468,8 +1490,8 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+        .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
       mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
       await router.generateShotVideoPrompt({
@@ -1497,8 +1519,8 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+        .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
       mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
       await router.generateShotVideoPrompt({
@@ -1555,8 +1577,8 @@ describe("generateShotVideoPrompt — episodePlanContext excludes the next-episo
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
-      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     await router.generateShotVideoPrompt({
@@ -1588,8 +1610,8 @@ describe("generateShotVideoPrompt — episodePlanContext excludes the next-episo
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ locale: "th" }]));
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     await router.generateShotVideoPrompt({
@@ -1600,5 +1622,227 @@ describe("generateShotVideoPrompt — episodePlanContext excludes the next-episo
     const callArgs = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
     expect(callArgs.episodePlanContext).not.toContain("จุดค้าง");
     expect(callArgs.episodePlanContext).toContain("กางเกงผ้าอ้อมทำงานยังไงถึงต้องมี");
+  });
+});
+
+/**
+ * Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`,
+ * added 2026-07-11) — `resolveShotDialogueLines`'s new source 0
+ * (`deepDraftShotForDialogue`, gated by `verticalDramaSeriesDeepStoryDrafts`)
+ * wired end-to-end through this mutation: the canonical Overview-page
+ * dialogue must reach the LLM's `shotContext.dialogueLines`, must bypass the
+ * `shouldRegenerateDialogueForVideoPrompt` auto-regen heuristic entirely, and
+ * must be what's PERSISTED/RETURNED (persist-pin) rather than whatever the
+ * LLM's own `dialogue[]` output field echoes back.
+ */
+describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)", () => {
+  function canonicalEpisodeBreakdownItem(over: Record<string, unknown> = {}) {
+    return {
+      episodeNumber: 1,
+      workingTitle: "ตอนทดสอบ",
+      logline: "โลจไลน์ทดสอบ",
+      keyBeats: ["บีตหนึ่ง"],
+      ...over,
+    };
+  }
+
+  it("canonical Overview-page dialogue wins over a stale/wrong matchingClip.dialogue value, skips the auto-regen LLM call, and the final PERSISTED+RETURNED dialogue is pinned to the canonical source rather than the video-prompt LLM's own echoed dialogue field (regression test for the actual production bug)", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesDeepStoryDrafts: true });
+    mockGetActiveBreakdown.mockReturnValue([canonicalEpisodeBreakdownItem()]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 1,
+        summary: "shot summary",
+        dialogue_lines: [{ speaker: "หนูนา", line: "TESTMARK123" }],
+      },
+    ]);
+    mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+      prompt: "generated motion prompt",
+      negativeMotionPrompt: "no glitching",
+      // The LLM's own echoed dialogue field deliberately diverges from the
+      // canonical source fed into it — must never win.
+      dialogue: [{ lineTh: "บทที่ LLM แต่งขึ้นเอง ไม่ตรงกับต้นทาง", characterKey: "หนูนา" }],
+      creditsUsed: 3,
+      model: "gpt-vision",
+      usedVision: true,
+    });
+
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "old placeholder prompt",
+          durationSeconds: 6,
+          // Stale/wrong persisted value from a previous round — must never
+          // win once a canonical source exists (this is the actual bug).
+          dialogue: [{ lineTh: "ค่าที่ค้างผิดจากรอบก่อนหน้า", characterKey: "หนูนา" }],
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({ motionPromptPack: pack, episodeNumber: 1 });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale/bible lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    const result = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    // Canonical dialogue reached the LLM — not the stale matchingClip value.
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotContext: expect.objectContaining({
+          dialogueLines: [{ characterKey: "หนูนา", lineTh: "TESTMARK123" }],
+        }),
+      }),
+    );
+    // The auto-regen heuristic never fires for a canonically-resolved shot.
+    expect(mockGenerateVerticalDramaClipDialogue).not.toHaveBeenCalled();
+    // Persisted AND returned dialogue is pinned to the canonical source.
+    expect(result.dialogue).toEqual([{ characterKey: "หนูนา", lineTh: "TESTMARK123" }]);
+    expect(capturedSet.motionPromptPack.clips[0].dialogue).toEqual([
+      { characterKey: "หนูนา", lineTh: "TESTMARK123" },
+    ]);
+  });
+
+  it("flag off: byte-identical to before — deep-drafted canonical dialogue is never even read (readItemShotDrafts not called), matchingClip.dialogue still wins as source 1", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({}); // verticalDramaSeriesDeepStoryDrafts absent -> off
+    mockGetActiveBreakdown.mockReturnValue([canonicalEpisodeBreakdownItem()]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 1,
+        summary: "shot summary",
+        dialogue_lines: [{ speaker: "หนูนา", line: "TESTMARK123" }],
+      },
+    ]);
+
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "old placeholder prompt",
+          durationSeconds: 6,
+          // Deliberately long enough to clear the PRE-EXISTING, unrelated
+          // `shouldRegenerateDialogueForVideoPrompt` VD_DIALOGUE_UNDERFILLED
+          // safety net for a 6s clip (same technique as the story-density
+          // reform describe block above) — this test is about the flag gate,
+          // not that unrelated heuristic.
+          dialogue: [
+            {
+              lineTh: "ยายทวดจันมองตู้กระจกแล้วพูดเบา ๆ ว่าของในนั้นไม่ควรถูกแตะอีก",
+              characterKey: "หนูนา",
+            },
+          ],
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({ motionPromptPack: pack, episodeNumber: 1 });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockReadItemShotDrafts).not.toHaveBeenCalled();
+    expect(mockGenerateVerticalDramaClipDialogue).not.toHaveBeenCalled();
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotContext: expect.objectContaining({
+          dialogueLines: [
+            {
+              lineTh: "ยายทวดจันมองตู้กระจกแล้วพูดเบา ๆ ว่าของในนั้นไม่ควรถูกแตะอีก",
+              characterKey: "หนูนา",
+            },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it("reflects a dialogue edit made at the Overview page between two consecutive generate calls, with no manual sync step in between", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesDeepStoryDrafts: true });
+    mockGetActiveBreakdown.mockReturnValue([canonicalEpisodeBreakdownItem()]);
+
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [] as unknown[],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({ motionPromptPack: pack, episodeNumber: 1 });
+
+    // --- First call: Overview page currently has "TESTMARK123". ---
+    mockReadItemShotDrafts.mockReturnValueOnce([
+      {
+        shot_number: 1,
+        summary: "s",
+        dialogue_lines: [{ speaker: "หนูนา", line: "TESTMARK123" }],
+      },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    const firstResult = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+    expect(firstResult.dialogue).toEqual([{ characterKey: "หนูนา", lineTh: "TESTMARK123" }]);
+
+    // --- User edits the Overview page to "TESTMARK456", then immediately
+    // generates again — the very next call must reflect the edit without
+    // any explicit "sync" step. ---
+    mockReadItemShotDrafts.mockReturnValueOnce([
+      {
+        shot_number: 1,
+        summary: "s",
+        dialogue_lines: [{ speaker: "หนูนา", line: "TESTMARK456" }],
+      },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    const secondResult = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+    expect(secondResult.dialogue).toEqual([{ characterKey: "หนูนา", lineTh: "TESTMARK456" }]);
   });
 });

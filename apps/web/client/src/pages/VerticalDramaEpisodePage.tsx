@@ -4003,7 +4003,7 @@ function EpisodeWorkspaceShell({
         idempotencyKey: crypto.randomUUID(),
       },
       {
-        onSuccess: () => {
+        onSuccess: data => {
           void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
 
           const pack = episodeDetailQuery.data?.motionPromptPack;
@@ -4012,8 +4012,17 @@ function EpisodeWorkspaceShell({
           );
           const hasExistingVideoPrompt = Boolean(matchingClip?.prompt?.trim());
 
-          const successMessage =
-            lang === "th" ? "สร้างบทพูดใหม่แล้ว" : "New dialogue generated.";
+          // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+          // — `data.synced` is true only when the backend took the sync-only
+          // path (canonical Overview-page dialogue existed, no LLM call was
+          // made) rather than actually generating new dialogue.
+          const successMessage = data?.synced
+            ? lang === "th"
+              ? "อัปเดตจากหน้าภาพรวมแล้ว"
+              : "Synced from the Overview page."
+            : lang === "th"
+              ? "สร้างบทพูดใหม่แล้ว"
+              : "New dialogue generated.";
           if (hasExistingVideoPrompt) {
             toast.success(successMessage, {
               description:

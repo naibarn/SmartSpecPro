@@ -242,6 +242,16 @@ import type { ScriptBuilderOutput } from "../services/verticalDramaScriptGenerat
 // `generateShotVideoPrompt`'s per-shot video-prompt call. Safe as a static
 // import (no server/DB code, `@shared` module).
 import { formatStoryScriptEpisodePlanContext, type StoryScriptLang } from "@shared/verticalDramaSeries/storyScriptText";
+// Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`) —
+// TYPE-ONLY import of the deep-drafted shot's canonical dialogue shapes
+// (erased at compile time, zero runtime `require`, so safe despite
+// `verticalDramaStoryBible.ts` itself needing the lazy `import()` treatment
+// for its VALUE exports — see `getActiveBreakdown`'s existing dynamic-import
+// call site below for that established convention).
+import type {
+  VdDeepDraftShotDraft,
+  VdDeepDraftShotDialogueLine,
+} from "../services/verticalDramaStoryBible";
 import type {
   VerticalDramaMemoryKind,
   VerticalDramaPipelineStage,
@@ -1609,6 +1619,35 @@ type ShotDialogueLine = {
 };
 
 /**
+ * Shared mapping (planning/`polished-toasting-gadget.md`): a deep-drafted
+ * shot's canonical `{speaker, line, delivery}` dialogue line
+ * (`VdDeepDraftShotDialogueLine` — the Overview page's user-editable source
+ * of truth, `verticalDramaStoryBible.ts`) to this router's own
+ * `ShotDialogueLine` shape. Used by BOTH `resolveShotDialogueLines`'s new
+ * source 0 below AND `regenerateClipDialogue`'s sync-only short-circuit — a
+ * single function so the two call sites can never drift apart.
+ *
+ * `characterKey`/`delivery` follow the EXACT same conventions already
+ * established by source 3a below (deterministic beat-index mapping, itself
+ * reading the same `{speaker, line, delivery}` shape from
+ * `script.structure.beats[].dialogue_lines[]`): `characterKey` is stored
+ * VERBATIM as the speaker label (no consumer resolves it to a real character
+ * id — only rendered as a label / used to detect a speaker switch), and the
+ * freeform `delivery` STRING is folded into the structured shape's `tone`
+ * field (the closest single-field bridge between the two conventions; the
+ * original text is preserved verbatim in `tone`, not lost).
+ */
+function mapDeepDraftDialogueLineToShotDialogueLine(
+  line: VdDeepDraftShotDialogueLine
+): ShotDialogueLine {
+  return {
+    characterKey: line.speaker,
+    lineTh: line.line,
+    delivery: line.delivery ? { tone: line.delivery } : undefined,
+  };
+}
+
+/**
  * Resolve the dialogue line(s) for ONE shot's per-shot video prompt
  * (`generateShotVideoPrompt`) — a fallback chain, tried in order, since a
  * real Thai/whatever-locale dialogue line for this shot can live in any of
@@ -1697,6 +1736,22 @@ export function resolveShotDialogueLines(params: {
    * ready wiring for when it does).
    */
   sourceBeatIndexes?: number[];
+  /**
+   * Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+   * — this shot's deep-drafted entry (`bible.breakdownVersions[active]
+   * .items[episode].shotDrafts[shot]`, the Overview page's user-EDITABLE
+   * canonical dialogue source), when the caller has already resolved one.
+   * The caller resolves this (never a DB/import call inside this pure
+   * function — same "caller resolves, this function only consumes" contract
+   * as `matchingClip` above), gated by the `verticalDramaSeriesDeepStoryDrafts`
+   * tenant flag. `undefined` (every pre-existing caller that hasn't adopted
+   * this yet) or `null` (flag off, or this series/episode/shot has no deep
+   * draft) both preserve the exact pre-existing fallback chain below,
+   * byte-identical — this parameter's mere PRESENCE in the call signature
+   * changes nothing; only an actually-resolved non-null value with content
+   * changes the result.
+   */
+  deepDraftShot?: VdDeepDraftShotDraft | null;
 }): ShotDialogueLine[] {
   const {
     shotNumber,
@@ -1706,9 +1761,33 @@ export function resolveShotDialogueLines(params: {
     storyboardShotCount,
     knownSpeakerKeys,
     sourceBeatIndexes,
+    deepDraftShot,
   } = params;
 
-  // 1. Already-synced clip dialogue — most authoritative.
+  // 0. Deep-drafted canonical dialogue (planning/`polished-toasting-gadget.md`)
+  // — the Overview page's user-editable source of truth, when the caller has
+  // resolved one. Tried BEFORE every other source (including the previously
+  // most-authoritative source 1, `matchingClip.dialogue`) because a
+  // previously-persisted WRONG value on the clip must never keep winning over
+  // dialogue a human has since edited/confirmed on the Overview page (the
+  // exact bug this fix addresses — see this function's own updated doc
+  // comment above for the full incident).
+  if (deepDraftShot) {
+    // Explicit "intentionally no speech" — never guess a line for it, even
+    // if a lower-fidelity fallback source below has something.
+    if (deepDraftShot.silence_intent) return [];
+    if (deepDraftShot.dialogue_lines.length > 0) {
+      return deepDraftShot.dialogue_lines
+        .map(mapDeepDraftDialogueLineToShotDialogueLine)
+        .filter(l => l.lineTh.trim().length > 0);
+    }
+    // Deep-draft entry exists but carries NEITHER `dialogue_lines` NOR
+    // `silence_intent` (an in-progress/never-drafted shot) — fall through to
+    // the pre-existing chain below exactly as if `deepDraftShot` were absent.
+  }
+
+  // 1. Already-synced clip dialogue — most authoritative (among the
+  // pre-existing sources; source 0 above always wins when present).
   if (matchingClip?.dialogue && matchingClip.dialogue.length > 0) {
     return matchingClip.dialogue.filter(l => l.lineTh?.trim().length > 0);
   }
@@ -10083,11 +10162,97 @@ export const verticalDramaEpisodesRouter = router({
             : undefined;
       }
 
+      // Hoisted from further below (planning/`polished-toasting-gadget.md`
+      // — was previously computed only for `episodePlanContext`, right
+      // before the `subShotDecision?.needsSplit` branch) so its result
+      // (`shotEpisodePlanItem`) is also available for
+      // `deepDraftShotForDialogue` below, BEFORE `resolveShotDialogueLines`
+      // is called. Pure code-motion — same query, same position relative to
+      // `row`/`seriesId`/`tenantId`/`userId` being already in scope, no new
+      // DB round trip added.
+      const [localeSeriesRow] = await db
+        .select({ locale: verticalDramaSeries.locale, bible: verticalDramaSeries.bible })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId)
+          )
+        )
+        .limit(1);
+
+      // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
+      // scene-setting plan context, resolved from the ALREADY-loaded
+      // `localeSeriesRow.bible` above (no extra DB round trip).
+      //
+      // Cliffhanger-bleed fix (confirmed production bug, 2026-07-11):
+      // `cliffhangerLine` is intentionally the NEXT episode's teased theme
+      // (good serialized-drama writing — see `readItemCliffhangerLine`'s own
+      // doc comment / the story bible), so it must NEVER be included in the
+      // context sent to THIS per-shot generator. This call site builds
+      // `episodePlanContext` for `generateVerticalDramaShotVideoPrompt`
+      // below, which runs once per shot (`generateShotVideoPrompt` mutation)
+      // — including the next episode's cliffhanger here meant every single
+      // shot's independent LLM call saw next-episode content as "reference"
+      // context, and cheaper models (observed: `openai/gpt-5.4-nano`) did
+      // not reliably honor the "reference only, do not copy" instruction,
+      // bleeding next-episode dialogue/themes into unrelated current-episode
+      // shots (confirmed: series 6 / episode 41, shots 2/3/6). A single shot
+      // never needs forward-looking plot info — `storyboardShot` already
+      // supplies everything this generation needs — so `cliffhangerLine` is
+      // deliberately omitted (`undefined`) here. `logline`/`keyBeats`/
+      // `workingTitle` are legitimate current-episode continuity grounding
+      // and stay included. Contrast with the whole-EPISODE-PACK generator
+      // (`generateVideoMotionPromptPack`, built in
+      // `verticalDramaEpisodePipeline.ts`'s `generateRealMotionPromptPack`),
+      // which renders this context as ONE global block for the whole
+      // episode (not per-shot) and legitimately keeps the cliffhanger to
+      // shape the episode's own ending beat — see the reasoning comment at
+      // `verticalDramaVideoMotionPromptGeneration.ts`'s `buildUserPrompt`.
+      const { getActiveBreakdown, readItemShotDrafts } = await import(
+        "../services/verticalDramaStoryBible"
+      );
+      const shotEpisodePlanItem = getActiveBreakdown(
+        (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
+      ).find(item => item.episodeNumber === Number(row.episodeNumber));
+      const shotEpisodePlanContext = shotEpisodePlanItem
+        ? formatStoryScriptEpisodePlanContext(
+            resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
+            {
+              episodeNumber: shotEpisodePlanItem.episodeNumber,
+              workingTitle: shotEpisodePlanItem.workingTitle,
+              logline: shotEpisodePlanItem.logline,
+              keyBeats: shotEpisodePlanItem.keyBeats,
+              cliffhangerLine: undefined,
+            }
+          )
+        : undefined;
+
+      // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+      // — gated behind the SAME `verticalDramaSeriesDeepStoryDrafts` tenant
+      // flag convention already used for `shotSourceBeatIndexes` above
+      // (`speechBudgetEnabled`). Reuses `shotEpisodePlanItem` (just resolved
+      // above) — no additional DB read. `null` when the flag is off, or this
+      // series/episode/shot has no deep-drafted `shotDrafts` entry yet —
+      // `resolveShotDialogueLines` treats `null` identically to `undefined`
+      // (falls straight through to the pre-existing fallback chain).
+      const deepStoryDraftsEnabledForDialogue =
+        await resolveVerticalDramaDeepStoryDraftsFlag(tenantId);
+      const deepDraftShotForDialogue: VdDeepDraftShotDraft | null =
+        deepStoryDraftsEnabledForDialogue && shotEpisodePlanItem
+          ? ((readItemShotDrafts(shotEpisodePlanItem) ?? []).find(
+              s => s.shot_number === input.shotNumber
+            ) ?? null)
+          : null;
+
       // Dialogue lines matching this shot — fallback chain (2026-07-06 fix:
       // dialogue was silently dropped whenever the `dialogue_audio_plan`
       // pipeline stage was never run, even though the script already has
       // dialogue for every scene — see `resolveShotDialogueLines`'s doc
-      // comment for the full chain order).
+      // comment for the full chain order; source 0, the deep-drafted
+      // canonical dialogue above, was added 2026-07-11 — see that
+      // function's doc comment for the full incident).
       const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
       const matchingClip = pack?.clips?.find(c =>
         c.sourceShotNumbers?.includes(input.shotNumber)
@@ -10106,6 +10271,7 @@ export const verticalDramaEpisodesRouter = router({
         storyboardShotCount: storyboard?.shots?.length,
         knownSpeakerKeys: knownSpeakerKeysForShot,
         sourceBeatIndexes: shotSourceBeatIndexes,
+        deepDraftShot: deepDraftShotForDialogue,
       });
 
       // Speaker-aware sub-shots (speaker-aware sub-shots task, Package 3) —
@@ -10161,8 +10327,23 @@ export const verticalDramaEpisodesRouter = router({
         shotVideoCharacterIdentitySources
       );
 
+      // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+      // — a shot whose dialogue was actually resolved from the Overview
+      // page's canonical source above (`deepDraftShotForDialogue`, either an
+      // explicit `silence_intent` or one-or-more `dialogue_lines`) must never
+      // be handed to this heuristic quality gate: a human already
+      // authored/confirmed this exact dialogue (or explicitly intended
+      // silence), so it must never be auto-rewritten by
+      // `generateVerticalDramaClipDialogue` just because it happens to look
+      // "underfilled"/duplicated to the heuristic below.
+      const dialogueResolvedFromCanonicalSource =
+        deepDraftShotForDialogue !== null &&
+        (deepDraftShotForDialogue.silence_intent !== undefined ||
+          deepDraftShotForDialogue.dialogue_lines.length > 0);
+
       let extraDialogueCreditsUsed = 0;
       if (
+        !dialogueResolvedFromCanonicalSource &&
         shouldRegenerateDialogueForVideoPrompt({
           pack,
           shotNumber: input.shotNumber,
@@ -10231,65 +10412,6 @@ export const verticalDramaEpisodesRouter = router({
             subShotPolicy
           )
         : null;
-
-      const [localeSeriesRow] = await db
-        .select({ locale: verticalDramaSeries.locale, bible: verticalDramaSeries.bible })
-        .from(verticalDramaSeries)
-        .where(
-          and(
-            eq(verticalDramaSeries.id, seriesId),
-            eq(verticalDramaSeries.tenantId, tenantId),
-            eq(verticalDramaSeries.userId, userId)
-          )
-        )
-        .limit(1);
-
-      // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
-      // scene-setting plan context, resolved from the ALREADY-loaded
-      // `localeSeriesRow.bible` above (no extra DB round trip).
-      //
-      // Cliffhanger-bleed fix (confirmed production bug, 2026-07-11):
-      // `cliffhangerLine` is intentionally the NEXT episode's teased theme
-      // (good serialized-drama writing — see `readItemCliffhangerLine`'s own
-      // doc comment / the story bible), so it must NEVER be included in the
-      // context sent to THIS per-shot generator. This call site builds
-      // `episodePlanContext` for `generateVerticalDramaShotVideoPrompt`
-      // below, which runs once per shot (`generateShotVideoPrompt` mutation)
-      // — including the next episode's cliffhanger here meant every single
-      // shot's independent LLM call saw next-episode content as "reference"
-      // context, and cheaper models (observed: `openai/gpt-5.4-nano`) did
-      // not reliably honor the "reference only, do not copy" instruction,
-      // bleeding next-episode dialogue/themes into unrelated current-episode
-      // shots (confirmed: series 6 / episode 41, shots 2/3/6). A single shot
-      // never needs forward-looking plot info — `storyboardShot` already
-      // supplies everything this generation needs — so `cliffhangerLine` is
-      // deliberately omitted (`undefined`) here. `logline`/`keyBeats`/
-      // `workingTitle` are legitimate current-episode continuity grounding
-      // and stay included. Contrast with the whole-EPISODE-PACK generator
-      // (`generateVideoMotionPromptPack`, built in
-      // `verticalDramaEpisodePipeline.ts`'s `generateRealMotionPromptPack`),
-      // which renders this context as ONE global block for the whole
-      // episode (not per-shot) and legitimately keeps the cliffhanger to
-      // shape the episode's own ending beat — see the reasoning comment at
-      // `verticalDramaVideoMotionPromptGeneration.ts`'s `buildUserPrompt`.
-      const { getActiveBreakdown } = await import(
-        "../services/verticalDramaStoryBible"
-      );
-      const shotEpisodePlanItem = getActiveBreakdown(
-        (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
-      ).find(item => item.episodeNumber === Number(row.episodeNumber));
-      const shotEpisodePlanContext = shotEpisodePlanItem
-        ? formatStoryScriptEpisodePlanContext(
-            resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
-            {
-              episodeNumber: shotEpisodePlanItem.episodeNumber,
-              workingTitle: shotEpisodePlanItem.workingTitle,
-              logline: shotEpisodePlanItem.logline,
-              keyBeats: shotEpisodePlanItem.keyBeats,
-              cliffhangerLine: undefined,
-            }
-          )
-        : undefined;
 
       if (subShotDecision?.needsSplit) {
         return generateAndPersistSplitShotVideoPrompt({
@@ -10440,6 +10562,29 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
+      // Persist-pin (planning/`polished-toasting-gadget.md`) — the
+      // video-prompt LLM's own `dialogue[]` output field is an ECHO of the
+      // resolved `dialogueLines` sent into it above, not a guaranteed
+      // pass-through (models occasionally reword/paraphrase a spoken line
+      // while writing the surrounding motion prompt). Pin the PERSISTED (and
+      // returned) dialogue back to `dialogueLines` verbatim — the exact
+      // value that was resolved to feed the LLM, whether that came from the
+      // new canonical Overview-page source (source 0) or any pre-existing
+      // fallback source — so it can never silently drift from whatever the
+      // user actually sees/edits at the Overview page. The ONE exception:
+      // when a translation is actually required (`dialogueLanguage` set to a
+      // non-Thai locale), the LLM's own translated `dialogue[]` remains
+      // authoritative — there is no source-language line to pin back to in
+      // that case. Also skipped when `dialogueLines` is empty (this shot has
+      // no resolved source dialogue at all, so there is nothing to pin to —
+      // whatever `result.dialogue` the LLM invented, if anything, is kept).
+      const shouldPinDialogueToResolvedSource =
+        dialogueLines.length > 0 &&
+        (pack?.dialogueLanguage === "th" || pack?.dialogueLanguage === undefined);
+      const persistedDialogue = shouldPinDialogueToResolvedSource
+        ? dialogueLines
+        : result.dialogue;
+
       // Persist onto the matching clip — create a minimal clip entry if the
       // pack exists but has no matching clip, or a minimal pack if the pack
       // itself is entirely absent (mirrors `setEpisodeModelSelection`'s
@@ -10512,7 +10657,7 @@ export const verticalDramaEpisodesRouter = router({
               prompt: result.prompt,
               negativeMotionPrompt: result.negativeMotionPrompt,
               durationSeconds: storyboardShot?.durationSeconds ?? 8,
-              dialogue: result.dialogue,
+              dialogue: persistedDialogue,
               requiredDisclosure: result.requiredDisclosure,
               audioDirection: result.audioDirection,
             },
@@ -10540,7 +10685,7 @@ export const verticalDramaEpisodesRouter = router({
                 prompt: result.prompt,
                 negativeMotionPrompt: result.negativeMotionPrompt,
                 durationSeconds: storyboardShot?.durationSeconds ?? 8,
-                dialogue: result.dialogue,
+                dialogue: persistedDialogue,
                 requiredDisclosure: result.requiredDisclosure,
                 audioDirection: result.audioDirection,
               },
@@ -10564,7 +10709,7 @@ export const verticalDramaEpisodesRouter = router({
 
       return {
         prompt: result.prompt,
-        dialogue: result.dialogue,
+        dialogue: persistedDialogue,
         creditsUsed: result.creditsUsed + extraDialogueCreditsUsed,
         usedVision: result.usedVision,
         audioDirection: result.audioDirection,
@@ -10623,86 +10768,145 @@ export const verticalDramaEpisodesRouter = router({
         c.sourceShotNumbers?.includes(input.shotNumber)
       );
 
-      // Existing (possibly broken) dialogue + nearby script scene dialogue —
-      // passed only as TONE/CONTINUITY context, never copied verbatim; see
-      // `generateVerticalDramaClipDialogue`'s system prompt for the explicit
-      // "do not reuse a broken/fragment line as-is" instruction.
-      const knownSpeakerKeysForDialogueRegen = await loadSeriesKnownSpeakerKeys(
-        tenantId,
-        seriesId
-      );
-      const existingDialogueLines = resolveShotDialogueLines({
-        shotNumber: input.shotNumber,
-        matchingClip,
-        dialogueAudioPlan: row.dialogueAudioPlan as {
-          dialogue_lines?: Array<Record<string, unknown>>;
-        } | null,
-        script: row.script as Record<string, unknown> | null,
-        storyboardShotCount: storyboard?.shots?.length,
-        knownSpeakerKeys: knownSpeakerKeysForDialogueRegen,
-      });
-      const sceneDialogueContext = existingDialogueLines
-        .map(l =>
-          l.characterKey ? `${l.characterKey}: "${l.lineTh}"` : `"${l.lineTh}"`
-        )
-        .filter(l => l.length > 0);
-
-      // Character identity map — same convention as `generateShotVideoPrompt`,
-      // so the dialogue writer knows exactly which character keys are valid
-      // speakers for this shot (used by the parser-cleanup rules too).
-      const clipDialogueCharacterIdentitySources =
-        await resolveShotCharacterIdentitySources(
-          tenantId,
-          seriesId,
-          frame?.requiredCharacterRefs
+      // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+      // — resolved BEFORE any LLM/credit/rate-limit work below (same gate/
+      // resolution shape as `generateShotVideoPrompt`'s
+      // `deepDraftShotForDialogue`): when this shot carries a canonical
+      // dialogue (or an explicit `silence_intent`) at the Overview page,
+      // this mutation always syncs to / rejects based on THAT source alone
+      // and never calls the LLM, confirmed with the user — "สร้างบทพูดใหม่"
+      // is not a substitute editor for Overview-authored dialogue.
+      const deepStoryDraftsEnabledForRegen =
+        await resolveVerticalDramaDeepStoryDraftsFlag(tenantId);
+      let deepDraftShotForRegen: VdDeepDraftShotDraft | null = null;
+      if (deepStoryDraftsEnabledForRegen) {
+        const [regenLocaleSeriesRow] = await db
+          .select({ bible: verticalDramaSeries.bible })
+          .from(verticalDramaSeries)
+          .where(
+            and(
+              eq(verticalDramaSeries.id, seriesId),
+              eq(verticalDramaSeries.tenantId, tenantId),
+              eq(verticalDramaSeries.userId, userId)
+            )
+          )
+          .limit(1);
+        const { getActiveBreakdown, readItemShotDrafts } = await import(
+          "../services/verticalDramaStoryBible"
         );
-      const clipDialogueCharacterIdentityMapBlock =
-        buildCharacterIdentityMapBlock(
-          frame?.requiredCharacterRefs ?? [],
-          clipDialogueCharacterIdentitySources
-        );
-      const shotDurationSeconds =
-        matchingClip?.durationSeconds ?? storyboardShot?.durationSeconds ?? 8;
+        const regenEpisodePlanItem = getActiveBreakdown(
+          (regenLocaleSeriesRow?.bible as Record<string, unknown> | null) ??
+            null
+        ).find(item => item.episodeNumber === Number(row.episodeNumber));
+        deepDraftShotForRegen = regenEpisodePlanItem
+          ? ((readItemShotDrafts(regenEpisodePlanItem) ?? []).find(
+              s => s.shot_number === input.shotNumber
+            ) ?? null)
+          : null;
+      }
 
-      let result;
-      try {
-        result = await generateVerticalDramaClipDialogue({
-          userId,
-          tenantId,
-          seriesId,
-          episodeId,
-          shotNumber: input.shotNumber,
-          shotContext: {
-            description: storyboardShot?.description,
-            camera: storyboardShot?.cameraSetup,
-            durationSeconds: shotDurationSeconds,
-            characterIdentityMap: clipDialogueCharacterIdentityMapBlock,
-            sceneDialogueContext: sceneDialogueContext.length
-              ? sceneDialogueContext
-              : undefined,
-          },
-          instruction: input.instruction,
-          dialogueLanguage: pack?.dialogueLanguage,
-          thaiAccent: pack?.thaiAccent,
-          idempotencyKey: input.idempotencyKey,
+      if (deepDraftShotForRegen?.silence_intent) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "ช็อตนี้ถูกกำหนดไว้ว่าตั้งใจไม่มีบทพูด — แก้ไขได้ที่หน้าภาพรวม (Overview)",
         });
-      } catch (err) {
-        if (err instanceof ClipDialogueInsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "เครดิตไม่พอ" });
-        }
-        if (err instanceof ClipDialogueRateLimitExceededError) {
-          throw new TRPCError({
-            code: "TOO_MANY_REQUESTS",
-            message: err.message,
+      }
+      const canonicalDialogueLinesForRegen: ShotDialogueLine[] | null =
+        deepDraftShotForRegen && deepDraftShotForRegen.dialogue_lines.length > 0
+          ? deepDraftShotForRegen.dialogue_lines
+              .map(mapDeepDraftDialogueLineToShotDialogueLine)
+              .filter(l => l.lineTh.trim().length > 0)
+          : null;
+
+      let result: { dialogue: ShotDialogueLine[]; creditsUsed: number };
+      const syncedFromCanonical = canonicalDialogueLinesForRegen !== null;
+      if (canonicalDialogueLinesForRegen) {
+        // Sync-only: no LLM call, no credits, `input.instruction` (if any)
+        // is deliberately ignored — the canonical Overview-page dialogue
+        // always wins.
+        result = { dialogue: canonicalDialogueLinesForRegen, creditsUsed: 0 };
+      } else {
+        // Existing (possibly broken) dialogue + nearby script scene dialogue —
+        // passed only as TONE/CONTINUITY context, never copied verbatim; see
+        // `generateVerticalDramaClipDialogue`'s system prompt for the explicit
+        // "do not reuse a broken/fragment line as-is" instruction.
+        const knownSpeakerKeysForDialogueRegen = await loadSeriesKnownSpeakerKeys(
+          tenantId,
+          seriesId
+        );
+        const existingDialogueLines = resolveShotDialogueLines({
+          shotNumber: input.shotNumber,
+          matchingClip,
+          dialogueAudioPlan: row.dialogueAudioPlan as {
+            dialogue_lines?: Array<Record<string, unknown>>;
+          } | null,
+          script: row.script as Record<string, unknown> | null,
+          storyboardShotCount: storyboard?.shots?.length,
+          knownSpeakerKeys: knownSpeakerKeysForDialogueRegen,
+        });
+        const sceneDialogueContext = existingDialogueLines
+          .map(l =>
+            l.characterKey ? `${l.characterKey}: "${l.lineTh}"` : `"${l.lineTh}"`
+          )
+          .filter(l => l.length > 0);
+
+        // Character identity map — same convention as `generateShotVideoPrompt`,
+        // so the dialogue writer knows exactly which character keys are valid
+        // speakers for this shot (used by the parser-cleanup rules too).
+        const clipDialogueCharacterIdentitySources =
+          await resolveShotCharacterIdentitySources(
+            tenantId,
+            seriesId,
+            frame?.requiredCharacterRefs
+          );
+        const clipDialogueCharacterIdentityMapBlock =
+          buildCharacterIdentityMapBlock(
+            frame?.requiredCharacterRefs ?? [],
+            clipDialogueCharacterIdentitySources
+          );
+        const shotDurationSeconds =
+          matchingClip?.durationSeconds ?? storyboardShot?.durationSeconds ?? 8;
+
+        try {
+          result = await generateVerticalDramaClipDialogue({
+            userId,
+            tenantId,
+            seriesId,
+            episodeId,
+            shotNumber: input.shotNumber,
+            shotContext: {
+              description: storyboardShot?.description,
+              camera: storyboardShot?.cameraSetup,
+              durationSeconds: shotDurationSeconds,
+              characterIdentityMap: clipDialogueCharacterIdentityMapBlock,
+              sceneDialogueContext: sceneDialogueContext.length
+                ? sceneDialogueContext
+                : undefined,
+            },
+            instruction: input.instruction,
+            dialogueLanguage: pack?.dialogueLanguage,
+            thaiAccent: pack?.thaiAccent,
+            idempotencyKey: input.idempotencyKey,
           });
+        } catch (err) {
+          if (err instanceof ClipDialogueInsufficientCreditsError) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "เครดิตไม่พอ" });
+          }
+          if (err instanceof ClipDialogueRateLimitExceededError) {
+            throw new TRPCError({
+              code: "TOO_MANY_REQUESTS",
+              message: err.message,
+            });
+          }
+          if (err instanceof ClipDialogueSchemaValidationError) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "สร้างบทพูดใหม่ไม่สำเร็จ ลองอีกครั้ง",
+            });
+          }
+          throw err;
         }
-        if (err instanceof ClipDialogueSchemaValidationError) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "สร้างบทพูดใหม่ไม่สำเร็จ ลองอีกครั้ง",
-          });
-        }
-        throw err;
       }
 
       // Persist onto the matching clip's `dialogue` — OVERWRITES any existing
@@ -10789,6 +10993,12 @@ export const verticalDramaEpisodesRouter = router({
       return {
         dialogue: result.dialogue,
         creditsUsed: result.creditsUsed,
+        // Additive (planning/`polished-toasting-gadget.md`) — `true` only on
+        // the sync-only path above, so the frontend can swap the toast copy
+        // from "generated new dialogue" to "synced from the Overview page".
+        // Omitted (not `false`) on the pre-existing LLM path, matching this
+        // field's own "additive optional" contract.
+        ...(syncedFromCanonical ? { synced: true } : {}),
       };
     }),
 

@@ -239,13 +239,22 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
   })),
 }));
 
-const { mockGetActiveBreakdown, mockReadItemCliffhangerLine } = vi.hoisted(() => ({
-  mockGetActiveBreakdown: vi.fn(() => []),
-  mockReadItemCliffhangerLine: vi.fn(() => undefined),
-}));
+// Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`) —
+// `readItemShotDrafts` is dynamically imported from the SAME module
+// (destructured alongside `getActiveBreakdown`) to resolve
+// `deepDraftShotForDialogue`; default `null` so every pre-existing test here
+// (which never opts into `verticalDramaSeriesDeepStoryDrafts`) never calls
+// it.
+const { mockGetActiveBreakdown, mockReadItemCliffhangerLine, mockReadItemShotDrafts } =
+  vi.hoisted(() => ({
+    mockGetActiveBreakdown: vi.fn(() => []),
+    mockReadItemCliffhangerLine: vi.fn(() => undefined),
+    mockReadItemShotDrafts: vi.fn(() => null),
+  }));
 vi.mock("../../services/verticalDramaStoryBible", () => ({
   getActiveBreakdown: mockGetActiveBreakdown,
   readItemCliffhangerLine: mockReadItemCliffhangerLine,
+  readItemShotDrafts: mockReadItemShotDrafts,
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
@@ -422,8 +431,8 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
       .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
-      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale/bible lookup
       .mockReturnValueOnce(
         selectChain([
           { id: 501, characterKey: "hero" },
@@ -523,8 +532,8 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ locale: "en" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
       .mockReturnValueOnce(
         selectChain([
           { id: 501, characterKey: "hero" },
