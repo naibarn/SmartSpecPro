@@ -42,12 +42,13 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { debugError } from "../_core/logger";
 import {
   verticalDramaLocaleEnglishName,
@@ -225,7 +226,10 @@ export async function runVerticalDramaSeriesMemoryPlanning(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 

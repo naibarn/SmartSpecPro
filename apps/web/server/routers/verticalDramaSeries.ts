@@ -2800,31 +2800,24 @@ export const verticalDramaSeriesRouter = router({
   }),
 
   /**
-   * Manual LLM model override (added 2026-07-11 — see
-   * `/home/dev/.claude/plans/polished-toasting-gadget.md`) — dedicated
-   * merge-mutation for the series' `llmModelPolicy` jsonb column (mirrors
-   * `setSeriesTargetAudienceRegion`'s read-modify-write pattern above —
-   * NOT `updateSeries`'s wholesale-replace `policy` handling). At least one
-   * of `startFramePlanModelId`/`storyboardModelId` must be provided;
-   * `null` always means "automatic" and is always valid. A non-null model id
-   * must be present in `listQualityPlanningModels`' eligible set, or this
-   * throws `BAD_REQUEST` — never silently persists an ineligible pin.
+   * Manual LLM model override (added 2026-07-11, widened the same day to a
+   * single series-wide field —
+   * `planning/vertical-drama-centralized-model-policy/plan.md`) — sets the
+   * series' `llmModelPolicy.defaultModelId`, the ONE override that applies to
+   * every LLM call in the Vertical Drama chain for this series (see
+   * `server/services/verticalDramaLlmModelPolicy.ts`). `defaultModelId` is
+   * `required-but-nullable`: `null` always means "automatic" (each stage's
+   * own auto-selector); a non-null model id must be present in
+   * `listQualityPlanningModels`' eligible set, or this throws `BAD_REQUEST`
+   * — never silently persists an ineligible pin. The whole `llmModelPolicy`
+   * column is overwritten (not merged) since there is now only one field.
    */
   setSeriesLlmModelPolicy: verticalDramaProcedure
     .input(
-      z
-        .object({
-          seriesId: z.string().min(1),
-          startFramePlanModelId: z.string().min(1).nullable().optional(),
-          storyboardModelId: z.string().min(1).nullable().optional(),
-        })
-        .refine(
-          (value) =>
-            value.startFramePlanModelId !== undefined || value.storyboardModelId !== undefined,
-          {
-            message: "At least one of startFramePlanModelId or storyboardModelId is required",
-          },
-        ),
+      z.object({
+        seriesId: z.string().min(1),
+        defaultModelId: z.string().min(1).nullable(),
+      }),
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
@@ -2834,10 +2827,7 @@ export const verticalDramaSeriesRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
       }
 
-      const providedModelIds = [input.startFramePlanModelId, input.storyboardModelId].filter(
-        (modelId): modelId is string => typeof modelId === "string" && modelId.length > 0,
-      );
-      if (providedModelIds.length > 0) {
+      if (input.defaultModelId !== null) {
         const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
         const { selectQualityLargeContextEligibleModels } = await import(
           "../services/verticalDramaImproveScript"
@@ -2846,26 +2836,18 @@ export const verticalDramaSeriesRouter = router({
         const eligibleModelIds = new Set(
           selectQualityLargeContextEligibleModels(rows).map((row) => row.modelId),
         );
-        for (const modelId of providedModelIds) {
-          if (!eligibleModelIds.has(modelId)) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Model "${modelId}" is not eligible for this planning stage`,
-            });
-          }
+        if (!eligibleModelIds.has(input.defaultModelId)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Model "${input.defaultModelId}" is not eligible for this planning stage`,
+          });
         }
       }
 
-      const existing = await loadOwnedSeries(tenantId, userId, seriesId);
-      const existingPolicy =
-        (existing.llmModelPolicy as VerticalDramaSeriesLlmModelPolicy | null) ?? {};
-      const nextPolicy: VerticalDramaSeriesLlmModelPolicy = { ...existingPolicy };
-      if (input.startFramePlanModelId !== undefined) {
-        nextPolicy.startFramePlanModelId = input.startFramePlanModelId;
-      }
-      if (input.storyboardModelId !== undefined) {
-        nextPolicy.storyboardModelId = input.storyboardModelId;
-      }
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const nextPolicy: VerticalDramaSeriesLlmModelPolicy = {
+        defaultModelId: input.defaultModelId,
+      };
 
       const [row] = await db
         .update(verticalDramaSeries)

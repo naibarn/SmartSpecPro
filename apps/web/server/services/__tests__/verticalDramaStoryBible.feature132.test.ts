@@ -56,6 +56,21 @@ vi.mock("../_core/logger", () => ({
   debugError: vi.fn(),
 }));
 
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 2) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (`resolveStoryBibleModel`, which is REAL in
+// this file and resolves via the mocked `loadEnabledLlmModelRows`/
+// `selectBestLlmModel` above) so this file's pre-existing "no override
+// configured" behavior/assertions are unaffected and no real DB access
+// happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
+
 import {
   generateStoryBible,
   generateStoryBibleDeep,

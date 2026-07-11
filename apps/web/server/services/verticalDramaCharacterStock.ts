@@ -181,7 +181,14 @@ export function characterRefChangeStaleTargets(): {
   return stagesInvalidatedByCharacterRefChange();
 }
 
-/** The two character-sheet asset `role`s considered as a SECOND reference image (F131Z). */
+/**
+ * The two character-sheet asset `role`s considered as a SECOND reference
+ * image (F131Z). Deliberately does NOT include `"character_design_bible"`
+ * (vertical-drama-character-sheet-consolidation plan) — several of that
+ * role's 11 sheet formats (e.g. `color_palette`, `material_fabric`) carry no
+ * face at all, so they must never be picked as an identity-lock reference for
+ * storyboard/shot generation.
+ */
 const CHARACTER_SHEET_ROLES = [
   "character_sheet_turnaround",
   "character_sheet_full",

@@ -67,12 +67,13 @@ import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./credi
 import { debugError } from "../_core/logger";
 import { CHILD_SAFETY_DIRECTIVE_MARKER } from "@shared/verticalDramaSeries/characterLock";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -157,6 +158,7 @@ export interface VerticalDramaShotImageActionProductLockFact {
 export interface GenerateShotImageActionParams {
   userId: number;
   tenantId?: string;
+  seriesId: number;
   locale?: "th" | "en";
   action: VerticalDramaShotImageActionKind;
   shot: {
@@ -276,7 +278,10 @@ export async function generateShotImageAction(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId,
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildShotImageActionUserPrompt(params);
 

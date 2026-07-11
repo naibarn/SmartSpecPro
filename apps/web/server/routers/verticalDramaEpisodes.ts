@@ -5286,6 +5286,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
         prompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: idempotencyKey
           ? `${idempotencyKey}:subshot-${subShot.subShotNumber}:prompt-qc`
           : undefined,
@@ -7918,6 +7919,7 @@ export const verticalDramaEpisodesRouter = router({
           softenActionResult = await generateShotImageAction({
             userId,
             tenantId,
+            seriesId,
             action: "soften",
             softenLevel: effectiveSoftenLevel,
             shot: {
@@ -7996,6 +7998,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: renderStartFramePrompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
@@ -8353,6 +8356,7 @@ export const verticalDramaEpisodesRouter = router({
         gridActionResult = await generateShotImageAction({
           userId,
           tenantId,
+          seriesId,
           action: "multi_angle_grid",
           // Content-policy-risk soften level (Phase 1.3) — the skill
           // authors the grid prompt AND the soften wording together in this
@@ -8442,6 +8446,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: gridPromptWithIdentityMap,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
@@ -8768,6 +8773,7 @@ export const verticalDramaEpisodesRouter = router({
         repairActionResult = await generateShotImageAction({
           userId,
           tenantId,
+          seriesId,
           action: "repair",
           softenLevel: effectiveSoftenLevel,
           shot: {
@@ -8881,6 +8887,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: softenedRepairPrompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
@@ -9155,6 +9162,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: formatted.prompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
@@ -10010,6 +10018,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: result.prompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,

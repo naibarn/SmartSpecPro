@@ -54,7 +54,6 @@ import {
   estimateVerticalDramaSpeechSeconds,
 } from "@shared/verticalDramaSeries/dialogueQuality";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -66,6 +65,8 @@ import {
   // transitive chain is already loaded by every test of this file.
   type VdDeepDraftShotDraft,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 // Section 05 (spec §7.1/§7.3 dialogue rules v2 + speech profiles, F132D/
 // F132F, added 2026-07-09) — the ONE canonical quality-criteria bundle
 // (spec §11 "Unified Criteria Application") and the speech-profile schema +
@@ -1035,7 +1036,10 @@ export async function generateEpisodeScript(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 

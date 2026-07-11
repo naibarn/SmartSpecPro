@@ -193,6 +193,26 @@
         }
       }
     },
+    "requested_sheet_type": {
+      "type": "string",
+      "description": "Which Character Design Bible sheet format to author, in addition to the 5 always-required prompt fields. 'auto' and 'turnaround' both resolve to the existing turnaround_prompt (no extra sheet_prompt field authored). 'full_combined' and the 11 named formats each author an additional sheet_prompt/sheet_type pair per skill.md's 'Character Design Bible sheet types' section. Absent entirely = same as 'auto' (legacy/default behavior, unchanged).",
+      "enum": [
+        "auto",
+        "turnaround",
+        "full_combined",
+        "cover",
+        "character_profile",
+        "face_detail",
+        "expression_12",
+        "hair_reference",
+        "costume_breakdown",
+        "material_fabric",
+        "color_palette",
+        "pose_library",
+        "body_proportion",
+        "ai_prompt_lock"
+      ]
+    },
     "preset_visual_identity": {
       "type": ["object", "null"],
       "additionalProperties": true,

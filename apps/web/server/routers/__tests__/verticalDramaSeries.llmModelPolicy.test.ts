@@ -1,7 +1,8 @@
 /**
  * Vertical Drama Series — manual LLM model override coverage
- * (`listQualityPlanningModels` / `setSeriesLlmModelPolicy`, added 2026-07-11
- * — see `/home/dev/.claude/plans/polished-toasting-gadget.md`).
+ * (`listQualityPlanningModels` / `setSeriesLlmModelPolicy`, added 2026-07-11,
+ * narrowed to a single series-wide `defaultModelId` field the same day per
+ * `planning/vertical-drama-centralized-model-policy/plan.md` Phase 1).
  *
  * Same "mock the whole module graph, test the exported procedure handler
  * directly" convention as `verticalDramaSeries.setSeriesTargetAudienceRegion.test.ts`
@@ -17,8 +18,8 @@
  *    (modelName/providerDisplayName), falls back to providerName/modelId
  *    when no label row is found, and returns `[]` (without ever touching the
  *    DB for labels) when nothing is eligible.
- *  - `setSeriesLlmModelPolicy`: read-modify-write merge (preserves the OTHER
- *    field when only one is provided), rejects a non-eligible model id with
+ *  - `setSeriesLlmModelPolicy`: overwrites the whole `llmModelPolicy` column
+ *    with `{ defaultModelId }`, rejects a non-eligible model id with
  *    BAD_REQUEST, accepts `null` (always valid, means "automatic") without
  *    any eligibility check, and the ownership guard.
  */
@@ -135,8 +136,7 @@ const SERIES_ROW_WITH_POLICY = {
   title: "Corporate Betrayal",
   status: "active",
   llmModelPolicy: {
-    startFramePlanModelId: "provider-a/old-model",
-    storyboardModelId: "provider-a/old-storyboard-model",
+    defaultModelId: "provider-a/old-model",
   },
 };
 
@@ -152,41 +152,31 @@ beforeEach(() => {
 // The mocked `protectedProcedure.input()` above is a passthrough (does not
 // actually re-validate) — so we independently validate the router's real Zod
 // schema shape here via a fresh schema mirroring the mutation's declared
-// input, guarding the "at least one field required" `.refine()` contract
-// even though every other test in this file invokes the handler directly
-// (bypassing tRPC's own input parsing). Same convention as
-// `verticalDramaSeries.setSeriesTargetAudienceRegion.test.ts`'s own region
-// enum schema mirror.
-const setLlmModelPolicyInputSchema = z
-  .object({
-    seriesId: z.string().min(1),
-    startFramePlanModelId: z.string().min(1).nullable().optional(),
-    storyboardModelId: z.string().min(1).nullable().optional(),
-  })
-  .refine(
-    (value) => value.startFramePlanModelId !== undefined || value.storyboardModelId !== undefined,
-    { message: "At least one of startFramePlanModelId or storyboardModelId is required" },
-  );
+// input. Same convention as `verticalDramaSeries.setSeriesTargetAudienceRegion.test.ts`'s
+// own region enum schema mirror.
+const setLlmModelPolicyInputSchema = z.object({
+  seriesId: z.string().min(1),
+  defaultModelId: z.string().min(1).nullable(),
+});
 
 describe("setSeriesLlmModelPolicy — input validation", () => {
-  it("rejects an input with neither field provided", () => {
+  it("requires defaultModelId to be present (nullable, not optional)", () => {
     expect(() => setLlmModelPolicyInputSchema.parse({ seriesId: "10" })).toThrow();
   });
 
-  it("accepts startFramePlanModelId alone, storyboardModelId alone, or both", () => {
+  it("accepts defaultModelId as null (automatic) or a non-empty string", () => {
     expect(() =>
-      setLlmModelPolicyInputSchema.parse({ seriesId: "10", startFramePlanModelId: null }),
+      setLlmModelPolicyInputSchema.parse({ seriesId: "10", defaultModelId: null }),
     ).not.toThrow();
     expect(() =>
-      setLlmModelPolicyInputSchema.parse({ seriesId: "10", storyboardModelId: "provider-a/model-a" }),
+      setLlmModelPolicyInputSchema.parse({ seriesId: "10", defaultModelId: "provider-a/model-a" }),
     ).not.toThrow();
+  });
+
+  it("rejects an empty-string defaultModelId", () => {
     expect(() =>
-      setLlmModelPolicyInputSchema.parse({
-        seriesId: "10",
-        startFramePlanModelId: null,
-        storyboardModelId: "provider-a/model-a",
-      }),
-    ).not.toThrow();
+      setLlmModelPolicyInputSchema.parse({ seriesId: "10", defaultModelId: "" }),
+    ).toThrow();
   });
 });
 
@@ -233,7 +223,7 @@ describe("setSeriesLlmModelPolicy — ownership guard", () => {
     await expect(
       router.setSeriesLlmModelPolicy({
         ctx: ctx(),
-        input: { seriesId: "999", startFramePlanModelId: null },
+        input: { seriesId: "999", defaultModelId: null },
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 
@@ -244,7 +234,7 @@ describe("setSeriesLlmModelPolicy — ownership guard", () => {
     await expect(
       router.setSeriesLlmModelPolicy({
         ctx: ctx(),
-        input: { seriesId: "not-a-number", startFramePlanModelId: null },
+        input: { seriesId: "not-a-number", defaultModelId: null },
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
@@ -261,7 +251,7 @@ describe("setSeriesLlmModelPolicy — eligibility validation", () => {
     await expect(
       router.setSeriesLlmModelPolicy({
         ctx: ctx(),
-        input: { seriesId: "10", storyboardModelId: "provider-z/not-eligible" },
+        input: { seriesId: "10", defaultModelId: "provider-z/not-eligible" },
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
@@ -271,40 +261,29 @@ describe("setSeriesLlmModelPolicy — eligibility validation", () => {
   it("accepts null without ever running the eligibility check", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW_WITH_POLICY])); // loadOwnedSeries
     mockDb.update.mockReturnValueOnce(
-      updateChain([
-        {
-          ...SERIES_ROW_WITH_POLICY,
-          llmModelPolicy: { ...SERIES_ROW_WITH_POLICY.llmModelPolicy, startFramePlanModelId: null },
-        },
-      ]),
+      updateChain([{ ...SERIES_ROW_WITH_POLICY, llmModelPolicy: { defaultModelId: null } }]),
     );
 
     const result = await router.setSeriesLlmModelPolicy({
       ctx: ctx(),
-      input: { seriesId: "10", startFramePlanModelId: null },
+      input: { seriesId: "10", defaultModelId: null },
     });
 
     expect(mockLoadEnabledLlmModelRows).not.toHaveBeenCalled();
     expect(mockSelectEligible).not.toHaveBeenCalled();
-    expect((result.series as any).llmModelPolicy.startFramePlanModelId).toBeNull();
+    expect((result.series as any).llmModelPolicy.defaultModelId).toBeNull();
   });
 });
 
-describe("setSeriesLlmModelPolicy — happy path (read-modify-write merge)", () => {
-  it("overwrites only the provided field, preserving the OTHER existing field", async () => {
+describe("setSeriesLlmModelPolicy — happy path (whole-column overwrite)", () => {
+  it("overwrites the whole llmModelPolicy column with { defaultModelId }, discarding whatever was there before", async () => {
     mockLoadEnabledLlmModelRows.mockResolvedValue([] as never);
     mockSelectEligible.mockReturnValue(ELIGIBLE_ROWS as never);
     mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW_WITH_POLICY])); // loadOwnedSeries
 
     const setSpy = vi.fn();
     const chain = updateChain([
-      {
-        ...SERIES_ROW_WITH_POLICY,
-        llmModelPolicy: {
-          startFramePlanModelId: "provider-a/old-model",
-          storyboardModelId: "provider-b/model-b",
-        },
-      },
+      { ...SERIES_ROW_WITH_POLICY, llmModelPolicy: { defaultModelId: "provider-b/model-b" } },
     ]);
     const originalSet = chain.set;
     chain.set = vi.fn((arg: unknown) => {
@@ -315,29 +294,25 @@ describe("setSeriesLlmModelPolicy — happy path (read-modify-write merge)", () 
 
     const result = await router.setSeriesLlmModelPolicy({
       ctx: ctx(),
-      input: { seriesId: "10", storyboardModelId: "provider-b/model-b" },
+      input: { seriesId: "10", defaultModelId: "provider-b/model-b" },
     });
 
     expect(setSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        llmModelPolicy: {
-          startFramePlanModelId: "provider-a/old-model",
-          storyboardModelId: "provider-b/model-b",
-        },
+        llmModelPolicy: { defaultModelId: "provider-b/model-b" },
       }),
     );
-    expect((result.series as any).llmModelPolicy.startFramePlanModelId).toBe("provider-a/old-model");
-    expect((result.series as any).llmModelPolicy.storyboardModelId).toBe("provider-b/model-b");
+    expect((result.series as any).llmModelPolicy.defaultModelId).toBe("provider-b/model-b");
   });
 
-  it("writes a fresh policy object with just the provided field when the series has no policy yet", async () => {
+  it("writes a fresh policy object when the series has no policy yet", async () => {
     mockLoadEnabledLlmModelRows.mockResolvedValue([] as never);
     mockSelectEligible.mockReturnValue(ELIGIBLE_ROWS as never);
     mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW_NO_POLICY])); // loadOwnedSeries
 
     const setSpy = vi.fn();
     const chain = updateChain([
-      { ...SERIES_ROW_NO_POLICY, llmModelPolicy: { startFramePlanModelId: "provider-a/model-a" } },
+      { ...SERIES_ROW_NO_POLICY, llmModelPolicy: { defaultModelId: "provider-a/model-a" } },
     ]);
     const originalSet = chain.set;
     chain.set = vi.fn((arg: unknown) => {
@@ -348,14 +323,14 @@ describe("setSeriesLlmModelPolicy — happy path (read-modify-write merge)", () 
 
     const result = await router.setSeriesLlmModelPolicy({
       ctx: ctx(),
-      input: { seriesId: "10", startFramePlanModelId: "provider-a/model-a" },
+      input: { seriesId: "10", defaultModelId: "provider-a/model-a" },
     });
 
     expect(setSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        llmModelPolicy: { startFramePlanModelId: "provider-a/model-a" },
+        llmModelPolicy: { defaultModelId: "provider-a/model-a" },
       }),
     );
-    expect((result.series as any).llmModelPolicy.startFramePlanModelId).toBe("provider-a/model-a");
+    expect((result.series as any).llmModelPolicy.defaultModelId).toBe("provider-a/model-a");
   });
 });

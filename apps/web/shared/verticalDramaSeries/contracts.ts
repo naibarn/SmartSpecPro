@@ -221,19 +221,25 @@ export const VERTICAL_DRAMA_GENERATION_MODES = [
 export type VerticalDramaGenerationMode = (typeof VERTICAL_DRAMA_GENERATION_MODES)[number];
 
 /**
- * Manual LLM model override for the "generate start-frame render plan" /
- * "generate storyboard" pipeline stages (added 2026-07-11 — see
- * `/home/dev/.claude/plans/polished-toasting-gadget.md`). Persisted on the
- * series' `llmModelPolicy` jsonb column. Absent/`null` field = "automatic"
- * (the stage's own quality/large-context model selector, shared with
- * "improve script", picks the model). A non-null field pins that stage to a
- * specific model id, as long as it's still enabled/eligible at resolution
- * time — see `server/services/verticalDramaImproveScript.ts`'s
- * `resolveStartFramePlanModel`/`resolveStoryboardModel`.
+ * Manual LLM model override for the ENTIRE Vertical Drama content-generation
+ * chain (added 2026-07-11, originally scoped to just the "generate
+ * start-frame render plan" / "generate storyboard" stages; widened the same
+ * day to a single series-wide field per
+ * `planning/vertical-drama-centralized-model-policy/plan.md` — see that plan
+ * for the full rationale). Persisted on the series' `llmModelPolicy` jsonb
+ * column. Absent/`null` = "automatic" (each call site's own auto-selector —
+ * `resolveStoryBibleModel`/`resolveQualityLargeContextModelId`/etc — keeps
+ * picking the model as before). A non-null `defaultModelId` overrides EVERY
+ * LLM call in the Vertical Drama chain uniformly (script writing, character
+ * analysis, storyboard, video prompts, etc), regardless of which auto-tier
+ * that call site would otherwise use, as long as the pinned model is still
+ * enabled at resolution time — see
+ * `server/services/verticalDramaLlmModelPolicy.ts`'s
+ * `resolveVerticalDramaSeriesModel`, the single resolver every Vertical Drama
+ * LLM call site should route through.
  */
 export type VerticalDramaSeriesLlmModelPolicy = {
-  startFramePlanModelId?: string | null;
-  storyboardModelId?: string | null;
+  defaultModelId?: string | null;
 };
 
 /* -------------------------------------------------------------------------- */

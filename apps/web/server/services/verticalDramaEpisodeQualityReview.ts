@@ -50,7 +50,6 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -60,6 +59,8 @@ import {
   // file's own `abstract_line_ungrounded_count` metric below.
   VD_DRAMATURGY_ABSTRACT_WORDS,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import { debugError } from "../_core/logger";
 import {
@@ -943,7 +944,10 @@ export async function runVerticalDramaEpisodeQualityReview(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 

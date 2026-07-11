@@ -55,6 +55,30 @@ vi.mock("../verticalDramaStoryBible", async () => {
     resolveStoryBibleModel: vi.fn(),
   };
 });
+// Phase 6 (`planning/vertical-drama-centralized-model-policy/plan.md`) —
+// `resolveShotVideoPromptModel`'s non-vision fallback now uses
+// `resolveQualityLargeContextModelId` (was `resolveStoryBibleModel`). Fully
+// mocked (only this one export is used by this file) rather than partially
+// mocked via `vi.importActual` — this file's own SUT
+// (`verticalDramaVideoMotionPromptGeneration.ts`) now has a REAL, static
+// dependency on `verticalDramaImproveScript.ts`, and a full mock here avoids
+// pulling in that module's own real dependency chain during this file's test
+// run.
+vi.mock("../verticalDramaImproveScript", () => ({
+  resolveQualityLargeContextModelId: vi.fn(),
+}));
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 3) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveQualityLargeContextModelId`
+// above) so this file's pre-existing "no override configured" behavior/
+// assertions are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -70,12 +94,14 @@ import { loadEnabledLlmModelRows } from "../enabledLlmModels";
 import { selectBestLlmModel } from "../intelligentModelSelector";
 import { resolveVerticalDramaCapabilities } from "../modelRegistry";
 import { resolveStoryBibleModel, InsufficientCreditsError, VdSchemaValidationError } from "../verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
 const mockResolveModel = vi.mocked(resolveStoryBibleModel);
+const mockResolveQualityModel = vi.mocked(resolveQualityLargeContextModelId);
 const mockIsAllowed = vi.mocked(mediaGenerationLimiter.isAllowed);
 const mockGetResetTime = vi.mocked(mediaGenerationLimiter.getResetTime);
 const mockResolveSkillDirCandidates = vi.mocked(resolveSkillDirCandidates);
@@ -153,6 +179,7 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
     mockCalculateCredits.mockReturnValue(5);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockIsAllowed.mockReturnValue(true);
@@ -662,6 +689,7 @@ describe("generateVerticalDramaShotVideoPrompt — duration-aware prompt (spec �
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
     mockCalculateCredits.mockReturnValue(5);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockIsAllowed.mockReturnValue(true);

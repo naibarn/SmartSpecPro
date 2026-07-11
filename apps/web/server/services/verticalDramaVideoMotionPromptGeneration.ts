@@ -38,13 +38,14 @@ import { selectBestLlmModel } from "./intelligentModelSelector";
 import { resolveVerticalDramaCapabilities, type ModelDefinition } from "./modelRegistry";
 import { detectProviderFamily } from "./verticalDramaProviderRouting";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   extractJson,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import type {
   VerticalDramaPromptLanguage,
   VerticalDramaDialogueLanguage,
@@ -690,7 +691,10 @@ export async function generateVideoMotionPromptPack(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
@@ -776,13 +780,15 @@ export async function generateVideoMotionPromptPack(
  * module already makes for the motion-prompt-pack.
  *
  * There is, however, no per-call enforcement that the RESOLVED model actually
- * has vision support — `resolveStoryBibleModel()` (used everywhere else in
- * this file) only requires `supportsStructuredOutputs`. `intelligentModel
+ * has vision support — `resolveQualityLargeContextModelId()` (used
+ * everywhere else in this file, Phase 6 of
+ * `planning/vertical-drama-centralized-model-policy/plan.md`) only requires
+ * context ≥1M/non-free/thinking-capable, not vision. `intelligentModel
  * Selector.ts`'s `CapabilityRequirements`/`selectBestLlmModel` DOES expose a
  * `supportsVision` flag, so `resolveShotVideoPromptModel` below explicitly
- * requires it (falling back to `resolveStoryBibleModel()`'s non-vision
- * default only when no enabled model declares vision support, per the task's
- * "closest viable alternative" instruction) — and in EITHER case, the
+ * requires it (falling back to `resolveQualityLargeContextModelId()`'s
+ * non-vision default only when no enabled model declares vision support, per
+ * the task's "closest viable alternative" instruction) — and in EITHER case, the
  * shot's `imagePrompt` text is always folded into the user message too, so a
  * non-vision model still gets a rich textual description of what the start
  * frame contains, never just a bare image the model cannot see.
@@ -822,8 +828,20 @@ function loadShotVideoPromptSystemPrompt(): string {
   );
 }
 
-/** Resolve a vision-capable model when one is enabled; falls back to the non-vision default (see the vision-support doc comment above). */
-async function resolveShotVideoPromptModel(): Promise<{ model: string; hasVision: boolean }> {
+/**
+ * Resolve a vision-capable model when one is enabled; falls back to the
+ * non-vision default (see the vision-support doc comment above). Routes the
+ * non-vision fallback through the centralized per-series override resolver
+ * (`planning/vertical-drama-centralized-model-policy/plan.md`, Phase 3) so a
+ * series-wide `llmModelPolicy.defaultModelId` override wins there too — the
+ * vision-capability requirement above is left untouched (an explicit
+ * override still can't be honored when it lacks vision support and the call
+ * has an image attached, mirroring `resolveAdBannerPromptModel`'s identical
+ * shape).
+ */
+async function resolveShotVideoPromptModel(
+  seriesId: number,
+): Promise<{ model: string; hasVision: boolean }> {
   try {
     const rows = await loadEnabledLlmModelRows();
     if (rows.length > 0) {
@@ -836,7 +854,10 @@ async function resolveShotVideoPromptModel(): Promise<{ model: string; hasVision
   } catch {
     // Fall through to the non-vision default below.
   }
-  const fallbackModel = await resolveStoryBibleModel();
+  const fallbackModel = await resolveVerticalDramaSeriesModel(
+    seriesId,
+    resolveQualityLargeContextModelId,
+  );
   return { model: fallbackModel, hasVision: false };
 }
 
@@ -1308,7 +1329,7 @@ export async function generateVerticalDramaShotVideoPrompt(
     throw new InsufficientCreditsError();
   }
 
-  const { model, hasVision } = await resolveShotVideoPromptModel();
+  const { model, hasVision } = await resolveShotVideoPromptModel(params.seriesId);
   const systemPrompt = loadShotVideoPromptSystemPrompt();
 
   const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
@@ -1649,7 +1670,7 @@ export async function generateVerticalDramaShotVideoPromptSubShots(
     throw new InsufficientCreditsError();
   }
 
-  const { model, hasVision } = await resolveShotVideoPromptModel();
+  const { model, hasVision } = await resolveShotVideoPromptModel(params.seriesId);
   const systemPrompt = loadShotVideoPromptSubShotsSystemPrompt();
 
   const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
@@ -1911,7 +1932,10 @@ export async function generateVerticalDramaClipDialogue(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const userPrompt = buildClipDialogueUserPrompt(params);
 
   const { data, response } = await executeJsonPlanningCallWithRetry({

@@ -55,6 +55,27 @@ vi.mock("../verticalDramaStoryBible", async () => {
 vi.mock("../verticalDramaImproveScript", () => ({
   resolveQualityLargeContextModelId: vi.fn(),
 }));
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 3) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked to replicate the
+// real resolver's "auto-fallback, then resolveStoryBibleModel() as the last
+// resort" contract (this call site's `autoFallback` is
+// `resolveQualityLargeContextModelId`, which CAN resolve to `null`, unlike
+// the single-tier call sites Phase 2 wired) using the already-mocked
+// `resolveStoryBibleModel` above, so this file's pre-existing "no override
+// configured" behavior/assertions (including the "falls back to
+// resolveStoryBibleModel" test) are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    async (_seriesId: number, autoFallback: () => Promise<string | null>) => {
+      const auto = await autoFallback();
+      if (auto) return auto;
+      const { resolveStoryBibleModel } = await import("../verticalDramaStoryBible");
+      return resolveStoryBibleModel();
+    },
+  ),
+}));
 
 const hoisted = vi.hoisted(() => ({
   characterRows: [] as Record<string, unknown>[],
@@ -183,6 +204,7 @@ function baseParams(
   return {
     userId: 1,
     tenantId: "tenant-1",
+    seriesId: 6,
     lang: "th",
     characters: [
       { characterKey: "character-1", name: "หนูนา", role: "protagonist", description: "หญิงสาววัย 22 ปี" },

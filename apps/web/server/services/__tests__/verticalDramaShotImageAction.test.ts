@@ -37,6 +37,24 @@ vi.mock("../verticalDramaStoryBible", async () => {
     resolveStoryBibleModel: vi.fn(),
   };
 });
+// Phase 6 (`planning/vertical-drama-centralized-model-policy/plan.md`) —
+// `generateShotImageAction`'s auto-fallback now uses
+// `resolveQualityLargeContextModelId` (was `resolveStoryBibleModel`).
+vi.mock("../verticalDramaImproveScript", () => ({
+  resolveQualityLargeContextModelId: vi.fn(),
+}));
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 3) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveQualityLargeContextModelId`
+// above) so this file's pre-existing "no override configured" behavior/
+// assertions are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -51,12 +69,14 @@ import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
 import { resolveStoryBibleModel } from "../verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
 const mockResolveModel = vi.mocked(resolveStoryBibleModel);
+const mockResolveQualityModel = vi.mocked(resolveQualityLargeContextModelId);
 const mockResolveSkillDirCandidates = vi.mocked(resolveSkillDirCandidates);
 const mockResolveSkillManifestPath = vi.mocked(resolveSkillManifestPath);
 const mockExistsSync = vi.mocked(fs.existsSync);
@@ -69,6 +89,7 @@ function gridParams(
   return {
     userId: 1,
     tenantId: "tenant-1",
+    seriesId: 6,
     action: "multi_angle_grid",
     shot: {
       shotNumber: 4,
@@ -96,6 +117,7 @@ function repairParams(
   return {
     userId: 1,
     tenantId: "tenant-1",
+    seriesId: 6,
     action: "repair",
     shot: {
       shotNumber: 4,
@@ -124,6 +146,7 @@ function softenParams(
   return {
     userId: 1,
     tenantId: "tenant-1",
+    seriesId: 6,
     action: "soften",
     softenLevel: 2,
     shot: {
@@ -237,6 +260,7 @@ describe("generateShotImageAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
     mockCalculateCredits.mockReturnValue(3);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockResolveSkillDirCandidates.mockReturnValue([

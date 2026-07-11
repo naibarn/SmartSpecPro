@@ -61,6 +61,19 @@ vi.mock("../verticalDramaStoryBible", async () => {
   };
 });
 
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 2) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveStoryBibleModel` above)
+// so this file's pre-existing "no override configured" behavior/assertions
+// are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
+
 const { mockDebugError } = vi.hoisted(() => ({ mockDebugError: vi.fn() }));
 vi.mock("../../_core/logger", () => ({
   debugError: mockDebugError,

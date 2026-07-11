@@ -210,3 +210,132 @@ describe("vertical-drama-character-visual-bible/skill.md — Face reference lock
     expect(primaryPrompt).toMatch(/depicted\s+strictly\s+age-appropriately/i);
   });
 });
+
+/**
+ * Character Design Bible sheet types (planning/vertical-drama-character-sheet-
+ * consolidation/plan.md Phase A) — `requested_sheet_type` selects one
+ * additional `sheet_prompt`/`sheet_type` pair on top of the 5 always-required
+ * prompt fields. Mirrors the same "example completeness" regression-test
+ * style as the sections above: an instructed-but-never-demonstrated field
+ * reliably comes out empty/wrong in practice, so every new format this
+ * section teaches must be backed by a real worked example that parses and
+ * shows the field populated correctly.
+ */
+describe("vertical-drama-character-visual-bible/skill.md — Character Design Bible sheet types section", () => {
+  const body = readSkillMdBody();
+
+  it("contains the 'Character Design Bible sheet types' section gated on requested_sheet_type", () => {
+    expect(body).toMatch(/Character Design Bible sheet types.*used only when requested_sheet_type is present/i);
+    expect(body).toMatch(/requested_sheet_type/);
+  });
+
+  it("states sheet_prompt/sheet_type are additive to, never a replacement for, the 5 required fields", () => {
+    expect(body).toMatch(/sheet_prompt/);
+    expect(body).toMatch(/sheet_type/);
+    expect(body).toMatch(/never (skip|replace)|never a replacement for/i);
+  });
+
+  it("states 'auto' and 'turnaround' require no extra sheet_prompt field", () => {
+    expect(body).toMatch(/absent, `"auto"`, or `"turnaround"`/);
+    expect(body).toMatch(/no additional field is needed/i);
+  });
+
+  it("contains all 11 named sheet-type subsection headers plus the full_combined subsection", () => {
+    const expectedHeaders = [
+      "### `cover`",
+      "### `character_profile`",
+      "### `face_detail`",
+      "### `expression_12`",
+      "### `hair_reference`",
+      "### `costume_breakdown`",
+      "### `material_fabric`",
+      "### `color_palette`",
+      "### `pose_library`",
+      "### `body_proportion`",
+      "### `ai_prompt_lock`",
+      "### `full_combined`",
+    ];
+    for (const header of expectedHeaders) {
+      expect(body).toContain(header);
+    }
+  });
+
+  it("the expression_12 subsection keeps itself distinct from the always-on expression_sheet_prompt field", () => {
+    const section = body.split("### `expression_12`")[1]?.split("### `hair_reference`")[0] ?? "";
+    expect(section).toMatch(/3×4 grid|3x4 grid/);
+    expect(section).toMatch(/Neutral.*Smiling Softly.*Laughing Openly.*Angry.*Cry.*Fear.*Confident.*Thinking.*Wink.*Closed Eyes.*Sad.*Surprised/s);
+    expect(section).toMatch(/never\s+replaces[\s\S]*?expression_sheet_prompt/i);
+  });
+
+  it("the full_combined subsection explains it replaces the router's former hardcoded string-concatenated layout", () => {
+    const section = body.split("### `full_combined`")[1]?.split("### Worked example")[0] ?? "";
+    expect(section).toMatch(/turnaround row/i);
+    expect(section).toMatch(/expression grid/i);
+    expect(section).toMatch(/stats\s+sidebar/i);
+    expect(section).toMatch(/verticalDramaCharacters\.ts/);
+    expect(section).toMatch(/never\s+literally concatenate/i);
+  });
+
+  it("contains a worked example for requested_sheet_type: \"cover\" with sheet_prompt/sheet_type populated and the 5 required fields intact", () => {
+    const match = body.match(
+      /Worked example — cover sheet, `requested_sheet_type: "cover"`[\s\S]*?```json\n([\s\S]*?)\n```[\s\S]*?```json\n([\s\S]*?)\n```/,
+    );
+    expect(match).not.toBeNull();
+    const [, inputJson, outputJson] = match!;
+    const input = JSON.parse(inputJson) as { requested_sheet_type: string };
+    expect(input.requested_sheet_type).toBe("cover");
+    const output = JSON.parse(outputJson) as { characters: Array<Record<string, unknown>> };
+    const character = output.characters[0];
+    for (const field of [
+      "primary_portrait_prompt",
+      "turnaround_prompt",
+      "full_body_prompt",
+      "expression_sheet_prompt",
+      "outfit_sheet_prompt",
+    ]) {
+      expect(typeof character[field]).toBe("string");
+      expect((character[field] as string).trim().length).toBeGreaterThan(0);
+    }
+    expect(character.sheet_type).toBe("cover");
+    expect(typeof character.sheet_prompt).toBe("string");
+    expect((character.sheet_prompt as string).trim().length).toBeGreaterThan(0);
+    expect(character.sheet_prompt).toMatch(/CHARACTER DESIGN BIBLE/);
+  });
+
+  it("contains a worked example for requested_sheet_type: \"expression_12\" with sheet_prompt naming all 12 expressions", () => {
+    const match = body.match(
+      /Worked example — 12-panel expression grid, `requested_sheet_type: "expression_12"`[\s\S]*?```json\n([\s\S]*?)\n```[\s\S]*?```json\n([\s\S]*?)\n```/,
+    );
+    expect(match).not.toBeNull();
+    const [, inputJson, outputJson] = match!;
+    const input = JSON.parse(inputJson) as { requested_sheet_type: string };
+    expect(input.requested_sheet_type).toBe("expression_12");
+    const output = JSON.parse(outputJson) as { characters: Array<Record<string, unknown>> };
+    const character = output.characters[0];
+    expect(character.sheet_type).toBe("expression_12");
+    const sheetPrompt = character.sheet_prompt as string;
+    expect(sheetPrompt).toMatch(/Neutral/);
+    expect(sheetPrompt).toMatch(/Surprised/);
+    expect(sheetPrompt.trim().length).toBeGreaterThan(0);
+  });
+
+  it("contains a worked example for requested_sheet_type: \"full_combined\" whose sheet_prompt coherently references this character's own turnaround/expression/outfit prompts", () => {
+    const match = body.match(
+      /Worked example — full combined bible, `requested_sheet_type: "full_combined"`[\s\S]*?```json\n([\s\S]*?)\n```[\s\S]*?```json\n([\s\S]*?)\n```/,
+    );
+    expect(match).not.toBeNull();
+    const [, inputJson, outputJson] = match!;
+    const input = JSON.parse(inputJson) as { requested_sheet_type: string };
+    expect(input.requested_sheet_type).toBe("full_combined");
+    const output = JSON.parse(outputJson) as { characters: Array<Record<string, unknown>> };
+    const character = output.characters[0];
+    expect(character.sheet_type).toBe("full_combined");
+    const sheetPrompt = character.sheet_prompt as string;
+    expect(sheetPrompt).toMatch(/turnaround/i);
+    expect(sheetPrompt).toMatch(/expression/i);
+    expect(sheetPrompt).toMatch(/sidebar/i);
+    // Must not be a naive literal concatenation of the other fields.
+    expect(sheetPrompt).not.toBe(character.turnaround_prompt as string);
+    expect(sheetPrompt).not.toBe(character.expression_sheet_prompt as string);
+  });
+});

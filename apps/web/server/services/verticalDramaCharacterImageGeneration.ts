@@ -26,10 +26,11 @@ import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./credi
 import {
   InsufficientCreditsError,
   VdSchemaValidationError,
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import {
   buildTargetAudienceRegionInstruction,
@@ -139,6 +140,15 @@ const characterVisualBibleCharacterSchema = z
     // siblings) removes that failure mode without loosening validation of
     // any field actually used downstream.
     attachment_package: z.array(z.record(z.string(), z.unknown())).min(1).optional(),
+    // Character Design Bible sheet types (vertical-drama-character-sheet-
+    // consolidation plan, Phase A/B) — authored ONLY when the request carried
+    // a `requested_sheet_type` other than absent/`"auto"`/`"turnaround"` (see
+    // skill.md's "Character Design Bible sheet types" section). Both
+    // `.optional()`: legitimately absent whenever no extra sheet type was
+    // requested, so no `.min(1)` "never omit" contract applies here the way
+    // it does to the 5 always-required fields above.
+    sheet_prompt: z.string().min(1).optional(),
+    sheet_type: z.string().optional(),
   })
   .passthrough();
 
@@ -537,6 +547,19 @@ export interface GenerateCharacterVisualPromptsParams {
     lockStrength: "hard" | "loose";
     relationshipNote: string;
   } | null;
+  /**
+   * Requests ONE additional Character Design Bible sheet deliverable on top
+   * of the 5 always-required prompt fields (vertical-drama-character-sheet-
+   * consolidation plan, Phase B) — sent to the skill as `requested_sheet_type`
+   * (see `buildCharacterVisualPromptsUserPrompt`). One of the 14 values
+   * skill.md's "Character Design Bible sheet types" section documents
+   * (`"auto"`, `"turnaround"`, `"full_combined"`, or one of the 11 named
+   * formats). `undefined`/absent (the router omits it entirely for a plain
+   * `"turnaround"` request, since that's already covered by the always-on
+   * `turnaround_prompt` field) means no extra `sheet_prompt`/`sheet_type` is
+   * requested — legacy-tolerant, byte-identical to pre-feature behavior.
+   */
+  requestedSheetType?: string;
 }
 
 /**
@@ -742,6 +765,7 @@ export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterV
           },
         }
       : {}),
+    ...(params.requestedSheetType ? { requested_sheet_type: params.requestedSheetType } : {}),
   };
 
   return [
@@ -766,11 +790,20 @@ export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterV
 }
 
 /* -------------------------------------------------------------------------- */
-/* Model resolution — reuse the story-bible resolver (generic "best model     */
-/* with structured-output support" selection, not story-bible-specific).     */
+/* Model resolution — reuse the quality large-context resolver (same auto-    */
+/* selection tier as "Improve script usage": context ≥1M, non-free,          */
+/* thinking-capable — Phase 6, `planning/vertical-drama-centralized-model-   */
+/* policy/plan.md`), but route through the centralized per-series override   */
+/* resolver first (`planning/vertical-drama-centralized-model-policy/plan.md`,*/
+/* Phase 2) so a series-wide `llmModelPolicy.defaultModelId` override wins    */
+/* here too.                                                                  */
 /* -------------------------------------------------------------------------- */
 
-export const resolveCharacterVisualBibleModel = resolveStoryBibleModel;
+export async function resolveCharacterVisualBibleModel(
+  seriesId: number,
+): Promise<string> {
+  return resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
+}
 
 /* -------------------------------------------------------------------------- */
 /* Main entry point                                                           */
@@ -795,6 +828,18 @@ export interface GenerateCharacterVisualPromptsResult {
   expressionSheetPrompt: string;
   /** Outfit-variation prompt — for the full-spec Character Sheet. */
   outfitSheetPrompt: string;
+  /**
+   * Character Design Bible sheet prompt (vertical-drama-character-sheet-
+   * consolidation plan, Phase B) — authored ONLY when
+   * `GenerateCharacterVisualPromptsParams.requestedSheetType` was sent (i.e.
+   * for `"full_combined"` or one of the 11 new named formats; a plain
+   * `"turnaround"` request never sets `requestedSheetType`, so this stays
+   * `undefined` for it — use `turnaroundPrompt` instead). Read directly from
+   * the LLM response (`matched.sheet_prompt`), same "no code-authored
+   * fallback" convention as `turnaroundPrompt` et al. — legitimately
+   * `undefined` when no sheet type was requested, so no fallback is needed.
+   */
+  sheetPrompt?: string;
   raw: CharacterVisualBibleOutput;
   creditsUsed: number;
   model: string;
@@ -821,7 +866,7 @@ export async function generateCharacterVisualPrompts(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveCharacterVisualBibleModel();
+  const model = await resolveCharacterVisualBibleModel(params.seriesId);
   const systemPrompt = loadCharacterVisualBibleSystemPrompt();
   const userPrompt = buildCharacterVisualPromptsUserPrompt(params);
 
@@ -880,6 +925,10 @@ export async function generateCharacterVisualPrompts(
   const fullBodyPrompt = matched.full_body_prompt;
   const expressionSheetPrompt = matched.expression_sheet_prompt;
   const outfitSheetPrompt = matched.outfit_sheet_prompt;
+  // `sheet_prompt` is legitimately optional (see its schema doc comment
+  // above) — read straight through with no code-authored fallback, same
+  // convention as the four required fields above.
+  const sheetPrompt = matched.sheet_prompt;
 
   // Merge in the preset visual identity's own `imagePromptFragments.negative`
   // (spec §8.2.2 flow-through rule, section-15 change D) — this is a
@@ -903,6 +952,7 @@ export async function generateCharacterVisualPrompts(
     fullBodyPrompt,
     expressionSheetPrompt,
     outfitSheetPrompt,
+    sheetPrompt,
     raw: validatedData,
     creditsUsed,
     model,

@@ -3186,6 +3186,7 @@ export class VerticalDramaEpisodePipeline {
                 prompt: frame.imagePrompt,
                 userId: owner.userId,
                 tenantId: owner.tenantId,
+                seriesId: owner.seriesId,
                 idempotencyKey: `${owner.episodeId}:start_frame_render_plan:${frame.shotNumber}`,
                 label: `start-frame prompt (shot ${frame.shotNumber})`,
               });
@@ -3330,6 +3331,7 @@ export class VerticalDramaEpisodePipeline {
                 prompt: clip.prompt,
                 userId: owner.userId,
                 tenantId: owner.tenantId,
+                seriesId: owner.seriesId,
                 idempotencyKey: `${owner.episodeId}:video_motion_prompt_pack:${clip.clipNumber}`,
                 label: `motion prompt (clip ${clip.clipNumber})`,
               });

@@ -1,10 +1,10 @@
 /**
- * Manual LLM model override (added 2026-07-11 — see
- * `/home/dev/.claude/plans/polished-toasting-gadget.md`) — the two
- * "start-frame plan" / "storyboard" model dropdowns on
- * `VerticalDramaSettingsTab.tsx`: default-to-automatic, eligible-model-list
- * rendering, dirty-tracking, and the `setSeriesLlmModelPolicy` save payload
- * (only changed fields sent).
+ * Manual LLM model override (added 2026-07-11, collapsed to a single
+ * series-wide field 2026-07-11 — see
+ * `planning/vertical-drama-centralized-model-policy/plan.md`) — the single
+ * "default model" dropdown on `VerticalDramaSettingsTab.tsx`:
+ * default-to-automatic, eligible-model-list rendering, dirty-tracking, and
+ * the `setSeriesLlmModelPolicy` save payload.
  */
 import { Children } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -114,71 +114,56 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("VerticalDramaSettingsTab — manual LLM model override dropdowns", () => {
-  it("both dropdowns default to automatic when llmModelPolicy is absent", () => {
+describe("VerticalDramaSettingsTab — manual LLM model override dropdown", () => {
+  it("defaults to automatic when llmModelPolicy is absent", () => {
     render(<VerticalDramaSettingsTab {...baseProps} />);
     expect(
-      (screen.getByTestId("vd-settings-start-frame-plan-model") as HTMLSelectElement).value,
-    ).toBe("__automatic__");
-    expect(
-      (screen.getByTestId("vd-settings-storyboard-model") as HTMLSelectElement).value,
+      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement).value,
     ).toBe("__automatic__");
   });
 
-  it("both dropdowns default to automatic when llmModelPolicy is null", () => {
+  it("defaults to automatic when llmModelPolicy is null", () => {
     render(<VerticalDramaSettingsTab {...baseProps} llmModelPolicy={null} />);
     expect(
-      (screen.getByTestId("vd-settings-start-frame-plan-model") as HTMLSelectElement).value,
-    ).toBe("__automatic__");
-    expect(
-      (screen.getByTestId("vd-settings-storyboard-model") as HTMLSelectElement).value,
+      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement).value,
     ).toBe("__automatic__");
   });
 
-  it("pre-populates from an existing saved llmModelPolicy", () => {
+  it("pre-populates from an existing saved llmModelPolicy.defaultModelId", () => {
     render(
       <VerticalDramaSettingsTab
         {...baseProps}
-        llmModelPolicy={{
-          startFramePlanModelId: "google/gemini-3.1-flash-lite-preview",
-          storyboardModelId: null,
-        }}
+        llmModelPolicy={{ defaultModelId: "google/gemini-3.1-flash-lite-preview" }}
       />,
     );
     expect(
-      (screen.getByTestId("vd-settings-start-frame-plan-model") as HTMLSelectElement).value,
+      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement).value,
     ).toBe("google/gemini-3.1-flash-lite-preview");
-    expect(
-      (screen.getByTestId("vd-settings-storyboard-model") as HTMLSelectElement).value,
-    ).toBe("__automatic__");
   });
 
   it("renders the eligible models list from the mocked listQualityPlanningModels query", () => {
     render(<VerticalDramaSettingsTab {...baseProps} />);
-    const startFrameSelect = screen.getByTestId("vd-settings-start-frame-plan-model");
+    const select = screen.getByTestId("vd-settings-default-llm-model");
     expect(
-      startFrameSelect.querySelector('option[value="google/gemini-3.1-flash-lite-preview"]')
-        ?.textContent,
+      select.querySelector('option[value="google/gemini-3.1-flash-lite-preview"]')?.textContent,
     ).toBe("Google — Gemini 3.1 Flash Lite Preview");
-    expect(
-      startFrameSelect.querySelector('option[value="anthropic/claude-quality-large"]'),
-    ).toBeTruthy();
+    expect(select.querySelector('option[value="anthropic/claude-quality-large"]')).toBeTruthy();
   });
 
   it("selecting a specific model updates local state (dropdown reflects the pick)", () => {
     render(<VerticalDramaSettingsTab {...baseProps} />);
-    fireEvent.change(screen.getByTestId("vd-settings-storyboard-model"), {
+    fireEvent.change(screen.getByTestId("vd-settings-default-llm-model"), {
       target: { value: "anthropic/claude-quality-large" },
     });
     expect(
-      (screen.getByTestId("vd-settings-storyboard-model") as HTMLSelectElement).value,
+      (screen.getByTestId("vd-settings-default-llm-model") as HTMLSelectElement).value,
     ).toBe("anthropic/claude-quality-large");
   });
 
-  it("save does NOT call setSeriesLlmModelPolicy when neither dropdown changed", () => {
+  it("save does NOT call setSeriesLlmModelPolicy when the dropdown didn't change", () => {
     render(<VerticalDramaSettingsTab {...baseProps} />);
     // Trigger a save via a change to an unrelated field (title) so the Save
-    // button becomes enabled without touching either model dropdown.
+    // button becomes enabled without touching the model dropdown.
     fireEvent.change(screen.getByLabelText("ชื่อซีรีย์"), {
       target: { value: "Midnight Vows 2" },
     });
@@ -186,31 +171,9 @@ describe("VerticalDramaSettingsTab — manual LLM model override dropdowns", () 
     expect(mockSetLlmModelPolicyMutate).not.toHaveBeenCalled();
   });
 
-  it("save calls setSeriesLlmModelPolicy with only the changed field when one dropdown changed", async () => {
-    render(
-      <VerticalDramaSettingsTab
-        {...baseProps}
-        llmModelPolicy={{ startFramePlanModelId: null, storyboardModelId: null }}
-      />,
-    );
-    fireEvent.change(screen.getByTestId("vd-settings-storyboard-model"), {
-      target: { value: "anthropic/claude-quality-large" },
-    });
-    fireEvent.click(screen.getByText("บันทึก"));
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(mockSetLlmModelPolicyMutate).toHaveBeenCalledWith({
-      seriesId: "10",
-      storyboardModelId: "anthropic/claude-quality-large",
-    });
-  });
-
-  it("save calls setSeriesLlmModelPolicy with both fields when both dropdowns changed", async () => {
+  it("save calls setSeriesLlmModelPolicy with the new defaultModelId when the dropdown changed", async () => {
     render(<VerticalDramaSettingsTab {...baseProps} />);
-    fireEvent.change(screen.getByTestId("vd-settings-start-frame-plan-model"), {
-      target: { value: "google/gemini-3.1-flash-lite-preview" },
-    });
-    fireEvent.change(screen.getByTestId("vd-settings-storyboard-model"), {
+    fireEvent.change(screen.getByTestId("vd-settings-default-llm-model"), {
       target: { value: "anthropic/claude-quality-large" },
     });
     fireEvent.click(screen.getByText("บันทึก"));
@@ -218,19 +181,18 @@ describe("VerticalDramaSettingsTab — manual LLM model override dropdowns", () 
     await Promise.resolve();
     expect(mockSetLlmModelPolicyMutate).toHaveBeenCalledWith({
       seriesId: "10",
-      startFramePlanModelId: "google/gemini-3.1-flash-lite-preview",
-      storyboardModelId: "anthropic/claude-quality-large",
+      defaultModelId: "anthropic/claude-quality-large",
     });
   });
 
-  it("picking automatic again after a saved specific model is treated as a change back to null", async () => {
+  it("picking automatic again after a saved specific model sends defaultModelId: null", async () => {
     render(
       <VerticalDramaSettingsTab
         {...baseProps}
-        llmModelPolicy={{ startFramePlanModelId: "google/gemini-3.1-flash-lite-preview" }}
+        llmModelPolicy={{ defaultModelId: "google/gemini-3.1-flash-lite-preview" }}
       />,
     );
-    fireEvent.change(screen.getByTestId("vd-settings-start-frame-plan-model"), {
+    fireEvent.change(screen.getByTestId("vd-settings-default-llm-model"), {
       target: { value: "__automatic__" },
     });
     fireEvent.click(screen.getByText("บันทึก"));
@@ -238,7 +200,7 @@ describe("VerticalDramaSettingsTab — manual LLM model override dropdowns", () 
     await Promise.resolve();
     expect(mockSetLlmModelPolicyMutate).toHaveBeenCalledWith({
       seriesId: "10",
-      startFramePlanModelId: null,
+      defaultModelId: null,
     });
   });
 });

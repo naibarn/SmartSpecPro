@@ -33,6 +33,26 @@ vi.mock("../verticalDramaStoryBible", async () => {
     resolveStoryBibleModel: vi.fn(),
   };
 });
+// Phase 6 (`planning/vertical-drama-centralized-model-policy/plan.md`) —
+// `resolveCharacterVisualBibleModel`'s auto-fallback now uses
+// `resolveQualityLargeContextModelId` (was `resolveStoryBibleModel`).
+vi.mock("../verticalDramaImproveScript", () => ({
+  resolveQualityLargeContextModelId: vi.fn(),
+}));
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 2) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveQualityLargeContextModelId`
+// above) so this file's pre-existing "no override configured" behavior/
+// assertions (`resolveCharacterVisualBibleModel` now delegates through the
+// centralized resolver instead of being a plain alias) are unaffected and no
+// real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
 const { mockGetPrimaryPortraitUrl } = vi.hoisted(() => ({
   mockGetPrimaryPortraitUrl: vi.fn(),
 }));
@@ -60,12 +80,14 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
 } from "../verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
 const mockResolveModel = vi.mocked(resolveStoryBibleModel);
+const mockResolveQualityModel = vi.mocked(resolveQualityLargeContextModelId);
 const mockExistsSync = vi.mocked(fs.existsSync);
 const mockReadFileSync = vi.mocked(fs.readFileSync);
 const mockParseSkillFile = vi.mocked(parseSkillFile);
@@ -352,6 +374,7 @@ describe("generateCharacterVisualPrompts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
     mockCalculateCredits.mockReturnValue(4);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockExistsSync.mockReturnValue(true);
@@ -693,6 +716,7 @@ describe("generateCharacterVisualPrompts — preset visual identity flow-through
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
     mockCalculateCredits.mockReturnValue(4);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockExistsSync.mockReturnValue(true);
@@ -907,6 +931,7 @@ describe("generateCharacterVisualPrompts — face_source_reference flow-through 
   beforeEach(() => {
     vi.clearAllMocks();
     mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
     mockCalculateCredits.mockReturnValue(4);
     mockDeductCredits.mockResolvedValue(undefined as any);
     mockExistsSync.mockReturnValue(true);
@@ -940,5 +965,69 @@ describe("generateCharacterVisualPrompts — face_source_reference flow-through 
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).not.toContain("face_source_reference");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Character Design Bible sheet types (vertical-drama-character-sheet-        */
+/* consolidation plan, Phase B) — requestedSheetType / sheet_prompt.          */
+/* -------------------------------------------------------------------------- */
+
+describe("buildCharacterVisualPromptsUserPrompt — requested_sheet_type flow-through", () => {
+  it("includes requested_sheet_type in the payload when requestedSheetType is present", () => {
+    const userPrompt = buildCharacterVisualPromptsUserPrompt(
+      baseParams({ requestedSheetType: "cover" }),
+    );
+
+    expect(userPrompt).toContain('"requested_sheet_type": "cover"');
+  });
+
+  it("omits requested_sheet_type entirely when requestedSheetType is absent (byte-identical to pre-feature behavior)", () => {
+    const userPrompt = buildCharacterVisualPromptsUserPrompt(baseParams());
+
+    expect(userPrompt).not.toContain("requested_sheet_type");
+  });
+});
+
+describe("generateCharacterVisualPrompts — sheet_prompt passthrough", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  it("reads sheet_prompt directly from the LLM response when present — no code-authored fallback", async () => {
+    const character = {
+      ...validCharacter(),
+      sheet_prompt: "solo reference sheet, exactly one person: full-body cover portrait of Alice...",
+      sheet_type: "cover",
+    };
+    mockExecute.mockResolvedValue(successResponse(validOutput([character])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ requestedSheetType: "cover" }),
+    );
+
+    expect(result.sheetPrompt).toBe(
+      "solo reference sheet, exactly one person: full-body cover portrait of Alice...",
+    );
+
+    const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
+    const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
+    expect(userMessage).toContain('"requested_sheet_type": "cover"');
+  });
+
+  it("leaves sheetPrompt undefined when the LLM response omits it (legitimately absent, not a schema violation)", async () => {
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(result.sheetPrompt).toBeUndefined();
   });
 });

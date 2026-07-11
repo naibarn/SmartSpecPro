@@ -48,12 +48,13 @@ import { executeWithFallback } from "./llmRouter";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import {
-  resolveStoryBibleModel,
   extractJson,
   VdSchemaValidationError,
   InsufficientCreditsError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import {
   isRegulatedCategory,
   resolveMarketplaceCaptureProductImageUrls,
@@ -241,13 +242,21 @@ export function loadAdBannerPromptSystemPrompt(): string {
 /**
  * Resolve a vision-capable model when reference images are attached; a
  * structured-output-only model otherwise. Falls back to
- * `resolveStoryBibleModel()`'s non-capability-gated default when no enabled
+ * `resolveQualityLargeContextModelId()`'s non-capability-gated default (same
+ * quality tier as "Improve script usage" — Phase 6,
+ * `planning/vertical-drama-centralized-model-policy/plan.md`) when no enabled
  * model satisfies the requirement (or the lookup itself fails) — see
  * `resolveShotVideoPromptModel` in `verticalDramaVideoMotionPromptGeneration.ts`
- * for the identical shape/rationale this mirrors.
+ * for the identical shape/rationale this mirrors. The non-capability-gated
+ * fallback routes through the centralized per-series override resolver
+ * (`planning/vertical-drama-centralized-model-policy/plan.md`, Phase 3) so a
+ * series-wide `llmModelPolicy.defaultModelId` override wins there too — the
+ * capability requirements above are left untouched, mirroring
+ * `resolveShotVideoPromptModel`'s identical shape.
  */
 export async function resolveAdBannerPromptModel(
-  hasReferenceImages: boolean
+  hasReferenceImages: boolean,
+  seriesId: number
 ): Promise<{ model: string; hasVision: boolean }> {
   try {
     const rows = await loadEnabledLlmModelRows();
@@ -261,7 +270,7 @@ export async function resolveAdBannerPromptModel(
   } catch {
     // Fall through to the non-capability-gated default below.
   }
-  const fallbackModel = await resolveStoryBibleModel();
+  const fallbackModel = await resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
   return { model: fallbackModel, hasVision: false };
 }
 
@@ -366,7 +375,8 @@ export async function generateAdBannerPrompt(
   }
 
   const { model, hasVision } = await resolveAdBannerPromptModel(
-    params.referenceImageUrls.length > 0
+    params.referenceImageUrls.length > 0,
+    params.seriesId
   );
   const systemPrompt = loadAdBannerPromptSystemPrompt();
   const userPromptText = buildAdBannerPromptUserPrompt(params, hasVision);

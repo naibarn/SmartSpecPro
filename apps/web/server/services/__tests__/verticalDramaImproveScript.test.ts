@@ -612,8 +612,12 @@ describe("resolveQualityLargeContextModelId", () => {
 
 /* -------------------------------------------------------------------------- */
 /* selectQualityLargeContextEligibleModels / resolveStartFramePlanModel /     */
-/* resolveStoryboardModel — manual LLM model override (2026-07-11, see       */
-/* /home/dev/.claude/plans/polished-toasting-gadget.md)                      */
+/* resolveStoryboardModel — manual LLM model override, now delegating to the  */
+/* centralized `resolveVerticalDramaSeriesModel` resolver                    */
+/* (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 1).      */
+/* The resolver's own detailed override/fallback contract is covered by      */
+/* `verticalDramaLlmModelPolicy.test.ts`; this block only verifies that both  */
+/* scoped wrappers still delegate correctly with the same public signature.  */
 /* -------------------------------------------------------------------------- */
 
 describe("selectQualityLargeContextEligibleModels", () => {
@@ -690,9 +694,9 @@ describe("resolveStartFramePlanModel / resolveStoryboardModel", () => {
     }),
   ];
 
-  it("uses the series' startFramePlanModelId override when it's set and still eligible", async () => {
+  it("uses the series' defaultModelId override when it's set and still enabled", async () => {
     hoisted.seriesRows = [
-      { llmModelPolicy: { startFramePlanModelId: "override-expensive-eligible" } },
+      { llmModelPolicy: { defaultModelId: "override-expensive-eligible" } },
     ];
     mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
 
@@ -701,8 +705,8 @@ describe("resolveStartFramePlanModel / resolveStoryboardModel", () => {
     expect(modelId).toBe("override-expensive-eligible");
   });
 
-  it("uses the series' storyboardModelId override when it's set and still eligible", async () => {
-    hoisted.seriesRows = [{ llmModelPolicy: { storyboardModelId: "override-expensive-eligible" } }];
+  it("applies the SAME defaultModelId override to resolveStoryboardModel too (series-wide, not per-stage)", async () => {
+    hoisted.seriesRows = [{ llmModelPolicy: { defaultModelId: "override-expensive-eligible" } }];
     mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
 
     const modelId = await resolveStoryboardModel(6);
@@ -712,9 +716,9 @@ describe("resolveStartFramePlanModel / resolveStoryboardModel", () => {
 
   it("falls back to automatic selection when the pinned override model is disabled/removed", async () => {
     hoisted.seriesRows = [
-      { llmModelPolicy: { startFramePlanModelId: "no-longer-in-catalog" } },
+      { llmModelPolicy: { defaultModelId: "no-longer-in-catalog" } },
     ];
-    // The override id is NOT present in this eligible set (simulating a
+    // The override id is NOT present in this enabled set (simulating a
     // model that was disabled/removed after being pinned).
     mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
 
@@ -753,7 +757,7 @@ describe("resolveStartFramePlanModel / resolveStoryboardModel", () => {
   });
 
   it("never throws and falls back to automatic selection when the DB read itself fails", async () => {
-    hoisted.seriesRows = [{ llmModelPolicy: { startFramePlanModelId: "override-expensive-eligible" } }];
+    hoisted.seriesRows = [{ llmModelPolicy: { defaultModelId: "override-expensive-eligible" } }];
     mockLoadEnabledLlmModelRows.mockResolvedValue(ELIGIBLE_ROWS);
     vi.mocked(db.select).mockImplementationOnce(() => {
       throw new Error("connection reset");

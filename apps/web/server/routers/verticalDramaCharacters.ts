@@ -341,6 +341,79 @@ export async function resolveCharacterImageModelId(selectedImageModelId?: string
 }
 
 /**
+ * Character Design Bible sheet formats (vertical-drama-character-sheet-
+ * consolidation plan) — the merged `generateCharacterSheet` mutation's
+ * `sheetType` input. `"auto"` resolves to `"turnaround"` (see
+ * `resolveCharacterSheetType`); `"turnaround"`/`"full_combined"` are the two
+ * pre-existing formats; the other 11 are new, defined in
+ * `skills/vertical-drama-character-visual-bible/skill.md`'s "Character Design
+ * Bible sheet types" section.
+ */
+export const CHARACTER_SHEET_TYPE_VALUES = [
+  "auto",
+  "turnaround",
+  "full_combined",
+  "cover",
+  "character_profile",
+  "face_detail",
+  "expression_12",
+  "hair_reference",
+  "costume_breakdown",
+  "material_fabric",
+  "color_palette",
+  "pose_library",
+  "body_proportion",
+  "ai_prompt_lock",
+] as const;
+export type VerticalDramaCharacterSheetType = (typeof CHARACTER_SHEET_TYPE_VALUES)[number];
+export type ResolvedVerticalDramaCharacterSheetType = Exclude<
+  VerticalDramaCharacterSheetType,
+  "auto"
+>;
+
+/**
+ * Resolve `"auto"` (the mutation's default) to `"turnaround"` — preserves
+ * today's cheaper/older default behavior for a caller that doesn't pick a
+ * specific Character Design Bible format (plan Decision 2). Every other value
+ * passes through unchanged.
+ */
+export function resolveCharacterSheetType(
+  sheetType: VerticalDramaCharacterSheetType | undefined,
+): ResolvedVerticalDramaCharacterSheetType {
+  if (!sheetType || sheetType === "auto") return "turnaround";
+  return sheetType;
+}
+
+/**
+ * Maps a resolved sheet type to the `verticalDramaCharacterAssets.role`/
+ * `metadata` pair the caller should use once the async render task completes
+ * and it calls the existing `linkAsset` mutation (plan Decision 4). Three
+ * tiers:
+ *  - `"turnaround"` -> the pre-existing `"character_sheet_turnaround"` role
+ *    (stays inside `CHARACTER_SHEET_ROLES` in `verticalDramaCharacterStock.ts`
+ *    — a real face turnaround, correct to use as a second identity-lock
+ *    reference).
+ *  - `"full_combined"` -> the pre-existing `"character_sheet_full"` role
+ *    (same reasoning).
+ *  - every other (new) format -> a brand-new `"character_design_bible"` role,
+ *    deliberately OUTSIDE `CHARACTER_SHEET_ROLES` — several of these formats
+ *    carry no face at all (e.g. `color_palette`, `material_fabric`), so they
+ *    must never be picked as a second identity-lock reference — plus
+ *    `metadata: { sheetType }` so the specific format stays recoverable.
+ */
+export function resolveCharacterSheetAssetTag(
+  resolvedType: ResolvedVerticalDramaCharacterSheetType,
+): { role: string; metadata: { sheetType: string } | null } {
+  if (resolvedType === "turnaround") {
+    return { role: "character_sheet_turnaround", metadata: null };
+  }
+  if (resolvedType === "full_combined") {
+    return { role: "character_sheet_full", metadata: null };
+  }
+  return { role: "character_design_bible", metadata: { sheetType: resolvedType } };
+}
+
+/**
  * Best-effort character description drawn from `verticalDramaCharacters.data`
  * (the free-form `VerticalDramaCharacter` payload — description/personality/
  * backstory/identityLock/wardrobeRules). `data.description` is the
@@ -975,17 +1048,20 @@ export const verticalDramaCharactersRouter = router({
     }),
 
   /**
-   * Preview-only leg of the character portrait/turnaround flow: runs ONLY the
+   * Preview-only leg of the character portrait/sheet flow: runs ONLY the
    * `generateCharacterVisualPrompts` LLM call (the same step-1 credit-gated
-   * call `generateCharacterImage`/`generateCharacterTurnaround` perform
+   * call `generateCharacterImage`/`generateCharacterSheet` perform
    * internally) and returns the resulting prompt text WITHOUT rendering an
    * image. This lets the frontend show the actual prompt for user approval
    * before any image-render credit is spent. Charges exactly the one
    * prompt-generation credit (via `generateCharacterVisualPrompts` itself) —
    * the caller then passes the approved text back as `approvedPrompt` /
    * `approvedNegativePrompt` on `generateCharacterImage` or
-   * `generateCharacterTurnaround` so that LLM leg is never re-run (and never
-   * double-charged) for the same spend.
+   * `generateCharacterSheet` so that LLM leg is never re-run (and never
+   * double-charged) for the same spend. This preview only ever runs the
+   * plain-turnaround leg (no `requestedSheetType`) — it does not (and, per
+   * the plan, need not) preview any of the 14 Character Design Bible sheet
+   * formats.
    */
   previewCharacterPrompt: verticalDramaProcedure
     .input(seriesScope.extend({ characterId: z.string().min(1) }))
@@ -1356,270 +1432,43 @@ export const verticalDramaCharactersRouter = router({
     }),
 
   /**
-   * Generate a multi-angle character-sheet "turnaround" reference image — a
-   * 360-degree/multi-angle composition intended to anchor identity across
-   * scenes (prevents likeness drift), rendered from the SAME
-   * `vertical-drama-character-visual-bible` skill response
-   * `generateCharacterImage` already produces, just reading the
-   * `turnaround_prompt` field (`promptResult.turnaroundPrompt`) that the
-   * portrait flow discards instead of `portraitPrompt`. No new skill / LLM
-   * prompt — mirrors `generateCharacterImage` exactly (same rate limit,
-   * same two-charge credit-gating: prompt-generation LLM call credited
-   * inside `generateCharacterVisualPrompts`, image render credited here),
-   * differing only in which prompt field is rendered and the stock `role`
-   * used at link time (`"character_sheet_turnaround"` vs
-   * `"primary_portrait"` — `role` is a free varchar(40), no enum/migration
-   * needed).
+   * Generate a Character Design Bible sheet — ONE reference image for
+   * whichever `sheetType` the caller requests (vertical-drama-character-
+   * sheet-consolidation plan, Phase B). Consolidates what used to be two
+   * separate mutations (`generateCharacterTurnaround` + the original
+   * `generateCharacterSheet`) into one, resolving the format via
+   * `resolveCharacterSheetType`:
+   *  - `"auto"` (the default) resolves to `"turnaround"` — a 360/multi-angle
+   *    composition read straight off `promptResult.turnaroundPrompt` (the
+   *    always-required `turnaround_prompt` skill field), preserving today's
+   *    cheaper/older default behavior.
+   *  - `"full_combined"` and the 11 new Character Design Bible formats
+   *    (`cover`, `character_profile`, `face_detail`, `expression_12`,
+   *    `hair_reference`, `costume_breakdown`, `material_fabric`,
+   *    `color_palette`, `pose_library`, `body_proportion`, `ai_prompt_lock`)
+   *    all render `promptResult.sheetPrompt` — a genuinely skill-authored
+   *    prompt for the requested format (see `skills/vertical-drama-character-
+   *    visual-bible/skill.md`'s "Character Design Bible sheet types"
+   *    section). This is the exact fix for the pre-existing skill-first
+   *    architecture violation this endpoint used to contain: no prompt text
+   *    is authored/concatenated in this file anymore — every character-
+   *    facing string comes from the skill's own response.
    *
    * `approvedPrompt` / `approvedNegativePrompt` (optional): same skip-
    * regeneration contract as `generateCharacterImage` — when present, the
-   * user-approved turnaround text (from `previewCharacterPrompt`) is used
-   * directly and the internal `generateCharacterVisualPrompts` call (already
-   * charged once at preview time) is not repeated.
-   */
-  generateCharacterTurnaround: verticalDramaProcedure
-    .input(
-      seriesScope.extend({
-        characterId: z.string().min(1),
-        approvedPrompt: z.string().min(1).optional(),
-        approvedNegativePrompt: z.string().optional(),
-        // Caller-selected image model — see `generateCharacterImage`'s same field.
-        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
-        mcpConnectionId: z.string().max(64).optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      // Rate limiting — same shared per-user cap as generateCharacterImage
-      // (this mutation also performs a paid LLM prompt-generation call PLUS
-      // a paid image render). Checked first, before any DB reads/writes or
-      // paid calls.
-      const rateLimitKey = `user:${ctx.user.id}`;
-      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
-        });
-      }
-
-      const tenantId = requireTenantId(ctx.tenantId);
-      const userId = ctx.user.id;
-      const seriesId = parseId(input.seriesId, "series id");
-      const characterId = parseId(input.characterId, "character id");
-      await loadOwnedSeries(tenantId, userId, seriesId);
-      const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
-
-      const [seriesRow] = await db
-        .select({
-          title: verticalDramaSeries.title,
-          genre: verticalDramaSeries.genre,
-          tone: verticalDramaSeries.tone,
-          bible: verticalDramaSeries.bible,
-        })
-        .from(verticalDramaSeries)
-        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
-        .limit(1);
-      const targetAudienceRegion = readTargetAudienceRegionFromBible(
-        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-      );
-      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
-        tenantId,
-        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-      );
-
-      const description = extractCharacterDescription(
-        (character.data as Record<string, unknown> | null) ?? null,
-      );
-
-      // 1. Prompt generation — credit-gated + deducted internally. Same call
-      //    generateCharacterImage makes; we just read a different field
-      //    (`turnaroundPrompt`) off the same result. Skipped entirely when
-      //    the caller already ran `previewCharacterPrompt` and supplies the
-      //    user-approved text via `approvedPrompt` (that credit was already
-      //    charged once, at preview time).
-      let turnaroundPrompt: string;
-      let negativePrompt: string | undefined;
-      let promptModel: string | null = null;
-      let visualBibleSummary: Record<string, unknown> | null = null;
-      let promptCreditsUsed = 0;
-
-      if (input.approvedPrompt) {
-        turnaroundPrompt = input.approvedPrompt;
-        negativePrompt = input.approvedNegativePrompt;
-      } else {
-        const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
-          { tenantId, userId, seriesId },
-          character,
-        );
-        let promptResult;
-        try {
-          promptResult = await generateCharacterVisualPrompts({
-            userId,
-            tenantId,
-            seriesId,
-            characterId,
-            characterKey: character.characterKey,
-            name: character.name,
-            role: character.role,
-            description,
-            storyContext: seriesRow
-              ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
-              : undefined,
-            targetAudienceRegion,
-            presetVisualIdentity,
-            faceSourceReference,
-          });
-        } catch (err) {
-          if (err instanceof InsufficientCreditsError) {
-            throw new TRPCError({ code: "FORBIDDEN", message: err.message });
-          }
-          if (err instanceof VdSchemaValidationError) {
-            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
-          }
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: err instanceof Error ? err.message : "Character visual prompt generation failed",
-          });
-        }
-        turnaroundPrompt = promptResult.turnaroundPrompt;
-        negativePrompt = promptResult.negativePrompt;
-        promptModel = promptResult.model;
-        visualBibleSummary = promptResult.raw.visual_bible_summary;
-        promptCreditsUsed = promptResult.creditsUsed;
-      }
-
-      // 2. Pre-flight credit check for the image render — a SEPARATE charge
-      //    from the prompt-generation LLM call above. Prices + generates
-      //    against the CALLER-SELECTED model — see generateCharacterImage's
-      //    same comment for the full rationale.
-      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
-      const [pricingRow] = await db
-        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
-        .from(mediaModels)
-        .where(eq(mediaModels.modelId, resolvedImageModelId))
-        .limit(1);
-      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
-      const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
-
-      const shouldChargeImageCredits = imageCreditCost > 0;
-      if (shouldChargeImageCredits) {
-        const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
-        if (!hasImageCredits) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `Insufficient credits for character sheet turnaround image render. Required: ${imageCreditCost}`,
-          });
-        }
-      }
-
-      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "image",
-        modelId: resolvedImageModelId,
-        configJson: pricingModel.configJson,
-        mcpConnectionId: input.mcpConnectionId,
-      });
-
-      // 2.5. Identity-lock reference — same rationale as generateCharacterImage:
-      //      attach the character's existing approved portrait as a
-      //      `referenceImageUrls` input (this is the exact case the reference
-      //      picker exists for — a turnaround generated after the portrait
-      //      should depict the same person), and call it out in the prompt
-      //      text itself so the model actually attends to the attached image.
-      const referencePortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
-        { tenantId, userId, seriesId },
-        characterId,
-      );
-      const renderTurnaroundPrompt = referencePortraitUrl
-        ? `${turnaroundPrompt} Use the attached reference image as this character's exact identity — match face, hairstyle, and skin tone precisely across every angle; do not alter identity.`
-        : turnaroundPrompt;
-
-      // 3. Submit — async, same convention as `generateCharacterImage` above
-      //    (see its doc comment for the full rationale). Credits are
-      //    RESERVED now; the caller polls `media.getTask({taskId})`, then
-      //    finalizes via `resolveMediaAssetForImport` + `linkAsset`.
-      if (shouldChargeImageCredits) {
-        await deductCredits({
-          userId,
-          tenantId,
-          amount: imageCreditCost,
-          description: `Vertical Drama — generate character sheet turnaround (character #${characterId}, reserved)`,
-          sourceType: "media_image",
-          metadata: {
-            feature: "vertical_drama_character_turnaround",
-            seriesId,
-            characterId,
-            type: "reservation",
-            creditCost: imageCreditCost,
-            modelId: resolvedImageModelId,
-          },
-        });
-      }
-
-      const userToken = getCharacterPortraitUserToken(ctx);
-      let task;
-      try {
-        task = await mediaGenerationService.generateImageAsync(
-          {
-            prompt: renderTurnaroundPrompt,
-            negativePrompt,
-            model: resolvedImageModelId,
-            numImages: 1,
-            aspectRatio: "9:16",
-            ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
-            // Series provenance tag — see generateCharacterImage's comment.
-            extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
-            publicUrl: ctx.publicUrl ?? undefined,
-            ...(transportMetadata ? { transportMetadata } : {}),
-            auditContext: {
-              userId,
-              traceId: crypto.randomUUID(),
-              source: "trpc.verticalDramaCharacters.generateCharacterTurnaround",
-              stage: "submission",
-            },
-          },
-          userToken,
-        );
-      } catch (err) {
-        if (shouldChargeImageCredits) {
-          await refundCredits({
-            userId,
-            amount: imageCreditCost,
-            description: `Refund: character sheet turnaround render failed to submit (character #${characterId})`,
-            sourceType: "media_image",
-            metadata: { feature: "vertical_drama_character_turnaround", seriesId, characterId },
-          });
-        }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: err instanceof Error ? err.message : "Character sheet turnaround image generation failed to submit",
-        });
-      }
-
-      return {
-        taskId: task.id,
-        turnaroundPrompt,
-        negativePrompt,
-        promptModel,
-        visualBibleSummary,
-        creditsUsed: { promptGeneration: promptCreditsUsed },
-      };
-    }),
-
-  /**
-   * Full-spec Character Sheet — ONE multi-panel infographic image combining
-   * portrait + turnaround (front/side/back) + facial-expression grid + outfit
-   * variations + a compact stats sidebar, in the style of a production
-   * character reference sheet. Distinct from `generateCharacterTurnaround`
-   * (which renders only the simpler multi-angle turnaround prompt) — this is
-   * a NEW, separate, additive action; the turnaround button is unchanged.
+   * user-approved text (from `previewCharacterPrompt`) is used directly and
+   * the internal `generateCharacterVisualPrompts` call (already charged once
+   * at preview time) is not repeated.
    *
-   * Combines `fullBodyPrompt`/`expressionSheetPrompt`/`outfitSheetPrompt`
-   * (computed by the visual-bible skill but previously discarded — see
-   * `verticalDramaCharacterImageGeneration.ts`) with `turnaroundPrompt` into
-   * one structured layout instruction, the same "instruct one image model
-   * call to produce a multi-panel grid" technique already shipped and
-   * live-verified for the Storyboard page's 3x3 multi-angle generation.
+   * Returns `assetRole`/`assetMetadata` (via `resolveCharacterSheetAssetTag`)
+   * so the caller can tag the eventual `linkAsset` call correctly once the
+   * async render task completes — `"turnaround"` -> the pre-existing
+   * `"character_sheet_turnaround"` role, `"full_combined"` -> the pre-
+   * existing `"character_sheet_full"` role, every new format ->
+   * `"character_design_bible"` (deliberately OUTSIDE
+   * `CHARACTER_SHEET_ROLES` in `verticalDramaCharacterStock.ts` — several of
+   * the new formats carry no face at all, so they must never be picked as a
+   * second identity-lock reference for storyboard/shot generation).
    *
    * Async submit + poll, same convention as every other real generation in
    * this codebase (shows in Media History, correct credit deduction).
@@ -1630,8 +1479,18 @@ export const verticalDramaCharactersRouter = router({
         characterId: z.string().min(1),
         approvedPrompt: z.string().min(1).optional(),
         approvedNegativePrompt: z.string().optional(),
+        /** Which Character Design Bible sheet format to render — `"auto"`
+         *  (default) resolves to `"turnaround"`. See
+         *  `resolveCharacterSheetType`/`CHARACTER_SHEET_TYPE_VALUES`. */
+        sheetType: z.enum(CHARACTER_SHEET_TYPE_VALUES).optional().default("auto"),
         /** Language of the STATS TEXT/labels on the sheet — the character's
-         *  own name is never translated, always rendered exactly as given. */
+         *  own name is never translated, always rendered exactly as given.
+         *  NOTE: the skill does not yet accept a language input (see
+         *  `skills/vertical-drama-character-visual-bible/schemas/
+         *  input.schema.json`) — kept on the input contract for API-surface
+         *  stability, currently unused by the handler pending skill support;
+         *  never wired into a code-authored prompt string (that would be the
+         *  exact violation this endpoint used to have). */
         sheetLanguage: z.enum(["en", "th"]).optional().default("en"),
         // Caller-selected image model — see `generateCharacterImage`'s same field.
         selectedImageModelId: z.string().trim().min(1).max(128).optional(),
@@ -1647,6 +1506,8 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
+      const resolvedSheetType = resolveCharacterSheetType(input.sheetType);
+
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
@@ -1675,29 +1536,20 @@ export const verticalDramaCharactersRouter = router({
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
       );
-      const characterData = (character.data as Record<string, unknown> | null) ?? null;
-      const personality = typeof characterData?.personality === "string" ? characterData.personality : undefined;
-      const wardrobeRules = Array.isArray(characterData?.wardrobeRules)
-        ? (characterData.wardrobeRules as unknown[]).filter((w): w is string => typeof w === "string")
-        : [];
 
-      let turnaroundPrompt: string;
-      let fullBodyPrompt: string;
-      let expressionSheetPrompt: string;
-      let outfitSheetPrompt: string;
+      // Prompt generation — credit-gated + deducted internally. Skipped
+      // entirely when the caller already ran `previewCharacterPrompt` and
+      // supplies the user-approved text via `approvedPrompt` (that credit was
+      // already charged once, at preview time) — same skip-regeneration
+      // contract `generateCharacterImage` uses.
+      let sheetPromptText: string;
       let negativePrompt: string | undefined;
       let promptModel: string | null = null;
       let visualBibleSummary: Record<string, unknown> | null = null;
       let promptCreditsUsed = 0;
 
       if (input.approvedPrompt) {
-        // A single pre-approved combined prompt (from a preview step) skips
-        // regenerating the individual prompt fields — same skip-regeneration
-        // contract `generateCharacterImage`/`generateCharacterTurnaround` use.
-        turnaroundPrompt = input.approvedPrompt;
-        fullBodyPrompt = "";
-        expressionSheetPrompt = "";
-        outfitSheetPrompt = "";
+        sheetPromptText = input.approvedPrompt;
         negativePrompt = input.approvedNegativePrompt;
       } else {
         const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
@@ -1721,6 +1573,11 @@ export const verticalDramaCharactersRouter = router({
             targetAudienceRegion,
             presetVisualIdentity,
             faceSourceReference,
+            // Only sent for a NON-turnaround format — plain "turnaround" is
+            // already fully covered by the always-required
+            // `turnaround_prompt` field, so no extra skill work is requested
+            // for it (see skill.md's "Character Design Bible sheet types").
+            requestedSheetType: resolvedSheetType === "turnaround" ? undefined : resolvedSheetType,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1734,20 +1591,37 @@ export const verticalDramaCharactersRouter = router({
             message: err instanceof Error ? err.message : "Character visual prompt generation failed",
           });
         }
-        turnaroundPrompt = promptResult.turnaroundPrompt;
-        fullBodyPrompt = promptResult.fullBodyPrompt;
-        expressionSheetPrompt = promptResult.expressionSheetPrompt;
-        outfitSheetPrompt = promptResult.outfitSheetPrompt;
+
+        if (resolvedSheetType === "turnaround") {
+          sheetPromptText = promptResult.turnaroundPrompt;
+        } else {
+          // `sheet_prompt` is schema-optional (legitimately absent when no
+          // sheet type was requested) but MUST be present here since a
+          // non-turnaround type was explicitly requested — surface a missing
+          // value as an error (matching this file's existing
+          // `VdSchemaValidationError` handling for other required-field
+          // violations), never a code-authored fallback string.
+          if (!promptResult.sheetPrompt) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: `Character visual bible skill did not return a sheet_prompt for requested sheet type "${resolvedSheetType}".`,
+            });
+          }
+          sheetPromptText = promptResult.sheetPrompt;
+        }
         negativePrompt = promptResult.negativePrompt;
         promptModel = promptResult.model;
         visualBibleSummary = promptResult.raw.visual_bible_summary;
         promptCreditsUsed = promptResult.creditsUsed;
       }
 
-      // Multi-panel grid render — priced like the Storyboard page's 3x3
-      // multi-angle generation (a single, more complex image call), not a
-      // single portrait. Prices + generates against the CALLER-SELECTED
-      // model — see generateCharacterImage's same comment for rationale.
+      // Pricing: the plain turnaround stays priced like a single image (same
+      // as the old, now-merged `generateCharacterTurnaround`); every other
+      // format (the pre-existing `full_combined` plus the 11 new Character
+      // Design Bible formats) is priced like the old `generateCharacterSheet`
+      // — a single, more complex multi-panel image call. Prices + generates
+      // against the CALLER-SELECTED model — see generateCharacterImage's same
+      // comment for rationale.
       const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
@@ -1755,7 +1629,9 @@ export const verticalDramaCharactersRouter = router({
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
-      const sheetCreditCost = calculateCreditCost(pricingModel, { numImages: 2 });
+      const sheetCreditCost = calculateCreditCost(pricingModel, {
+        numImages: resolvedSheetType === "turnaround" ? 1 : 2,
+      });
       const shouldChargeSheetCredits = sheetCreditCost > 0;
       if (shouldChargeSheetCredits) {
         const hasCredits = await hasEnoughCredits(userId, sheetCreditCost);
@@ -1776,51 +1652,33 @@ export const verticalDramaCharactersRouter = router({
         mcpConnectionId: input.mcpConnectionId,
       });
 
+      // Identity-lock reference — same rationale as generateCharacterImage:
+      // attach the character's existing approved portrait as a
+      // `referenceImageUrls` input, and call it out in the prompt text itself
+      // so the model actually attends to the attached image (several models
+      // otherwise ignore a silently-attached reference). This one-line
+      // reference-image call-out sentence is the SAME established pattern
+      // `generateCharacterImage` already uses — not new prompt authorship.
       const referencePortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
         { tenantId, userId, seriesId },
         characterId,
       );
-
-      const languageInstruction =
-        input.sheetLanguage === "th"
-          ? "All stat labels and text on the sheet must be in Thai, EXCEPT keep every UI-style section header readable."
-          : "All stat labels and text on the sheet must be in English.";
-      const statsBlock = [
-        `Role: ${character.role ?? "supporting"}`,
-        personality ? `Personality: ${personality}` : null,
-        wardrobeRules.length ? `Signature wardrobe: ${wardrobeRules.join(", ")}` : null,
-      ]
-        .filter(Boolean)
-        .join(". ");
-
-      const sheetPrompt = [
-        `Design a professional character reference sheet (production "character sheet" infographic layout) for a character named exactly "${character.name}" — do not translate or alter the name, render it exactly as given.`,
-        `${languageInstruction} The character's name itself is the one exception — always show it exactly as given, untranslated.`,
-        "Layout: a large portrait panel on one side; a 3-pose turnaround row (front view, side view, back view) using this reference: " + turnaroundPrompt + ".",
-        "A facial-expression grid (at least 4 small panels) using this reference: " + expressionSheetPrompt + ".",
-        "An outfit/full-body panel using this reference: " + outfitSheetPrompt + " and " + fullBodyPrompt + ".",
-        statsBlock ? `A compact stats sidebar with these details, formatted as short labeled lines: ${statsBlock}.` : null,
-        "Keep the SAME character identity, face, and wardrobe consistent across every panel on the sheet.",
-        "Clean, professional infographic background (light neutral), clear panel dividers, small section headers above each panel.",
-      ]
-        .filter(Boolean)
-        .join(" ");
-
       const renderSheetPrompt = referencePortraitUrl
-        ? `${sheetPrompt} Use the attached reference image as this character's exact identity across every panel — match face shape, skin tone, hairstyle precisely; do not alter identity.`
-        : sheetPrompt;
+        ? `${sheetPromptText} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle precisely across every panel/angle; do not alter identity.`
+        : sheetPromptText;
 
       if (shouldChargeSheetCredits) {
         await deductCredits({
           userId,
           tenantId,
           amount: sheetCreditCost,
-          description: `Vertical Drama — generate character sheet (character #${characterId}, reserved)`,
+          description: `Vertical Drama — generate character sheet (${resolvedSheetType}) (character #${characterId}, reserved)`,
           sourceType: "media_image",
           metadata: {
             feature: "vertical_drama_character_sheet",
             seriesId,
             characterId,
+            sheetType: resolvedSheetType,
             type: "reservation",
             creditCost: sheetCreditCost,
             modelId: resolvedImageModelId,
@@ -1859,7 +1717,7 @@ export const verticalDramaCharactersRouter = router({
             amount: sheetCreditCost,
             description: `Refund: character sheet render failed to submit (character #${characterId})`,
             sourceType: "media_image",
-            metadata: { feature: "vertical_drama_character_sheet", seriesId, characterId },
+            metadata: { feature: "vertical_drama_character_sheet", seriesId, characterId, sheetType: resolvedSheetType },
           });
         }
         throw new TRPCError({
@@ -1868,11 +1726,18 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
+      const assetTag = resolveCharacterSheetAssetTag(resolvedSheetType);
+
       return {
         taskId: task.id,
+        sheetType: resolvedSheetType,
+        sheetPrompt: sheetPromptText,
+        negativePrompt,
         promptModel,
         visualBibleSummary,
         creditsUsed: { promptGeneration: promptCreditsUsed },
+        assetRole: assetTag.role,
+        assetMetadata: assetTag.metadata,
       };
     }),
 
@@ -2019,8 +1884,8 @@ export const verticalDramaCharactersRouter = router({
    * poll -> credit reserve/reconcile machinery every other paid generation
    * mutation in this router uses (`mediaGenerationService.generateAudioAsync`
    * directly — never `media.ts`'s own procedures, same convention as
-   * `generateCharacterImage`/`generateCharacterTurnaround`/
-   * `generateCharacterSheet` above). Never persists anything — `voiceConfig`
+   * `generateCharacterImage`/`generateCharacterSheet` above). Never persists
+   * anything — `voiceConfig`
    * here is a candidate to audition, not a cast (`setCharacterVoiceConfig` is
    * the separate, explicit lock action).
    */

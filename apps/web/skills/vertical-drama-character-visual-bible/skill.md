@@ -196,6 +196,353 @@ consistent identity anchors; a full-body prompt describes pose and head-to-toe f
 expression-sheet prompt names the actual expressions in the grid; an outfit-sheet prompt
 names the actual outfits shown).
 
+## Character Design Bible sheet types — used only when requested_sheet_type is present
+
+When the input carries `requested_sheet_type`, it selects ONE additional deliverable on top
+of the 5 always-required prompt fields above (`primary_portrait_prompt`, `turnaround_prompt`,
+`full_body_prompt`, `expression_sheet_prompt`, `outfit_sheet_prompt`) — those five are
+authored for every character regardless of `requested_sheet_type`; never skip or replace
+any of them because a sheet type was requested.
+
+If `requested_sheet_type` is absent, `"auto"`, or `"turnaround"`, do nothing extra here —
+`"turnaround"` is already fully covered by the `turnaround_prompt` field you always author,
+so no additional field is needed. For every OTHER value (the 11 named formats below, or
+`full_combined`), author exactly two additional fields on that character: `sheet_prompt` — a
+genuinely authored, standalone image-generation prompt at the same quality bar as the 5
+required fields, never a lazy suffix tacked onto `primary_portrait_prompt` — and `sheet_type`,
+which simply echoes the requested value back verbatim (e.g. `"cover"`, `"expression_12"`).
+
+**Shared identity-lock preamble — internalize this once, weave it into every `sheet_prompt`
+below in your own words (never append it as a boilerplate sentence verbatim, same
+"facts in, natural prose out" convention as "Preset visual identity" below):** every one of
+these sheets is still an identity reference sheet, not a new character — it must preserve
+this character's exact facial identity, proportions, hairstyle, hair color, skin tone, body
+proportions, outfit, accessories, and shoes precisely as established by this character's own
+reference images/other prompts, with 100% consistency. Render it as an ultra-realistic,
+studio-lit, white-seamless-background, premium character-design-bible editorial layout, 8K,
+portrait 9:16.
+
+The 11 named formats below (`turnaround` reuses `turnaround_prompt` and has no subsection of
+its own):
+
+### `cover`
+
+A single full-body portrait, standing confidently, minimal white studio background, luxury
+editorial magazine-cover styling. Compose with generous clean negative space (upper area is
+typical) reserved for a title overlay reading "CHARACTER DESIGN BIBLE / {character's name} /
+Version 1.0" — describe the reserved space and the intended overlay text as a compositional
+note; you are not expected to guarantee the model renders that text legibly as pixels.
+
+### `character_profile`
+
+One full-body shot plus one close-up portrait sharing an elegant editorial layout, with clean
+reserved blank-space blocks alongside for stat labels: Name, Age, Height, Weight, Occupation,
+Personality (bulleted list), Background (paragraph), Strengths (bulleted list), Weaknesses
+(bulleted list). Describe the LAYOUT reserving space for these labels — you do not know this
+character's actual stat values, so never invent them; that data is a separate concern outside
+this skill's scope.
+
+### `face_detail`
+
+Large front, side, and three-quarter portraits, plus a row of close-up detail panels for
+eyes, eyebrows, nose, lips, ear, hairline, and jawline, arranged in a clean editorial grid on
+a white background.
+
+### `expression_12`
+
+A 3×4 grid of 12 close-up portraits, one per named expression: Neutral, Smiling Softly,
+Laughing Openly, Angry, Cry, Fear, Confident, Thinking, Wink, Closed Eyes, Sad, Surprised —
+identical camera distance and lighting held constant across every panel, white background.
+This is the definitive, fully detailed expression sheet format; it exists alongside, never
+replaces, the always-on `expression_sheet_prompt` required field above, which stays a
+simpler, smaller expression set of its own — keep the two distinct rather than merging them.
+
+### `hair_reference`
+
+Hair-only reference views — front, left, right, back, and top — plus close-up detail panels
+for texture, flow, individual strands, volume, and natural highlights, editorial layout,
+white background.
+
+### `costume_breakdown`
+
+Front view, back view, and a dress/garment-only view, plus close-up detail panels for
+neckline, shoulder strap, waist, fabric folds, hem, zipper, and accessories/shoes — laid out
+as a luxury fashion technical spec sheet, white background.
+
+### `material_fabric`
+
+Macro close-up textures only — fabric weave, mesh, pleats, metal jewelry, leather shoes —
+arranged in an editorial fashion-swatch layout, white background.
+
+### `color_palette`
+
+Color swatches for skin, hair, eyes, lips, dress, shoes, and accessories, each swatch
+composed with reserved space beside it for a HEX/RGB/CMYK value label — reserve the label
+space only, do not invent actual color values — minimal editorial layout, white background.
+
+### `pose_library`
+
+Ten full-body poses on a single sheet: Neutral, Walking, Standing, Looking Back, Hands in
+Pocket, Arms Crossed, Greeting, Holding Object, Sitting, Elegant Walking. Face and outfit
+must read as perfectly identical across every pose, white background.
+
+### `body_proportion`
+
+Front, side, and back full-body views with guide lines/callouts marking head ratio, shoulder
+width, waist, hip, leg length, arm length, and overall body measurements — a professional
+anatomy-reference layout, white background.
+
+### `ai_prompt_lock`
+
+One large full-body image plus one close-up portrait, laid out alongside organized reserved
+sections labeled Master Prompt, Negative Prompt, Identity Lock, Face Lock, Hair Lock, Outfit
+Lock, Color Lock, Lighting Lock, Camera Lock, and Do Not Change Rules — reads as a
+professional AI-production reference document, minimal editorial layout, white background.
+As with `character_profile` and `color_palette`, describe the LAYOUT reserving space for
+these labeled sections; you are not expected to invent the actual lock text values that will
+fill them.
+
+### `full_combined`
+
+Author `sheet_prompt` as ONE coherent, genuinely authored multi-panel layout description
+combining: a large portrait panel, a 3-pose turnaround row (front/side/back), a
+facial-expression grid (at least 4 panels), an outfit/full-body panel, and a compact stats
+sidebar. Draw each panel's specific content from THIS character's own already-authored
+`turnaround_prompt`, `expression_sheet_prompt`, and `outfit_sheet_prompt` above so every panel
+reads as genuinely the same character described coherently in your own prose — never
+literally concatenate those other fields' text together. This is the exact case that replaces
+a pre-existing architecture violation: `server/routers/verticalDramaCharacters.ts` used to
+hardcode this identical multi-panel layout as a string-concatenated TypeScript array; that
+code is being deleted in favor of the `sheet_prompt` this skill now authors.
+
+### Worked example — cover sheet, `requested_sheet_type: "cover"`
+
+Input:
+
+```json
+{
+  "characters": [
+    {
+      "character_id": "char_nara",
+      "name": "Nara",
+      "role": "lead",
+      "description": "late-20s magazine editor, sharp and elegant, natural leader"
+    }
+  ],
+  "story_context": "Series title: The Editor's Table | Genre: workplace drama | Tone: sleek, aspirational",
+  "output_options": {
+    "include_image_generation_prompts": true,
+    "include_plain_text_summary": true,
+    "include_storyboard_attachment_manifest": true,
+    "generate_primary_portrait_prompt": true
+  },
+  "requested_sheet_type": "cover"
+}
+```
+
+Output:
+
+```json
+{
+  "contract_version": 1,
+  "visual_bible_summary": {
+    "story_title": "The Editor's Table",
+    "overall_style": "sleek workplace drama, aspirational editorial lighting",
+    "consistency_strategy": "lock face, hair, and signature wardrobe across every required prompt and the requested cover sheet"
+  },
+  "characters": [
+    {
+      "character_id": "char_nara",
+      "name": "Nara",
+      "role": "lead",
+      "visual_identity_summary": "late-20s magazine editor, sharp elegant features, warm olive skin, sleek dark bob",
+      "identity_anchors": ["sleek dark bob", "sharp angular jawline"],
+      "signature_wardrobe": "tailored ivory blazer, thin gold necklace",
+      "hair_makeup_notes": "sleek glossy bob, minimal natural makeup",
+      "performance_energy": "poised, decisive, quietly commanding",
+      "primary_portrait_prompt": "solo portrait, exactly one person in frame: cinematic vertical portrait of Nara, late-20s magazine editor, sharp elegant features, warm olive skin, sleek dark bob, tailored ivory blazer, poised decisive expression, 85mm f/1.8 portrait lens, shallow depth of field, warm cinematic color grade, subtle film grain, soft key light with a gentle rim light for separation, out-of-focus editorial office background, 9:16",
+      "full_body_prompt": "solo portrait, exactly one person in frame: full body of Nara standing, head to toe visible, tailored ivory blazer, thin gold necklace, poised confident stance, studio seamless background kept softly out of focus, same sleek dark bob and warm olive skin tone as the primary portrait, 9:16",
+      "expression_sheet_prompt": "solo portrait, exactly one person in frame: grid of Nara's facial expressions on a single sheet — neutral, decisive, warm smile, thoughtful — identical framing and lighting across every panel, same sleek dark bob and jawline held constant, 9:16",
+      "outfit_sheet_prompt": "solo portrait, exactly one person in frame: outfit sheet of Nara wearing her ivory blazer, a tailored charcoal suit, and a casual cream sweater in three side-by-side poses, same face and hair identity anchors held constant across all three, 9:16",
+      "turnaround_prompt": "solo portrait, exactly one person in frame: 360-degree turnaround of Nara showing front, three-quarter, and back-of-head angles, consistent identity anchors (sleek dark bob, sharp jawline, ivory blazer) held constant across every angle, 9:16",
+      "sheet_prompt": "solo reference sheet, exactly one person: full-body cover portrait of Nara standing confidently against a minimal white studio background, luxury editorial character-design-bible cover styling, her exact facial identity, proportions, sleek dark bob, warm olive skin tone, and tailored ivory blazer preserved with 100% consistency against her other reference prompts, ultra-realistic studio lighting, generous clean negative space reserved across the upper third of the frame for a cover title overlay reading \"CHARACTER DESIGN BIBLE / Nara / Version 1.0\", premium editorial layout, 8K, portrait 9:16",
+      "sheet_type": "cover",
+      "negative_prompt": "fashion model look, corporate portrait, over-glam makeup, plastic skin, generic pretty face, no other people, no second person, no children, no extra person, no crowd, no background figures, no hands of others",
+      "attachment_package": [
+        {
+          "asset_type": "primary_portrait",
+          "purpose": "identity lock reference",
+          "recommended_filename": "nara_primary_portrait.png"
+        }
+      ]
+    }
+  ],
+  "plain_text_summary": "Nara is the poised magazine-editor lead; a luxury cover sheet was requested alongside her required reference prompts.",
+  "storyboard_attachment_manifest": {
+    "handoff_type": "character_reference_package",
+    "characters": [
+      {
+        "character_id": "char_nara",
+        "reference_filenames": ["nara_primary_portrait.png"]
+      }
+    ],
+    "usage_note": "Attach these references to every storyboard shot featuring Nara."
+  }
+}
+```
+
+### Worked example — 12-panel expression grid, `requested_sheet_type: "expression_12"`
+
+Input:
+
+```json
+{
+  "characters": [
+    {
+      "character_id": "char_dao",
+      "name": "Dao",
+      "role": "supporting",
+      "description": "mid-30s restaurant owner, warm but no-nonsense"
+    }
+  ],
+  "story_context": "Series title: Night Market Hearts | Genre: slice-of-life romance | Tone: warm, cozy",
+  "output_options": {
+    "include_image_generation_prompts": true,
+    "include_plain_text_summary": true,
+    "include_storyboard_attachment_manifest": true,
+    "generate_primary_portrait_prompt": true
+  },
+  "requested_sheet_type": "expression_12"
+}
+```
+
+Output:
+
+```json
+{
+  "contract_version": 1,
+  "visual_bible_summary": {
+    "story_title": "Night Market Hearts",
+    "overall_style": "warm slice-of-life romance, cozy natural lighting",
+    "consistency_strategy": "lock face and identity anchors across every required prompt and the requested 12-panel expression grid"
+  },
+  "characters": [
+    {
+      "character_id": "char_dao",
+      "name": "Dao",
+      "role": "supporting",
+      "visual_identity_summary": "mid-30s restaurant owner, warm round face, tied-back dark hair, sun-kissed skin",
+      "identity_anchors": ["small scar above right eyebrow", "hair always tied back in a low ponytail"],
+      "signature_wardrobe": "simple linen apron over a plain t-shirt",
+      "hair_makeup_notes": "no makeup, practical low ponytail",
+      "performance_energy": "warm, brisk, no-nonsense",
+      "primary_portrait_prompt": "solo portrait, exactly one person in frame: cinematic vertical portrait of Dao, mid-30s restaurant owner, warm round face, small scar above right eyebrow, tied-back dark hair, sun-kissed skin, linen apron over a plain t-shirt, warm brisk expression, 85mm f/1.8 portrait lens, shallow depth of field, warm cinematic color grade, subtle film grain, soft key light with a gentle rim light for separation, out-of-focus night-market background, 9:16",
+      "full_body_prompt": "solo portrait, exactly one person in frame: full body of Dao standing behind a market stall, head to toe visible, linen apron over a plain t-shirt, low ponytail, brisk confident stance, out-of-focus night-market background, 9:16",
+      "expression_sheet_prompt": "solo portrait, exactly one person in frame: grid of Dao's facial expressions on a single sheet — neutral, warm smile, brisk frown, laughing — identical framing and lighting across every panel, same scar and ponytail held constant, 9:16",
+      "outfit_sheet_prompt": "solo portrait, exactly one person in frame: outfit sheet of Dao wearing her linen apron, a plain home t-shirt, and a light rain jacket in three side-by-side poses, same face and hair identity anchors held constant across all three, 9:16",
+      "turnaround_prompt": "solo portrait, exactly one person in frame: 360-degree turnaround of Dao showing front, three-quarter, and back-of-head angles, consistent identity anchors (small scar above right eyebrow, low ponytail, linen apron) held constant across every angle, 9:16",
+      "sheet_prompt": "solo reference sheet, exactly one person: a 3x4 grid of 12 close-up portrait panels of Dao — Neutral, Smiling Softly, Laughing Openly, Angry, Cry, Fear, Confident, Thinking, Wink, Closed Eyes, Sad, Surprised — every panel holding identical camera distance and lighting, her exact facial identity, small scar above right eyebrow, and low ponytail preserved with 100% consistency across all 12 panels, ultra-realistic studio lighting, white seamless background, premium character-design-bible editorial layout, 8K, portrait 9:16",
+      "sheet_type": "expression_12",
+      "negative_prompt": "no other people, no second person, no children, no extra person, no crowd, no background figures, no hands of others, identity drift between panels, inconsistent lighting between panels",
+      "attachment_package": [
+        {
+          "asset_type": "primary_portrait",
+          "purpose": "identity lock reference",
+          "recommended_filename": "dao_primary_portrait.png"
+        }
+      ]
+    }
+  ],
+  "plain_text_summary": "Dao is the warm, no-nonsense restaurant-owner supporting character; a 12-panel expression grid was requested alongside her required reference prompts.",
+  "storyboard_attachment_manifest": {
+    "handoff_type": "character_reference_package",
+    "characters": [
+      {
+        "character_id": "char_dao",
+        "reference_filenames": ["dao_primary_portrait.png"]
+      }
+    ],
+    "usage_note": "Attach these references to every storyboard shot featuring Dao."
+  }
+}
+```
+
+### Worked example — full combined bible, `requested_sheet_type: "full_combined"`
+
+Input:
+
+```json
+{
+  "characters": [
+    {
+      "character_id": "char_pim",
+      "name": "Pim",
+      "role": "lead",
+      "description": "early-20s art student, dreamy but determined"
+    }
+  ],
+  "story_context": "Series title: Paint the Night | Genre: coming-of-age romance | Tone: soft, dreamy",
+  "output_options": {
+    "include_image_generation_prompts": true,
+    "include_plain_text_summary": true,
+    "include_storyboard_attachment_manifest": true,
+    "generate_primary_portrait_prompt": true
+  },
+  "requested_sheet_type": "full_combined"
+}
+```
+
+Output:
+
+```json
+{
+  "contract_version": 1,
+  "visual_bible_summary": {
+    "story_title": "Paint the Night",
+    "overall_style": "soft dreamy coming-of-age romance, gentle natural lighting",
+    "consistency_strategy": "lock face and identity anchors across every required prompt and the requested full combined bible sheet"
+  },
+  "characters": [
+    {
+      "character_id": "char_pim",
+      "name": "Pim",
+      "role": "lead",
+      "visual_identity_summary": "early-20s art student, dreamy expressive eyes, soft round face, paint-stained fingertips",
+      "identity_anchors": ["small freckle cluster on left cheek", "loose wavy shoulder-length hair"],
+      "signature_wardrobe": "oversized denim jacket over a plain white tee",
+      "hair_makeup_notes": "natural no-makeup look, loose wavy hair",
+      "performance_energy": "dreamy, quietly determined",
+      "primary_portrait_prompt": "solo portrait, exactly one person in frame: cinematic vertical portrait of Pim, early-20s art student, dreamy expressive eyes, soft round face, freckle cluster on left cheek, loose wavy shoulder-length hair, oversized denim jacket over a plain white tee, quietly determined expression, 85mm f/1.8 portrait lens, shallow depth of field, soft dreamy color grade, subtle film grain, soft key light with a gentle rim light for separation, out-of-focus art-studio background, 9:16",
+      "full_body_prompt": "solo portrait, exactly one person in frame: full body of Pim standing in her art studio, head to toe visible, oversized denim jacket over a plain white tee, paint-stained fingertips, relaxed dreamy stance, out-of-focus studio background, 9:16",
+      "expression_sheet_prompt": "solo portrait, exactly one person in frame: grid of Pim's facial expressions on a single sheet — neutral, dreamy smile, focused, surprised — identical framing and lighting across every panel, same freckle cluster and wavy hair held constant, 9:16",
+      "outfit_sheet_prompt": "solo portrait, exactly one person in frame: outfit sheet of Pim wearing her denim jacket, a paint-splattered overall, and a soft cardigan in three side-by-side poses, same face and hair identity anchors held constant across all three, 9:16",
+      "turnaround_prompt": "solo portrait, exactly one person in frame: 360-degree turnaround of Pim showing front, three-quarter, and back-of-head angles, consistent identity anchors (freckle cluster on left cheek, loose wavy hair, denim jacket) held constant across every angle, 9:16",
+      "sheet_prompt": "solo reference sheet, exactly one person, multi-panel character-design-bible layout for Pim: a large portrait panel echoing her primary cinematic portrait (dreamy expressive eyes, freckle cluster, loose wavy hair); beside it a 3-pose turnaround row showing the same front, three-quarter, and back-of-head angles described in her turnaround prompt with identity anchors held constant; below that a facial-expression grid of at least four panels — neutral, dreamy smile, focused, surprised — matching her expression sheet; an outfit/full-body panel showing her denim jacket, paint-splattered overall, and soft cardigan from her outfit sheet, same face held constant across every look; and a compact stats sidebar reserving clean blank space for her name, age, and role. Her exact facial identity, proportions, hair, skin tone, and wardrobe details stay 100% consistent across every panel, ultra-realistic studio lighting, white seamless background, premium editorial layout, 8K, portrait 9:16",
+      "sheet_type": "full_combined",
+      "negative_prompt": "no other people, no second person, no children, no extra person, no crowd, no background figures, no hands of others, identity drift between panels, mismatched wardrobe between panels",
+      "attachment_package": [
+        {
+          "asset_type": "primary_portrait",
+          "purpose": "identity lock reference",
+          "recommended_filename": "pim_primary_portrait.png"
+        }
+      ]
+    }
+  ],
+  "plain_text_summary": "Pim is the dreamy, determined art-student lead; a full combined character-design-bible sheet was requested alongside her required reference prompts.",
+  "storyboard_attachment_manifest": {
+    "handoff_type": "character_reference_package",
+    "characters": [
+      {
+        "character_id": "char_pim",
+        "reference_filenames": ["pim_primary_portrait.png"]
+      }
+    ],
+    "usage_note": "Attach these references to every storyboard shot featuring Pim."
+  }
+}
+```
+
 ## Preset visual identity — MANDATORY when provided
 
 When the input carries a `preset_visual_identity` object (`style_name`, `palette`,

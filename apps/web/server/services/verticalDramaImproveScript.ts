@@ -94,7 +94,7 @@ import { executeSkillLlmWithFallback, type SkillLlmResult } from "./skillModelFa
 import { loadEnabledLlmModelRows, type EnabledLlmModelRow } from "./enabledLlmModels";
 import { deductCreditsForModel } from "./creditService";
 import type { VerticalDramaStoryJobProgress } from "./verticalDramaStoryJobs";
-import type { VerticalDramaSeriesLlmModelPolicy } from "@shared/verticalDramaSeries/contracts";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 // `planning/vertical-drama-character-variants/plan.md` Phase B — season-wide
 // character variant/twin planning, wired as this job's final, best-effort
 // phase (see step (g) near the bottom of `runImproveScriptJob`). Circular
@@ -328,71 +328,24 @@ export async function resolveQualityLargeContextModelId(): Promise<string | null
 }
 
 /**
- * `llmModelPolicy` field names this file's two scoped resolvers read — kept
- * as a union so `resolveScopedPlanningModel` (below) has one implementation
- * shared by both `resolveStartFramePlanModel`/`resolveStoryboardModel`.
+ * Scoped resolvers for the `start_frame_render_plan`/`storyboard_shotgrid`
+ * stages. Originally (2026-07-11) each had its own inline `llmModelPolicy`
+ * field-reading logic; now (`planning/vertical-drama-centralized-model-policy/
+ * plan.md`, Phase 1) both just delegate to the single series-wide resolver,
+ * `resolveVerticalDramaSeriesModel` in `./verticalDramaLlmModelPolicy` — see
+ * that file's doc comment for the full override contract. Signatures are
+ * UNCHANGED from the first cut so existing callers
+ * (`verticalDramaStartFrameGeneration.ts`/`verticalDramaStoryboardGeneration.ts`)
+ * keep working without modification. Both stages use
+ * `resolveQualityLargeContextModelId` as their auto-fallback (their pre-
+ * existing tier), same as before this refactor.
  */
-type VerticalDramaLlmModelPolicyField = keyof VerticalDramaSeriesLlmModelPolicy;
-
-/**
- * Shared implementation for `resolveStartFramePlanModel`/
- * `resolveStoryboardModel` (2026-07-11, manual LLM model override feature —
- * see `/home/dev/.claude/plans/polished-toasting-gadget.md`). Best-effort,
- * NEVER throws — same "fall back to auto" contract every other resolver in
- * this codebase already follows (`resolveStoryBibleModel`,
- * `resolveQualityLargeContextModelId`):
- *  1. Read the series' `llmModelPolicy` column.
- *  2. If `field` is set (non-null) on it, re-verify the pinned model id is
- *     still enabled/eligible by re-running the SAME
- *     `selectQualityLargeContextEligibleModels` filter this feature's
- *     eligible-model-list query (`listQualityPlanningModels`) uses — a model
- *     that was disabled/removed after being pinned is never silently used.
- *     If still eligible, return it.
- *  3. Otherwise (unset, DB error, or the pinned model became ineligible)
- *     fall back to the automatic selector,
- *     `resolveQualityLargeContextModelId()` — and if THAT also can't find
- *     anything eligible (returns `null`, e.g. catalog is empty), fall back
- *     one level further to `resolveStoryBibleModel()` so this function's own
- *     contract (`Promise<string>`, never null) always holds — mirroring
- *     `resolveDeepStoryDraftModel()`'s identical final fallback in
- *     `verticalDramaStoryBible.ts`.
- */
-async function resolveScopedPlanningModel(
-  seriesId: number,
-  field: VerticalDramaLlmModelPolicyField,
-): Promise<string> {
-  try {
-    const [row] = await db
-      .select({ llmModelPolicy: verticalDramaSeries.llmModelPolicy })
-      .from(verticalDramaSeries)
-      .where(eq(verticalDramaSeries.id, seriesId))
-      .limit(1);
-    const policy = (row?.llmModelPolicy as VerticalDramaSeriesLlmModelPolicy | null) ?? null;
-    const overrideModelId = policy?.[field];
-    if (overrideModelId) {
-      const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
-      const stillEligible = selectQualityLargeContextEligibleModels(rows).some(
-        (eligibleRow) => eligibleRow.modelId === overrideModelId,
-      );
-      if (stillEligible) {
-        return overrideModelId;
-      }
-    }
-  } catch {
-    // best-effort — fall through to automatic selection below
-  }
-  const autoModelId = await resolveQualityLargeContextModelId();
-  return autoModelId ?? (await resolveStoryBibleModel());
-}
-
-/** Scoped resolver for the `start_frame_render_plan` stage — see `resolveScopedPlanningModel`'s doc comment for the full contract. */
 export async function resolveStartFramePlanModel(seriesId: number): Promise<string> {
-  return resolveScopedPlanningModel(seriesId, "startFramePlanModelId");
+  return resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
 }
 
-/** Scoped resolver for the `storyboard_shotgrid` stage — see `resolveScopedPlanningModel`'s doc comment for the full contract. */
 export async function resolveStoryboardModel(seriesId: number): Promise<string> {
-  return resolveScopedPlanningModel(seriesId, "storyboardModelId");
+  return resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
 }
 
 async function resolveImproveScriptExecutionPolicy(skill: SkillDefinition): Promise<SkillExecutionPolicyResult> {
@@ -1482,6 +1435,7 @@ export async function runImproveScriptJob(
         const { plan, creditsUsed: variantCreditsUsed } = await generateCharacterVariantPlan({
           userId,
           tenantId,
+          seriesId,
           lang,
           characters: characterInputs,
           episodes: mergedEpisodes,

@@ -54,7 +54,6 @@ import { debugError } from "../_core/logger";
 import { db } from "../db";
 import { verticalDramaCharacters, type VerticalDramaCharacterRow } from "../../drizzle/schema";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -69,6 +68,7 @@ import {
 // inside `generateCharacterVariantPlan`'s function body, never at
 // module-evaluation time.
 import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -176,6 +176,7 @@ export interface CharacterVariantPlannerCharacterInput {
 export interface GenerateCharacterVariantPlanParams {
   userId: number;
   tenantId?: string;
+  seriesId: number;
   lang?: StoryScriptLang;
   characters: CharacterVariantPlannerCharacterInput[];
   episodes: StoryScriptEpisodeInput[];
@@ -249,7 +250,10 @@ export async function generateCharacterVariantPlan(
     throw new InsufficientCreditsError();
   }
 
-  const model = (await resolveQualityLargeContextModelId()) ?? (await resolveStoryBibleModel());
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId,
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildCharacterVariantPlannerUserPrompt(params);
 

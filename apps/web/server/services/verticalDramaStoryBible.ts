@@ -23,6 +23,23 @@ import {
   loadEnabledLlmModelRows,
   type EnabledLlmModelRow,
 } from "./enabledLlmModels";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
+// NOTE: `resolveQualityLargeContextModelId` is imported LAZILY (dynamic
+// `await import("./verticalDramaImproveScript")`) inside `generateStoryBible`
+// below, NOT as a top-level static import — unlike the already-established
+// `verticalDramaPresetSynthesis.ts` cycle (safe as a static import there),
+// `verticalDramaImproveScript.ts` also imports FROM this file
+// (`resolveStoryBibleModel`, `getActiveBreakdown`, etc.), and a top-level
+// static import here was confirmed (via a real vitest run) to break test
+// files that partially-mock this module via `vi.importActual` + `vi.mock`
+// spread — the mock factory's `importActual` call fully evaluates this file,
+// which would eagerly evaluate `verticalDramaImproveScript.ts` too, and the
+// resulting module-registry ordering caused OTHER test files (that mock this
+// module's `resolveStoryBibleModel` export) to silently receive the REAL
+// implementation instead of the mock. A dynamic import deferred to
+// call-time avoids that eager evaluation entirely, following this
+// codebase's already-established lazy-import convention (see e.g.
+// `verticalDramaEpisodePipeline.ts`'s `await import("./verticalDramaStoryBible")`).
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import {
   hasEnoughCredits,
@@ -1202,7 +1219,15 @@ export async function generateStoryBible(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  // Lazy import — see the doc comment near this file's top import block for
+  // why this cannot be a static top-level import.
+  const { resolveQualityLargeContextModelId } = await import(
+    "./verticalDramaImproveScript"
+  );
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const { systemPrompt, userPrompt } = buildPrompts(params);
 
   // Base ceiling raised from 3500 to 6000 — `episodeBreakdown` grows with

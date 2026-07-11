@@ -1,8 +1,11 @@
 /**
  * Vertical Drama CHARACTER tab — coverage for the model-passthrough fix
- * (BUG 1 from the 2026-07-06 character-tab investigation): the three
- * generation mutations (`generateCharacterImage`, `generateCharacterTurnaround`,
- * `generateCharacterSheet`) used to price + generate against the fixed
+ * (BUG 1 from the 2026-07-06 character-tab investigation): the generation
+ * mutations (`generateCharacterImage`, `generateCharacterSheet` — the latter
+ * absorbed the former `generateCharacterTurnaround` in the vertical-drama-
+ * character-sheet-consolidation plan, see
+ * `verticalDramaCharacters.characterSheetType.test.ts` for that merge's own
+ * coverage) used to price + generate against the fixed
  * `DEFAULT_MODELS.image` constant, silently ignoring the character tab's own
  * model picker (`selectedImageModelId`, persisted in
  * `VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY`) — confirmed via the audit log

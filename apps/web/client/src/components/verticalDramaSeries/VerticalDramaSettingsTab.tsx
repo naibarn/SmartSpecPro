@@ -150,22 +150,17 @@ export function VerticalDramaSettingsTab({
   const [regionInput, setRegionInput] =
     useState<VerticalDramaTargetAudienceRegion>(bibleRegion);
 
-  // Manual LLM model override (added 2026-07-11) — parsed defensively from
-  // the raw jsonb prop; `typeof === "string"` doubles as the "absent/null =
-  // automatic" normalization (undefined, null, or any non-string all fall
-  // through to `null`).
+  // Manual LLM model override (added 2026-07-11, collapsed to a single
+  // series-wide field 2026-07-11 — see
+  // `planning/vertical-drama-centralized-model-policy/plan.md`) — parsed
+  // defensively from the raw jsonb prop; `typeof === "string"` doubles as
+  // the "absent/null = automatic" normalization (undefined, null, or any
+  // non-string all fall through to `null`).
   const llmPolicyObj = (llmModelPolicy ?? null) as VerticalDramaSeriesLlmModelPolicy | null;
-  const startFramePlanModelIdFromProps =
-    typeof llmPolicyObj?.startFramePlanModelId === "string"
-      ? llmPolicyObj.startFramePlanModelId
-      : null;
-  const storyboardModelIdFromProps =
-    typeof llmPolicyObj?.storyboardModelId === "string" ? llmPolicyObj.storyboardModelId : null;
-  const [startFramePlanModelInput, setStartFramePlanModelInput] = useState<string | null>(
-    startFramePlanModelIdFromProps,
-  );
-  const [storyboardModelInput, setStoryboardModelInput] = useState<string | null>(
-    storyboardModelIdFromProps,
+  const defaultModelIdFromProps =
+    typeof llmPolicyObj?.defaultModelId === "string" ? llmPolicyObj.defaultModelId : null;
+  const [defaultModelInput, setDefaultModelInput] = useState<string | null>(
+    defaultModelIdFromProps,
   );
 
   // Keep local form state in sync when the parent series data changes
@@ -181,13 +176,9 @@ export function VerticalDramaSettingsTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bibleRegion]);
   useEffect(() => {
-    setStartFramePlanModelInput(startFramePlanModelIdFromProps);
+    setDefaultModelInput(defaultModelIdFromProps);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startFramePlanModelIdFromProps]);
-  useEffect(() => {
-    setStoryboardModelInput(storyboardModelIdFromProps);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storyboardModelIdFromProps]);
+  }, [defaultModelIdFromProps]);
 
   // Text Overlay Suite (F131AB, task #34) — series watermark local draft,
   // seeded from the parsed persisted config (never trust the raw jsonb
@@ -216,9 +207,10 @@ export function VerticalDramaSettingsTab({
   const utils = trpc.useUtils();
   const updateMutation = trpc.verticalDramaSeries.updateSeries.useMutation();
   const regionMutation = trpc.verticalDramaSeries.setSeriesTargetAudienceRegion.useMutation();
-  // Manual LLM model override (added 2026-07-11) — eligible model list for
-  // the two dropdowns below, and the dedicated merge-mutation that persists
-  // them onto `llmModelPolicy`.
+  // Manual LLM model override (added 2026-07-11, collapsed to a single
+  // series-wide dropdown 2026-07-11) — eligible model list for the dropdown
+  // below, and the dedicated mutation that persists it onto
+  // `llmModelPolicy`.
   const planningModelsQuery = trpc.verticalDramaSeries.listQualityPlanningModels.useQuery();
   const planningModels = planningModelsQuery.data ?? [];
   const llmModelPolicyMutation = trpc.verticalDramaSeries.setSeriesLlmModelPolicy.useMutation();
@@ -239,9 +231,7 @@ export function VerticalDramaSettingsTab({
 
   const dirty = titleInput !== title || statusInput !== status;
   const regionDirty = regionInput !== bibleRegion;
-  const startFramePlanModelDirty = startFramePlanModelInput !== startFramePlanModelIdFromProps;
-  const storyboardModelDirty = storyboardModelInput !== storyboardModelIdFromProps;
-  const llmModelPolicyDirty = startFramePlanModelDirty || storyboardModelDirty;
+  const llmModelPolicyDirty = defaultModelInput !== defaultModelIdFromProps;
   const isSaving =
     updateMutation.isPending || regionMutation.isPending || llmModelPolicyMutation.isPending;
 
@@ -260,17 +250,13 @@ export function VerticalDramaSettingsTab({
         );
       }
       if (llmModelPolicyDirty) {
-        // Only send the fields that actually changed — mirrors this file's
-        // own doc-comment discipline of "left untouched by omitting them
-        // from the payload" (the mutation is a merge-write, an omitted key
-        // is a no-op on that field server-side).
+        // Single required-but-nullable field now (no more partial merge of
+        // two independently-dirty fields) — the mutation overwrites
+        // `llmModelPolicy` wholesale.
         mutations.push(
           llmModelPolicyMutation.mutateAsync({
             seriesId,
-            ...(startFramePlanModelDirty
-              ? { startFramePlanModelId: startFramePlanModelInput }
-              : {}),
-            ...(storyboardModelDirty ? { storyboardModelId: storyboardModelInput } : {}),
+            defaultModelId: defaultModelInput,
           }),
         );
       }
@@ -411,17 +397,17 @@ export function VerticalDramaSettingsTab({
           <div className="grid gap-1.5">
             <Label className="text-xs font-medium text-muted-foreground">
               {lang === "th"
-                ? "โมเดลสำหรับแผนภาพเริ่มต้น (start-frame plan)"
-                : "Model for start-frame plan"}
+                ? "โมเดล LLM สำหรับสร้างเนื้อหาละคร (แต่งบท/ตัวละคร/storyboard)"
+                : "LLM model for drama content generation (script/characters/storyboard)"}
             </Label>
             <Select
-              value={startFramePlanModelInput ?? AUTOMATIC_LLM_MODEL_VALUE}
+              value={defaultModelInput ?? AUTOMATIC_LLM_MODEL_VALUE}
               onValueChange={(v) =>
-                setStartFramePlanModelInput(v === AUTOMATIC_LLM_MODEL_VALUE ? null : v)
+                setDefaultModelInput(v === AUTOMATIC_LLM_MODEL_VALUE ? null : v)
               }
               disabled={readOnly || isSaving}
             >
-              <SelectTrigger data-testid="vd-settings-start-frame-plan-model">
+              <SelectTrigger data-testid="vd-settings-default-llm-model">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -437,35 +423,11 @@ export function VerticalDramaSettingsTab({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="grid gap-1.5">
-            <Label className="text-xs font-medium text-muted-foreground">
-              {lang === "th" ? "โมเดลสำหรับสตอรีบอร์ด (storyboard)" : "Model for storyboard"}
-            </Label>
-            <Select
-              value={storyboardModelInput ?? AUTOMATIC_LLM_MODEL_VALUE}
-              onValueChange={(v) =>
-                setStoryboardModelInput(v === AUTOMATIC_LLM_MODEL_VALUE ? null : v)
-              }
-              disabled={readOnly || isSaving}
-            >
-              <SelectTrigger data-testid="vd-settings-storyboard-model">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={AUTOMATIC_LLM_MODEL_VALUE}>
-                  {lang === "th"
-                    ? "อัตโนมัติ (เลือกโมเดลที่ดีที่สุดให้อัตโนมัติ)"
-                    : "Automatic (best model auto-selected)"}
-                </SelectItem>
-                {planningModels.map((model) => (
-                  <SelectItem key={model.modelId} value={model.modelId}>
-                    {model.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <p className="text-xs text-muted-foreground">
+              {lang === "th"
+                ? "มีผลกับทุกขั้นตอนของซีรีย์นี้ที่ใช้ LLM — แต่งบท, วิเคราะห์/สร้างตัวละคร, storyboard และอื่นๆ ตั้งครั้งเดียวใช้ได้ทั้งหมด"
+                : "Applies to every LLM-driven step of this series — script writing, character analysis/generation, storyboard, and more. Set it once, it covers everything."}
+            </p>
           </div>
 
           {!readOnly && (
