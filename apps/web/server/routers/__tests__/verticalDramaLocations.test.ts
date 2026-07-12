@@ -158,11 +158,19 @@ vi.mock("../../services/verticalDramaLocationImageGeneration", () => ({
 // this codebase's other Vertical Drama test files) since the REAL module
 // transitively imports `verticalDramaImproveScript.ts` ->
 // `verticalDramaStoryBible.ts` -> `enabledLlmModels.ts` -> `adminProcedure`.
+// Also provides the (unused-by-this-router, no-op) names
+// `verticalDramaCharacters.ts` itself imports from this same module — see
+// the model-picker mocks block below for why that router file is now in this
+// test's module graph too.
 const { mockReadPresetVisualIdentityFromBible } = vi.hoisted(() => ({
   mockReadPresetVisualIdentityFromBible: vi.fn(() => undefined),
 }));
 vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
   readPresetVisualIdentityFromBible: mockReadPresetVisualIdentityFromBible,
+  generateCharacterVisualPrompts: vi.fn(),
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+  resolveFaceSourceReferenceForCharacter: vi.fn(),
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
@@ -181,6 +189,48 @@ const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
 }));
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Image-model picker (model-picker parity plan) — `generateLocationImage`   */
+/* now imports `resolveCharacterImageModelId`/                                */
+/* `resolveVdCharacterMcpTransportMetadata` directly from                     */
+/* `../verticalDramaCharacters` (reused, not duplicated — see that router's   */
+/* own doc comment), which pulls that ENTIRE router file's module graph into  */
+/* this test too. These two mocks are the same ones                          */
+/* `verticalDramaCharacters.modelSelection.test.ts` uses to import that exact */
+/* file safely — mirrored here verbatim (that test file's own doc comment:    */
+/* "everything is mocked to a minimal no-op shape purely so the module can be */
+/* imported"). `verticalDramaCharacterStock` is mocked for the same reason    */
+/* even though this router never calls it directly.                          */
+/* -------------------------------------------------------------------------- */
+const { mockGetModelsByTypeAsync } = vi.hoisted(() => ({
+  mockGetModelsByTypeAsync: vi.fn(),
+}));
+vi.mock("../../services/modelRegistry", () => ({
+  getModelsByTypeAsync: mockGetModelsByTypeAsync,
+}));
+
+const { mockResolveMediaTransport } = vi.hoisted(() => ({
+  mockResolveMediaTransport: vi.fn(),
+}));
+vi.mock("../../services/mediaTransportResolver", () => ({
+  resolveMediaTransport: mockResolveMediaTransport,
+}));
+
+vi.mock("../../services/verticalDramaCharacterStock", () => ({
+  verticalDramaCharacterStockService: {
+    getPrimaryPortraitUrl: vi.fn(),
+    getReferenceImageUrlByAssetLinkId: vi.fn(),
+  },
+  VerticalDramaCharacterStockError: class extends Error {
+    constructor(
+      public readonly reason: string,
+      message: string,
+    ) {
+      super(message);
+    }
+  },
 }));
 
 import { verticalDramaLocationsRouter } from "../verticalDramaLocations";
@@ -497,6 +547,182 @@ describe("generateLocationImage", () => {
         input: { seriesId: "10", locationId: "999", approvedPrompt: "x" },
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* generateLocationImage — image-model picker (model-picker parity plan):    */
+/* `selectedImageModelId`/`mcpConnectionId` now resolve through the SAME     */
+/* `resolveCharacterImageModelId`/`resolveVdCharacterMcpTransportMetadata`   */
+/* helpers `generateCharacterImage` uses (imported, not duplicated) — these  */
+/* tests cover the resolution order + rejection behavior "the same way the   */
+/* character version does" per that helper's own coverage in                 */
+/* `verticalDramaCharacters.modelSelection.test.ts`, plus this router's own  */
+/* NEW wiring of the result into the `generateImageAsync` render call.       */
+/* -------------------------------------------------------------------------- */
+
+describe("generateLocationImage — image-model picker (model-picker parity plan)", () => {
+  it("falls back to DEFAULT_MODELS.image when selectedImageModelId is absent (regression — byte-identical to pre-picker behavior)", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+
+    await router.generateLocationImage({
+      ctx: ctx(),
+      input: { seriesId: "10", locationId: "5", approvedPrompt: "approved prompt" },
+    });
+
+    expect(mockGetModelsByTypeAsync).not.toHaveBeenCalled();
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.model).toBe("google-nano-banana-pro");
+  });
+
+  it("honors a valid, enabled selectedImageModelId — prices + renders against it instead of DEFAULT_MODELS.image (the picker's whole point)", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      { id: "google-banana-2-lite", type: "image", isEnabled: true },
+    ]);
+    // Distinct from the sibling tests' shared `5` so this assertion can only
+    // pass if `calculateCreditCost` was actually invoked for THIS test's own
+    // pricing-row lookup (proving the picker's selected model, not just
+    // `DEFAULT_MODELS.image`, drives the pricing lookup).
+    mockCalculateCreditCost.mockReturnValueOnce(8);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 8, configJson: null }]));
+
+    const result = await router.generateLocationImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        approvedPrompt: "approved prompt",
+        selectedImageModelId: "google-banana-2-lite",
+      },
+    });
+
+    expect(mockGetModelsByTypeAsync).toHaveBeenCalledWith("image");
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.model).toBe("google-banana-2-lite");
+    expect(result.creditsUsed.imageRender).toBe(8);
+  });
+
+  it("rejects with BAD_REQUEST for a selectedImageModelId that doesn't exist in the catalog (same as the character version)", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      { id: "google-banana-2-lite", type: "image", isEnabled: true },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]));
+
+    await expect(
+      router.generateLocationImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          locationId: "5",
+          approvedPrompt: "approved prompt",
+          selectedImageModelId: "does-not-exist",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("rejects with BAD_REQUEST for a disabled selectedImageModelId — fails closed, does not silently substitute the default (same as the character version)", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      { id: "google-banana-2-lite", type: "image", isEnabled: false },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]));
+
+    await expect(
+      router.generateLocationImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          locationId: "5",
+          approvedPrompt: "approved prompt",
+          selectedImageModelId: "google-banana-2-lite",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("threads resolveVdCharacterMcpTransportMetadata's result into the render call as transportMetadata when the resolved model is MCP-transport", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      { id: "higgsfield/nano-banana-pro", type: "image", isEnabled: true },
+    ]);
+    mockResolveMediaTransport.mockResolvedValueOnce({
+      transport: "mcp",
+      providerKey: "higgsfield",
+      providerModelId: "nano_banana_pro",
+      mcpConnectionId: "conn-123",
+    });
+    mockCalculateCreditCost.mockReturnValueOnce(0);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }]));
+
+    await router.generateLocationImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        approvedPrompt: "approved prompt",
+        selectedImageModelId: "higgsfield/nano-banana-pro",
+        mcpConnectionId: "conn-123",
+      },
+    });
+
+    expect(mockResolveMediaTransport).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        actorUserId: 42,
+        assetType: "image",
+        requestedTransport: "mcp",
+        mcpConnectionId: "conn-123",
+        providerKey: "higgsfield",
+      }),
+    );
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.transportMetadata).toMatchObject({ transport: "mcp", providerKey: "higgsfield" });
+  });
+
+  it("rejects with BAD_REQUEST when an MCP-transport model is selected without a connected mcpConnectionId (fails BEFORE reserving credits)", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      { id: "higgsfield/nano-banana-pro", type: "image", isEnabled: true },
+    ]);
+    mockCalculateCreditCost.mockReturnValueOnce(0);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 0, configJson: null }]));
+
+    await expect(
+      router.generateLocationImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          locationId: "5",
+          approvedPrompt: "approved prompt",
+          selectedImageModelId: "higgsfield/nano-banana-pro",
+          // mcpConnectionId intentionally omitted
+        },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mockResolveMediaTransport).not.toHaveBeenCalled();
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });
 

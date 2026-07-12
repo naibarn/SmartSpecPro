@@ -5,12 +5,16 @@
  * Location-side companion to `verticalDramaCharacters.ts`: surfaces the
  * durable per-series location roster AND its reference-asset stock
  * (approval/QC lifecycle) over tRPC. Deliberately much smaller than the
- * character router — no variants/twins/voice-casting concerns, no
- * model-picker/MCP-transport plumbing (`generateLocationImage`'s input
- * contract carries no `selectedImageModelId`/`mcpConnectionId`, so this
- * router always renders with `DEFAULT_MODELS.image`, a plain gateway_api
- * model — never MCP-transport — so no `resolveMediaTransport` branch is
- * needed here at all).
+ * character router — no variants/twins/voice-casting concerns. It DOES carry
+ * the same image-model-picker/MCP-transport plumbing `generateCharacterImage`
+ * has: `generateLocationImage`'s input accepts `selectedImageModelId`/
+ * `mcpConnectionId` so a user can choose which model renders a location's
+ * reference image instead of being forced onto the hardcoded (expensive)
+ * default. The resolution/MCP-transport logic itself is REUSED verbatim from
+ * `verticalDramaCharacters.ts`'s exported `resolveCharacterImageModelId`/
+ * `resolveVdCharacterMcpTransportMetadata` (both generic/model-agnostic, not
+ * character-specific) rather than duplicated here — see
+ * `generateLocationImage`'s own doc comment.
  *
  * Every procedure is protected (auth required), gated on the
  * `verticalDramaSeries` tenant feature flag (fail-closed, same gate the
@@ -58,7 +62,7 @@ import {
   VerticalDramaLocationStockError,
 } from "../services/verticalDramaLocationStock";
 import { VERTICAL_DRAMA_LOCATION_ASSET_STATES } from "@shared/verticalDramaSeries/locationAssets";
-import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
+import { mediaGenerationService } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
 import { signBearerToken } from "../_core/tokens";
@@ -75,6 +79,19 @@ import {
 // about feature-specific logic like `resolveMediaAssetForImport` below, which
 // IS duplicated rather than shared.
 import { readPresetVisualIdentityFromBible } from "../services/verticalDramaCharacterImageGeneration";
+// Image-model-picker resolution — GENERIC/model-agnostic helpers (nothing
+// character-specific), reused verbatim from `verticalDramaCharacters.ts`
+// rather than duplicated here: this feature's usual "duplicate small
+// per-surface helpers, keep the character/location systems decoupled"
+// convention (see this file's own top-of-file doc comment) is for
+// feature-SPECIFIC logic; these two are pure model-catalog/MCP-transport
+// plumbing shared verbatim by both tabs' generation procedures. No import
+// cycle: `verticalDramaCharacters.ts` never imports from this file (verified
+// — it has no reference to `verticalDramaLocations` anywhere in its module).
+import {
+  resolveCharacterImageModelId,
+  resolveVdCharacterMcpTransportMetadata,
+} from "./verticalDramaCharacters";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
@@ -477,12 +494,18 @@ export const verticalDramaLocationsRouter = router({
    * every prompt with "wide establishing shot, environment only, no
    * people:"), not a vertical character portrait or a 9:16 in-episode frame.
    *
-   * No `selectedImageModelId`/`mcpConnectionId` input (unlike
-   * `generateCharacterImage`) — this procedure's input contract is
-   * deliberately minimal (`{seriesId, locationId, approvedPrompt?,
-   * approvedNegativePrompt?}`), so it always renders with
-   * `DEFAULT_MODELS.image` (a plain gateway_api model, never MCP-transport)
-   * and never needs `resolveMediaTransport`/MCP dispatch logic at all.
+   * `selectedImageModelId`/`mcpConnectionId` (both optional — location
+   * model-picker parity plan): the location tab's own model picker.
+   * `selectedImageModelId` is resolved via `resolveCharacterImageModelId`
+   * (validated + must be enabled, falling back to `DEFAULT_MODELS.image`
+   * when absent — byte-identical resolution order to
+   * `generateCharacterImage`, reused verbatim, not duplicated — see this
+   * file's own top-of-file doc comment). `mcpConnectionId` is required only
+   * when the resolved model is MCP-transport (e.g. `higgsfield/*`,
+   * `magnific-mcp/*`) — see `resolveVdCharacterMcpTransportMetadata`, also
+   * reused verbatim. Absent `selectedImageModelId` is byte-identical to this
+   * procedure's pre-existing behavior (always priced + rendered against
+   * `DEFAULT_MODELS.image`).
    */
   generateLocationImage: verticalDramaProcedure
     .input(
@@ -490,6 +513,14 @@ export const verticalDramaLocationsRouter = router({
         locationId: z.string().min(1),
         approvedPrompt: z.string().min(1).optional(),
         approvedNegativePrompt: z.string().optional(),
+        // Caller-selected image model (location tab's own model picker) —
+        // validated + must be enabled; falls back to `DEFAULT_MODELS.image`
+        // when absent. See `resolveCharacterImageModelId`.
+        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        // Required only when the selected model is MCP-transport (e.g.
+        // `higgsfield/*`, `magnific-mcp/*`) — see
+        // `resolveVdCharacterMcpTransportMetadata`.
+        mcpConnectionId: z.string().max(64).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -581,8 +612,12 @@ export const verticalDramaLocationsRouter = router({
       );
 
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
-      //    from the prompt-generation LLM call above.
-      const resolvedImageModelId = DEFAULT_MODELS.image;
+      //    from the prompt-generation LLM call above. Prices + generates
+      //    against the CALLER-SELECTED model (location tab's own picker),
+      //    falling back to `DEFAULT_MODELS.image` when none was selected —
+      //    same "caller selection -> DEFAULT_MODELS" resolution order as
+      //    `generateCharacterImage`.
+      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
         .from(mediaModels)
@@ -603,7 +638,25 @@ export const verticalDramaLocationsRouter = router({
             message: `Insufficient credits for location image render. Required: ${imageCreditCost}`,
           });
         }
+      }
 
+      // MCP-transport models (e.g. higgsfield/*, magnific-mcp/*) must be
+      // dispatched through the service's MCP branch, not the default
+      // gateway_api/Python-backend path — see
+      // `resolveVdCharacterMcpTransportMetadata` (reused verbatim from
+      // `verticalDramaCharacters.ts`). Resolved BEFORE the credit reservation
+      // below (same ordering as `generateCharacterImage`) so a missing/
+      // invalid MCP connection fails fast without having reserved credits.
+      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+      });
+
+      if (shouldChargeImageCredits) {
         // Reserve credits BEFORE starting the task — `media.getTask`
         // reconciles the reservation against actual usage once the task
         // completes/fails, same convention as every other async render in
@@ -644,6 +697,7 @@ export const verticalDramaLocationsRouter = router({
               __vd_location_id: String(locationId),
             },
             publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
             auditContext: {
               userId,
               traceId: crypto.randomUUID(),

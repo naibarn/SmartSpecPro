@@ -15,12 +15,20 @@
  * buried inside one episode's storyboard.
  *
  * Deliberately much simpler than `VerticalDramaCharacterStockPanel.tsx`: no
- * variants/twins, no voice/speech-profile sections, no model-picker/MCP
- * plumbing (this feature's router always renders with `DEFAULT_MODELS.image`
- * — see `verticalDramaLocations.ts`'s `generateLocationImage`), no
- * character-sheet/turnaround UI, no drag-drop Library/History sidebar
- * picker. Locations are a flat roster with at most one approved
- * establishing-plate reference each in this phase.
+ * variants/twins, no voice/speech-profile sections, no character-sheet/
+ * turnaround UI, no drag-drop Library/History sidebar picker. Locations are a
+ * flat roster with at most one approved establishing-plate reference each in
+ * this phase.
+ *
+ * It DOES carry an image-model picker (model-picker parity plan) mirroring
+ * `VerticalDramaCharacterStockPanel.tsx`'s own: `trpc.mediaModels.list`,
+ * `ModelSelectorDialog`, and (for MCP-transport models) `McpConnectionPicker`
+ * — the SAME reusable components the character tab uses, not new ones.
+ * Unlike the character tab's `requireModelSelected()` hard gate, this panel
+ * deliberately does NOT force a pick: an unselected model silently falls
+ * back to `DEFAULT_MODELS.image` server-side (`resolveCharacterImageModelId`
+ * in `verticalDramaLocations.ts`), preserving today's zero-choice behavior
+ * for a user who never opens the picker — the picker is purely additive.
  *
  * Consumes only `trpc.verticalDramaLocations.*`. There is currently no
  * "create location" procedure on that router — the roster is populated
@@ -56,6 +64,11 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
+import ModelSelectorDialog, {
+  type MediaModel,
+} from "@/components/media/ModelSelectorDialog";
+import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 
 /* -------------------------------------------------------------------------- */
 /* Localized copy                                                             */
@@ -63,6 +76,39 @@ import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
+
+/* -------------------------------------------------------------------------- */
+/* Image-model picker (model-picker parity plan) — mirrors                   */
+/* `VerticalDramaCharacterStockPanel.tsx`'s own storage-key + MCP-connection  */
+/* localStorage helpers byte-for-byte (duplicated, not imported, per this    */
+/* feature's established "duplicate small per-surface helpers" convention).  */
+/* -------------------------------------------------------------------------- */
+
+/** Own dedicated localStorage key (deliberately NOT the character tab's own
+ *  `smartspec_vd_character_image_model` key) so a user can pick a different
+ *  default model per surface — locations and characters have different
+ *  cost/quality tradeoffs (e.g. establishing plates rarely need the same
+ *  identity-lock fidelity a character portrait does). */
+const VD_LOCATION_IMAGE_MODEL_STORAGE_KEY = "smartspec_vd_location_image_model";
+
+/** Shared MCP-connection localStorage key — same key
+ *  `VerticalDramaCharacterStockPanel.tsx`/`VerticalDramaEpisodePage.tsx` read/
+ *  write, so a connection picked on any surface carries over automatically. */
+const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
+
+function readStoredMcpConnectionId(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(MCP_CONNECTION_ID_STORAGE_KEY) || null;
+}
+
+function storeMcpConnectionId(connectionId: string | null): void {
+  if (typeof window === "undefined") return;
+  if (connectionId) {
+    window.localStorage.setItem(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
+  } else {
+    window.localStorage.removeItem(MCP_CONNECTION_ID_STORAGE_KEY);
+  }
+}
 
 /* -------------------------------------------------------------------------- */
 /* Pure helpers (exported for direct unit testing — this codebase's                                     */
@@ -241,6 +287,56 @@ export function VerticalDramaLocationStockPanel({
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
 
+  /** Model picker for the "Generate image" action, mirroring
+   *  `VerticalDramaCharacterStockPanel.tsx`'s own model-selector-before-
+   *  generate UX (same `ModelSelectorDialog`/`McpConnectionPicker`
+   *  components, not new ones). Persisted to localStorage under this panel's
+   *  own dedicated key (see `VD_LOCATION_IMAGE_MODEL_STORAGE_KEY` above) so
+   *  the user doesn't have to re-pick a model every generate. Unlike the
+   *  character tab, an empty selection is never force-blocked here — see
+   *  this file's own top-of-file doc comment. */
+  const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
+  const [selectedImageModelId, setSelectedImageModelId] = useState(
+    () => localStorage.getItem(VD_LOCATION_IMAGE_MODEL_STORAGE_KEY) || "",
+  );
+  const handleSelectImageModel = (modelId: string) => {
+    setSelectedImageModelId(modelId);
+    localStorage.setItem(VD_LOCATION_IMAGE_MODEL_STORAGE_KEY, modelId);
+  };
+  const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
+  const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModel[];
+  const selectedImageModelRecord = imageModels.find((m) => m.modelId === selectedImageModelId);
+  /** Whether the currently-selected image model is MCP-transport (e.g.
+   *  `higgsfield/*`, `magnific-mcp/*`) — byte-identical derivation to
+   *  `VerticalDramaCharacterStockPanel.tsx`'s own `imageModelUsesMcp`. */
+  const imageModelUsesMcp =
+    Boolean(selectedImageModelId) &&
+    resolveMediaModelTransportConfig({
+      provider: selectedImageModelRecord?.provider,
+      modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
+      configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+    }).transport === "mcp";
+  const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(readStoredMcpConnectionId);
+  const handleSelectMcpConnection = (connectionId: string | null) => {
+    setMcpConnectionIdState(connectionId);
+    storeMcpConnectionId(connectionId);
+  };
+  /** Blocks generation client-side with a toast instead of letting the
+   *  server throw BAD_REQUEST — same convention as
+   *  `VerticalDramaCharacterStockPanel.tsx`'s own
+   *  `requireMcpConnectionOrToast`. Unlike that gate's sibling
+   *  `requireModelSelected()`, there is deliberately no equivalent gate for
+   *  "no model chosen at all" here — an empty selection is a valid, silently
+   *  defaulted choice for this panel (see this file's own top-of-file doc
+   *  comment), not an error state. */
+  const requireMcpConnectionOrToast = (): boolean => {
+    if (!imageModelUsesMcp || mcpConnectionId) return true;
+    toast.error(
+      t(lang, "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลนี้", "Select an MCP connection before using this image model."),
+    );
+    return false;
+  };
+
   /**
    * Invalidates the roster AND (when a location is selected) that location's
    * candidate-image gallery — called after every mutation that can change
@@ -416,6 +512,7 @@ export function VerticalDramaLocationStockPanel({
   const handleGenerate = (location: VdLocationListItem) => {
     const preview = previewByLocationId[location.locationId];
     if (!preview) return;
+    if (!requireMcpConnectionOrToast()) return;
     setRenderingLocationId(location.locationId);
     generateMutation.mutate(
       {
@@ -423,6 +520,8 @@ export function VerticalDramaLocationStockPanel({
         locationId: location.locationId,
         approvedPrompt: preview.prompt,
         ...(preview.negativePrompt ? { approvedNegativePrompt: preview.negativePrompt } : {}),
+        ...(selectedImageModelId ? { selectedImageModelId } : {}),
+        ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
       },
       {
         onSuccess: (res) => void pollLocationImageTask(res.taskId, location.locationId),
@@ -893,6 +992,43 @@ export function VerticalDramaLocationStockPanel({
                   permanently capping it at one candidate. */}
               {!readOnly && (
                 <div className="flex flex-col gap-1.5 border-t pt-3">
+                  {/* Image-model picker (model-picker parity plan) — shown
+                      above every generate-flow state (fresh/preview/candidate)
+                      so the model (and its per-model credit cost, shown inside
+                      the dialog) is visible BEFORE the paid "Generate image"
+                      step below, mirroring where the character tab surfaces
+                      its own picker relative to its generate button. */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setIsModelDialogOpen(true)}
+                      data-testid={`vd-location-choose-model-${selectedLocation.locationId}`}
+                    >
+                      <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                      {selectedImageModelId
+                        ? `${t(lang, "โมเดล", "Model")}: ${selectedImageModelRecord?.name ?? selectedImageModelId}`
+                        : t(lang, "เลือกโมเดลสร้างภาพ", "Choose image model")}
+                    </Button>
+                  </div>
+
+                  {imageModelUsesMcp && (
+                    <McpConnectionPicker
+                      value={mcpConnectionId}
+                      onChange={handleSelectMcpConnection}
+                      assetType="image"
+                      providerKey={
+                        resolveMediaModelTransportConfig({
+                          provider: selectedImageModelRecord?.provider,
+                          modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
+                          configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+                        }).providerKey ?? undefined
+                      }
+                    />
+                  )}
+
                   {candidateForSelected ? (
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
@@ -1064,6 +1200,16 @@ export function VerticalDramaLocationStockPanel({
           </CardContent>
         </Card>
       ) : null}
+
+      <ModelSelectorDialog
+        open={isModelDialogOpen}
+        onOpenChange={setIsModelDialogOpen}
+        models={imageModels}
+        selectedModelId={selectedImageModelId}
+        onSelect={handleSelectImageModel}
+        mediaType="image"
+        isLoading={imageModelsQuery.isLoading}
+      />
 
       <ImageLightbox
         images={lightboxImage ? [lightboxImage] : []}
