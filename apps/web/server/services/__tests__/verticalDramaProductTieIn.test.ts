@@ -293,9 +293,10 @@ describe("appendProductPresenceDirective", () => {
 });
 
 describe("mergeAndTrimReferenceImageUrls", () => {
-  it("merges character refs first, then product refs, deduping", () => {
+  it("merges character refs first, then product refs, deduping (no location refs)", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2"],
+      [],
       ["product-1"],
       undefined,
     );
@@ -304,13 +305,14 @@ describe("mergeAndTrimReferenceImageUrls", () => {
   });
 
   it("dedupes overlapping URLs", () => {
-    const { urls } = mergeAndTrimReferenceImageUrls(["a", "b"], ["b", "c"], undefined);
+    const { urls } = mergeAndTrimReferenceImageUrls(["a", "b"], [], ["b", "c"], undefined);
     expect(urls).toEqual(["a", "b", "c"]);
   });
 
   it("trims from the end (product refs) when over maxReferenceImages, prioritizing character refs", () => {
     const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
       ["char-1", "char-2", "char-3"],
+      [],
       ["product-1", "product-2"],
       3,
     );
@@ -319,9 +321,64 @@ describe("mergeAndTrimReferenceImageUrls", () => {
   });
 
   it("passes through unchanged when maxReferenceImages is 0/undefined", () => {
-    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(["a"], ["b"], 0);
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(["a"], [], ["b"], 0);
     expect(urls).toEqual(["a", "b"]);
     expect(trimmedCount).toBe(0);
+  });
+
+  /* ---------------------------------------------------------------------- */
+  /* 3-source priority ordering (Phase 2 of                                  */
+  /* `planning/polished-toasting-gadget.md` — location visual bible):        */
+  /* character (highest) -> location -> product (lowest, trimmed first).     */
+  /* ---------------------------------------------------------------------- */
+
+  it("merges character, location, then product refs in that priority order", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1"],
+      ["loc-1"],
+      ["product-1"],
+      undefined,
+    );
+    expect(urls).toEqual(["char-1", "loc-1", "product-1"]);
+    expect(trimmedCount).toBe(0);
+  });
+
+  it("trims product refs before ever trimming the location ref", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1"],
+      ["loc-1"],
+      ["product-1", "product-2"],
+      2,
+    );
+    expect(urls).toEqual(["char-1", "loc-1"]);
+    expect(trimmedCount).toBe(2);
+  });
+
+  it("trims the location ref (once product refs are already gone) before ever trimming a character ref", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1", "char-2"],
+      ["loc-1"],
+      ["product-1"],
+      2,
+    );
+    expect(urls).toEqual(["char-1", "char-2"]);
+    expect(trimmedCount).toBe(2);
+  });
+
+  it("dedupes across all three sources", () => {
+    const { urls } = mergeAndTrimReferenceImageUrls(["a"], ["a", "b"], ["b", "c"], undefined);
+    expect(urls).toEqual(["a", "b", "c"]);
+  });
+
+  it("a shot with no location (empty locationRefUrls) behaves byte-identical to the pre-Phase-2 2-source shape", () => {
+    const { urls, trimmedCount } = mergeAndTrimReferenceImageUrls(
+      ["char-1", "char-2"],
+      [],
+      ["product-1", "product-2", "product-3"],
+      3,
+    );
+    expect(urls).toEqual(["char-1", "char-2", "product-1"]);
+    expect(trimmedCount).toBe(2);
   });
 });
 

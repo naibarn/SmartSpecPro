@@ -169,7 +169,13 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 3rd select, right
+      // after the character roster. Empty roster here is out of scope for
+      // this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockImplementation((_owner: unknown, id: number) => {
       if (id === 1) return Promise.resolve(null); // base character — no portrait yet
       if (id === 2) return Promise.resolve("https://cdn.example/nuna-school.png"); // variant WITH portrait
@@ -207,7 +213,13 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 3rd select, right
+      // after the character roster. Empty roster here is out of scope for
+      // this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockImplementation((_owner: unknown, id: number) =>
       Promise.resolve(id === 2 ? "https://cdn.example/nuna-school.png" : null)
     );
@@ -225,7 +237,13 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 3rd select, right
+      // after the character roster. Empty roster here is out of scope for
+      // this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -242,7 +260,13 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 3rd select, right
+      // after the character roster. Empty roster here is out of scope for
+      // this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -261,7 +285,13 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 3rd select, right
+      // after the character roster. Empty roster here is out of scope for
+      // this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -279,7 +309,13 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 3rd select, right
+      // after the character roster. Empty roster here is out of scope for
+      // this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -297,7 +333,13 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 3rd select, right
+      // after the character roster. Empty roster here is out of scope for
+      // this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -312,7 +354,13 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     ];
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
-      .mockReturnValueOnce(selectChain(characterRows));
+      .mockReturnValueOnce(selectChain(characterRows))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
+      // series' location roster (`existingLocations`) as a 3rd select, right
+      // after the character roster. Empty roster here is out of scope for
+      // this file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
     await pipeline.generateRealStoryboard(owner, episode, false);

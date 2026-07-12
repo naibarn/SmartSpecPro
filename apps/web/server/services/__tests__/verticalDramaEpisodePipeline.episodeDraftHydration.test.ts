@@ -250,6 +250,11 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     const bible = { breakdownVersions: [] };
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // (the series' location roster, `existingLocations`); empty roster is
+      // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetActiveBreakdown.mockReturnValue([SAMPLE_BREAKDOWN_ITEM]);
     mockReadItemShotDrafts.mockReturnValue(SAMPLE_SHOTS);
@@ -266,6 +271,11 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     const bible = { breakdownVersions: [] };
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // (the series' location roster, `existingLocations`); empty roster is
+      // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -279,6 +289,11 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     const bible = { breakdownVersions: [] };
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // (the series' location roster, `existingLocations`); empty roster is
+      // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetActiveBreakdown.mockReturnValue([]); // no matching item at all
 

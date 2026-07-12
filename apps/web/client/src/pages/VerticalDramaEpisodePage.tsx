@@ -927,6 +927,28 @@ function EpisodeWorkspaceShell({
   // reflects the dialog's own explicit submissions.
   const silentRepairMutation =
     trpc.verticalDramaEpisodes.repairStageOutput.useMutation();
+  // planning/`polished-toasting-gadget.md` Fix A — dedicated mutation for
+  // the "ให้ AI ปรับ" (AI-adjust) button next to a shot's start-frame
+  // prompt. Bypasses `repairMutation`/`repairStageOutput` entirely (that
+  // dispatcher has no real regeneration branch for `start_frame_render_plan`
+  // — see the plan doc); the server persists the new prompt straight onto
+  // `startFramePlan.frames[]`, so this only needs to drive the SAME repair-
+  // dialog status state `repairMutation`'s own onSuccess/onError set above,
+  // so the shared `<VerticalDramaRepairDialog>` instance's job-status UI
+  // works identically for this stage. No `resultArtifactId` to set — this
+  // procedure returns a prompt, not an artifact-ledger entry, so it stays
+  // whatever the onSubmit preamble already cleared it to.
+  const generateShotStartFramePromptMutation =
+    trpc.verticalDramaEpisodes.generateShotStartFramePrompt.useMutation({
+      onSuccess: () => {
+        setRepairJobStatus("succeeded");
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => {
+        setRepairJobStatus("failed");
+        setRepairError(err.message);
+      },
+    });
   const approveRetconMutation =
     trpc.verticalDramaEpisodes.approveRetconProposal.useMutation({
       onSuccess: () =>
@@ -4600,7 +4622,17 @@ function EpisodeWorkspaceShell({
           stage={repairStage ?? "plan_episode_script"}
           target={repairTarget}
           templateInstruction={repairTemplate}
-          jobStatus={repairMutation.isPending ? "submitting" : repairJobStatus}
+          jobStatus={
+            // Extended for Fix A/B (planning/`polished-toasting-gadget.md`)
+            // — the two per-shot stages that now bypass `repairMutation`
+            // still need this dialog's spinner to reflect THEIR mutation's
+            // pending state while in flight.
+            repairMutation.isPending ||
+            generateShotStartFramePromptMutation.isPending ||
+            generateShotVideoPromptMutation.isPending
+              ? "submitting"
+              : repairJobStatus
+          }
           resultArtifactId={repairResultArtifactId}
           errorReason={repairError}
           onSubmit={({ instruction, target }) => {
@@ -4608,6 +4640,66 @@ function EpisodeWorkspaceShell({
             setRepairJobStatus("submitting");
             setRepairError(undefined);
             setRepairResultArtifactId(undefined);
+            // planning/`polished-toasting-gadget.md` Fix A/B — these two
+            // stages bypass the generic `repairMutation` entirely (its
+            // `repairStage` dispatcher has no real regeneration branch for
+            // either one, see that mutation's own doc comment above) and
+            // call their own dedicated per-shot procedures instead. Every
+            // other stage keeps calling `repairMutation` exactly as before
+            // this fix.
+            if (repairStage === "start_frame_render_plan") {
+              const shotNumber = target?.parentShotNumber;
+              if (shotNumber == null) return;
+              generateShotStartFramePromptMutation.mutate({
+                seriesId,
+                episodeId,
+                shotNumber,
+                instruction,
+                idempotencyKey: crypto.randomUUID(),
+              });
+              return;
+            }
+            if (repairStage === "video_motion_prompt_pack") {
+              const shotNumber = target?.parentShotNumber;
+              if (shotNumber == null) return;
+              // Reuses the SAME mutation object the "สร้างพรอมต์วิดีโอ (AI)"
+              // button already calls (`generateShotVideoPromptMutation`,
+              // declared above near `handleGenerateShotVideoPrompt`) rather
+              // than a second instance — its hook-level `onError` is
+              // procedure-generic (missing-approved-image precondition, or
+              // a plain fallback toast), equally valid regardless of which
+              // UI entry point triggered the call, and its hook-level
+              // `onSettled` only touches `generatingShotVideoPromptForShot`,
+              // a Set the dialog never reads. This call-specific
+              // onSuccess/onError layers the repair-dialog's own status
+              // state on top (React Query runs hook-level callbacks first,
+              // then these), the same per-call layering
+              // `handleGenerateShotVideoPrompt` above already relies on.
+              generateShotVideoPromptMutation.mutate(
+                {
+                  seriesId,
+                  episodeId,
+                  shotNumber,
+                  instruction,
+                  idempotencyKey: crypto.randomUUID(),
+                },
+                {
+                  onSuccess: data => {
+                    setUsedVisionByShot(prev => ({
+                      ...prev,
+                      [shotNumber]: data.usedVision,
+                    }));
+                    setRepairJobStatus("succeeded");
+                    void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+                  },
+                  onError: err => {
+                    setRepairJobStatus("failed");
+                    setRepairError(err.message);
+                  },
+                }
+              );
+              return;
+            }
             repairMutation.mutate({
               seriesId,
               episodeId,

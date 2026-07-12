@@ -89,12 +89,18 @@ vi.mock("../../services/rateLimiter", () => ({
   mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
 }));
 
-const { mockGetPrimaryPortraitAssetId } = vi.hoisted(() => ({
+// `mockGetPrimaryPortraitUrl` hoisted (rather than an inline `vi.fn()`) so
+// the multi-character reference images tests below can configure/assert on
+// it directly (multi-character disambiguation fix,
+// `polished-toasting-gadget.md`) — same convention this file already uses
+// for `getPrimaryPortraitAssetId`.
+const { mockGetPrimaryPortraitAssetId, mockGetPrimaryPortraitUrl } = vi.hoisted(() => ({
   mockGetPrimaryPortraitAssetId: vi.fn(),
+  mockGetPrimaryPortraitUrl: vi.fn(),
 }));
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: {
-    getPrimaryPortraitUrl: vi.fn(),
+    getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl,
     getPrimaryPortraitAssetId: mockGetPrimaryPortraitAssetId,
   },
 }));
@@ -433,6 +439,7 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
       .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
       .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query (multi-character disambiguation fix, polished-toasting-gadget.md — no portraits configured in this test, resolves to [])
       .mockReturnValueOnce(
         selectChain([
           { id: 501, characterKey: "hero" },
@@ -534,6 +541,7 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
       .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
       .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query (multi-character disambiguation fix, polished-toasting-gadget.md — no portraits configured in this test, resolves to [])
       .mockReturnValueOnce(
         selectChain([
           { id: 501, characterKey: "hero" },
@@ -575,6 +583,134 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
       expect.objectContaining({
         clipNumber: 1,
         prompt: "A continuous kitchen argument, cutting between the hero and the villain.",
+      }),
+    );
+  });
+
+  it("planning/`polished-toasting-gadget.md` Fix B — instruction passed to generateShotVideoPrompt on a split-triggering shot reaches generateVerticalDramaShotVideoPromptSpeakerSwitch as repairInstruction", async () => {
+    const episodeRow = baseEpisodeRow();
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query (multi-character disambiguation fix, polished-toasting-gadget.md — no portraits configured in this test, resolves to [])
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, characterKey: "hero" },
+          { id: 502, characterKey: "villain" },
+        ]),
+      ); // verticalDramaCharacters portrait lookup (anchor speaker first)
+
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn(() => updateChain([episodeRow])),
+    });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        instruction: "make the villain's line land harder",
+      },
+    });
+
+    expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repairInstruction: "make the villain's line land harder",
+      }),
+    );
+  });
+
+  it("resolves characterReferenceImages for the split path's distinct speakers, in distinctSpeakerCharacterKeys order, with resolved (absolute) URLs — multi-character disambiguation fix, polished-toasting-gadget.md", async () => {
+    const episodeRow = baseEpisodeRow();
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, name: "Hero", characterKey: "hero" },
+          { id: 502, name: "Villain", characterKey: "villain" },
+        ]),
+      ) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, characterKey: "hero" },
+          { id: 502, characterKey: "villain" },
+        ]),
+      ); // verticalDramaCharacters portrait lookup (anchor speaker first)
+
+    const portraitUrlByCharacterId: Record<number, string> = {
+      501: "https://cdn/hero-portrait.png",
+      502: "https://cdn/villain-portrait.png",
+    };
+    mockGetPrimaryPortraitUrl.mockImplementation(
+      async (_owner: unknown, characterId: number) => portraitUrlByCharacterId[characterId] ?? null,
+    );
+
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn(() => updateChain([episodeRow])),
+    });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        characterReferenceImages: [
+          { characterKey: "hero", name: "Hero", url: "https://cdn/hero-portrait.png" },
+          { characterKey: "villain", name: "Villain", url: "https://cdn/villain-portrait.png" },
+        ],
+      }),
+    );
+  });
+
+  it("silently omits a distinct speaker with no approved portrait yet from characterReferenceImages, without throwing (split path graceful-skip)", async () => {
+    const episodeRow = baseEpisodeRow();
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "en" }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, name: "Hero", characterKey: "hero" },
+          { id: 502, name: "Villain", characterKey: "villain" },
+        ]),
+      )
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, characterKey: "hero" },
+          { id: 502, characterKey: "villain" },
+        ]),
+      );
+
+    mockGetPrimaryPortraitUrl.mockImplementation(async (_owner: unknown, characterId: number) =>
+      characterId === 501 ? "https://cdn/hero-portrait.png" : null,
+    );
+
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await expect(
+      router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      }),
+    ).resolves.toBeDefined();
+
+    expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        characterReferenceImages: [
+          { characterKey: "hero", name: "Hero", url: "https://cdn/hero-portrait.png" },
+        ],
       }),
     );
   });

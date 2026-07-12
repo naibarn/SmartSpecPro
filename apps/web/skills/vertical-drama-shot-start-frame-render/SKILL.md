@@ -117,6 +117,47 @@ plan. Specifically, each `prompt` must include:
    phrasing inside `prompt` itself — no other stage of the pipeline adds it
    afterward, so an omission here means that shot renders with no identity lock at
    all.
+   **The index is PURELY POSITIONAL for THIS shot's own input — never a fixed
+   label for a specific character.** Count strictly from the order characters
+   are actually listed for THIS shot; do not reuse a number you associate with a
+   character from a different shot, from your own prior output, or from the
+   worked examples in this skill.md (the "ฝ้าย=Image 1, ใบข้าว=Image 2" pairing
+   above is illustrative of a specific two-character example ONLY, not a fixed
+   identity-to-number mapping — confirmed production bug: a solo shot listing
+   ONLY ใบข้าว was still labeled "Image 2," referencing an image that was never
+   attached, because the number got carried over from habit/memory rather than
+   recomputed). A shot with exactly ONE required character is ALWAYS "Image 1"
+   for that character, regardless of who they are or what number they carried in
+   any other shot. Recompute the index fresh, from scratch, every single call.
+
+## Location/Environment Consistency — MANDATORY
+
+The incoming storyboard shot may carry a `location` fact — the name and
+description of the physical setting this shot is set in (see the shot
+list's own `| location: <name> — <description>` annotation, when present).
+When it is present, ground that shot's `prompt` in it: the architecture,
+props, and layout you describe must match what `location` states, not a
+setting you invent independently. This applies ALWAYS when the fact is
+present, whether or not a reference image is attached (see below) — it is
+the text-level baseline every shot with a `location` fact must meet.
+
+When a shot's `location` fact is additionally marked as having an attached
+reference image (a future capability — the fact will read something like
+`[has an approved reference image — environment lock applies]`), extend the
+EXACT SAME attached-image indexing convention the "Attached Character
+Reference Image Indexing + Identity Lock" rule above already uses for
+character references: reference the location by name alongside its
+attached image index (e.g. `"Image 3 = location: ร้านสะดวกซื้อ (โซนของเด็ก)"`),
+and state that this shot's setting must visually match that reference
+precisely — architecture, layout, props, and fixtures — never inventing
+contradicting details. A location's attached image index is its own
+distinct number, separate from any character's, in the order references are
+attached for that shot.
+
+When a shot carries no `location` fact at all (a storyboard generated
+before this feature existed), write the setting from the shot's own scene
+content exactly as before — this section adds no new requirement for that
+shot.
 
 ## Prompt length limit — MANDATORY
 

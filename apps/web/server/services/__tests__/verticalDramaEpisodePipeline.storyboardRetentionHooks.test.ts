@@ -184,6 +184,9 @@ describe("generateRealStoryboard — genre threading (unconditional) + retention
   it("passes genre from the already-loaded seriesRow unconditionally, even when the flag is off/omitted", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null, genre: "romance" }]))
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select.
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode);
@@ -196,6 +199,7 @@ describe("generateRealStoryboard — genre threading (unconditional) + retention
   it("passes genre as undefined when the series row has no genre set", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null, genre: null }]))
+      .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode);
@@ -209,6 +213,7 @@ describe("generateRealStoryboard — genre threading (unconditional) + retention
       .mockReturnValueOnce(
         selectChain([{ bible: null, locale: "th", tone: null, genre: "educational" }]),
       )
+      .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode, false, undefined, false, true);
@@ -221,6 +226,7 @@ describe("generateRealStoryboard — genre threading (unconditional) + retention
   it("defaults opts.retentionHooksEnabled to false when the 6th argument is omitted (existing callers stay byte-identical)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode);
@@ -263,6 +269,9 @@ describe("repairStage — storyboard_shotgrid threads args.retentionHooksEnabled
       .mockReturnValueOnce(selectChain([repairEpisode]))
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null, genre: "drama" }]))
       .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select.
+      .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([])); // checkpoint lookup (none found)
 
     const episodeUpdateChain = updateChain();
@@ -293,6 +302,9 @@ describe("repairStage — storyboard_shotgrid threads args.retentionHooksEnabled
     mockDb.select
       .mockReturnValueOnce(selectChain([repairEpisode]))
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select.
       .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([])); // checkpoint lookup (none found)
 

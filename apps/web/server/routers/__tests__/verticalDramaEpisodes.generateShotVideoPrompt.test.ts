@@ -84,8 +84,16 @@ vi.mock("../../services/rateLimiter", () => ({
   mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
 }));
 
+// `mockGetPrimaryPortraitUrl` hoisted (rather than an inline `vi.fn()`) so
+// the multi-character reference images tests below can configure/assert on
+// it directly, same convention `verticalDramaEpisodes
+// .generateAndPersistSplitShotVideoPrompt.test.ts` already uses for
+// `getPrimaryPortraitAssetId`.
+const { mockGetPrimaryPortraitUrl } = vi.hoisted(() => ({
+  mockGetPrimaryPortraitUrl: vi.fn(),
+}));
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
-  verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
+  verticalDramaCharacterStockService: { getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl },
 }));
 
 const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
@@ -274,7 +282,9 @@ import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/di
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
 
-function ctx(overrides: Partial<{ tenantId: string; user: { id: number } }> = {}) {
+function ctx(
+  overrides: Partial<{ tenantId: string; user: { id: number }; publicUrl: string }> = {},
+) {
   return {
     tenantId: "tenant-1",
     user: { id: 42 },
@@ -1156,6 +1166,69 @@ describe("generateShotVideoPrompt", () => {
       );
     });
   });
+
+  describe("instruction (planning/`polished-toasting-gadget.md` Fix B — \"ให้ AI ปรับ\" AI-adjust threading)", () => {
+    it("instruction present: threaded into the service call as repairInstruction and reflected in the persisted prompt", async () => {
+      mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+        prompt: "prompt reflecting the repair instruction",
+        negativeMotionPrompt: "no glitching",
+        dialogue: [],
+        creditsUsed: 3,
+        model: "gpt-vision",
+        usedVision: true,
+      });
+      const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+        .mockReturnValueOnce(selectChain([]));
+      let capturedSet: any;
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn((v: any) => {
+          capturedSet = v;
+          return updateChain([episodeRow]);
+        }),
+      });
+
+      const result = await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          instruction: "make the camera push in faster",
+        },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ repairInstruction: "make the camera push in faster" }),
+      );
+      expect(result.prompt).toBe("prompt reflecting the repair instruction");
+      expect(capturedSet.motionPromptPack.clips[0].prompt).toBe(
+        "prompt reflecting the repair instruction",
+      );
+    });
+
+    it("instruction absent: the service call receives repairInstruction: undefined (byte-identical to pre-fix behavior — the \"สร้างพรอมต์วิดีโอ (AI)\" button never sends this field)", async () => {
+      const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+        .mockReturnValueOnce(selectChain([]));
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ repairInstruction: undefined }),
+      );
+    });
+  });
 });
 
 /**
@@ -1844,5 +1917,235 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
     expect(secondResult.dialogue).toEqual([{ characterKey: "หนูนา", lineTh: "TESTMARK456" }]);
+  });
+
+  describe("characterReferenceImages (multi-character disambiguation fix, polished-toasting-gadget.md)", () => {
+    function twoCharacterEpisodeRow(over: Record<string, unknown> = {}) {
+      return baseEpisodeRow({
+        startFramePlan: {
+          mode: "single_frame_per_shot",
+          selectedImageModelId: "google-nano-banana-pro",
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a hero standing in the rain",
+              negativePrompt: "",
+              requiredCharacterRefs: ["hero", "grandmother"],
+              productReferenceAssetIds: [],
+              approvedMediaAssetId: "900",
+            },
+          ],
+        },
+        ...over,
+      });
+    }
+
+    it("resolves each required character's portrait, in requiredCharacterRefs order, and threads them into the service call", async () => {
+      const episodeRow = twoCharacterEpisodeRow();
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, name: "Hero", characterKey: "hero" },
+            { id: 502, name: "Grandmother", characterKey: "grandmother" },
+          ]),
+        ); // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+
+      const portraitUrlByCharacterId: Record<number, string> = {
+        501: "https://cdn/hero-portrait.png",
+        502: "https://cdn/grandma-portrait.png",
+      };
+      mockGetPrimaryPortraitUrl.mockImplementation(
+        async (_owner: unknown, characterId: number) => portraitUrlByCharacterId[characterId] ?? null,
+      );
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          characterReferenceImages: [
+            { characterKey: "hero", name: "Hero", url: "https://cdn/hero-portrait.png" },
+            { characterKey: "grandmother", name: "Grandmother", url: "https://cdn/grandma-portrait.png" },
+          ],
+        }),
+      );
+    });
+
+    it("caps at VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS (3) even when more required characters have approved portraits", async () => {
+      const episodeRow = baseEpisodeRow({
+        startFramePlan: {
+          mode: "single_frame_per_shot",
+          selectedImageModelId: "google-nano-banana-pro",
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "four characters in one shot",
+              negativePrompt: "",
+              requiredCharacterRefs: ["a", "b", "c", "d"],
+              productReferenceAssetIds: [],
+              approvedMediaAssetId: "900",
+            },
+          ],
+        },
+      });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 1, name: "A", characterKey: "a" },
+            { id: 2, name: "B", characterKey: "b" },
+            { id: 3, name: "C", characterKey: "c" },
+            { id: 4, name: "D", characterKey: "d" },
+          ]),
+        );
+
+      const portraitUrlByCharacterId: Record<number, string> = {
+        1: "https://cdn/a.png",
+        2: "https://cdn/b.png",
+        3: "https://cdn/c.png",
+        4: "https://cdn/d.png",
+      };
+      mockGetPrimaryPortraitUrl.mockImplementation(
+        async (_owner: unknown, characterId: number) => portraitUrlByCharacterId[characterId] ?? null,
+      );
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      const call = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
+      expect(call.characterReferenceImages).toHaveLength(3);
+      expect(call.characterReferenceImages.map((c: any) => c.characterKey)).toEqual([
+        "a",
+        "b",
+        "c",
+      ]);
+    });
+
+    it("silently omits a required character with no approved portrait yet, without throwing", async () => {
+      const episodeRow = twoCharacterEpisodeRow();
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, name: "Hero", characterKey: "hero" },
+            { id: 502, name: "Grandmother", characterKey: "grandmother" },
+          ]),
+        );
+
+      mockGetPrimaryPortraitUrl.mockImplementation(async (_owner: unknown, characterId: number) =>
+        characterId === 501 ? "https://cdn/hero-portrait.png" : null,
+      );
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await expect(
+        router.generateShotVideoPrompt({
+          ctx: ctx(),
+          input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+        }),
+      ).resolves.toBeDefined();
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          characterReferenceImages: [
+            { characterKey: "hero", name: "Hero", url: "https://cdn/hero-portrait.png" },
+          ],
+        }),
+      );
+    });
+
+    it("resolves a relative portrait URL to an absolute one via resolveReferenceUrl(ctx.publicUrl)", async () => {
+      const episodeRow = twoCharacterEpisodeRow();
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+        .mockReturnValueOnce(selectChain([]))
+        .mockReturnValueOnce(selectChain([])) // resolveShotCharacterIdentitySources
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, name: "Hero", characterKey: "hero" },
+            { id: 502, name: "Grandmother", characterKey: "grandmother" },
+          ]),
+        );
+
+      mockGetPrimaryPortraitUrl.mockImplementation(async (_owner: unknown, characterId: number) =>
+        characterId === 501 ? "/uploads/hero-portrait.png" : "/uploads/grandma-portrait.png",
+      );
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx({ publicUrl: "https://smartaihub.app" }),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      const call = mockGenerateVerticalDramaShotVideoPrompt.mock.calls[0][0];
+      expect(call.characterReferenceImages[0].url).toBe(
+        "https://smartaihub.app/uploads/hero-portrait.png",
+      );
+      expect(call.characterReferenceImages[1].url).toBe(
+        "https://smartaihub.app/uploads/grandma-portrait.png",
+      );
+    });
+
+    it("solo-shot regression: never resolves character reference images (or queries characterRows) when the shot has fewer than 2 required characters", async () => {
+      const episodeRow = baseEpisodeRow({
+        startFramePlan: {
+          mode: "single_frame_per_shot",
+          selectedImageModelId: "google-nano-banana-pro",
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a hero standing in the rain",
+              negativePrompt: "",
+              requiredCharacterRefs: ["hero"],
+              productReferenceAssetIds: [],
+              approvedMediaAssetId: "900",
+            },
+          ],
+        },
+      });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])); // resolveShotCharacterIdentitySources (1 required ref -> still queried)
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockDb.select).toHaveBeenCalledTimes(5);
+      expect(mockGetPrimaryPortraitUrl).not.toHaveBeenCalled();
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ characterReferenceImages: undefined }),
+      );
+    });
   });
 });

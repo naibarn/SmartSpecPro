@@ -1,0 +1,926 @@
+/**
+ * Vertical Drama Series — durable location-stock router
+ * (`planning/polished-toasting-gadget.md` Phase 2, dispatch 3/3).
+ *
+ * Location-side companion to `verticalDramaCharacters.ts`: surfaces the
+ * durable per-series location roster AND its reference-asset stock
+ * (approval/QC lifecycle) over tRPC. Deliberately much smaller than the
+ * character router — no variants/twins/voice-casting concerns, no
+ * model-picker/MCP-transport plumbing (`generateLocationImage`'s input
+ * contract carries no `selectedImageModelId`/`mcpConnectionId`, so this
+ * router always renders with `DEFAULT_MODELS.image`, a plain gateway_api
+ * model — never MCP-transport — so no `resolveMediaTransport` branch is
+ * needed here at all).
+ *
+ * Every procedure is protected (auth required), gated on the
+ * `verticalDramaSeries` tenant feature flag (fail-closed, same gate the
+ * character router uses — this feature has no location-specific flag of its
+ * own), and scoped to the caller's tenant + user + series so a user can
+ * never read, attach, approve, or transition another tenant's or user's
+ * location/asset.
+ *
+ * SECURITY: cross-tenant / cross-user / missing rows are reported as
+ * NOT_FOUND (never FORBIDDEN, never a leaked reason string) — see
+ * `mapLocationStockError` below. `VerticalDramaLocationStockError`'s own doc
+ * comment says "NOT-FOUND semantics preferred at the router boundary; the
+ * service uses a precise reason so callers never disclose cross-tenant
+ * existence" — every `.reason` value (including `illegal_state_transition`,
+ * which the sibling character router surfaces as PRECONDITION_FAILED with
+ * its own message) is deliberately collapsed to a single generic NOT_FOUND
+ * here, stricter than the character router's own `mapStockError`. This is an
+ * intentional, more conservative choice for this new surface — see this
+ * file's own `mapLocationStockError` doc comment.
+ *
+ * The location roster (`verticalDramaLocations`) is owned directly here; the
+ * reference-asset stock (link / approve / transition / stale / delete) is
+ * delegated to `verticalDramaLocationStockService`.
+ *
+ * The conductor wires this router into `server/routers.ts` — do NOT edit
+ * that file here.
+ */
+
+import crypto from "crypto";
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { and, eq } from "drizzle-orm";
+import { router, protectedProcedure } from "../_core/trpc";
+import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
+import { db } from "../db";
+import {
+  verticalDramaSeries,
+  verticalDramaLocations,
+  mediaModels,
+  libraryItems,
+  type VerticalDramaLocationRow,
+} from "../../drizzle/schema";
+import {
+  verticalDramaLocationStockService,
+  VerticalDramaLocationStockError,
+} from "../services/verticalDramaLocationStock";
+import { VERTICAL_DRAMA_LOCATION_ASSET_STATES } from "@shared/verticalDramaSeries/locationAssets";
+import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
+import { calculateCreditCost } from "../services/pricingCalculator";
+import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
+import { signBearerToken } from "../_core/tokens";
+import {
+  generateLocationVisualPrompts,
+  InsufficientCreditsError,
+  VdSchemaValidationError,
+} from "../services/verticalDramaLocationImageGeneration";
+// Generic, non-character-specific bible reader (reads `bible.presetVisualIdentity`,
+// pure — no character logic) — genuinely SHARED utility, not a feature-specific
+// character concern, so importing it directly here (rather than duplicating its
+// parsing logic) does not violate this feature's "duplicate small helpers to
+// keep the character/location systems decoupled" convention; that convention is
+// about feature-specific logic like `resolveMediaAssetForImport` below, which
+// IS duplicated rather than shared.
+import { readPresetVisualIdentityFromBible } from "../services/verticalDramaCharacterImageGeneration";
+import { mediaGenerationLimiter } from "../services/rateLimiter";
+import { createAssetFromAttachment } from "../services/mediaAssetService";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+
+/* -------------------------------------------------------------------------- */
+/* Base procedure + ownership helpers                                          */
+/* -------------------------------------------------------------------------- */
+
+const verticalDramaProcedure = protectedProcedure.use(
+  requireFeatureFlag("verticalDramaSeries"),
+);
+
+/** Resolve a non-null tenant id or fail closed. */
+function requireTenantId(tenantId: string | null): string {
+  if (!tenantId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Vertical Drama Series is not available (no tenant context)",
+    });
+  }
+  return tenantId;
+}
+
+function parseId(value: string, label: string): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: `Invalid ${label}` });
+  }
+  return n;
+}
+
+/**
+ * Load the caller-owned series (tenant + user scoped) or throw NOT_FOUND.
+ * NOT_FOUND (not FORBIDDEN) is deliberate — never disclose the existence of
+ * another tenant's/user's series. Byte-identical convention to
+ * `verticalDramaCharacters.ts`'s own `loadOwnedSeries`.
+ */
+async function loadOwnedSeries(tenantId: string, userId: number, seriesId: number) {
+  const [row] = await db
+    .select({ id: verticalDramaSeries.id })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, seriesId),
+        eq(verticalDramaSeries.tenantId, tenantId),
+        eq(verticalDramaSeries.userId, userId),
+      ),
+    )
+    .limit(1);
+  if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
+  return row;
+}
+
+/** Load a caller-owned location (tenant + user + series scoped) or NOT_FOUND. */
+async function loadOwnedLocation(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  locationId: number,
+): Promise<VerticalDramaLocationRow> {
+  const [row] = await db
+    .select()
+    .from(verticalDramaLocations)
+    .where(
+      and(
+        eq(verticalDramaLocations.id, locationId),
+        eq(verticalDramaLocations.tenantId, tenantId),
+        eq(verticalDramaLocations.userId, userId),
+        eq(verticalDramaLocations.seriesId, seriesId),
+      ),
+    )
+    .limit(1);
+  if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Location not found" });
+  return row;
+}
+
+/**
+ * Translate a service-level `VerticalDramaLocationStockError` into a GENERIC
+ * NOT_FOUND — a real security requirement, not a style preference (see this
+ * file's top-of-file doc comment). Deliberately collapses EVERY `.reason`
+ * value (including `illegal_state_transition`/`media_asset_deleted`, which
+ * the sibling `verticalDramaCharacters.ts`'s `mapStockError` maps to
+ * PRECONDITION_FAILED/BAD_REQUEST with the service's own message) to one
+ * generic code + a fixed, non-leaking message — the specific `.reason` /
+ * `err.message` text is NEVER forwarded to the client on this router. Any
+ * non-`VerticalDramaLocationStockError` is rethrown unchanged (an
+ * unexpected/programming error should surface normally, not be masked as
+ * NOT_FOUND).
+ */
+function mapLocationStockError(err: unknown): never {
+  if (err instanceof VerticalDramaLocationStockError) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Location asset not found" });
+  }
+  throw err;
+}
+
+/**
+ * Resolves the series' stamped preset visual identity for location-prompt
+ * flow-through (spec §8.2.2 flow-through rule) — flag-gated: returns
+ * `undefined` (no flow-through, legacy-tolerant behavior) unless the tenant
+ * has `verticalDramaSeriesPresetMixV2` enabled. Byte-identical convention +
+ * SAME source flag as `verticalDramaCharacters.ts`'s own
+ * `resolveCharacterPresetVisualIdentity` (that function is not exported —
+ * duplicated here per this feature's established per-file-helper
+ * convention).
+ */
+async function resolveLocationPresetVisualIdentity(
+  tenantId: string,
+  bible: Record<string, unknown> | null,
+): Promise<VerticalDramaPresetVisualIdentity | undefined> {
+  const flags = await getTenantFeatureFlags(tenantId);
+  if (flags.verticalDramaSeriesPresetMixV2 !== true) return undefined;
+  return readPresetVisualIdentityFromBible(bible);
+}
+
+/** Best-effort location description drawn from `verticalDramaLocations.data.description`. */
+function extractLocationDescription(data: Record<string, unknown> | null): string {
+  if (data && typeof data.description === "string" && data.description.trim()) {
+    return data.description.trim();
+  }
+  return "";
+}
+
+/**
+ * Pre-formatted "Series title: ... | Genre: ... | Tone: ..." fact line —
+ * matches `GenerateLocationVisualPromptsParams.seriesContext`'s own doc
+ * comment (a ready-made string, not an object the generator formats itself).
+ * Purely a facts-in formatter (no creative language authored) — skill-first:
+ * all creative use of these facts happens in skill.md, not here.
+ */
+function buildLocationSeriesContext(
+  seriesRow: { title?: string | null; genre?: string | null; tone?: string | null } | undefined,
+): string | undefined {
+  if (!seriesRow) return undefined;
+  const parts: string[] = [];
+  if (seriesRow.title) parts.push(`Series title: ${seriesRow.title}`);
+  if (seriesRow.genre) parts.push(`Genre: ${seriesRow.genre}`);
+  if (seriesRow.tone) parts.push(`Tone: ${seriesRow.tone}`);
+  return parts.length > 0 ? parts.join(" | ") : undefined;
+}
+
+/** Browser-safe projection of a location roster row (never leaks internal ids as numbers). */
+function locationRowToDto(row: VerticalDramaLocationRow & { primaryReferenceUrl?: string }) {
+  return {
+    locationId: String(row.id),
+    seriesId: String(row.seriesId),
+    locationKey: row.locationKey,
+    name: row.name,
+    description: extractLocationDescription((row.data as Record<string, unknown> | null) ?? null),
+    primaryReferenceUrl: row.primaryReferenceUrl,
+    createdAt: (row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt)).toISOString(),
+    updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
+  };
+}
+
+/**
+ * Short-lived server-to-server bearer token for the Python media-generation
+ * backend — mirrors `verticalDramaCharacters.ts`'s
+ * `getCharacterPortraitUserToken`/`verticalDramaEpisodes.ts`'s
+ * `getStartFrameMediaUserToken`: prefer the caller's own session token (so
+ * usage attributes correctly), fall back to minting a scoped token.
+ */
+function getLocationMediaUserToken(ctx: { userToken: string | null; user: { id: number } }): string {
+  if (ctx.userToken) return ctx.userToken;
+  return signBearerToken(
+    {
+      sub: String(ctx.user.id),
+      type: "access",
+      scopes: ["media:generate"],
+      jti: `vd_location_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+    },
+    "15m",
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Input schemas                                                              */
+/* -------------------------------------------------------------------------- */
+
+const seriesScope = z.object({ seriesId: z.string().min(1) });
+
+const assetStateEnum = z.enum(
+  VERTICAL_DRAMA_LOCATION_ASSET_STATES as unknown as [string, ...string[]],
+);
+
+/* -------------------------------------------------------------------------- */
+/* Router                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export const verticalDramaLocationsRouter = router({
+  /**
+   * List the series' location roster, each row annotated with a
+   * `primaryReferenceUrl` when an APPROVED `establishing_plate` asset exists
+   * for it (delegates entirely to
+   * `verticalDramaLocationStockService.listRows`, which already folds the
+   * roster + best-approved-asset query into one service-layer call — see
+   * that method's own doc comment for why there is no separate
+   * `getManifest`-style split here, unlike the character router).
+   */
+  list: verticalDramaProcedure
+    .input(seriesScope)
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const rows = await verticalDramaLocationStockService.listRows({ tenantId, userId, seriesId });
+      return { locations: rows.map((row) => locationRowToDto(row)) };
+    }),
+
+  /**
+   * Update an existing location's editable fields (tenant + user + series
+   * scoped). `locationKey` is intentionally NOT part of this input schema —
+   * it is a stable/internal key (mirrors `distinct_locations[].location_key`
+   * and every `vertical_drama_location_assets` lookup) and must never be
+   * editable from the client.
+   */
+  updateLocation: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        locationId: z.string().min(1),
+        name: z.string().trim().min(1).max(255).optional(),
+        description: z.string().trim().max(4000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const locationId = parseId(input.locationId, "location id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const existing = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+
+      const patch: Record<string, unknown> = { updatedAt: new Date() };
+      if (input.name !== undefined) patch.name = input.name;
+      if (input.description !== undefined) {
+        const existingData = (existing.data as Record<string, unknown> | null) ?? {};
+        patch.data = { ...existingData, description: input.description };
+      }
+
+      const [row] = await db
+        .update(verticalDramaLocations)
+        .set(patch)
+        .where(
+          and(
+            eq(verticalDramaLocations.id, locationId),
+            eq(verticalDramaLocations.tenantId, tenantId),
+            eq(verticalDramaLocations.userId, userId),
+            eq(verticalDramaLocations.seriesId, seriesId),
+          ),
+        )
+        .returning();
+
+      return { location: locationRowToDto(row as VerticalDramaLocationRow) };
+    }),
+
+  /**
+   * Preview-only leg of the location establishing-plate flow: runs ONLY the
+   * `generateLocationVisualPrompts` LLM call (the same step-1 call
+   * `generateLocationImage` performs internally when no `approvedPrompt` is
+   * supplied) and returns the resulting prompt text WITHOUT rendering an
+   * image. Mirrors `verticalDramaCharacters.ts`'s `previewCharacterPrompt`
+   * EXACTLY, including its real (verified-by-reading, not assumed) "free
+   * preview" shape: this procedure does NOT perform any credit
+   * check/deduction of its own — it delegates entirely to
+   * `generateLocationVisualPrompts`, which internally gates + deducts the
+   * ONE prompt-generation credit (the same call `previewCharacterPrompt`
+   * makes to `generateCharacterVisualPrompts`, confirmed by reading that
+   * procedure's body: it has no local `hasEnoughCredits`/`deductCredits`
+   * call, no refund-after-the-fact trick — it just calls the generator once
+   * and returns its result). "Free" here means "free of the separate,
+   * far larger image-render credit" (which only `generateLocationImage`
+   * charges) — NOT literally zero-cost; this procedure never performs a
+   * SECOND/duplicate charge beyond what the one shared prompt-generation
+   * call already does. The caller then passes the approved text back as
+   * `approvedPrompt`/`approvedNegativePrompt` on `generateLocationImage` so
+   * that LLM leg is never re-run (and never double-charged) for the same
+   * spend.
+   */
+  previewLocationPrompt: verticalDramaProcedure
+    .input(seriesScope.extend({ locationId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const locationId = parseId(input.locationId, "location id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const location = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+
+      const [seriesRow] = await db
+        .select({
+          title: verticalDramaSeries.title,
+          genre: verticalDramaSeries.genre,
+          tone: verticalDramaSeries.tone,
+          bible: verticalDramaSeries.bible,
+        })
+        .from(verticalDramaSeries)
+        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+        .limit(1);
+      const presetVisualIdentity = await resolveLocationPresetVisualIdentity(
+        tenantId,
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+      );
+      const hasOwnReferenceAssetId = await verticalDramaLocationStockService.getPrimaryReferenceAssetId(
+        { tenantId, userId, seriesId },
+        locationId,
+      );
+
+      let promptResult;
+      try {
+        promptResult = await generateLocationVisualPrompts({
+          userId,
+          tenantId,
+          seriesId,
+          locationKey: location.locationKey,
+          locationName: location.name,
+          description: extractLocationDescription((location.data as Record<string, unknown> | null) ?? null) || location.name,
+          seriesContext: buildLocationSeriesContext(seriesRow),
+          presetVisualIdentity,
+          hasOwnReferenceImage: Boolean(hasOwnReferenceAssetId),
+        });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+        }
+        if (err instanceof VdSchemaValidationError) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Location visual prompt generation failed",
+        });
+      }
+
+      return {
+        establishingPlatePrompt: promptResult.establishingPlatePrompt,
+        negativePrompt: promptResult.negativePrompt,
+        model: promptResult.model,
+      };
+    }),
+
+  /**
+   * Generate a real location establishing-plate reference image: (1) run the
+   * `vertical-drama-location-visual-bible` skill as a direct, credit-gated
+   * LLM call to produce an establishing-plate prompt + negative prompt (see
+   * `verticalDramaLocationImageGeneration.ts`), then (2) render that prompt
+   * into an actual image via `mediaGenerationService.generateImageAsync`
+   * (async — matches the character portrait/start-frame polling pattern:
+   * the caller polls `media.getTask({taskId})`, then finalizes via
+   * `resolveMediaAssetForImport` + `linkAsset`, both already defined below).
+   *
+   * `approvedPrompt`/`approvedNegativePrompt` (optional): when the caller
+   * already ran `previewLocationPrompt` and had the user approve the exact
+   * text, pass it here to skip the internal `generateLocationVisualPrompts`
+   * call entirely — mirrors `generateCharacterImage`'s EXACT
+   * skip-regeneration-when-approved-prompt-given branch: the prompt is used
+   * directly and the prompt-generation credit (already charged once, at
+   * preview time) is never charged again here.
+   *
+   * Aspect ratio: `"16:9"` (wide), deliberately NOT `"9:16"` (the character
+   * portrait/vertical-drama-frame default) — an establishing plate is a
+   * wide environment/establishing shot (skill.md's own worked example opens
+   * every prompt with "wide establishing shot, environment only, no
+   * people:"), not a vertical character portrait or a 9:16 in-episode frame.
+   *
+   * No `selectedImageModelId`/`mcpConnectionId` input (unlike
+   * `generateCharacterImage`) — this procedure's input contract is
+   * deliberately minimal (`{seriesId, locationId, approvedPrompt?,
+   * approvedNegativePrompt?}`), so it always renders with
+   * `DEFAULT_MODELS.image` (a plain gateway_api model, never MCP-transport)
+   * and never needs `resolveMediaTransport`/MCP dispatch logic at all.
+   */
+  generateLocationImage: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        locationId: z.string().min(1),
+        approvedPrompt: z.string().min(1).optional(),
+        approvedNegativePrompt: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for image generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const locationId = parseId(input.locationId, "location id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const location = await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+
+      // 1. Prompt generation — credit-gated + deducted internally. Skipped
+      //    entirely when the caller already ran `previewLocationPrompt` and
+      //    supplies the user-approved text via `approvedPrompt` (see this
+      //    procedure's own doc comment).
+      let establishingPlatePrompt: string;
+      let negativePrompt: string | undefined;
+      let promptModel: string | null = null;
+      let promptCreditsUsed = 0;
+
+      if (input.approvedPrompt) {
+        establishingPlatePrompt = input.approvedPrompt;
+        negativePrompt = input.approvedNegativePrompt;
+      } else {
+        const [seriesRow] = await db
+          .select({
+            title: verticalDramaSeries.title,
+            genre: verticalDramaSeries.genre,
+            tone: verticalDramaSeries.tone,
+            bible: verticalDramaSeries.bible,
+          })
+          .from(verticalDramaSeries)
+          .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+          .limit(1);
+        const presetVisualIdentity = await resolveLocationPresetVisualIdentity(
+          tenantId,
+          (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+        );
+        const hasOwnReferenceAssetId = await verticalDramaLocationStockService.getPrimaryReferenceAssetId(
+          { tenantId, userId, seriesId },
+          locationId,
+        );
+
+        let promptResult;
+        try {
+          promptResult = await generateLocationVisualPrompts({
+            userId,
+            tenantId,
+            seriesId,
+            locationKey: location.locationKey,
+            locationName: location.name,
+            description: extractLocationDescription((location.data as Record<string, unknown> | null) ?? null) || location.name,
+            seriesContext: buildLocationSeriesContext(seriesRow),
+            presetVisualIdentity,
+            hasOwnReferenceImage: Boolean(hasOwnReferenceAssetId),
+          });
+        } catch (err) {
+          if (err instanceof InsufficientCreditsError) {
+            throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+          }
+          if (err instanceof VdSchemaValidationError) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: err instanceof Error ? err.message : "Location visual prompt generation failed",
+          });
+        }
+        establishingPlatePrompt = promptResult.establishingPlatePrompt;
+        negativePrompt = promptResult.negativePrompt;
+        promptModel = promptResult.model;
+        promptCreditsUsed = promptResult.creditsUsed;
+      }
+
+      // Identity-lock reference — this location's existing approved plate
+      // (if any), so a regeneration/refresh stays visually consistent with
+      // the prior render. Same "resolve reference BEFORE the image-render
+      // credit reservation" ordering as `generateCharacterImage`.
+      const referenceUrl = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
+        { tenantId, userId, seriesId },
+        locationId,
+      );
+
+      // 2. Pre-flight credit check for the image render — a SEPARATE charge
+      //    from the prompt-generation LLM call above.
+      const resolvedImageModelId = DEFAULT_MODELS.image;
+      const [pricingRow] = await db
+        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
+        .limit(1);
+      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
+
+      // Zero-cost models skip the reserve/refund cycle entirely — same
+      // convention as `generateCharacterImage`/`generateStartFrameImage`
+      // (`deductCredits`/`refundCredits` throw on amount <= 0 by design).
+      const shouldChargeImageCredits = imageCreditCost > 0;
+      if (shouldChargeImageCredits) {
+        const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
+        if (!hasImageCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for location image render. Required: ${imageCreditCost}`,
+          });
+        }
+
+        // Reserve credits BEFORE starting the task — `media.getTask`
+        // reconciles the reservation against actual usage once the task
+        // completes/fails, same convention as every other async render in
+        // this codebase.
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: imageCreditCost,
+          description: `Vertical Drama — generate location image (location #${locationId}, reserved)`,
+          sourceType: "media_image",
+          metadata: {
+            feature: "vertical_drama_location_visual_bible",
+            seriesId,
+            locationId,
+            type: "reservation",
+            creditCost: imageCreditCost,
+            modelId: resolvedImageModelId,
+          },
+        });
+      }
+
+      const userToken = getLocationMediaUserToken(ctx);
+      let task;
+      try {
+        task = await mediaGenerationService.generateImageAsync(
+          {
+            prompt: establishingPlatePrompt,
+            negativePrompt,
+            model: resolvedImageModelId,
+            numImages: 1,
+            // Wide establishing shot — see this procedure's own doc comment.
+            aspectRatio: "16:9",
+            ...(referenceUrl ? { referenceImageUrls: [referenceUrl] } : {}),
+            // Series provenance tag (project-scoped media panel filter) —
+            // persisted verbatim into the media task's `parameters.extra_params`.
+            extraParams: {
+              __vd_series_id: String(seriesId),
+              __vd_location_id: String(locationId),
+            },
+            publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId,
+              traceId: crypto.randomUUID(),
+              source: "trpc.verticalDramaLocations.generateLocationImage",
+              stage: "submission",
+            },
+          },
+          userToken,
+        );
+      } catch (err) {
+        if (shouldChargeImageCredits) {
+          await refundCredits({
+            userId,
+            amount: imageCreditCost,
+            description: `Refund: location image render failed to submit (location #${locationId})`,
+            sourceType: "media_image",
+            metadata: { feature: "vertical_drama_location_visual_bible", seriesId, locationId },
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Location image generation failed to submit",
+        });
+      }
+
+      return {
+        taskId: task.id,
+        establishingPlatePrompt,
+        negativePrompt,
+        promptModel,
+        creditsUsed: { promptGeneration: promptCreditsUsed, imageRender: imageCreditCost },
+      };
+    }),
+
+  /**
+   * Attach an existing canonical `media_assets` row as a durable location
+   * reference. The media asset is validated for tenant + user ownership and
+   * non-deleted status before insert (cross-tenant/deleted are rejected —
+   * `VerticalDramaLocationStockError` mapped via `mapLocationStockError`,
+   * see this file's top-of-file doc comment for the security rationale).
+   */
+  linkAsset: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        locationId: z.string().min(1).optional(),
+        mediaAssetId: z.string().min(1).optional(),
+        assetType: z.string().min(1).max(40).default("location_reference"),
+        role: z.string().max(40).optional(),
+        source: z.enum(["generated", "imported"]),
+        checksumSha256: z.string().max(64).optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      let locationId: number | null = null;
+      if (input.locationId != null) {
+        locationId = parseId(input.locationId, "location id");
+        await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+      }
+
+      const mediaAssetId = input.mediaAssetId != null ? parseId(input.mediaAssetId, "media asset id") : null;
+
+      try {
+        const asset = await verticalDramaLocationStockService.linkAsset({
+          tenantId,
+          userId,
+          seriesId,
+          locationId,
+          mediaAssetId,
+          assetType: input.assetType,
+          role: input.role ?? null,
+          source: input.source,
+          checksumSha256: input.checksumSha256 ?? null,
+          metadata: input.metadata ?? null,
+        });
+        return { asset };
+      } catch (err) {
+        mapLocationStockError(err);
+      }
+    }),
+
+  /**
+   * Resolve a Library item or an already-hosted URL into a canonical
+   * `media_assets` row, so drag-and-drop from those surfaces can call
+   * `linkAsset` immediately. Duplicated from
+   * `verticalDramaCharacters.ts`'s `resolveMediaAssetForImport` (same body,
+   * "location reference" wording) rather than shared, per this feature's
+   * established convention of keeping the character and location routers
+   * decoupled (see e.g. `verticalDramaLocationReconciliation.ts`'s own doc
+   * comment making the identical call for its `slugifyForLocationKey`
+   * helper).
+   */
+  resolveMediaAssetForImport: verticalDramaProcedure
+    .input(
+      z.intersection(
+        seriesScope,
+        z.discriminatedUnion("source", [
+          z.object({
+            source: z.literal("library"),
+            libraryItemId: z.number().int().positive(),
+          }),
+          z.object({
+            source: z.literal("url"),
+            // Not `.url()` — local storage's `ai.upload` returns a relative
+            // path (`/uploads/...`), which is a valid `storageKey`/`originalUrl`
+            // for `createAssetFromAttachment` below but fails a strict
+            // absolute-URL check. Same fix as the character router's own
+            // identical field.
+            url: z.string().min(1),
+            mimeType: z.string().min(1),
+            fileName: z.string().optional(),
+          }),
+        ]),
+      ),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      if (input.source === "library") {
+        const [item] = await db
+          .select({
+            id: libraryItems.id,
+            tenantId: libraryItems.tenantId,
+            ownerUserId: libraryItems.ownerUserId,
+            itemType: libraryItems.itemType,
+            sourceUrl: libraryItems.sourceUrl,
+          })
+          .from(libraryItems)
+          .where(
+            and(
+              eq(libraryItems.id, input.libraryItemId),
+              eq(libraryItems.tenantId, tenantId),
+              eq(libraryItems.ownerUserId, userId),
+            ),
+          )
+          .limit(1);
+        if (!item) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Library item not found" });
+        }
+        if (!item.sourceUrl) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Library item has no source URL to import",
+          });
+        }
+
+        let mimeType: string;
+        if (item.itemType === "image") mimeType = "image/jpeg";
+        else if (item.itemType === "video") mimeType = "video/mp4";
+        else {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Library item type "${item.itemType}" is not importable as a location reference`,
+          });
+        }
+
+        // `createAssetFromAttachment`'s context type requires
+        // conversationId/messageId/projectId (chat-attachment-shaped), but
+        // those columns are nullable in `media_assets` and irrelevant here —
+        // same `as any` cast the character router's own identical call site
+        // uses.
+        const { assetId } = await createAssetFromAttachment(
+          { type: "image", url: item.sourceUrl, mimeType } as any,
+          { tenantId, userId } as any,
+        );
+        return { mediaAssetId: String(assetId) };
+      }
+
+      // source === "url"
+      const { assetId } = await createAssetFromAttachment(
+        { type: "image", url: input.url, mimeType: input.mimeType } as any,
+        { tenantId, userId } as any,
+      );
+      return { mediaAssetId: String(assetId) };
+    }),
+
+  /**
+   * Approve a pending reference asset (explicit review gate). Thin wrapper
+   * over `transitionAsset(to: "approved")`.
+   */
+  approveAsset: verticalDramaProcedure
+    .input(seriesScope.extend({ assetLinkId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const assetLinkId = parseId(input.assetLinkId, "asset link id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      try {
+        const asset = await verticalDramaLocationStockService.transition({
+          tenantId,
+          userId,
+          seriesId,
+          assetLinkId,
+          to: "approved",
+        });
+        return { asset };
+      } catch (err) {
+        mapLocationStockError(err);
+      }
+    }),
+
+  /**
+   * Apply an arbitrary lifecycle transition to a reference asset (draft ->
+   * generated/imported -> approved / rejected / stale). Illegal transitions
+   * are mapped to a generic NOT_FOUND, same as every other
+   * `VerticalDramaLocationStockError` on this router (see this file's
+   * top-of-file doc comment).
+   */
+  transitionAsset: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        assetLinkId: z.string().min(1),
+        to: assetStateEnum,
+        rejectionReason: z.string().max(2000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const assetLinkId = parseId(input.assetLinkId, "asset link id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      try {
+        const asset = await verticalDramaLocationStockService.transition({
+          tenantId,
+          userId,
+          seriesId,
+          assetLinkId,
+          to: input.to as (typeof VERTICAL_DRAMA_LOCATION_ASSET_STATES)[number],
+          rejectionReason: input.rejectionReason ?? null,
+        });
+        return { asset };
+      } catch (err) {
+        mapLocationStockError(err);
+      }
+    }),
+
+  /**
+   * Mark a set of approved references stale (e.g. after the location's
+   * identity changes). Returns the number of assets actually transitioned to
+   * `stale`.
+   */
+  markStale: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        assetLinkIds: z.array(z.string().min(1)).min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const ids = input.assetLinkIds.map((id) => parseId(id, "asset link id"));
+      const staleCount = await verticalDramaLocationStockService.markStale(
+        { tenantId, userId, seriesId },
+        ids,
+      );
+      return { staleCount };
+    }),
+
+  /**
+   * Permanently remove a reference asset from a location's stock — same
+   * plain add/delete model the character router's own `deleteAsset` uses.
+   * Only unlinks the `verticalDramaLocationAssets` row — the underlying
+   * media asset is left intact in Media History/Library.
+   */
+  deleteAsset: verticalDramaProcedure
+    .input(seriesScope.extend({ assetLinkId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const assetLinkId = parseId(input.assetLinkId, "asset link id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      try {
+        await verticalDramaLocationStockService.deleteAsset(
+          { tenantId, userId, seriesId },
+          assetLinkId,
+        );
+        return { deleted: true };
+      } catch (err) {
+        mapLocationStockError(err);
+      }
+    }),
+});

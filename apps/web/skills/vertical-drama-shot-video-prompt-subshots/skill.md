@@ -136,7 +136,10 @@ Same two independent language settings as the single-shot skill
    skill.** Write ONE continuous, flowing prose description that covers the
    FULL shot duration, segment by segment, in chronological order:
    - Open each segment with its moment in time (in natural cinematic
-     language, not a literal timestamp) and its anchor character/action.
+     language, not a literal timestamp) and its anchor character/action —
+     name the anchor character explicitly (per the CHARACTER IDENTITY MAP),
+     not just pronouns, so it stays unambiguous which established character
+     each segment belongs to.
    - Describe the cut into that segment cinematically — "cut to," "reverse
      angle to," "camera whips to," "the frame cuts back to" — vary the
      phrasing rather than repeating the same cut word every time.

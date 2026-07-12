@@ -37,6 +37,7 @@ import {
   Expand,
   ImageOff,
   Loader2,
+  MapPin,
   Mic,
   Package,
   Pencil,
@@ -48,6 +49,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -404,6 +406,26 @@ interface StoryboardShotView {
   silence_intent?: VerticalDramaSilenceIntent;
 }
 
+/**
+ * One `storyboard.distinct_locations[]` group (Location Visual Bible,
+ * `planning/polished-toasting-gadget.md` Phase 2) — snake_case, persisted
+ * verbatim from the `vertical-drama-storyboard-shotgrid` skill's own JSON
+ * output (matches every other field on `VerticalDramaStoryboardView`, which
+ * mirrors the raw persisted shape rather than a translated camelCase
+ * contract — see e.g. `canonical_style_bible`/`storyboard_summary` above).
+ * Camelcase equivalent lives server-side as
+ * `VerticalDramaStoryboardLocationGroup`
+ * (`@shared/verticalDramaSeries/storyboardLocations.ts`); not reused here
+ * since the client always reads the raw snake_case JSON directly, never a
+ * translated view.
+ */
+export interface VerticalDramaStoryboardDistinctLocationView {
+  location_key?: string;
+  location_name?: string;
+  description?: string;
+  shot_numbers?: number[];
+}
+
 export interface VerticalDramaStoryboardView {
   storyboard_summary?: {
     episode_title?: string;
@@ -413,6 +435,11 @@ export interface VerticalDramaStoryboardView {
   canonical_style_bible?: {
     overall_style?: string;
   };
+  /** Physical-location grouping of this episode's shots (Location Visual
+   *  Bible, Phase 2) — absent on storyboards generated before this feature
+   *  existed; every reader of this field must treat it as optional/
+   *  tolerant and never assume presence. */
+  distinct_locations?: VerticalDramaStoryboardDistinctLocationView[];
   shots?: StoryboardShotView[];
 }
 
@@ -1906,6 +1933,25 @@ export function VerticalDramaStoryboardPanel({
           ) : null}
         </header>
 
+        {/* Location Visual Bible (Phase 3 UI) — the frontend piece of
+            `planning/polished-toasting-gadget.md` Phase 2, whose backend/DB/
+            reconciliation is already live. Gated on `distinct_locations`
+            actually being non-empty (not just on `seriesId` being present)
+            so the card is never even MOUNTED — not just visually absent —
+            for a storyboard that predates this feature: `useState` is fine
+            with a conditional mount, but
+            `VerticalDramaLocationsBibleCard` also calls `trpc` hooks, which
+            must not fire for every existing episode/test that carries no
+            location data at all. Byte-identical (zero extra hook calls) to
+            before this change whenever this condition is false. */}
+        {seriesId && storyboard?.distinct_locations?.length ? (
+          <VerticalDramaLocationsBibleCard
+            seriesId={seriesId}
+            locale={locale}
+            distinctLocations={storyboard.distinct_locations}
+          />
+        ) : null}
+
         {/* Episode-level model selection (Phase 1.3) — a single control per
           episode, deliberately NOT per-shot/per-clip (2026-07-05 product
           decision). Changing a model here only affects the NEXT generation;
@@ -3344,6 +3390,46 @@ export function VerticalDramaStoryboardPanel({
                   })()}
 
                   {(() => {
+                    // Location chip (Location Visual Bible, Phase 3 UI —
+                    // `planning/polished-toasting-gadget.md` Phase 2 wired
+                    // up here) — resolves which `storyboard.distinct_locations[]`
+                    // group (snake_case, persisted verbatim from the LLM's
+                    // own JSON output) contains THIS shot's `shotNumber`.
+                    // Read-only: locations are auto-detected from the story
+                    // during storyboard generation, never manually
+                    // reassigned per-shot (contrast with the character
+                    // chips above, which support click/drag reassignment).
+                    // Tolerant no-op — renders nothing when
+                    // `distinct_locations` is absent/empty (a storyboard
+                    // generated before this feature existed) or no group
+                    // covers this shot.
+                    const distinctLocations =
+                      storyboard?.distinct_locations ?? [];
+                    if (distinctLocations.length === 0) return null;
+                    const matchingLocation = distinctLocations.find(group =>
+                      (group.shot_numbers ?? []).some(
+                        n => Number(n) === shotNumber
+                      )
+                    );
+                    if (!matchingLocation?.location_name) return null;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <MapPin
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 text-muted-foreground"
+                        />
+                        <span
+                          className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs"
+                          title={matchingLocation.description || undefined}
+                          data-testid={`vd-storyboard-location-chip-${shotNumber}`}
+                        >
+                          {matchingLocation.location_name}
+                        </span>
+                      </div>
+                    );
+                  })()}
+
+                  {(() => {
                     // Product tie-in chip (spec §13 + 2026-07-06 product-
                     // reference upgrade) — now a first-class image chip like
                     // the character chips above: shows the actual product
@@ -4690,6 +4776,532 @@ export function VerticalDramaStoryboardPanel({
 /* -------------------------------------------------------------------------- */
 /* Sub-components                                                             */
 /* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* Location Visual Bible — Phase 3 UI                                        */
+/* (planning/polished-toasting-gadget.md Phase 2 backend, wired up here)     */
+/* -------------------------------------------------------------------------- */
+
+/** Best-effort mimeType from a resolved location-render task's `resultUrl`
+ *  extension — duplicated (not cross-imported) from
+ *  `VerticalDramaCharacterStockPanel.tsx`'s own `guessImageMimeTypeFromUrl`,
+ *  matching this feature's established "duplicate small helpers, keep the
+ *  character/location systems decoupled" convention (see e.g.
+ *  `verticalDramaLocationStock.ts`'s own top-of-file doc comment). Falls
+ *  back to `"image/jpeg"` (the most common provider output) when the
+ *  extension is missing/unrecognized. */
+function guessLocationImageMimeTypeFromUrl(url: string): string {
+  const match = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(url);
+  const ext = match?.[1]?.toLowerCase();
+  switch (ext) {
+    case "png":
+      return "image/png";
+    case "webp":
+      return "image/webp";
+    case "gif":
+      return "image/gif";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    default:
+      return "image/jpeg";
+  }
+}
+
+/**
+ * Collapses a shot-number list into a compact "1-3, 7" style range string
+ * for the location card's shot badge — e.g. `[1,2,3,7]` -> `"1-3, 7"`,
+ * `[2,4]` -> `"2, 4"`. Coerces every entry through `Number()` and
+ * dedupes/sorts defensively (the storyboard JSON is loosely typed at this
+ * layer, same defensive posture as `verticalDramaEpisodes.ts`'s own
+ * `resolveShotLocationReferenceEntry`). Empty/all-invalid input returns
+ * `""`.
+ */
+function formatShotNumberRanges(shotNumbers: number[]): string {
+  const sorted = [...new Set(shotNumbers.map(n => Number(n)))]
+    .filter(n => Number.isFinite(n))
+    .sort((a, b) => a - b);
+  if (sorted.length === 0) return "";
+  const ranges: string[] = [];
+  let start = sorted[0];
+  let prev = sorted[0];
+  for (let i = 1; i <= sorted.length; i++) {
+    const current = sorted[i];
+    if (current !== undefined && current === prev + 1) {
+      prev = current;
+      continue;
+    }
+    ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+    if (current !== undefined) {
+      start = current;
+      prev = current;
+    }
+  }
+  return ranges.join(", ");
+}
+
+/**
+ * Episode-level "Locations in this episode" card (Location Visual Bible,
+ * Phase 3 UI — the frontend piece of `planning/polished-toasting-gadget.md`
+ * Phase 2, whose backend/DB/reconciliation is already live and untouched
+ * here). One row per `storyboard.distinct_locations[]` group, cross-
+ * referenced against the durable per-series location roster
+ * (`trpc.verticalDramaLocations.list`) by `location_key` so an already-
+ * approved reference thumbnail shows immediately. Deliberately much
+ * simpler than `VerticalDramaCharacterStockPanel.tsx` — no variant/twin/
+ * voice concepts, a single inline card, no separate tab/panel.
+ *
+ * A standalone component (not an inline closure inside
+ * `VerticalDramaStoryboardPanel`'s render body) because it owns its own
+ * tRPC query/mutations + per-location UI state — hooks must live at a
+ * component's top level, never inside a nested render closure. Renders
+ * nothing when `distinctLocations` is empty (storyboard predates this
+ * feature).
+ *
+ * Render-flow per location row, gated on whether a durable roster row was
+ * found for this group's `location_key` (`reconcileEpisodeLocations`
+ * normally guarantees one, but this stays defensive for a stale/pre-
+ * feature storyboard):
+ *   1. No roster row -> explanatory note, no actions (nothing to call
+ *      `previewLocationPrompt`/`generateLocationImage` with).
+ *   2. Roster row has an approved `primaryReferenceUrl` -> thumbnail only.
+ *   3. A just-rendered candidate is awaiting review -> "Approve this
+ *      image" button.
+ *   4. A prompt was already previewed -> prompt text + "Generate image".
+ *   5. Nothing yet -> "Generate prompt" button.
+ *
+ * The candidate render (step 3) is deliberately NOT auto-linked into the
+ * durable roster the instant the render task completes (unlike the
+ * character-portrait flow in `VerticalDramaCharacterStockPanel.tsx`) —
+ * `verticalDramaLocationStockService.linkAsset` unconditionally marks the
+ * asset `approved: true` on insert (verified by reading that service), so
+ * auto-linking first would make a follow-up `approveAsset` call an inert
+ * no-op. Gating the `resolveMediaAssetForImport` -> `linkAsset` commit
+ * behind this explicit Approve click gives the button real meaning: it is
+ * the moment the user decides THIS render becomes the location's
+ * canonical establishing plate. `approveAsset` is still called immediately
+ * after (self-transition, always legal per
+ * `canTransitionLocationAssetState`'s `from === to` short-circuit), purely
+ * to close the review loop explicitly rather than relying on `linkAsset`'s
+ * side-effect alone.
+ */
+function VerticalDramaLocationsBibleCard({
+  seriesId,
+  locale,
+  distinctLocations,
+}: {
+  seriesId: string;
+  locale: Lang;
+  distinctLocations: VerticalDramaStoryboardDistinctLocationView[];
+}) {
+  const utils = trpc.useUtils();
+  const listQuery = trpc.verticalDramaLocations.list.useQuery({ seriesId });
+
+  /** `locationKey` -> roster row essentials, resolved once per fetch. */
+  const rosterByKey = useMemo(() => {
+    const map = new Map<
+      string,
+      { locationId: string; primaryReferenceUrl?: string }
+    >();
+    for (const row of listQuery.data?.locations ?? []) {
+      map.set(row.locationKey, {
+        locationId: row.locationId,
+        primaryReferenceUrl: row.primaryReferenceUrl,
+      });
+    }
+    return map;
+  }, [listQuery.data]);
+
+  const invalidate = () =>
+    void utils.verticalDramaLocations.list.invalidate({ seriesId });
+
+  const onError = (err: { message?: string }) =>
+    toast.error(
+      err?.message || t(locale, "เกิดข้อผิดพลาด", "Something went wrong")
+    );
+
+  const previewMutation =
+    trpc.verticalDramaLocations.previewLocationPrompt.useMutation({
+      onError,
+    });
+  const generateMutation =
+    trpc.verticalDramaLocations.generateLocationImage.useMutation({
+      onError,
+    });
+  // No hook-level `onError` on the resolve/link/approve trio — all three
+  // are only ever awaited inside `handleApprove`'s own try/catch below,
+  // which already surfaces exactly one toast on failure; adding a second
+  // hook-level `onError` here would double-toast the same failure.
+  const resolveMutation =
+    trpc.verticalDramaLocations.resolveMediaAssetForImport.useMutation();
+  const linkMutation = trpc.verticalDramaLocations.linkAsset.useMutation();
+  const approveMutation =
+    trpc.verticalDramaLocations.approveAsset.useMutation();
+
+  /** Prompt text once `previewLocationPrompt` resolves, keyed by
+   *  `locationKey` — independent locations can preview concurrently. */
+  const [previewByKey, setPreviewByKey] = useState<
+    Record<string, { prompt: string; negativePrompt?: string }>
+  >({});
+  /** Which location is currently waiting on `previewMutation`. */
+  const [pendingPreviewKey, setPendingPreviewKey] = useState<string | null>(
+    null
+  );
+  /** Which location is between "generate submitted" and "poll completed" —
+   *  covers both the mutation's own in-flight window and the poll loop. */
+  const [renderingKey, setRenderingKey] = useState<string | null>(null);
+  /** A just-rendered candidate image awaiting the user's explicit Approve
+   *  click, keyed by `locationKey` (see this component's own doc comment
+   *  for why this is deliberately NOT auto-committed on render
+   *  completion). */
+  const [candidateByKey, setCandidateByKey] = useState<
+    Record<string, { imageUrl: string; approving?: boolean }>
+  >({});
+
+  /** Poll a submitted location-image render task to completion — same
+   *  `utils.media.getTask.fetch` loop shape (120 attempts, 2.5s interval)
+   *  as `VerticalDramaCharacterStockPanel.tsx`'s `pollCharacterImageTask`.
+   *  Reused verbatim rather than factored into a shared hook/util since no
+   *  such shared polling hook exists anywhere in this codebase for this
+   *  async-task pattern — every existing caller (character portraits,
+   *  character sheets, voice previews) already inlines the identical loop
+   *  locally; this follows that same established convention. */
+  async function pollLocationImageTask(taskId: string, locationKey: string) {
+    try {
+      for (let attempt = 0; attempt < 120; attempt++) {
+        const task = await utils.media.getTask.fetch({ taskId });
+        const status = (task as { status?: string } | null)?.status;
+        if (status === "completed") {
+          const resultUrl = (task as { resultUrl?: string } | null)
+            ?.resultUrl;
+          if (!resultUrl) {
+            toast.error(
+              t(
+                locale,
+                "สร้างภาพสำเร็จแต่ไม่พบ URL ผลลัพธ์",
+                "Generation completed but no result URL."
+              )
+            );
+            return;
+          }
+          setCandidateByKey(prev => ({
+            ...prev,
+            [locationKey]: { imageUrl: resultUrl },
+          }));
+          return;
+        }
+        if (status === "failed") {
+          const errorMessage = (task as { errorMessage?: string } | null)
+            ?.errorMessage;
+          toast.error(
+            t(
+              locale,
+              `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`,
+              `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`
+            )
+          );
+          return;
+        }
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+      toast.error(
+        t(
+          locale,
+          "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง",
+          "Generation is taking too long — check back later."
+        )
+      );
+    } finally {
+      setRenderingKey(current => (current === locationKey ? null : current));
+    }
+  }
+
+  const handlePreview = (locationId: string, locationKey: string) => {
+    setPendingPreviewKey(locationKey);
+    previewMutation.mutate(
+      { seriesId, locationId },
+      {
+        onSuccess: res => {
+          setPreviewByKey(prev => ({
+            ...prev,
+            [locationKey]: {
+              prompt: res.establishingPlatePrompt,
+              negativePrompt: res.negativePrompt,
+            },
+          }));
+          setPendingPreviewKey(null);
+        },
+        onError: () => setPendingPreviewKey(null),
+      }
+    );
+  };
+
+  const handleGenerate = (locationId: string, locationKey: string) => {
+    const preview = previewByKey[locationKey];
+    if (!preview) return;
+    setRenderingKey(locationKey);
+    generateMutation.mutate(
+      {
+        seriesId,
+        locationId,
+        approvedPrompt: preview.prompt,
+        ...(preview.negativePrompt
+          ? { approvedNegativePrompt: preview.negativePrompt }
+          : {}),
+      },
+      {
+        onSuccess: res => void pollLocationImageTask(res.taskId, locationKey),
+        onError: () =>
+          setRenderingKey(current =>
+            current === locationKey ? null : current
+          ),
+      }
+    );
+  };
+
+  const handleApprove = async (locationId: string, locationKey: string) => {
+    const candidate = candidateByKey[locationKey];
+    if (!candidate) return;
+    setCandidateByKey(prev => ({
+      ...prev,
+      [locationKey]: { ...candidate, approving: true },
+    }));
+    try {
+      const resolved = await resolveMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: candidate.imageUrl,
+        mimeType: guessLocationImageMimeTypeFromUrl(candidate.imageUrl),
+      });
+      const linked = await linkMutation.mutateAsync({
+        seriesId,
+        locationId,
+        mediaAssetId: resolved.mediaAssetId,
+        assetType: "location_reference",
+        role: "establishing_plate",
+        source: "generated",
+      });
+      await approveMutation.mutateAsync({
+        seriesId,
+        assetLinkId: linked.asset.assetLinkId,
+      });
+      setCandidateByKey(prev => {
+        const next = { ...prev };
+        delete next[locationKey];
+        return next;
+      });
+      setPreviewByKey(prev => {
+        const next = { ...prev };
+        delete next[locationKey];
+        return next;
+      });
+      invalidate();
+      toast.success(
+        t(locale, "อนุมัติภาพสถานที่แล้ว", "Location reference approved")
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : t(locale, "อนุมัติไม่สำเร็จ", "Approve failed")
+      );
+      setCandidateByKey(prev => ({
+        ...prev,
+        [locationKey]: { ...candidate, approving: false },
+      }));
+    }
+  };
+
+  if (distinctLocations.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
+      <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+        <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+        {t(locale, "สถานที่ในตอนนี้", "Locations in this episode")}
+      </h4>
+      <div className="flex flex-col gap-2">
+        {distinctLocations.map((group, index) => {
+          const locationKey = group.location_key;
+          const locationName = group.location_name;
+          if (!locationKey || !locationName) return null;
+          const roster = rosterByKey.get(locationKey);
+          const thumbnailUrl = roster?.primaryReferenceUrl;
+          const candidate = candidateByKey[locationKey];
+          const preview = previewByKey[locationKey];
+          const shotRangeLabel = formatShotNumberRanges(
+            group.shot_numbers ?? []
+          );
+          const isPreviewLoading = pendingPreviewKey === locationKey;
+          const isRendering = renderingKey === locationKey;
+
+          return (
+            <div
+              key={locationKey || index}
+              className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/40 p-2 sm:flex-row sm:items-start"
+              data-testid={`vd-location-bible-row-${locationKey}`}
+            >
+              <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30">
+                {thumbnailUrl ? (
+                  <img
+                    src={thumbnailUrl}
+                    alt={locationName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : candidate?.imageUrl ? (
+                  <img
+                    src={candidate.imageUrl}
+                    alt={locationName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <ImageOff
+                    aria-hidden="true"
+                    className="h-4 w-4 text-muted-foreground"
+                  />
+                )}
+              </div>
+
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-xs font-medium">{locationName}</span>
+                  {shotRangeLabel ? (
+                    <Badge
+                      variant="outline"
+                      className="px-1.5 py-0 text-[9px]"
+                    >
+                      {t(locale, "ช็อต ", "Shot ")}
+                      {shotRangeLabel}
+                    </Badge>
+                  ) : null}
+                  {thumbnailUrl ? (
+                    <Badge
+                      variant="outline"
+                      className="gap-1 border-emerald-400/60 px-1.5 py-0 text-[9px] text-emerald-700 dark:text-emerald-400"
+                    >
+                      <Check aria-hidden="true" className="h-2.5 w-2.5" />
+                      {t(locale, "มีภาพอ้างอิงแล้ว", "Reference set")}
+                    </Badge>
+                  ) : null}
+                </div>
+                {group.description ? (
+                  <p className="line-clamp-2 text-xs text-muted-foreground">
+                    {group.description}
+                  </p>
+                ) : null}
+
+                {!roster ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(
+                      locale,
+                      "ยังไม่พร้อมสร้างภาพสถานที่นี้ (รอซิงก์ข้อมูล)",
+                      "Not ready to generate yet (waiting on data sync)"
+                    )}
+                  </p>
+                ) : thumbnailUrl ? null : candidate ? (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-[11px] text-muted-foreground">
+                      {t(
+                        locale,
+                        "ตรวจสอบภาพที่สร้างแล้วกด “อนุมัติ” เพื่อบันทึกเป็นภาพอ้างอิงหลัก",
+                        "Review the rendered image, then approve to save it as the primary reference."
+                      )}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() =>
+                          handleApprove(roster.locationId, locationKey)
+                        }
+                        disabled={candidate.approving}
+                        data-testid={`vd-location-approve-${locationKey}`}
+                      >
+                        {candidate.approving ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
+                        ) : (
+                          <Check aria-hidden="true" className="h-3.5 w-3.5" />
+                        )}
+                        {t(locale, "อนุมัติภาพนี้", "Approve this image")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : preview ? (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="rounded border border-border/60 bg-muted/30 p-1.5 text-[11px] text-muted-foreground">
+                      {preview.prompt}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
+                        onClick={() =>
+                          handleGenerate(roster.locationId, locationKey)
+                        }
+                        disabled={isRendering}
+                        data-testid={`vd-location-generate-image-${locationKey}`}
+                      >
+                        {isRendering ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5 animate-spin"
+                          />
+                        ) : (
+                          <Sparkles
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                          />
+                        )}
+                        {isRendering
+                          ? t(locale, "กำลังสร้าง…", "Generating…")
+                          : t(
+                              locale,
+                              "สร้างภาพ (มีค่าใช้จ่าย)",
+                              "Generate image (paid)"
+                            )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={() =>
+                        handlePreview(roster.locationId, locationKey)
+                      }
+                      disabled={isPreviewLoading}
+                      data-testid={`vd-location-preview-prompt-${locationKey}`}
+                    >
+                      {isPreviewLoading ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 animate-spin"
+                        />
+                      ) : (
+                        <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+                      )}
+                      {t(locale, "สร้าง prompt", "Generate prompt")}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 /** Compact model-picker button used by the header's image/video selectors —
  *  shows the currently-selected model's name + capability badges, opens the

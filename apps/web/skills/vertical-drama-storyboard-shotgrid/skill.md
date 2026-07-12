@@ -214,6 +214,91 @@ stays clean and legible, a drama/thriller can lean cooler/harder on tense
 beats. This is a light styling cue only — the heavy genre-conditional
 story/retention-loop logic lives in the script stage, not here.
 
+## Location continuity and scene grouping — MANDATORY
+
+The "Change cadence" rules above reward genuine shot-to-shot variety —
+camera, lighting, composition, even declaring `"visual"` as a changed
+dimension — and none of that is in tension with this section. A shot's
+framing, lens, movement, and lighting can and should vary constantly while
+the physical PLACE stays the same; that is ordinary continuity editing, not
+a location change. This section is about the underlying *setting itself* —
+the actual physical place a shot happens in — a much rarer, more deliberate
+decision than camera/lighting variety, which defaults to staying fixed for
+the whole episode.
+
+1. **Default: ONE location for all 9 shots.** Unless the episode's own
+   scene list (see "Episode scenes" in the input — the concrete
+   scene-by-scene breakdown already fed to this skill, not the thin
+   series-bible logline/keyBeats) genuinely establishes more than one
+   place, every shot shares a single `location_key`. Do not invent a
+   second location just to add visual variety — use camera, lighting, and
+   composition for that instead (see "Change cadence" above).
+2. **A location change is legitimate ONLY when the scene list actually
+   supports it.** Look for a scripted physical move written into the
+   episode's own scenes (e.g. a scene note like "cut to kitchen" /
+   "ตัดเข้าครัว"), a flashback, a dimension-jump, or a time-skip cutaway.
+   Never split shots into a second location because of an incidental
+   wording difference in how you happened to phrase two shots' settings —
+   if the scene list does not call for a move, it did not happen, and both
+   shots belong in the SAME `distinct_locations[]` group.
+3. **A real change is a clean, deliberate boundary — never per-shot
+   drift.** When the scene list does establish a change, group the shots
+   on each side of that boundary into contiguous `shot_numbers` (e.g. shots
+   1-3 in one location, shots 4-9 in the next) — never a scattered pattern
+   like shots 1, 3, 7 in one location and 2, 4-6, 8-9 in another. Every
+   shot belongs to exactly one `distinct_locations[]` group, and every
+   group's `shot_numbers` must be a contiguous run.
+4. **Existing series locations — reuse verbatim when one matches.** The
+   input may carry an "Existing series locations" list — real places the
+   series has already used, in the same spirit as the "Characters" list
+   above (supplied only when the series has location history; see that
+   list's own reference-image convention for the parallel). When a shot's
+   setting matches one of these, use that entry's `location_key` EXACTLY as
+   given rather than inventing a new one, so the same physical place is
+   recognized as the same place across episodes. When no existing locations
+   are supplied (an episode with no location history yet), author sensible
+   new `location_key` / `location_name` / `description` values yourself.
+5. **Output shape.** Populate the top-level `distinct_locations[]` array:
+   one entry per distinct physical place used in this episode (a single
+   entry covering all 9 `shot_numbers` in the default one-location case),
+   each with `location_key`, `location_name`, `description` (what the place
+   looks like — concrete enough to ground an image prompt: architecture,
+   props, lighting fixtures), and `shot_numbers` (the contiguous shots set
+   in that place). Keep each shot's own `location` string consistent with
+   whichever `distinct_locations[]` group contains it.
+
+### Worked example
+
+Good — a scripted mid-episode move, grouped as one clean boundary: the
+episode's scene list has scenes 1-2 in a convenience store and scene 3
+explicitly noted "ตัดเข้าครัว" (cut to kitchen):
+
+```json
+"distinct_locations": [
+  {
+    "location_key": "convenience_store_main",
+    "location_name": "ร้านสะดวกซื้อ (โซนของเด็ก)",
+    "description": "แถวชั้นวางของเด็ก แสงไฟนีออนสีขาวจากเพดาน ป้ายราคาสีเหลืองติดตามชั้น",
+    "shot_numbers": [1, 2, 3]
+  },
+  {
+    "location_key": "family_kitchen",
+    "location_name": "ครัวที่บ้าน",
+    "description": "ครัวขนาดกลาง โต๊ะไม้ตรงกลางวางอุปกรณ์ทดสอบผ้าอ้อม แสงจากหน้าต่างด้านข้าง",
+    "shot_numbers": [4, 5, 6, 7, 8, 9]
+  }
+]
+```
+
+Bad — the same story, but drifting into scattered/incidental groupings
+instead of one clean boundary (do NOT do this): inventing a third
+"location" for shot 3 alone just because its wording happened to drift
+(e.g. `"ทางเดินหน้าชั้นของเด็ก..."`) even though shot 3 is still the same
+convenience-store aisle as shots 1-2 and the scene list never establishes a
+move there; or a `shot_numbers` split like `[1, 2, 3, 5, 7]` for one
+location and `[4, 6, 8, 9]` for another — not a contiguous, deliberate
+boundary, and not something the scene list actually establishes.
+
 ## Character variant selection — MANDATORY WHEN a character has variants
 
 Some entries in the "Characters" list carry a nested "Variants available for

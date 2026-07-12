@@ -23,6 +23,7 @@ import {
   verticalDramaRunArtifacts,
   verticalDramaEpisodeRuns,
   verticalDramaCharacters,
+  verticalDramaLocations,
   verticalDramaMemoryEvents,
   mediaAssets,
   mediaModels,
@@ -54,6 +55,7 @@ import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { verticalDramaCharacterStockService } from "../services/verticalDramaCharacterStock";
+import { verticalDramaLocationStockService } from "../services/verticalDramaLocationStock";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import {
   verticalDramaShotReferencesService,
@@ -123,6 +125,12 @@ import {
   VdSchemaValidationError as ClipDialogueSchemaValidationError,
   RateLimitExceededError as ClipDialogueRateLimitExceededError,
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
+  // Multi-character reference images (multi-character disambiguation fix,
+  // `polished-toasting-gadget.md`) — type-only, shared by
+  // `resolveShotVideoPromptCharacterReferenceImages` below and every
+  // `characterReferenceImages` field this router threads through to the
+  // generator.
+  type ShotVideoPromptCharacterReferenceImage,
 } from "../services/verticalDramaVideoMotionPromptGeneration";
 import {
   extractShotProductPlacements,
@@ -271,6 +279,10 @@ import {
   // doc comment for why the tenant flag is resolved separately from this.
   computeSpeakerSwitchSubShotPlan,
   type SpeakerSwitchSubShotWindow,
+  // Multi-character disambiguation fix (`polished-toasting-gadget.md`) —
+  // shared anchor-first/first-appearance dedup, see its own doc comment in
+  // `subShots.ts` for why this is extracted rather than inlined here.
+  deriveDistinctSpeakerCharacterKeysFromWindows,
 } from "@shared/verticalDramaSeries";
 // W12-A voice chain wave — imported by DIRECT PATH (not the shared barrel),
 // same convention `audio.ts`'s own doc comment documents for itself: its
@@ -1410,6 +1422,17 @@ async function resolveSeriesCharacterPortraits(
 interface ShotCharacterRefEntry {
   name: string;
   url: string;
+  /**
+   * Multi-character reference images (multi-character disambiguation fix,
+   * `polished-toasting-gadget.md`) — the underlying query already selects
+   * this (see `resolveShotCharacterReferenceEntries`'s `characterRows`
+   * query below); surfaced here so
+   * `resolveShotVideoPromptCharacterReferenceImages` can re-sort/dedup
+   * entries by their owning character without a second query. Purely
+   * additive — every pre-existing caller destructures only `.url`/`.name`
+   * and is unaffected.
+   */
+  characterKey: string;
 }
 
 // `formatIdentityLockedImagePrompt` (formerly defined here, a near-duplicate
@@ -1450,25 +1473,25 @@ async function resolveShotCharacterReferenceEntries(
 
   if (!includeSheets) {
     const entries = await Promise.all(
-      characterRows.map(async (c: { id: number; name: string }) => {
+      characterRows.map(async (c: { id: number; name: string; characterKey: string }) => {
         const url = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
           owner,
           c.id
         );
-        return url ? { name: c.name, url } : undefined;
+        return url ? { name: c.name, url, characterKey: c.characterKey } : undefined;
       })
     );
     return entries.filter((e): e is ShotCharacterRefEntry => Boolean(e));
   }
 
   const perCharacterRefs = await Promise.all(
-    characterRows.map(async (c: { id: number; name: string }) => {
+    characterRows.map(async (c: { id: number; name: string; characterKey: string }) => {
       const urls = await verticalDramaCharacterStockService.getCharacterReferenceUrls(
         owner,
         c.id,
         { includeSheet: true }
       );
-      return urls.map(url => ({ name: c.name, url }));
+      return urls.map(url => ({ name: c.name, url, characterKey: c.characterKey }));
     })
   );
   // Re-interleave into "all portraits, then all sheets" — see doc comment
@@ -1498,6 +1521,170 @@ async function resolveShotCharacterReferenceUrls(
     characterKeys
   );
   return entries.map(e => e.url);
+}
+
+/**
+ * Cap on character reference portraits attached to a shot-video-prompt
+ * vision call (multi-character disambiguation fix,
+ * `polished-toasting-gadget.md`) — governs
+ * `resolveShotVideoPromptCharacterReferenceImages` below. Deliberately a
+ * SEPARATE constant from `VERTICAL_DRAMA_SPEAKER_SUB_SHOT_MAX` (same value
+ * today, 3) even though they happen to agree — that constant governs how
+ * many speaker-switch SUB-SHOT WINDOWS a shot can split into
+ * (`@shared/verticalDramaSeries/subShots.ts`), a different concern that
+ * could reasonably diverge from this one later.
+ */
+const VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS = 3;
+
+/**
+ * Resolve up to `VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS`
+ * character reference portraits for a shot-video-prompt vision call
+ * (multi-character disambiguation fix, `polished-toasting-gadget.md`) — one
+ * per distinct required/speaking character, in `characterKeysInOrder`'s own
+ * order, each resolved to a publicly-fetchable URL via `resolveReferenceUrl`
+ * (`verticalDramaCharacterStockService.getPrimaryPortraitUrl` — reused here
+ * through `resolveShotCharacterReferenceEntries` — returns a raw,
+ * unresolved relative `media_assets.originalUrl`, the same correctness fix
+ * `generateShotVideoPrompt`'s own `imageUrl` resolution already applies, a
+ * few lines below this helper's own call site).
+ *
+ * Reuses `resolveShotCharacterReferenceEntries` (no new resolution path) —
+ * that function's own return order is NOT reliably `characterKeysInOrder`
+ * (the underlying query has no `ORDER BY`), so this re-sorts to match, and
+ * keeps only the FIRST entry per `characterKey` (always that character's
+ * portrait, never a character-sheet supplementary image, per that
+ * function's own "all portraits before any sheets" ordering guarantee).
+ *
+ * Never throws for a character with no approved portrait yet — that
+ * character is silently omitted from the result, same tolerant convention
+ * as `resolveShotLocationReferenceEntry` below. Defensively de-dupes
+ * `characterKeysInOrder` itself too (in case a caller ever passes the same
+ * key twice), so the 3-slot cap can never be partly consumed by the same
+ * character appearing more than once.
+ */
+async function resolveShotVideoPromptCharacterReferenceImages(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  characterKeysInOrder: string[],
+  publicUrl: string | undefined
+): Promise<ShotVideoPromptCharacterReferenceImage[]> {
+  if (characterKeysInOrder.length === 0) return [];
+  const entries = await resolveShotCharacterReferenceEntries(
+    tenantId,
+    userId,
+    seriesId,
+    characterKeysInOrder
+  );
+  const firstEntryByCharacterKey = new Map<string, ShotCharacterRefEntry>();
+  for (const entry of entries) {
+    if (!firstEntryByCharacterKey.has(entry.characterKey)) {
+      firstEntryByCharacterKey.set(entry.characterKey, entry);
+    }
+  }
+  const ordered: ShotVideoPromptCharacterReferenceImage[] = [];
+  const seenCharacterKeys = new Set<string>();
+  for (const characterKey of characterKeysInOrder) {
+    if (seenCharacterKeys.has(characterKey)) continue;
+    seenCharacterKeys.add(characterKey);
+    const entry = firstEntryByCharacterKey.get(characterKey);
+    if (!entry) continue;
+    ordered.push({
+      characterKey,
+      name: entry.name,
+      url: resolveReferenceUrl(entry.url, publicUrl),
+    });
+    if (ordered.length >= VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS) break;
+  }
+  return ordered;
+}
+
+/**
+ * Resolve THIS shot's location reference entry (Phase 2 of
+ * `planning/polished-toasting-gadget.md` — location visual bible) —
+ * singular counterpart to `resolveShotCharacterReferenceEntries` above (one
+ * shot has at most ONE location, not a list). Reads the persisted
+ * storyboard's own `distinct_locations[]` (snake_case, stored verbatim from
+ * the LLM's own JSON output — same reading convention
+ * `verticalDramaEpisodePipeline.ts`'s `generateRealStartFramePlan` already
+ * established for this exact field), finds which group's `shot_numbers`
+ * contains `shotNumber`, resolves that group's `location_key` against the
+ * series' `vertical_drama_locations` roster (tenant/user/series scoped),
+ * then resolves the location's current approved reference image via
+ * `verticalDramaLocationStockService.getPrimaryReferenceUrl`.
+ *
+ * Purely additive and tolerant — returns `null` (never throws) when there is
+ * no `distinct_locations` data, no matching group for this shot, or no
+ * roster row for the group's `location_key` (e.g. a storyboard generated
+ * before this feature existed, or before `reconcileEpisodeLocations` ran
+ * for this episode). Deliberately returns BEFORE touching the database in
+ * every one of those tolerant cases, so a shot/episode with no location data
+ * adds zero new DB calls — this is what keeps every pre-existing
+ * `generateStartFrameImage`/`generateStartFrameAngleVariations`/
+ * `generateShotStartFramePrompt` test (none of whose fixtures carry a
+ * `storyboard` field) byte-identical.
+ */
+async function resolveShotLocationReferenceEntry(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  storyboard: unknown,
+  shotNumber: number
+): Promise<
+  | { url?: string; name?: string; description?: string; hasReferenceImage: boolean }
+  | null
+> {
+  const distinctLocationGroups = Array.isArray(
+    (storyboard as Record<string, unknown> | null)?.distinct_locations
+  )
+    ? ((storyboard as Record<string, unknown>).distinct_locations as Array<
+        Record<string, unknown>
+      >)
+    : [];
+  if (distinctLocationGroups.length === 0) return null;
+
+  const matchingGroup = distinctLocationGroups.find(group => {
+    const shotNumbers = Array.isArray(group.shot_numbers) ? group.shot_numbers : [];
+    return shotNumbers.some(n => Number(n) === shotNumber);
+  });
+  const locationKey =
+    typeof matchingGroup?.location_key === "string" ? matchingGroup.location_key : undefined;
+  if (!locationKey) return null;
+
+  const [locationRow] = await db
+    .select({
+      id: verticalDramaLocations.id,
+      name: verticalDramaLocations.name,
+      data: verticalDramaLocations.data,
+    })
+    .from(verticalDramaLocations)
+    .where(
+      and(
+        eq(verticalDramaLocations.tenantId, tenantId),
+        eq(verticalDramaLocations.userId, userId),
+        eq(verticalDramaLocations.seriesId, seriesId),
+        eq(verticalDramaLocations.locationKey, locationKey)
+      )
+    )
+    .limit(1);
+  if (!locationRow) return null;
+
+  const description =
+    typeof (locationRow.data as Record<string, unknown> | null)?.description === "string"
+      ? ((locationRow.data as Record<string, unknown>).description as string)
+      : undefined;
+
+  const url = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
+    { tenantId, userId, seriesId },
+    locationRow.id
+  );
+
+  return {
+    url,
+    name: locationRow.name,
+    description,
+    hasReferenceImage: Boolean(url),
+  };
 }
 
 /**
@@ -5448,6 +5635,24 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
   requestedNativeAudioEnabled: boolean;
   extraDialogueCreditsUsed: number;
   subShotWindows: SpeakerSwitchSubShotWindow[];
+  /**
+   * Multi-character reference images (multi-character disambiguation fix,
+   * `polished-toasting-gadget.md`) — the CALLER (`generateShotVideoPrompt`'s
+   * `needsSplit` branch) already resolved this via
+   * `resolveShotVideoPromptCharacterReferenceImages`, mirroring the existing
+   * `imageUrl` convention (parent resolves a ready value, child just
+   * forwards it to `generateVerticalDramaShotVideoPromptSpeakerSwitch`).
+   */
+  characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+  /**
+   * planning/`polished-toasting-gadget.md` Fix B — threaded straight through
+   * to `generateVerticalDramaShotVideoPromptSpeakerSwitch`'s own
+   * `repairInstruction` (same contract — see
+   * `GenerateVerticalDramaShotVideoPromptParams.repairInstruction`'s doc
+   * comment). Optional/omitted by every caller except the one Fix B call
+   * site below, preserving today's behavior.
+   */
+  repairInstruction?: string;
 }) {
   const {
     tenantId,
@@ -5474,6 +5679,8 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     requestedNativeAudioEnabled,
     extraDialogueCreditsUsed,
     subShotWindows,
+    characterReferenceImages,
+    repairInstruction,
   } = args;
 
   const speakerSwitchGeneration = await generateVerticalDramaShotVideoPromptSpeakerSwitch({
@@ -5484,6 +5691,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     shotNumber,
     imageUrl,
     imagePrompt,
+    characterReferenceImages,
     shotContext: {
       description: storyboardShot?.description,
       camera: storyboardShot?.cameraSetup,
@@ -5514,6 +5722,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     nativeAudioEnabled: effectiveNativeAudioEnabled,
     idempotencyKey,
     subShotWindows,
+    repairInstruction,
   });
 
   // Same 2 passes the single-clip path applies (brand sanitize -> length-cap
@@ -8151,10 +8360,27 @@ export const verticalDramaEpisodesRouter = router({
         frame.requiredCharacterRefs
       );
       const characterRefUrls = characterRefEntries.map(e => e.url);
+      // Location reference (Phase 2 of `planning/polished-toasting-gadget.md`
+      // — location visual bible) — this shot's environment-lock reference,
+      // resolved from the storyboard's own `distinct_locations[]` groups
+      // (already fetched as part of `row` above, no new query beyond what
+      // `loadOwnedEpisode` already fetched). At most one URL per shot.
+      // Inserted BETWEEN character and product refs so identity-lock always
+      // wins over environment-lock, and environment-lock always wins over
+      // the (comparatively protected) product reference, when a model's
+      // `maxReferenceImages` forces trimming.
+      const locationRefEntry = await resolveShotLocationReferenceEntry(
+        tenantId,
+        userId,
+        seriesId,
+        row.storyboard,
+        input.shotNumber
+      );
+      const locationRefUrls = locationRefEntry?.url ? [locationRefEntry.url] : [];
       // Product tie-in reference (spec: the product must physically appear
       // in the shot, not just be described in text) — appended AFTER
-      // character refs so identity-lock always takes priority when a model's
-      // `maxReferenceImages` forces trimming.
+      // character/location refs so identity-lock and environment-lock always
+      // take priority when a model's `maxReferenceImages` forces trimming.
       const productRefUrls = resolveShotProductReferenceUrls(
         frame.productReferenceAssetIds
       );
@@ -8187,6 +8413,7 @@ export const verticalDramaEpisodesRouter = router({
         trimmedCount: trimmedProductReferenceCount,
       } = mergeAndTrimReferenceImageUrls(
         characterRefUrls,
+        locationRefUrls,
         productRefUrls,
         imageCapabilities.maxReferenceImages
       );
@@ -8613,6 +8840,17 @@ export const verticalDramaEpisodesRouter = router({
         frame.requiredCharacterRefs
       );
       const characterRefUrls = characterRefEntries.map(e => e.url);
+      // Location reference (Phase 2 of `planning/polished-toasting-gadget.md`
+      // — location visual bible) — same resolution + priority-ordering
+      // rationale as `generateStartFrameImage`'s identical block above.
+      const locationRefEntry = await resolveShotLocationReferenceEntry(
+        tenantId,
+        userId,
+        seriesId,
+        row.storyboard,
+        input.shotNumber
+      );
+      const locationRefUrls = locationRefEntry?.url ? [locationRefEntry.url] : [];
       const productRefUrls = resolveShotProductReferenceUrls(
         frame.productReferenceAssetIds
       );
@@ -8664,6 +8902,7 @@ export const verticalDramaEpisodesRouter = router({
         trimmedCount: trimmedProductReferenceCount,
       } = mergeAndTrimReferenceImageUrls(
         characterRefUrls,
+        locationRefUrls,
         productRefUrls,
         angleImageCapabilities.maxReferenceImages
       );
@@ -9989,6 +10228,294 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Regenerate ONE shot's start-frame image prompt via the
+   * `vertical-drama-shot-start-frame-prompt` skill
+   * (`generateStartFrameShotPrompt`, `verticalDramaStartFrameGeneration.ts`)
+   * — the fix for the "ให้ AI ปรับ" (AI-adjust) button next to a shot's
+   * start-frame prompt (planning/`polished-toasting-gadget.md` Fix A;
+   * previously completely non-functional — that button routed through the
+   * generic `repairStageOutput` -> `verticalDramaEpisodePipeline.repairStage()`
+   * dispatcher, which has no real-LLM branch for `start_frame_render_plan`
+   * and silently fell through to a dry-run placeholder that never called an
+   * LLM and never persisted to the live episode column).
+   *
+   * Bypasses `repairStageOutput`/`repairStage` entirely (both stay
+   * completely untouched) — mirrors the exact shape `generateShotVideoPrompt`
+   * below already uses for the equivalent `video_motion_prompt_pack` fix: a
+   * dedicated single-shot skill + service function + router procedure,
+   * persisting onto ONE frame inside `startFramePlan.frames[]` via a
+   * `db.transaction(...).for("update")` row-lock + fresh re-read
+   * immediately before merging (same 2026-07-11 lost-update-race-fix shape
+   * `generateShotVideoPrompt` uses for `motionPromptPack.clips[]`).
+   */
+  generateShotStartFramePrompt: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        instruction: z.string().trim().min(1).max(4000),
+        idempotencyKey,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frame = plan?.frames?.find(f => f.shotNumber === input.shotNumber);
+      if (!plan || !frame) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `No start-frame plan for shot ${input.shotNumber} yet — generate the start-frame plan first`,
+        });
+      }
+
+      // Resolve region/product-lock/character-identity facts — the SAME
+      // router-private helpers `repairShotImage`/
+      // `generateStartFrameAngleVariations` already use for the equivalent
+      // facts (do not re-derive equivalent DB queries).
+      const shotStartFramePromptRegion = await loadSeriesTargetAudienceRegion(
+        tenantId,
+        userId,
+        seriesId
+      );
+      const shotStartFramePromptIsTieInShot = Boolean(
+        frame.productReferenceAssetIds?.length
+      );
+      const shotStartFramePromptProductLockFacts =
+        await loadSeriesProductTieInFacts(
+          tenantId,
+          userId,
+          seriesId,
+          shotStartFramePromptIsTieInShot
+        );
+      const shotStartFramePromptCharacterIdentitySources =
+        await resolveShotCharacterIdentitySources(
+          tenantId,
+          seriesId,
+          frame.requiredCharacterRefs
+        );
+      // Same helper (and the SAME "portraits first, then sheets" ordering
+      // guarantee — see its doc comment above)
+      // `generateStartFrameAngleVariations` already uses to build its own
+      // `characterReferenceManifest`: the order this resolves in is the same
+      // order the real paid render will actually attach reference images in
+      // later, so the "Image N" claims the skill writes here stay accurate
+      // for when this shot is eventually rendered.
+      const shotStartFramePromptCharacterRefEntries =
+        await resolveShotCharacterReferenceEntries(
+          tenantId,
+          userId,
+          seriesId,
+          frame.requiredCharacterRefs
+        );
+
+      // Location fact (Phase 2 of `planning/polished-toasting-gadget.md` —
+      // location visual bible) — resolves the same `location_key` ->
+      // roster -> approved-reference lookup `generateStartFrameImage`/
+      // `generateStartFrameAngleVariations` use, but only the TEXT facts are
+      // threaded here (this procedure never attaches a reference image
+      // itself — it's a prompt-authoring-only call; the real render still
+      // happens via `generateStartFrameImage`, which does the URL-attach).
+      const shotStartFramePromptLocationEntry = await resolveShotLocationReferenceEntry(
+        tenantId,
+        userId,
+        seriesId,
+        row.storyboard,
+        input.shotNumber
+      );
+
+      // Strip any stale identity-lock suffix before handing the stored
+      // prompt to the skill as informational-only scene grounding — same
+      // defensive stripping every other call site applies to a stored
+      // prompt before an LLM call.
+      const shotStartFramePromptBasePrompt = stripExistingIdentityLockSuffix(
+        frame.imagePrompt
+      );
+
+      const {
+        generateStartFrameShotPrompt,
+        InsufficientCreditsError: StartFrameShotPromptInsufficientCreditsError,
+        VdSchemaValidationError: StartFrameShotPromptSchemaValidationError,
+        RateLimitExceededError: StartFrameShotPromptRateLimitExceededError,
+      } = await import("../services/verticalDramaStartFrameGeneration");
+
+      let shotStartFramePromptResult: {
+        prompt: string;
+        negativePrompt: string;
+        creditsUsed: number;
+        model: string;
+      };
+      try {
+        shotStartFramePromptResult = await generateStartFrameShotPrompt({
+          userId,
+          tenantId,
+          seriesId,
+          episodeId,
+          shotNumber: input.shotNumber,
+          instruction: input.instruction,
+          currentPrompt: shotStartFramePromptBasePrompt,
+          currentNegativePrompt: frame.negativePrompt ?? "",
+          requiredCharacterRefs: frame.requiredCharacterRefs,
+          characters: shotStartFramePromptCharacterIdentitySources,
+          characterReferenceManifest:
+            shotStartFramePromptCharacterRefEntries.map((entry, idx) => ({
+              index: idx + 1,
+              characterId: null,
+              name: entry.name,
+            })),
+          targetAudienceRegion: shotStartFramePromptRegion,
+          productLock: {
+            active: shotStartFramePromptIsTieInShot,
+            productName:
+              shotStartFramePromptProductLockFacts?.productName ?? null,
+            productDescription:
+              shotStartFramePromptProductLockFacts?.productDescription ??
+              null,
+          },
+          // Phase 2 of `planning/polished-toasting-gadget.md` — see this
+          // procedure's own `shotStartFramePromptLocationEntry` doc comment
+          // above. Omitted entirely (not merely `undefined`) when no
+          // location resolves, so a shot/episode with no location data
+          // renders byte-identical to before this field existed.
+          location: shotStartFramePromptLocationEntry
+            ? {
+                name: shotStartFramePromptLocationEntry.name ?? "",
+                description:
+                  shotStartFramePromptLocationEntry.description ??
+                  shotStartFramePromptLocationEntry.name ??
+                  "",
+                hasReferenceImage: Boolean(shotStartFramePromptLocationEntry.url),
+              }
+            : undefined,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (err) {
+        if (err instanceof StartFrameShotPromptInsufficientCreditsError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Insufficient credits to author the start-frame prompt",
+          });
+        }
+        if (err instanceof StartFrameShotPromptSchemaValidationError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to author the start-frame prompt — try again",
+          });
+        }
+        if (err instanceof StartFrameShotPromptRateLimitExceededError) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: err.message,
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to author the start-frame prompt",
+        });
+      }
+
+      // Final-prompt QC (hard length cap) — enforced BEFORE this prompt is
+      // persisted onto `startFramePlan.frames[]` below, same convention as
+      // every other outgoing image prompt in this router.
+      const shotStartFramePromptQc = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: shotStartFramePromptResult.prompt,
+        userId,
+        tenantId,
+        seriesId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `start-frame shot prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+      });
+      shotStartFramePromptResult.prompt = shotStartFramePromptQc.prompt;
+
+      // Persist onto ONLY the target shot's frame inside
+      // `startFramePlan.frames[]` — same 2026-07-11 lost-update-race-fix
+      // shape `generateShotVideoPrompt` already uses for
+      // `motionPromptPack.clips[]`: lock the row and re-read the FRESHEST
+      // `startFramePlan` inside a transaction immediately before merging, so
+      // concurrent per-shot calls serialize instead of clobbering each
+      // other. Every OTHER field on the target frame — including
+      // `approvedMediaAssetId` — survives untouched (spread-overwrite of
+      // ONLY `imagePrompt`/`negativePrompt` onto the ONE target frame
+      // object); every sibling shot's frame object stays the exact same
+      // reference, never reconstructed.
+      //
+      // `approvedMediaAssetId` is deliberately left as-is on repair (open
+      // question, researched — see planning/`polished-toasting-gadget.md`):
+      // the free-text "Edit" pencil path (`handleSaveStartFramePrompt`)
+      // already edits this same `imagePrompt` field without clearing
+      // approval, so behaving differently here for the identical field would
+      // be inconsistent; clearing it would also immediately break
+      // `generateShotVideoPrompt`'s own precondition gate for this shot.
+      await db.transaction(async tx => {
+        const [freshRow] = await tx
+          .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          )
+          .for("update")
+          .limit(1);
+        const freshPlan =
+          (freshRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
+          plan;
+        const targetIndex = freshPlan.frames.findIndex(
+          f => f.shotNumber === input.shotNumber
+        );
+        if (targetIndex === -1) return;
+
+        const updatedFrames = freshPlan.frames.slice();
+        updatedFrames[targetIndex] = {
+          ...updatedFrames[targetIndex],
+          imagePrompt: shotStartFramePromptResult.prompt,
+          negativePrompt: shotStartFramePromptResult.negativePrompt,
+        };
+        const updatedPlan: VerticalDramaStartFramePlan = {
+          ...freshPlan,
+          frames: updatedFrames,
+        };
+
+        await tx
+          .update(verticalDramaEpisodes)
+          .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          );
+      });
+
+      return {
+        prompt: shotStartFramePromptResult.prompt,
+        negativePrompt: shotStartFramePromptResult.negativePrompt,
+        creditsUsed: shotStartFramePromptResult.creditsUsed,
+      };
+    }),
+
+  /**
    * Generate ONE shot's image-grounded video-clip prompt (Phase 6, §6.6b) via
    * `generateVerticalDramaShotVideoPrompt` — analyzes the shot's current
    * approved start-frame image (or its generating `imagePrompt` as a textual
@@ -10017,6 +10544,12 @@ export const verticalDramaEpisodesRouter = router({
         // resolved model's `supportsNativeAudio` capability both still have
         // to be true for this to actually take effect.
         nativeAudioEnabled: z.boolean().optional(),
+        // planning/`polished-toasting-gadget.md` Fix B — the user's free-text
+        // repair/adjustment instruction from the "ให้ AI ปรับ" (AI-adjust)
+        // dialog next to a shot's video prompt. Purely additive: omitted
+        // (undefined) reproduces today's exact prompt/behavior — the plain
+        // "สร้างพรอมต์วิดีโอ (AI)" button never sends this field.
+        instruction: z.string().trim().max(2000).optional(),
         idempotencyKey,
       })
     )
@@ -10414,6 +10947,20 @@ export const verticalDramaEpisodesRouter = router({
         : null;
 
       if (subShotDecision?.needsSplit) {
+        // Multi-character reference images (multi-character disambiguation
+        // fix, `polished-toasting-gadget.md`) — the split path's distinct-
+        // speaker set is always >= 2 by `computeSpeakerSwitchSubShotPlan`'s
+        // own construction whenever `needsSplit` is true (see
+        // `deriveDistinctSpeakerCharacterKeysFromWindows`'s doc comment), so
+        // no length gate is needed here, unlike the non-split path below.
+        const splitShotVideoCharacterReferenceImages =
+          await resolveShotVideoPromptCharacterReferenceImages(
+            tenantId,
+            userId,
+            seriesId,
+            deriveDistinctSpeakerCharacterKeysFromWindows(subShotDecision.windows),
+            ctx.publicUrl ?? undefined
+          );
         return generateAndPersistSplitShotVideoPrompt({
           tenantId,
           userId,
@@ -10439,8 +10986,32 @@ export const verticalDramaEpisodesRouter = router({
           requestedNativeAudioEnabled,
           extraDialogueCreditsUsed,
           subShotWindows: subShotDecision.windows,
+          characterReferenceImages: splitShotVideoCharacterReferenceImages,
+          // planning/`polished-toasting-gadget.md` Fix B — mirrors the
+          // non-split branch's identical `repairInstruction: input.instruction`
+          // below; `undefined` when the caller doesn't supply one (byte-
+          // identical to before this fix).
+          repairInstruction: input.instruction,
         });
       }
+
+      // Multi-character reference images (multi-character disambiguation
+      // fix, `polished-toasting-gadget.md`) — only worth resolving when this
+      // shot actually has 2+ required characters to disambiguate; a solo
+      // shot has nothing to tell apart and shouldn't pay the extra
+      // vision-token cost. Resolved AFTER the `needsSplit` branch above (so
+      // a splitting shot, which resolves its OWN reference set from
+      // `subShotDecision.windows`, never pays for this resolution twice).
+      const shotVideoCharacterReferenceImages =
+        (frame?.requiredCharacterRefs?.length ?? 0) >= 2
+          ? await resolveShotVideoPromptCharacterReferenceImages(
+              tenantId,
+              userId,
+              seriesId,
+              frame?.requiredCharacterRefs ?? [],
+              ctx.publicUrl ?? undefined
+            )
+          : undefined;
 
       const result = await generateVerticalDramaShotVideoPrompt({
         userId,
@@ -10450,6 +11021,7 @@ export const verticalDramaEpisodesRouter = router({
         shotNumber: input.shotNumber,
         imageUrl,
         imagePrompt: frame?.imagePrompt,
+        characterReferenceImages: shotVideoCharacterReferenceImages,
         shotContext: {
           description: storyboardShot?.description,
           camera: storyboardShot?.cameraSetup,
@@ -10499,6 +11071,11 @@ export const verticalDramaEpisodesRouter = router({
         // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
         // scene-setting plan context, resolved above.
         episodePlanContext: shotEpisodePlanContext,
+        // planning/`polished-toasting-gadget.md` Fix B — threaded straight
+        // through; `undefined` when the caller doesn't supply one, which
+        // `buildShotVideoPromptUserPrompt` renders as no new instruction
+        // line at all (byte-identical to before this fix).
+        repairInstruction: input.instruction,
       });
 
       // Brand/public-figure sanitize pass (Thai ad-compliance + video-policy

@@ -36,12 +36,14 @@ import { chatRouter } from "./routers/chat";
 import { verticalDramaSeriesRouter } from "./routers/verticalDramaSeries";
 import { verticalDramaEpisodesRouter } from "./routers/verticalDramaEpisodes";
 import { verticalDramaCharactersRouter } from "./routers/verticalDramaCharacters";
+import { verticalDramaLocationsRouter } from "./routers/verticalDramaLocations";
 import { verticalDramaStartFramesRouter } from "./routers/verticalDramaStartFrames";
 import { verticalDramaDialogueAudioRouter } from "./routers/verticalDramaDialogueAudio";
 import { verticalDramaProviderRouter } from "./routers/verticalDramaProvider";
 import { verticalDramaHandoffRouter } from "./routers/verticalDramaHandoff";
 import { verticalDramaAssemblyRouter } from "./routers/verticalDramaAssembly";
 import { verticalDramaShareRouter } from "./routers/verticalDramaShare";
+import { videoProjectsRouter } from "./routers/videoProjects";
 import { financeRouter } from "./routers/finance";
 import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
@@ -1918,12 +1920,16 @@ type AppRouterShape = {
   verticalDramaSeries: typeof verticalDramaSeriesRouter;
   verticalDramaEpisodes: typeof verticalDramaEpisodesRouter;
   verticalDramaCharacters: typeof verticalDramaCharactersRouter;
+  verticalDramaLocations: typeof verticalDramaLocationsRouter;
   verticalDramaStartFrames: typeof verticalDramaStartFramesRouter;
   verticalDramaDialogueAudio: typeof verticalDramaDialogueAudioRouter;
   verticalDramaProvider: typeof verticalDramaProviderRouter;
   verticalDramaHandoff: typeof verticalDramaHandoffRouter;
   verticalDramaAssembly: typeof verticalDramaAssemblyRouter;
   verticalDramaShare: typeof verticalDramaShareRouter;
+  // Feature 133 — Content & Video Intelligence Platform (Phase 1, flag-gated
+  // behind F133A videoIntelligencePlatformEnabled, default off)
+  videoProjects: typeof videoProjectsRouter;
   system: typeof systemRouter;
   billing: typeof billingRouter;
   adminBilling: typeof adminBillingRouter;
@@ -2216,6 +2222,10 @@ const appRouterInternal = router<AppRouterShape>({
   verticalDramaSeries: verticalDramaSeriesRouter,
   verticalDramaEpisodes: verticalDramaEpisodesRouter,
   verticalDramaCharacters: verticalDramaCharactersRouter,
+  // Location Visual Bible (`planning/polished-toasting-gadget.md` Phase 2) —
+  // durable per-series location roster + reference-asset stock, mirrors
+  // `verticalDramaCharacters` in shape (see routers/verticalDramaLocations.ts).
+  verticalDramaLocations: verticalDramaLocationsRouter,
   verticalDramaStartFrames: verticalDramaStartFramesRouter,
   verticalDramaDialogueAudio: verticalDramaDialogueAudioRouter,
   verticalDramaProvider: verticalDramaProviderRouter,
@@ -2226,6 +2236,9 @@ const appRouterInternal = router<AppRouterShape>({
   // router (not merged into `verticalDramaSeries`) so that stays 100%
   // protectedProcedure. See routers/verticalDramaShare.ts.
   verticalDramaShare: verticalDramaShareRouter,
+  // Feature 133 — Content & Video Intelligence Platform (Phase 1, flag-gated
+  // behind F133A videoIntelligencePlatformEnabled, default off)
+  videoProjects: videoProjectsRouter,
 });
 
 export type AppRouter = typeof appRouterInternal;

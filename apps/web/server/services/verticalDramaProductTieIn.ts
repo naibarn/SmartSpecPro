@@ -904,19 +904,27 @@ export function resolveFrameProductReferenceAssetIds(input: {
 }
 
 /**
- * Merge product reference URLs onto a shot's existing reference URL list
- * (character refs first, product refs appended after) and trim to the
- * resolved model's `maxReferenceImages`, if any. Returns the merged list plus
- * how many entries were trimmed off the END (so callers can surface a
- * "reference images were trimmed" notice, matching the existing convention
- * used for shot-reference trimming elsewhere in this router).
+ * Merge location + product reference URLs onto a shot's existing character
+ * reference URL list and trim to the resolved model's `maxReferenceImages`,
+ * if any. Priority order (highest to lowest, per
+ * `planning/polished-toasting-gadget.md` Phase 2 "Render-time attachment"):
+ * character refs first (never trimmed first — identity-lock is the single
+ * most important reference), then the shot's location reference (Location
+ * Visual Bible — at most one URL per shot), then product refs LAST (trimmed
+ * first — a product tie-in already has its own independent hard gate
+ * elsewhere that blocks render if missing, so it is comparatively
+ * protected). Returns the merged list plus how many entries were trimmed off
+ * the END (so callers can surface a "reference images were trimmed" notice,
+ * matching the existing convention used for shot-reference trimming
+ * elsewhere in this router).
  */
 export function mergeAndTrimReferenceImageUrls(
   characterRefUrls: string[],
+  locationRefUrls: string[],
   productRefUrls: string[],
   maxReferenceImages: number | undefined,
 ): { urls: string[]; trimmedCount: number } {
-  const merged = [...characterRefUrls, ...productRefUrls].filter(
+  const merged = [...characterRefUrls, ...locationRefUrls, ...productRefUrls].filter(
     (u, i, arr) => Boolean(u) && arr.indexOf(u) === i,
   );
   if (!maxReferenceImages || maxReferenceImages <= 0 || merged.length <= maxReferenceImages) {

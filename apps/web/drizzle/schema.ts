@@ -20561,6 +20561,103 @@ export type VerticalDramaCharacterAssetRow =
 export type InsertVerticalDramaCharacterAssetRow =
   typeof verticalDramaCharacterAssets.$inferInsert;
 
+/**
+ * Series locations — location/environment roster for the "Location Visual
+ * Bible" feature (`planning/polished-toasting-gadget.md` Phase 2). Mirrors
+ * `verticalDramaCharacters`, deliberately simpler: no variant/twin/voice
+ * columns — a location doesn't need identity-lock-across-angles the way a
+ * character face does. `data` carries `{ description, aggregatedFacts?:
+ * string[] }` — the free-form description plus the aggregated
+ * dialogue/action/props facts (from the shots grouped under this location)
+ * that `vertical-drama-location-visual-bible` grounds its
+ * `establishing_plate_prompt` in.
+ */
+export const verticalDramaLocations = pgTable(
+  "vertical_drama_locations",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    /** Stable app-level location key (mirrors `distinct_locations[].location_key` — see `verticalDramaStoryboardGeneration.ts`'s `distinctLocationSchema`). */
+    locationKey: varchar("locationKey", { length: 64 }).notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    data: jsonb("data"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("vds_location_lookup_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.locationKey
+    ),
+    uniqueIndex("vds_location_key_unique").on(t.seriesId, t.locationKey),
+  ]
+);
+
+export type VerticalDramaLocationRow =
+  typeof verticalDramaLocations.$inferSelect;
+export type InsertVerticalDramaLocationRow =
+  typeof verticalDramaLocations.$inferInsert;
+
+/** Location asset links to canonical media_assets — mirrors `verticalDramaCharacterAssets` (spec §7.1-style asset ledger, applied to locations). */
+export const verticalDramaLocationAssets = pgTable(
+  "vertical_drama_location_assets",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    locationId: bigint("locationId", { mode: "number" }).references(
+      () => verticalDramaLocations.id,
+      { onDelete: "cascade" }
+    ),
+    /** Canonical asset registry reference — never a provider URL. */
+    mediaAssetId: bigint("mediaAssetId", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" }
+    ),
+    /** "location_reference" */
+    assetType: varchar("assetType", { length: 40 }).notNull(),
+    /** "establishing_plate" */
+    role: varchar("role", { length: 40 }),
+    approved: boolean("approved").default(false).notNull(),
+    qcStatus: varchar("qcStatus", { length: 20 }).default("pending").notNull(),
+    checksumSha256: varchar("checksumSha256", { length: 64 }),
+    /** { state, source, ... } */
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("vds_location_asset_series_idx").on(t.tenantId, t.seriesId),
+    index("vds_location_asset_location_idx").on(t.seriesId, t.locationId),
+    index("vds_location_asset_media_idx").on(t.mediaAssetId),
+  ]
+);
+
+export type VerticalDramaLocationAssetRow =
+  typeof verticalDramaLocationAssets.$inferSelect;
+export type InsertVerticalDramaLocationAssetRow =
+  typeof verticalDramaLocationAssets.$inferInsert;
+
 /** Episodes — per-episode plan, manifests, and status (spec §7.3). */
 export const verticalDramaEpisodes = pgTable(
   "vertical_drama_episodes",
@@ -21078,3 +21175,167 @@ export type VerticalDramaGenrePresetRow =
   typeof verticalDramaGenrePresets.$inferSelect;
 export type InsertVerticalDramaGenrePresetRow =
   typeof verticalDramaGenrePresets.$inferInsert;
+
+/**
+ * Video Intelligence Platform (feature 133, section-05) — Phase-1 minimal
+ * Brand Kit (interview Q3: logo, colors, fonts, caption preset, plus
+ * enforced `locks`). Lock *enforcement* is deterministic and lives in the
+ * compiler (section-01, `BrandLockViolationError`); this table only
+ * persists `locks` as a plain `{ colors?: boolean, fonts?: boolean }` JSONB
+ * map that the compiler reads. Declared BEFORE `videoProjects` so that
+ * table's `brandKitId` FK can reference `brandKits.id`.
+ * Explicitly excluded from Phase 1 (`claude-plan.md` §6.3): no
+ * motionPersonality / transitionStyle / musicStyle / ctaStyle /
+ * cameraBehavior columns — added later.
+ */
+export const brandKits = pgTable(
+  "brand_kits",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 200 }).notNull(),
+    /** Canonical asset registry reference — never a provider URL. */
+    logoAssetId: bigint("logoAssetId", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" }
+    ),
+    /** { primary, secondary?, accent? } */
+    colors: jsonb("colors"),
+    /** { heading?, body? } */
+    fonts: jsonb("fonts"),
+    /** Reuses existing CaptionPresetId values (section-01) — no new enum. */
+    captionPresetId: varchar("captionPresetId", { length: 64 }),
+    /** { colors?: boolean, fonts?: boolean } — Phase-1 minimal lock map. */
+    locks: jsonb("locks"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [index("brand_kits_tenant_user_idx").on(t.tenantId, t.userId)]
+);
+
+export type BrandKitRow = typeof brandKits.$inferSelect;
+export type InsertBrandKitRow = typeof brandKits.$inferInsert;
+
+/**
+ * Video Intelligence Platform (feature 133, section-05) — one row per
+ * authored project. Holds the `VideoProjectDocument` JSONB (schema owned by
+ * section-01, `shared/videoIntelligence/projectSchemas.ts`), stage status,
+ * brand-kit link, source refs, QA ledger, and render-job backlinks.
+ * `renderJobId`/`previewJobId` are loose `worker_jobs.id` backlinks (no FK —
+ * the worker fabric owns that table). `revision` is the optimistic-
+ * concurrency counter bumped by `videoProjectRepo.saveVideoProjectDocument`.
+ * Explicitly excluded from Phase 1 (`claude-plan.md` §6.3): no render-job
+ * table (reuse `worker_jobs`), no motion-template table (code registry,
+ * section-02), no claim-evidence table (reuse `marketplaceCaptureInsights`),
+ * no `media_clip_index` (Phase 4).
+ */
+export const videoProjects = pgTable(
+  "video_projects",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** "catalog" | "motion" | "content" | "review_remix" | "imported" */
+    studioType: varchar("studioType", { length: 20 }).notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    /**
+     * "brief" | "content" | "narration" | "scenes" | "motion" | "assets" |
+     * "captions" | "qa" | "ready" | "rendering" | "completed" | "failed"
+     */
+    status: varchar("status", { length: 30 }).default("brief").notNull(),
+    /** "auto" | "guided" | "expert" */
+    automationMode: varchar("automationMode", { length: 10 })
+      .default("guided")
+      .notNull(),
+    brief: jsonb("brief"),
+    /** VideoProjectDocument (section-01 schema). */
+    document: jsonb("document"),
+    /** Optimistic-concurrency counter. */
+    revision: integer("revision").default(1).notNull(),
+    brandKitId: bigint("brandKitId", { mode: "number" }).references(
+      () => brandKits.id,
+      { onDelete: "set null" }
+    ),
+    /**
+     * { productIds?, sourceVideoAssetId?, storyboardReviewId?,
+     *   presentationDeckId?, verticalDramaEpisodeId?, articleLibraryItemId? }
+     */
+    sourceRefs: jsonb("sourceRefs"),
+    /** Append-only review records. */
+    qaLedger: jsonb("qaLedger"),
+    /** worker_jobs.id backlink — no FK (worker fabric owns that table). */
+    renderJobId: varchar("renderJobId", { length: 36 }),
+    /** worker_jobs.id backlink — no FK (worker fabric owns that table). */
+    previewJobId: varchar("previewJobId", { length: 36 }),
+    resultLibraryItemId: integer("resultLibraryItemId").references(
+      () => libraryItems.id,
+      { onDelete: "set null" }
+    ),
+    /** Expert-bridge; unused Phase 1. */
+    videoEditorProjectId: integer("videoEditorProjectId"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("video_projects_tenant_user_status_idx").on(
+      t.tenantId,
+      t.userId,
+      t.status
+    ),
+    index("video_projects_tenant_studio_idx").on(t.tenantId, t.studioType),
+  ]
+);
+
+export type VideoProjectRow = typeof videoProjects.$inferSelect;
+export type InsertVideoProjectRow = typeof videoProjects.$inferInsert;
+
+/**
+ * Video Intelligence Platform (feature 133, section-05) — lean append-only
+ * document history for optimistic-concurrency saves and restore. Restore
+ * semantics (implemented in `videoProjectRepo.restoreVideoProjectRevision`):
+ * copy the chosen revision's `document` back onto `video_projects.document`
+ * and bump `video_projects.revision` (never reuse an old number).
+ */
+export const videoProjectRevisions = pgTable(
+  "video_project_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: bigint("projectId", { mode: "number" })
+      .notNull()
+      .references(() => videoProjects.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    /** Full document snapshot at this revision. */
+    document: jsonb("document").notNull(),
+    createdBy: integer("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reason: varchar("reason", { length: 200 }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("video_project_revisions_project_revision_unique").on(
+      t.projectId,
+      t.revision
+    ),
+  ]
+);
+
+export type VideoProjectRevisionRow =
+  typeof videoProjectRevisions.$inferSelect;
+export type InsertVideoProjectRevisionRow =
+  typeof videoProjectRevisions.$inferInsert;

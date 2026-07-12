@@ -24,6 +24,7 @@ import {
   verticalDramaApprovalCheckpoints,
   verticalDramaSeries,
   verticalDramaCharacters,
+  verticalDramaLocations,
   mediaAssets,
   type VerticalDramaEpisodeRow,
   type VerticalDramaRunArtifactRow,
@@ -146,6 +147,17 @@ import {
   resolveMarketplaceCaptureProductImageUrls,
   resolveFrameProductReferenceAssetIds,
 } from "./verticalDramaProductTieIn";
+// Phase 2 of `planning/polished-toasting-gadget.md` (location visual bible,
+// dispatch 3/3) — deterministic, no-LLM reconciliation of the storyboard's
+// own `distinct_locations[]` groups into durable `vertical_drama_locations`
+// roster rows. Safe as a static import: this module only imports
+// `drizzle-orm`/`../db`/`../../drizzle/schema`/a pure `@shared` type — it
+// does NOT transitively reach `verticalDramaStoryBible.ts` ->
+// `enabledLlmModels.ts` -> `adminProcedure`, unlike the dynamic-import-only
+// modules this file already documents that concern for.
+import { reconcileEpisodeLocations } from "./verticalDramaLocationReconciliation";
+import type { VerticalDramaStoryboardLocationGroup } from "@shared/verticalDramaSeries/storyboardLocations";
+import { debugError } from "../_core/logger";
 
 /* -------------------------------------------------------------------------- */
 /* Canonical stage sequence + phase grouping (spec §11.5 / §16)               */
@@ -868,6 +880,47 @@ function shotContractShapeOk(shot: Record<string, unknown>): boolean {
   return true;
 }
 
+/**
+ * Phase 1 of `planning/polished-toasting-gadget.md` (location visual bible)
+ * — deterministic partition check for `validateStagePayload`'s
+ * `storyboard_shotgrid` branch: when a payload carries `distinct_locations`
+ * (see `verticalDramaStoryboardGeneration.ts`'s `distinctLocationSchema`),
+ * every shot number 1-9 must appear in EXACTLY ONE group's `shot_numbers` —
+ * no gaps (a shot number missing from every group) and no overlaps (a shot
+ * number claimed by more than one group). Never trust the LLM's own
+ * grouping claim without this check — same "verify, don't trust" principle
+ * already applied elsewhere in this pipeline (e.g. this stage's own
+ * server-side character-id sanitization in
+ * `verticalDramaStoryboardGeneration.ts`). Returns the two violation kinds
+ * as separate lists (both may be non-empty at once — e.g. one shot claimed
+ * twice AND a different shot claimed by nobody) so the call site can report
+ * each as its own distinct `fail()`, mirroring this function's sibling
+ * `sceneContractsEnabled` checks below (missing-contract / over-budget /
+ * anchor-cadence are each their own independent `fail()` call, never
+ * short-circuited by one another).
+ */
+function distinctLocationsShotCoverage(
+  distinctLocations: Array<{ shot_numbers?: unknown }>
+): { overlapping: number[]; missing: number[] } {
+  const countByShot = new Map<number, number>();
+  for (const group of distinctLocations) {
+    const shotNumbers = Array.isArray(group.shot_numbers) ? group.shot_numbers : [];
+    for (const raw of shotNumbers) {
+      const n = Number(raw);
+      if (!Number.isInteger(n)) continue;
+      countByShot.set(n, (countByShot.get(n) ?? 0) + 1);
+    }
+  }
+  const overlapping = [...countByShot.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([shotNumber]) => shotNumber)
+    .sort((a, b) => a - b);
+  const missing = Array.from({ length: 9 }, (_, i) => i + 1).filter(
+    n => !countByShot.has(n)
+  );
+  return { overlapping, missing };
+}
+
 /** Schema-shape validation gate (spec §11.5 failed-validation rule). */
 export function validateStagePayload(
   stage: VerticalDramaPipelineStage,
@@ -931,6 +984,29 @@ export function validateStagePayload(
       if (!anchorLineCadenceOk(shotsForCadence)) {
         fail(
           "storyboard shots violate anchor-line cadence: no run of 3 or more consecutive shots without anchorLine: true"
+        );
+      }
+    }
+
+    // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
+    // bible) — see `distinctLocationsShotCoverage`'s own doc comment. Runs
+    // whenever the payload carries `distinct_locations`, regardless of
+    // `sceneContractsEnabled` (a separate, unrelated flag) — data-driven,
+    // not flag-gated. Overlaps and gaps are reported as independent
+    // failures so a payload with both is never silently short-circuited to
+    // reporting only one.
+    if (Array.isArray(payload.distinct_locations)) {
+      const { overlapping, missing } = distinctLocationsShotCoverage(
+        payload.distinct_locations as Array<{ shot_numbers?: unknown }>
+      );
+      if (overlapping.length > 0) {
+        fail(
+          `storyboard distinct_locations shot_numbers overlap: shot(s) ${overlapping.join(", ")} are claimed by more than one location group`
+        );
+      }
+      if (missing.length > 0) {
+        fail(
+          `storyboard distinct_locations shot_numbers have gaps: shot(s) ${missing.join(", ")} are not covered by any location group`
         );
       }
     }
@@ -2296,6 +2372,43 @@ export class VerticalDramaEpisodePipeline {
       deepStoryDraftsFlagOn
     );
 
+    // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+    // bible) — the series' already-established location roster, supplied to
+    // `generateStoryboardShotgrid` as `existingLocations` input FACTS only
+    // (see that param's own doc comment: code never decides which location a
+    // shot belongs to). Phase 1 added the `existingLocations` param + its
+    // prompt rendering but left every call site omitting it entirely (the
+    // roster table did not exist yet) — this is the real query that makes it
+    // non-empty. A direct, minimal `db.select()` against
+    // `vertical_drama_locations` (not `verticalDramaLocationStockService.listRows`,
+    // which additionally joins for a `primaryReferenceUrl` this prompt fact
+    // has no use for) — tenant/user/series scoped, mapped to the exact
+    // `{locationKey, name, description}` shape the param expects.
+    const existingLocationRows = await db
+      .select({
+        locationKey: verticalDramaLocations.locationKey,
+        name: verticalDramaLocations.name,
+        data: verticalDramaLocations.data,
+      })
+      .from(verticalDramaLocations)
+      .where(
+        and(
+          eq(verticalDramaLocations.tenantId, owner.tenantId),
+          eq(verticalDramaLocations.userId, owner.userId),
+          eq(verticalDramaLocations.seriesId, owner.seriesId)
+        )
+      );
+    const existingLocations = existingLocationRows.map(
+      (row: (typeof existingLocationRows)[number]) => ({
+        locationKey: row.locationKey,
+        name: row.name,
+        description:
+          typeof (row.data as Record<string, unknown> | null)?.description === "string"
+            ? ((row.data as Record<string, unknown>).description as string)
+            : row.name,
+      })
+    );
+
     return generateStoryboardShotgrid({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -2306,6 +2419,7 @@ export class VerticalDramaEpisodePipeline {
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
       episodeDraft: episodeDraft ?? undefined,
+      existingLocations: existingLocations.length > 0 ? existingLocations : undefined,
       // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
       // W3) — the series' free-text `genre` column, already available on
       // the full `seriesRow` select above. Passed unconditionally (cheap
@@ -2647,6 +2761,38 @@ export class VerticalDramaEpisodePipeline {
             : undefined,
       }));
 
+    // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
+    // bible) — build a shot-number -> location lookup from the storyboard's
+    // own `distinct_locations[]` (server-validated for full 1-9 coverage by
+    // `validateStagePayload`'s `distinctLocationsShotCoverage` check),
+    // so each start-frame request below can finally be grounded in a real
+    // location fact — this mapping previously read `shotNumber`,
+    // `description`, `cameraSetup`, `characterIds`, `durationSeconds` from
+    // each shot but never `location` at all, leaving the start-frame skill
+    // with no location anchor whatsoever. Empty for any storyboard with no
+    // `distinct_locations` data (flag off, or a storyboard generated before
+    // this feature existed) — every shot's `location` field below is then
+    // omitted entirely, byte-identical to before this change.
+    const distinctLocationGroups = Array.isArray(storyboard?.distinct_locations)
+      ? (storyboard!.distinct_locations as Array<Record<string, unknown>>)
+      : [];
+    const locationByShotNumber = new Map<
+      number,
+      { name: string; description: string }
+    >();
+    for (const group of distinctLocationGroups) {
+      const name =
+        typeof group.location_name === "string" ? group.location_name : undefined;
+      const description =
+        typeof group.description === "string" ? group.description : undefined;
+      if (!name || !description) continue;
+      const shotNumbers = Array.isArray(group.shot_numbers) ? group.shot_numbers : [];
+      for (const raw of shotNumbers) {
+        const n = Number(raw);
+        if (Number.isInteger(n)) locationByShotNumber.set(n, { name, description });
+      }
+    }
+
     const generated = await generateStartFrameRenderPlan({
       userId: owner.userId,
       tenantId: owner.tenantId,
@@ -2684,12 +2830,30 @@ export class VerticalDramaEpisodePipeline {
             : Array.isArray(s.characterIds)
               ? (s.characterIds as string[])
               : [];
+        const shotNumber = Number(s.shotNumber ?? s.shot_number ?? 0);
+        // Phase 1 of `planning/polished-toasting-gadget.md` —
+        // `hasReferenceImage` is hardcoded `false` everywhere in Phase 1 (no
+        // location roster/image system exists yet — that's Phase 2). The
+        // `location` key itself is omitted entirely (not merely `undefined`
+        // in a spread) when no `distinct_locations` group covers this shot,
+        // so the downstream prompt builder's byte-identical guard sees no
+        // shape difference at all for that shot.
+        const locationGroup = locationByShotNumber.get(shotNumber);
         return {
-          shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
+          shotNumber,
           description: String(s.description ?? s.visual_description ?? ""),
           cameraSetup,
           characterIds,
           durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
+          ...(locationGroup
+            ? {
+                location: {
+                  name: locationGroup.name,
+                  description: locationGroup.description,
+                  hasReferenceImage: false,
+                },
+              }
+            : {}),
         };
       }),
     });
@@ -3144,6 +3308,46 @@ export class VerticalDramaEpisodePipeline {
               eq(verticalDramaEpisodes.seriesId, owner.seriesId)
             )
           );
+
+        // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+        // bible) — idempotently materialize the just-persisted storyboard's
+        // own `distinct_locations[]` groups into durable
+        // `vertical_drama_locations` roster rows, right after the real
+        // persist above succeeds. Mapped snake_case (LLM/persisted-JSON
+        // shape) -> camelCase (`VerticalDramaStoryboardLocationGroup`, the
+        // contract `reconcileEpisodeLocations` consumes). Best-effort,
+        // wrapped in its OWN try/catch — same "never fail the primary
+        // mutation for a secondary/optional step" convention
+        // `verticalDramaImproveScript.ts`'s `runImproveScriptJob` already
+        // uses for this exact function's character-side sibling
+        // (`reconcileCharacterVariantPlan`, via
+        // `logCharacterVariantPlanningFailure`): a reconciliation failure
+        // (e.g. a transient DB error) must never surface as a
+        // storyboard-generation failure to the user, since the storyboard
+        // itself already generated and persisted successfully.
+        try {
+          // `generated.storyboard.distinct_locations` is already
+          // Zod-validated by `distinctLocationSchema` when present
+          // (non-empty `location_key`/`location_name`/`description`, a
+          // non-empty 1-9 `shot_numbers` array) — a straight snake_case ->
+          // camelCase field-name mapping is all that's needed here, no
+          // additional defensive parsing.
+          const distinctLocationGroups: VerticalDramaStoryboardLocationGroup[] = (
+            generated.storyboard.distinct_locations ?? []
+          ).map(g => ({
+            locationKey: g.location_key,
+            locationName: g.location_name,
+            description: g.description,
+            shotNumbers: g.shot_numbers,
+          }));
+          await reconcileEpisodeLocations(owner, distinctLocationGroups);
+        } catch (reconcileError) {
+          debugError(
+            "vd_location_reconciliation",
+            `Location reconciliation failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real storyboard_shotgrid persist — best-effort, does not fail the storyboard stage`,
+            reconcileError
+          );
+        }
       } catch (error) {
         const genError = mapStoryboardGenerationError(error);
         const runId = await this.writeRun(owner, stage, mode, {
