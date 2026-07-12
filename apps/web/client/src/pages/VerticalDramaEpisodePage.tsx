@@ -579,7 +579,11 @@ export default function VerticalDramaEpisodePage() {
     },
     {
       label: pickCopy(lang, verticalDramaCopy.seriesCrumb),
-      href: verticalDramaRoutes.seriesDetail(seriesId),
+      // Return to the Episodes tab the user came from (episodes are only ever
+      // opened from that tab), not the series page's default Overview tab. The
+      // series detail page resolves this via `?tab=` (resolveInitialSeriesTab),
+      // the same deep-link pattern already used for `?tab=characters` elsewhere.
+      href: `${verticalDramaRoutes.seriesDetail(seriesId)}?tab=episodes`,
     },
     isRunRoute
       ? {
