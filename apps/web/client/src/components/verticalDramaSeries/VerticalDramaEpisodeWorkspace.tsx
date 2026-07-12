@@ -1270,6 +1270,12 @@ export function VerticalDramaEpisodeWorkspace({
           seasonTieInPlacement={storyboardPanel?.seasonTieInPlacement}
           productionWizardEnabled={productionWizardEnabled}
           advancedMetaOpen={advancedStagesOpen}
+          onRegenerateStoryboard={
+            onRegenerateStage
+              ? () => onRegenerateStage("storyboard_shotgrid")
+              : undefined
+          }
+          regeneratingStoryboard={regeneratingStage === "storyboard_shotgrid"}
         />
       ) : null}
 

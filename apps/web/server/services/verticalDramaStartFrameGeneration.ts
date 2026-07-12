@@ -46,6 +46,17 @@ import {
   buildCharacterIdentityMapBlock,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
+// Prompt-language directive (shared-field fix — this was previously wired
+// ONLY into the video-prompt path, `verticalDramaVideoMotionPromptGeneration.ts`
+// — see `VerticalDramaPromptLanguage`'s own doc comment in `contracts.ts` for
+// why the SAME `motionPromptPack.promptLanguage` field now also governs
+// image/start-frame prompt text). Mirrors that file's exact "resolve default
+// -> look up English display name -> append a MANDATORY directive line to
+// the user prompt" convention; no skill.md changes.
+import {
+  type VerticalDramaPromptLanguage,
+  VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
+} from "@shared/verticalDramaSeries/contracts";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
 // section-15 change D, Wave-4A completing the "start frames" leg of the
 // rule — character refs were already wired by
@@ -285,6 +296,16 @@ export interface GenerateStartFrameRenderPlanParams {
    */
   targetAudienceRegion?: VerticalDramaTargetAudienceRegion;
   /**
+   * The language the image PROMPT TEXT ITSELF (every shot's `prompt` /
+   * `negative_prompt`) must be written in — the SAME episode-level language
+   * plan field the video-prompt path already reads
+   * (`motionPromptPack.promptLanguage`), shared rather than duplicated. See
+   * `VerticalDramaPromptLanguage` in `@shared/verticalDramaSeries/contracts`.
+   * Defaults to `"en"` when absent, matching the video path's own
+   * `params.promptLanguage ?? "en"` convention exactly.
+   */
+  promptLanguage?: VerticalDramaPromptLanguage;
+  /**
    * Series character rows (2026-07-07 non-human-character-vanishing fix) —
    * used to build a compact "key = name (role): descriptor" map so the
    * planning LLM knows each required character's real identity (including
@@ -310,6 +331,8 @@ export interface GenerateStartFrameRenderPlanParams {
 }
 
 export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
+  const promptLanguage = params.promptLanguage ?? "en";
+  const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const shotLines = params.storyboardShots
     .map((s) => {
       // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
@@ -364,6 +387,15 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
     // vertical-drama-skill-first-architecture plan Phase 3, item 1: this
     // used to duplicate a near-verbatim copy of that skill.md instruction).
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
+    // Shared-field prompt-language fix — same field/default/wording
+    // convention as `verticalDramaVideoMotionPromptGeneration.ts`'s
+    // `buildUserPrompt` (the video pack-level sibling of this builder),
+    // reworded for the fields THIS skill actually produces (an image
+    // prompt/negative prompt per shot, not a video clip). Always appended
+    // (even when `promptLanguage` is absent and defaults to English) —
+    // matches the video path's own behavior exactly, not a byte-identical-
+    // when-omitted convention.
+    `PROMPT LANGUAGE (MANDATORY): write every "start_frame_requests[].prompt" and "negative_prompt" entirely in ${promptLanguageName} — every word of each shot's image prompt text must be in ${promptLanguageName}.`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -637,6 +669,16 @@ export interface GenerateStartFrameShotPromptParams {
   /** This shot's required character keys, in order — the ORDER argument `buildCharacterIdentityMapBlock` iterates (independent of `characters`' own array order). */
   requiredCharacterRefs?: string[];
   targetAudienceRegion?: VerticalDramaTargetAudienceRegion;
+  /**
+   * The language this shot's image PROMPT TEXT ITSELF (`prompt` /
+   * `negative_prompt`) must be written in — the SAME episode-level language
+   * plan field the video-prompt path already reads
+   * (`motionPromptPack.promptLanguage`), shared rather than duplicated. See
+   * `VerticalDramaPromptLanguage` in `@shared/verticalDramaSeries/contracts`.
+   * Defaults to `"en"` when absent, matching the video path's own
+   * `params.promptLanguage ?? "en"` convention exactly.
+   */
+  promptLanguage?: VerticalDramaPromptLanguage;
   productLock?: {
     active: boolean;
     productName?: string | null;
@@ -659,6 +701,8 @@ export interface GenerateStartFrameShotPromptParams {
 export function buildStartFrameShotPromptUserPrompt(
   params: GenerateStartFrameShotPromptParams,
 ): string {
+  const promptLanguage = params.promptLanguage ?? "en";
+  const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const characterIdentityMapBlock = buildCharacterIdentityMapBlock(
     params.requiredCharacterRefs ?? [],
     params.characters ?? [],
@@ -708,6 +752,15 @@ export function buildStartFrameShotPromptUserPrompt(
             : ""
         }`
       : null,
+    // Shared-field prompt-language fix — same field/default/wording
+    // convention as `verticalDramaVideoMotionPromptGeneration.ts`'s
+    // `buildShotVideoPromptUserPrompt` (the video single-shot sibling of this
+    // builder), reworded for the fields THIS skill actually produces (an
+    // image prompt/negative prompt, not a video clip). Always appended (even
+    // when `promptLanguage` is absent and defaults to English) — matches the
+    // video path's own behavior exactly, not a byte-identical-when-omitted
+    // convention.
+    `PROMPT LANGUAGE (MANDATORY): write the "prompt" and "negative_prompt" fields entirely in ${promptLanguageName} — every word of the image prompt text must be in ${promptLanguageName}.`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter((line): line is string => Boolean(line))

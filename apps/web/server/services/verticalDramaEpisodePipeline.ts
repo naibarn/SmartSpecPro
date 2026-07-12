@@ -2689,6 +2689,17 @@ export class VerticalDramaEpisodePipeline {
       episode.startFramePlan as { selectedImageModelId?: string } | null
     )?.selectedImageModelId;
 
+    // Shared-field prompt-language fix — the episode-level video-prompt
+    // language plan (`motionPromptPack.promptLanguage`, set via
+    // `setEpisodeVideoPromptLanguage`) now ALSO governs image/start-frame
+    // prompt text, not just video-clip prompt text (same field, wider scope
+    // — see `VerticalDramaPromptLanguage`'s doc comment in `contracts.ts`).
+    // Mirrors `generateRealMotionPromptPack`'s own `existingLanguagePlan`
+    // read immediately above its equivalent `existingSelectedVideoModelId`.
+    const existingImagePromptLanguagePlan = episode.motionPromptPack as {
+      promptLanguage?: VerticalDramaPromptLanguage;
+    } | null;
+
     // Series-level target-audience region default (2026-07-06 quality
     // upgrade) — read the series' `bible.targetAudienceRegion` so every
     // rendered start-frame person defaults to the series' configured
@@ -2802,6 +2813,7 @@ export class VerticalDramaEpisodePipeline {
       durationSeconds: episode.targetDurationSeconds ?? 60,
       selectedImageModelId: existingSelectedImageModelId,
       targetAudienceRegion,
+      promptLanguage: existingImagePromptLanguagePlan?.promptLanguage,
       episodePlanContext,
       characters: characterIdentitySources,
       storyboardShots: shots.map(s => {

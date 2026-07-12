@@ -41,6 +41,7 @@ import {
   Mic,
   Package,
   Pencil,
+  RotateCcw,
   Sparkles,
   Trash2,
   Upload,
@@ -868,11 +869,15 @@ interface VerticalDramaStoryboardPanelProps {
   onSelectImageResolution?: (resolution: string) => void;
   onSelectVideoResolution?: (resolution: string) => void;
 
-  /* ---- Video-prompt language options (episode-level language plan) ----
+  /* ---- Prompt language options (episode-level language plan) ----
    *  Two independent selects next to the video model selector:
-   *  `promptLanguage` (the language the video-clip PROMPT TEXT itself is
-   *  written in — default "en") and `dialogueLanguage` (the language the
-   *  characters SPEAK in the video — default "th"). Persisted via
+   *  `promptLanguage` (the language the PROMPT TEXT itself is written in —
+   *  default "en" — this ONE shared field governs BOTH video-clip prompts
+   *  AND image/start-frame prompts, not video-only; see
+   *  `VerticalDramaPromptLanguage`'s doc comment in
+   *  `@shared/verticalDramaSeries/contracts`) and `dialogueLanguage` (the
+   *  language the characters SPEAK in the video — default "th" — video-only,
+   *  no image-prompt equivalent). Persisted via
    *  `setEpisodeVideoPromptLanguage`; only affects FUTURE prompt generations
    *  (same note pattern as `modelChangeNote`). */
   selectedPromptLanguage?: string;
@@ -1163,6 +1168,16 @@ interface VerticalDramaStoryboardPanelProps {
    *  ignored entirely when `productionWizardEnabled` is false. */
   advancedMetaOpen?: boolean;
 
+  /** Deletes this episode's current storyboard shots and regenerates them —
+   *  same destructive action as `onRegenerateStage?.("storyboard_shotgrid")`
+   *  on the workspace's "Advanced" disclosure, surfaced here in the header
+   *  too since this panel is the primary view once shots exist. Omitted
+   *  entirely (default) renders no button, so callers/tests that don't wire
+   *  this keep today's exact header markup. */
+  onRegenerateStoryboard?: () => void;
+  /** True while a regenerate call for this storyboard is in flight. */
+  regeneratingStoryboard?: boolean;
+
   className?: string;
 }
 
@@ -1340,6 +1355,8 @@ export function VerticalDramaStoryboardPanel({
   readyClipNumbers = [],
   productionWizardEnabled = false,
   advancedMetaOpen = false,
+  onRegenerateStoryboard,
+  regeneratingStoryboard = false,
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
@@ -1439,6 +1456,12 @@ export function VerticalDramaStoryboardPanel({
     confirmingReassembleCompiledVideo,
     setConfirmingReassembleCompiledVideo,
   ] = useState(false);
+  /** Confirm-gate for the header's "regenerate storyboard" button — local to
+   *  this panel (not shared with the Workspace's own
+   *  `confirmingRegenerateStage`, which gates the deep Advanced entry point
+   *  for the same action). */
+  const [confirmingRegenerateStoryboard, setConfirmingRegenerateStoryboard] =
+    useState(false);
   const [confirmingStartFramePlan, setConfirmingStartFramePlan] =
     useState(false);
   const [confirmingVideoPromptPack, setConfirmingVideoPromptPack] =
@@ -1880,6 +1903,19 @@ export function VerticalDramaStoryboardPanel({
       return Boolean(frame?.imagePrompt) && !(assetId && assetUrls[assetId]);
     });
 
+  const storyboardHeaderTitle = (
+    <h3 className="flex items-center gap-2 text-base font-semibold">
+      <Clapperboard aria-hidden="true" className="h-4 w-4 shrink-0" />
+      <span>
+        {t(
+          locale,
+          `สตอรีบอร์ด — ${shots.length} ช็อต`,
+          `Storyboard — ${shots.length} shots`
+        )}
+      </span>
+    </h3>
+  );
+
   return (
     <section
       aria-label="Storyboard"
@@ -1888,6 +1924,91 @@ export function VerticalDramaStoryboardPanel({
         className
       )}
     >
+      {/* Deliberately OUTSIDE `StoryboardMetaSection` below — that section
+          collapses behind the same "ขั้นสูง" toggle as the workspace's deep
+          Advanced disclosure whenever `productionWizardEnabled` is on
+          (defaults collapsed per-series). Regenerate must stay reachable
+          without opening that toggle, or it's exactly as hard to find as the
+          pre-existing deep entry point it's meant to supplement. */}
+      {onRegenerateStoryboard ? (
+        <div className="flex items-center justify-end gap-2">
+          {confirmingRegenerateStoryboard ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">
+                {t(
+                  locale,
+                  "จะลบผลลัพธ์ปัจจุบันและสร้างใหม่ — ย้อนกลับไม่ได้",
+                  "Deletes the current output and creates new — cannot be undone."
+                )}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-xs"
+                onClick={() => setConfirmingRegenerateStoryboard(false)}
+                disabled={regeneratingStoryboard}
+              >
+                {t(locale, "ยกเลิก", "Cancel")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="h-6 px-2 text-xs"
+                onClick={() => {
+                  setConfirmingRegenerateStoryboard(false);
+                  onRegenerateStoryboard();
+                }}
+                disabled={regeneratingStoryboard}
+                data-testid="vd-confirm-regenerate-storyboard"
+              >
+                {regeneratingStoryboard ? (
+                  <>
+                    <Loader2
+                      aria-hidden="true"
+                      className="h-3 w-3 animate-spin"
+                    />
+                    {t(locale, "กำลังสร้างใหม่…", "Regenerating…")}
+                  </>
+                ) : (
+                  t(locale, "ลบและสร้างใหม่", "Delete & regenerate")
+                )}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-6 gap-1 px-2 text-xs text-muted-foreground hover:text-destructive"
+              onClick={() => setConfirmingRegenerateStoryboard(true)}
+              disabled={regeneratingStoryboard}
+              data-testid="vd-regenerate-storyboard"
+            >
+              {regeneratingStoryboard ? (
+                <>
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-3 w-3 animate-spin"
+                  />
+                  {t(locale, "กำลังสร้างใหม่…", "Regenerating…")}
+                </>
+              ) : (
+                <>
+                  <RotateCcw aria-hidden="true" className="h-3 w-3" />
+                  {t(
+                    locale,
+                    "สร้างใหม่ (ลบชุดเดิม)",
+                    "Regenerate (delete old)"
+                  )}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      ) : null}
+
       {/* Meta/planning sections (2026-07-08 disclosure split) — header,
           density meter, model-selection row, quality-review card, tie-in
           report, summarize-memory card. Collapses/expands together with the
@@ -1899,16 +2020,7 @@ export function VerticalDramaStoryboardPanel({
         open={advancedMetaOpen}
       >
         <header className="flex flex-col gap-1">
-          <h3 className="flex items-center gap-2 text-base font-semibold">
-            <Clapperboard aria-hidden="true" className="h-4 w-4 shrink-0" />
-            <span>
-              {t(
-                locale,
-                `สตอรีบอร์ด — ${shots.length} ช็อต`,
-                `Storyboard — ${shots.length} shots`
-              )}
-            </span>
-          </h3>
+          {storyboardHeaderTitle}
           {summary?.core_emotion || summary?.visual_promise ? (
             <p className="text-muted-foreground">
               {summary?.core_emotion ? (

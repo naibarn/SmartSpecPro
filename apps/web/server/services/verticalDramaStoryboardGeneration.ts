@@ -247,7 +247,20 @@ export const storyboardShotgridOutputSchema = z
     canonical_style_bible: z.object({}).passthrough(),
     shot_grid_plan: z.object({}).passthrough(),
     shots: z.array(storyboardShotSchema).length(9),
-    plain_text_storyboard: z.string().min(1),
+    /**
+     * Root-cause fix (2026-07-12, traceId `5Yk54Y8NLgrH4kr6A-GwD`) — this
+     * field was unconditionally required, but was observed live to be the
+     * one the LLM most often drops from an otherwise-valid 9-shot response
+     * (not a truncation issue — same symptom class as
+     * `storyboard_handoff_json` below, which got the identical treatment
+     * for the identical reason). Made optional here; `generateStoryboardShotgrid`
+     * below deterministically fills it in from the already-validated `shots`
+     * array when the LLM omits it, same "never trust the model's own
+     * compliance for data the code can derive from ground truth" precedent.
+     * Confirmed nothing outside this file's own schema/prompt-instruction
+     * reads this field, so a mechanical fallback is safe.
+     */
+    plain_text_storyboard: z.string().min(1).optional(),
     /**
      * Phase 1 of `planning/polished-toasting-gadget.md` (location visual
      * bible) — see `distinctLocationSchema`'s own doc comment. Optional at
@@ -852,6 +865,21 @@ export async function generateStoryboardShotgrid(
         reference_image_url: c.referenceImageUrl,
       })),
     };
+  }
+
+  // See `plain_text_storyboard`'s doc comment on the schema above — mirrors
+  // the `storyboard_handoff_json` fallback immediately above this block.
+  // Deliberately mechanical (not another LLM call): nothing downstream
+  // reads this field today, so a compact, always-available summary is all
+  // the fallback needs to guarantee — the richer LLM-authored prose is
+  // still used whenever the model does provide it.
+  if (
+    !storyboardData.plain_text_storyboard ||
+    storyboardData.plain_text_storyboard.length === 0
+  ) {
+    storyboardData.plain_text_storyboard = storyboardData.shots
+      .map(s => `Shot ${s.shot_number}: ${s.narrative_purpose}.`)
+      .join(" ");
   }
 
   const usage = response.usage;

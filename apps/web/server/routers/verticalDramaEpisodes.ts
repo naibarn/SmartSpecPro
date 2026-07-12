@@ -6625,68 +6625,6 @@ export const verticalDramaEpisodesRouter = router({
         );
       }
 
-      const stagesToClear = [
-        input.stage,
-        ...VerticalDramaEpisodePipeline.downstreamStages(input.stage),
-      ];
-      await db
-        .delete(verticalDramaEpisodeRuns)
-        .where(
-          and(
-            eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
-            eq(verticalDramaEpisodeRuns.userId, owner.userId),
-            eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
-            eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
-            inArray(verticalDramaEpisodeRuns.stage, stagesToClear)
-          )
-        );
-
-      // Also null out the downstream stages' own persisted jsonb columns on
-      // the episode row — these are separate from the run/checkpoint/
-      // artifact tables just deleted above, and were the actual cause of the
-      // "says regenerated but still shows the same old data" bug: the UI's
-      // storyboard panel (and equivalents) key off THIS column's content
-      // directly, regardless of whether a run/checkpoint still backs it.
-      // The clicked stage's own column is deliberately left alone — `runStage`
-      // below overwrites it immediately with fresh content.
-      const downstreamColumnByStage: Partial<
-        Record<
-          VerticalDramaPipelineStage,
-          keyof typeof verticalDramaEpisodes.$inferInsert
-        >
-      > = {
-        plan_episode_script: "script",
-        storyboard_shotgrid: "storyboard",
-        start_frame_render_plan: "startFramePlan",
-        dialogue_audio_plan: "dialogueAudioPlan",
-        video_motion_prompt_pack: "motionPromptPack",
-        assemble_episode_manifest: "assemblyManifest",
-      };
-      const downstream = VerticalDramaEpisodePipeline.downstreamStages(
-        input.stage
-      );
-      const columnUpdates: Record<string, null> = {};
-      for (const s of downstream) {
-        const col = downstreamColumnByStage[s];
-        if (col) columnUpdates[col] = null;
-      }
-      if (downstream.includes("create_storyboard_review_project")) {
-        columnUpdates.storyboardReviewId = null;
-      }
-      if (Object.keys(columnUpdates).length > 0) {
-        await db
-          .update(verticalDramaEpisodes)
-          .set({ ...columnUpdates, updatedAt: new Date() })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, owner.episodeId),
-              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
-              eq(verticalDramaEpisodes.userId, owner.userId),
-              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
-            )
-          );
-      }
-
       const [
         { flagOn, policy },
         deepStoryDraftsFlagOn,
@@ -6711,6 +6649,89 @@ export const verticalDramaEpisodesRouter = router({
           retentionHooksEnabled,
         }
       );
+
+      // Data-safety fix (2026-07-12) — the downstream invalidation below used
+      // to run BEFORE the `runStage` call above, unconditionally. `runStage`
+      // never throws on a generation failure (every real-generation override
+      // in this file catches its own errors and returns a normal `"failed"`
+      // `RunResult` — see e.g. the `storyboard_shotgrid` override), so the
+      // old ordering meant a failed regenerate attempt still destroyed every
+      // downstream stage's data (start frame plan, video prompts, etc.) even
+      // though the clicked stage's own content was left completely
+      // unchanged. Confirmed in production: episode 43's `startFramePlan`/
+      // `dialogueAudioPlan`/`motionPromptPack`/`assemblyManifest` columns and
+      // their run history were wiped by a `storyboard_shotgrid` regenerate
+      // that failed LLM-side schema validation, while `storyboard` itself
+      // (correctly) still held the prior, still-valid 9 shots. Gating the
+      // invalidation on `outcome.result.status === "succeeded"` makes a
+      // failed regenerate a true no-op on every stage's data — matching the
+      // safer convention `repairStage`'s pipeline method already uses
+      // elsewhere in this file (report `staleStages` without destructively
+      // clearing anything).
+      if (outcome.result?.status === "succeeded") {
+        const stagesToClear = [
+          input.stage,
+          ...VerticalDramaEpisodePipeline.downstreamStages(input.stage),
+        ];
+        await db
+          .delete(verticalDramaEpisodeRuns)
+          .where(
+            and(
+              eq(verticalDramaEpisodeRuns.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodeRuns.userId, owner.userId),
+              eq(verticalDramaEpisodeRuns.seriesId, owner.seriesId),
+              eq(verticalDramaEpisodeRuns.episodeId, owner.episodeId),
+              inArray(verticalDramaEpisodeRuns.stage, stagesToClear)
+            )
+          );
+
+        // Also null out the downstream stages' own persisted jsonb columns on
+        // the episode row — these are separate from the run/checkpoint/
+        // artifact tables just deleted above, and were the actual cause of
+        // the "says regenerated but still shows the same old data" bug: the
+        // UI's storyboard panel (and equivalents) key off THIS column's
+        // content directly, regardless of whether a run/checkpoint still
+        // backs it. The clicked stage's own column is deliberately left
+        // alone — `runStage` above already overwrote it with fresh content.
+        const downstreamColumnByStage: Partial<
+          Record<
+            VerticalDramaPipelineStage,
+            keyof typeof verticalDramaEpisodes.$inferInsert
+          >
+        > = {
+          plan_episode_script: "script",
+          storyboard_shotgrid: "storyboard",
+          start_frame_render_plan: "startFramePlan",
+          dialogue_audio_plan: "dialogueAudioPlan",
+          video_motion_prompt_pack: "motionPromptPack",
+          assemble_episode_manifest: "assemblyManifest",
+        };
+        const downstream = VerticalDramaEpisodePipeline.downstreamStages(
+          input.stage
+        );
+        const columnUpdates: Record<string, null> = {};
+        for (const s of downstream) {
+          const col = downstreamColumnByStage[s];
+          if (col) columnUpdates[col] = null;
+        }
+        if (downstream.includes("create_storyboard_review_project")) {
+          columnUpdates.storyboardReviewId = null;
+        }
+        if (Object.keys(columnUpdates).length > 0) {
+          await db
+            .update(verticalDramaEpisodes)
+            .set({ ...columnUpdates, updatedAt: new Date() })
+            .where(
+              and(
+                eq(verticalDramaEpisodes.id, owner.episodeId),
+                eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+                eq(verticalDramaEpisodes.userId, owner.userId),
+                eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+              )
+            );
+        }
+      }
+
       return outcome;
     }),
 
@@ -10334,6 +10355,18 @@ export const verticalDramaEpisodesRouter = router({
         input.shotNumber
       );
 
+      // Shared-field prompt-language fix — the episode-level video-prompt
+      // language plan (`motionPromptPack.promptLanguage`, set via
+      // `setEpisodeVideoPromptLanguage`) now ALSO governs image/start-frame
+      // prompt text, not just video-clip prompt text (same field, wider
+      // scope — see `VerticalDramaPromptLanguage`'s doc comment in
+      // `contracts.ts`). Read the same way every other call site in this
+      // file reads `row.motionPromptPack` (e.g. `setEpisodeVideoPromptLanguage`
+      // above).
+      const shotStartFramePromptLanguage = (
+        row.motionPromptPack as VerticalDramaMotionPromptPack | null
+      )?.promptLanguage;
+
       // Strip any stale identity-lock suffix before handing the stored
       // prompt to the skill as informational-only scene grounding — same
       // defensive stripping every other call site applies to a stored
@@ -10374,6 +10407,7 @@ export const verticalDramaEpisodesRouter = router({
               name: entry.name,
             })),
           targetAudienceRegion: shotStartFramePromptRegion,
+          promptLanguage: shotStartFramePromptLanguage,
           productLock: {
             active: shotStartFramePromptIsTieInShot,
             productName:

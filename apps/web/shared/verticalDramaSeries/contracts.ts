@@ -530,22 +530,30 @@ export type VerticalDramaMotionPromptClipDialogueLine = {
 };
 
 /**
- * Video-prompt LANGUAGE options (episode-level language plan) — two
- * independent axes:
- *  - `promptLanguage`: the language the video-clip PROMPT TEXT ITSELF is
- *    written in (the acting/motion direction the video model reads).
- *    Defaults to `"en"` when absent (English is the best-supported prompt
- *    language across video model providers) — never inferred from
- *    `dialogueLanguage`.
+ * Prompt LANGUAGE options (episode-level language plan) — two independent
+ * axes:
+ *  - `promptLanguage`: the language the PROMPT TEXT ITSELF is written in —
+ *    this ONE shared field governs BOTH the video-clip prompt (the acting/
+ *    motion/camera direction the video model reads) AND the image/start-
+ *    frame prompt (the `prompt`/`negative_prompt` text the image model
+ *    reads). There is no separate image-only language field — selecting a
+ *    language here affects every prompt-text generation path for the
+ *    episode. Defaults to `"en"` when absent (English is the best-supported
+ *    prompt language across both image and video model providers) — never
+ *    inferred from `dialogueLanguage`.
  *  - `dialogueLanguage`: the language the characters SPEAK in the video
  *    (embedded verbatim for native-audio models, or routed to TTS
- *    otherwise). Defaults to the series' own locale (`"th"`) when absent —
- *    existing episodes with no explicit selection keep behaving exactly as
- *    before (Thai dialogue), this is purely additive.
+ *    otherwise) — a video-only concept, no image-prompt equivalent (start
+ *    frames are silent stills). Defaults to the series' own locale (`"th"`)
+ *    when absent — existing episodes with no explicit selection keep
+ *    behaving exactly as before (Thai dialogue), this is purely additive.
  *  Set via `setEpisodeVideoPromptLanguage` (free, same JSONB-patch
  *  convention as `setEpisodeModelSelection`) and threaded into
  *  `generateVideoMotionPromptPack` / `generateVerticalDramaShotVideoPrompt` /
- *  `formatVideoClipRequest`.
+ *  `formatVideoClipRequest` (video-clip prompt text) as well as
+ *  `generateStartFrameRenderPlan` / `generateStartFrameShotPrompt`
+ *  (image/start-frame prompt text — wired in later than the video path, but
+ *  reading the SAME field, not a duplicate).
  */
 export type VerticalDramaPromptLanguage = "en" | "th" | "zh" | "ja" | "ko";
 
