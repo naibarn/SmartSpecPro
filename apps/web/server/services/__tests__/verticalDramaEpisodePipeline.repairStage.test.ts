@@ -297,6 +297,15 @@ describe("repairStage — storyboard_shotgrid (real repair)", () => {
   it("calls generateStoryboardShotgrid with repairContext (current storyboard + instruction) and persists the live storyboard column", async () => {
     const episode = baseEpisode();
     queueSuccessSelects(episode, { bible: null, locale: "th", tone: null });
+    // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+    // bible, dispatch 3/3) — `generateRealStoryboard` (called from inside
+    // `repairStage`'s own real-repair wiring for this stage) now does a 3rd
+    // select (the series' location roster) beyond what `queueSuccessSelects`
+    // already queues (episode/seriesRow/characterRows/checkpoint=[]). Not
+    // added to the shared helper itself — `plan_episode_script`'s repair
+    // test (which calls `generateRealScript`, untouched by this dispatch)
+    // also reuses that helper and must stay at exactly 4 queued selects.
+    mockDb.select.mockReturnValueOnce(selectChain([]));
 
     const episodeUpdateChain = updateChain();
     const runUpdateChain = updateChain();

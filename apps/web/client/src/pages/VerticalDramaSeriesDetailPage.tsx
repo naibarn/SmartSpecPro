@@ -44,6 +44,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { VerticalDramaCharacterStockPanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
+import { VerticalDramaLocationStockPanel } from "@/components/verticalDramaSeries/VerticalDramaLocationStockPanel";
 import { VerticalDramaSeriesTrailerPanel } from "@/components/verticalDramaSeries/VerticalDramaSeriesTrailerPanel";
 import { VerticalDramaShell } from "@/components/verticalDramaSeries/VerticalDramaShell";
 import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/VerticalDramaSettingsTab";
@@ -110,6 +111,7 @@ import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDram
 type TabId =
   | "overview"
   | "characters"
+  | "scenes"
   | "episodes"
   | "bible"
   | "memory"
@@ -122,9 +124,14 @@ type TabId =
 // variant) planning must exist before episode/storyboard generation can
 // reference the right look, so the tab order should guide the user through
 // the workflow in that sequence.
+// Location Visual Bible (dedicated tab, mirrors the Characters tab) —
+// "scenes" inserted right after "characters" for the same reason: location
+// references should be planned before episode/storyboard generation
+// consumes them.
 const ALL_TABS: TabId[] = [
   "overview",
   "characters",
+  "scenes",
   "episodes",
   "bible",
   "memory",
@@ -132,7 +139,7 @@ const ALL_TABS: TabId[] = [
   "assets",
   "settings",
 ];
-const STORY_TABS: TabId[] = ["bible", "characters", "memory"];
+const STORY_TABS: TabId[] = ["bible", "characters", "scenes", "memory"];
 const ADVANCED_TABS: TabId[] = ["product", "assets", "settings"];
 
 const tabLabels: Record<TabId, { th: string; en: string }> = {
@@ -140,6 +147,7 @@ const tabLabels: Record<TabId, { th: string; en: string }> = {
   episodes: { th: "ตอน", en: "Episodes" },
   bible: { th: "ไบเบิล", en: "Bible" },
   characters: { th: "ตัวละคร", en: "Characters" },
+  scenes: { th: "ฉาก", en: "Locations" },
   memory: { th: "ความจำซีรีย์", en: "Memory" },
   product: { th: "สินค้าผูกเรื่อง", en: "Product Tie-in" },
   assets: { th: "แอสเซ็ต", en: "Assets" },
@@ -381,6 +389,8 @@ export default function VerticalDramaSeriesDetailPage() {
                       voiceChainEnabled={voiceChainEnabled}
                       characterProfilesEnabled={characterProfilesEnabled}
                     />
+                  ) : tab === "scenes" ? (
+                    <VerticalDramaLocationStockPanel seriesId={seriesId} readOnly={isArchived} />
                   ) : tab === "bible" ? (
                     <StoryBibleTab
                       lang={lang}

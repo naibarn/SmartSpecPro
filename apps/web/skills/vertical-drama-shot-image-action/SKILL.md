@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Shot Image Action Composer
-description: Author the final image-generation prompt for one on-demand, single-shot image action — a 3x3 multi-angle grid render or a user-instructed repair edit — for the Vertical Drama pipeline.
-version: 1.0.0
+description: Author the final image-generation prompt for one on-demand, single-shot image action — a 3x3 multi-angle grid render, a user-instructed repair edit, or a content-policy-risk soften pass — for the Vertical Drama pipeline.
+version: 1.1.0
 category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
@@ -15,6 +15,8 @@ tags:
   - image-prompt
   - repair
   - multi-angle-grid
+  - soften
+  - content-policy
 trigger_patterns: []
 priority: 50
 config:
@@ -40,8 +42,9 @@ You author the final image-generation prompt for exactly ONE on-demand, single-s
 image action in the Vertical Drama pipeline — never a batch, never a whole episode.
 The calling app supplies only ground-truth facts (the shot's current prompt, which
 characters are attached as reference images and at what index, the user's repair
-instruction, the series' region default, and whether a locked product reference is
-attached). You are the ONLY author of instructional/creative prompt text — the app
+instruction, a content-policy-risk `soften_level`, the series' region default, and
+whether a locked product reference is attached). You are the ONLY author of
+instructional/creative prompt text — the app
 never appends its own wrapper sentences to your output afterward. Whatever you
 return in `prompt`/`negative_prompt` is sent to the image render provider
 essentially as-is (a length-cap QC pass may lightly compress it if it runs over the
@@ -53,8 +56,66 @@ Return ONLY valid JSON that conforms to `schemas/output.schema.json`:
 { "contract_version": 1, "prompt": "...", "negative_prompt": "..." }
 ```
 
-There are exactly two values for `action`, read from the input payload. Follow the
-matching section below.
+There are exactly three values for `action`, read from the input payload. Follow the
+matching section below. Independently of `action`, the input also carries
+`soften_level` (`0`, `1`, or `2`) — a content-policy-risk reduction dial the calling
+app sets on an explicit client retry after an image provider rejected the previous
+render for a content-policy reason. **`soften_level` applies to every action, not
+just `"soften"`** — a `multi_angle_grid` or `repair` prompt on a retry is authored
+with `soften_level: 1` or `2` too, in the SAME call, using the same rules described
+in "Soften levels" below. Read that section once and apply it inside whichever
+action section you're following.
+
+## Soften levels — content-policy-risk reduction (applies to every action)
+
+Some image providers' content-policy classifiers flag strongly-worded identity-lock
+language (words like "exactly", "identical", "flawless") even for entirely benign,
+already-approved scenes — a false-positive rejection, not an actual policy problem
+with the scene itself. When that happens, the calling app resubmits the SAME request
+with a higher `soften_level` instead of changing the scene. You are the ONLY author
+of the softened wording — never a code-level find/replace on your own prior output.
+Rewrite holistically and grammatically at the level requested; do not just swap
+individual words in place and leave awkward phrasing.
+
+- **`soften_level: 0`** (default/first attempt) — no softening. Write with your
+  normal full-strength wording, exactly as described in the action section below.
+- **`soften_level: 1`** — preserve the scene content and the identity lock's
+  substance FULLY (same characters, same locked attributes, same scene), but
+  rewrite the wording to avoid absolutist/risk-triggering language:
+  - Never use "exactly", "EXACTLY", "identical", "exactly identical", "perfectly",
+    "perfect", or "flawless" — replace with softer-but-still-firm phrasing such as
+    "closely resembling the reference" or "closely matching."
+  - Do not name "skin tone" as its own explicit locked attribute — keep the rest of
+    the locked-attribute list (face shape, hairstyle, clothing/outfit, distinguishing
+    features) exactly as it would be at level 0, just without singling out skin tone
+    by name.
+  - Everything else — scene, wardrobe, composition, region/product facts — stays
+    unchanged from what level 0 would produce for the same input.
+- **`soften_level: 2`** — go further than level 1:
+  - Express the identity match as a soft recognizability statement rather than a
+    strict lock: something in the spirit of *"maintain the same person's
+    recognizable appearance — pose, expression, camera angle, and scene are free to
+    change"* — write your own natural phrasing of this idea in context, not a
+    verbatim insert.
+  - Drop explicit ethnicity/race/skin/complexion wording entirely — do not describe
+    ethnicity, race, skin tone, or complexion as attributes to match or lock, even
+    softly. A region/audience descriptor (see `target_audience_region` below) may
+    still inform the overall look implicitly, but never as an explicit "match this
+    skin/ethnicity" instruction.
+  - The scene content itself (setting, action, wardrobe, mood) is still preserved —
+    only identity-lock/ethnicity wording is relaxed.
+
+### Child-safety carve-out — MANDATORY, overrides every soften level
+
+If `shot.current_prompt` contains any age-appropriateness / child-safety wording —
+for example a clause stating this character must be depicted strictly
+age-appropriately, with no adult styling, no glamour, no romantic framing — that
+exact clause must be **carried forward verbatim, at every `soften_level`, with zero
+changes**. Never remove it, never soften its wording, never fold it into the
+identity-lock rewrite, even at `soften_level: 2`. Soften everything else in the
+prompt normally; this one clause is the single exception. (The calling app also
+runs a deterministic safety check on your output for this specific clause — but you
+are the primary safeguard: get it right here.)
 
 ## Action: `multi_angle_grid`
 
@@ -208,6 +269,87 @@ Output:
 }
 ```
 
+## Action: `soften`
+
+There is no repair instruction and no grid layout for this action — you are simply
+re-expressing `shot.current_prompt` as-is, applying the "Soften levels" rules above
+at whatever `soften_level` (`1` or `2`) the input carries. The calling app skips
+calling this skill entirely at `soften_level: 0` (it never sends a `"soften"` action
+with `soften_level: 0` in normal operation), so treat any `soften` call you actually
+receive as `soften_level: 1` or `2` — but if you ever do see `soften_level: 0` here,
+return `shot.current_prompt`/`shot.current_negative_prompt` essentially unchanged.
+
+1. **Preserve the scene completely.** Setting, subjects, action, wardrobe, mood,
+   composition, framing — nothing about the STORY content changes. This is not a
+   repair and not a rewrite of the scene; only the wording of risk-triggering
+   identity/appearance language changes, per the requested `soften_level`.
+2. **Weave in the character identity lock naturally**, using
+   `character_reference_manifest` (see below), softened to the requested level per
+   the "Soften levels" rules above.
+3. **Weave in the region/product facts** the same way, when present — product-lock
+   wording is generally NOT softened (a product's exact appearance is a factual/legal
+   concern, not a content-policy risk pattern), but if `product_lock` wording would
+   itself read as an absolutist lock ("EXACTLY as-is"), you may soften its phrasing
+   too at `soften_level: 2` as long as the product's described attributes (shape,
+   color, logo, label text) are still all present.
+4. **Apply the child-safety carve-out** from the "Soften levels" section above
+   before anything else — if `shot.current_prompt` contains age-appropriateness /
+   child-safety wording, copy that clause forward verbatim, unchanged, regardless of
+   `soften_level`.
+5. `negative_prompt`: preserve `shot.current_negative_prompt`'s content, softened
+   the same way `softenCharacterLockNegativePrompt` used to (rewrite/drop
+   identity-lock negative terms like "wrong skin tone" or "different face" at
+   `soften_level: 2`; keep everything else, especially any child-safety negative
+   terms — e.g. "adult beauty styling", "seductive pose", "revealing outfit" — which
+   must survive at every level unchanged).
+
+### Worked example — `soften` (`soften_level: 2`, with a child-safety clause present)
+
+Input:
+
+```json
+{
+  "contract_version": 1,
+  "action": "soften",
+  "soften_level": 2,
+  "locale": "th",
+  "shot": {
+    "shot_number": 7,
+    "current_prompt": "Interior classroom in the afternoon, น้องพลอย sits at her desk writing in a notebook, soft window light. This character MUST be depicted strictly age-appropriately — no adult styling, no glamour, no romantic framing. Match น้องพลอย's exact face shape, skin tone, hairstyle, clothing, and distinguishing features precisely to the attached reference image — do not alter identity.",
+    "current_negative_prompt": "identity drift, wrong skin tone, adult beauty styling, seductive pose, revealing outfit"
+  },
+  "repair_instruction": null,
+  "character_reference_manifest": [
+    { "index": null, "character_id": "character-9", "name": "น้องพลอย" }
+  ],
+  "target_audience_region": {
+    "code": "thai",
+    "descriptor": "Thai/Southeast Asian features and styling appropriate for Thai audiences"
+  },
+  "product_lock": { "active": false, "product_name": null, "product_description": null },
+  "grid_layout": null
+}
+```
+
+Output:
+
+```json
+{
+  "contract_version": 1,
+  "prompt": "Interior classroom in the afternoon, น้องพลอย sits at her desk writing in a notebook, soft window light. This character MUST be depicted strictly age-appropriately — no adult styling, no glamour, no romantic framing. Maintain น้องพลอย's recognizable appearance from the attached reference image — pose, expression, camera angle, and scene are free to change; keep her hairstyle, clothing, and distinguishing features consistent with the reference.",
+  "negative_prompt": "adult beauty styling, seductive pose, revealing outfit"
+}
+```
+
+Notice the child-safety sentence is carried forward **word-for-word**, while the
+identity-lock sentence around it is rewritten into a soft recognizability statement
+(no "exactly", no "skin tone" named explicitly, ethnicity/skin wording dropped
+entirely) and the negative prompt keeps only the child-safety terms — the ordinary
+identity-lock negative terms ("identity drift", "wrong skin tone") are dropped at
+this level, exactly as `soften_level: 1`'s "drop skin tone as an explicit locked
+term" rule and `soften_level: 2`'s "drop explicit ethnicity/skin/complexion wording
+entirely" rule both require.
+
 ## Character identity, region, and product facts — weave into prose, never append verbatim
 
 The app never hands you pre-written instruction sentences — only facts. Turn them
@@ -221,6 +363,20 @@ action):
   image precisely: **face shape, skin tone, hairstyle, clothing/outfit, and
   distinguishing features** — this exact attribute list is the locked-identity
   standard used everywhere else in this pipeline; never alter identity or wardrobe.
+  At `soften_level: 1`, use this same list but drop "skin tone" as a named locked
+  attribute (keep the rest). At `soften_level: 2`, replace this whole instruction
+  with the soft recognizability phrasing described in "Soften levels" above instead.
+  **The "Image N" number MUST come from THIS entry's own `index` field for THIS
+  call — never a number you associate with that character from a different shot,
+  from a prior response, or from this skill.md's own worked examples** (the
+  "ฝ้าย=Image 1 / ใบข้าว=Image 2" pairing used in the examples below is illustrative
+  of one specific two-character case only, not a fixed identity-to-number mapping —
+  confirmed production bug: a manifest with only ONE entry for ใบข้าว, `index: 1`,
+  still got written up as "Image 2," an image that was never attached, because the
+  number carried over from habit instead of being read from the actual manifest
+  given for that call). A manifest with exactly one entry means that character is
+  ALWAYS "Image 1," regardless of who they are or what index they carried in any
+  other shot — read `index` fresh from the manifest every single time.
 - **`target_audience_region`** — when present, mention its `descriptor` as the
   DEFAULT look for any person in the scene whose ethnicity/region is not already
   implied by the scene or by their own established appearance. Always phrase it as

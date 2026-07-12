@@ -476,6 +476,29 @@ export type VerticalDramaStartFramePlan = {
      */
     productRefsCustomized?: boolean;
     approvedMediaAssetId?: string;
+    /**
+     * Per-shot location override (Phase D, `planning/polished-toasting-
+     * gadget.md` — location visual bible). Set via the `setShotLocation`
+     * mutation (`verticalDramaEpisodes.ts`) — a pure data patch, no
+     * LLM/regeneration involved, same convention as `requiredCharacterRefs`'
+     * own manual-override sibling `setShotCharacterReference`. Must be a
+     * `locationKey` already present in this series' `vertical_drama_locations`
+     * roster (validated at write time).
+     *
+     * When present, takes precedence over the storyboard's own
+     * `distinct_locations[].shot_numbers` grouping for THIS shot only, across
+     * every location-reference resolution path that shot participates in
+     * (start-frame image generation, video-prompt generation, and the actual
+     * video-render provider call) — see `resolveEffectiveShotLocationKey`
+     * (`server/routers/verticalDramaEpisodes.ts`) for the single shared
+     * precedence function every one of those call sites runs through, so they
+     * can never drift out of sync with each other. Absent on every frame
+     * created before this field existed (and restored to "absent" by calling
+     * `setShotLocation` with `locationKey: null`), which is intentionally
+     * equivalent to "no override" — falls back to the pre-existing
+     * storyboard-grouping resolution, fully backward compatible.
+     */
+    locationKey?: string;
     /** Persisted 3x3 multi-angle picker state (2026-07-05 fix) — the source
      *  grid image is already a completed, durable media task; this just
      *  remembers which grid to re-split client-side on reload and which of
@@ -530,22 +553,30 @@ export type VerticalDramaMotionPromptClipDialogueLine = {
 };
 
 /**
- * Video-prompt LANGUAGE options (episode-level language plan) — two
- * independent axes:
- *  - `promptLanguage`: the language the video-clip PROMPT TEXT ITSELF is
- *    written in (the acting/motion direction the video model reads).
- *    Defaults to `"en"` when absent (English is the best-supported prompt
- *    language across video model providers) — never inferred from
- *    `dialogueLanguage`.
+ * Prompt LANGUAGE options (episode-level language plan) — two independent
+ * axes:
+ *  - `promptLanguage`: the language the PROMPT TEXT ITSELF is written in —
+ *    this ONE shared field governs BOTH the video-clip prompt (the acting/
+ *    motion/camera direction the video model reads) AND the image/start-
+ *    frame prompt (the `prompt`/`negative_prompt` text the image model
+ *    reads). There is no separate image-only language field — selecting a
+ *    language here affects every prompt-text generation path for the
+ *    episode. Defaults to `"en"` when absent (English is the best-supported
+ *    prompt language across both image and video model providers) — never
+ *    inferred from `dialogueLanguage`.
  *  - `dialogueLanguage`: the language the characters SPEAK in the video
  *    (embedded verbatim for native-audio models, or routed to TTS
- *    otherwise). Defaults to the series' own locale (`"th"`) when absent —
- *    existing episodes with no explicit selection keep behaving exactly as
- *    before (Thai dialogue), this is purely additive.
+ *    otherwise) — a video-only concept, no image-prompt equivalent (start
+ *    frames are silent stills). Defaults to the series' own locale (`"th"`)
+ *    when absent — existing episodes with no explicit selection keep
+ *    behaving exactly as before (Thai dialogue), this is purely additive.
  *  Set via `setEpisodeVideoPromptLanguage` (free, same JSONB-patch
  *  convention as `setEpisodeModelSelection`) and threaded into
  *  `generateVideoMotionPromptPack` / `generateVerticalDramaShotVideoPrompt` /
- *  `formatVideoClipRequest`.
+ *  `formatVideoClipRequest` (video-clip prompt text) as well as
+ *  `generateStartFrameRenderPlan` / `generateStartFrameShotPrompt`
+ *  (image/start-frame prompt text — wired in later than the video path, but
+ *  reading the SAME field, not a duplicate).
  */
 export type VerticalDramaPromptLanguage = "en" | "th" | "zh" | "ja" | "ko";
 

@@ -136,7 +136,10 @@ Same two independent language settings as the single-shot skill
    skill.** Write ONE continuous, flowing prose description that covers the
    FULL shot duration, segment by segment, in chronological order:
    - Open each segment with its moment in time (in natural cinematic
-     language, not a literal timestamp) and its anchor character/action.
+     language, not a literal timestamp) and its anchor character/action —
+     name the anchor character explicitly (per the CHARACTER IDENTITY MAP),
+     not just pronouns, so it stays unambiguous which established character
+     each segment belongs to.
    - Describe the cut into that segment cinematically — "cut to," "reverse
      angle to," "camera whips to," "the frame cuts back to" — vary the
      phrasing rather than repeating the same cut word every time.
@@ -146,6 +149,16 @@ Same two independent language settings as the single-shot skill
      established by the attached start-frame image, so the whole prompt
      reads as one continuous scene being cut between speakers, never as
      separate shots that merely happen to be adjacent.
+   - When an environment/location reference image is ALSO attached (below
+     the start frame and any character reference images, preceded by a text
+     label naming the location), keep every segment's setting, architecture,
+     lighting, and props consistent with what that reference image actually
+     shows — never contradict or drift away from the established location
+     (e.g. do not imply a different room layout, wall color, window
+     placement, or set of props than the reference shows) in any segment.
+     This is strictly about ENVIRONMENTAL CONSISTENCY with the attached
+     reference — never an excuse to describe the location in prose beyond
+     what each segment's own action already needs.
 4. **Every prompt you write must be unique to this shot.** Never reuse
    boilerplate phrasing verbatim across different shots even when the
    underlying scene is similar — ground the motion description in this

@@ -72,6 +72,16 @@ interface WizardState {
   tone: string;
   cliffhangerStyle: string;
   characters: string;
+  /**
+   * Location Visual Bible (dedicated series tab + wizard seed field) —
+   * free-form "one location per line" draft, same shape/convention as
+   * `characters` above. Sent as `bible.locationsDraft` on `create` (see
+   * `handleCreate` below) so the durable `vertical_drama_locations` roster
+   * (read by the Series Detail Locations/"ฉาก" tab) can be bulk-seeded at
+   * series-creation time, mirroring how `characters` seeds
+   * `vertical_drama_characters` via `charactersDraft`.
+   */
+  locations: string;
   visualBible: string;
   productTieInEnabled: boolean;
   productName: string;
@@ -102,6 +112,7 @@ const INITIAL_WIZARD: WizardState = {
   tone: "",
   cliffhangerStyle: "",
   characters: "",
+  locations: "",
   visualBible: "",
   productTieInEnabled: false,
   productName: "",
@@ -365,7 +376,17 @@ export function CreateSeriesWizard({
       targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
       defaultEpisodeDurationSeconds: Number(form.targetDurationSeconds) || undefined,
       bible:
-        form.logline || form.mainPlot || form.seasonArc || form.visualBible
+        // Widened (previously `characters`/`locations`-only input silently
+        // dropped the whole `bible` object, losing both drafts): a user who
+        // fills in ONLY the characters and/or locations textarea — nothing
+        // else in this list — must still have that draft seeded at series
+        // creation.
+        form.logline ||
+        form.mainPlot ||
+        form.seasonArc ||
+        form.visualBible ||
+        form.characters.trim() ||
+        form.locations.trim()
           ? {
               logline: form.logline,
               mainPlot: form.mainPlot,
@@ -373,6 +394,7 @@ export function CreateSeriesWizard({
               visualStyle: form.visualBible,
               cliffhangerStyle: form.cliffhangerStyle,
               charactersDraft: form.characters,
+              locationsDraft: form.locations,
             }
           : undefined,
       productTieIn: form.productTieInEnabled
@@ -844,18 +866,33 @@ function WizardStep({
       );
     case 2:
       return (
-        <Field label={th ? "ตัวละคร / บทบาท / ความสัมพันธ์ (หนึ่งบรรทัดต่อหนึ่งตัว)" : "Characters / roles / relationships (one per line)"}>
-          <Textarea value={form.characters} onChange={(e) => set("characters", e.target.value)} rows={6} />
-          {/* F132F (spec 132 §7.3, added 2026-07-09) — this freeform textarea
-              stays exactly as-is pre-generation; detailed voice/personality
-              profiles are generated automatically afterward and editable in
-              the character stock panel, not here. */}
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            {th
-              ? "โปรไฟล์เสียงพูด/บุคลิกโดยละเอียดของแต่ละตัวละครจะถูกสร้างอัตโนมัติหลังจากสร้างซีรีส์ และแก้ไขได้ภายหลังในแท็บ \"ตัวละคร\""
-              : "Detailed voice/personality profiles for each character are generated automatically after the series is created, and can be edited afterward in the Characters tab."}
-          </p>
-        </Field>
+        <div className="grid gap-4">
+          <Field label={th ? "ตัวละคร / บทบาท / ความสัมพันธ์ (หนึ่งบรรทัดต่อหนึ่งตัว)" : "Characters / roles / relationships (one per line)"}>
+            <Textarea value={form.characters} onChange={(e) => set("characters", e.target.value)} rows={6} />
+            {/* F132F (spec 132 §7.3, added 2026-07-09) — this freeform textarea
+                stays exactly as-is pre-generation; detailed voice/personality
+                profiles are generated automatically afterward and editable in
+                the character stock panel, not here. */}
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {th
+                ? "โปรไฟล์เสียงพูด/บุคลิกโดยละเอียดของแต่ละตัวละครจะถูกสร้างอัตโนมัติหลังจากสร้างซีรีส์ และแก้ไขได้ภายหลังในแท็บ \"ตัวละคร\""
+                : "Detailed voice/personality profiles for each character are generated automatically after the series is created, and can be edited afterward in the Characters tab."}
+            </p>
+          </Field>
+          <Field label={th ? "สถานที่ / ฉากหลัก (หนึ่งบรรทัดต่อหนึ่งที่)" : "Locations / settings (one per line)"}>
+            <Textarea value={form.locations} onChange={(e) => set("locations", e.target.value)} rows={6} />
+            {/* Location Visual Bible wizard seed (dedicated series tab
+                companion) — same "freeform now, refined later" convention as
+                the characters field above: this draft is bulk-seeded into the
+                durable location roster at series creation, and is editable
+                afterward in the Locations/"ฉาก" tab. */}
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {th
+                ? 'เช่น "ร้านสะดวกซื้อ — ร้านเล็กๆ ริมถนน มีชั้นวางขนม" — ภาพอ้างอิงของแต่ละสถานที่จะสร้างและแก้ไขได้ภายหลังในแท็บ "ฉาก"'
+                : 'e.g. "Convenience store — a small corner shop with snack shelves" — reference images for each location can be generated and edited afterward in the Locations tab.'}
+            </p>
+          </Field>
+        </div>
       );
     case 3:
       return (

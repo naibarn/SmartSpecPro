@@ -338,3 +338,35 @@ export function computeSpeakerSwitchSubShotPlan(
     reason: "ok",
   };
 }
+
+/**
+ * Anchor speaker (the FIRST window's `characterKey`) first, then each
+ * subsequent NEW speaker in first-appearance order across `windows` — pure
+ * dedup helper shared by `generateVerticalDramaShotVideoPromptSpeakerSwitch`
+ * (`server/services/verticalDramaVideoMotionPromptGeneration.ts`, its own
+ * post-call `distinctSpeakerCharacterKeys` result field) and the router's
+ * PRE-call reference-image resolution
+ * (`resolveShotVideoPromptCharacterReferenceImages` in
+ * `server/routers/verticalDramaEpisodes.ts`) — extracted here (multi-
+ * character disambiguation fix, `polished-toasting-gadget.md`) so the two
+ * can never silently drift apart.
+ *
+ * Guaranteed >= 2 distinct entries whenever `windows` came from a
+ * `computeSpeakerSwitchSubShotPlan` decision with `needsSplit === true`:
+ * `feasibleCount < 2` short-circuits `needsSplit: false` before windowing
+ * even runs (see above), and by `groupTurnsIntoWindows`'s own construction
+ * the first two windows' anchor turns are always adjacent turns in the
+ * run-length-encoded sequence, which by definition never share the same
+ * speaker — so callers on that path don't need their own length gate.
+ */
+export function deriveDistinctSpeakerCharacterKeysFromWindows(
+  windows: Array<Pick<SpeakerSwitchSubShotWindow, "characterKey">>
+): string[] {
+  const distinctSpeakerCharacterKeys: string[] = [];
+  for (const w of windows) {
+    if (!distinctSpeakerCharacterKeys.includes(w.characterKey)) {
+      distinctSpeakerCharacterKeys.push(w.characterKey);
+    }
+  }
+  return distinctSpeakerCharacterKeys;
+}

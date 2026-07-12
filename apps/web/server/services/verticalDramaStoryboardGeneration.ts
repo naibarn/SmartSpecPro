@@ -220,6 +220,26 @@ const storyboardShotSchema = z
   })
   .passthrough();
 
+/**
+ * Phase 1 of `planning/polished-toasting-gadget.md` (location visual bible)
+ * — see skill.md's "Location continuity and scene grouping" section. Each
+ * entry groups the contiguous shots that share one physical setting.
+ * Validated (not `.passthrough()`-only survival like each shot's own
+ * `location` string field) because `shot_numbers` coverage must be
+ * deterministically checkable server-side — see
+ * `verticalDramaEpisodePipeline.ts`'s `validateStagePayload` partition
+ * check, which never trusts the LLM's own grouping claim without verifying
+ * it covers all 9 shots with no gaps/overlaps.
+ */
+const distinctLocationSchema = z
+  .object({
+    location_key: z.string().min(1),
+    location_name: z.string().min(1),
+    description: z.string().min(1),
+    shot_numbers: z.array(z.number().int().min(1).max(9)).min(1),
+  })
+  .passthrough();
+
 export const storyboardShotgridOutputSchema = z
   .object({
     contract_version: z.literal(1).optional(),
@@ -227,7 +247,28 @@ export const storyboardShotgridOutputSchema = z
     canonical_style_bible: z.object({}).passthrough(),
     shot_grid_plan: z.object({}).passthrough(),
     shots: z.array(storyboardShotSchema).length(9),
-    plain_text_storyboard: z.string().min(1),
+    /**
+     * Root-cause fix (2026-07-12, traceId `5Yk54Y8NLgrH4kr6A-GwD`) — this
+     * field was unconditionally required, but was observed live to be the
+     * one the LLM most often drops from an otherwise-valid 9-shot response
+     * (not a truncation issue — same symptom class as
+     * `storyboard_handoff_json` below, which got the identical treatment
+     * for the identical reason). Made optional here; `generateStoryboardShotgrid`
+     * below deterministically fills it in from the already-validated `shots`
+     * array when the LLM omits it, same "never trust the model's own
+     * compliance for data the code can derive from ground truth" precedent.
+     * Confirmed nothing outside this file's own schema/prompt-instruction
+     * reads this field, so a mechanical fallback is safe.
+     */
+    plain_text_storyboard: z.string().min(1).optional(),
+    /**
+     * Phase 1 of `planning/polished-toasting-gadget.md` (location visual
+     * bible) — see `distinctLocationSchema`'s own doc comment. Optional at
+     * the zod level so any call whose LLM response omits it (every response
+     * before this field existed, or a legacy/flag-off episode) stays
+     * byte-identical — this is purely additive.
+     */
+    distinct_locations: z.array(distinctLocationSchema).min(1).optional(),
     // Optional at the schema level: `generateStoryboardShotgrid` below
     // deterministically constructs this field's required inner shape
     // (`schema_version` / `handoff_type` / `grid_layout` / `shots`) from the
@@ -292,6 +333,28 @@ export interface GenerateStoryboardShotgridParams {
     location?: string;
     summary?: string;
     keyLine?: string;
+  }>;
+  /**
+   * Phase 1 of `planning/polished-toasting-gadget.md` (location visual
+   * bible) — the series' already-established locations (a future roster
+   * table, Phase 2 of that plan), supplied as input FACTS only. Code never
+   * decides which location a shot belongs to — skill.md's "Location
+   * continuity and scene grouping" section teaches the LLM to read the
+   * episode's own scene list (`sceneBeats` above) and default to ONE
+   * location for the whole episode, only splitting into more than one
+   * `distinct_locations[]` group when the scene list genuinely establishes
+   * a scripted move/flashback/time-skip, and to reuse an existing
+   * location's `locationKey` verbatim (mirrors `characters[].variants`'
+   * reuse-by-id convention) when a shot's setting matches one of these.
+   * Optional/empty for every caller today — Phase 1 has no roster table yet
+   * (every current call site omits this param entirely), so
+   * `buildUserPrompt` renders nothing new when empty/absent and the prompt
+   * stays byte-identical to before this field existed.
+   */
+  existingLocations?: Array<{
+    locationKey: string;
+    name: string;
+    description: string;
   }>;
   /**
    * `referenceImageUrl` closes an upstream parity gap: the pinned
@@ -532,6 +595,23 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     ? `Episode scenes (this is what ACTUALLY happens in this episode's script — ground every shot in these, in order; do not invent generic mood shots disconnected from this list):\n${sceneBeatLines}\nDistribute the 9 shots across these scenes in order (multiple shots may cover the same scene). For any shot depicting a scene that has a "line", use that exact line (translated/adapted only if needed for length) as the shot's "dialogue_excerpt" and a short version as "subtitle_text" — do not invent unrelated dialogue.`
     : null;
 
+  // Existing series locations (Phase 1 of
+  // `planning/polished-toasting-gadget.md` — location visual bible) —
+  // additive; only rendered when `existingLocations` is non-empty, so a
+  // series with no location roster yet (every caller today, since the
+  // roster table does not exist until Phase 2) produces the exact same
+  // prompt as before this field existed. See skill.md "Location continuity
+  // and scene grouping" for the per-shot reuse instruction these lines
+  // feed — mirrors the "Characters" list's own reuse-by-id convention above.
+  const existingLocationLines = params.existingLocations?.length
+    ? params.existingLocations
+        .map(l => `- ${l.locationKey}: ${l.name} — ${l.description}`)
+        .join("\n")
+    : null;
+  const existingLocationsInstruction = existingLocationLines
+    ? `Existing series locations (reuse a location_key EXACTLY when a shot's setting matches one of these — see "Location continuity and scene grouping" below):\n${existingLocationLines}`
+    : null;
+
   // Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
   // 2026-07-08) — additive; only sent when `verticalDramaSeriesDeepStoryDrafts`
   // is enabled AND an `episodeDraft` was actually resolved for this episode,
@@ -595,6 +675,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
       : null,
     storySource.cliffhanger ? `Cliffhanger: ${storySource.cliffhanger}` : null,
     sceneBeatInstruction,
+    existingLocationsInstruction,
     `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
     twinPairInstruction,
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
@@ -784,6 +865,72 @@ export async function generateStoryboardShotgrid(
         reference_image_url: c.referenceImageUrl,
       })),
     };
+  }
+
+  // See `plain_text_storyboard`'s doc comment on the schema above — mirrors
+  // the `storyboard_handoff_json` fallback immediately above this block.
+  // Deliberately mechanical (not another LLM call): nothing downstream
+  // reads this field today, so a compact, always-available summary is all
+  // the fallback needs to guarantee — the richer LLM-authored prose is
+  // still used whenever the model does provide it.
+  if (
+    !storyboardData.plain_text_storyboard ||
+    storyboardData.plain_text_storyboard.length === 0
+  ) {
+    storyboardData.plain_text_storyboard = storyboardData.shots
+      .map(s => `Shot ${s.shot_number}: ${s.narrative_purpose}.`)
+      .join(" ");
+  }
+
+  // Root-cause fix (2026-07-12, live episode #43 regenerate producing 0
+  // `distinct_locations` groups twice in a row despite skill.md's explicit
+  // "a single entry covering all 9 shot_numbers in the default one-location
+  // case" instruction) — same failure class as `plain_text_storyboard`
+  // above: the field is optional at the zod level (for legacy-response
+  // compatibility), so the LLM silently omitting it produces no validation
+  // error, just an empty Location Visual Bible. Unlike `plain_text_storyboard`
+  // this field IS read downstream (grounds the location reference-image
+  // prompt), so the fallback groups by each shot's own reliable `location`
+  // string (unlike `distinct_locations` itself, every shot has always
+  // carried this field) rather than emitting a placeholder, and seeds each
+  // group's `description` from the real `visual_description` text the model
+  // already committed to for those shots — mechanical, but grounded in
+  // actual model output, not invented. Only fires when the LLM's own
+  // grouping is absent entirely; a partial/malformed attempt from the model
+  // is left as-is (Zod already accepts anything satisfying
+  // `distinctLocationSchema`, malformed shapes fail validation upstream).
+  if (
+    !storyboardData.distinct_locations ||
+    storyboardData.distinct_locations.length === 0
+  ) {
+    const groupOrder: string[] = [];
+    const groupsByName = new Map<
+      string,
+      { shotNumbers: number[]; descriptions: string[] }
+    >();
+    for (const shot of storyboardData.shots) {
+      const shotRecord = shot as unknown as Record<string, unknown>;
+      const locationName =
+        typeof shotRecord.location === "string" && shotRecord.location.length > 0
+          ? shotRecord.location
+          : "ฉากหลัก";
+      if (!groupsByName.has(locationName)) {
+        groupsByName.set(locationName, { shotNumbers: [], descriptions: [] });
+        groupOrder.push(locationName);
+      }
+      const group = groupsByName.get(locationName)!;
+      group.shotNumbers.push(shot.shot_number);
+      group.descriptions.push(shot.visual_description);
+    }
+    storyboardData.distinct_locations = groupOrder.map((locationName, index) => {
+      const group = groupsByName.get(locationName)!;
+      return {
+        location_key: `location-${index + 1}`,
+        location_name: locationName,
+        description: group.descriptions.slice(0, 3).join(" "),
+        shot_numbers: group.shotNumbers,
+      };
+    });
   }
 
   const usage = response.usage;

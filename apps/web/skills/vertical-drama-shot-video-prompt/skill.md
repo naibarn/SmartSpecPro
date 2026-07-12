@@ -105,7 +105,11 @@ The caller tells you two independent language settings for this shot:
    generating prompt, when no image is attached) already carries identity,
    wardrobe, and physical likeness — re-describing face/body/clothing wastes
    prompt budget and risks contradicting the actual image. Do not mention hair
-   color, facial features, body type, or outfit at all.
+   color, facial features, body type, or outfit at all. When character
+   reference images are attached below the start frame (each preceded by a
+   text label naming that character), use them together with the CHARACTER
+   IDENTITY MAP to confidently tell characters apart — still never describe
+   any of their appearance.
 2. **Focus on MOVEMENT, emotion, atmosphere, and camera motion continuing
    FROM the start frame** — what changes across this clip's duration: how the
    character's expression/posture shifts, where the camera pushes/pans/tilts,
@@ -201,6 +205,35 @@ The caller tells you two independent language settings for this shot:
    description/camera/emotion above, and never let this rule override rule 6
    (camera continuation) or produce a physically inconsistent jump from the
    start frame.
+11. **Name the acting/speaking character explicitly when 2+ characters are
+   established for this shot — MANDATORY.** "Established" means the
+   CHARACTER IDENTITY MAP lists 2+ characters for this shot and/or 2+
+   distinct `characterKey`s appear among the dialogue lines you were given —
+   this triggers on established characters, not narrowly on whether
+   reference images were attached, since the misattribution risk exists even
+   when a character has no approved portrait yet and only the identity map
+   carries their name. When this condition applies, name the specific
+   character explicitly at the point they act or speak in `prompt` (e.g.
+   "ฝ้าย turns toward the door" rather than "she turns toward the door") —
+   especially immediately around an embedded verbatim dialogue quote (rule
+   5) — rather than relying on pronouns alone, so it always stays
+   unambiguous which established character is doing or saying what. This is
+   strictly about NAMING who is acting/speaking, never about describing
+   their physical appearance — rule 1 still applies in full; do not let this
+   rule become an excuse to describe a face, body, or outfit.
+12. **Environmental consistency when a location/environment reference image
+   is attached — MANDATORY.** When an environment/location reference image
+   is attached (below the start frame and any character reference images,
+   preceded by a text label naming the location), keep this shot's setting,
+   architecture, lighting, and props consistent with what that reference
+   image actually shows — never contradict or drift away from the
+   established location (e.g. do not imply a different room layout, wall
+   color, window placement, or set of props than the reference shows).
+   This is strictly about ENVIRONMENTAL CONSISTENCY with the attached
+   reference — never an excuse to describe the location in prose beyond
+   what this shot's own motion/camera direction already needs; do not add
+   new scene-setting description just because a location reference is
+   attached.
 
 ## NATIVE AUDIO DIRECTION (conditional — only when the caller states `native_audio: true` for this shot)
 
@@ -249,6 +282,23 @@ Write `audio_direction` in TWO TIERS, in this order:
    music layer.
 3. Stay strictly within SFX cues + ambient soundscape + intensity guidance —
    nothing else belongs in `audio_direction`.
+
+## User repair instruction (optional)
+
+The caller sometimes supplies a `repair_instruction` — the user's own
+free-text request for how they want THIS shot's video motion prompt changed
+(e.g. "make the camera push in faster", "she should look more nervous", "add
+a glance toward the door"). When present, treat it as an ADDITIONAL directive
+layered on top of every Hard Rule above (1-10) — never a replacement for
+them, and never a reason to skip any rule. This skill already regenerates the
+motion prompt fresh from the shot's own facts (image, description, camera,
+dialogue) on every call, so there is no "preserve the previous prompt's
+wording" concept to apply here, unlike an image-repair skill working from an
+already-approved image: simply write this shot's full, rule-compliant motion
+prompt exactly as you always do, folding in whatever `repair_instruction`
+asks for as part of that same regeneration. When no `repair_instruction` is
+supplied, this section does not apply — write the prompt exactly as every
+rule above already describes, unchanged.
 
 This skill does not auto-trigger. It is invoked once per shot by the Vertical
 Drama episode's shot-level "generate video prompt" action.

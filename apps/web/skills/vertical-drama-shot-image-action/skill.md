@@ -366,6 +366,17 @@ action):
   At `soften_level: 1`, use this same list but drop "skin tone" as a named locked
   attribute (keep the rest). At `soften_level: 2`, replace this whole instruction
   with the soft recognizability phrasing described in "Soften levels" above instead.
+  **The "Image N" number MUST come from THIS entry's own `index` field for THIS
+  call — never a number you associate with that character from a different shot,
+  from a prior response, or from this skill.md's own worked examples** (the
+  "ฝ้าย=Image 1 / ใบข้าว=Image 2" pairing used in the examples below is illustrative
+  of one specific two-character case only, not a fixed identity-to-number mapping —
+  confirmed production bug: a manifest with only ONE entry for ใบข้าว, `index: 1`,
+  still got written up as "Image 2," an image that was never attached, because the
+  number carried over from habit instead of being read from the actual manifest
+  given for that call). A manifest with exactly one entry means that character is
+  ALWAYS "Image 1," regardless of who they are or what index they carried in any
+  other shot — read `index` fresh from the manifest every single time.
 - **`target_audience_region`** — when present, mention its `descriptor` as the
   DEFAULT look for any person in the scene whose ethnicity/region is not already
   implied by the scene or by their own established appearance. Always phrase it as

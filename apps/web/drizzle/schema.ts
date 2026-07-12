@@ -20561,6 +20561,103 @@ export type VerticalDramaCharacterAssetRow =
 export type InsertVerticalDramaCharacterAssetRow =
   typeof verticalDramaCharacterAssets.$inferInsert;
 
+/**
+ * Series locations — location/environment roster for the "Location Visual
+ * Bible" feature (`planning/polished-toasting-gadget.md` Phase 2). Mirrors
+ * `verticalDramaCharacters`, deliberately simpler: no variant/twin/voice
+ * columns — a location doesn't need identity-lock-across-angles the way a
+ * character face does. `data` carries `{ description, aggregatedFacts?:
+ * string[] }` — the free-form description plus the aggregated
+ * dialogue/action/props facts (from the shots grouped under this location)
+ * that `vertical-drama-location-visual-bible` grounds its
+ * `establishing_plate_prompt` in.
+ */
+export const verticalDramaLocations = pgTable(
+  "vertical_drama_locations",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    /** Stable app-level location key (mirrors `distinct_locations[].location_key` — see `verticalDramaStoryboardGeneration.ts`'s `distinctLocationSchema`). */
+    locationKey: varchar("locationKey", { length: 64 }).notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    data: jsonb("data"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("vds_location_lookup_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.locationKey
+    ),
+    uniqueIndex("vds_location_key_unique").on(t.seriesId, t.locationKey),
+  ]
+);
+
+export type VerticalDramaLocationRow =
+  typeof verticalDramaLocations.$inferSelect;
+export type InsertVerticalDramaLocationRow =
+  typeof verticalDramaLocations.$inferInsert;
+
+/** Location asset links to canonical media_assets — mirrors `verticalDramaCharacterAssets` (spec §7.1-style asset ledger, applied to locations). */
+export const verticalDramaLocationAssets = pgTable(
+  "vertical_drama_location_assets",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    locationId: bigint("locationId", { mode: "number" }).references(
+      () => verticalDramaLocations.id,
+      { onDelete: "cascade" }
+    ),
+    /** Canonical asset registry reference — never a provider URL. */
+    mediaAssetId: bigint("mediaAssetId", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" }
+    ),
+    /** "location_reference" */
+    assetType: varchar("assetType", { length: 40 }).notNull(),
+    /** "establishing_plate" */
+    role: varchar("role", { length: 40 }),
+    approved: boolean("approved").default(false).notNull(),
+    qcStatus: varchar("qcStatus", { length: 20 }).default("pending").notNull(),
+    checksumSha256: varchar("checksumSha256", { length: 64 }),
+    /** { state, source, ... } */
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("vds_location_asset_series_idx").on(t.tenantId, t.seriesId),
+    index("vds_location_asset_location_idx").on(t.seriesId, t.locationId),
+    index("vds_location_asset_media_idx").on(t.mediaAssetId),
+  ]
+);
+
+export type VerticalDramaLocationAssetRow =
+  typeof verticalDramaLocationAssets.$inferSelect;
+export type InsertVerticalDramaLocationAssetRow =
+  typeof verticalDramaLocationAssets.$inferInsert;
+
 /** Episodes — per-episode plan, manifests, and status (spec §7.3). */
 export const verticalDramaEpisodes = pgTable(
   "vertical_drama_episodes",

@@ -10,6 +10,8 @@ export * from "./memory";
 export * from "./subShots";
 export * from "./assets";
 export * from "./characterAssets";
+export * from "./locationAssets";
+export * from "./storyboardLocations";
 export * from "./contactSheets";
 export * from "./providerRouting";
 export * from "./assembly";

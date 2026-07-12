@@ -24,6 +24,14 @@ import {
   verticalDramaGenrePresets,
   verticalDramaCharacters,
   verticalDramaCharacterAssets,
+  /**
+   * Location Visual Bible whole-series seeding (mirrors
+   * `verticalDramaCharacters` above) — used only by `seedLocationsFromDraft`
+   * below to bulk-insert the wizard's freeform `bible.locationsDraft` text
+   * into the durable `vertical_drama_locations` roster at series-creation
+   * time.
+   */
+  verticalDramaLocations,
   verticalDramaRunArtifacts,
   verticalDramaShotReferences,
   verticalDramaEpisodeRuns,
@@ -1793,6 +1801,119 @@ export async function seedCharactersFromDraft(
   await db.insert(verticalDramaCharacters).values(rows);
 }
 
+/* -------------------------------------------------------------------------- */
+/* Location Visual Bible whole-series seeding                                 */
+/*                                                                            */
+/* Location-side companion to `parseCharactersDraft`/`seedCharactersFromDraft`*/
+/* above — same wizard-textarea-seeding shape, minus the `role` field (a      */
+/* location has no role concept) and minus the preset-profile merge (no      */
+/* location-side equivalent of a preset's structured speech/personality      */
+/* profile exists).                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Best-effort parse of the wizard's freeform "locations" textarea (one line
+ * per location) back into `{ name, description }[]` — same `Name — Description`
+ * em-dash convention as `parseCharactersDraft`, minus the `role:` segment (a
+ * location has no role field). Any line that doesn't match the shape becomes
+ * `{ name: line, description: "" }`, same tolerant, never-throws fallback as
+ * `parseCharactersDraft`.
+ */
+function parseLocationsDraft(draft: string): Array<{ name: string; description: string }> {
+  return draft
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^(.+?)\s+—\s+(.*)$/);
+      if (match) {
+        return { name: match[1].trim(), description: match[2].trim() };
+      }
+      return { name: line, description: "" };
+    });
+}
+
+/**
+ * Slugify a location name into a `locationKey` candidate — byte-identical
+ * convention to `slugifyCharacterName` above (and
+ * `verticalDramaLocationReconciliation.ts`'s own `slugifyForLocationKey`,
+ * which this mirrors): lowercase, non-alphanumeric collapsed to `-`, trimmed.
+ * Falls back to `"location"` for a name that's entirely non-alphanumeric
+ * (e.g. Thai-only text, which this app's location names usually are) so a
+ * seeded row never gets an empty `locationKey`.
+ */
+function slugifyLocationName(name: string): string {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "location";
+}
+
+/** Matches `verticalDramaLocations.locationKey`'s `varchar(64)` column limit. */
+const VD_LOCATION_KEY_MAX_LENGTH = 64;
+/**
+ * Base slug is truncated to this length before a dedup suffix (`-2`, `-3`,
+ * ...) is appended, so even a long name plus a suffix can never overflow the
+ * `varchar(64)` column.
+ */
+const VD_LOCATION_KEY_BASE_TRUNCATE_LENGTH = 60;
+
+/**
+ * Seed the durable `vertical_drama_locations` roster from the wizard's
+ * freeform `bible.locationsDraft` text (already parsed by
+ * `parseLocationsDraft`) — location-side companion to `seedCharactersFromDraft`
+ * above, mirroring its exact contract: best-effort only (the series shell
+ * must never fail to be created because of a location-seeding problem, so
+ * callers must wrap this in a try/catch — see `create` below); this function
+ * itself does not swallow errors so callers can log them. Silently no-ops
+ * (never inserts, never throws) when `locationsDraft` is empty or parses to
+ * nothing usable — same contract as `seedCharactersFromDraft`.
+ *
+ * `locationKey` is derived from the location name and de-duplicated within
+ * this batch (`-2`, `-3`, ...) to satisfy the `(seriesId, locationKey)`
+ * unique constraint (`vds_location_key_unique`) — same dedup-suffix loop as
+ * `seedCharactersFromDraft`'s own `characterKey` derivation, plus a
+ * length-safety truncation of the base slug first (see
+ * `VD_LOCATION_KEY_BASE_TRUNCATE_LENGTH`'s doc comment) that
+ * `seedCharactersFromDraft` doesn't need (its `characterKey` column has no
+ * comparable length pressure in practice). Blank/whitespace-only names are
+ * skipped before dedup/insert.
+ */
+export async function seedLocationsFromDraft(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  locationsDraft: string,
+): Promise<void> {
+  const parsed = parseLocationsDraft(locationsDraft).filter((l) => l.name.trim().length > 0);
+  if (parsed.length === 0) return;
+
+  const usedKeys = new Set<string>();
+  const rows = parsed.map((location) => {
+    const base = slugifyLocationName(location.name).slice(0, VD_LOCATION_KEY_BASE_TRUNCATE_LENGTH);
+    let key = base;
+    let suffix = 2;
+    while (usedKeys.has(key)) {
+      key = `${base}-${suffix}`;
+      suffix += 1;
+    }
+    usedKeys.add(key);
+
+    return {
+      tenantId,
+      userId,
+      seriesId,
+      locationKey: key.slice(0, VD_LOCATION_KEY_MAX_LENGTH),
+      name: location.name,
+      data: location.description ? { description: location.description } : null,
+    } as typeof verticalDramaLocations.$inferInsert;
+  });
+
+  await db.insert(verticalDramaLocations).values(rows);
+}
+
 /**
  * Stamps a preset's structured visual identity into series bible fields
  * (spec §8.2.2.A flow-through rule, section-15 change C) — additive only:
@@ -2253,6 +2374,23 @@ export const verticalDramaSeriesRouter = router({
         debugError(
           "verticalDramaSeries.create",
           `Failed to seed characters for series ${row.id} from charactersDraft`,
+          error,
+        );
+      }
+    }
+
+    // Best-effort: seed the durable location roster (`vertical_drama_locations`,
+    // read by the Location Visual Bible tab) from the wizard's freeform
+    // `bible.locationsDraft` text — location-side companion to the
+    // `charactersDraft` seeding above. Never allowed to fail series creation.
+    const locationsDraft = input.bible?.locationsDraft;
+    if (typeof locationsDraft === "string" && locationsDraft.trim().length > 0) {
+      try {
+        await seedLocationsFromDraft(tenantId, userId, Number(row.id), locationsDraft);
+      } catch (error) {
+        debugError(
+          "verticalDramaSeries.create",
+          `Failed to seed locations for series ${row.id} from locationsDraft`,
           error,
         );
       }

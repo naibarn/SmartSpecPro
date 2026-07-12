@@ -113,6 +113,21 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+// Location visual bible, Phase D (planning/polished-toasting-gadget.md) —
+// `getEpisodeDetail`'s new `episodeLocations` field resolves through
+// `verticalDramaLocationStockService.listRows`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+// Defaults to an empty roster — every pre-existing test in this file never
+// asserts on `episodeLocations`, so this is purely additive.
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: vi.fn(),
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: vi.fn(),
 }));

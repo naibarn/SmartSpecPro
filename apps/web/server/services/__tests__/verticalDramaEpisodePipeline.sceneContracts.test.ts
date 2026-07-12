@@ -303,6 +303,10 @@ describe("generateRealScript / generateRealStoryboard — sceneContractsEnabled 
     const bible = { breakdownVersions: [] };
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // (the series' location roster, `existingLocations`).
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode, false, undefined, true);
@@ -315,6 +319,10 @@ describe("generateRealScript / generateRealStoryboard — sceneContractsEnabled 
     const bible = { breakdownVersions: [] };
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // (the series' location roster, `existingLocations`).
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -357,6 +365,11 @@ describe("repairStage — storyboard_shotgrid threads args.sceneContractsEnabled
       .mockReturnValueOnce(selectChain([episode]))
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // (the series' location roster), called from inside `repairStage`'s
+      // own real-repair wiring for this stage.
+      .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([]));
 
     const episodeUpdateChain = updateChain();
@@ -386,6 +399,11 @@ describe("repairStage — storyboard_shotgrid threads args.sceneContractsEnabled
     mockDb.select
       .mockReturnValueOnce(selectChain([episode]))
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // (the series' location roster), called from inside `repairStage`'s
+      // own real-repair wiring for this stage.
       .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([]));
 

@@ -521,7 +521,7 @@ export const seriesStatusCopy: Record<
 export const wizardSteps: Array<{ id: string; th: string; en: string }> = [
   { id: "basic", th: "ตั้งค่าพื้นฐาน", en: "Basic setup" },
   { id: "story", th: "โครงเรื่อง", en: "Story setup" },
-  { id: "characters", th: "ตัวละคร", en: "Characters" },
+  { id: "characters", th: "ตัวละคร & ฉาก", en: "Characters & Locations" },
   { id: "bible", th: "วิชวลไบเบิล", en: "Visual bible" },
   { id: "product", th: "สินค้าผูกเรื่อง (ไม่บังคับ)", en: "Product tie-in (optional)" },
   { id: "review", th: "ตรวจสอบและสร้าง", en: "Review" },

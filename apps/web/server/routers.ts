@@ -36,6 +36,7 @@ import { chatRouter } from "./routers/chat";
 import { verticalDramaSeriesRouter } from "./routers/verticalDramaSeries";
 import { verticalDramaEpisodesRouter } from "./routers/verticalDramaEpisodes";
 import { verticalDramaCharactersRouter } from "./routers/verticalDramaCharacters";
+import { verticalDramaLocationsRouter } from "./routers/verticalDramaLocations";
 import { verticalDramaStartFramesRouter } from "./routers/verticalDramaStartFrames";
 import { verticalDramaDialogueAudioRouter } from "./routers/verticalDramaDialogueAudio";
 import { verticalDramaProviderRouter } from "./routers/verticalDramaProvider";
@@ -1919,6 +1920,7 @@ type AppRouterShape = {
   verticalDramaSeries: typeof verticalDramaSeriesRouter;
   verticalDramaEpisodes: typeof verticalDramaEpisodesRouter;
   verticalDramaCharacters: typeof verticalDramaCharactersRouter;
+  verticalDramaLocations: typeof verticalDramaLocationsRouter;
   verticalDramaStartFrames: typeof verticalDramaStartFramesRouter;
   verticalDramaDialogueAudio: typeof verticalDramaDialogueAudioRouter;
   verticalDramaProvider: typeof verticalDramaProviderRouter;
@@ -2219,6 +2221,10 @@ const appRouterInternal = router<AppRouterShape>({
   verticalDramaSeries: verticalDramaSeriesRouter,
   verticalDramaEpisodes: verticalDramaEpisodesRouter,
   verticalDramaCharacters: verticalDramaCharactersRouter,
+  // Location Visual Bible (`planning/polished-toasting-gadget.md` Phase 2) —
+  // durable per-series location roster + reference-asset stock, mirrors
+  // `verticalDramaCharacters` in shape (see routers/verticalDramaLocations.ts).
+  verticalDramaLocations: verticalDramaLocationsRouter,
   verticalDramaStartFrames: verticalDramaStartFramesRouter,
   verticalDramaDialogueAudio: verticalDramaDialogueAudioRouter,
   verticalDramaProvider: verticalDramaProviderRouter,

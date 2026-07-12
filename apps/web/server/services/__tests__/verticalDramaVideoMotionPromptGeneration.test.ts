@@ -79,9 +79,11 @@ import {
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
+  generateVerticalDramaShotVideoPrompt,
   generateVerticalDramaShotVideoPromptSpeakerSwitch,
   RateLimitExceededError,
   type VideoMotionPromptPackProjection,
+  type GenerateVerticalDramaShotVideoPromptParams,
   type GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams,
 } from "../verticalDramaVideoMotionPromptGeneration";
 import { executeWithFallback } from "../llmRouter";
@@ -773,6 +775,368 @@ describe("syncStartFramesOntoMotionPromptClips (video MCP submission fix)", () =
   });
 });
 
+describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, multi-character reference images fix)", () => {
+  function baseShotVideoPromptParams(
+    overrides: Partial<GenerateVerticalDramaShotVideoPromptParams> = {},
+  ): GenerateVerticalDramaShotVideoPromptParams {
+    return {
+      userId: 1,
+      tenantId: "tenant-1",
+      seriesId: 42,
+      episodeId: 7,
+      shotNumber: 3,
+      imageUrl: "https://example.com/shot3.png",
+      shotContext: {
+        description: "A character stands in a kitchen",
+        camera: "medium shot",
+        dialogueLines: [{ characterKey: "alice", lineTh: "Hello there" }],
+      },
+      selectedVideoModelId: "kling-2.0",
+      selectedVideoModel: {
+        id: "kling-2.0",
+        type: "video",
+        aspectRatios: ["9:16"],
+        configJson: {},
+        provider: "test-provider",
+        aliases: [],
+      } as any,
+      locale: "en",
+      ...overrides,
+    };
+  }
+
+  function shotVideoPromptOutput(overrides: Record<string, unknown> = {}) {
+    return {
+      prompt: "The character looks up, startled, camera pushes in slowly.",
+      negative_motion_prompt: "warping, identity drift",
+      dialogue: [{ characterKey: "alice", lineTh: "Hello there" }],
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockIsAllowed.mockReturnValue(true);
+    mockCalculateCredits.mockReturnValue(6);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockResolveSkillDirCandidates.mockReturnValue([
+      "/fake/skills/vertical-drama-shot-video-prompt",
+    ]);
+    mockResolveSkillManifestPath.mockReturnValue(
+      "/fake/skills/vertical-drama-shot-video-prompt/skill.md",
+    );
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({
+      metadata: {} as any,
+      content: "System prompt body",
+    });
+    // Force the vision-capable branch of `resolveShotVideoPromptModel`
+    // directly, same convention as the speaker-switch describe block below.
+    mockLoadEnabledLlmModelRows.mockResolvedValue([{ modelId: "vision-model" } as any]);
+    mockSelectBestLlmModel.mockReturnValue("vision-model");
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      nativeAudioDialogue: false,
+      supportsNativeAudio: false,
+    } as any);
+  });
+
+  it("byte-identical-when-omitted: vision content array matches today's single-image shape, and the prompt text carries no character-reference fact line, when characterReferenceImages is absent", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (m: any) => m.role === "user",
+    );
+    expect(userMessage.content).toEqual([
+      { type: "text", text: expect.any(String) },
+      {
+        type: "image_url",
+        image_url: { url: "https://example.com/shot3.png", detail: "high" },
+      },
+    ]);
+    expect(userMessage.content[0].text).not.toContain("Character reference images attached");
+  });
+
+  it("labeled-images-attached-in-order: attaches each character reference portrait labeled with its name, after the base start-frame image, in the given order", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        characterReferenceImages: [
+          { characterKey: "character-1", name: "ฝ้าย", url: "https://example.com/portrait-1.png" },
+          { characterKey: "character-2", url: "https://example.com/portrait-2.png" },
+        ],
+      }),
+    );
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (m: any) => m.role === "user",
+    );
+    expect(userMessage.content).toEqual([
+      { type: "text", text: expect.any(String) },
+      {
+        type: "image_url",
+        image_url: { url: "https://example.com/shot3.png", detail: "high" },
+      },
+      { type: "text", text: "Reference image for character: ฝ้าย (character-1)" },
+      {
+        type: "image_url",
+        image_url: { url: "https://example.com/portrait-1.png", detail: "high" },
+      },
+      { type: "text", text: "Reference image for character: character-2 (character-2)" },
+      {
+        type: "image_url",
+        image_url: { url: "https://example.com/portrait-2.png", detail: "high" },
+      },
+    ]);
+    expect(userMessage.content[0].text).toContain(
+      "Character reference images attached below the start frame, each preceded by a text label naming the character: ฝ้าย, character-2.",
+    );
+  });
+
+  it("non-vision-model-ignores-images: plain-text content (no image array at all) even when characterReferenceImages is supplied", async () => {
+    mockSelectBestLlmModel.mockReturnValue(undefined as any);
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        characterReferenceImages: [
+          { characterKey: "character-1", name: "ฝ้าย", url: "https://example.com/portrait-1.png" },
+        ],
+      }),
+    );
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (m: any) => m.role === "user",
+    );
+    expect(typeof userMessage.content).toBe("string");
+  });
+
+  it("compliance-retry-carries-same-images: the hand-rolled compliance-correction retry (native-audio verbatim-embedding fix) attaches the same images as the first attempt", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      nativeAudioDialogue: true,
+      supportsNativeAudio: false,
+    } as any);
+    mockExecute
+      .mockResolvedValueOnce(
+        successResponse(
+          shotVideoPromptOutput({
+            prompt: "Alice speaks softly, mouth moving in sync with her words.",
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        successResponse(shotVideoPromptOutput({ prompt: 'Alice says "Hello there" warmly.' })),
+      );
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        characterReferenceImages: [
+          { characterKey: "character-1", name: "ฝ้าย", url: "https://example.com/portrait-1.png" },
+        ],
+      }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    const imagesInCall = (callIndex: number) =>
+      mockExecute.mock.calls[callIndex][0].messages
+        .find((m: any) => m.role === "user")
+        .content.filter((p: any) => p.type === "image_url");
+    const firstImages = imagesInCall(0);
+    const secondImages = imagesInCall(1);
+    expect(firstImages).toHaveLength(2); // base start frame + 1 character reference
+    expect(secondImages).toEqual(firstImages);
+  });
+
+  it("fact-line-only-when-non-empty: omits the character-reference-images fact line from the prompt text when the array is explicitly empty", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({ characterReferenceImages: [] }),
+    );
+
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (m: any) => m.role === "user",
+    );
+    expect(userMessage.content[0].text).not.toContain("Character reference images attached");
+  });
+
+  it("threads characterReferenceImageCount onto deductCredits metadata, and 0 when omitted", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        characterReferenceImages: [
+          { characterKey: "character-1", name: "ฝ้าย", url: "https://example.com/portrait-1.png" },
+          { characterKey: "character-2", url: "https://example.com/portrait-2.png" },
+        ],
+      }),
+    );
+    expect(mockDeductCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ characterReferenceImageCount: 2 }),
+      }),
+    );
+
+    mockDeductCredits.mockClear();
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+    await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+    expect(mockDeductCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ characterReferenceImageCount: 0 }),
+      }),
+    );
+  });
+
+  // Location visual bible, Phase E (`planning/polished-toasting-gadget.md`) —
+  // widened vision-call plumbing + new `locationReferenceImage` param, mirrors
+  // the `characterReferenceImages` coverage above exactly. Every OTHER test
+  // in this describe block already omits `locationReferenceImage`, so they
+  // collectively serve as the regression guard the plan calls for; this
+  // block makes that guarantee explicit.
+  describe("locationReferenceImage (location visual bible, Phase E, polished-toasting-gadget.md)", () => {
+    it("byte-identical-when-omitted: vision content array matches today's single-image shape, and the prompt text carries no location-reference fact line, when locationReferenceImage is absent", async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+      await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toEqual([
+        { type: "text", text: expect.any(String) },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/shot3.png", detail: "high" },
+        },
+      ]);
+      expect(userMessage.content[0].text).not.toContain(
+        "Environment/location reference image attached",
+      );
+    });
+
+    it("location-image-attached-in-order: attaches the location reference image labeled with its name, AFTER the start frame and any character reference images", async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          characterReferenceImages: [
+            { characterKey: "character-1", name: "ฝ้าย", url: "https://example.com/portrait-1.png" },
+          ],
+          locationReferenceImage: {
+            url: "https://example.com/store-plate.png",
+            name: "ร้านสะดวกซื้อ",
+          },
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toEqual([
+        { type: "text", text: expect.any(String) },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/shot3.png", detail: "high" },
+        },
+        { type: "text", text: "Reference image for character: ฝ้าย (character-1)" },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/portrait-1.png", detail: "high" },
+        },
+        { type: "text", text: "Environment/location reference image: ร้านสะดวกซื้อ" },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/store-plate.png", detail: "high" },
+        },
+      ]);
+      expect(userMessage.content[0].text).toContain(
+        "Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ร้านสะดวกซื้อ.",
+      );
+    });
+
+    it("fact-line-only-when-present: omits the location-reference fact line/image when locationReferenceImage is not supplied, even with characterReferenceImages present", async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          characterReferenceImages: [
+            { characterKey: "character-1", url: "https://example.com/portrait-1.png" },
+          ],
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content[0].text).not.toContain(
+        "Environment/location reference image attached",
+      );
+      expect(
+        userMessage.content.filter((p: any) => p.type === "image_url"),
+      ).toHaveLength(2); // start frame + 1 character portrait, no location image
+    });
+
+    it('defaults the vision-image label to "location" when locationReferenceImage has no name', async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          locationReferenceImage: { url: "https://example.com/plate.png" },
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toContainEqual({
+        type: "text",
+        text: "Environment/location reference image: location",
+      });
+      expect(userMessage.content[0].text).toContain(
+        "preceded by a text label naming the location: location.",
+      );
+    });
+
+    it("compliance-retry-carries-same-images: the hand-rolled compliance-correction retry (native-audio verbatim-embedding fix) attaches the same location image as the first attempt", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        nativeAudioDialogue: true,
+        supportsNativeAudio: false,
+      } as any);
+      mockExecute
+        .mockResolvedValueOnce(
+          successResponse(
+            shotVideoPromptOutput({
+              prompt: "Alice speaks softly, mouth moving in sync with her words.",
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(
+          successResponse(shotVideoPromptOutput({ prompt: 'Alice says "Hello there" warmly.' })),
+        );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          locationReferenceImage: { url: "https://example.com/plate.png", name: "Kitchen" },
+        }),
+      );
+
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      const imagesInCall = (callIndex: number) =>
+        mockExecute.mock.calls[callIndex][0].messages
+          .find((m: any) => m.role === "user")
+          .content.filter((p: any) => p.type === "image_url");
+      const firstImages = imagesInCall(0);
+      const secondImages = imagesInCall(1);
+      expect(firstImages).toHaveLength(2); // base start frame + 1 location reference
+      expect(secondImages).toEqual(firstImages);
+    });
+  });
+});
+
 describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch consolidated prompt, 2026-07-11 redesign)", () => {
   function baseSpeakerSwitchParams(
     overrides: Partial<GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams> = {},
@@ -951,5 +1315,131 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
 
     expect(result.prompt).toContain("SFX cues: A kettle whistles in the background.");
     expect(result.audioDirection).toBe("A kettle whistles in the background.");
+  });
+
+  // Multi-character disambiguation fix (`polished-toasting-gadget.md`) —
+  // widened vision-call plumbing (§1) + new `characterReferenceImages` param
+  // (§2). Every OTHER test in this describe block already omits
+  // `characterReferenceImages`, so they collectively serve as the regression
+  // guard the plan calls for; this test makes that guarantee explicit.
+  describe("characterReferenceImages (multi-character disambiguation fix, polished-toasting-gadget.md)", () => {
+    it("byte-identical-when-omitted: vision content array matches today's single-image shape", async () => {
+      mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+      await generateVerticalDramaShotVideoPromptSpeakerSwitch(baseSpeakerSwitchParams());
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toEqual([
+        { type: "text", text: expect.any(String) },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/shot3.png", detail: "high" },
+        },
+      ]);
+      expect(userMessage.content[0].text).not.toContain("Character reference images attached");
+    });
+
+    it("images-per-distinct-speaker: attaches one labeled reference image per distinct speaker, after the base start-frame image, and states the fact line", async () => {
+      mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+      await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+        baseSpeakerSwitchParams({
+          characterReferenceImages: [
+            { characterKey: "alice", name: "Alice", url: "https://example.com/alice-portrait.png" },
+            { characterKey: "bob", name: "Bob", url: "https://example.com/bob-portrait.png" },
+          ],
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toEqual([
+        { type: "text", text: expect.any(String) },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/shot3.png", detail: "high" },
+        },
+        { type: "text", text: "Reference image for character: Alice (alice)" },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/alice-portrait.png", detail: "high" },
+        },
+        { type: "text", text: "Reference image for character: Bob (bob)" },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/bob-portrait.png", detail: "high" },
+        },
+      ]);
+      expect(userMessage.content[0].text).toContain(
+        "Character reference images attached below the start frame, each preceded by a text label naming the character: Alice, Bob.",
+      );
+    });
+  });
+
+  // Location visual bible, Phase E (`planning/polished-toasting-gadget.md`) —
+  // mirrors the `characterReferenceImages` describe block immediately above.
+  describe("locationReferenceImage (location visual bible, Phase E, polished-toasting-gadget.md)", () => {
+    it("byte-identical-when-omitted: vision content array matches today's single-image shape", async () => {
+      mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+      await generateVerticalDramaShotVideoPromptSpeakerSwitch(baseSpeakerSwitchParams());
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toEqual([
+        { type: "text", text: expect.any(String) },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/shot3.png", detail: "high" },
+        },
+      ]);
+      expect(userMessage.content[0].text).not.toContain(
+        "Environment/location reference image attached",
+      );
+    });
+
+    it("location-image-attached-after-characters: attaches the labeled location reference image after the base start-frame image AND every character reference image, and states the fact line", async () => {
+      mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+      await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+        baseSpeakerSwitchParams({
+          characterReferenceImages: [
+            { characterKey: "alice", name: "Alice", url: "https://example.com/alice-portrait.png" },
+          ],
+          locationReferenceImage: {
+            url: "https://example.com/kitchen-plate.png",
+            name: "Kitchen",
+          },
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content).toEqual([
+        { type: "text", text: expect.any(String) },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/shot3.png", detail: "high" },
+        },
+        { type: "text", text: "Reference image for character: Alice (alice)" },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/alice-portrait.png", detail: "high" },
+        },
+        { type: "text", text: "Environment/location reference image: Kitchen" },
+        {
+          type: "image_url",
+          image_url: { url: "https://example.com/kitchen-plate.png", detail: "high" },
+        },
+      ]);
+      expect(userMessage.content[0].text).toContain(
+        "Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: Kitchen.",
+      );
+    });
   });
 });

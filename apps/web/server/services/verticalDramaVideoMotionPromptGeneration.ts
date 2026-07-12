@@ -63,6 +63,12 @@ import {
   VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
   VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES,
+  // Speaker-aware sub-shots task, multi-character disambiguation fix
+  // (`polished-toasting-gadget.md`) — shared anchor-first/first-appearance
+  // dedup helper, see `deriveDistinctSpeakerCharacterKeysFromWindows`'s own
+  // doc comment in `subShots.ts` for why this is extracted rather than
+  // inlined here.
+  deriveDistinctSpeakerCharacterKeysFromWindows,
 } from "@shared/verticalDramaSeries";
 import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 import { VD_PRODUCT_LOCK_VIDEO_INSTRUCTION } from "./verticalDramaProductTieIn";
@@ -984,21 +990,48 @@ type VisionAwareContent =
       | { type: "image_url"; image_url: { url: string; detail: "high" } }
     >;
 
-/** Build the vision-aware message content: text+image array when vision is available, plain text otherwise. */
+/**
+ * One image to attach to a vision-aware LLM call, with an optional
+ * preceding text label (see `buildVisionAwareContent`) — used to name
+ * character-reference portraits so the model can visually anchor a face to
+ * a name (multi-character disambiguation fix,
+ * `polished-toasting-gadget.md`).
+ */
+interface VisionAwareImageInput {
+  url: string;
+  label?: string;
+}
+
+/**
+ * Build the vision-aware message content: text + one-or-more images when
+ * vision is available, plain text otherwise. Each image may carry an
+ * optional `label`, rendered as its own preceding `{type:"text"}` part
+ * (omitted when absent) — used to name character-reference portraits so the
+ * model can visually anchor a face to a name. Called with a single `{url}`
+ * entry (no label) — every caller before this multi-image widening, and
+ * every caller today that omits `characterReferenceImages` — output is
+ * byte-identical to the original single-image shape.
+ */
 function buildVisionAwareContent(
   text: string,
   hasVision: boolean,
-  imageUrl: string,
+  images: VisionAwareImageInput[],
 ): VisionAwareContent {
-  return hasVision
-    ? [
-        { type: "text" as const, text },
-        {
-          type: "image_url" as const,
-          image_url: { url: imageUrl, detail: "high" as const },
-        },
-      ]
-    : text;
+  if (!hasVision) return text;
+  const parts: Array<
+    | { type: "text"; text: string }
+    | { type: "image_url"; image_url: { url: string; detail: "high" } }
+  > = [{ type: "text" as const, text }];
+  for (const image of images) {
+    if (image.label) {
+      parts.push({ type: "text" as const, text: image.label });
+    }
+    parts.push({
+      type: "image_url" as const,
+      image_url: { url: image.url, detail: "high" as const },
+    });
+  }
+  return parts;
 }
 
 type VisionAwareCallResponse = Awaited<ReturnType<typeof executeWithFallback>> extends infer R
@@ -1061,7 +1094,7 @@ async function executeVisionAwareJsonCallWithRetry<T>(args: {
   systemPrompt: string;
   userPromptText: string;
   hasVision: boolean;
-  imageUrl: string;
+  images: VisionAwareImageInput[];
   userId: number;
   schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
   firstAttemptMaxTokens: number;
@@ -1071,7 +1104,7 @@ async function executeVisionAwareJsonCallWithRetry<T>(args: {
     return await runVisionAwareJsonAttempt<T>({
       model: args.model,
       systemPrompt: args.systemPrompt,
-      content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.imageUrl),
+      content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.images),
       userId: args.userId,
       maxTokens: args.firstAttemptMaxTokens,
       schema: args.schema,
@@ -1082,12 +1115,60 @@ async function executeVisionAwareJsonCallWithRetry<T>(args: {
     return runVisionAwareJsonAttempt<T>({
       model: args.model,
       systemPrompt: args.systemPrompt,
-      content: buildVisionAwareContent(retryText, args.hasVision, args.imageUrl),
+      content: buildVisionAwareContent(retryText, args.hasVision, args.images),
       userId: args.userId,
       maxTokens: args.retryMaxTokens,
       schema: args.schema,
     });
   }
+}
+
+/**
+ * Character reference image input for shot-video-prompt generation
+ * (multi-character disambiguation fix, `polished-toasting-gadget.md`) — see
+ * `GenerateVerticalDramaShotVideoPromptParams.characterReferenceImages`'s
+ * doc comment for the full contract.
+ */
+export interface ShotVideoPromptCharacterReferenceImage {
+  characterKey: string;
+  name?: string;
+  url: string;
+}
+
+/**
+ * Build the vision-call images array for a shot-video-prompt generation
+ * call: the shot's own start frame FIRST (unlabeled, preserving today's
+ * single-image shape when `characterReferenceImages`/`locationReferenceImage`
+ * are empty/omitted), then each character reference portrait labeled with
+ * its name so the model can visually anchor "this face = this name" when 2+
+ * characters share the shot, then (Phase E of `planning/polished-toasting-
+ * gadget.md` — location visual bible) the shot's single environment/location
+ * reference image, if any, labeled with its name. Shared by both
+ * `generateVerticalDramaShotVideoPrompt` (including its hand-rolled
+ * compliance-correction retry) and
+ * `generateVerticalDramaShotVideoPromptSpeakerSwitch` so all 3 vision-call
+ * sites build this array identically.
+ */
+function buildShotVideoPromptVisionImages(
+  imageUrl: string,
+  characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[],
+  locationReferenceImage?: { url: string; name?: string },
+): VisionAwareImageInput[] {
+  return [
+    { url: imageUrl },
+    ...(characterReferenceImages ?? []).map(c => ({
+      url: c.url,
+      label: `Reference image for character: ${c.name ?? c.characterKey} (${c.characterKey})`,
+    })),
+    ...(locationReferenceImage
+      ? [
+          {
+            url: locationReferenceImage.url,
+            label: `Environment/location reference image: ${locationReferenceImage.name ?? "location"}`,
+          },
+        ]
+      : []),
+  ];
 }
 
 export interface GenerateVerticalDramaShotVideoPromptParams {
@@ -1151,6 +1232,47 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
   imageUrl: string;
   /** The prompt that generated `imageUrl` — always folded in as a textual proxy, see this module's vision doc comment. */
   imagePrompt?: string;
+  /**
+   * Multi-character reference images (multi-character disambiguation fix,
+   * `polished-toasting-gadget.md`) — each entry is one required/speaking
+   * character's own approved reference portrait, labeled with its name and
+   * `characterKey` and attached to the vision call ALONGSIDE `imageUrl`
+   * (never replacing it), so the model can visually anchor "this face in
+   * the image = this name" when 2+ characters share the shot — the same
+   * identity-lock principle already used for start-frame IMAGE generation,
+   * applied here to video-PROMPT generation for the first time. The CALLER
+   * (router) resolves which characters/portraits to include (see
+   * `resolveShotVideoPromptCharacterReferenceImages` in
+   * `verticalDramaEpisodes.ts`) — this function only attaches whatever it
+   * is given. Grouped with `imageUrl`/`imagePrompt` (image data), not
+   * inside `shotContext` (narrative text facts). Omitted/empty (every
+   * existing caller) preserves today's byte-identical vision-content array
+   * AND byte-identical prompt text (see `buildShotVideoPromptUserPrompt`'s
+   * conditional fact line) — the single most important regression bar for
+   * this change.
+   */
+  characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+  /**
+   * Location reference image (Phase E of `planning/polished-toasting-
+   * gadget.md` — location visual bible) — this shot's single environment/
+   * location reference image (a shot has at most ONE location, unlike
+   * `characterReferenceImages`, which can be several), labeled with its name
+   * and attached to the vision call ALONGSIDE `imageUrl`/
+   * `characterReferenceImages` (never replacing them), so the model keeps
+   * the shot's setting/architecture/lighting/props consistent with the
+   * established location — the same environment-lock principle already used
+   * for start-frame IMAGE generation, applied here to video-PROMPT
+   * generation. The CALLER (router) resolves which location/image to include
+   * (see `resolveShotVideoPromptLocationReferenceImage` in
+   * `verticalDramaEpisodes.ts`) — this function only attaches whatever it is
+   * given. Grouped with `imageUrl`/`imagePrompt`/`characterReferenceImages`
+   * (image data), not inside `shotContext` (narrative text facts).
+   * Omitted/absent (every existing caller) preserves today's byte-identical
+   * vision-content array AND byte-identical prompt text (see
+   * `buildShotVideoPromptUserPrompt`'s conditional fact line) — the single
+   * most important regression bar for this change.
+   */
+  locationReferenceImage?: { url: string; name?: string };
   shotContext: {
     description?: string;
     camera?: string;
@@ -1283,6 +1405,21 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * legitimately keeps the cliffhanger (whole-episode, single global block).
    */
   episodePlanContext?: string;
+  /**
+   * planning/`polished-toasting-gadget.md` Fix B ("ให้ AI ปรับ" AI-adjust fix
+   * for video prompts) — the user's free-text repair/adjustment instruction
+   * for this shot's video motion prompt, when the caller is regenerating in
+   * response to that button rather than the plain "สร้างพรอมต์วิดีโอ (AI)"
+   * button. An ADDITIONAL directive layered on top of every Hard Rule in
+   * `vertical-drama-shot-video-prompt/skill.md` — never a replacement for
+   * them (see that skill's "User repair instruction (optional)" section).
+   * This skill already regenerates fresh from the shot's own facts on every
+   * call, so (unlike Fix A's start-frame sibling) there is no "preserve the
+   * previous prompt" nuance to add. Optional/omitted (the "สร้างพรอมต์วิดีโอ
+   * (AI)" button never sends one) preserves today's byte-identical prompt —
+   * no new instruction text is rendered at all when absent.
+   */
+  repairInstruction?: string;
 }
 
 export interface GenerateVerticalDramaShotVideoPromptResult {
@@ -1355,6 +1492,24 @@ function buildShotVideoPromptUserPrompt(
     typeof params.totalShotCount === "number" &&
     params.shotNumber === params.totalShotCount;
 
+  // Multi-character reference images (multi-character disambiguation fix,
+  // `polished-toasting-gadget.md`) — a purely FACTUAL announcement line
+  // (never instructional/creative — that judgment lives entirely in
+  // skill.md's Rule 1/Rule 11, skill-first architecture) naming which
+  // character each attached reference image belongs to. Omitted entirely
+  // when `characterReferenceImages` is empty/absent (every existing
+  // caller), preserving today's byte-identical prompt.
+  const characterReferenceImageNames = (params.characterReferenceImages ?? []).map(
+    c => c.name ?? c.characterKey,
+  );
+  // Location reference image (Phase E of `planning/polished-toasting-
+  // gadget.md` — location visual bible) — same purely FACTUAL announcement
+  // convention as `characterReferenceImageNames` above (the actual
+  // environmental-consistency INSTRUCTION lives in skill.md, skill-first
+  // architecture). Omitted entirely when `locationReferenceImage` is absent
+  // (every existing caller), preserving today's byte-identical prompt.
+  const locationReferenceImageName = params.locationReferenceImage?.name ?? "location";
+
   return [
     `Shot number: ${params.shotNumber}`,
     typeof params.shotDurationSeconds === "number"
@@ -1397,6 +1552,18 @@ function buildShotVideoPromptUserPrompt(
       ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
       : null,
     shotContext.characterIdentityMap ?? null,
+    // Multi-character reference images (multi-character disambiguation fix,
+    // `polished-toasting-gadget.md`) — factual announcement only; see
+    // `characterReferenceImageNames`'s doc comment above.
+    characterReferenceImageNames.length > 0
+      ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
+      : null,
+    // Location reference image (Phase E of `planning/polished-toasting-
+    // gadget.md` — location visual bible) — factual announcement only; see
+    // `locationReferenceImageName`'s doc comment above.
+    params.locationReferenceImage
+      ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
     `Dialogue for this shot (source lines, already in ${dialogueLanguageName}):\n${dialogueBlock}`,
     dialogueLines.length === 0
       ? `NO-SOURCE-DIALOGUE (MANDATORY): no dialogue line was supplied for this shot. If the shot description/camera setup above clearly implies a character is speaking (e.g. mentions talking, calling out, answering, a line of dialogue, or a mouth-open speaking beat), WRITE one short, natural line yourself (1 sentence, fitting the scene's emotion) in ${dialogueLanguageName}, and return it in the "dialogue" array. Otherwise (the shot is genuinely silent/ambient — no character is depicted speaking), leave "dialogue" as an empty array and do NOT invent speech.`
@@ -1427,6 +1594,13 @@ function buildShotVideoPromptUserPrompt(
     // before this task.
     nativeAudioDirectionEnabled
       ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot: SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
+      : null,
+    // planning/`polished-toasting-gadget.md` Fix B — an ADDITIONAL directive
+    // layered on top of every Hard Rule above, per skill.md's "User repair
+    // instruction (optional)" section; omitted entirely (byte-identical
+    // prompt) when the caller doesn't supply one.
+    params.repairInstruction
+      ? `User repair instruction (MANDATORY — apply as an ADDITIONAL directive on top of the Hard Rules above, not a replacement for them): ${params.repairInstruction}`
       : null,
     `Locale: ${params.locale}`,
     VD_COMPACT_JSON_INSTRUCTION,
@@ -1518,7 +1692,11 @@ export async function generateVerticalDramaShotVideoPrompt(
     systemPrompt,
     userPromptText,
     hasVision,
-    imageUrl: params.imageUrl,
+    images: buildShotVideoPromptVisionImages(
+      params.imageUrl,
+      params.characterReferenceImages,
+      params.locationReferenceImage,
+    ),
     userId: params.userId,
     schema: shotVideoPromptOutputSchema,
     firstAttemptMaxTokens: 2000,
@@ -1545,7 +1723,15 @@ export async function generateVerticalDramaShotVideoPrompt(
       const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
         model,
         systemPrompt,
-        content: buildVisionAwareContent(complianceRetryText, hasVision, params.imageUrl),
+        content: buildVisionAwareContent(
+          complianceRetryText,
+          hasVision,
+          buildShotVideoPromptVisionImages(
+            params.imageUrl,
+            params.characterReferenceImages,
+            params.locationReferenceImage,
+          ),
+        ),
         userId: params.userId,
         maxTokens: 2000,
         schema: shotVideoPromptOutputSchema,
@@ -1590,6 +1776,10 @@ export async function generateVerticalDramaShotVideoPrompt(
       episodeId: params.episodeId,
       shotNumber: params.shotNumber,
       usedVision: hasVision,
+      // Multi-character reference images (multi-character disambiguation
+      // fix, `polished-toasting-gadget.md`) — low-cost audit-log aid, per
+      // this codebase's "always read audit logs first" convention.
+      characterReferenceImageCount: params.characterReferenceImages?.length ?? 0,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
     },
@@ -1668,6 +1858,30 @@ export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams
   extends GenerateVerticalDramaShotVideoPromptParams {
   /** Speaker-anchored timed windows already decided by `computeSpeakerSwitchSubShotPlan` — this function only writes ONE combined timed-narrative prompt describing them, it never re-decides the split. */
   subShotWindows: SpeakerSwitchSubShotWindow[];
+  /**
+   * planning/`polished-toasting-gadget.md` Fix B — already inherited from
+   * `GenerateVerticalDramaShotVideoPromptParams.repairInstruction` (see that
+   * field's own doc comment for the full contract); redeclared here only so
+   * it's documented at its actual point of use in this file,
+   * `buildSpeakerSwitchUserPrompt`.
+   */
+  repairInstruction?: string;
+  /**
+   * Multi-character reference images — already inherited from
+   * `GenerateVerticalDramaShotVideoPromptParams.characterReferenceImages`
+   * (see that field's own doc comment for the full contract); redeclared
+   * here only so it's documented at its actual point of use in this file,
+   * `buildSpeakerSwitchUserPrompt`.
+   */
+  characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+  /**
+   * Location reference image — already inherited from
+   * `GenerateVerticalDramaShotVideoPromptParams.locationReferenceImage`
+   * (see that field's own doc comment for the full contract); redeclared
+   * here only so it's documented at its actual point of use in this file,
+   * `buildSpeakerSwitchUserPrompt`.
+   */
+  locationReferenceImage?: { url: string; name?: string };
 }
 
 export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
@@ -1708,6 +1922,17 @@ function buildSpeakerSwitchUserPrompt(
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
   const dialogueLanguageName = VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[dialogueLanguage];
   const allDialogueLines = shotContext.dialogueLines ?? [];
+  // Multi-character reference images (multi-character disambiguation fix,
+  // `polished-toasting-gadget.md`) — see `buildShotVideoPromptUserPrompt`'s
+  // identical `characterReferenceImageNames` doc comment.
+  const characterReferenceImageNames = (params.characterReferenceImages ?? []).map(
+    c => c.name ?? c.characterKey,
+  );
+  // Location reference image (Phase E of `planning/polished-toasting-
+  // gadget.md` — location visual bible) — see
+  // `buildShotVideoPromptUserPrompt`'s identical `locationReferenceImageName`
+  // doc comment.
+  const locationReferenceImageName = params.locationReferenceImage?.name ?? "location";
 
   let cursorSeconds = 0;
   const segmentBlocks = subShotWindows
@@ -1750,6 +1975,18 @@ function buildSpeakerSwitchUserPrompt(
       ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
       : null,
     shotContext.characterIdentityMap ?? null,
+    // Multi-character reference images (multi-character disambiguation fix,
+    // `polished-toasting-gadget.md`) — factual announcement only; see
+    // `characterReferenceImageNames`'s doc comment above.
+    characterReferenceImageNames.length > 0
+      ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
+      : null,
+    // Location reference image (Phase E of `planning/polished-toasting-
+    // gadget.md` — location visual bible) — factual announcement only; see
+    // `locationReferenceImageName`'s doc comment above.
+    params.locationReferenceImage
+      ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
     `Timed segment facts (structured facts only, in chronological order — return exactly ONE combined "prompt" for the whole shot):\n${segmentBlocks}`,
     shotContext.productContext
       ? `PRODUCT TIE-IN (MANDATORY for this shot): the tied-in product is placed in this shot (${shotContext.productContext.placementStyle ?? "in_use_moment"}). Naturally reference the product GENERICALLY (e.g. "the product", a category descriptor — NEVER the brand/product name itself, which must never appear in "prompt"/"negative_motion_prompt"/dialogue text) or its benefit${shotContext.productContext.benefitTalkingPoint ? ` (e.g. "${shotContext.productContext.benefitTalkingPoint}")` : ""} in whichever segment's dialogue/acting beat fits it best — it must sound like a real character moment, never a hard-sell or advertisement line, and must fit the scene's emotion. Brand identity comes ONLY from the attached/locked reference image, never from prompt or dialogue text. ${VD_PRODUCT_LOCK_VIDEO_INSTRUCTION}`
@@ -1770,6 +2007,14 @@ function buildSpeakerSwitchUserPrompt(
       : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — describe mouth movement + acting direction only in "prompt" (in the PROMPT LANGUAGE, no literal transcript embedded), and return the resolved ${dialogueLanguageName} lines, in chronological order across all segments, in the "dialogue" array so the caller can route them to text-to-speech.`,
     nativeAudioDirectionEnabled
       ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot (ONCE for the whole shot, not per segment): SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
+      : null,
+    // planning/`polished-toasting-gadget.md` Fix B — an ADDITIONAL directive
+    // layered on top of every Hard Rule above, per skill.md's "Hard rules —
+    // MANDATORY" section; omitted entirely (byte-identical prompt) when the
+    // caller doesn't supply one. Mirrors `buildShotVideoPromptUserPrompt`'s
+    // identical line verbatim.
+    params.repairInstruction
+      ? `User repair instruction (MANDATORY — apply as an ADDITIONAL directive on top of the Hard Rules above, not a replacement for them): ${params.repairInstruction}`
       : null,
     `Locale: ${params.locale}`,
     VD_COMPACT_JSON_INSTRUCTION,
@@ -1830,7 +2075,11 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     systemPrompt,
     userPromptText,
     hasVision,
-    imageUrl: params.imageUrl,
+    images: buildShotVideoPromptVisionImages(
+      params.imageUrl,
+      params.characterReferenceImages,
+      params.locationReferenceImage,
+    ),
     userId: params.userId,
     schema: shotVideoPromptOutputSchema,
     firstAttemptMaxTokens: 3000,
@@ -1860,6 +2109,10 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       shotNumber: params.shotNumber,
       usedVision: hasVision,
       segmentCount: params.subShotWindows.length,
+      // Multi-character reference images (multi-character disambiguation
+      // fix, `polished-toasting-gadget.md`) — low-cost audit-log aid, per
+      // this codebase's "always read audit logs first" convention.
+      characterReferenceImageCount: params.characterReferenceImages?.length ?? 0,
       inputTokens: usage?.prompt_tokens ?? 0,
       outputTokens: usage?.completion_tokens ?? 0,
     },
@@ -1870,13 +2123,14 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     : undefined;
 
   // Anchor speaker (the FIRST window's characterKey) first, then each
-  // subsequent NEW speaker in first-appearance order across windows.
-  const distinctSpeakerCharacterKeys: string[] = [];
-  for (const w of params.subShotWindows) {
-    if (!distinctSpeakerCharacterKeys.includes(w.characterKey)) {
-      distinctSpeakerCharacterKeys.push(w.characterKey);
-    }
-  }
+  // subsequent NEW speaker in first-appearance order across windows —
+  // extracted to the shared `deriveDistinctSpeakerCharacterKeysFromWindows`
+  // (`@shared/verticalDramaSeries/subShots.ts`) so this result field and the
+  // router's PRE-call reference-image resolution
+  // (`resolveShotVideoPromptCharacterReferenceImages` in
+  // `verticalDramaEpisodes.ts`) can never silently drift apart.
+  const distinctSpeakerCharacterKeys =
+    deriveDistinctSpeakerCharacterKeysFromWindows(params.subShotWindows);
 
   // Flatten every window's dialogue lines in chronological order (windows are
   // already chronological per `computeSpeakerSwitchSubShotPlan`'s contract).
