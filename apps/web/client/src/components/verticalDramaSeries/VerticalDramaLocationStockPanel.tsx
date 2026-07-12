@@ -148,6 +148,24 @@ export function resolveLocationCardThumbnailUrl(
   return location.primaryReferenceUrl || candidateImageUrl || null;
 }
 
+/**
+ * Reorder a location's candidate-image gallery so the current primary (if
+ * any) always renders FIRST, keeping the rest of the list in whatever order
+ * the caller passed in (the backend already returns newest-updated-first —
+ * see `verticalDramaLocationStock.ts`'s `listLocationAssets`). The primary
+ * is not always the newest candidate (the whole point of an explicit pick is
+ * that it STAYS pinned even after newer candidates are generated), so this
+ * reorder is the only thing that guarantees it is also the most visually
+ * prominent one. Pure/exported so the ordering rule is independently
+ * testable without a full component render — same convention as this file's
+ * other extracted pure helpers.
+ */
+export function sortLocationCandidatesForGallery<T extends { isPrimary: boolean }>(assets: T[]): T[] {
+  const primary = assets.filter(a => a.isPrimary);
+  const rest = assets.filter(a => !a.isPrimary);
+  return [...primary, ...rest];
+}
+
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
@@ -176,6 +194,22 @@ interface VdLocationListItem {
   updatedAt: string;
 }
 
+/**
+ * One candidate `establishing_plate` image for a location, as returned by
+ * `trpc.verticalDramaLocations.listLocationAssets` — mirrors
+ * `verticalDramaLocations.ts`'s router-level DTO for that procedure
+ * (`assetLinkId`/`mediaAssetId` stringified, same convention as every other
+ * id on this panel's types).
+ */
+interface VdLocationAssetCandidate {
+  assetLinkId: string;
+  mediaAssetId: string;
+  url: string;
+  approved: boolean;
+  isPrimary: boolean;
+  updatedAt: string;
+}
+
 export interface VerticalDramaLocationStockPanelProps {
   seriesId: string;
   /** When true (archived series), all mutating controls are disabled. */
@@ -201,12 +235,28 @@ export function VerticalDramaLocationStockPanel({
   );
   const locations = (listQuery.data?.locations ?? []) as VdLocationListItem[];
 
-  const invalidate = () => void utils.verticalDramaLocations.list.invalidate({ seriesId });
   const onError = (err: { message?: string }) =>
     toast.error(resolveLocationMutationErrorMessage(err, lang));
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; alt?: string } | null>(null);
+
+  /**
+   * Invalidates the roster AND (when a location is selected) that location's
+   * candidate-image gallery — called after every mutation that can change
+   * which asset is approved/primary/deleted for a location, so
+   * `listLocationAssets`'s `isPrimary` flag never drifts out of sync with
+   * `list`'s own `primaryReferenceUrl`/`primaryReferenceAssetLinkId`.
+   */
+  const invalidate = () => {
+    void utils.verticalDramaLocations.list.invalidate({ seriesId });
+    if (selectedLocationId) {
+      void utils.verticalDramaLocations.listLocationAssets.invalidate({
+        seriesId,
+        locationId: selectedLocationId,
+      });
+    }
+  };
 
   /** Per-location edit draft for name/description — Record-keyed-by-id,
    *  deliberately NOT synced via a `useEffect` on selection change (same
@@ -436,6 +486,37 @@ export function VerticalDramaLocationStockPanel({
   const markStaleMutation = trpc.verticalDramaLocations.markStale.useMutation({ onError });
   const deleteAssetMutation = trpc.verticalDramaLocations.deleteAsset.useMutation({ onError });
   const [confirmingDeleteLocationId, setConfirmingDeleteLocationId] = useState<string | null>(null);
+
+  /* ---- Multiple candidates, pick a primary (Location Visual Bible Phase C) ----
+   * `listLocationAssets` is the durable-side companion to the in-session
+   * `candidateByLocationId`/`approvedAssetLinkByLocationId` state above: it
+   * surfaces EVERY approved-or-pending `establishing_plate` candidate for
+   * the selected location (not just the newest), each flagged `isPrimary`
+   * per the backend's marker-resolution rule (see
+   * `verticalDramaLocationStock.ts`). Only queried once a location is
+   * selected — `locationId: selectedLocationId ?? ""` is a placeholder
+   * input the query never actually runs with, since `enabled` gates it. */
+  const assetsQuery = trpc.verticalDramaLocations.listLocationAssets.useQuery(
+    { seriesId, locationId: selectedLocationId ?? "" },
+    { enabled: Boolean(seriesId) && Boolean(selectedLocationId), staleTime: 10_000 },
+  );
+  const candidatesForSelected = sortLocationCandidatesForGallery(
+    (assetsQuery.data?.assets ?? []) as VdLocationAssetCandidate[],
+  );
+
+  const setPrimaryMutation = trpc.verticalDramaLocations.setPrimaryLocationAsset.useMutation({ onError });
+  const handleSetPrimary = (location: VdLocationListItem, candidate: VdLocationAssetCandidate) => {
+    if (candidate.isPrimary) return;
+    setPrimaryMutation.mutate(
+      { seriesId, locationId: location.locationId, assetLinkId: candidate.assetLinkId },
+      {
+        onSuccess: () => {
+          invalidate();
+          toast.success(t(lang, "ตั้งเป็นภาพหลักแล้ว", "Set as primary reference"));
+        },
+      },
+    );
+  };
 
   const handleReject = (location: VdLocationListItem) => {
     const assetLinkId = resolveAssetLinkId(location);
@@ -703,105 +784,101 @@ export function VerticalDramaLocationStockPanel({
                 </Button>
               )}
 
-              {/* Generate/approve + basic asset management — see this file's
-                  own top-of-file doc comment for why this mirrors
-                  `VerticalDramaLocationsBibleCard`'s exact 4-mutation flow. */}
+              {/* Candidate-image gallery (Location Visual Bible Phase C) —
+                  every approved-or-pending `establishing_plate` candidate
+                  for this location, current primary highlighted. Rendered
+                  UNCONDITIONALLY (not gated on `!readOnly`) so a read-only
+                  viewer still sees what's available — same convention as
+                  the character panel's own reference-image picker
+                  (`VerticalDramaCharacterStockPanel.tsx`'s "Rendered
+                  UNCONDITIONALLY... only the click-to-select interaction is
+                  disabled when readOnly"). Renders nothing while loading or
+                  when there are no candidates yet. */}
+              {assetsQuery.isLoading ? (
+                <div className="flex gap-2 border-t pt-3">
+                  <Skeleton className="h-14 w-14 rounded" />
+                  <Skeleton className="h-14 w-14 rounded" />
+                </div>
+              ) : candidatesForSelected.length > 0 ? (
+                <div className="flex flex-col gap-1.5 border-t pt-3">
+                  <span className="text-[11px] font-medium text-foreground/80">
+                    {t(
+                      lang,
+                      `ภาพผู้สมัครทั้งหมด (${candidatesForSelected.length})`,
+                      `All candidates (${candidatesForSelected.length})`,
+                    )}
+                  </span>
+                  <div className="flex flex-wrap items-start gap-2">
+                    {candidatesForSelected.map((candidate) => (
+                      <button
+                        key={candidate.assetLinkId}
+                        type="button"
+                        disabled={readOnly || candidate.isPrimary || setPrimaryMutation.isPending}
+                        aria-pressed={candidate.isPrimary}
+                        aria-label={
+                          candidate.isPrimary
+                            ? t(lang, "ภาพหลักปัจจุบัน", "Current primary image")
+                            : t(lang, "ตั้งเป็นภาพหลัก", "Set as primary image")
+                        }
+                        className={cn(
+                          "flex flex-col items-center gap-0.5",
+                          readOnly || candidate.isPrimary ? "cursor-default" : "cursor-pointer",
+                        )}
+                        onClick={() => handleSetPrimary(selectedLocation, candidate)}
+                        data-testid={`vd-location-candidate-${candidate.assetLinkId}`}
+                      >
+                        <span className="relative block">
+                          <img
+                            src={candidate.url}
+                            alt=""
+                            className={cn(
+                              "h-14 w-14 rounded border border-border object-cover",
+                              candidate.isPrimary && "border-emerald-400 ring-2 ring-emerald-300",
+                            )}
+                          />
+                          {candidate.isPrimary && (
+                            <span className="absolute -right-1 -top-1 rounded-full bg-emerald-500 p-0.5 text-white">
+                              <Check aria-hidden="true" className="h-2.5 w-2.5" />
+                            </span>
+                          )}
+                        </span>
+                        {!candidate.approved && (
+                          <span className="text-[9px] text-muted-foreground">
+                            {t(lang, "รอตรวจสอบ", "Pending")}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Generate/approve + basic asset management — see this
+                  file's own top-of-file doc comment for why this mirrors
+                  `VerticalDramaLocationsBibleCard`'s exact 4-mutation flow.
+                  An in-progress preview/generate/approve cycle ALWAYS takes
+                  priority over the "primary already set" management view
+                  (Phase C reorder) — otherwise a location that already has
+                  a primary could never reach the generate flow again,
+                  permanently capping it at one candidate. */}
               {!readOnly && (
                 <div className="flex flex-col gap-1.5 border-t pt-3">
-                  {detailHasApprovedReference ? (
-                    <>
-                      <p className="text-[11px] text-muted-foreground">
-                        {t(lang, "มีภาพอ้างอิงหลักแล้ว", "A primary reference image is set")}
-                      </p>
-                      {resolvedAssetLinkIdForSelected ? (
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5"
-                            onClick={() => handleMarkStale(selectedLocation)}
-                            disabled={markStaleMutation.isPending}
-                            data-testid={`vd-location-mark-stale-${selectedLocation.locationId}`}
-                          >
-                            <Clock aria-hidden="true" className="h-3.5 w-3.5" />
-                            {t(lang, "ทำเครื่องหมายล้าสมัย", "Mark stale")}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5"
-                            onClick={() => handleReject(selectedLocation)}
-                            disabled={transitionAssetMutation.isPending}
-                            data-testid={`vd-location-reject-${selectedLocation.locationId}`}
-                          >
-                            <X aria-hidden="true" className="h-3.5 w-3.5" />
-                            {t(lang, "ปฏิเสธ", "Reject")}
-                          </Button>
-                          {confirmingDeleteLocationId === selectedLocation.locationId ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[11px] text-muted-foreground">
-                                {t(lang, "ยืนยันการลบ?", "Confirm delete?")}
-                              </span>
-                              <Button
-                                type="button"
-                                size="icon-sm"
-                                variant="ghost"
-                                onClick={() => setConfirmingDeleteLocationId(null)}
-                                aria-label={t(lang, "ยกเลิก", "Cancel")}
-                              >
-                                <X aria-hidden="true" className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                type="button"
-                                size="icon-sm"
-                                variant="destructive"
-                                onClick={() => handleDelete(selectedLocation)}
-                                disabled={deleteAssetMutation.isPending}
-                                aria-label={t(lang, "ยืนยันลบภาพนี้", "Confirm delete this image")}
-                                data-testid={`vd-location-confirm-delete-${selectedLocation.locationId}`}
-                              >
-                                {deleteAssetMutation.isPending ? (
-                                  <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="gap-1.5 text-destructive"
-                              onClick={() => setConfirmingDeleteLocationId(selectedLocation.locationId)}
-                              data-testid={`vd-location-delete-${selectedLocation.locationId}`}
-                            >
-                              <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-                              {t(lang, "ลบ", "Delete")}
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
+                  {candidateForSelected ? (
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={candidateForSelected.imageUrl}
+                          alt=""
+                          className="h-14 w-14 shrink-0 rounded border border-border object-cover"
+                        />
                         <p className="text-[11px] text-muted-foreground">
                           {t(
                             lang,
-                            "จัดการภาพนี้ไม่ได้ในตอนนี้ (สร้างไว้ก่อนหน้าเซสชันนี้)",
-                            "Can't manage this reference yet (created before this session)",
+                            "ตรวจสอบภาพที่สร้างแล้วกด “อนุมัติ” เพื่อเพิ่มเป็นภาพผู้สมัคร (เลือกภาพหลักได้ในแกลเลอรีด้านบน)",
+                            "Review the rendered image, then approve to add it as a candidate (pick the primary from the gallery above).",
                           )}
                         </p>
-                      )}
-                    </>
-                  ) : candidateForSelected ? (
-                    <div className="flex flex-col gap-1.5">
-                      <p className="text-[11px] text-muted-foreground">
-                        {t(
-                          lang,
-                          "ตรวจสอบภาพที่สร้างแล้วกด “อนุมัติ” เพื่อบันทึกเป็นภาพอ้างอิงหลัก",
-                          "Review the rendered image, then approve to save it as the primary reference.",
-                        )}
-                      </p>
+                      </div>
                       <Button
                         type="button"
                         size="sm"
@@ -844,22 +921,112 @@ export function VerticalDramaLocationStockPanel({
                       </Button>
                     </div>
                   ) : (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="w-fit gap-1.5"
-                      onClick={() => handlePreview(selectedLocation)}
-                      disabled={isPreviewLoadingSelected}
-                      data-testid={`vd-location-preview-prompt-${selectedLocation.locationId}`}
-                    >
-                      {isPreviewLoadingSelected ? (
-                        <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+                    <>
+                      {detailHasApprovedReference && (
+                        <div className="flex flex-col gap-1.5">
+                          <p className="text-[11px] text-muted-foreground">
+                            {t(lang, "มีภาพอ้างอิงหลักแล้ว", "A primary reference image is set")}
+                          </p>
+                          {resolvedAssetLinkIdForSelected ? (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="gap-1.5"
+                                onClick={() => handleMarkStale(selectedLocation)}
+                                disabled={markStaleMutation.isPending}
+                                data-testid={`vd-location-mark-stale-${selectedLocation.locationId}`}
+                              >
+                                <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+                                {t(lang, "ทำเครื่องหมายล้าสมัย", "Mark stale")}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="gap-1.5"
+                                onClick={() => handleReject(selectedLocation)}
+                                disabled={transitionAssetMutation.isPending}
+                                data-testid={`vd-location-reject-${selectedLocation.locationId}`}
+                              >
+                                <X aria-hidden="true" className="h-3.5 w-3.5" />
+                                {t(lang, "ปฏิเสธ", "Reject")}
+                              </Button>
+                              {confirmingDeleteLocationId === selectedLocation.locationId ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] text-muted-foreground">
+                                    {t(lang, "ยืนยันการลบ?", "Confirm delete?")}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    onClick={() => setConfirmingDeleteLocationId(null)}
+                                    aria-label={t(lang, "ยกเลิก", "Cancel")}
+                                  >
+                                    <X aria-hidden="true" className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon-sm"
+                                    variant="destructive"
+                                    onClick={() => handleDelete(selectedLocation)}
+                                    disabled={deleteAssetMutation.isPending}
+                                    aria-label={t(lang, "ยืนยันลบภาพนี้", "Confirm delete this image")}
+                                    data-testid={`vd-location-confirm-delete-${selectedLocation.locationId}`}
+                                  >
+                                    {deleteAssetMutation.isPending ? (
+                                      <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1.5 text-destructive"
+                                  onClick={() => setConfirmingDeleteLocationId(selectedLocation.locationId)}
+                                  data-testid={`vd-location-delete-${selectedLocation.locationId}`}
+                                >
+                                  <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                                  {t(lang, "ลบ", "Delete")}
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">
+                              {t(
+                                lang,
+                                "จัดการภาพนี้ไม่ได้ในตอนนี้ (สร้างไว้ก่อนหน้าเซสชันนี้)",
+                                "Can't manage this reference yet (created before this session)",
+                              )}
+                            </p>
+                          )}
+                        </div>
                       )}
-                      {t(lang, "สร้าง prompt", "Generate prompt")}
-                    </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="w-fit gap-1.5"
+                        onClick={() => handlePreview(selectedLocation)}
+                        disabled={isPreviewLoadingSelected}
+                        data-testid={`vd-location-preview-prompt-${selectedLocation.locationId}`}
+                      >
+                        {isPreviewLoadingSelected ? (
+                          <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+                        )}
+                        {detailHasApprovedReference
+                          ? t(lang, "สร้างภาพเพิ่ม", "Generate another")
+                          : t(lang, "สร้าง prompt", "Generate prompt")}
+                      </Button>
+                    </>
                   )}
                 </div>
               )}

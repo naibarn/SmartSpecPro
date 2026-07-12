@@ -1600,40 +1600,35 @@ async function resolveShotVideoPromptCharacterReferenceImages(
 }
 
 /**
- * Resolve THIS shot's location reference entry (Phase 2 of
- * `planning/polished-toasting-gadget.md` — location visual bible) —
- * singular counterpart to `resolveShotCharacterReferenceEntries` above (one
- * shot has at most ONE location, not a list). Reads the persisted
- * storyboard's own `distinct_locations[]` (snake_case, stored verbatim from
- * the LLM's own JSON output — same reading convention
- * `verticalDramaEpisodePipeline.ts`'s `generateRealStartFramePlan` already
- * established for this exact field), finds which group's `shot_numbers`
- * contains `shotNumber`, resolves that group's `location_key` against the
- * series' `vertical_drama_locations` roster (tenant/user/series scoped),
- * then resolves the location's current approved reference image via
- * `verticalDramaLocationStockService.getPrimaryReferenceUrl`.
+ * Resolve which `locationKey` governs a given shot (Phase D of
+ * `planning/polished-toasting-gadget.md` — per-shot location override) —
+ * precedence: (1) `overrideLocationKey` (the shot's own
+ * `startFramePlan.frames[i].locationKey`, set via `setShotLocation`) when
+ * present, else (2) the storyboard's own `distinct_locations[]` grouping
+ * (snake_case, stored verbatim from the LLM's own JSON output — same reading
+ * convention `verticalDramaEpisodePipeline.ts`'s `generateRealStartFramePlan`
+ * already established for this exact field): finds which group's
+ * `shot_numbers` contains `shotNumber` and returns that group's
+ * `location_key`.
  *
- * Purely additive and tolerant — returns `null` (never throws) when there is
- * no `distinct_locations` data, no matching group for this shot, or no
- * roster row for the group's `location_key` (e.g. a storyboard generated
- * before this feature existed, or before `reconcileEpisodeLocations` ran
- * for this episode). Deliberately returns BEFORE touching the database in
- * every one of those tolerant cases, so a shot/episode with no location data
- * adds zero new DB calls — this is what keeps every pre-existing
- * `generateStartFrameImage`/`generateStartFrameAngleVariations`/
- * `generateShotStartFramePrompt` test (none of whose fixtures carry a
- * `storyboard` field) byte-identical.
+ * Pure/no DB — shared by `resolveShotLocationReferenceEntry` below (start-
+ * frame image-generation path, which resolves the FULL roster row +
+ * reference URL for whatever key this returns) and the video-prompt/
+ * video-render call sites in `generateShotVideoPrompt`/
+ * `generateAndPersistSplitShotVideoPrompt`/`generateVideoClip` (which only
+ * need the bare key, to feed `resolveShotVideoPromptLocationReferenceImage`/
+ * `resolveShotLocationReferenceAssetId`) — a single shared precedence
+ * function so all of a shot's location-reference call sites can never drift
+ * out of sync with each other. Returns `undefined` (never throws) when
+ * neither an override nor a matching storyboard group resolves a key.
  */
-async function resolveShotLocationReferenceEntry(
-  tenantId: string,
-  userId: number,
-  seriesId: number,
+function resolveEffectiveShotLocationKey(
   storyboard: unknown,
-  shotNumber: number
-): Promise<
-  | { url?: string; name?: string; description?: string; hasReferenceImage: boolean }
-  | null
-> {
+  shotNumber: number,
+  overrideLocationKey?: string
+): string | undefined {
+  if (overrideLocationKey) return overrideLocationKey;
+
   const distinctLocationGroups = Array.isArray(
     (storyboard as Record<string, unknown> | null)?.distinct_locations
   )
@@ -1641,16 +1636,32 @@ async function resolveShotLocationReferenceEntry(
         Record<string, unknown>
       >)
     : [];
-  if (distinctLocationGroups.length === 0) return null;
+  if (distinctLocationGroups.length === 0) return undefined;
 
   const matchingGroup = distinctLocationGroups.find(group => {
     const shotNumbers = Array.isArray(group.shot_numbers) ? group.shot_numbers : [];
     return shotNumbers.some(n => Number(n) === shotNumber);
   });
-  const locationKey =
-    typeof matchingGroup?.location_key === "string" ? matchingGroup.location_key : undefined;
-  if (!locationKey) return null;
+  return typeof matchingGroup?.location_key === "string" ? matchingGroup.location_key : undefined;
+}
 
+/**
+ * Resolve a single location roster row (tenant/user/series scoped) by its
+ * `locationKey` — the shared low-level lookup used by every location-
+ * reference resolver below (`resolveShotLocationReferenceEntry`,
+ * `resolveShotVideoPromptLocationReferenceImage`,
+ * `resolveShotLocationReferenceAssetId`), mirroring how
+ * `resolveShotCharacterReferenceEntries` is the single shared row-lookup
+ * every character-reference resolver builds on. Returns `undefined` (never
+ * throws) when no roster row exists yet for this key (e.g. a stale key, or
+ * `reconcileEpisodeLocations` hasn't run for this episode yet).
+ */
+async function resolveLocationRosterRowByKey(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  locationKey: string
+): Promise<{ id: number; name: string; data: unknown } | undefined> {
   const [locationRow] = await db
     .select({
       id: verticalDramaLocations.id,
@@ -1667,6 +1678,58 @@ async function resolveShotLocationReferenceEntry(
       )
     )
     .limit(1);
+  return locationRow;
+}
+
+/**
+ * Resolve THIS shot's location reference entry (Phase 2 of
+ * `planning/polished-toasting-gadget.md` — location visual bible) —
+ * singular counterpart to `resolveShotCharacterReferenceEntries` above (one
+ * shot has at most ONE location, not a list). Resolves the shot's effective
+ * `locationKey` via `resolveEffectiveShotLocationKey` (Phase D: honors the
+ * per-shot `overrideLocationKey` first, else falls back to the storyboard's
+ * `distinct_locations[]` grouping — see that function's own doc comment),
+ * looks it up against the series' `vertical_drama_locations` roster via
+ * `resolveLocationRosterRowByKey`, then resolves the location's current
+ * approved reference image via
+ * `verticalDramaLocationStockService.getPrimaryReferenceUrl`.
+ *
+ * Purely additive and tolerant — returns `null` (never throws) when there is
+ * no override AND no `distinct_locations` data, no matching group for this
+ * shot, or no roster row for the resolved `locationKey` (e.g. a storyboard
+ * generated before this feature existed, or before
+ * `reconcileEpisodeLocations` ran for this episode). Deliberately returns
+ * BEFORE touching the database in every one of those tolerant cases, so a
+ * shot/episode with no location data (and no override) adds zero new DB
+ * calls — this is what keeps every pre-existing
+ * `generateStartFrameImage`/`generateStartFrameAngleVariations`/
+ * `generateShotStartFramePrompt` test (none of whose fixtures carry a
+ * `storyboard`/override field) byte-identical.
+ */
+async function resolveShotLocationReferenceEntry(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  storyboard: unknown,
+  shotNumber: number,
+  overrideLocationKey?: string
+): Promise<
+  | { url?: string; name?: string; description?: string; hasReferenceImage: boolean }
+  | null
+> {
+  const locationKey = resolveEffectiveShotLocationKey(
+    storyboard,
+    shotNumber,
+    overrideLocationKey
+  );
+  if (!locationKey) return null;
+
+  const locationRow = await resolveLocationRosterRowByKey(
+    tenantId,
+    userId,
+    seriesId,
+    locationKey
+  );
   if (!locationRow) return null;
 
   const description =
@@ -1685,6 +1748,134 @@ async function resolveShotLocationReferenceEntry(
     description,
     hasReferenceImage: Boolean(url),
   };
+}
+
+/**
+ * Resolve THIS shot's video-prompt location reference IMAGE (Phase E of
+ * `planning/polished-toasting-gadget.md` — location visual bible) — mirrors
+ * `resolveShotVideoPromptCharacterReferenceImages` above, but for the single
+ * location a shot belongs to (a shot has at most ONE location, never a
+ * list). Takes the already-resolved `locationKey` directly (the CALLER
+ * resolves it via `resolveEffectiveShotLocationKey`, honoring the shot's
+ * override) rather than `shotNumber`/`storyboard` — same "caller resolves
+ * which key, this function resolves that key's reference data" split
+ * `resolveShotVideoPromptCharacterReferenceImages` uses for characters.
+ * Reuses `resolveLocationRosterRowByKey` (no new query shape) then
+ * `verticalDramaLocationStockService.getPrimaryReferenceUrl`, mirroring
+ * `resolveShotLocationReferenceEntry`'s own resolution chain exactly, and
+ * applies `resolveReferenceUrl` the same way
+ * `resolveShotVideoPromptCharacterReferenceImages` does for portraits (the
+ * vision call needs a publicly-fetchable URL, not a raw stored path).
+ *
+ * Never throws — returns `null` when `locationKey` is absent/undefined, no
+ * roster row exists yet for it, or it has no approved reference image.
+ */
+async function resolveShotVideoPromptLocationReferenceImage(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  locationKey: string | undefined,
+  publicUrl: string | undefined
+): Promise<{ url: string; name?: string } | null> {
+  if (!locationKey) return null;
+  const locationRow = await resolveLocationRosterRowByKey(
+    tenantId,
+    userId,
+    seriesId,
+    locationKey
+  );
+  if (!locationRow) return null;
+  const url = await verticalDramaLocationStockService.getPrimaryReferenceUrl(
+    { tenantId, userId, seriesId },
+    locationRow.id
+  );
+  if (!url) return null;
+  return { url: resolveReferenceUrl(url, publicUrl), name: locationRow.name };
+}
+
+/**
+ * Resolve the numeric `media_assets` id of a shot's location's primary
+ * reference image (Phase E of `planning/polished-toasting-gadget.md`) — the
+ * `generateVideoClip` sibling of `resolveShotVideoPromptLocationReferenceImage`
+ * (which resolves a fetchable URL for the video-PROMPT vision call);
+ * `generateVideoClip` instead batches every reference through
+ * `resolveMediaAssetUrlsByIds` alongside the start frame/character/shot
+ * references, so this resolves an ASSET ID rather than a URL. Reuses
+ * `resolveLocationRosterRowByKey` (no new query shape) then
+ * `verticalDramaLocationStockService.getPrimaryReferenceAssetId`.
+ *
+ * Never throws — returns `undefined` when `locationKey` is absent/undefined,
+ * no roster row exists yet for it, or it has no approved reference image.
+ */
+async function resolveShotLocationReferenceAssetId(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  locationKey: string | undefined
+): Promise<number | undefined> {
+  if (!locationKey) return undefined;
+  const locationRow = await resolveLocationRosterRowByKey(
+    tenantId,
+    userId,
+    seriesId,
+    locationKey
+  );
+  if (!locationRow) return undefined;
+  return verticalDramaLocationStockService.getPrimaryReferenceAssetId(
+    { tenantId, userId, seriesId },
+    locationRow.id
+  );
+}
+
+/**
+ * Resolve the series' full location roster for the `getEpisodeDetail`
+ * payload (Phase D of `planning/polished-toasting-gadget.md` — location
+ * visual bible), each annotated with its current approved reference image
+ * URL (if any) — the location-roster sibling of `characterPortraits`
+ * (`resolveSeriesCharacterPortraits` above), consumed by the storyboard
+ * frontend to render a real location thumbnail per shot and to populate a
+ * location-override picker (`setShotLocation`). Composed entirely from
+ * `verticalDramaLocationStockService.listRows` (Phase A/B's own roster +
+ * primary-reference query) — no new query shape is introduced here.
+ *
+ * `primaryReferenceUrl` is surfaced RAW, exactly like `characterPortraits`'
+ * own `portraitUrl` field (never passed through `resolveReferenceUrl` —
+ * that resolver's job is only to make a URL fetchable by an EXTERNAL
+ * provider/LLM call, not to reshape a URL for the browser, which already
+ * renders a relative `/uploads/...`/`/api/storage/...` path fine against its
+ * own origin).
+ *
+ * Never throws (same tolerant convention this whole location-visual-bible
+ * feature follows — see `resolveShotLocationReferenceEntry`'s identical doc-
+ * comment rationale): any query failure resolves to `[]`, same as a series
+ * with a genuinely empty location roster, so this can never fail the read-
+ * only `getEpisodeDetail` procedure over what is a purely additive/optional
+ * data source.
+ */
+async function resolveSeriesEpisodeLocations(
+  tenantId: string,
+  userId: number,
+  seriesId: number
+): Promise<Array<{ locationKey: string; name: string; primaryReferenceUrl?: string }>> {
+  try {
+    const rows = await verticalDramaLocationStockService.listRows({
+      tenantId,
+      userId,
+      seriesId,
+    });
+    return rows.map(row => ({
+      locationKey: row.locationKey,
+      name: row.name,
+      primaryReferenceUrl: row.primaryReferenceUrl,
+    }));
+  } catch (err) {
+    debugError(
+      "verticalDramaEpisodes.getEpisodeDetail",
+      `episode locations lookup failed (seriesId=${seriesId})`,
+      err
+    );
+    return [];
+  }
 }
 
 /**
@@ -5645,6 +5836,16 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
    */
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
   /**
+   * Location reference image (Phase E of `planning/polished-toasting-
+   * gadget.md` — location visual bible) — the CALLER (`generateShotVideoPrompt`'s
+   * `needsSplit` branch) already resolved this via
+   * `resolveShotVideoPromptLocationReferenceImage`, mirroring
+   * `characterReferenceImages`'s exact "parent resolves a ready value, child
+   * just forwards it to `generateVerticalDramaShotVideoPromptSpeakerSwitch`"
+   * convention immediately above.
+   */
+  locationReferenceImage?: { url: string; name?: string };
+  /**
    * planning/`polished-toasting-gadget.md` Fix B — threaded straight through
    * to `generateVerticalDramaShotVideoPromptSpeakerSwitch`'s own
    * `repairInstruction` (same contract — see
@@ -5680,6 +5881,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     extraDialogueCreditsUsed,
     subShotWindows,
     characterReferenceImages,
+    locationReferenceImage,
     repairInstruction,
   } = args;
 
@@ -5692,6 +5894,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     imageUrl,
     imagePrompt,
     characterReferenceImages,
+    locationReferenceImage,
     shotContext: {
       description: storyboardShot?.description,
       camera: storyboardShot?.cameraSetup,
@@ -7463,6 +7666,19 @@ export const verticalDramaEpisodesRouter = router({
         row.episodeNumber
       );
 
+      // Phase D (planning/polished-toasting-gadget.md — location visual
+      // bible) — the series' full location roster, resolved as the NEXT
+      // query after `episodePlan` (same "unconditional, last-position"
+      // call-order-stability reasoning as `episodePlan` immediately above —
+      // this NEVER shifts any earlier query's position, so it only requires
+      // updating pre-existing tests that assert an EXACT `mockDb.select`
+      // call count, never tests that only assert on earlier fields).
+      const episodeLocations = await resolveSeriesEpisodeLocations(
+        tenantId,
+        userId,
+        seriesId
+      );
+
       return {
         script: row.script as Record<string, unknown> | null,
         dialogueAudioPlan: row.dialogueAudioPlan as Record<
@@ -7486,6 +7702,11 @@ export const verticalDramaEpisodesRouter = router({
         // episode plan for the new plan panel; `null` when the series bible
         // has no matching drafted breakdown item for this episode yet.
         episodePlan,
+        // Phase D (planning/polished-toasting-gadget.md — location visual
+        // bible) — the series' full location roster (see
+        // `resolveSeriesEpisodeLocations`'s doc comment for the exact shape/
+        // contract); `[]` for a series with no locations yet, never `null`.
+        episodeLocations,
         // Wave-4A additive keys (spec §16.1/§13.1/§7.7.3/§8.8) — flag-gated,
         // `null`/`0` when the corresponding flag is off.
         qualityPolicyResolved,
@@ -7950,6 +8171,111 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Manually override which LOCATION one shot uses (Phase D of
+   * `planning/polished-toasting-gadget.md` — location visual bible),
+   * independent of the storyboard's own `distinct_locations[]` shot
+   * grouping. Mirrors `setShotCharacterReference` immediately above exactly:
+   * a pure, cheap, direct data patch — no LLM/skill call, no regeneration of
+   * any kind. Patches ONLY the matching entry's `locationKey` in
+   * `startFramePlan.frames[]`, same "find by shotNumber, replace one field,
+   * write the whole jsonb column back" pattern.
+   *
+   * `locationKey` must already exist in this series' location roster
+   * (`vertical_drama_locations`, tenant/user/series scoped) — an unknown key
+   * is rejected with BAD_REQUEST rather than silently persisting a key that
+   * would later resolve to zero reference images. Pass `locationKey: null`
+   * to CLEAR the override and fall back to the storyboard's own
+   * `distinct_locations[]` grouping for this shot again — see
+   * `resolveEffectiveShotLocationKey`'s precedence doc comment.
+   *
+   * Once patched, this shot's start-frame image generation, video-prompt
+   * generation, AND the actual video-render provider call (Phases D/E) all
+   * resolve this shot's location through that SAME shared precedence
+   * function, so every one of those stays in sync from a single edit here.
+   */
+  setShotLocation: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        locationKey: z.string().min(1).nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      if (!plan || !Array.isArray(plan.frames)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No start-frame plan exists yet for this episode",
+        });
+      }
+      const frameIndex = plan.frames.findIndex(
+        f => f.shotNumber === input.shotNumber
+      );
+      if (frameIndex === -1) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `No start-frame plan entry for shot ${input.shotNumber}`,
+        });
+      }
+
+      // The requested locationKey must exist in this series' roster —
+      // reject an unknown key instead of silently persisting garbage that
+      // would later resolve to zero reference images at render time (same
+      // discipline `setShotCharacterReference` applies to `characterRefs`
+      // above). Skipped entirely when clearing the override (`null`).
+      if (input.locationKey !== null) {
+        const [locationRow] = await db
+          .select({ id: verticalDramaLocations.id })
+          .from(verticalDramaLocations)
+          .where(
+            and(
+              eq(verticalDramaLocations.tenantId, tenantId),
+              eq(verticalDramaLocations.userId, userId),
+              eq(verticalDramaLocations.seriesId, seriesId),
+              eq(verticalDramaLocations.locationKey, input.locationKey)
+            )
+          )
+          .limit(1);
+        if (!locationRow) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown location key: ${input.locationKey}`,
+          });
+        }
+      }
+
+      const updatedFrames = plan.frames.slice();
+      updatedFrames[frameIndex] = {
+        ...updatedFrames[frameIndex],
+        locationKey: input.locationKey ?? undefined,
+      };
+      const updatedPlan: VerticalDramaStartFramePlan = {
+        ...plan,
+        frames: updatedFrames,
+      };
+
+      await db
+        .update(verticalDramaEpisodes)
+        .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+        .where(eq(verticalDramaEpisodes.id, episodeId));
+
+      return { startFramePlan: updatedPlan };
+    }),
+
+  /**
    * Set the episode-level image/video model selection (Vertical Drama
    * Storyboard Completion Plan, Phase 1.1). Deliberately EPISODE-level only —
    * no per-shot/per-clip override (2026-07-05 product decision, see
@@ -8385,17 +8711,20 @@ export const verticalDramaEpisodesRouter = router({
       // — location visual bible) — this shot's environment-lock reference,
       // resolved from the storyboard's own `distinct_locations[]` groups
       // (already fetched as part of `row` above, no new query beyond what
-      // `loadOwnedEpisode` already fetched). At most one URL per shot.
-      // Inserted BETWEEN character and product refs so identity-lock always
-      // wins over environment-lock, and environment-lock always wins over
-      // the (comparatively protected) product reference, when a model's
-      // `maxReferenceImages` forces trimming.
+      // `loadOwnedEpisode` already fetched), or the shot's own per-shot
+      // override (`frame.locationKey`, Phase D — see
+      // `resolveEffectiveShotLocationKey`'s precedence doc comment). At most
+      // one URL per shot. Inserted BETWEEN character and product refs so
+      // identity-lock always wins over environment-lock, and environment-lock
+      // always wins over the (comparatively protected) product reference,
+      // when a model's `maxReferenceImages` forces trimming.
       const locationRefEntry = await resolveShotLocationReferenceEntry(
         tenantId,
         userId,
         seriesId,
         row.storyboard,
-        input.shotNumber
+        input.shotNumber,
+        frame.locationKey
       );
       const locationRefUrls = locationRefEntry?.url ? [locationRefEntry.url] : [];
       // Product tie-in reference (spec: the product must physically appear
@@ -8863,13 +9192,15 @@ export const verticalDramaEpisodesRouter = router({
       const characterRefUrls = characterRefEntries.map(e => e.url);
       // Location reference (Phase 2 of `planning/polished-toasting-gadget.md`
       // — location visual bible) — same resolution + priority-ordering
-      // rationale as `generateStartFrameImage`'s identical block above.
+      // rationale as `generateStartFrameImage`'s identical block above,
+      // including the Phase D per-shot override (`frame.locationKey`).
       const locationRefEntry = await resolveShotLocationReferenceEntry(
         tenantId,
         userId,
         seriesId,
         row.storyboard,
-        input.shotNumber
+        input.shotNumber,
+        frame.locationKey
       );
       const locationRefUrls = locationRefEntry?.url ? [locationRefEntry.url] : [];
       const productRefUrls = resolveShotProductReferenceUrls(
@@ -9726,6 +10057,36 @@ export const verticalDramaEpisodesRouter = router({
           )
         : [];
 
+      // Location reference (Phase E of `planning/polished-toasting-gadget.md`
+      // — location visual bible) — this clip's environment-lock reference
+      // asset, resolved from the primary shot's location: the per-shot
+      // override (`startFramePlan.frames[].locationKey`, Phase D) first, else
+      // the storyboard's own `distinct_locations[]` grouping — same
+      // precedence `resolveShotLocationReferenceEntry` uses for start-frame
+      // image generation, via the shared `resolveEffectiveShotLocationKey`.
+      // Tolerant/zero-DB-calls when the shot has no resolved location (no
+      // override AND no matching storyboard group) — every pre-existing
+      // `generateVideoClip` test fixture (none of which carry `storyboard`/
+      // `startFramePlan` fields) stays byte-identical.
+      const clipLocationOverrideKey = primaryShotNumber
+        ? (row.startFramePlan as VerticalDramaStartFramePlan | null)?.frames?.find(
+            f => f.shotNumber === primaryShotNumber
+          )?.locationKey
+        : undefined;
+      const clipLocationKey = primaryShotNumber
+        ? resolveEffectiveShotLocationKey(
+            row.storyboard,
+            primaryShotNumber,
+            clipLocationOverrideKey
+          )
+        : undefined;
+      const clipLocationAssetId = await resolveShotLocationReferenceAssetId(
+        tenantId,
+        userId,
+        seriesId,
+        clipLocationKey
+      );
+
       const capabilities = resolveVerticalDramaCapabilities(model.id, {
         type: model.type,
         aspectRatios: model.aspectRatios,
@@ -9739,13 +10100,18 @@ export const verticalDramaEpisodesRouter = router({
       // manual reference list so they're kept first when trimmed to this
       // model's `maxReferenceImages`. A clip without the field (every clip
       // predating this task, and every non-speaker-switch clip) behaves
-      // byte-identically: `?? []` contributes nothing.
+      // byte-identically: `?? []` contributes nothing. The location reference
+      // (if any) is appended LAST — lower priority than the start frame
+      // (always kept, resolved separately below) and every character/shot
+      // reference above, so it is the FIRST thing trimmed away once a
+      // model's `maxReferenceImages` caps out.
       const orderedReferenceAssetIds = [
         ...(clip.extraReferenceAssetIds ?? []).map(id => Number(id)),
         ...shotReferences
           .slice()
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map(r => Number(r.mediaAssetId)),
+        ...(clipLocationAssetId ? [clipLocationAssetId] : []),
       ];
       const trimmedReferenceCount = Math.max(
         0,
@@ -10343,7 +10709,8 @@ export const verticalDramaEpisodesRouter = router({
       // Location fact (Phase 2 of `planning/polished-toasting-gadget.md` —
       // location visual bible) — resolves the same `location_key` ->
       // roster -> approved-reference lookup `generateStartFrameImage`/
-      // `generateStartFrameAngleVariations` use, but only the TEXT facts are
+      // `generateStartFrameAngleVariations` use (including the Phase D
+      // per-shot override, `frame.locationKey`), but only the TEXT facts are
       // threaded here (this procedure never attaches a reference image
       // itself — it's a prompt-authoring-only call; the real render still
       // happens via `generateStartFrameImage`, which does the URL-attach).
@@ -10352,7 +10719,8 @@ export const verticalDramaEpisodesRouter = router({
         userId,
         seriesId,
         row.storyboard,
-        input.shotNumber
+        input.shotNumber,
+        frame.locationKey
       );
 
       // Shared-field prompt-language fix — the episode-level video-prompt
@@ -10966,6 +11334,32 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
+      // Location reference image (Phase E of `planning/polished-toasting-
+      // gadget.md` — location visual bible) — resolved ONCE, before the
+      // `needsSplit` branch below, so BOTH the split and non-split paths
+      // thread the exact same value (mirrors `imageUrl`'s own "resolved once,
+      // forwarded to whichever path runs" convention). Honors this shot's
+      // per-shot override (`frame?.locationKey`, Phase D) via the shared
+      // `resolveEffectiveShotLocationKey` precedence, then resolves that
+      // key's approved reference image via
+      // `resolveShotVideoPromptLocationReferenceImage`. Tolerant/zero-DB-
+      // calls when the shot has no resolved location — every pre-existing
+      // test of this mutation (none of whose fixtures carry a
+      // `distinct_locations`/`locationKey` field) stays byte-identical.
+      const shotVideoLocationKey = resolveEffectiveShotLocationKey(
+        row.storyboard,
+        input.shotNumber,
+        frame?.locationKey
+      );
+      const shotVideoLocationReferenceImage =
+        await resolveShotVideoPromptLocationReferenceImage(
+          tenantId,
+          userId,
+          seriesId,
+          shotVideoLocationKey,
+          ctx.publicUrl ?? undefined
+        );
+
       // Speaker-aware sub-shots (Package 3) — the deterministic split
       // decision, now that `dialogueLines` reflects any dialogue-refresh
       // above. `subShotDecision` stays `null` whenever the tenant flag is
@@ -11021,6 +11415,7 @@ export const verticalDramaEpisodesRouter = router({
           extraDialogueCreditsUsed,
           subShotWindows: subShotDecision.windows,
           characterReferenceImages: splitShotVideoCharacterReferenceImages,
+          locationReferenceImage: shotVideoLocationReferenceImage ?? undefined,
           // planning/`polished-toasting-gadget.md` Fix B — mirrors the
           // non-split branch's identical `repairInstruction: input.instruction`
           // below; `undefined` when the caller doesn't supply one (byte-
@@ -11056,6 +11451,7 @@ export const verticalDramaEpisodesRouter = router({
         imageUrl,
         imagePrompt: frame?.imagePrompt,
         characterReferenceImages: shotVideoCharacterReferenceImages,
+        locationReferenceImage: shotVideoLocationReferenceImage ?? undefined,
         shotContext: {
           description: storyboardShot?.description,
           camera: storyboardShot?.cameraSetup,

@@ -516,3 +516,145 @@ describe("generateStartFrameAngleVariations — location reference attachment (P
     expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/store-plate.png"]);
   });
 });
+
+/**
+ * Phase D of `planning/polished-toasting-gadget.md` — per-shot location
+ * override precedence (`resolveEffectiveShotLocationKey`, consumed by
+ * `resolveShotLocationReferenceEntry`). Exercised through
+ * `generateStartFrameImage` (same call site/fixture conventions as the first
+ * describe block above) since `resolveShotLocationReferenceEntry` is a
+ * private, non-exported helper.
+ */
+describe("resolveShotLocationReferenceEntry — per-shot override precedence (Phase D, planning/polished-toasting-gadget.md)", () => {
+  it("the shot's own startFramePlan.frames[].locationKey override takes precedence over the storyboard's distinct_locations grouping", async () => {
+    const episodeRow = baseEpisodeRow({
+      // Storyboard groups shot 1 under the STORE location...
+      storyboard: { distinct_locations: [STORE_LOCATION_GROUP, KITCHEN_LOCATION_GROUP] },
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            // ...but this shot's own override picks the KITCHEN location instead.
+            locationKey: "loc_kitchen",
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ id: 56, name: "ครัวที่บ้าน", data: { description: "kitchen desc" } }])
+      ) // roster lookup for the OVERRIDE key (loc_kitchen), not the storyboard-matched loc_store
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/kitchen-plate.png");
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      56
+    );
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/kitchen-plate.png"]);
+  });
+
+  it("the override resolves the location even when the storyboard carries no distinct_locations data at all", async () => {
+    const episodeRow = baseEpisodeRow({
+      // No `storyboard` field at all — the override must not depend on it.
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            locationKey: "loc_store",
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([LOCATION_ROW])) // roster lookup for the override key
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      55
+    );
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toEqual(["https://cdn.example.com/store-plate.png"]);
+  });
+
+  it("an override locationKey with no matching roster row yet resolves gracefully to no location reference, never throws", async () => {
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a shot",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            locationKey: "loc_ghost",
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // roster lookup — no row for loc_ghost
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).not.toHaveBeenCalled();
+    const [request] = mockGenerateImageAsync.mock.calls[0];
+    expect(request.referenceImageUrls).toBeUndefined();
+  });
+
+  it("byte-identical when the shot has no override: falls back to the storyboard's distinct_locations grouping exactly as before Phase D", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: { distinct_locations: [STORE_LOCATION_GROUP] },
+      // `locationKey` absent on the frame — pre-Phase-D shape.
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([LOCATION_ROW])) // roster lookup via the storyboard-matched key
+      .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: {} }])); // pricing lookup
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+
+    await router.generateStartFrameImage({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      55
+    );
+  });
+});

@@ -1138,17 +1138,21 @@ export interface ShotVideoPromptCharacterReferenceImage {
 /**
  * Build the vision-call images array for a shot-video-prompt generation
  * call: the shot's own start frame FIRST (unlabeled, preserving today's
- * single-image shape when `characterReferenceImages` is empty/omitted),
- * then each character reference portrait labeled with its name so the model
- * can visually anchor "this face = this name" when 2+ characters share the
- * shot. Shared by both `generateVerticalDramaShotVideoPrompt` (including its
- * hand-rolled compliance-correction retry) and
+ * single-image shape when `characterReferenceImages`/`locationReferenceImage`
+ * are empty/omitted), then each character reference portrait labeled with
+ * its name so the model can visually anchor "this face = this name" when 2+
+ * characters share the shot, then (Phase E of `planning/polished-toasting-
+ * gadget.md` — location visual bible) the shot's single environment/location
+ * reference image, if any, labeled with its name. Shared by both
+ * `generateVerticalDramaShotVideoPrompt` (including its hand-rolled
+ * compliance-correction retry) and
  * `generateVerticalDramaShotVideoPromptSpeakerSwitch` so all 3 vision-call
  * sites build this array identically.
  */
 function buildShotVideoPromptVisionImages(
   imageUrl: string,
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[],
+  locationReferenceImage?: { url: string; name?: string },
 ): VisionAwareImageInput[] {
   return [
     { url: imageUrl },
@@ -1156,6 +1160,14 @@ function buildShotVideoPromptVisionImages(
       url: c.url,
       label: `Reference image for character: ${c.name ?? c.characterKey} (${c.characterKey})`,
     })),
+    ...(locationReferenceImage
+      ? [
+          {
+            url: locationReferenceImage.url,
+            label: `Environment/location reference image: ${locationReferenceImage.name ?? "location"}`,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -1240,6 +1252,27 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * this change.
    */
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+  /**
+   * Location reference image (Phase E of `planning/polished-toasting-
+   * gadget.md` — location visual bible) — this shot's single environment/
+   * location reference image (a shot has at most ONE location, unlike
+   * `characterReferenceImages`, which can be several), labeled with its name
+   * and attached to the vision call ALONGSIDE `imageUrl`/
+   * `characterReferenceImages` (never replacing them), so the model keeps
+   * the shot's setting/architecture/lighting/props consistent with the
+   * established location — the same environment-lock principle already used
+   * for start-frame IMAGE generation, applied here to video-PROMPT
+   * generation. The CALLER (router) resolves which location/image to include
+   * (see `resolveShotVideoPromptLocationReferenceImage` in
+   * `verticalDramaEpisodes.ts`) — this function only attaches whatever it is
+   * given. Grouped with `imageUrl`/`imagePrompt`/`characterReferenceImages`
+   * (image data), not inside `shotContext` (narrative text facts).
+   * Omitted/absent (every existing caller) preserves today's byte-identical
+   * vision-content array AND byte-identical prompt text (see
+   * `buildShotVideoPromptUserPrompt`'s conditional fact line) — the single
+   * most important regression bar for this change.
+   */
+  locationReferenceImage?: { url: string; name?: string };
   shotContext: {
     description?: string;
     camera?: string;
@@ -1469,6 +1502,13 @@ function buildShotVideoPromptUserPrompt(
   const characterReferenceImageNames = (params.characterReferenceImages ?? []).map(
     c => c.name ?? c.characterKey,
   );
+  // Location reference image (Phase E of `planning/polished-toasting-
+  // gadget.md` — location visual bible) — same purely FACTUAL announcement
+  // convention as `characterReferenceImageNames` above (the actual
+  // environmental-consistency INSTRUCTION lives in skill.md, skill-first
+  // architecture). Omitted entirely when `locationReferenceImage` is absent
+  // (every existing caller), preserving today's byte-identical prompt.
+  const locationReferenceImageName = params.locationReferenceImage?.name ?? "location";
 
   return [
     `Shot number: ${params.shotNumber}`,
@@ -1517,6 +1557,12 @@ function buildShotVideoPromptUserPrompt(
     // `characterReferenceImageNames`'s doc comment above.
     characterReferenceImageNames.length > 0
       ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
+      : null,
+    // Location reference image (Phase E of `planning/polished-toasting-
+    // gadget.md` — location visual bible) — factual announcement only; see
+    // `locationReferenceImageName`'s doc comment above.
+    params.locationReferenceImage
+      ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
       : null,
     `Dialogue for this shot (source lines, already in ${dialogueLanguageName}):\n${dialogueBlock}`,
     dialogueLines.length === 0
@@ -1646,7 +1692,11 @@ export async function generateVerticalDramaShotVideoPrompt(
     systemPrompt,
     userPromptText,
     hasVision,
-    images: buildShotVideoPromptVisionImages(params.imageUrl, params.characterReferenceImages),
+    images: buildShotVideoPromptVisionImages(
+      params.imageUrl,
+      params.characterReferenceImages,
+      params.locationReferenceImage,
+    ),
     userId: params.userId,
     schema: shotVideoPromptOutputSchema,
     firstAttemptMaxTokens: 2000,
@@ -1676,7 +1726,11 @@ export async function generateVerticalDramaShotVideoPrompt(
         content: buildVisionAwareContent(
           complianceRetryText,
           hasVision,
-          buildShotVideoPromptVisionImages(params.imageUrl, params.characterReferenceImages),
+          buildShotVideoPromptVisionImages(
+            params.imageUrl,
+            params.characterReferenceImages,
+            params.locationReferenceImage,
+          ),
         ),
         userId: params.userId,
         maxTokens: 2000,
@@ -1820,6 +1874,14 @@ export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams
    * `buildSpeakerSwitchUserPrompt`.
    */
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
+  /**
+   * Location reference image — already inherited from
+   * `GenerateVerticalDramaShotVideoPromptParams.locationReferenceImage`
+   * (see that field's own doc comment for the full contract); redeclared
+   * here only so it's documented at its actual point of use in this file,
+   * `buildSpeakerSwitchUserPrompt`.
+   */
+  locationReferenceImage?: { url: string; name?: string };
 }
 
 export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
@@ -1866,6 +1928,11 @@ function buildSpeakerSwitchUserPrompt(
   const characterReferenceImageNames = (params.characterReferenceImages ?? []).map(
     c => c.name ?? c.characterKey,
   );
+  // Location reference image (Phase E of `planning/polished-toasting-
+  // gadget.md` — location visual bible) — see
+  // `buildShotVideoPromptUserPrompt`'s identical `locationReferenceImageName`
+  // doc comment.
+  const locationReferenceImageName = params.locationReferenceImage?.name ?? "location";
 
   let cursorSeconds = 0;
   const segmentBlocks = subShotWindows
@@ -1913,6 +1980,12 @@ function buildSpeakerSwitchUserPrompt(
     // `characterReferenceImageNames`'s doc comment above.
     characterReferenceImageNames.length > 0
       ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
+      : null,
+    // Location reference image (Phase E of `planning/polished-toasting-
+    // gadget.md` — location visual bible) — factual announcement only; see
+    // `locationReferenceImageName`'s doc comment above.
+    params.locationReferenceImage
+      ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
       : null,
     `Timed segment facts (structured facts only, in chronological order — return exactly ONE combined "prompt" for the whole shot):\n${segmentBlocks}`,
     shotContext.productContext
@@ -2002,7 +2075,11 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     systemPrompt,
     userPromptText,
     hasVision,
-    images: buildShotVideoPromptVisionImages(params.imageUrl, params.characterReferenceImages),
+    images: buildShotVideoPromptVisionImages(
+      params.imageUrl,
+      params.characterReferenceImages,
+      params.locationReferenceImage,
+    ),
     userId: params.userId,
     schema: shotVideoPromptOutputSchema,
     firstAttemptMaxTokens: 3000,

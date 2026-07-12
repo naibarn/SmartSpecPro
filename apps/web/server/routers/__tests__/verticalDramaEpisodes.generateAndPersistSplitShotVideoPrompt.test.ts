@@ -105,6 +105,24 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   },
 }));
 
+// Location visual bible, Phase E (planning/polished-toasting-gadget.md) —
+// the split path's `locationReferenceImage` resolution
+// (`resolveShotVideoPromptLocationReferenceImage`, resolved ONCE in
+// `generateShotVideoPrompt` before branching into split/non-split) calls
+// this service's `getPrimaryReferenceUrl`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+const { mockGetPrimaryReferenceUrl } = vi.hoisted(() => ({
+  mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
+}));
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: mockGetPrimaryReferenceUrl,
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
 }));
@@ -713,5 +731,91 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
         ],
       }),
     );
+  });
+
+  describe("locationReferenceImage (Phase E, planning/polished-toasting-gadget.md)", () => {
+    it("byte-identical-when-absent: no override and no storyboard distinct_locations group -> locationReferenceImage undefined, getPrimaryReferenceUrl never called", async () => {
+      const episodeRow = baseEpisodeRow(); // default fixture: no locationKey on the frame, storyboard has no distinct_locations
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup (anchor speaker first)
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceUrl).not.toHaveBeenCalled();
+      expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+        expect.objectContaining({ locationReferenceImage: undefined }),
+      );
+    });
+
+    it("resolves the shot's per-shot location override to a reference image and threads it into the speaker-switch service call", async () => {
+      const episodeRow = baseEpisodeRow({
+        startFramePlan: {
+          mode: "single_frame_per_shot",
+          selectedImageModelId: "google-nano-banana-pro",
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "two characters argue in a kitchen",
+              negativePrompt: "",
+              requiredCharacterRefs: [],
+              productReferenceAssetIds: [],
+              approvedMediaAssetId: "900",
+              locationKey: "loc_kitchen",
+            },
+          ],
+        },
+      });
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([{ id: 56, name: "ครัวที่บ้าน", data: {} }])) // resolveLocationRosterRowByKey (override key)
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup (anchor speaker first)
+      mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/kitchen-plate.png");
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceUrl).toHaveBeenCalledWith(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+        56,
+      );
+      expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationReferenceImage: {
+            url: "https://cdn.example.com/kitchen-plate.png",
+            name: "ครัวที่บ้าน",
+          },
+        }),
+      );
+    });
   });
 });

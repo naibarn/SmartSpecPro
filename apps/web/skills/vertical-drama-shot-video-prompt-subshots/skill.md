@@ -149,6 +149,16 @@ Same two independent language settings as the single-shot skill
      established by the attached start-frame image, so the whole prompt
      reads as one continuous scene being cut between speakers, never as
      separate shots that merely happen to be adjacent.
+   - When an environment/location reference image is ALSO attached (below
+     the start frame and any character reference images, preceded by a text
+     label naming the location), keep every segment's setting, architecture,
+     lighting, and props consistent with what that reference image actually
+     shows — never contradict or drift away from the established location
+     (e.g. do not imply a different room layout, wall color, window
+     placement, or set of props than the reference shows) in any segment.
+     This is strictly about ENVIRONMENTAL CONSISTENCY with the attached
+     reference — never an excuse to describe the location in prose beyond
+     what each segment's own action already needs.
 4. **Every prompt you write must be unique to this shot.** Never reuse
    boilerplate phrasing verbatim across different shots even when the
    underlying scene is similar — ground the motion description in this

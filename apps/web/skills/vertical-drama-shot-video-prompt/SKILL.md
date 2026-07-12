@@ -221,6 +221,19 @@ The caller tells you two independent language settings for this shot:
    strictly about NAMING who is acting/speaking, never about describing
    their physical appearance — rule 1 still applies in full; do not let this
    rule become an excuse to describe a face, body, or outfit.
+12. **Environmental consistency when a location/environment reference image
+   is attached — MANDATORY.** When an environment/location reference image
+   is attached (below the start frame and any character reference images,
+   preceded by a text label naming the location), keep this shot's setting,
+   architecture, lighting, and props consistent with what that reference
+   image actually shows — never contradict or drift away from the
+   established location (e.g. do not imply a different room layout, wall
+   color, window placement, or set of props than the reference shows).
+   This is strictly about ENVIRONMENTAL CONSISTENCY with the attached
+   reference — never an excuse to describe the location in prose beyond
+   what this shot's own motion/camera direction already needs; do not add
+   new scene-setting description just because a location reference is
+   attached.
 
 ## NATIVE AUDIO DIRECTION (conditional — only when the caller states `native_audio: true` for this shot)
 

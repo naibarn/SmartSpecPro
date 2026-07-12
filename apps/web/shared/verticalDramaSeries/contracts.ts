@@ -476,6 +476,29 @@ export type VerticalDramaStartFramePlan = {
      */
     productRefsCustomized?: boolean;
     approvedMediaAssetId?: string;
+    /**
+     * Per-shot location override (Phase D, `planning/polished-toasting-
+     * gadget.md` — location visual bible). Set via the `setShotLocation`
+     * mutation (`verticalDramaEpisodes.ts`) — a pure data patch, no
+     * LLM/regeneration involved, same convention as `requiredCharacterRefs`'
+     * own manual-override sibling `setShotCharacterReference`. Must be a
+     * `locationKey` already present in this series' `vertical_drama_locations`
+     * roster (validated at write time).
+     *
+     * When present, takes precedence over the storyboard's own
+     * `distinct_locations[].shot_numbers` grouping for THIS shot only, across
+     * every location-reference resolution path that shot participates in
+     * (start-frame image generation, video-prompt generation, and the actual
+     * video-render provider call) — see `resolveEffectiveShotLocationKey`
+     * (`server/routers/verticalDramaEpisodes.ts`) for the single shared
+     * precedence function every one of those call sites runs through, so they
+     * can never drift out of sync with each other. Absent on every frame
+     * created before this field existed (and restored to "absent" by calling
+     * `setShotLocation` with `locationKey: null`), which is intentionally
+     * equivalent to "no override" — falls back to the pre-existing
+     * storyboard-grouping resolution, fully backward compatible.
+     */
+    locationKey?: string;
     /** Persisted 3x3 multi-angle picker state (2026-07-05 fix) — the source
      *  grid image is already a completed, durable media task; this just
      *  remembers which grid to re-split client-side on reload and which of

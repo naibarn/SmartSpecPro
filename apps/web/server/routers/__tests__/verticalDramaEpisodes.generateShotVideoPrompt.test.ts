@@ -96,6 +96,23 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: mockGetPrimaryPortraitUrl },
 }));
 
+// Location visual bible, Phase E (planning/polished-toasting-gadget.md) —
+// `generateShotVideoPrompt`'s `locationReferenceImage` resolution
+// (`resolveShotVideoPromptLocationReferenceImage`) calls this service's
+// `getPrimaryReferenceUrl`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+const { mockGetPrimaryReferenceUrl } = vi.hoisted(() => ({
+  mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
+}));
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: mockGetPrimaryReferenceUrl,
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
 }));
@@ -2147,5 +2164,163 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
         expect.objectContaining({ characterReferenceImages: undefined }),
       );
     });
+  });
+});
+
+describe("generateShotVideoPrompt — locationReferenceImage (Phase E, planning/polished-toasting-gadget.md)", () => {
+  function episodeRowWithLocationOverride(over: Record<string, unknown> = {}) {
+    return baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a hero standing in the rain",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "900",
+            locationKey: "loc_store",
+          },
+        ],
+      },
+      ...over,
+    });
+  }
+
+  it("byte-identical-when-absent: no override and no storyboard distinct_locations group -> locationReferenceImage undefined, getPrimaryReferenceUrl never called", async () => {
+    const episodeRow = baseEpisodeRow(); // default fixture: no locationKey on the frame, storyboard has no distinct_locations
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).not.toHaveBeenCalled();
+    // Exactly the pre-Phase-E 4 selects — the location resolution never
+    // touches the database when the shot has no override and no matching
+    // storyboard group.
+    expect(mockDb.select).toHaveBeenCalledTimes(4);
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ locationReferenceImage: undefined }),
+    );
+  });
+
+  it("resolves the shot's per-shot location override to a reference image and threads it into the service call", async () => {
+    const episodeRow = episodeRowWithLocationOverride();
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])); // resolveLocationRosterRowByKey (override key)
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("/uploads/store-plate.png");
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx({ publicUrl: "https://smartaihub.app" }),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      55,
+    );
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locationReferenceImage: {
+          url: "https://smartaihub.app/uploads/store-plate.png",
+          name: "ร้านสะดวกซื้อ",
+        },
+      }),
+    );
+  });
+
+  it("falls back to the storyboard's distinct_locations grouping when the shot has no override", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: {
+        gridLayout: "3x3",
+        shotCount: 9,
+        shots: [
+          {
+            shotNumber: 1,
+            description: "Hero stands in the rain, looking up",
+            cameraSetup: "wide shot, low angle",
+            characterIds: ["hero"],
+            continuityNotes: [],
+            durationSeconds: 6,
+          },
+        ],
+        distinct_locations: [
+          { location_key: "loc_store", location_name: "ร้านสะดวกซื้อ", shot_numbers: [1] },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])); // resolveLocationRosterRowByKey (storyboard-matched key)
+    mockGetPrimaryReferenceUrl.mockResolvedValueOnce("https://cdn.example.com/store-plate.png");
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locationReferenceImage: {
+          url: "https://cdn.example.com/store-plate.png",
+          name: "ร้านสะดวกซื้อ",
+        },
+      }),
+    );
+  });
+
+  it("omits locationReferenceImage gracefully (never throws) when the override key has no matching roster row yet", async () => {
+    const episodeRow = episodeRowWithLocationOverride({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a hero standing in the rain",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "900",
+            locationKey: "loc_ghost",
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(selectChain([])); // resolveLocationRosterRowByKey — no row for loc_ghost
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGetPrimaryReferenceUrl).not.toHaveBeenCalled();
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ locationReferenceImage: undefined }),
+    );
   });
 });

@@ -952,6 +952,80 @@ export const verticalDramaLocationsRouter = router({
     }),
 
   /**
+   * ALL candidate `establishing_plate` reference images for one location
+   * (approved and not) — backs the "multiple candidates, pick a primary"
+   * gallery (mirrors, in spirit, how the character system lets a user keep
+   * several images; a location is a flat slot with several candidate
+   * images, never a variant/twin graph — see this file's top-of-file doc
+   * comment). Each returned candidate carries `isPrimary`, resolved per
+   * `verticalDramaLocationStock.ts`'s marker rule: an explicit, still-valid
+   * `setPrimaryLocationAsset` pick wins; otherwise the newest APPROVED
+   * candidate is primary (byte-identical fallback to `list`'s own
+   * `primaryReferenceUrl`).
+   */
+  listLocationAssets: verticalDramaProcedure
+    .input(seriesScope.extend({ locationId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const locationId = parseId(input.locationId, "location id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+
+      const rows = await verticalDramaLocationStockService.listLocationAssets(
+        { tenantId, userId, seriesId },
+        locationId,
+      );
+      return {
+        assets: rows.map((row) => ({
+          assetLinkId: String(row.assetLinkId),
+          mediaAssetId: String(row.mediaAssetId),
+          url: row.url,
+          approved: row.approved,
+          isPrimary: row.isPrimary,
+          updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
+        })),
+      };
+    }),
+
+  /**
+   * Explicitly pick which candidate image is a location's primary
+   * reference — thin wrapper over
+   * `verticalDramaLocationStockService.setPrimaryAsset` (writes
+   * `data.primaryAssetLinkId` on the location row; only an already-approved
+   * `establishing_plate` asset belonging to this exact location can be
+   * picked, see that method's own doc comment). No rate limit — unlike
+   * `previewLocationPrompt`/`generateLocationImage`/
+   * `resolveMediaAssetForImport`/`detectLocationsNow` above, this performs
+   * no generation/LLM call, same convention as
+   * `approveAsset`/`transitionAsset`/`markStale`/`deleteAsset`, none of
+   * which rate-limit either.
+   */
+  setPrimaryLocationAsset: verticalDramaProcedure
+    .input(seriesScope.extend({ locationId: z.string().min(1), assetLinkId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const locationId = parseId(input.locationId, "location id");
+      const assetLinkId = parseId(input.assetLinkId, "asset link id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      await loadOwnedLocation(tenantId, userId, seriesId, locationId);
+
+      try {
+        await verticalDramaLocationStockService.setPrimaryAsset(
+          { tenantId, userId, seriesId },
+          locationId,
+          assetLinkId,
+        );
+        return { ok: true };
+      } catch (err) {
+        mapLocationStockError(err);
+      }
+    }),
+
+  /**
    * Location Visual Bible — whole-series location detection. Reads the
    * entire season's drafted deep-story content and proposes a roster of
    * every distinct physical setting the story establishes, reconciling the

@@ -113,6 +113,28 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+// Location visual bible, Phases D/E (planning/polished-toasting-gadget.md) —
+// mocked the SAME way as `verticalDramaCharacterStockService` immediately
+// above: this service's real `getPrimaryReferenceAssetId`/`listRows`
+// implementations use `.innerJoin(...)`, which this file's local
+// `selectChain` mock helper does not implement (only `.leftJoin`) — mocking
+// the service directly (rather than letting its real DB-backed
+// implementation run against `mockDb`) avoids that gap entirely, same
+// reasoning as the character-stock mock above.
+const { mockGetPrimaryReferenceUrl, mockGetPrimaryReferenceAssetId, mockListLocationRows } =
+  vi.hoisted(() => ({
+    mockGetPrimaryReferenceUrl: vi.fn(() => Promise.resolve(undefined)),
+    mockGetPrimaryReferenceAssetId: vi.fn(() => Promise.resolve(undefined)),
+    mockListLocationRows: vi.fn(() => Promise.resolve([])),
+  }));
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: mockGetPrimaryReferenceUrl,
+    getPrimaryReferenceAssetId: mockGetPrimaryReferenceAssetId,
+    listRows: mockListLocationRows,
+  },
+}));
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: vi.fn(),
 }));
@@ -935,6 +957,162 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
         },
       })
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("setShotLocation — manual per-shot location override (Phase D, planning/polished-toasting-gadget.md)", () => {
+  function episodeRowWithTwoShots() {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "shot one prompt",
+            requiredCharacterRefs: [],
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "shot two prompt",
+            requiredCharacterRefs: [],
+            locationKey: "loc_kitchen",
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+  }
+
+  it("patches only the target shot's locationKey and leaves every other shot untouched", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 55 }])); // roster validation
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotLocation({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        locationKey: "loc_store",
+      },
+    });
+
+    expect(result.startFramePlan.frames[0]).toMatchObject({
+      shotNumber: 1,
+      locationKey: "loc_store",
+    });
+    // Shot 2 is byte-identical to before — this mutation never touches any
+    // shot other than the one targeted by `shotNumber`.
+    expect(result.startFramePlan.frames[1]).toMatchObject({
+      shotNumber: 2,
+      locationKey: "loc_kitchen",
+    });
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows clearing a shot's location override with locationKey: null (skips roster validation entirely)", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])); // loadOwnedEpisode
+    // No roster validation query when `locationKey` is null.
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotLocation({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 2,
+        locationKey: null,
+      },
+    });
+
+    expect(result.startFramePlan.frames[1].locationKey).toBeUndefined();
+    expect(mockDb.select).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects an unknown/nonexistent locationKey with BAD_REQUEST and does not write anything", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // roster validation — no matching row
+
+    await expect(
+      router.setShotLocation({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          locationKey: "loc_ghost",
+        },
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects a caller who does not own the series/episode with NOT_FOUND (cross-tenant — loadOwnedEpisode's tenant-scoped query finds no row)", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([])); // loadOwnedEpisode -> no row for this tenant
+
+    await expect(
+      router.setShotLocation({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "999",
+          shotNumber: 1,
+          locationKey: "loc_store",
+        },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown shotNumber with NOT_FOUND", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])); // loadOwnedEpisode
+
+    await expect(
+      router.setShotLocation({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 99,
+          locationKey: null,
+        },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects when no start-frame plan exists yet with PRECONDITION_FAILED", async () => {
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          id: 100,
+          tenantId: "tenant-1",
+          userId: 42,
+          seriesId: 10,
+          startFramePlan: null,
+        },
+      ])
+    ); // loadOwnedEpisode
+
+    await expect(
+      router.setShotLocation({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          locationKey: "loc_store",
+        },
+      })
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
@@ -2205,6 +2383,115 @@ describe("repairStageOutput — W11.6 Story Lock", () => {
   });
 });
 
+describe("getEpisodeDetail — episodeLocations field (Phase D, planning/polished-toasting-gadget.md)", () => {
+  function baseEpisodeRow() {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      script: null,
+      dialogueAudioPlan: null,
+      storyboard: null,
+      storyboardReviewId: null,
+      startFramePlan: null,
+      motionPromptPack: null,
+    };
+  }
+
+  it("returns [] (never null) when the series has no locations yet", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([])); // episodePlan's own series-bible select
+    // `mockListLocationRows` defaults to `Promise.resolve([])` (see this
+    // file's top-level `verticalDramaLocationStock` mock) — no override
+    // needed for the empty-roster case.
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.episodeLocations).toEqual([]);
+    expect(mockListLocationRows).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+    });
+  });
+
+  it("returns the exact { locationKey, name, primaryReferenceUrl } shape for every roster location, with primaryReferenceUrl present only for an approved reference", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([])); // episodePlan's own series-bible select
+    mockListLocationRows.mockResolvedValueOnce([
+      {
+        id: 55,
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        locationKey: "loc_store",
+        name: "ร้านสะดวกซื้อ",
+        data: { description: "a store" },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        primaryReferenceUrl: "https://cdn.example.com/store-plate.png",
+        primaryReferenceAssetLinkId: 900,
+      } as any,
+      {
+        id: 56,
+        tenantId: "tenant-1",
+        userId: 42,
+        seriesId: 10,
+        locationKey: "loc_kitchen",
+        name: "ครัวที่บ้าน",
+        data: { description: "a kitchen" },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // No `primaryReferenceUrl` — no approved establishing plate yet.
+      } as any,
+    ]);
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    expect(result.episodeLocations).toEqual([
+      {
+        locationKey: "loc_store",
+        name: "ร้านสะดวกซื้อ",
+        primaryReferenceUrl: "https://cdn.example.com/store-plate.png",
+      },
+      {
+        locationKey: "loc_kitchen",
+        name: "ครัวที่บ้าน",
+        primaryReferenceUrl: undefined,
+      },
+    ]);
+  });
+
+  it("resolves to [] (never throws) when the location roster lookup itself fails — tolerant fallback, same convention as episodePlan", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([baseEpisodeRow()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview
+      .mockReturnValueOnce(selectChain([])); // episodePlan's own series-bible select
+    mockListLocationRows.mockRejectedValueOnce(new Error("db unavailable"));
+
+    await expect(
+      router.getEpisodeDetail({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      })
+    ).resolves.toMatchObject({ episodeLocations: [] });
+  });
+});
+
 describe("getEpisodeDetail — qualityReview field", () => {
   it("returns null when no quality-review artifact has been written yet", async () => {
     mockDb.select
@@ -2422,7 +2709,11 @@ describe("getEpisodeDetail — qualityReview field", () => {
     // `resolveEpisodeDraftAvailable` select never runs when its flag is off)
     // plus 1 for Part A1's unconditional `episodePlan` lookup
     // (planning/`polished-toasting-gadget.md`) — resolved as the LAST query
-    // of `getEpisodeDetail`, unaffected by any flag.
+    // of `getEpisodeDetail`, unaffected by any flag. Phase D's
+    // `episodeLocations` adds NO extra `mockDb.select` call here — it goes
+    // through the mocked `verticalDramaLocationStockService.listRows`
+    // (service-level mock, see this file's `mockListLocationRows`), not a
+    // raw `db.select`.
     expect(mockDb.select).toHaveBeenCalledTimes(4);
   });
 
@@ -2934,7 +3225,9 @@ describe("getEpisodeDetail — qualityReview field", () => {
 
       // +1 for Part A1's unconditional `episodePlan` lookup
       // (planning/`polished-toasting-gadget.md`), resolved as the LAST query
-      // of `getEpisodeDetail`.
+      // of `getEpisodeDetail`. Phase D's `episodeLocations` adds NO extra
+      // `mockDb.select` call — it goes through the mocked
+      // `verticalDramaLocationStockService.listRows` (service-level mock).
       expect(mockDb.select).toHaveBeenCalledTimes(7);
     });
 
@@ -2968,7 +3261,9 @@ describe("getEpisodeDetail — qualityReview field", () => {
       expect((result as any).perShotDialoguePreview).toBeNull();
       // +1 for Part A1's unconditional `episodePlan` lookup
       // (planning/`polished-toasting-gadget.md`), resolved as the LAST query
-      // of `getEpisodeDetail`.
+      // of `getEpisodeDetail`. Phase D's `episodeLocations` adds NO extra
+      // `mockDb.select` call — it goes through the mocked
+      // `verticalDramaLocationStockService.listRows` (service-level mock).
       expect(mockDb.select).toHaveBeenCalledTimes(4);
     });
   });
@@ -3370,7 +3665,10 @@ describe("2026-07-08 acceptance-review fix #2 — video_clips real completedClip
       // queued for it, so the resulting `undefined` chain is caught by
       // `resolveEpisodePlanForEpisode`'s own defensive try/catch and
       // resolves to `episodePlan: null`, same fail-safe contract as every
-      // other best-effort lookup in this procedure).
+      // other best-effort lookup in this procedure). Phase D's
+      // `episodeLocations` adds NO extra `mockDb.select` call — it goes
+      // through the mocked `verticalDramaLocationStockService.listRows`
+      // (service-level mock, default resolves to `[]`).
       expect(mockDb.select).toHaveBeenCalledTimes(8);
     });
   });
@@ -3747,6 +4045,197 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
 
     expect(mockDeductCredits).not.toHaveBeenCalled();
     expect(mockRefundCredits).not.toHaveBeenCalled();
+  });
+
+  // Location visual bible, Phase E (planning/polished-toasting-gadget.md) —
+  // the shot's location reference asset, appended AFTER character/shot
+  // references and included in the same trim-to-maxReferenceImages logic.
+  describe("location reference (Phase E, planning/polished-toasting-gadget.md)", () => {
+    it("byte-identical when the shot has no resolved location (no override, no storyboard data): referenceImageUrls unchanged, and adds zero new db.select calls", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "1", sortOrder: 0 }),
+      ]);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRowWithPack()])) // loadOwnedEpisode — no storyboard/startFramePlan fields at all
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 1, originalUrl: "https://cdn/1.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png", "https://cdn/1.png"],
+        }),
+        expect.any(String)
+      );
+      // Exactly the pre-Phase-E 3 selects — the location resolution never
+      // touches the database when the shot has no override and no matching
+      // storyboard group.
+      expect(mockDb.select).toHaveBeenCalledTimes(3);
+    });
+
+    it("includes the shot's location reference asset (resolved via the per-shot override) AFTER the start frame and shot references", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+              locationKey: "loc_store",
+            },
+          ],
+        },
+      };
+      mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])) // resolveLocationRosterRowByKey (override key)
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 950, originalUrl: "https://cdn/950-location-plate.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(mockGetPrimaryReferenceAssetId).toHaveBeenCalledWith(
+        { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+        55
+      );
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png", "https://cdn/950-location-plate.png"],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("trims the location reference away FIRST when the model caps out, keeping the start frame + the higher-priority shot reference", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 1,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([
+        shotReference({ mediaAssetId: "1", sortOrder: 0 }),
+      ]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+              locationKey: "loc_store",
+            },
+          ],
+        },
+      };
+      mockGetPrimaryReferenceAssetId.mockResolvedValueOnce(950);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 55, name: "ร้านสะดวกซื้อ", data: {} }])) // resolveLocationRosterRowByKey
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 900, originalUrl: "https://cdn/900.png" },
+            { id: 1, originalUrl: "https://cdn/1.png" },
+          ])
+        ) // resolveMediaAssetUrlsByIds — only start frame + the ONE kept shot reference (location trimmed away)
+        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      // shot reference (1) + location reference (1) = 2, trimmed to
+      // maxReferenceImages(1) -> the location reference (lowest priority) is
+      // the one dropped, never the shot-level manual reference.
+      expect(result.trimmedReferenceCount).toBe(1);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          referenceImageUrls: ["https://cdn/900.png", "https://cdn/1.png"],
+        }),
+        expect.any(String)
+      );
+    });
+
+    it("omits the location reference gracefully (never throws) when the override key has no matching roster row yet", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockShotReferencesService.listForShot.mockResolvedValue([]);
+      const episodeRow = {
+        ...episodeRowWithPack(),
+        storyboard: null,
+        startFramePlan: {
+          selectedImageModelId: null,
+          frames: [
+            {
+              shotNumber: 1,
+              imagePrompt: "a prompt",
+              requiredCharacterRefs: [],
+              locationKey: "loc_ghost",
+            },
+          ],
+        },
+      };
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([])) // resolveLocationRosterRowByKey — no row for loc_ghost
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+      const result = await router.generateVideoClip({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+      });
+
+      expect(result.trimmedReferenceCount).toBe(0);
+      expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ referenceImageUrls: ["https://cdn/900.png"] }),
+        expect.any(String)
+      );
+    });
   });
 });
 

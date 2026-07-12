@@ -105,6 +105,7 @@ import {
   type VerticalDramaCharacterPortraitMap,
   type VerticalDramaClipDialogueLineView,
   type VerticalDramaCompiledVideoView,
+  type VerticalDramaEpisodeLocationView,
   type VerticalDramaMotionPromptPackView,
   type VerticalDramaQualityLoopStateView,
   type VerticalDramaQualityPolicyView,
@@ -364,6 +365,9 @@ export interface VerticalDramaStoryboardPanelData {
    *  image, concurrently (redesign, 2026-07-05) — not one-at-a-time. */
   onGenerateAllStartFrameImages?: (shotNumbers: number[]) => void;
   characterPortraits?: VerticalDramaCharacterPortraitMap;
+  /** See `VerticalDramaStoryboardPanelProps.episodeLocations` — the series'
+   *  full location roster (Phase D, location visual bible). */
+  episodeLocations?: VerticalDramaEpisodeLocationView[];
   /** Product tie-in placement per shot (spec §13) — read-only chip indicator. */
   productTieInByShot?: Record<number, VerticalDramaShotProductTieInView>;
   /** Every product reference image available to pick from (2026-07-06 product-
@@ -382,6 +386,10 @@ export interface VerticalDramaStoryboardPanelData {
     characterRefs: string[]
   ) => void;
   savingShotCharacterReferencesForShot?: number | null;
+  /** See `VerticalDramaStoryboardPanelProps.onSetShotLocation` (Phase D,
+   *  location visual bible) — per-shot location override, distinct from the
+   *  storyboard's own `distinct_locations[]` grouping. */
+  onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
   onDropStartFrame?: (shotNumber: number, url: string) => void;
   onGenerateAngleVariations?: (shotNumber: number) => void;
   generatingAngleVariationsForShot?: number | null;
@@ -1117,6 +1125,7 @@ export function VerticalDramaEpisodeWorkspace({
             storyboardPanel?.onGenerateAllStartFrameImages
           }
           characterPortraits={storyboardPanel?.characterPortraits}
+          episodeLocations={storyboardPanel?.episodeLocations}
           productTieInByShot={storyboardPanel?.productTieInByShot}
           productImages={storyboardPanel?.productImages}
           productImagesLoading={storyboardPanel?.productImagesLoading}
@@ -1136,6 +1145,7 @@ export function VerticalDramaEpisodeWorkspace({
           savingShotCharacterReferencesForShot={
             storyboardPanel?.savingShotCharacterReferencesForShot
           }
+          onSetShotLocation={storyboardPanel?.onSetShotLocation}
           onDropStartFrame={storyboardPanel?.onDropStartFrame}
           onGenerateAngleVariations={storyboardPanel?.onGenerateAngleVariations}
           generatingAngleVariationsForShot={

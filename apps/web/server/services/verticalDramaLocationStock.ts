@@ -72,7 +72,11 @@ export class VerticalDramaLocationStockError extends Error {
       | AttachLocationMediaAssetRejectionReason
       | "illegal_state_transition"
       | "asset_not_found"
-      | "asset_wrong_role",
+      | "asset_wrong_role"
+      // Distinct from `asset_wrong_role` — the asset IS an establishing_plate
+      // reference, it just hasn't cleared review yet, so `setPrimaryAsset`
+      // (below) can never mark a not-yet-approved candidate as primary.
+      | "asset_not_approved",
     message: string,
   ) {
     super(message);
@@ -145,6 +149,22 @@ export function locationAssetRowToContract(
 
 function toIso(v: Date | string): string {
   return (v instanceof Date ? v : new Date(v)).toISOString();
+}
+
+/**
+ * Extract the explicit "user picked this candidate as primary" marker
+ * (`data.primaryAssetLinkId`) from a `verticalDramaLocations` row's raw
+ * `data` jsonb column. Malformed/legacy `data` (missing key, wrong type,
+ * non-positive number) is treated identically to "no marker set" — every
+ * caller of this function falls back to the newest-approved
+ * `establishing_plate` asset in that case, so a location whose `data`
+ * predates this feature (or was hand-edited) behaves byte-identically to
+ * before this marker existed. Exported for direct unit testing.
+ */
+export function extractPrimaryAssetLinkIdMarker(data: unknown): number | undefined {
+  if (!data || typeof data !== "object") return undefined;
+  const raw = (data as Record<string, unknown>).primaryAssetLinkId;
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : undefined;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -342,6 +362,13 @@ export class VerticalDramaLocationStockService {
         ),
       )
       .returning();
+    // Leaving `approved` — e.g. rejected/back-to-draft — clears this asset as
+    // the location's explicitly-marked primary (if it was), so resolution
+    // cleanly falls back to newest-approved instead of pointing at a
+    // no-longer-approved image. No-op when this asset was never the marker.
+    if (next !== "approved" && row.locationId != null) {
+      await this.clearPrimaryMarkerIfMatches(params, row.locationId, params.assetLinkId);
+    }
     return locationAssetRowToContract(updated as VerticalDramaLocationAssetRow);
   }
 
@@ -368,6 +395,14 @@ export class VerticalDramaLocationStockService {
         .update(verticalDramaLocationAssets)
         .set({ metadata: meta, updatedAt: new Date() })
         .where(eq(verticalDramaLocationAssets.id, row.id));
+      // Note: marking stale does NOT flip the `approved` DB column (only the
+      // derived `metadata.state`) — see `deriveLocationAssetState`'s own
+      // precedence. The explicit-marker clear below is therefore the ONLY
+      // thing that stops a just-staled asset from continuing to resolve as
+      // "the" primary; it must run regardless of that `approved` quirk.
+      if (row.locationId != null) {
+        await this.clearPrimaryMarkerIfMatches(owner, row.locationId, row.id);
+      }
       count += 1;
     }
     return count;
@@ -380,7 +415,7 @@ export class VerticalDramaLocationStockService {
    * link row — the underlying `media_assets` row is left untouched.
    */
   async deleteAsset(owner: VerticalDramaLocationStockOwner, assetLinkId: number): Promise<void> {
-    await this.loadOwnedRow(owner, assetLinkId);
+    const row = await this.loadOwnedRow(owner, assetLinkId);
     await db
       .delete(verticalDramaLocationAssets)
       .where(
@@ -389,6 +424,107 @@ export class VerticalDramaLocationStockService {
           eq(verticalDramaLocationAssets.tenantId, owner.tenantId),
           eq(verticalDramaLocationAssets.userId, owner.userId),
           eq(verticalDramaLocationAssets.seriesId, owner.seriesId),
+        ),
+      );
+    // Deleting the explicitly-marked primary clears the marker so resolution
+    // falls back to newest-approved instead of pointing at a now-deleted
+    // asset link. No-op when this asset was never the marker.
+    if (row.locationId != null) {
+      await this.clearPrimaryMarkerIfMatches(owner, row.locationId, assetLinkId);
+    }
+  }
+
+  /**
+   * Load a location row's raw `data` jsonb column (tenant/user/series
+   * scoped). Returns `undefined` when the location does not exist / is not
+   * owned by `owner` (distinct from a `null`/`{}` `data` column, which means
+   * "found, but nothing stored yet") — callers use that distinction to no-op
+   * cleanly instead of throwing when a location has already been deleted out
+   * from under a stale caller.
+   */
+  private async loadLocationData(
+    owner: VerticalDramaLocationStockOwner,
+    locationId: number,
+  ): Promise<Record<string, unknown> | null | undefined> {
+    const [row] = await db
+      .select({ data: verticalDramaLocations.data })
+      .from(verticalDramaLocations)
+      .where(
+        and(
+          eq(verticalDramaLocations.id, locationId),
+          eq(verticalDramaLocations.tenantId, owner.tenantId),
+          eq(verticalDramaLocations.userId, owner.userId),
+          eq(verticalDramaLocations.seriesId, owner.seriesId),
+        ),
+      )
+      .limit(1);
+    if (!row) return undefined;
+    return (row.data as Record<string, unknown> | null) ?? null;
+  }
+
+  /**
+   * Resolve the location's EXPLICITLY-marked primary reference
+   * (`data.primaryAssetLinkId`), re-validated against the exact constraints
+   * the marker-resolution rule requires: the marked asset must still exist,
+   * still be `approved`, still be `role="establishing_plate"`, and still
+   * belong to this exact location under this owner scope. Returns
+   * `undefined` when there is no marker, or the marker no longer resolves to
+   * a valid asset — callers fall back to their own newest-approved query
+   * UNCHANGED in that case (see `getPrimaryReferenceUrl`/
+   * `getPrimaryReferenceAssetId` below).
+   */
+  private async resolveExplicitPrimaryReference(
+    owner: VerticalDramaLocationStockOwner,
+    locationId: number,
+  ): Promise<{ mediaAssetId: number; url: string } | undefined> {
+    const marker = extractPrimaryAssetLinkIdMarker(await this.loadLocationData(owner, locationId));
+    if (marker == null) return undefined;
+    const [row] = await db
+      .select({ mediaAssetId: mediaAssets.id, url: mediaAssets.originalUrl })
+      .from(verticalDramaLocationAssets)
+      .innerJoin(mediaAssets, eq(verticalDramaLocationAssets.mediaAssetId, mediaAssets.id))
+      .where(
+        and(
+          eq(verticalDramaLocationAssets.id, marker),
+          eq(verticalDramaLocationAssets.tenantId, owner.tenantId),
+          eq(verticalDramaLocationAssets.userId, owner.userId),
+          eq(verticalDramaLocationAssets.seriesId, owner.seriesId),
+          eq(verticalDramaLocationAssets.locationId, locationId),
+          eq(verticalDramaLocationAssets.role, "establishing_plate"),
+          eq(verticalDramaLocationAssets.approved, true),
+        ),
+      )
+      .limit(1);
+    if (!row || !row.url) return undefined;
+    return { mediaAssetId: row.mediaAssetId, url: row.url };
+  }
+
+  /**
+   * If `assetLinkId` is currently the location's explicitly-marked primary
+   * (`data.primaryAssetLinkId`), clear that marker so resolution falls back
+   * to newest-approved. A pure no-op when it is not the marker (or the
+   * location can no longer be loaded) — safe to call unconditionally from
+   * `transition`/`markStale`/`deleteAsset` after they change an asset's
+   * approval state or remove it outright.
+   */
+  private async clearPrimaryMarkerIfMatches(
+    owner: VerticalDramaLocationStockOwner,
+    locationId: number,
+    assetLinkId: number,
+  ): Promise<void> {
+    const data = await this.loadLocationData(owner, locationId);
+    if (data === undefined) return;
+    if (extractPrimaryAssetLinkIdMarker(data) !== assetLinkId) return;
+    const { primaryAssetLinkId: _droppedMarker, ...rest } = (data ?? {}) as Record<string, unknown>;
+    await db
+      .update(verticalDramaLocations)
+      .set({ data: rest, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verticalDramaLocations.id, locationId),
+          eq(verticalDramaLocations.tenantId, owner.tenantId),
+          eq(verticalDramaLocations.userId, owner.userId),
+          eq(verticalDramaLocations.seriesId, owner.seriesId),
         ),
       );
   }
@@ -404,11 +540,21 @@ export class VerticalDramaLocationStockService {
    * back to the newest plate of any state (a just-generated one is
    * auto-approved already, but this stays defensive for pre-auto-approve
    * rows or a rejected-then-not-yet-replaced case).
+   *
+   * An explicit `data.primaryAssetLinkId` marker (see
+   * `resolveExplicitPrimaryReference`) takes precedence over this
+   * newest-first query when it points at a still-valid asset — otherwise
+   * this query runs completely UNCHANGED, so a location that has never had a
+   * primary explicitly picked behaves byte-identically to before this marker
+   * existed.
    */
   async getPrimaryReferenceUrl(
     owner: VerticalDramaLocationStockOwner,
     locationId: number,
   ): Promise<string | undefined> {
+    const explicit = await this.resolveExplicitPrimaryReference(owner, locationId);
+    if (explicit) return explicit.url;
+
     const [row] = await db
       .select({ url: mediaAssets.originalUrl })
       .from(verticalDramaLocationAssets)
@@ -430,12 +576,16 @@ export class VerticalDramaLocationStockService {
   /**
    * Same query/ordering as `getPrimaryReferenceUrl` but selects the
    * `media_assets` row's own id instead of its URL — mirrors
-   * `VerticalDramaCharacterStockService.getPrimaryPortraitAssetId`.
+   * `VerticalDramaCharacterStockService.getPrimaryPortraitAssetId`. Same
+   * explicit-marker precedence as `getPrimaryReferenceUrl` above.
    */
   async getPrimaryReferenceAssetId(
     owner: VerticalDramaLocationStockOwner,
     locationId: number,
   ): Promise<number | undefined> {
+    const explicit = await this.resolveExplicitPrimaryReference(owner, locationId);
+    if (explicit) return explicit.mediaAssetId;
+
     const [row] = await db
       .select({ id: mediaAssets.id })
       .from(verticalDramaLocationAssets)
@@ -506,6 +656,10 @@ export class VerticalDramaLocationStockService {
       );
 
     const bestByLocationId = new Map<number, { url: string; updatedAt: Date; linkId: number }>();
+    // Secondary index for O(1) "is THIS candidate a valid explicit marker"
+    // lookups below — keyed by the candidate's own assetLinkId (not
+    // locationId), since a marker is resolved by id, not recency.
+    const approvedById = new Map<number, { url: string; updatedAt: Date; locationId: number }>();
     for (const candidate of approvedCandidates) {
       if (candidate.locationId == null || !candidate.url) continue;
       const existing = bestByLocationId.get(candidate.locationId);
@@ -516,16 +670,180 @@ export class VerticalDramaLocationStockService {
           linkId: candidate.id,
         });
       }
+      approvedById.set(candidate.id, {
+        url: candidate.url,
+        updatedAt: candidate.updatedAt,
+        locationId: candidate.locationId,
+      });
     }
 
     return rosterRows.map((row) => {
-      const best = bestByLocationId.get(row.id);
+      // An explicit, still-valid `data.primaryAssetLinkId` marker overrides
+      // the newest-approved pick above; an unset/invalid marker leaves
+      // `bestByLocationId`'s pick (the pre-existing, unchanged fallback)
+      // completely untouched.
+      const marker = extractPrimaryAssetLinkIdMarker(row.data);
+      const markedCandidate = marker != null ? approvedById.get(marker) : undefined;
+      const best =
+        markedCandidate && markedCandidate.locationId === row.id
+          ? { url: markedCandidate.url, linkId: marker }
+          : bestByLocationId.get(row.id);
       return {
         ...row,
         primaryReferenceUrl: best?.url,
         primaryReferenceAssetLinkId: best?.linkId,
       };
     });
+  }
+
+  /**
+   * ALL `establishing_plate` candidate images for one location (approved and
+   * not), newest-updated first, each flagged with `isPrimary` per this
+   * file's marker-resolution rule — backs the Location Visual Bible's
+   * "multiple candidates, pick one primary" gallery (mirrors, in SPIRIT
+   * only, how the character system lets a user keep several images; a
+   * location is a flat slot with several candidate images, never a
+   * variant/twin graph — see this file's own top-of-file doc comment).
+   *
+   * Rows with no resolvable `media_assets.originalUrl` (e.g. a link whose
+   * media asset was hard-deleted, FK `set null`-ing `mediaAssetId`) are
+   * filtered out before ranking/returning — same defensive convention
+   * `VerticalDramaCharacterStockService.getCharacterReferenceUrls` uses for
+   * its own sheet-asset query.
+   */
+  async listLocationAssets(
+    owner: VerticalDramaLocationStockOwner,
+    locationId: number,
+  ): Promise<
+    Array<{
+      assetLinkId: number;
+      mediaAssetId: number;
+      url: string;
+      approved: boolean;
+      isPrimary: boolean;
+      updatedAt: Date;
+    }>
+  > {
+    const marker = extractPrimaryAssetLinkIdMarker(await this.loadLocationData(owner, locationId));
+
+    type CandidateRow = {
+      id: number;
+      mediaAssetId: number;
+      url: string | null;
+      approved: boolean;
+      updatedAt: Date;
+    };
+    const candidateRows: CandidateRow[] = await db
+      .select({
+        id: verticalDramaLocationAssets.id,
+        mediaAssetId: mediaAssets.id,
+        url: mediaAssets.originalUrl,
+        approved: verticalDramaLocationAssets.approved,
+        updatedAt: verticalDramaLocationAssets.updatedAt,
+      })
+      .from(verticalDramaLocationAssets)
+      .innerJoin(mediaAssets, eq(verticalDramaLocationAssets.mediaAssetId, mediaAssets.id))
+      .where(
+        and(
+          eq(verticalDramaLocationAssets.tenantId, owner.tenantId),
+          eq(verticalDramaLocationAssets.userId, owner.userId),
+          eq(verticalDramaLocationAssets.seriesId, owner.seriesId),
+          eq(verticalDramaLocationAssets.locationId, locationId),
+          eq(verticalDramaLocationAssets.role, "establishing_plate"),
+        ),
+      )
+      .orderBy(desc(verticalDramaLocationAssets.updatedAt));
+
+    const rows = candidateRows.filter(
+      (r: CandidateRow): r is CandidateRow & { url: string } => typeof r.url === "string" && r.url.length > 0,
+    );
+
+    // Resolve which single row (if any) is "the" primary in THIS result set
+    // — explicit marker wins when it points at a still-approved row here;
+    // otherwise the newest approved row wins. Byte-identical precedence to
+    // `listRows`'s own marker-then-newest-approved fallback, just computed
+    // locally against the rows already fetched above instead of a second
+    // round-trip.
+    let primaryId: number | undefined;
+    if (marker != null && rows.some((r) => r.id === marker && r.approved)) {
+      primaryId = marker;
+    } else {
+      let bestUpdatedAt = -Infinity;
+      for (const r of rows) {
+        if (!r.approved) continue;
+        const t = new Date(r.updatedAt).getTime();
+        if (t > bestUpdatedAt) {
+          bestUpdatedAt = t;
+          primaryId = r.id;
+        }
+      }
+    }
+
+    return rows.map((r) => ({
+      assetLinkId: r.id,
+      mediaAssetId: r.mediaAssetId,
+      url: r.url,
+      approved: r.approved,
+      isPrimary: r.id === primaryId,
+      updatedAt: r.updatedAt,
+    }));
+  }
+
+  /**
+   * Explicitly pick which candidate `establishing_plate` image is a
+   * location's primary reference — writes `data.primaryAssetLinkId` on the
+   * `vertical_drama_locations` row (merged into the existing `data`, never
+   * clobbering `description`/other keys). Only an already-APPROVED
+   * `establishing_plate` asset belonging to this exact location (tenant +
+   * user + series scoped) can be marked primary — generating additional
+   * candidates therefore never silently changes an explicitly-set primary;
+   * it stays pinned until the caller changes it or the marked asset is
+   * deleted/un-approved (see `clearPrimaryMarkerIfMatches`, wired into
+   * `deleteAsset`/`transition`/`markStale` above).
+   */
+  async setPrimaryAsset(
+    owner: VerticalDramaLocationStockOwner,
+    locationId: number,
+    assetLinkId: number,
+  ): Promise<void> {
+    const row = await this.loadOwnedRow(owner, assetLinkId);
+    if (row.locationId !== locationId) {
+      throw new VerticalDramaLocationStockError("asset_not_found", "Location asset not found");
+    }
+    if (row.role !== "establishing_plate") {
+      throw new VerticalDramaLocationStockError(
+        "asset_wrong_role",
+        "Only establishing_plate assets can be set as the primary reference",
+      );
+    }
+    if (!row.approved) {
+      throw new VerticalDramaLocationStockError(
+        "asset_not_approved",
+        "Only an approved asset can be set as the primary reference",
+      );
+    }
+    if (row.mediaAssetId == null) {
+      throw new VerticalDramaLocationStockError("asset_not_found", "Location asset has no linked media asset");
+    }
+
+    const existingData = await this.loadLocationData(owner, locationId);
+    if (existingData === undefined) {
+      throw new VerticalDramaLocationStockError("asset_not_found", "Location not found");
+    }
+    await db
+      .update(verticalDramaLocations)
+      .set({
+        data: { ...(existingData ?? {}), primaryAssetLinkId: assetLinkId },
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(verticalDramaLocations.id, locationId),
+          eq(verticalDramaLocations.tenantId, owner.tenantId),
+          eq(verticalDramaLocations.userId, owner.userId),
+          eq(verticalDramaLocations.seriesId, owner.seriesId),
+        ),
+      );
   }
 }
 

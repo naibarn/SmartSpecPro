@@ -75,6 +75,7 @@ import type {
   VerticalDramaCapableModel,
   VerticalDramaCharacterPortraitMap,
   VerticalDramaClipDialogueLineView,
+  VerticalDramaEpisodeLocationView,
   VerticalDramaMotionPromptPackView,
   VerticalDramaQualityLoopStateView,
   VerticalDramaQualityPolicyView,
@@ -1782,6 +1783,40 @@ function EpisodeWorkspaceShell({
         onSettled: () => setSavingShotCharacterReferencesForShot(null),
       }
     );
+  }
+
+  /**
+   * Per-shot LOCATION override (Phase D, `planning/polished-toasting-
+   * gadget.md` — location visual bible) — the location sibling of
+   * `handleSetShotCharacterReferences` above, independent of the
+   * storyboard's own `distinct_locations[]` shot grouping. `locationKey:
+   * null` clears the override. Refetches `getEpisodeDetail` on success (same
+   * convention as every other shot-level patch on this page) so the shot's
+   * location chip + its resolved reference image re-render immediately.
+   */
+  const setShotLocationMutation =
+    trpc.verticalDramaEpisodes.setShotLocation.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "อัปเดตสถานที่ของช็อตนี้แล้ว"
+            : "This shot's location updated."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleSetShotLocation(
+    shotNumber: number,
+    locationKey: string | null
+  ) {
+    setShotLocationMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      locationKey,
+    });
   }
 
   const handleSelectImageModel = (modelId: string) => {
@@ -4370,6 +4405,9 @@ function EpisodeWorkspaceShell({
             characterPortraits: episodeDetailQuery.data?.characterPortraits as
               | VerticalDramaCharacterPortraitMap
               | undefined,
+            episodeLocations: episodeDetailQuery.data?.episodeLocations as
+              | VerticalDramaEpisodeLocationView[]
+              | undefined,
             productTieInByShot,
             productImages: (productImagesQuery.data?.images ??
               []) as VerticalDramaAvailableProductImageView[],
@@ -4381,6 +4419,7 @@ function EpisodeWorkspaceShell({
             onDropCharacterReference: handleDropCharacterReference,
             onSetShotCharacterReferences: handleSetShotCharacterReferences,
             savingShotCharacterReferencesForShot,
+            onSetShotLocation: handleSetShotLocation,
             onDropStartFrame: handleDropStartFrame,
             onGenerateAngleVariations: shotNumber => {
               if (!requireMcpConnectionOrToast("image")) return;

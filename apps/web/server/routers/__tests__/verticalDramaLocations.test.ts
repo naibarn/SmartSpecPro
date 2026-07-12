@@ -61,6 +61,8 @@ const {
   mockTransition,
   mockMarkStale,
   mockDeleteAsset,
+  mockListLocationAssets,
+  mockSetPrimaryAsset,
   MockVerticalDramaLocationStockError,
 } = vi.hoisted(() => {
   class MockVerticalDramaLocationStockError extends Error {
@@ -80,6 +82,8 @@ const {
     mockTransition: vi.fn(),
     mockMarkStale: vi.fn(),
     mockDeleteAsset: vi.fn(),
+    mockListLocationAssets: vi.fn(),
+    mockSetPrimaryAsset: vi.fn(),
     MockVerticalDramaLocationStockError,
   };
 });
@@ -92,6 +96,8 @@ vi.mock("../../services/verticalDramaLocationStock", () => ({
     transition: mockTransition,
     markStale: mockMarkStale,
     deleteAsset: mockDeleteAsset,
+    listLocationAssets: mockListLocationAssets,
+    setPrimaryAsset: mockSetPrimaryAsset,
   },
   VerticalDramaLocationStockError: MockVerticalDramaLocationStockError,
 }));
@@ -495,6 +501,113 @@ describe("generateLocationImage", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* listLocationAssets / setPrimaryLocationAsset — multi-candidate primary    */
+/* picker (Location Visual Bible Phase C).                                   */
+/* -------------------------------------------------------------------------- */
+
+describe("listLocationAssets", () => {
+  it("delegates to the service and maps ids to strings, ISO timestamps", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW])) // loadOwnedSeries
+      .mockReturnValueOnce(selectChain([LOCATION_ROW])); // loadOwnedLocation
+    mockListLocationAssets.mockResolvedValue([
+      {
+        assetLinkId: 901,
+        mediaAssetId: 501,
+        url: "https://cdn.example.com/candidate-a.png",
+        approved: true,
+        isPrimary: true,
+        updatedAt: new Date("2026-07-02T00:00:00.000Z"),
+      },
+      {
+        assetLinkId: 902,
+        mediaAssetId: 502,
+        url: "https://cdn.example.com/candidate-b.png",
+        approved: false,
+        isPrimary: false,
+        updatedAt: new Date("2026-07-01T00:00:00.000Z"),
+      },
+    ]);
+
+    const result = await router.listLocationAssets({
+      ctx: ctx(),
+      input: { seriesId: "10", locationId: "5" },
+    });
+
+    expect(mockListLocationAssets).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      5,
+    );
+    expect(result).toEqual({
+      assets: [
+        {
+          assetLinkId: "901",
+          mediaAssetId: "501",
+          url: "https://cdn.example.com/candidate-a.png",
+          approved: true,
+          isPrimary: true,
+          updatedAt: "2026-07-02T00:00:00.000Z",
+        },
+        {
+          assetLinkId: "902",
+          mediaAssetId: "502",
+          url: "https://cdn.example.com/candidate-b.png",
+          approved: false,
+          isPrimary: false,
+          updatedAt: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+    });
+  });
+
+  it("throws NOT_FOUND when the location is not owned by the caller, never calling the service", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([])); // loadOwnedLocation — no row
+
+    await expect(
+      router.listLocationAssets({ ctx: ctx(), input: { seriesId: "10", locationId: "999" } }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockListLocationAssets).not.toHaveBeenCalled();
+  });
+});
+
+describe("setPrimaryLocationAsset", () => {
+  it("parses ids to numbers, calls setPrimaryAsset, and returns { ok: true }", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW])) // loadOwnedSeries
+      .mockReturnValueOnce(selectChain([LOCATION_ROW])); // loadOwnedLocation
+    mockSetPrimaryAsset.mockResolvedValue(undefined);
+
+    const result = await router.setPrimaryLocationAsset({
+      ctx: ctx(),
+      input: { seriesId: "10", locationId: "5", assetLinkId: "901" },
+    });
+
+    expect(mockSetPrimaryAsset).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      5,
+      901,
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("throws NOT_FOUND when the location is not owned by the caller, never calling the service", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([])); // loadOwnedLocation — no row
+
+    await expect(
+      router.setPrimaryLocationAsset({
+        ctx: ctx(),
+        input: { seriesId: "10", locationId: "999", assetLinkId: "901" },
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockSetPrimaryAsset).not.toHaveBeenCalled();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* SECURITY — every VerticalDramaLocationStockError maps to a generic        */
 /* NOT_FOUND, never a leaked reason string (see verticalDramaLocations.ts's  */
 /* own `mapLocationStockError` doc comment).                                */
@@ -508,6 +621,7 @@ describe("VerticalDramaLocationStockError -> generic NOT_FOUND mapping (security
     "media_asset_deleted",
     "asset_not_found",
     "asset_wrong_role",
+    "asset_not_approved",
     "illegal_state_transition",
   ];
 
@@ -564,6 +678,30 @@ describe("VerticalDramaLocationStockError -> generic NOT_FOUND mapping (security
       router.deleteAsset({ ctx: ctx(), input: { seriesId: "10", assetLinkId: "9" } }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
+
+  it.each(REASONS)(
+    "setPrimaryLocationAsset: reason=%s maps to a generic NOT_FOUND, never leaking the reason string",
+    async reason => {
+      mockDb.select
+        .mockReturnValueOnce(selectChain([SERIES_ROW])) // loadOwnedSeries
+        .mockReturnValueOnce(selectChain([LOCATION_ROW])); // loadOwnedLocation
+      mockSetPrimaryAsset.mockRejectedValueOnce(
+        new MockVerticalDramaLocationStockError(reason, `boom ${reason}`),
+      );
+
+      let caught: any;
+      try {
+        await router.setPrimaryLocationAsset({
+          ctx: ctx(),
+          input: { seriesId: "10", locationId: "5", assetLinkId: "901" },
+        });
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toMatchObject({ code: "NOT_FOUND" });
+      expect(String(caught.message)).not.toContain(reason);
+    },
+  );
 
   it("a non-stock-error (e.g. a genuine programming error) is rethrown unchanged, not masked as NOT_FOUND", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([SERIES_ROW]));

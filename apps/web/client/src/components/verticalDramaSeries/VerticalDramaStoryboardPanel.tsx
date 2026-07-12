@@ -473,6 +473,14 @@ export interface VerticalDramaStartFramePlanFrame {
   requiredCharacterRefs?: string[];
   productReferenceAssetIds?: string[];
   approvedMediaAssetId?: string;
+  /** Per-shot location override (Phase D, `planning/polished-toasting-
+   *  gadget.md` — location visual bible), set via the `setShotLocation`
+   *  mutation. Mirrors `VerticalDramaStartFramePlan["frames"][number]
+   *  .locationKey` (`@shared/verticalDramaSeries/contracts`) field-for-field
+   *  — re-declared locally (not imported) like every other field on this
+   *  type. Absent means "no override" — the effective location falls back
+   *  to the storyboard's own `distinct_locations[]` grouping for this shot. */
+  locationKey?: string;
   angleGrid?: VerticalDramaAngleGridView;
 }
 
@@ -596,6 +604,21 @@ export type VerticalDramaCharacterPortraitMap = Record<
 >;
 
 /**
+ * One row of the series' full location roster (Phase D, `planning/polished-
+ * toasting-gadget.md` — location visual bible), returned by
+ * `getEpisodeDetail.episodeLocations` — the location sibling of
+ * `characterPortraits`/`VerticalDramaCharacterPortraitMap` above. Always
+ * `[]` (never absent) for a series with no locations yet.
+ * `primaryReferenceUrl` is surfaced RAW, exactly like `portraitUrl` above
+ * (never re-shaped — already fetchable against this page's own origin).
+ */
+export interface VerticalDramaEpisodeLocationView {
+  locationKey: string;
+  name: string;
+  primaryReferenceUrl?: string;
+}
+
+/**
  * One top-level entry in the per-shot character reference picker (planning/
  * vertical-drama-twin-variant-completeness/plan.md, W6 frontend) — either a
  * plain base character or a twin (twins are independent characters, never
@@ -711,6 +734,38 @@ export function buildShotCharacterReferencePickerGroups(
   return Array.from(groups.values());
 }
 
+/**
+ * Resolve which `locationKey` governs a given shot for the storyboard
+ * panel's per-shot location chip (Phase D, `planning/polished-toasting-
+ * gadget.md` — location visual bible) — client-side mirror of the server's
+ * own `resolveEffectiveShotLocationKey`
+ * (`server/routers/verticalDramaEpisodes.ts`), duplicated rather than
+ * cross-imported since that module lives under `server/`, matching this
+ * file's established "small pure helpers are duplicated, not shared, across
+ * the character/location visual-bible systems" convention (see e.g.
+ * `guessLocationImageMimeTypeFromUrl` below). Precedence: (1)
+ * `overrideLocationKey` (the shot's own `startFramePlan.frames[i]
+ * .locationKey`, set via the `setShotLocation` mutation) when present, else
+ * (2) the storyboard's own `distinct_locations[]` grouping (snake_case,
+ * persisted verbatim from the LLM's own JSON output) — finds which group's
+ * `shot_numbers` contains `shotNumber` and returns that group's
+ * `location_key`. Pure/no I/O — returns `undefined` when neither an
+ * override nor a matching group resolves a key. Exported (and kept side-
+ * effect-free) so it can be unit tested directly, same convention as
+ * `buildShotCharacterReferencePickerGroups` above.
+ */
+export function resolveEffectiveShotLocationKey(
+  distinctLocations: VerticalDramaStoryboardDistinctLocationView[],
+  shotNumber: number,
+  overrideLocationKey?: string
+): string | undefined {
+  if (overrideLocationKey) return overrideLocationKey;
+  const matchingGroup = distinctLocations.find(group =>
+    (group.shot_numbers ?? []).some(n => Number(n) === shotNumber)
+  );
+  return matchingGroup?.location_key;
+}
+
 interface VerticalDramaStoryboardPanelProps {
   locale?: Lang;
   /** Used only to build download filenames (`series-{seriesId}-ep-{episodeNumber}-...`)
@@ -726,6 +781,14 @@ interface VerticalDramaStoryboardPanelProps {
    *  shot card shows exactly the character(s) it needs (never all of them),
    *  as the concrete identity-lock reference the generation call will use. */
   characterPortraits?: VerticalDramaCharacterPortraitMap;
+  /** The series' full location roster (Phase D, `planning/polished-toasting-
+   *  gadget.md` — location visual bible), each carrying its current approved
+   *  reference image URL if any — `getEpisodeDetail.episodeLocations`,
+   *  joined per-shot against the shot's EFFECTIVE `locationKey` (see
+   *  `resolveEffectiveShotLocationKey`) so the per-shot location chip can
+   *  show a real thumbnail instead of just a name. `[]`/absent renders the
+   *  chip exactly as it rendered before this feature existed. */
+  episodeLocations?: VerticalDramaEpisodeLocationView[];
   /** Product tie-in placement per shot (spec §13), keyed by shot number —
    *  shows a read-only product chip next to the character chips on shots
    *  that carry a placement. Absent/empty when tie-in is disabled or no
@@ -789,6 +852,15 @@ interface VerticalDramaStoryboardPanelProps {
   /** Non-null while a `setShotCharacterReference` mutation is in flight for
    *  this shot — disables the picker's save button. */
   savingShotCharacterReferencesForShot?: number | null;
+  /**
+   * Manually override which LOCATION one shot uses (Phase D, `planning/
+   * polished-toasting-gadget.md` — location visual bible), independent of
+   * the storyboard's own `distinct_locations[]` shot grouping — the
+   * location sibling of `onSetShotCharacterReferences` above. Pass `null` to
+   * clear the override and fall back to the storyboard's own grouping again.
+   * The caller wires this straight to the `setShotLocation` mutation.
+   */
+  onSetShotLocation?: (shotNumber: number, locationKey: string | null) => void;
   /** Dragging an image directly onto a shot's start-frame slot replaces it immediately, same as `onDropCharacterReference`. */
   onDropStartFrame?: (shotNumber: number, url: string) => void;
   /** Runs `start_frame_render_plan` for real (mode "full", spends credits) — generates every shot's image prompt at once. Shown only while no plan exists yet. */
@@ -1239,6 +1311,7 @@ export function VerticalDramaStoryboardPanel({
   motionPromptPack,
   assetUrls = {},
   characterPortraits = {},
+  episodeLocations = [],
   productTieInByShot = {},
   productImages = [],
   productImagesLoading = false,
@@ -1254,6 +1327,7 @@ export function VerticalDramaStoryboardPanel({
   onDropCharacterReference,
   onSetShotCharacterReferences,
   savingShotCharacterReferencesForShot = null,
+  onSetShotLocation,
   onDropStartFrame,
   onGenerateStartFramePlan,
   generatingStartFramePlan = false,
@@ -1513,6 +1587,15 @@ export function VerticalDramaStoryboardPanel({
   const [characterRefPickerDraft, setCharacterRefPickerDraft] = useState<
     string[]
   >([]);
+  /** Shot number currently showing the per-shot LOCATION override picker
+   *  (Phase D, `planning/polished-toasting-gadget.md`) — unlike
+   *  `characterRefPickerForShot`/`characterRefPickerDraft` above, a pick
+   *  commits immediately on click (no separate draft/save step — locations
+   *  are flat, no multi-select), so this is the only local state this
+   *  picker needs. */
+  const [locationPickerForShot, setLocationPickerForShot] = useState<
+    number | null
+  >(null);
   /** Each surviving tile's data URL AND its ORIGINAL 0..8 position in the
    *  3x3 grid (row-major, matching `splitImage`'s output order) — the
    *  original index is what gets persisted into `angleGrid.dismissedIndexes`
@@ -3502,41 +3585,110 @@ export function VerticalDramaStoryboardPanel({
                   })()}
 
                   {(() => {
-                    // Location chip (Location Visual Bible, Phase 3 UI —
-                    // `planning/polished-toasting-gadget.md` Phase 2 wired
-                    // up here) — resolves which `storyboard.distinct_locations[]`
-                    // group (snake_case, persisted verbatim from the LLM's
-                    // own JSON output) contains THIS shot's `shotNumber`.
-                    // Read-only: locations are auto-detected from the story
-                    // during storyboard generation, never manually
-                    // reassigned per-shot (contrast with the character
-                    // chips above, which support click/drag reassignment).
-                    // Tolerant no-op — renders nothing when
-                    // `distinct_locations` is absent/empty (a storyboard
-                    // generated before this feature existed) or no group
-                    // covers this shot.
+                    // Location chip (Location Visual Bible, Phase D UI —
+                    // `planning/polished-toasting-gadget.md`) — resolves this
+                    // shot's EFFECTIVE location the same way the server does
+                    // (`resolveEffectiveShotLocationKey`,
+                    // `server/routers/verticalDramaEpisodes.ts`): the shot's
+                    // own per-shot override (`frame.locationKey`, set via the
+                    // `setShotLocation` mutation) first, else which
+                    // `storyboard.distinct_locations[]` group (snake_case,
+                    // persisted verbatim from the LLM's own JSON output)
+                    // contains THIS shot's `shotNumber`. Joins the resolved
+                    // key against `episodeLocations` (the series' full
+                    // location roster, each carrying its current approved
+                    // reference image — Phase D's `getEpisodeDetail`
+                    // addition) to show a REAL thumbnail, the same "the chip
+                    // IS the reference image" treatment the character chips
+                    // above already use — falling back to the read-only
+                    // MapPin+name pill when the location has no approved
+                    // image yet (or `episodeLocations` wasn't passed at all,
+                    // which keeps this whole chip byte-identical to its pre-
+                    // Phase-D rendering). Renders nothing when no location
+                    // resolves at all.
                     const distinctLocations =
                       storyboard?.distinct_locations ?? [];
-                    if (distinctLocations.length === 0) return null;
                     const matchingLocation = distinctLocations.find(group =>
                       (group.shot_numbers ?? []).some(
                         n => Number(n) === shotNumber
                       )
                     );
-                    if (!matchingLocation?.location_name) return null;
+                    const overrideLocationKey = frame?.locationKey;
+                    const effectiveLocationKey =
+                      resolveEffectiveShotLocationKey(
+                        distinctLocations,
+                        shotNumber,
+                        overrideLocationKey
+                      );
+                    const rosterLocation = effectiveLocationKey
+                      ? episodeLocations.find(
+                          loc => loc.locationKey === effectiveLocationKey
+                        )
+                      : undefined;
+                    const displayName = overrideLocationKey
+                      ? (rosterLocation?.name ?? overrideLocationKey)
+                      : (rosterLocation?.name ??
+                        matchingLocation?.location_name);
+                    if (!displayName) return null;
+                    const thumbnailUrl = rosterLocation?.primaryReferenceUrl;
+                    // Only show the storyboard group's own description
+                    // tooltip when this shot's effective location actually
+                    // came FROM that group — an override may point at a
+                    // different location entirely, and `episodeLocations`
+                    // carries no description field to show instead.
+                    const descriptionTooltip = !overrideLocationKey
+                      ? matchingLocation?.description || undefined
+                      : undefined;
                     return (
                       <div className="flex flex-wrap items-center gap-2">
-                        <MapPin
-                          aria-hidden="true"
-                          className="h-3.5 w-3.5 text-muted-foreground"
-                        />
-                        <span
-                          className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs"
-                          title={matchingLocation.description || undefined}
-                          data-testid={`vd-storyboard-location-chip-${shotNumber}`}
-                        >
-                          {matchingLocation.location_name}
-                        </span>
+                        {thumbnailUrl ? (
+                          <span
+                            className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pl-0.5 pr-2 text-xs"
+                            title={descriptionTooltip}
+                            data-testid={`vd-storyboard-location-chip-${shotNumber}`}
+                          >
+                            <img
+                              src={thumbnailUrl}
+                              alt={displayName}
+                              className="h-5 w-8 rounded object-cover"
+                            />
+                            {displayName}
+                          </span>
+                        ) : (
+                          <span
+                            className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-xs"
+                            title={descriptionTooltip}
+                            data-testid={`vd-storyboard-location-chip-${shotNumber}`}
+                          >
+                            <MapPin
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5 text-muted-foreground"
+                            />
+                            {displayName}
+                          </span>
+                        )}
+                        {onSetShotLocation ? (
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                            onClick={() =>
+                              setLocationPickerForShot(shotNumber)
+                            }
+                            title={t(
+                              locale,
+                              "แก้ไขสถานที่ของช็อตนี้",
+                              "Edit this shot's location"
+                            )}
+                            aria-label={t(
+                              locale,
+                              "แก้ไขสถานที่ของช็อตนี้",
+                              "Edit this shot's location"
+                            )}
+                            data-testid={`vd-storyboard-location-edit-${shotNumber}`}
+                          >
+                            <Pencil aria-hidden="true" className="h-3 w-3" />
+                          </button>
+                        ) : null}
                       </div>
                     );
                   })()}
@@ -4833,6 +4985,24 @@ export function VerticalDramaStoryboardPanel({
             setCharacterRefPickerForShot(null);
           }}
           onClose={() => setCharacterRefPickerForShot(null)}
+        />
+      ) : null}
+
+      {locationPickerForShot != null ? (
+        <ShotLocationPickerDialog
+          locale={locale}
+          shotNumber={locationPickerForShot}
+          locations={episodeLocations}
+          currentLocationKey={resolveEffectiveShotLocationKey(
+            storyboard?.distinct_locations ?? [],
+            locationPickerForShot,
+            frameByShot.get(locationPickerForShot)?.locationKey
+          )}
+          onSelect={locationKey => {
+            onSetShotLocation?.(locationPickerForShot, locationKey);
+            setLocationPickerForShot(null);
+          }}
+          onClose={() => setLocationPickerForShot(null)}
         />
       ) : null}
 
@@ -7537,6 +7707,129 @@ function ShotCharacterReferencePickerDialog({
               t2.shotCharacterRefPickerSave
             )}
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ShotLocationPickerDialog (Phase D, `planning/polished-toasting-gadget.md`
+ * — location visual bible) — per-shot location override picker, the
+ * location sibling of `ShotCharacterReferencePickerDialog` above but
+ * deliberately much simpler: locations are flat (no variant/twin grouping),
+ * and a pick commits IMMEDIATELY on click (`onSelect`) rather than staging a
+ * draft behind a separate Save button — there is nothing to multi-select.
+ * The "ใช้ค่าเริ่มต้น" row calls `onSelect(null)`, which the caller wires
+ * straight to `setShotLocation({ locationKey: null })` to clear the
+ * override and fall back to the storyboard's own `distinct_locations[]`
+ * grouping for this shot again. Follows the same fixed-overlay
+ * `role="alertdialog"` pattern every other picker in this file uses.
+ */
+function ShotLocationPickerDialog({
+  locale,
+  shotNumber,
+  locations,
+  currentLocationKey,
+  onSelect,
+  onClose,
+}: {
+  locale: Lang;
+  shotNumber: number;
+  locations: VerticalDramaEpisodeLocationView[];
+  currentLocationKey?: string;
+  onSelect: (locationKey: string | null) => void;
+  onClose: () => void;
+}) {
+  const title = t(
+    locale,
+    "เลือกสถานที่ของช็อตนี้",
+    "Choose this shot's location"
+  );
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-lg"
+        onClick={e => e.stopPropagation()}
+        data-testid={`vd-storyboard-location-picker-${shotNumber}`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {title}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0"
+            onClick={onClose}
+            aria-label={t(locale, "ปิด", "Close")}
+          >
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
+          <button
+            type="button"
+            className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-muted"
+            onClick={() => onSelect(null)}
+            data-testid={`vd-storyboard-location-picker-default-${shotNumber}`}
+          >
+            <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+              <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+            </span>
+            <span className="flex-1">
+              {t(
+                locale,
+                "ใช้ค่าเริ่มต้น (จากเนื้อเรื่อง)",
+                "Use default (from story)"
+              )}
+            </span>
+          </button>
+
+          {locations.length === 0 ? (
+            <p className="py-4 text-center text-xs text-muted-foreground">
+              {t(
+                locale,
+                "ยังไม่มีสถานที่ในซีรีส์นี้",
+                "No locations in this series yet"
+              )}
+            </p>
+          ) : (
+            locations.map(loc => (
+              <button
+                key={loc.locationKey}
+                type="button"
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-muted",
+                  currentLocationKey === loc.locationKey ? "bg-muted" : ""
+                )}
+                onClick={() => onSelect(loc.locationKey)}
+                data-testid={`vd-storyboard-location-picker-option-${shotNumber}-${loc.locationKey}`}
+              >
+                {loc.primaryReferenceUrl ? (
+                  <img
+                    src={loc.primaryReferenceUrl}
+                    alt=""
+                    className="h-8 w-12 shrink-0 rounded object-cover"
+                  />
+                ) : (
+                  <span className="flex h-8 w-12 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                    <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
+                  </span>
+                )}
+                <span className="flex-1 truncate">{loc.name}</span>
+              </button>
+            ))
+          )}
         </div>
       </div>
     </div>
