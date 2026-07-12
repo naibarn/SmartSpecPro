@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "skillId": "video-project-quality-review",
+  "title": "Video Project Quality Review",
+  "titleTh": "ตรวจสอบคุณภาพโปรเจกต์วิดีโอ",
+  "description": "Reviews a compiled video project document plus deterministic quality metrics and returns a scorecard, issues, and stage-scoped repair instructions — including product-claim compliance judgment.",
+  "descriptionTh": "ตรวจสอบเอกสารโปรเจกต์วิดีโอที่คอมไพล์แล้วพร้อมตัวชี้วัดคุณภาพเชิงกำหนด แล้วส่งคืนคะแนน ปัญหาที่พบ และคำแนะนำการแก้ไขตามขั้นตอน — รวมถึงการตัดสินความสอดคล้องของคำกล่าวอ้างสินค้า",
+  "sections": [
+    {
+      "id": "input",
+      "title": "Input",
+      "titleTh": "ข้อมูลนำเข้า",
+      "icon": "clipboard-check",
+      "fields": [
+        {
+          "id": "payload",
+          "type": "textarea",
+          "label": "Skill JSON Input",
+          "labelTh": "ข้อมูล JSON ของสกิล",
+          "placeholder": "Provided by the video project router (documentSummary + metrics + claimValidation)",
+          "placeholderTh": "ระบบเราต์เตอร์โปรเจกต์วิดีโอเป็นผู้ส่งให้ (documentSummary + metrics + claimValidation)",
+          "helpText": "This skill is invoked programmatically by the videoProjects router (section-07), not from chat.",
+          "helpTextTh": "สกิลนี้ถูกเรียกโดยเราต์เตอร์โปรเจกต์วิดีโอ (section-07) ไม่ใช่จากแชท",
+          "required": true,
+          "rows": 6
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "payload": "payload"
+  }
+}

@@ -47,6 +47,22 @@ const STATUS_OPTIONS = [
   "canceled",
 ] as const;
 
+/**
+ * Feature 133 (Video Intelligence Platform) additive Thai label for the
+ * `remotion_render_video` `worker_jobs.jobType` — its `sceneIndex`/
+ * `sceneTotal` <-> `shotIndex`/`shotTotal` progress-event mapping needs no
+ * structural change (section-04/07 already emit the same shot-shaped event
+ * fields for this job type). Falls back to the raw `jobType` string for
+ * every other/unrecognized job type, unchanged from prior behavior.
+ */
+const JOB_TYPE_LABELS: Record<string, string> = {
+  remotion_render_video: "เรนเดอร์วิดีโอ Remotion",
+};
+
+function formatJobType(jobType: string): string {
+  return JOB_TYPE_LABELS[jobType] ?? jobType;
+}
+
 const STATUS_LABELS: Record<string, string> = {
   all: "ทั้งหมด",
   queued: "รอ worker",
@@ -386,7 +402,7 @@ export default function RenderJobsPage() {
                             onClick={() => setSelectedJobId(job.id)}
                           >
                             <TableCell>
-                              <div className="font-medium">{job.jobType}</div>
+                              <div className="font-medium">{formatJobType(job.jobType)}</div>
                               <div className="max-w-52 truncate text-xs text-slate-500">{job.id}</div>
                             </TableCell>
                             <TableCell><JobStatusBadge status={job.status} /></TableCell>
@@ -428,7 +444,7 @@ export default function RenderJobsPage() {
                         )}
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="truncate font-medium">{job.jobType}</span>
+                          <span className="truncate font-medium">{formatJobType(job.jobType)}</span>
                           <JobStatusBadge status={job.status} />
                         </div>
                         <div className="text-xs text-slate-500">{formatDate(job.createdAt)}</div>
@@ -462,7 +478,7 @@ export default function RenderJobsPage() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-white">{detailQuery.data.jobType}</div>
+                        <div className="truncate font-medium text-white">{formatJobType(detailQuery.data.jobType)}</div>
                         <div className="truncate text-xs text-slate-400">{detailQuery.data.id}</div>
                       </div>
                       <JobStatusBadge status={detailQuery.data.status} />

@@ -35,6 +35,9 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   LOCAL_FOLDER_INGEST_FAILURE_CODES,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
+  REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
+  REMOTION_RENDER_VIDEO_FAILURE_CODES,
+  REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   VIDEO_ASSEMBLY_FAILURE_CODES,
   VIDEO_ASSEMBLY_PROGRESS_STAGES,
   WORKER_RUNTIME_PROTOCOL_VERSION,
@@ -84,6 +87,21 @@ import {
 } from "./workerPayloadSanitizer";
 
 const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * implementation-progress.md gap #2 closure — defense-in-depth claim-time
+ * capability assertion (spec §6.3 step 7). The PRIMARY anti-mis-claim
+ * mechanism is `workerJobMatchesSelection`'s `.every()` capability-family
+ * superset check (`workerSchedulerService.ts`) — but that check is a no-op
+ * (`return true`) whenever the claiming worker sends an EMPTY
+ * `capabilityHints` array (see its own doc comment), which is exactly what
+ * many existing tests/older worker builds do. This second, independent
+ * check closes that specific bypass for `remotion_render_video` jobs: no
+ * worker may claim one without explicitly advertising `"remotion-render"`,
+ * regardless of what `capabilityHints` contains overall.
+ */
+const REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY: (typeof REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES)[number] =
+  "remotion-render";
 const RECLAIMABLE_JOB_STATUSES: WorkerJobStatus[] = [
   "claimed",
   "preparing",
@@ -654,7 +672,9 @@ function assertRuntimeSpecificJobEventContract(
         ? COMFY_WORKFLOW_RUN_PROGRESS_STAGES
         : job.jobType === "hyperframes_final_composite"
           ? HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES
-          : null;
+          : job.jobType === "remotion_render_video"
+            ? REMOTION_RENDER_VIDEO_PROGRESS_STAGES
+            : null;
   const failureCodes = job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_FAILURE_CODES
     : job.jobType === "local_folder_ingest"
@@ -665,7 +685,9 @@ function assertRuntimeSpecificJobEventContract(
         ? COMFY_WORKFLOW_RUN_FAILURE_CODES
         : job.jobType === "hyperframes_final_composite"
           ? HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES
-          : null;
+          : job.jobType === "remotion_render_video"
+            ? REMOTION_RENDER_VIDEO_FAILURE_CODES
+            : null;
 
   if (!progressStages || !failureCodes) {
     return;
@@ -1227,6 +1249,24 @@ export async function claimWorkerJob(
   );
 
   for (const candidate of selectableCandidates) {
+    // Defense-in-depth claim-time assertion (implementation-progress.md
+    // gap #2, spec §6.3 step 7) — see the constant's doc comment above.
+    //
+    // F133-05 (LOW, pre-merge security gate) fix: `continue` to the next
+    // candidate instead of `throw`ing out of the whole loop. A worker that
+    // sends empty `capabilityHints` and happens to have an UNRELATED
+    // `remotion_render_video` job anywhere in its candidate pool used to
+    // fail claiming EVERY job in that attempt (including legitimate,
+    // unrelated ones) — an availability bug, not a security bypass (the
+    // primary anti-mis-claim property this check enforces is unaffected:
+    // the disqualified job is still never claimed by this worker).
+    if (
+      candidate.jobType === "remotion_render_video"
+      && !input.payload.capabilityHints.includes(REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY)
+    ) {
+      continue;
+    }
+
     const leaseOwnerToken = crypto.randomBytes(12).toString("hex");
     const leaseExpiresAt = new Date(Date.now() + DEFAULT_LEASE_TTL_MS);
     const claimed = await repo.tryClaimJob(candidate.id, worker.id, leaseOwnerToken, leaseExpiresAt);

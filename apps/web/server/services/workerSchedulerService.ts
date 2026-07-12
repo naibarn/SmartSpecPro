@@ -1,4 +1,5 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 
 import { getDb } from "../db";
 import { workerJobs, workers } from "../../drizzle/schema";
@@ -7,6 +8,7 @@ import type {
   ComfyWorkflowRunJobContract,
   HyperframesFinalCompositeWorkerInput,
   LocalFolderIngestJobContract,
+  RemotionRenderVideoWorkerInput,
   WorkerResourceProfile,
   WorkerRuntimeType,
   VideoAssemblyJobContract,
@@ -16,6 +18,8 @@ import {
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
   HYPERFRAMES_FINAL_COMPOSITE_CAPABILITY_FAMILIES,
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
+  REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
+  REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
   comfyImageGenerationJobContractSchema,
   comfyWorkflowRunJobContractSchema,
   getWorkerRuntimeDefinition,
@@ -25,6 +29,7 @@ import {
   localFolderIngestJobContractSchema,
   looksLikeWorkerLocalFilePath,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
+  remotionRenderVideoWorkerInputSchema,
   videoAssemblyJobContractSchema,
   workerHermesRuntimeMetadataSchema,
 } from "../../shared/workerRuntime";
@@ -35,6 +40,7 @@ import {
   type WorkerJobBillingEnvelope,
 } from "./workerBillingService";
 import { refundReservation } from "./creditService";
+import { createRateLimiter } from "./rateLimiter";
 
 const OPENCLAW_RUNTIME_TYPE: WorkerRuntimeType = "openclaw_gateway";
 const DESKTOP_RUNTIME_TYPE: WorkerRuntimeType = "desktop_zeroclaw_managed";
@@ -128,6 +134,16 @@ export interface WorkerSchedulerRepository {
   findJobByIdempotencyKey: (tenantId: string, idempotencyKey: string) => Promise<WorkerJobRecord | null>;
   findWorkerById: (tenantId: string, workerId: string) => Promise<WorkerRecord | null>;
   insertJob: (values: Record<string, unknown>) => Promise<WorkerJobRecord>;
+  /**
+   * Feature 133 section-04 — narrow lookup backing `queueRemotionRenderVideoJob`'s
+   * 1-concurrent-preview cap (spec §18.2). Optional: `defaultRepo` implements
+   * it; other `WorkerSchedulerRepository` implementers (existing tests) are
+   * unaffected since `queueRemotionRenderVideoJob` is the only caller.
+   */
+  findActiveRemotionPreviewJobForUser?: (
+    tenantId: string,
+    userId: number,
+  ) => Promise<WorkerJobRecord | null>;
 }
 
 export class WorkerSchedulerError extends Error {
@@ -141,6 +157,19 @@ export class WorkerSchedulerError extends Error {
     this.statusCode = statusCode;
   }
 }
+
+// Feature 133 section-04 (spec §18.5): ≤6 remotion_render_video submissions
+// per user per minute; admin tier ×5 (30/min). Two fixed-size limiters
+// (rather than one parameterized limiter) keep `isAllowed` a simple
+// synchronous check with no per-call config plumbing.
+const remotionRenderSubmissionLimiter = createRateLimiter("remotion-render-video-submission", {
+  windowMs: 60_000,
+  maxRequests: 6,
+});
+const remotionRenderSubmissionLimiterAdmin = createRateLimiter("remotion-render-video-submission-admin", {
+  windowMs: 60_000,
+  maxRequests: 30,
+});
 
 export function isOpenClawDispatchEnabled(): boolean {
   const raw = process.env.OPENCLAW_EXTERNAL_RUNTIME_DISPATCH_ENABLED;
@@ -175,6 +204,23 @@ const defaultRepo: WorkerSchedulerRepository = {
     const db = await getDb();
     const [job] = await db.insert(workerJobs).values(values as any).returning();
     return job;
+  },
+  async findActiveRemotionPreviewJobForUser(tenantId, userId) {
+    const db = await getDb();
+    const [job] = await db
+      .select()
+      .from(workerJobs)
+      .where(
+        and(
+          eq(workerJobs.tenantId, tenantId),
+          eq(workerJobs.requestedByUserId, userId),
+          eq(workerJobs.jobType, "remotion_render_video"),
+          inArray(workerJobs.status, ["queued", "running"]),
+          sql`${workerJobs.capabilityRequirementsJson}->>'renderProfile' = 'preview'`,
+        ),
+      )
+      .limit(1);
+    return job ?? null;
   },
 };
 
@@ -255,7 +301,22 @@ export function workerJobMatchesSelection(
     return true;
   }
 
-  return requiredFamilies.some((family) => capabilityHints.includes(family));
+  // Feature 133 section-04 fix (anti-mis-claim safety mechanism, spec §6.3):
+  // this MUST require the claiming worker's hints to be a superset of every
+  // declared required family, not just overlap on any single one. Two
+  // distinct job types can legitimately share one generic capability label
+  // (e.g. both "hyperframes_final_composite" and "remotion_render_video"
+  // declare "ffmpeg-probe") without a worker that only advertises that one
+  // shared label being qualified to run either job end-to-end. An `.some()`
+  // (any-overlap) check let a hyperframes-only worker's hint set match a
+  // `remotion_render_video` job purely because both lists contain
+  // "ffmpeg-probe" — confirmed by
+  // `server/services/__tests__/queueRemotionRenderVideoJob.test.ts`'s
+  // negative-match test before this fix. `.every()` (full-superset) closes
+  // that gap; every existing single-family capabilityFamilies test in this
+  // file is unaffected (single-element lists behave identically under
+  // `.some()` and `.every()`).
+  return requiredFamilies.every((family) => capabilityHints.includes(family));
 }
 
 export async function queueOpenClawWorkerJob(
@@ -1520,6 +1581,235 @@ export async function queueDesktopHyperframesFinalCompositeJob(
         reassignmentPolicy: "worker_lease_watchdog",
       },
       idempotencyKey: rawInput.idempotencyKey ?? null,
+    });
+
+    return { created: true, job };
+  } catch (error) {
+    if (billing?.reservationId) {
+      await refundReservation(billing.reservationId).catch(() => {});
+    }
+    throw error;
+  }
+}
+
+/**
+ * Feature 133 (Video Intelligence Platform) — section-04
+ * (`specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md`
+ * §5.1). Extra fields layered on top of section-03's frozen
+ * `RemotionRenderVideoWorkerInput` (`shared/workerRuntime.ts`) — same
+ * pattern as `QueueDesktopHyperframesFinalCompositeJobInput` extending
+ * `HyperframesFinalCompositeWorkerInput`.
+ */
+export interface QueueRemotionRenderVideoJobInput extends RemotionRenderVideoWorkerInput {
+  tenantId: string;
+  teamId?: string | null;
+  requestedByUserId?: number | null;
+  workflowRunId?: string | null;
+  priority?: number;
+  timeoutSeconds?: number;
+  idempotencyKey?: string | null;
+  reservedCredits?: number | null;
+  /**
+   * Additive (not part of section-03's frozen worker input schema): admin
+   * tier ×5 render-submission rate limit multiplier (spec §18.5). Callers
+   * (section-07's `videoProjects.queueRender`) set this from the requesting
+   * user's role, not from client-supplied input.
+   */
+  isAdminRequester?: boolean;
+}
+
+const REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS = 900;
+const REMOTION_RENDER_VIDEO_DEFAULT_CREDITS = 5;
+
+function buildRemotionRenderVideoIdempotencyKey(input: {
+  videoProjectId: string;
+  projectRevision: number;
+  profile: string;
+}): string {
+  const raw = `${input.videoProjectId}:${input.projectRevision}:${input.profile}`;
+  const hash = createHash("sha256").update(raw).digest("hex").slice(0, 32);
+  return `remotion_render_video:${hash}`;
+}
+
+/**
+ * Credits proportional to durationMs × resolution-class × cost-class (spec
+ * §18.4). Deliberately simple/monotonic — the exact pricing curve is a
+ * product decision for a later pass; this only needs to scale sensibly with
+ * the inputs already on the parsed job payload.
+ */
+function estimateRemotionRenderVideoCredits(input: RemotionRenderVideoWorkerInput): number {
+  const durationSec = input.durationInFrames / Math.max(1, input.renderProfile.fps);
+  const pixelCount = input.renderProfile.width * input.renderProfile.height;
+  const resolutionClass = pixelCount <= 540 * 960 ? 1 : pixelCount <= 1080 * 1920 ? 2 : 3;
+  const costClass = input.renderProfile.profile === "final" ? 2 : 1;
+  return Math.max(
+    REMOTION_RENDER_VIDEO_DEFAULT_CREDITS,
+    Math.ceil(durationSec * resolutionClass * costClass),
+  );
+}
+
+function computeRemotionRenderVideoTimeoutSeconds(input: RemotionRenderVideoWorkerInput): number {
+  const durationSec = input.durationInFrames / Math.max(1, input.renderProfile.fps);
+  // Heuristic: real render + post-passes budget, ~4x realtime plus a fixed
+  // overhead, floored at REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS (15 min).
+  const scaled = Math.ceil(durationSec * 4) + 120;
+  return Math.max(REMOTION_RENDER_VIDEO_MIN_TIMEOUT_SECONDS, scaled);
+}
+
+/**
+ * Enqueue function for the `remotion_render_video` worker job type (Feature
+ * 133 Phase 1 MVP). Modeled on `queueDesktopHyperframesFinalCompositeJob`
+ * (same `DESKTOP_RUNTIME_TYPE` lane, same private-const reuse), with three
+ * additions specific to this job type: a render-submission rate limit
+ * (spec §18.5), an idempotency key computed server-side from
+ * `(videoProjectId, projectRevision, renderProfile.profile)` rather than
+ * trusted verbatim from the caller, and a 1-concurrent-preview cap (spec
+ * §18.2). `capabilityRequirementsJson.capabilityFamilies` is always
+ * `REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES` (non-empty — the anti-mis-claim
+ * safety mechanism, spec §6.3, see `workerJobMatchesSelection` above) and is
+ * never caller-overridable.
+ *
+ * Authored here; called by section-07's `videoProjects.queueRender`.
+ */
+export async function queueRemotionRenderVideoJob(
+  rawInput: QueueRemotionRenderVideoJobInput,
+  deps: {
+    repo?: WorkerSchedulerRepository;
+    reserveCredits?: typeof reserveWorkerJobCredits;
+    getFeatureFlags?: (tenantId: string) => Promise<{ remotionRenderVideoJobEnabled: boolean }>;
+  } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  // `remotionRenderVideoWorkerInputSchema` is `.strict()` (section-03, spec
+  // §6.2 drift guard) — it rejects the queue-only additive fields
+  // (tenantId, requestedByUserId, ...), so those must be stripped before
+  // parsing, not merely ignored.
+  const {
+    tenantId: _tenantId,
+    teamId: _teamId,
+    requestedByUserId: _requestedByUserId,
+    workflowRunId: _workflowRunId,
+    priority: _priority,
+    timeoutSeconds: _timeoutSeconds,
+    idempotencyKey: _idempotencyKey,
+    reservedCredits: _reservedCredits,
+    isAdminRequester: _isAdminRequester,
+    ...corePayload
+  } = rawInput;
+  const input = remotionRenderVideoWorkerInputSchema.parse(corePayload);
+  const repo = deps.repo ?? defaultRepo;
+  const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
+
+  const rateLimiter = rawInput.isAdminRequester
+    ? remotionRenderSubmissionLimiterAdmin
+    : remotionRenderSubmissionLimiter;
+  const rateLimitKey = `${rawInput.tenantId}:${rawInput.requestedByUserId ?? "anonymous"}`;
+  if (!rateLimiter.isAllowed(rateLimitKey)) {
+    throw new WorkerSchedulerError(
+      "rate_limited",
+      429,
+      "Too many remotion_render_video submissions; the limit is 6 per minute (30 per minute for admins)",
+    );
+  }
+
+  if (!isDesktopWorkerDispatchEnabled()) {
+    throw new WorkerSchedulerError(
+      "dispatch_disabled",
+      503,
+      "Smart AI Hub Worker App dispatch is disabled by operator kill switch",
+    );
+  }
+
+  const tenantFlags = await getFeatureFlags(rawInput.tenantId);
+  if (!tenantFlags.remotionRenderVideoJobEnabled) {
+    throw new WorkerSchedulerError(
+      "feature_disabled",
+      403,
+      "Remotion render video job dispatch (F133B) is disabled for this tenant",
+    );
+  }
+
+  const idempotencyKey =
+    rawInput.idempotencyKey
+    ?? buildRemotionRenderVideoIdempotencyKey({
+      videoProjectId: input.videoProjectId,
+      projectRevision: input.projectRevision,
+      profile: input.renderProfile.profile,
+    });
+
+  const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, idempotencyKey);
+  if (existing) {
+    return { created: false, job: existing };
+  }
+
+  if (input.renderProfile.profile === "preview" && rawInput.requestedByUserId != null) {
+    const findActivePreview = repo.findActiveRemotionPreviewJobForUser;
+    const activePreview = findActivePreview
+      ? await findActivePreview(rawInput.tenantId, rawInput.requestedByUserId)
+      : null;
+    if (activePreview) {
+      throw new WorkerSchedulerError(
+        "preview_concurrency_limit",
+        409,
+        "Only one queued/running remotion_render_video preview job is allowed per user at a time",
+      );
+    }
+  }
+
+  const capabilityFamilies = [...REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES];
+  const reserveCredits = deps.reserveCredits ?? reserveWorkerJobCredits;
+  const billing = rawInput.requestedByUserId
+    ? await reserveCredits({
+        userId: rawInput.requestedByUserId,
+        tenantId: rawInput.tenantId,
+        requestedCredits: rawInput.reservedCredits ?? estimateRemotionRenderVideoCredits(input),
+        metadata: {
+          teamId: rawInput.teamId ?? null,
+          workflowRunId: rawInput.workflowRunId ?? null,
+          jobType: "remotion_render_video",
+          capabilityFamilies,
+          videoProjectId: input.videoProjectId,
+          projectRevision: input.projectRevision,
+          renderProfile: input.renderProfile.profile,
+          traceId: input.traceId,
+        },
+      })
+    : null;
+
+  try {
+    const job = await repo.insertJob({
+      tenantId: rawInput.tenantId,
+      teamId: rawInput.teamId ?? null,
+      workerId: null,
+      runtimeType: DESKTOP_RUNTIME_TYPE,
+      workflowRunId: rawInput.workflowRunId ?? null,
+      requestedByUserId: rawInput.requestedByUserId ?? null,
+      requestedBySystemComponent: "remotion_render_video_worker_scheduler",
+      jobType: "remotion_render_video",
+      status: "queued",
+      statusReason: "remotion_render_video_worker",
+      priority: rawInput.priority ?? (input.renderProfile.profile === "final" ? 40 : 20),
+      resourceProfile: "cpu_heavy",
+      capabilityRequirementsJson: {
+        capabilityFamilies,
+        preferredWorkerId: null,
+        // Not part of the anti-mis-claim match (workerJobMatchesSelection
+        // only reads capabilityFamilies/preferredWorkerId) — carried here
+        // purely so `findActiveRemotionPreviewJobForUser` can filter by
+        // profile without deserializing inputJson.
+        renderProfile: input.renderProfile.profile,
+      },
+      inputJson: input,
+      instructionsJson: {
+        intent: "remotion_render_video",
+        requiredProgressStages: [...REMOTION_RENDER_VIDEO_PROGRESS_STAGES],
+        workerBilling: buildWorkerBillingMetadata(billing),
+      },
+      timeoutSeconds: rawInput.timeoutSeconds ?? computeRemotionRenderVideoTimeoutSeconds(input),
+      retryPolicyJson: {
+        maxAttempts: 2,
+        backoffSeconds: 120,
+      },
+      idempotencyKey,
     });
 
     return { created: true, job };

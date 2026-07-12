@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "video-project-quality-review/output",
+  "title": "Video Project Quality Review Output",
+  "description": "Matches the VideoProjectReview type in server/services/videoProjectQualityLoop.ts exactly — the section-07 adapter parses the skill output against this shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["score", "scorecard", "issues"],
+  "properties": {
+    "score": {
+      "description": "Overall holistic judgment, 0-10.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "scorecard": {
+      "description": "Per-dimension sub-scores (0-10). Dimensions are defined in skill.md 'Review dimensions'. product_claim_compliance / product_fidelity are omitted entirely for a Motion Studio project (empty claimValidation).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 10
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dimension", "severity", "message"],
+        "properties": {
+          "dimension": {
+            "description": "Which scorecard dimension this issue belongs to (same key names as scorecard).",
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "message": {
+            "description": "One concrete sentence naming exactly what is wrong and why, citing the scene id / cue / metric value.",
+            "type": "string"
+          },
+          "repairStage": {
+            "description": "Optional QualityRepairStage this issue maps to.",
+            "type": "string",
+            "enum": ["content", "narration", "scenes", "motion", "captions", "claims"]
+          }
+        }
+      }
+    },
+    "repairInstructions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["stage", "instruction"],
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": ["content", "narration", "scenes", "motion", "captions", "claims"]
+          },
+          "instruction": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
