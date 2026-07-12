@@ -358,7 +358,21 @@ export function VerticalDramaLocationStockPanel({
             );
             return;
           }
+          // Auto-persist the instant generation completes (2026-07-13 fix) —
+          // previously this only parked `resultUrl` as a local-state candidate
+          // awaiting a SEPARATE manual "approve" click, so a user who
+          // navigated away before approving silently lost the image (and the
+          // credits they paid for it — it never reached the media_assets
+          // library or the location roster). Now the resolve->link->approve
+          // chain runs immediately, so a generated image is durable the
+          // moment it finishes, matching how the character system auto-links
+          // its portraits. The candidate is still shown briefly (below) so
+          // the thumbnail appears during the short persist; `persistGenerated
+          // LocationImage` clears it and refreshes the roster/gallery on
+          // success, or leaves it in place (with the manual "approve" button
+          // as a retry) if the persist itself fails.
           setCandidateByLocationId((prev) => ({ ...prev, [locationId]: { imageUrl: resultUrl } }));
+          await persistGeneratedLocationImage(locationId, resultUrl);
           return;
         }
         if (status === "failed") {
@@ -417,43 +431,59 @@ export function VerticalDramaLocationStockPanel({
     );
   };
 
-  const handleApprove = async (location: VdLocationListItem) => {
-    const candidate = candidateByLocationId[location.locationId];
-    if (!candidate) return;
-    setCandidateByLocationId((prev) => ({ ...prev, [location.locationId]: { ...candidate, approving: true } }));
+  /** The persist chain: import the rendered URL into the media_assets
+   *  library, link it as this location's establishing-plate asset, and
+   *  approve it — the exact steps that make a generated image durable. Shared
+   *  by the automatic post-generation persist (`pollLocationImageTask`) and
+   *  the manual "approve" retry button (`handleApprove`). Marks the candidate
+   *  `approving` for the button spinner; on success clears the candidate +
+   *  preview and refreshes the roster/gallery; on failure leaves the
+   *  candidate in place so the manual button can retry. Never throws. */
+  const persistGeneratedLocationImage = async (locationId: string, imageUrl: string): Promise<void> => {
+    setCandidateByLocationId((prev) => ({ ...prev, [locationId]: { imageUrl, approving: true } }));
     try {
       const resolved = await resolveMutation.mutateAsync({
         seriesId,
         source: "url",
-        url: candidate.imageUrl,
-        mimeType: guessLocationImageMimeTypeFromUrl(candidate.imageUrl),
+        url: imageUrl,
+        mimeType: guessLocationImageMimeTypeFromUrl(imageUrl),
       });
       const linked = await linkMutation.mutateAsync({
         seriesId,
-        locationId: location.locationId,
+        locationId,
         mediaAssetId: resolved.mediaAssetId,
         assetType: "location_reference",
         role: "establishing_plate",
         source: "generated",
       });
       await approveMutation.mutateAsync({ seriesId, assetLinkId: linked.asset.assetLinkId });
-      setApprovedAssetLinkByLocationId((prev) => ({ ...prev, [location.locationId]: linked.asset.assetLinkId }));
+      setApprovedAssetLinkByLocationId((prev) => ({ ...prev, [locationId]: linked.asset.assetLinkId }));
       setCandidateByLocationId((prev) => {
         const next = { ...prev };
-        delete next[location.locationId];
+        delete next[locationId];
         return next;
       });
       setPreviewByLocationId((prev) => {
         const next = { ...prev };
-        delete next[location.locationId];
+        delete next[locationId];
         return next;
       });
       invalidate();
-      toast.success(t(lang, "อนุมัติภาพสถานที่แล้ว", "Location reference approved"));
+      void utils.verticalDramaLocations.listLocationAssets.invalidate({ seriesId, locationId });
+      toast.success(t(lang, "บันทึกภาพสถานที่แล้ว", "Location reference saved"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t(lang, "อนุมัติไม่สำเร็จ", "Approve failed"));
-      setCandidateByLocationId((prev) => ({ ...prev, [location.locationId]: { ...candidate, approving: false } }));
+      // Persist failed — keep the candidate visible with the manual "approve"
+      // button as a retry (the paid render is NOT lost, it's still the
+      // candidate URL), and surface why.
+      toast.error(err instanceof Error ? err.message : t(lang, "บันทึกภาพไม่สำเร็จ", "Failed to save image"));
+      setCandidateByLocationId((prev) => ({ ...prev, [locationId]: { imageUrl, approving: false } }));
     }
+  };
+
+  const handleApprove = async (location: VdLocationListItem) => {
+    const candidate = candidateByLocationId[location.locationId];
+    if (!candidate) return;
+    await persistGeneratedLocationImage(location.locationId, candidate.imageUrl);
   };
 
   /* ---- Basic asset management (delete / reject / mark stale) ----
