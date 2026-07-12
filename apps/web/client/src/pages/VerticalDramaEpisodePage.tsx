@@ -1109,7 +1109,19 @@ function EpisodeWorkspaceShell({
           variables.softenLevel ?? 0
         );
       },
-      onError: err => toast.error(err.message),
+      // Release the immediate click-lock (added synchronously by the button
+      // handlers before `.mutate()`, so the button disables the instant it's
+      // clicked instead of only once polling starts) when the request itself
+      // fails — otherwise a shot that never reaches `pollStartFrameTask`'s
+      // own `finally` cleanup would stay disabled forever.
+      onError: (err, variables) => {
+        toast.error(err.message);
+        setPollingStartFrameShots(prev => {
+          const next = new Set(prev);
+          next.delete(variables.shotNumber);
+          return next;
+        });
+      },
     });
 
 
@@ -4370,6 +4382,12 @@ function EpisodeWorkspaceShell({
             generatingVideoPromptPack,
             onGenerateStartFrameImage: shotNumber => {
               if (!requireMcpConnectionOrToast("image")) return;
+              // Lock the button the instant it's clicked (mirrors
+              // `onGenerateAllStartFrameImages` + `handleGeneratePromptAndImage`)
+              // — previously the shot only entered `pollingStartFrameShots`
+              // once the mutation round-tripped and `pollStartFrameTask`
+              // started, leaving a click window for accidental double-submits.
+              setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
               generateStartFrameImageMutation.mutate({
                 seriesId,
                 episodeId,
