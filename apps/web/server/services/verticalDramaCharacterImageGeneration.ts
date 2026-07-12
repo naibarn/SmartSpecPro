@@ -68,6 +68,8 @@ const SKILL_SLUG = "vertical-drama-character-visual-bible";
 /* -------------------------------------------------------------------------- */
 
 let cachedSystemPrompt: string | null = null;
+let cachedSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 /**
  * Load the `vertical-drama-character-visual-bible` skill's markdown body
@@ -78,7 +80,10 @@ let cachedSystemPrompt: string | null = null;
  * first successful read.
  */
 function loadCharacterVisualBibleSystemPrompt(): string {
-  if (cachedSystemPrompt) return cachedSystemPrompt;
+  const now = Date.now();
+  if (cachedSystemPrompt && now - cachedSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS) {
+    return cachedSystemPrompt;
+  }
 
   const candidates = [
     path.resolve(process.cwd(), "skills", SKILL_SLUG, "skill.md"),
@@ -97,6 +102,7 @@ function loadCharacterVisualBibleSystemPrompt(): string {
     throw new Error(`Vertical Drama character visual bible skill.md at ${sourcePath} has no content body`);
   }
   cachedSystemPrompt = content;
+  cachedSystemPromptTime = now;
   return cachedSystemPrompt;
 }
 

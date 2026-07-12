@@ -1030,10 +1030,18 @@ const DIALOGUE_AUDIO_PLANNER_SKILL_FOLDER_PATH = path.join(
 );
 
 let cachedDialogueAudioPlannerSystemPrompt: string | null = null;
+let cachedDialogueAudioPlannerSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 /** Mirrors `verticalDramaScriptGeneration.ts`'s `loadSkillSystemPrompt`. */
 function loadDialogueAudioPlannerSkillSystemPrompt(): string {
-  if (cachedDialogueAudioPlannerSystemPrompt) return cachedDialogueAudioPlannerSystemPrompt;
+  const now = Date.now();
+  if (
+    cachedDialogueAudioPlannerSystemPrompt &&
+    now - cachedDialogueAudioPlannerSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS
+  ) {
+    return cachedDialogueAudioPlannerSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(DIALOGUE_AUDIO_PLANNER_SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -1042,6 +1050,7 @@ function loadDialogueAudioPlannerSkillSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedDialogueAudioPlannerSystemPrompt = content;
+        cachedDialogueAudioPlannerSystemPromptTime = now;
         return cachedDialogueAudioPlannerSystemPrompt;
       }
     }

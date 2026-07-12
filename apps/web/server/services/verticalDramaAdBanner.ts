@@ -181,6 +181,8 @@ const AD_BANNER_PROMPT_SKILL_FOLDER_PATH = path.join(
 );
 
 let cachedAdBannerPromptSystemPrompt: string | null = null;
+let cachedAdBannerPromptSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 /**
  * Fallback system prompt — used only when `skills/vertical-drama-ad-banner-prompt/skill.md`
@@ -211,7 +213,13 @@ export const AD_BANNER_PROMPT_SYSTEM_PROMPT_FALLBACK = [
  * self-heal on a later call.
  */
 export function loadAdBannerPromptSystemPrompt(): string {
-  if (cachedAdBannerPromptSystemPrompt) return cachedAdBannerPromptSystemPrompt;
+  const now = Date.now();
+  if (
+    cachedAdBannerPromptSystemPrompt &&
+    now - cachedAdBannerPromptSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS
+  ) {
+    return cachedAdBannerPromptSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(
     AD_BANNER_PROMPT_SKILL_FOLDER_PATH
@@ -222,6 +230,7 @@ export function loadAdBannerPromptSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedAdBannerPromptSystemPrompt = content;
+        cachedAdBannerPromptSystemPromptTime = now;
         return cachedAdBannerPromptSystemPrompt;
       }
     }

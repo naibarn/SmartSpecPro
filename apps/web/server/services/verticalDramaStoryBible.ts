@@ -3644,9 +3644,17 @@ const DRAMATURGY_CRITIC_SKILL_FOLDER_PATH = path.join(
 );
 
 let cachedDramaturgyCriticSystemPrompt: string | null = null;
+let cachedDramaturgyCriticSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 function loadDramaturgyCriticSkillSystemPrompt(): string {
-  if (cachedDramaturgyCriticSystemPrompt) return cachedDramaturgyCriticSystemPrompt;
+  const now = Date.now();
+  if (
+    cachedDramaturgyCriticSystemPrompt &&
+    now - cachedDramaturgyCriticSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS
+  ) {
+    return cachedDramaturgyCriticSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(DRAMATURGY_CRITIC_SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -3655,6 +3663,7 @@ function loadDramaturgyCriticSkillSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedDramaturgyCriticSystemPrompt = content;
+        cachedDramaturgyCriticSystemPromptTime = now;
         return cachedDramaturgyCriticSystemPrompt;
       }
     }

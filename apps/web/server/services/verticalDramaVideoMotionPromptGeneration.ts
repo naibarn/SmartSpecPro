@@ -97,6 +97,12 @@ export class RateLimitExceededError extends Error {
 const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-video-motion-prompt-pack");
 
 let cachedSystemPrompt: string | null = null;
+let cachedSystemPromptTime = 0;
+// 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS. Shared by every
+// skill.md cache in this file (see `cachedShotVideoPromptSystemPrompt` and
+// `cachedShotVideoPromptSubShotsSystemPrompt` below) — one module-level
+// constant, not re-declared per cache.
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000;
 
 /**
  * Read the `vertical-drama-video-motion-prompt-pack` skill's markdown body
@@ -104,7 +110,10 @@ let cachedSystemPrompt: string | null = null;
  * prompt. Resolves the skill folder the same way `skillRegistry.ts` does.
  */
 function loadSkillSystemPrompt(): string {
-  if (cachedSystemPrompt) return cachedSystemPrompt;
+  const now = Date.now();
+  if (cachedSystemPrompt && now - cachedSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS) {
+    return cachedSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -113,6 +122,7 @@ function loadSkillSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedSystemPrompt = content;
+        cachedSystemPromptTime = now;
         return cachedSystemPrompt;
       }
     }
@@ -858,6 +868,7 @@ const SHOT_VIDEO_PROMPT_SKILL_FOLDER_PATH = path.join(
 );
 
 let cachedShotVideoPromptSystemPrompt: string | null = null;
+let cachedShotVideoPromptSystemPromptTime = 0;
 
 /**
  * Read the `vertical-drama-shot-video-prompt` skill's markdown body verbatim
@@ -867,7 +878,13 @@ let cachedShotVideoPromptSystemPrompt: string | null = null;
  * pack-level one).
  */
 function loadShotVideoPromptSystemPrompt(): string {
-  if (cachedShotVideoPromptSystemPrompt) return cachedShotVideoPromptSystemPrompt;
+  const now = Date.now();
+  if (
+    cachedShotVideoPromptSystemPrompt &&
+    now - cachedShotVideoPromptSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS
+  ) {
+    return cachedShotVideoPromptSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(SHOT_VIDEO_PROMPT_SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -876,6 +893,7 @@ function loadShotVideoPromptSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedShotVideoPromptSystemPrompt = content;
+        cachedShotVideoPromptSystemPromptTime = now;
         return cachedShotVideoPromptSystemPrompt;
       }
     }
@@ -1637,10 +1655,17 @@ const SHOT_VIDEO_PROMPT_SUBSHOTS_SKILL_FOLDER_PATH = path.join(
 );
 
 let cachedShotVideoPromptSubShotsSystemPrompt: string | null = null;
+let cachedShotVideoPromptSubShotsSystemPromptTime = 0;
 
 /** Same skill.md-loader resolution strategy as `loadShotVideoPromptSystemPrompt()` — separate cache/function because this is a distinct skill file (different framing: a timed multi-speaker narrative in one prompt, not a single-speaker shot). */
 function loadShotVideoPromptSubShotsSystemPrompt(): string {
-  if (cachedShotVideoPromptSubShotsSystemPrompt) return cachedShotVideoPromptSubShotsSystemPrompt;
+  const now = Date.now();
+  if (
+    cachedShotVideoPromptSubShotsSystemPrompt &&
+    now - cachedShotVideoPromptSubShotsSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS
+  ) {
+    return cachedShotVideoPromptSubShotsSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(SHOT_VIDEO_PROMPT_SUBSHOTS_SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -1649,6 +1674,7 @@ function loadShotVideoPromptSubShotsSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedShotVideoPromptSubShotsSystemPrompt = content;
+        cachedShotVideoPromptSubShotsSystemPromptTime = now;
         return cachedShotVideoPromptSubShotsSystemPrompt;
       }
     }

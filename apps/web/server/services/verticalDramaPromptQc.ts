@@ -46,6 +46,8 @@ export { VD_IMAGE_PROMPT_MAX, VD_VIDEO_PROMPT_MAX };
 const SKILL_FOLDER_PATH = path.join("skills", "cinematic-prompt-refiner-pro");
 
 let cachedSystemPrompt: string | null = null;
+let cachedSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 /**
  * Read the `cinematic-prompt-refiner-pro` skill's markdown body (everything
@@ -54,7 +56,10 @@ let cachedSystemPrompt: string | null = null;
  * `verticalDramaStartFrameGeneration.ts`'s `loadSkillSystemPrompt`.
  */
 function loadRefinerSystemPrompt(): string {
-  if (cachedSystemPrompt) return cachedSystemPrompt;
+  const now = Date.now();
+  if (cachedSystemPrompt && now - cachedSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS) {
+    return cachedSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -63,6 +68,7 @@ function loadRefinerSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedSystemPrompt = content;
+        cachedSystemPromptTime = now;
         return cachedSystemPrompt;
       }
     }
