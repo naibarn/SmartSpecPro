@@ -95,7 +95,7 @@ The caller tells you two independent language settings for this shot:
    rule to whatever speech language the caller selects — the same
    naturalness/register bar applies regardless of which language it is. When
    dialogue is embedded verbatim inside `prompt` for a native-audio model
-   (see rule 4 below), the quoted line itself stays in the speech language
+   (see rule 5 below), the quoted line itself stays in the speech language
    even though the surrounding acting direction is written in the prompt
    language.
 
@@ -112,12 +112,36 @@ The caller tells you two independent language settings for this shot:
    how the light/mood evolves, how any dialogue is delivered (tone, pace,
    pauses, mouth movement). Never write a static, single-pose description —
    describe a continuous few seconds of motion.
-3. **Every prompt you write must be unique to this shot.** Never reuse
+3. **Let the camera follow/reveal what the dialogue or action is actually
+   about, not just add motion for its own sake.** A flat framing that holds
+   on the speaker's face for the entire clip regardless of what she says
+   technically satisfies rule 2's "keep moving" bar (a slow push-in is still
+   motion) but reads as generic and disconnected from the content. When this
+   shot's OWN description/camera/scene context already establishes a
+   concrete visual subject relevant to what's said or done — an object, a
+   person, a direction, a detail already present in this shot's own scene —
+   let the camera acknowledge it within this SAME continuous shot: a
+   glance/head-turn toward it, a small reframe or rack-focus, a brief pan or
+   push that follows the character's own attention. This is still ONE
+   continuous camera move that reads as a continuation of the start frame —
+   never a hard cut or a different camera setup (that stays governed by rule
+   5 below). For a longer line of dialogue that spans multiple clauses or
+   beats, let the described motion have more than one moment of change
+   across the clip's duration (a shift partway through the line, not one
+   unbroken push held flat from the first word to the last) so the shot's
+   full duration is used meaningfully. Do NOT invent a new object, prop, or
+   off-screen subject that isn't already grounded in this shot's own
+   description or start frame just because the dialogue happens to mention
+   it — when nothing in the actual scene corresponds to what's said, keep
+   the camera's attention on the character's own reactive performance
+   (expression, posture, gesture) instead; never fabricate set dressing to
+   justify a reveal.
+4. **Every prompt you write must be unique to this shot.** Never reuse
    boilerplate phrasing verbatim across different shots even when the
    underlying scene is similar — ground the motion description in this shot's
    own description/camera/emotion so distinct shots always read as distinct
    clips.
-4. **Dialogue handling depends on whether the caller tells you the selected
+5. **Dialogue handling depends on whether the caller tells you the selected
    video model has native lip-synced audio:**
    - If native audio is supported: embed the dialogue line(s) VERBATIM (in the
      SPEECH LANGUAGE) in `prompt`, with matching mouth/lip movement and
@@ -128,14 +152,14 @@ The caller tells you two independent language settings for this shot:
      embedded in the prompt text), and still return the resolved line(s) (in
      the SPEECH LANGUAGE) in `dialogue` so the caller can route them to a
      separate text-to-speech step.
-5. **Camera continuation:** the clip's camera motion must read as a
+6. **Camera continuation:** the clip's camera motion must read as a
    continuation of the start frame's framing (do not invent a completely
    different shot type/angle than what the start frame implies) unless the
    shot context explicitly calls for a hard cut/reversal beat.
-6. `negative_motion_prompt` should list concrete artifacts to avoid (identity
+7. `negative_motion_prompt` should list concrete artifacts to avoid (identity
    drift, warping, extra fingers, mouth desync when there is dialogue,
    unintended camera shake, text/labels/watermarks in frame).
-7. **Prompt length limit — MANDATORY:** `prompt` MUST be **2000 characters or
+8. **Prompt length limit — MANDATORY:** `prompt` MUST be **2000 characters or
    fewer**, INCLUDING any embedded dialogue/delivery text (this is the base
    motion prompt the router formats into the final provider request, so write
    with that combined budget in mind). Prioritize movement/camera continuation
@@ -144,7 +168,7 @@ The caller tells you two independent language settings for this shot:
    downstream quality-control pass will refine/compress any prompt that is
    still over the limit, but a well-written prompt should not rely on that
    fallback.
-8. **Product lock — MANDATORY when the caller gives you a PRODUCT TIE-IN
+9. **Product lock — MANDATORY when the caller gives you a PRODUCT TIE-IN
    directive for this shot:** the tied-in product must remain visually
    unchanged while in motion — same shape, proportions, physical size
    relative to the scene, colors, materials, logo, and label text as the
@@ -154,6 +178,29 @@ The caller tells you two independent language settings for this shot:
    "altered product design, wrong product color, distorted logo, modified
    packaging, redesigned product" among the artifacts `negative_motion_prompt`
    guards against for this shot.
+10. **Hook shot / retention-ending shot motion energy — MANDATORY WHEN the
+   caller states `is_opening_shot: true` or `is_retention_ending_shot: true`
+   for this shot:**
+   - When `is_opening_shot: true` (this clip is the episode's FIRST shot —
+     the hook): open the clip on immediate kinetic or visual interest that
+     matches the hook's energy — a sudden movement, a sharp reaction, an
+     object or action already in motion. NEVER open with a slow establishing
+     pan, a static held pose, or a scene-setting drift; the very first
+     instant of motion must already feel like something is happening, not
+     about to happen.
+   - When `is_retention_ending_shot: true` (this clip is the episode's FINAL
+     shot — the retention-loop ending): the motion must LAND and HOLD the
+     unresolved image or emotional turn — push in, hold the beat, let an
+     expression settle, or freeze the tension into an unanswered moment.
+     NEVER cut away flatly or resolve the tension mid-motion; the clip
+     should feel like it leaves the audience mid-breath, not like it closes
+     the scene. Use your own judgment for the specific camera move (a hold,
+     a slow push, a held reaction) that best serves this shot's own content.
+   Both facts are structural markers about this shot's ROLE in the episode,
+   not stage directions by themselves — combine them with the shot's own
+   description/camera/emotion above, and never let this rule override rule 6
+   (camera continuation) or produce a physically inconsistent jump from the
+   start frame.
 
 ## NATIVE AUDIO DIRECTION (conditional — only when the caller states `native_audio: true` for this shot)
 
@@ -202,6 +249,23 @@ Write `audio_direction` in TWO TIERS, in this order:
    music layer.
 3. Stay strictly within SFX cues + ambient soundscape + intensity guidance —
    nothing else belongs in `audio_direction`.
+
+## User repair instruction (optional)
+
+The caller sometimes supplies a `repair_instruction` — the user's own
+free-text request for how they want THIS shot's video motion prompt changed
+(e.g. "make the camera push in faster", "she should look more nervous", "add
+a glance toward the door"). When present, treat it as an ADDITIONAL directive
+layered on top of every Hard Rule above (1-10) — never a replacement for
+them, and never a reason to skip any rule. This skill already regenerates the
+motion prompt fresh from the shot's own facts (image, description, camera,
+dialogue) on every call, so there is no "preserve the previous prompt's
+wording" concept to apply here, unlike an image-repair skill working from an
+already-approved image: simply write this shot's full, rule-compliant motion
+prompt exactly as you always do, folding in whatever `repair_instruction`
+asks for as part of that same regeneration. When no `repair_instruction` is
+supplied, this section does not apply — write the prompt exactly as every
+rule above already describes, unchanged.
 
 This skill does not auto-trigger. It is invoked once per shot by the Vertical
 Drama episode's shot-level "generate video prompt" action.

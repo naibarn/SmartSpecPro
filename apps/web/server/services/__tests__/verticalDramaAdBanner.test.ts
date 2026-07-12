@@ -43,6 +43,24 @@ vi.mock("../verticalDramaStoryBible", async () => {
     resolveStoryBibleModel: vi.fn(),
   };
 });
+// Phase 6 (`planning/vertical-drama-centralized-model-policy/plan.md`) —
+// `resolveAdBannerPromptModel`'s non-capability-gated fallback now uses
+// `resolveQualityLargeContextModelId` (was `resolveStoryBibleModel`).
+vi.mock("../verticalDramaImproveScript", () => ({
+  resolveQualityLargeContextModelId: vi.fn(),
+}));
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 3) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveQualityLargeContextModelId`
+// above) so this file's pre-existing "no override configured" behavior/
+// assertions are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
 vi.mock("../verticalDramaProductTieIn", async () => {
   const actual = await vi.importActual<
     typeof import("../verticalDramaProductTieIn")
@@ -107,6 +125,7 @@ import {
   resolveSkillManifestPath,
 } from "../skillFiles";
 import { resolveStoryBibleModel } from "../verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "../verticalDramaImproveScript";
 import { resolveMarketplaceCaptureProductImageUrls } from "../verticalDramaProductTieIn";
 import { loadEnabledLlmModelRows } from "../enabledLlmModels";
 import { selectBestLlmModel } from "../intelligentModelSelector";
@@ -123,6 +142,7 @@ const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
 const mockResolveModel = vi.mocked(resolveStoryBibleModel);
+const mockResolveQualityModel = vi.mocked(resolveQualityLargeContextModelId);
 const mockIsAllowed = vi.mocked(mediaGenerationLimiter.isAllowed);
 const mockGetResetTime = vi.mocked(mediaGenerationLimiter.getResetTime);
 const mockResolveSkillDirCandidates = vi.mocked(resolveSkillDirCandidates);
@@ -203,6 +223,7 @@ beforeEach(() => {
   mockCalculateCredits.mockReturnValue(5);
   mockDeductCredits.mockResolvedValue(undefined as any);
   mockResolveModel.mockResolvedValue("gpt-4o-mini");
+  mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
   mockLoadEnabledLlmModelRows.mockResolvedValue([
     { modelId: "gpt-vision" } as any,
   ]);
@@ -243,7 +264,7 @@ describe("loadAdBannerPromptSystemPrompt", () => {
 describe("resolveAdBannerPromptModel", () => {
   it("requires vision + structured outputs when reference images are present", async () => {
     mockSelectBestLlmModel.mockReturnValue("gpt-vision");
-    const result = await resolveAdBannerPromptModel(true);
+    const result = await resolveAdBannerPromptModel(true, 1);
     expect(mockSelectBestLlmModel).toHaveBeenCalledWith(
       { supportsVision: true, supportsStructuredOutputs: true },
       expect.any(Array)
@@ -253,7 +274,7 @@ describe("resolveAdBannerPromptModel", () => {
 
   it("only requires structured outputs when there are no reference images", async () => {
     mockSelectBestLlmModel.mockReturnValue("gpt-structured");
-    const result = await resolveAdBannerPromptModel(false);
+    const result = await resolveAdBannerPromptModel(false, 1);
     expect(mockSelectBestLlmModel).toHaveBeenCalledWith(
       { supportsStructuredOutputs: true },
       expect.any(Array)
@@ -261,17 +282,17 @@ describe("resolveAdBannerPromptModel", () => {
     expect(result).toEqual({ model: "gpt-structured", hasVision: false });
   });
 
-  it("falls back to resolveStoryBibleModel when no enabled model satisfies the requirement", async () => {
+  it("falls back to resolveQualityLargeContextModelId when no enabled model satisfies the requirement", async () => {
     mockSelectBestLlmModel.mockReturnValue(null);
-    mockResolveModel.mockResolvedValue("fallback-model");
-    const result = await resolveAdBannerPromptModel(true);
+    mockResolveQualityModel.mockResolvedValue("fallback-model");
+    const result = await resolveAdBannerPromptModel(true, 1);
     expect(result).toEqual({ model: "fallback-model", hasVision: false });
   });
 
-  it("falls back to resolveStoryBibleModel when loadEnabledLlmModelRows throws", async () => {
+  it("falls back to resolveQualityLargeContextModelId when loadEnabledLlmModelRows throws", async () => {
     mockLoadEnabledLlmModelRows.mockRejectedValue(new Error("db down"));
-    mockResolveModel.mockResolvedValue("fallback-model");
-    const result = await resolveAdBannerPromptModel(false);
+    mockResolveQualityModel.mockResolvedValue("fallback-model");
+    const result = await resolveAdBannerPromptModel(false, 1);
     expect(result).toEqual({ model: "fallback-model", hasVision: false });
   });
 });

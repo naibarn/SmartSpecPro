@@ -60,7 +60,11 @@ export type AttachMediaAssetRejectionReason =
 
 export class VerticalDramaCharacterStockError extends Error {
   constructor(
-    public readonly reason: AttachMediaAssetRejectionReason | "illegal_state_transition" | "asset_not_found",
+    public readonly reason:
+      | AttachMediaAssetRejectionReason
+      | "illegal_state_transition"
+      | "asset_not_found"
+      | "asset_wrong_role",
     message: string,
   ) {
     super(message);
@@ -181,7 +185,14 @@ export function characterRefChangeStaleTargets(): {
   return stagesInvalidatedByCharacterRefChange();
 }
 
-/** The two character-sheet asset `role`s considered as a SECOND reference image (F131Z). */
+/**
+ * The two character-sheet asset `role`s considered as a SECOND reference
+ * image (F131Z). Deliberately does NOT include `"character_design_bible"`
+ * (vertical-drama-character-sheet-consolidation plan) — several of that
+ * role's 11 sheet formats (e.g. `color_palette`, `material_fabric`) carry no
+ * face at all, so they must never be picked as an identity-lock reference for
+ * storyboard/shot generation.
+ */
 const CHARACTER_SHEET_ROLES = [
   "character_sheet_turnaround",
   "character_sheet_full",
@@ -366,6 +377,42 @@ export class VerticalDramaCharacterStockService {
       .orderBy(desc(verticalDramaCharacterAssets.approved), desc(verticalDramaCharacterAssets.updatedAt))
       .limit(1);
     return row?.url ?? null;
+  }
+
+  /**
+   * Explicit reference-image-picker override (Phase D1,
+   * `planning/vertical-drama-reference-picker-outfit-lock/plan.md`): resolve
+   * one specific `primary_portrait` asset link by id instead of letting
+   * `getPrimaryPortraitUrl` auto-pick the newest approved one. Deliberately
+   * scoped to `(tenantId, userId, seriesId)` only — NOT `characterId` — via
+   * `loadOwnedRow`, so a variant/twin character can pin its parent's or
+   * twin-source's portrait as its own identity-lock reference; tenant/user/
+   * series ownership is still fully enforced by `loadOwnedRow`, so a caller
+   * can never resolve another tenant's or user's asset this way.
+   */
+  async getReferenceImageUrlByAssetLinkId(
+    owner: VerticalDramaCharacterStockOwner,
+    assetLinkId: number,
+  ): Promise<string> {
+    const row = await this.loadOwnedRow(owner, assetLinkId);
+    if (row.role !== "primary_portrait") {
+      throw new VerticalDramaCharacterStockError(
+        "asset_wrong_role",
+        `Character asset ${assetLinkId} is not a primary_portrait (role=${row.role ?? "null"}) and cannot be used as an identity-lock reference image`,
+      );
+    }
+    if (row.mediaAssetId == null) {
+      throw new VerticalDramaCharacterStockError("asset_not_found", "Character asset has no attached media");
+    }
+    const [mediaRow] = await db
+      .select({ url: mediaAssets.originalUrl })
+      .from(mediaAssets)
+      .where(eq(mediaAssets.id, row.mediaAssetId))
+      .limit(1);
+    if (!mediaRow?.url) {
+      throw new VerticalDramaCharacterStockError("asset_not_found", "Character asset has no attached media");
+    }
+    return mediaRow.url;
   }
 
   /**

@@ -33,10 +33,11 @@ import { parseSkillFile } from "@smartspec/skills";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { debugLog, debugError } from "../_core/logger";
 import { VD_IMAGE_PROMPT_MAX, VD_VIDEO_PROMPT_MAX } from "@shared/verticalDramaSeries";
 
@@ -101,6 +102,7 @@ export interface EnsurePromptWithinLimitParams {
   context?: string;
   userId: number;
   tenantId?: string;
+  seriesId: number;
   idempotencyKey?: string;
   /** Human-readable label used only in log lines / credit transaction descriptions, e.g. "start-frame prompt (shot 3)". */
   label?: string;
@@ -175,6 +177,7 @@ async function refineOnce(params: {
   strict: boolean;
   userId: number;
   tenantId?: string;
+  seriesId: number;
   idempotencyKey?: string;
   label: string;
 }): Promise<{ optimizedPrompt: string; creditsUsed: number }> {
@@ -183,7 +186,10 @@ async function refineOnce(params: {
     throw new Error("Insufficient credits for prompt QC refinement");
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId,
+  );
   const systemPrompt = loadRefinerSystemPrompt();
   const userPrompt = buildRefinerUserPrompt({
     kind: params.kind,
@@ -249,7 +255,7 @@ async function refineOnce(params: {
 export async function ensurePromptWithinLimit(
   params: EnsurePromptWithinLimitParams,
 ): Promise<EnsurePromptWithinLimitResult> {
-  const { kind, prompt, context, userId, tenantId, idempotencyKey } = params;
+  const { kind, prompt, context, userId, tenantId, seriesId, idempotencyKey } = params;
   const maxChars = promptCapForKind(kind);
   const label = params.label ?? `${kind} prompt`;
 
@@ -268,6 +274,7 @@ export async function ensurePromptWithinLimit(
       strict: false,
       userId,
       tenantId,
+      seriesId,
       idempotencyKey,
       label,
     });
@@ -290,6 +297,7 @@ export async function ensurePromptWithinLimit(
       strict: true,
       userId,
       tenantId,
+      seriesId,
       idempotencyKey,
       label,
     });

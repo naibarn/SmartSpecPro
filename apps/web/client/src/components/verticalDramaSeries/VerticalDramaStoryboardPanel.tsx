@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -106,10 +107,6 @@ import {
   vdQualityRepairGroupLabel,
   type VdLocale,
 } from "./verticalDramaWorkspaceCopy";
-import {
-  VerticalDramaDensityMeter,
-  type VerticalDramaDensityMeterClipInput,
-} from "./VerticalDramaDensityMeter";
 import {
   VerticalDramaTieInReportCard,
   type VerticalDramaTieInReportView,
@@ -320,8 +317,10 @@ export interface VerticalDramaClipDialogueLineView {
  *  keeps parsing/rendering unchanged (flags-off byte-identical). */
 export interface VerticalDramaQualityReviewView {
   episode_title?: string;
-  /** `1` (default/legacy), `2`, or Feature 132 scorecard v3 — absent means v1. */
-  contract_version?: 1 | 2 | 3;
+  /** `1` (default/legacy), `2`, Feature 132 scorecard v3, or the
+   *  retention-hooks scorecard v4 (planning/vertical-drama-retention-hooks) —
+   *  absent means v1. */
+  contract_version?: 1 | 2 | 3 | 4;
   scorecard: {
     reversal_count: number;
     reversal_sharpness: number;
@@ -338,6 +337,10 @@ export interface VerticalDramaQualityReviewView {
     character_consistency?: number | null;
     evidence_payoff?: number | null;
     threat_escalation?: number | null;
+    /** v4 superset (planning/vertical-drama-retention-hooks W6) — all optional/nullable. */
+    open_loop_quality?: number | null;
+    retention_loop_quality?: number | null;
+    change_cadence?: number | null;
   };
   summary?: string;
   /** v2 superset — short qualitative note supporting `tie_in_naturalness`. */
@@ -492,6 +495,10 @@ export interface VerticalDramaMotionPromptClipView {
   negativeMotionPrompt?: string;
   startFrameAssetId?: string;
   endFrameAssetId?: string;
+  /** See `VerticalDramaMotionPromptPack["clips"][number].extraReferenceAssetIds`'s
+   *  doc comment (`@shared/verticalDramaSeries/contracts.ts`) — type parity
+   *  only, the client never reads this value. */
+  extraReferenceAssetIds?: string[];
   durationSeconds?: number;
   parentShotNumber?: number;
   subShotNumber?: number;
@@ -537,8 +544,144 @@ export type VerticalDramaAssetUrlMap = Record<
 
 export type VerticalDramaCharacterPortraitMap = Record<
   string,
-  { characterId: string; name: string; portraitUrl: string | null }
+  {
+    characterId: string;
+    name: string;
+    portraitUrl: string | null;
+    /** Additive (planning/vertical-drama-twin-variant-completeness/plan.md,
+     *  W6) — present only for a variant (outfit/age-stage) row: the DB row
+     *  id (as a string, NOT a characterKey) of the base character this
+     *  variant belongs to. Lets the per-shot character reference picker
+     *  nest variant entries under their parent instead of listing every
+     *  variant as an unrelated flat entry. */
+    parentCharacterId?: string;
+    /** Present only for a variant row — the human label (e.g. "ชุดนักเรียน"). */
+    variantLabel?: string;
+    /** Present only for a variant row. */
+    variantType?: "outfit" | "age_stage";
+    /** Additive — present only for a twin row: the DB row id (as a string)
+     *  of the character this twin shares a face with. Twins are their own
+     *  independent characters (never nested), shown with a "แฝดของ {name}"
+     *  badge resolved from this id. */
+    sharesFaceWithCharacterId?: string;
+  }
 >;
+
+/**
+ * One top-level entry in the per-shot character reference picker (planning/
+ * vertical-drama-twin-variant-completeness/plan.md, W6 frontend) — either a
+ * plain base character or a twin (twins are independent characters, never
+ * nested under another entry, but carry `twinSourceName` for their badge).
+ * A variant (outfit/age-stage) row is never its own top-level entry — it
+ * always appears inside its parent's `variants` list.
+ */
+export interface VdShotCharacterRefPickerVariant {
+  key: string;
+  characterId: string;
+  name: string;
+  portraitUrl: string | null;
+  variantLabel?: string;
+  variantType?: "outfit" | "age_stage";
+}
+
+export interface VdShotCharacterRefPickerGroup {
+  key: string;
+  characterId: string;
+  name: string;
+  portraitUrl: string | null;
+  /** Set only when this entry is a twin — the resolved display name of the
+   *  character it shares a face with, for the "แฝดของ {name}" badge. */
+  twinSourceName?: string;
+  variants: VdShotCharacterRefPickerVariant[];
+}
+
+/**
+ * Pure grouping function (planning/vertical-drama-twin-variant-completeness/
+ * plan.md, W6 frontend) — turns the flat `characterPortraits` record (keyed
+ * by `characterKey`, each entry carrying `parentCharacterId`/
+ * `sharesFaceWithCharacterId` as the OTHER character's DB row id, per
+ * `resolveSeriesCharacterPortraits`'s doc comment server-side) into the
+ * nested shape the per-shot reference picker renders: base characters and
+ * twins as top-level entries, variants (outfit/age-stage) nested under
+ * their parent. Exported (and kept side-effect-free) so it can be unit
+ * tested directly without mounting the picker dialog.
+ *
+ * Iteration order of the input `Record` (== the server's SELECT row order)
+ * is preserved for top-level entries; a variant whose declared parent isn't
+ * itself present in `characterPortraits` (shouldn't normally happen, but
+ * defensive) falls back to being shown as its own top-level entry instead
+ * of silently disappearing.
+ */
+export function buildShotCharacterReferencePickerGroups(
+  characterPortraits: VerticalDramaCharacterPortraitMap
+): VdShotCharacterRefPickerGroup[] {
+  const entries = Object.entries(characterPortraits);
+
+  const nameByCharacterId = new Map<string, string>();
+  const keyByCharacterId = new Map<string, string>();
+  for (const [key, p] of entries) {
+    nameByCharacterId.set(p.characterId, p.name);
+    keyByCharacterId.set(p.characterId, key);
+  }
+
+  const groups = new Map<string, VdShotCharacterRefPickerGroup>();
+  const variantsByParentCharacterId = new Map<
+    string,
+    VdShotCharacterRefPickerVariant[]
+  >();
+
+  for (const [key, p] of entries) {
+    if (p.parentCharacterId) {
+      const list = variantsByParentCharacterId.get(p.parentCharacterId) ?? [];
+      list.push({
+        key,
+        characterId: p.characterId,
+        name: p.name,
+        portraitUrl: p.portraitUrl,
+        variantLabel: p.variantLabel,
+        variantType: p.variantType,
+      });
+      variantsByParentCharacterId.set(p.parentCharacterId, list);
+      continue;
+    }
+    groups.set(key, {
+      key,
+      characterId: p.characterId,
+      name: p.name,
+      portraitUrl: p.portraitUrl,
+      twinSourceName: p.sharesFaceWithCharacterId
+        ? nameByCharacterId.get(p.sharesFaceWithCharacterId)
+        : undefined,
+      variants: [],
+    });
+  }
+
+  for (const [
+    parentCharacterId,
+    variantList,
+  ] of variantsByParentCharacterId) {
+    const parentKey = keyByCharacterId.get(parentCharacterId);
+    const parentGroup = parentKey ? groups.get(parentKey) : undefined;
+    if (parentGroup) {
+      parentGroup.variants.push(...variantList);
+      continue;
+    }
+    // Defensive fallback — parent row missing from characterPortraits, so
+    // show the variant(s) as their own top-level entries rather than
+    // dropping them from the picker silently.
+    for (const v of variantList) {
+      groups.set(v.key, {
+        key: v.key,
+        characterId: v.characterId,
+        name: v.name,
+        portraitUrl: v.portraitUrl,
+        variants: [],
+      });
+    }
+  }
+
+  return Array.from(groups.values());
+}
 
 interface VerticalDramaStoryboardPanelProps {
   locale?: Lang;
@@ -600,6 +743,24 @@ interface VerticalDramaStoryboardPanelProps {
   onChangeCharacterReference?: (characterId: string) => void;
   /** Dragging an image (Library/History/grid-cutter tile, same unified drag contract used across the app) directly onto a shot's character chip replaces that character's reference image immediately — no need to open the swap panel first. */
   onDropCharacterReference?: (characterId: string, url: string) => void;
+  /**
+   * Manually override which character(s)/variant(s) are used as the
+   * identity-lock reference(s) for ONE shot only (planning/vertical-drama-
+   * twin-variant-completeness/plan.md, W6 frontend) — separate from and
+   * additive to `onChangeCharacterReference` above, which swaps a
+   * character's reference IMAGE series-wide. This instead replaces the
+   * shot's list of WHICH characterKey(s) are referenced at all. Sends the
+   * shot's FULL replacement `requiredCharacterRefs` array (empty array
+   * clears every reference for this shot) — the caller wires this straight
+   * to `setShotCharacterReference`.
+   */
+  onSetShotCharacterReferences?: (
+    shotNumber: number,
+    characterRefs: string[]
+  ) => void;
+  /** Non-null while a `setShotCharacterReference` mutation is in flight for
+   *  this shot — disables the picker's save button. */
+  savingShotCharacterReferencesForShot?: number | null;
   /** Dragging an image directly onto a shot's start-frame slot replaces it immediately, same as `onDropCharacterReference`. */
   onDropStartFrame?: (shotNumber: number, url: string) => void;
   /** Runs `start_frame_render_plan` for real (mode "full", spends credits) — generates every shot's image prompt at once. Shown only while no plan exists yet. */
@@ -1049,6 +1210,8 @@ export function VerticalDramaStoryboardPanel({
   onChangeStartFrame,
   onChangeCharacterReference,
   onDropCharacterReference,
+  onSetShotCharacterReferences,
+  savingShotCharacterReferencesForShot = null,
   onDropStartFrame,
   onGenerateStartFramePlan,
   generatingStartFramePlan = false,
@@ -1173,77 +1336,6 @@ export function VerticalDramaStoryboardPanel({
   );
 
   /**
-   * Density meter input (section-13) — SAME source data as
-   * `episodeDialogueQuality` above (`motionPromptPack?.clips`), joined with
-   * each storyboard shot's own declared `silence_intent` by shot number so
-   * `VerticalDramaDensityMeter` can exempt declared visual-only shots from
-   * its per-clip warnings. Only computed while the flag is on — nothing new
-   * is rendered from it otherwise.
-   *
-   * 2026-07-08 fix (episode target-band bug): `motionPromptPack.clips` is
-   * built INCREMENTALLY, one clip per shot, as the user calls
-   * `generateShotVideoPrompt` for each shot individually (see that
-   * procedure's own doc comment in `server/routers/verticalDramaEpisodes.ts`
-   * — it creates a minimal clip/pack entry only for the shot being
-   * generated). Using ONLY `motionPromptPack.clips` as the density meter's
-   * input therefore summed the episode target band
-   * (`minTargetSeconds`/`maxTargetSeconds`, both derived from the input
-   * clips' TOTAL duration) from whatever PARTIAL subset of shots had already
-   * been generated (e.g. 3 of 9 shots = ~20s) instead of the full episode
-   * duration (60s) — producing a band far below the real one (reported as
-   * "14-16 วิ" instead of the correct ~35-41s). `storyboard.shots` is the
-   * FULL, stable per-shot duration profile (set once at storyboard-
-   * generation time, independent of per-shot video-prompt production
-   * progress) — the SAME source the server's own
-   * `buildEpisodeDialogueQualityForWizard` (`verticalDramaEpisodes.ts`)
-   * already uses for the wizard's equivalent episode-level snapshot. Every
-   * already-generated clip's own data (duration, dialogue, clip number) is
-   * kept EXACTLY as before — this only ADDS a placeholder entry (using the
-   * storyboard's planned duration, no dialogue yet) for shots that don't
-   * have a motion-prompt-pack clip yet, so the episode total always reflects
-   * every shot in the duration profile.
-   */
-  const densityMeterClips = useMemo<
-    VerticalDramaDensityMeterClipInput[]
-  >(() => {
-    if (!speechBudgetEnabled) return [];
-    const clips = motionPromptPack?.clips ?? [];
-    const shotsList = storyboard?.shots ?? [];
-    if (clips.length === 0 && shotsList.length === 0) return [];
-    const silenceIntentByShot = new Map<number, VerticalDramaSilenceIntent>();
-    for (const shot of shotsList) {
-      if (typeof shot.shot_number === "number" && shot.silence_intent) {
-        silenceIntentByShot.set(shot.shot_number, shot.silence_intent);
-      }
-    }
-    const fromClips = clips.map(clip => {
-      const shotNumber =
-        clip.parentShotNumber ?? clip.sourceShotNumbers?.[0] ?? clip.clipNumber;
-      return {
-        shotNumber,
-        clipNumber: clip.clipNumber,
-        durationSeconds: clip.durationSeconds ?? 8,
-        dialogue: clip.dialogue,
-        silenceIntent: silenceIntentByShot.get(shotNumber),
-      };
-    });
-    const clipShotNumbers = new Set(fromClips.map(c => c.shotNumber));
-    const fromUngeneratedShots = shotsList
-      .filter(
-        shot =>
-          typeof shot.shot_number === "number" &&
-          !clipShotNumbers.has(shot.shot_number)
-      )
-      .map(shot => ({
-        shotNumber: shot.shot_number as number,
-        durationSeconds: shot.duration_seconds ?? 8,
-        dialogue: undefined,
-        silenceIntent: silenceIntentByShot.get(shot.shot_number as number),
-      }));
-    return [...fromClips, ...fromUngeneratedShots];
-  }, [speechBudgetEnabled, motionPromptPack?.clips, storyboard?.shots]);
-
-  /**
    * Reads a drag-and-drop payload that may be a real OS file (dropped
    * straight from the user's computer) or the codebase's own unified URL
    * drag contract, and resolves it to a single URL string every existing
@@ -1360,6 +1452,15 @@ export function VerticalDramaStoryboardPanel({
     number | null
   >(null);
   const [productImagePickerDraft, setProductImagePickerDraft] = useState<
+    string[]
+  >([]);
+  /** Shot number currently showing the per-shot character/variant reference
+   *  picker (W6 frontend) — the draft selection lives locally until saved,
+   *  same convention as `productImagePickerForShot`/`productImagePickerDraft`. */
+  const [characterRefPickerForShot, setCharacterRefPickerForShot] = useState<
+    number | null
+  >(null);
+  const [characterRefPickerDraft, setCharacterRefPickerDraft] = useState<
     string[]
   >([]);
   /** Each surviving tile's data URL AND its ORIGINAL 0..8 position in the
@@ -1805,31 +1906,6 @@ export function VerticalDramaStoryboardPanel({
           ) : null}
         </header>
 
-        {/* Density meter (section-13, flags.speechBudget) — episode-level
-          status placed right under the header, next to where the legacy
-          simple underfilled banner (below, now suppressed while this flag is
-          on) already lived. Hidden entirely while the flag is off or no
-          clips exist yet (never a fake all-zero meter). */}
-        {speechBudgetEnabled ? (
-          <VerticalDramaDensityMeter
-            locale={locale as VdLocale}
-            clips={densityMeterClips}
-            onRepairWholeEpisode={onRepairWholeEpisodeScript}
-            // 2026-07-08 wizard cross-link wave (spec owner confusion #1) —
-            // this panel already receives `motionPromptPack`; a REAL
-            // dialogue/audio plan means at least one clip carries a
-            // dialogue line that is NOT `origin: "script_fallback"` (the
-            // auto-recovered-from-script placeholder synced in even before
-            // the dialogue/audio step has actually run). Minimal derived
-            // prop, no new wiring beyond this one existing prop.
-            dialoguePlanExists={Boolean(
-              motionPromptPack?.clips?.some(clip =>
-                clip.dialogue?.some(line => line.origin !== "script_fallback")
-              )
-            )}
-          />
-        ) : null}
-
         {/* Episode-level model selection (Phase 1.3) — a single control per
           episode, deliberately NOT per-shot/per-clip (2026-07-05 product
           decision). Changing a model here only affects the NEXT generation;
@@ -1975,15 +2051,10 @@ export function VerticalDramaStoryboardPanel({
                 {t2.nativeAudioToggleHint}
               </p>
             ) : null}
-            {/* Legacy simple underfilled banner — suppressed once
-              `speechBudgetEnabled` is on (the density meter above already
-              covers this, with more detail) so the two never show
-              redundant/conflicting messaging. Flags-off condition is
-              UNCHANGED (speechBudgetEnabled defaults false), so this stays
-              byte-identical to today when the flag is off. */}
-            {episodeDialogueUnderfilled &&
-            episodeDialogueQuality &&
-            !speechBudgetEnabled ? (
+            {/* Episode-level underfilled dialogue banner. Previously
+              suppressed while the (now-removed) density meter was showing;
+              always shown when relevant now that the meter is gone. */}
+            {episodeDialogueUnderfilled && episodeDialogueQuality ? (
               <div
                 className="flex flex-wrap items-center gap-2 rounded-md border border-amber-300/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-900"
                 data-testid="vd-storyboard-dialogue-episode-quality-warning"
@@ -3141,15 +3212,26 @@ export function VerticalDramaStoryboardPanel({
                     </p>
                   ) : null}
                   {(() => {
-                    // `required_character_refs` is the identity-lock key list
-                    // generation actually uses — prefer it over `characters`
-                    // (a looser display list) so what's shown here always
-                    // matches what the render call will reference. Only the
-                    // character(s) THIS shot needs, never the full roster.
-                    const keys = shot.required_character_refs?.length
-                      ? shot.required_character_refs
-                      : (shot.characters ?? []);
-                    if (keys.length === 0) return null;
+                    // `frame.requiredCharacterRefs` (startFramePlan) is the
+                    // identity-lock key list generation ACTUALLY uses once a
+                    // plan exists (planning/vertical-drama-twin-variant-
+                    // completeness/plan.md, W6 — `setShotCharacterReference`
+                    // patches exactly this field) — checked with `!==
+                    // undefined` rather than `.length` so an explicit,
+                    // user-cleared EMPTY selection still renders as empty
+                    // instead of falling back to a stale list. Only once the
+                    // plan hasn't reached this shot yet (or doesn't exist)
+                    // do we fall back to the storyboard's own
+                    // `required_character_refs`/`characters` (the pre-plan
+                    // authored intent).
+                    const keys =
+                      frame?.requiredCharacterRefs !== undefined
+                        ? frame.requiredCharacterRefs
+                        : shot.required_character_refs?.length
+                          ? shot.required_character_refs
+                          : (shot.characters ?? []);
+                    if (keys.length === 0 && !onSetShotCharacterReferences)
+                      return null;
                     return (
                       <div className="flex flex-wrap items-center gap-2">
                         <Users
@@ -3242,6 +3324,21 @@ export function VerticalDramaStoryboardPanel({
                             </button>
                           );
                         })}
+                        {onSetShotCharacterReferences ? (
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                            onClick={() => {
+                              setCharacterRefPickerDraft(keys);
+                              setCharacterRefPickerForShot(shotNumber);
+                            }}
+                            title={t2.shotCharacterRefEditLabel}
+                            aria-label={t2.shotCharacterRefEditLabel}
+                            data-testid={`vd-storyboard-character-ref-edit-${shotNumber}`}
+                          >
+                            <Pencil aria-hidden="true" className="h-3 w-3" />
+                          </button>
+                        ) : null}
                       </div>
                     );
                   })()}
@@ -4510,6 +4607,34 @@ export function VerticalDramaStoryboardPanel({
             setProductImagePickerForShot(null);
           }}
           onClose={() => setProductImagePickerForShot(null)}
+        />
+      ) : null}
+
+      {characterRefPickerForShot != null ? (
+        <ShotCharacterReferencePickerDialog
+          locale={locale}
+          t={t2}
+          shotNumber={characterRefPickerForShot}
+          groups={buildShotCharacterReferencePickerGroups(characterPortraits)}
+          selectedKeys={characterRefPickerDraft}
+          onToggle={key =>
+            setCharacterRefPickerDraft(prev =>
+              prev.includes(key)
+                ? prev.filter(k => k !== key)
+                : [...prev, key]
+            )
+          }
+          saving={
+            savingShotCharacterReferencesForShot === characterRefPickerForShot
+          }
+          onSave={() => {
+            onSetShotCharacterReferences?.(
+              characterRefPickerForShot,
+              characterRefPickerDraft
+            );
+            setCharacterRefPickerForShot(null);
+          }}
+          onClose={() => setCharacterRefPickerForShot(null)}
         />
       ) : null}
 
@@ -6095,6 +6220,15 @@ function ClipDialogueBox({
             ) : null}
             {nativeAudio ? t2.dialogueSpeaksNatively : t2.dialogueSeparateTts}
           </Badge>
+          {lines.length > 0 ? (
+            <span
+              className="text-[10px] text-muted-foreground"
+              data-testid={`vd-storyboard-dialogue-estimated-seconds-${clip.clipNumber}`}
+            >
+              {t2.estimatedDialogueSecondsLabel}:{" "}
+              {dialogueQuality.estimatedSpeechSeconds.toFixed(1)}s
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-1">
           {!isEditing && lines.length > 0 ? (
@@ -6471,6 +6605,212 @@ function ProductImagePickerDialog({
               />
             ) : (
               t2.productImagePickerSave
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ShotCharacterReferencePickerDialog (planning/vertical-drama-twin-variant-
+ * completeness/plan.md, W6 frontend) — lets the user pick exactly which
+ * character(s)/variant(s) are used as the identity-lock reference for ONE
+ * shot, separate from (and additive to) the series-wide "change reference
+ * image" swap (`onChangeCharacterReference`). Groups entries via
+ * `buildShotCharacterReferencePickerGroups`: base characters/twins as
+ * top-level rows (twins carry a "แฝดของ {name}" badge), variants
+ * nested/indented under their parent with a ชุด/วัย badge. Any key currently
+ * selected but absent from `characterPortraits` (a stale key no longer in
+ * the roster) is still shown as a plain removable row, so the user can
+ * clean it off without losing every other selection. Multi-select
+ * checkboxes, seeded by the caller from the shot's current
+ * `requiredCharacterRefs`. Follows the same fixed-overlay
+ * `role="alertdialog"` pattern `ProductImagePickerDialog` above uses.
+ */
+function ShotCharacterReferencePickerDialog({
+  locale,
+  t: t2,
+  shotNumber,
+  groups,
+  selectedKeys,
+  onToggle,
+  saving,
+  onSave,
+  onClose,
+}: {
+  locale: Lang;
+  t: ReturnType<typeof vdCopy>;
+  shotNumber: number;
+  groups: VdShotCharacterRefPickerGroup[];
+  selectedKeys: string[];
+  onToggle: (key: string) => void;
+  saving: boolean;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  const knownKeys = new Set<string>();
+  groups.forEach(group => {
+    knownKeys.add(group.key);
+    group.variants.forEach(variant => knownKeys.add(variant.key));
+  });
+  const unknownSelectedKeys = selectedKeys.filter(key => !knownKeys.has(key));
+
+  function renderOptionRow(opts: {
+    key: string;
+    label: string;
+    portraitUrl: string | null;
+    badge?: string;
+    indent?: boolean;
+  }) {
+    const checked = selectedKeys.includes(opts.key);
+    return (
+      <label
+        key={opts.key}
+        className={cn(
+          "flex items-center gap-2 rounded-md px-1.5 py-1 text-sm hover:bg-muted",
+          opts.indent ? "ml-6" : ""
+        )}
+        data-testid={`vd-storyboard-character-ref-option-${shotNumber}-${opts.key}`}
+      >
+        <Checkbox
+          checked={checked}
+          onCheckedChange={() => onToggle(opts.key)}
+        />
+        {opts.portraitUrl ? (
+          <img
+            src={opts.portraitUrl}
+            alt=""
+            className="h-5 w-5 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-[9px] text-muted-foreground">
+            ?
+          </span>
+        )}
+        <span className="flex-1 truncate">{opts.label}</span>
+        {opts.badge ? (
+          <Badge variant="outline" className="shrink-0 px-1 py-0 text-[9px]">
+            {opts.badge}
+          </Badge>
+        ) : null}
+      </label>
+    );
+  }
+
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label={t2.shotCharacterRefPickerTitle}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-border bg-background p-4 shadow-lg"
+        onClick={e => e.stopPropagation()}
+        data-testid={`vd-storyboard-character-ref-picker-${shotNumber}`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <Users aria-hidden="true" className="h-4 w-4 shrink-0" />
+            {t2.shotCharacterRefPickerTitle}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 p-0"
+            onClick={onClose}
+            aria-label={t(locale, "ปิด", "Close")}
+          >
+            <X aria-hidden="true" className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {t2.shotCharacterRefPickerHint}
+        </p>
+
+        {groups.length === 0 && unknownSelectedKeys.length === 0 ? (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            {t2.shotCharacterRefPickerNoCharacters}
+          </p>
+        ) : (
+          <div className="flex max-h-80 flex-col gap-0.5 overflow-y-auto">
+            {groups.map(group => (
+              <Fragment key={group.key}>
+                {renderOptionRow({
+                  key: group.key,
+                  label: group.twinSourceName
+                    ? `${group.name} (${vdCopyWithParams(t2.shotCharacterRefPickerTwinBadge, { name: group.twinSourceName })})`
+                    : group.name,
+                  portraitUrl: group.portraitUrl,
+                })}
+                {group.variants.map(variant =>
+                  renderOptionRow({
+                    key: variant.key,
+                    label: variant.variantLabel ?? variant.name,
+                    portraitUrl: variant.portraitUrl,
+                    badge:
+                      variant.variantType === "age_stage"
+                        ? t2.shotCharacterRefPickerAgeStageBadge
+                        : t2.shotCharacterRefPickerOutfitBadge,
+                    indent: true,
+                  })
+                )}
+              </Fragment>
+            ))}
+          </div>
+        )}
+
+        {unknownSelectedKeys.length > 0 ? (
+          <div className="flex flex-col gap-1 border-t border-dashed border-border pt-2">
+            <p className="text-[11px] text-muted-foreground">
+              {t2.shotCharacterRefPickerUnknownSectionTitle}
+            </p>
+            {unknownSelectedKeys.map(key => (
+              <div
+                key={key}
+                className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-1.5 py-1 text-xs"
+                data-testid={`vd-storyboard-character-ref-unknown-${shotNumber}-${key}`}
+              >
+                <span className="truncate">{key}</span>
+                <button
+                  type="button"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => onToggle(key)}
+                  aria-label={t(locale, "ลบ", "Remove")}
+                >
+                  <X aria-hidden="true" className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <span className="text-xs text-muted-foreground">
+            {vdCopyWithCount(
+              t2.shotCharacterRefPickerSelectedCount,
+              selectedKeys.length
+            )}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onSave}
+            disabled={saving}
+            data-testid={`vd-storyboard-character-ref-picker-save-${shotNumber}`}
+          >
+            {saving ? (
+              <Loader2
+                aria-hidden="true"
+                className="h-3.5 w-3.5 animate-spin"
+              />
+            ) : (
+              t2.shotCharacterRefPickerSave
             )}
           </Button>
         </div>

@@ -34,15 +34,9 @@ vi.mock("fs", async () => {
     readFileSync: vi.fn(),
   };
 });
-vi.mock("../verticalDramaStoryBible", async () => {
-  const actual = await vi.importActual<
-    typeof import("../verticalDramaStoryBible")
-  >("../verticalDramaStoryBible");
-  return {
-    ...actual,
-    resolveStoryBibleModel: vi.fn(),
-  };
-});
+vi.mock("../verticalDramaImproveScript", () => ({
+  resolveStoryboardModel: vi.fn(),
+}));
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -61,17 +55,14 @@ import {
   resolveSkillDirCandidates,
   resolveSkillManifestPath,
 } from "../skillFiles";
-import {
-  resolveStoryBibleModel,
-  InsufficientCreditsError,
-  VdSchemaValidationError,
-} from "../verticalDramaStoryBible";
+import { InsufficientCreditsError, VdSchemaValidationError } from "../verticalDramaStoryBible";
+import { resolveStoryboardModel } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
-const mockResolveModel = vi.mocked(resolveStoryBibleModel);
+const mockResolveModel = vi.mocked(resolveStoryboardModel);
 const mockIsAllowed = vi.mocked(mediaGenerationLimiter.isAllowed);
 const mockGetResetTime = vi.mocked(mediaGenerationLimiter.getResetTime);
 const mockResolveSkillDirCandidates = vi.mocked(resolveSkillDirCandidates);
@@ -254,9 +245,15 @@ describe("generateStoryboardShotgrid", () => {
       successResponse({
         ...validOutput(),
         // The LLM has no way to know a real URL — assert we overwrite this.
+        // `schema_version`/`handoff_type` are also always overwritten with
+        // derived ground truth now (root-cause fix, see the dedicated
+        // "root-cause fix" tests below) — an arbitrary passthrough field is
+        // used here instead to prove non-deterministic fields still survive
+        // the merge.
         storyboard_handoff_json: {
           schema_version: "1",
           handoff_type: "storyboard_shot_prompts",
+          custom_upstream_note: "should survive the merge",
         },
       })
     );
@@ -289,10 +286,12 @@ describe("generateStoryboardShotgrid", () => {
         reference_image_url: "https://cdn.example/alice.png",
       },
     ]);
-    // Pre-existing fields on storyboard_handoff_json survive the merge.
+    // Non-deterministic pre-existing fields on storyboard_handoff_json
+    // survive the merge (deterministic fields like schema_version are
+    // covered separately by the "root-cause fix" tests below).
     expect(
-      (result.storyboard.storyboard_handoff_json as any).schema_version
-    ).toBe("1");
+      (result.storyboard.storyboard_handoff_json as any).custom_upstream_note
+    ).toBe("should survive the merge");
   });
 
   it("leaves storyboard_handoff_json untouched when no character has a reference image", async () => {
@@ -309,6 +308,93 @@ describe("generateStoryboardShotgrid", () => {
       (result.storyboard.storyboard_handoff_json as any)
         .character_attachment_manifest
     ).toBeUndefined();
+  });
+
+  it("root-cause fix (traceId L2fd3oiEUm_j5RsmaVXYZ): succeeds and deterministically reconstructs storyboard_handoff_json when the LLM omits the field entirely", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const { storyboard_handoff_json: _omit, ...outputWithoutHandoff } =
+      validOutput();
+    mockExecute.mockResolvedValue(successResponse(outputWithoutHandoff));
+
+    // Previously this threw VdSchemaValidationError ("storyboard_handoff_json: Required").
+    const result = await generateStoryboardShotgrid(baseParams());
+
+    expect(result.storyboard.shots).toHaveLength(9);
+    const handoff = result.storyboard.storyboard_handoff_json as any;
+    expect(handoff.schema_version).toBe("1.0");
+    expect(handoff.handoff_type).toBe("storyboard_shot_prompts");
+    expect(handoff.grid_layout).toBe("3x3");
+    expect(handoff.shots).toEqual(
+      outputWithoutHandoff.shots.map(s => ({
+        shot_number: s.shot_number,
+        image_prompt: s.image_prompt,
+      }))
+    );
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("root-cause fix: overwrites schema_version/handoff_type/grid_layout/shots with derived ground truth even when the LLM DOES emit its own storyboard_handoff_json, but preserves the model's rendering_notes", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(
+      successResponse({
+        ...validOutput(),
+        storyboard_handoff_json: {
+          schema_version: "0.9-wrong",
+          handoff_type: "something_else",
+          grid_layout: "2x2",
+          shots: [{ shot_number: 999, image_prompt: "stale model guess" }],
+          character_attachment_manifest: [{ character_id: "stale" }],
+          rendering_notes: "Model-authored rendering notes.",
+        },
+      })
+    );
+
+    const result = await generateStoryboardShotgrid(baseParams());
+
+    const handoff = result.storyboard.storyboard_handoff_json as any;
+    expect(handoff.schema_version).toBe("1.0");
+    expect(handoff.handoff_type).toBe("storyboard_shot_prompts");
+    expect(handoff.grid_layout).toBe("3x3");
+    expect(handoff.shots).toEqual(
+      validOutput().shots.map(s => ({
+        shot_number: s.shot_number,
+        image_prompt: s.image_prompt,
+      }))
+    );
+    // Model's rendering_notes IS preserved (not derivable server-side).
+    expect(handoff.rendering_notes).toBe("Model-authored rendering notes.");
+  });
+
+  it("root-cause fix: does not regress the existing character_attachment_manifest backfill when characters have reference images", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const { storyboard_handoff_json: _omit, ...outputWithoutHandoff } =
+      validOutput();
+    mockExecute.mockResolvedValue(successResponse(outputWithoutHandoff));
+
+    const result = await generateStoryboardShotgrid(
+      baseParams({
+        characters: [
+          {
+            characterId: "char-1",
+            name: "Alice",
+            role: "lead",
+            referenceImageUrl: "https://cdn.example/alice.png",
+          },
+        ],
+      })
+    );
+
+    const handoff = result.storyboard.storyboard_handoff_json as any;
+    expect(handoff.character_attachment_manifest).toEqual([
+      {
+        character_id: "char-1",
+        name: "Alice",
+        reference_image_url: "https://cdn.example/alice.png",
+      },
+    ]);
+    // Deterministic base fields still present alongside the manifest.
+    expect(handoff.schema_version).toBe("1.0");
+    expect(handoff.grid_layout).toBe("3x3");
   });
 
   it("retries once with a higher token ceiling when the first response is truncated JSON, and succeeds on the retry (2026-07-05 evidence: one-click generation, สตอรีบอร์ด 9 ช็อต stage)", async () => {
@@ -348,6 +434,256 @@ describe("generateStoryboardShotgrid", () => {
 
     expect(mockExecute).toHaveBeenCalledTimes(2);
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  describe("character variants (planning/vertical-drama-character-variants/plan.md Phase D)", () => {
+    it("renders no variant lines and produces a byte-identical Characters block for a character with zero variants", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+      await generateStoryboardShotgrid(
+        baseParams({
+          characters: [{ characterId: "char-1", name: "Alice", role: "lead" }],
+        })
+      );
+      const withoutVariantsPrompt = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+
+      mockExecute.mockClear();
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+      await generateStoryboardShotgrid(
+        baseParams({
+          characters: [
+            { characterId: "char-1", name: "Alice", role: "lead", variants: undefined },
+          ],
+        })
+      );
+      const withUndefinedVariantsPrompt = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+
+      expect(withUndefinedVariantsPrompt).toBe(withoutVariantsPrompt);
+      expect(withoutVariantsPrompt).not.toMatch(/Variants available/);
+      expect(withoutVariantsPrompt).not.toMatch(/Character variant selection/);
+    });
+
+    it("includes a character's variants list (label/type/description, reference-image note) only when present", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+      await generateStoryboardShotgrid(
+        baseParams({
+          characters: [
+            {
+              characterId: "char-1",
+              name: "Nuna",
+              role: "lead",
+              referenceImageUrl: "https://cdn.example/nuna.png",
+              variants: [
+                {
+                  characterKey: "char-1-school",
+                  variantLabel: "ชุดนักเรียน",
+                  variantType: "outfit",
+                  description: "school uniform, worn for scenes at school",
+                  referenceImageUrl: "https://cdn.example/nuna-school.png",
+                },
+                {
+                  characterKey: "char-1-child",
+                  variantLabel: "วัยเด็ก",
+                  variantType: "age_stage",
+                  description: "childhood flashback appearance",
+                  referenceImageUrl: "https://cdn.example/nuna-child.png",
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+      expect(userMessage).toMatch(/Variants available for char-1/);
+      expect(userMessage).toMatch(
+        /char-1-school \(ชุดนักเรียน, outfit variant of char-1\): school uniform, worn for scenes at school \[has an approved reference image\]/
+      );
+      expect(userMessage).toMatch(
+        /char-1-child \(วัยเด็ก, age-stage variant of char-1\): childhood flashback appearance \[has an approved reference image\]/
+      );
+    });
+
+    it("does not force-add the base character's id via name-matching when the LLM already chose one of its variants for this shot (avoids attaching two contradictory reference images for the same person)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({
+          ...validOutput(),
+          shots: [
+            {
+              ...validShot(1),
+              // The LLM correctly picked the variant AND wrote "Nuna" (the
+              // shared base name) directly into the narrative text.
+              visual_description: "Nuna in her school uniform in the hallway",
+              characters: ["char-1-school"],
+              required_character_refs: ["char-1-school"],
+            },
+            ...Array.from({ length: 8 }, (_, i) => validShot(i + 2)),
+          ],
+        })
+      );
+
+      const result = await generateStoryboardShotgrid(
+        baseParams({
+          characters: [
+            {
+              characterId: "char-1",
+              name: "Nuna",
+              role: "lead",
+              variants: [
+                {
+                  characterKey: "char-1-school",
+                  variantLabel: "ชุดนักเรียน",
+                  variantType: "outfit",
+                  description: "school uniform",
+                  referenceImageUrl: "https://cdn.example/nuna-school.png",
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      expect(result.storyboard.shots[0].characters).toEqual(["char-1-school"]);
+      expect(result.storyboard.shots[0].required_character_refs).toEqual([
+        "char-1-school",
+      ]);
+    });
+
+    it("still applies the name-match fallback for a variant-bearing character when NEITHER the base id nor any variant id was emitted by the LLM (recovery case preserved)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({
+          ...validOutput(),
+          shots: [
+            {
+              ...validShot(1),
+              visual_description: "Nuna walks in, unannounced",
+              // LLM invents a junk id instead of a real one.
+              characters: ["nuna-primary-portrait.png"],
+              required_character_refs: ["nuna-primary-portrait.png"],
+            },
+            ...Array.from({ length: 8 }, (_, i) => validShot(i + 2)),
+          ],
+        })
+      );
+
+      const result = await generateStoryboardShotgrid(
+        baseParams({
+          characters: [
+            {
+              characterId: "char-1",
+              name: "Nuna",
+              role: "lead",
+              variants: [
+                {
+                  characterKey: "char-1-school",
+                  variantLabel: "ชุดนักเรียน",
+                  variantType: "outfit",
+                  description: "school uniform",
+                  referenceImageUrl: "https://cdn.example/nuna-school.png",
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      // Falls back to the base id — the only signal available.
+      expect(result.storyboard.shots[0].characters).toEqual(["char-1"]);
+    });
+
+    it("renders no twin-pair lines and produces a byte-identical prompt for a call with no twinPairs", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+      await generateStoryboardShotgrid(baseParams());
+      const withoutTwinPairsPrompt = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+
+      mockExecute.mockClear();
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+      await generateStoryboardShotgrid(baseParams({ twinPairs: undefined }));
+      const withUndefinedTwinPairsPrompt = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+
+      expect(withUndefinedTwinPairsPrompt).toBe(withoutTwinPairsPrompt);
+      expect(withoutTwinPairsPrompt).not.toMatch(/Twin pairs/);
+      expect(withoutTwinPairsPrompt).not.toMatch(/Twin-aware shot styling/);
+    });
+
+    it("renders each twinPairs entry as a 'are twins' fact line when present", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+      await generateStoryboardShotgrid(
+        baseParams({
+          twinPairs: [{ characterKeyA: "char-fai", characterKeyB: "char-baitong" }],
+        })
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: { role: string }) => m.role === "user"
+      ).content;
+      expect(userMessage).toMatch(/Twin pairs \(see "Twin-aware shot styling" below\):/);
+      expect(userMessage).toMatch(
+        /char-fai and char-baitong are twins — they share an identical face but are different people\./
+      );
+    });
+
+    it("does not strip a variant's characterKey from a shot's characters/required_character_refs (variant ids are real ids, not LLM-invented junk)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockExecute.mockResolvedValue(
+        successResponse({
+          ...validOutput(),
+          shots: [
+            {
+              ...validShot(1),
+              characters: ["char-1-school"],
+              required_character_refs: ["char-1-school"],
+            },
+            ...Array.from({ length: 8 }, (_, i) => validShot(i + 2)),
+          ],
+        })
+      );
+
+      const result = await generateStoryboardShotgrid(
+        baseParams({
+          characters: [
+            {
+              characterId: "char-1",
+              name: "Nuna",
+              role: "lead",
+              variants: [
+                {
+                  characterKey: "char-1-school",
+                  variantLabel: "ชุดนักเรียน",
+                  variantType: "outfit",
+                  description: "school uniform",
+                  referenceImageUrl: "https://cdn.example/nuna-school.png",
+                },
+              ],
+            },
+          ],
+        })
+      );
+
+      expect(result.storyboard.shots[0].characters).toContain("char-1-school");
+      expect(result.storyboard.shots[0].required_character_refs).toContain(
+        "char-1-school"
+      );
+    });
   });
 
   it("does not retry on a FATAL provider error (only retries malformed-JSON/schema failures, or transient network/timeout errors — see verticalDramaStoryBible.executeJsonPlanningCallWithRetry.test.ts)", async () => {

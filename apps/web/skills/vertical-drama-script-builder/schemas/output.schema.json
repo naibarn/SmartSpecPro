@@ -141,6 +141,54 @@
     "cliffhanger": {
       "type": "string"
     },
+    "open_loops": {
+      "description": "Optional superset (planning/vertical-drama-retention-hooks/plan.md W2, added 2026-07-11): declared open loops the episode plants for the viewer to carry forward. Optional here for backward compatibility with scripts generated before this rule existed; skill.md marks this MANDATORY (>=1 entry) when the retention-hooks flag is on, enforced by the quality-review LLM, never by this schema.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "planted_at_beat": {
+            "type": "integer"
+          },
+          "expected_resolution": {
+            "type": "string",
+            "enum": [
+              "this_episode",
+              "future_episode",
+              "season"
+            ]
+          }
+        }
+      }
+    },
+    "retention_loop": {
+      "description": "Optional superset (planning/vertical-drama-retention-hooks/plan.md W2, added 2026-07-11): the structured companion to `cliffhanger` — names which of six canonical retention-loop types the episode ends on. `cliffhanger` remains the required, unchanged prose telling of the same moment; skill.md instructs the two to stay consistent. Optional here for backward compatibility; skill.md marks this MANDATORY when the retention-hooks flag is on, enforced by the quality-review LLM, never by this schema.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "new_question",
+            "unresolved_image",
+            "clue",
+            "threat",
+            "promise",
+            "emotional_turn"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "ties_to_beat": {
+          "type": "integer"
+        }
+      }
+    },
     "character_state_deltas": {
       "type": "array",
       "items": {

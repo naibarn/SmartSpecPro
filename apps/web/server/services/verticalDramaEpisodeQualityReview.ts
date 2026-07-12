@@ -50,7 +50,6 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -60,6 +59,8 @@ import {
   // file's own `abstract_line_ungrounded_count` metric below.
   VD_DRAMATURGY_ABSTRACT_WORDS,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import { debugError } from "../_core/logger";
 import {
@@ -73,6 +74,15 @@ import {
   type VerticalDramaDialogueClipQualityInput,
   type VerticalDramaDialogueQualityLine,
 } from "@shared/verticalDramaSeries/dialogueQuality";
+import {
+  computeSubtitleLineFacts,
+  computeRetentionStructureFacts,
+  computeShotChangeCadenceFacts,
+  computeRetentionLoopRotation,
+  type VdSubtitleLineFactsInput,
+  type VdRetentionStructureFactsInput,
+  type VdShotChangeCadenceFactsInputShot,
+} from "@shared/verticalDramaSeries/retentionFacts";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -145,6 +155,15 @@ const qualityReviewScorecardSchema = z
     character_consistency: z.number().int().min(1).max(5).optional(),
     evidence_payoff: z.number().int().min(1).max(5).optional(),
     threat_escalation: z.number().int().min(1).max(5).optional(),
+    /**
+     * v4 superset (`planning/vertical-drama-retention-hooks/plan.md` W6,
+     * added 2026-07-11) — optional so v1/v2/v3 payloads keep parsing
+     * unchanged. Judged by the review LLM using `retention_metrics` (see
+     * below) as ground-truth context, never re-derived by this schema.
+     */
+    open_loop_quality: z.number().int().min(1).max(5).optional(),
+    retention_loop_quality: z.number().int().min(1).max(5).optional(),
+    change_cadence: z.number().int().min(1).max(5).optional(),
   })
   .passthrough();
 
@@ -203,12 +222,60 @@ const densityMetricsSchema = z
   })
   .passthrough();
 
+/**
+ * Mirrors `schemas/output.schema.json`'s `retention_metrics` block
+ * (`planning/vertical-drama-retention-hooks/plan.md` W6, added 2026-07-11) —
+ * the same lenient-echo-shape role `densityMetricsSchema` plays for
+ * `density_metrics` above: this schema's only job is to accept whatever the
+ * LLM echoes back. `computeRetentionMetrics` below is the strict,
+ * always-fully-populated shape the CODE itself produces, which is what
+ * actually gets persisted — `runVerticalDramaEpisodeQualityReview`
+ * force-overwrites this field with that code-computed value whenever the
+ * caller supplies one, exactly like `density_metrics`.
+ */
+const retentionMetricsSchema = z
+  .object({
+    subtitle_line_facts: z
+      .object({
+        max_line_chars: z.number().int().min(0).optional(),
+        longest_line_excerpt: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    retention_structure_facts: z
+      .object({
+        open_loop_count: z.number().int().min(0).optional(),
+        retention_loop_type: z.string().nullable().optional(),
+        retention_loop_present: z.boolean().optional(),
+      })
+      .passthrough()
+      .optional(),
+    shot_change_cadence_facts: z
+      .object({
+        max_static_streak: z.number().int().min(0).optional(),
+        windows_without_change: z.number().int().min(0).optional(),
+        declared_change_mismatch_count: z.number().int().min(0).optional(),
+      })
+      .passthrough()
+      .optional(),
+    retention_loop_rotation_facts: z
+      .object({
+        repeated_streak: z.number().int().min(0).optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
 export const episodeQualityReviewOutputSchema = z
   .object({
-    // v1 shipped as `z.literal(1).optional()` — widened to accept `2` too
-    // (spec §16.1). Still optional/absent-defaults-to-1 so every already
-    // persisted v1 artifact (many predate this field entirely) keeps parsing.
-    contract_version: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+    // v1 shipped as `z.literal(1).optional()` — widened to accept `2`, `3`,
+    // and (retention hooks W6) `4`. Still optional/absent-defaults-to-1 so
+    // every already persisted v1 artifact (many predate this field entirely)
+    // keeps parsing.
+    contract_version: z
+      .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+      .optional(),
     episode_title: z.string().min(1),
     scorecard: qualityReviewScorecardSchema,
     summary: z.string().min(1),
@@ -216,6 +283,8 @@ export const episodeQualityReviewOutputSchema = z
     tie_in_assessment: z.string().optional(),
     /** v2 superset — deterministic density facts (spec §16.1 rule 1); see `computeVerticalDramaDensityMetrics`. */
     density_metrics: densityMetricsSchema.optional(),
+    /** v4 superset (retention hooks W6) — deterministic retention facts; see `computeRetentionMetrics`. */
+    retention_metrics: retentionMetricsSchema.optional(),
     issues: z.array(qualityReviewIssueSchema),
     warnings: z.array(z.object({}).passthrough()),
     repair_queue: z.array(z.object({}).passthrough()),
@@ -724,6 +793,179 @@ export function computeVerticalDramaDensityMetrics(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Deterministic retention metrics                                            */
+/* (`planning/vertical-drama-retention-hooks/plan.md` W6, added 2026-07-11)   */
+/* — NO LLM, thin combining wrapper around the pure fact functions in         */
+/* `@shared/verticalDramaSeries/retentionFacts.ts`                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The strict, always-fully-populated shape the CODE computes
+ * (`computeRetentionMetrics`) — distinct from `retentionMetricsSchema` above,
+ * which is the lenient shape used only to validate whatever the LLM happens
+ * to echo back. Field/group names are snake_case to match
+ * `schemas/output.schema.json`'s `retention_metrics` verbatim (same
+ * `density_metrics` convention this file already follows), since a value of
+ * this exact shape is injected into the prompt and assigned directly onto
+ * `EpisodeQualityReviewOutput.retention_metrics`. Each group is a 1:1
+ * snake_case re-export of one `retentionFacts.ts` function's camelCase
+ * output — see that module's own doc comments for the full semantics of
+ * every individual number (this file adds no new judgment, only naming/
+ * combining).
+ */
+export interface VerticalDramaRetentionMetrics {
+  subtitle_line_facts: {
+    max_line_chars: number;
+    longest_line_excerpt: string;
+  };
+  retention_structure_facts: {
+    open_loop_count: number;
+    retention_loop_type: string | null;
+    retention_loop_present: boolean;
+  };
+  shot_change_cadence_facts: {
+    max_static_streak: number;
+    windows_without_change: number;
+    declared_change_mismatch_count: number;
+  };
+  retention_loop_rotation_facts: {
+    repeated_streak: number;
+  };
+}
+
+export interface ComputeVerticalDramaRetentionMetricsParams {
+  /**
+   * Raw (or relevant-subset) output of `vertical-drama-script-builder` —
+   * only `structure.beats[].dialogue_lines[].line` (subtitle-line facts) and
+   * the top-level `open_loops[]`/`retention_loop` (retention-structure
+   * facts) are consulted.
+   */
+  script?: Record<string, unknown> | null;
+  /**
+   * Raw (or relevant-subset) output of `vertical-drama-storyboard-shotgrid`
+   * — only `shots[].change_type`/`emotion`/`camera` are consulted
+   * (change-cadence facts). `shots[].camera` (a structured object) is
+   * flattened to a JSON string for the declared-vs-actual cross-check —
+   * matching `retentionFacts.ts`'s own doc note that callers should flatten
+   * any structured field before calling for that cross-check to be
+   * meaningful.
+   */
+  storyboard?: Record<string, unknown> | null;
+  /**
+   * Nearest-first prior episodes' `retention_loop.type` (W5 —
+   * `recent_retention_loop_types`, the same fact already threaded into
+   * `vertical-drama-script-builder`'s input) — used only for the
+   * retention-loop-rotation advisory fact. Empty/absent when there is no
+   * history (e.g. episode 1, or the caller has not wired W5 rotation yet).
+   */
+  recentRetentionLoopTypes?: readonly (string | null | undefined)[];
+}
+
+/** Flattens `structure.beats[].dialogue_lines[].line` (script-builder's own field name) across every beat, in beat order, tolerant of every level being absent. */
+function deriveDialogueLinesFromScript(
+  script: Record<string, unknown> | null | undefined,
+): VdSubtitleLineFactsInput[] {
+  const structure = asPlainRecord(asPlainRecord(script)?.structure);
+  const beats = asPlainArray(structure?.beats);
+  const lines: VdSubtitleLineFactsInput[] = [];
+  for (const rawBeat of beats) {
+    const beat = asPlainRecord(rawBeat);
+    const dialogueLines = asPlainArray(beat?.dialogue_lines);
+    for (const rawLine of dialogueLines) {
+      const line = asPlainRecord(rawLine);
+      lines.push({ line: asNonEmptyString(line?.line) });
+    }
+  }
+  return lines;
+}
+
+/**
+ * Sorted ascending by `shot_number` (same convention as
+ * `deriveShotsFromStoryboard` above) for deterministic ordering regardless
+ * of input array order. Only the three fields `computeShotChangeCadenceFacts`
+ * reads are extracted; `location` has no equivalent field on the shipped
+ * storyboard shot schema today, so it is always `undefined` here (skipped by
+ * the cross-check, never counted as a mismatch — see `retentionFacts.ts`).
+ */
+function deriveChangeCadenceShotsFromStoryboard(
+  storyboard: Record<string, unknown> | null | undefined,
+): VdShotChangeCadenceFactsInputShot[] {
+  const shotsRaw = asPlainArray(asPlainRecord(storyboard)?.shots);
+  const shots: Array<{ shotNumber: number } & VdShotChangeCadenceFactsInputShot> = [];
+  for (const raw of shotsRaw) {
+    const shot = asPlainRecord(raw);
+    if (!shot) continue;
+    const shotNumber = asFiniteNumber(shot.shot_number) ?? asFiniteNumber(shot.shotNumber);
+    if (shotNumber === null) continue;
+    const changeTypeRaw = Array.isArray(shot.change_type) ? shot.change_type : null;
+    const changeType = changeTypeRaw
+      ? changeTypeRaw.filter((v): v is string => typeof v === "string")
+      : null;
+    const camera =
+      shot.camera && typeof shot.camera === "object" ? JSON.stringify(shot.camera) : null;
+    shots.push({
+      shotNumber,
+      change_type: changeType,
+      emotion: asNonEmptyString(shot.emotion),
+      camera,
+    });
+  }
+  return shots
+    .sort((a, b) => a.shotNumber - b.shotNumber)
+    .map(({ shotNumber: _shotNumber, ...rest }) => rest);
+}
+
+/**
+ * Deterministic retention-metrics block (`planning/vertical-drama-retention-
+ * hooks/plan.md` W6 "pillar C") — built ONLY from
+ * `@shared/verticalDramaSeries/retentionFacts.ts`'s exported pure fact
+ * functions plus the raw-JSON extraction helpers above (same style as
+ * `computeVerticalDramaDensityMetrics`). No LLM call, no judgment of any
+ * kind — every fact-module doc comment's "no threshold/cap/verdict" rule
+ * applies transitively here too.
+ */
+export function computeRetentionMetrics(
+  params: ComputeVerticalDramaRetentionMetricsParams,
+): VerticalDramaRetentionMetrics {
+  const subtitleFacts = computeSubtitleLineFacts(
+    deriveDialogueLinesFromScript(params.script),
+  );
+
+  const structureFacts = computeRetentionStructureFacts(
+    params.script as VdRetentionStructureFactsInput | null | undefined,
+  );
+
+  const cadenceFacts = computeShotChangeCadenceFacts(
+    deriveChangeCadenceShotsFromStoryboard(params.storyboard),
+  );
+
+  const rotationFacts = computeRetentionLoopRotation(
+    structureFacts.retentionLoopType,
+    params.recentRetentionLoopTypes ?? [],
+  );
+
+  return {
+    subtitle_line_facts: {
+      max_line_chars: subtitleFacts.maxLineChars,
+      longest_line_excerpt: subtitleFacts.longestLineExcerpt,
+    },
+    retention_structure_facts: {
+      open_loop_count: structureFacts.openLoopCount,
+      retention_loop_type: structureFacts.retentionLoopType,
+      retention_loop_present: structureFacts.retentionLoopPresent,
+    },
+    shot_change_cadence_facts: {
+      max_static_streak: cadenceFacts.maxStaticStreak,
+      windows_without_change: cadenceFacts.windowsWithoutChange,
+      declared_change_mismatch_count: cadenceFacts.declaredChangeMismatchCount,
+    },
+    retention_loop_rotation_facts: {
+      repeated_streak: rotationFacts.repeatedStreak,
+    },
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Prompt building                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -794,6 +1036,32 @@ export interface RunEpisodeQualityReviewParams {
    * unchanged; true asks for contract_version 3 plus the four v3 dimensions.
    */
   scoreV3Dimensions?: boolean;
+  /**
+   * Retention-hooks scorecard v4 opt-in
+   * (`planning/vertical-drama-retention-hooks/plan.md` W6, added
+   * 2026-07-11). Omitted (default) reproduces the exact prior prompt shape
+   * unchanged — no new prompt text, no `retention_metrics` rendering, no
+   * `contract_version: 4` instruction. True asks the LLM to set
+   * `"contract_version": 4` and additionally score `open_loop_quality` /
+   * `retention_loop_quality` / `change_cadence` (1-5 each). Gates BOTH the
+   * new scorecard-dimension instruction AND (independently, only when
+   * `retentionMetrics` is also supplied) the `retention_metrics` fact block
+   * — mirrors `scoreV3Dimensions`'s gating role exactly. Purely a caller-
+   * supplied boolean PARAMETER (this file never calls
+   * `getTenantFeatureFlags` itself, matching every other retention-hooks
+   * package's convention — see `retentionFacts.ts`'s own doc comment).
+   */
+  scoreRetentionDimensions?: boolean;
+  /**
+   * Deterministic retention facts (see `computeRetentionMetrics` above).
+   * When supplied together with `scoreRetentionDimensions: true`: (1)
+   * injected into the prompt with an instruction to echo it back verbatim,
+   * and (2) force-overwritten onto the parsed LLM output afterward
+   * regardless of what the LLM actually returned for this field — mirrors
+   * `densityMetrics`'s exact "the LLM never gets the final say on these
+   * numbers" rule. Omitted (default) reproduces exact prior behavior.
+   */
+  retentionMetrics?: VerticalDramaRetentionMetrics;
 }
 
 /**
@@ -886,6 +1154,34 @@ function buildUserPrompt(params: RunEpisodeQualityReviewParams): string {
       ].join(" ")
     : null;
 
+  // Retention-hooks scorecard v4 (`planning/vertical-drama-retention-hooks/
+  // plan.md` W6) — `null` (dropped below) unless the caller explicitly opts
+  // in via `scoreRetentionDimensions`, which keeps every existing call
+  // site's prompt byte-identical by default.
+  const contractVersion4Instruction = params.scoreRetentionDimensions
+    ? [
+        'Set "contract_version": 4 in your output and additionally score these three',
+        "retention-hooks scorecard dimensions (1-5 each): open_loop_quality = whether",
+        "this episode's open loop(s) are genuinely intriguing and well-planted (not",
+        "perfunctory busywork); retention_loop_quality = whether the ending retention",
+        "moment is concrete/vivid and fits its declared type; change_cadence = whether",
+        "shot-to-shot visual/emotional/informational variation actually feels alive",
+        "across the storyboard. See this skill's own rubric section for the full",
+        "judging criteria and the MANDATORY issue-location phrasing rules for these",
+        "three dimensions.",
+      ].join(" ")
+    : null;
+
+  const retentionMetricsInstruction =
+    params.scoreRetentionDimensions && params.retentionMetrics
+      ? [
+          `retention_metrics:\n${JSON.stringify(params.retentionMetrics)}`,
+          "The retention_metrics object above was computed deterministically in code from the",
+          "platform's retention-hooks fact module — echo it back VERBATIM as the output's top-level",
+          "retention_metrics; never recompute, round differently, or second-guess any of its numbers.",
+        ].join("\n")
+      : null;
+
   return [
     `episode_title: ${params.episodeTitle}`,
     langInstruction,
@@ -899,6 +1195,8 @@ function buildUserPrompt(params: RunEpisodeQualityReviewParams): string {
     tieInConfigInstruction,
     contractVersion2Instruction,
     contractVersion3Instruction,
+    retentionMetricsInstruction,
+    contractVersion4Instruction,
     executionModeInstruction,
     avoidPreviousInstruction,
     VD_COMPACT_JSON_INSTRUCTION,
@@ -943,7 +1241,10 @@ export async function runVerticalDramaEpisodeQualityReview(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
@@ -973,6 +1274,21 @@ export async function runVerticalDramaEpisodeQualityReview(
     validatedData.density_metrics = {
       ...params.densityMetrics,
       per_clip_coverage: { ...params.densityMetrics.per_clip_coverage },
+    };
+  }
+
+  // Same rule for retention_metrics (`planning/vertical-drama-retention-
+  // hooks/plan.md` W6) — the LLM never gets the final say on these
+  // deterministic facts either. One-level-deep clone (not a reference
+  // share) per nested group, mirroring density_metrics's own clone above.
+  if (params.retentionMetrics) {
+    validatedData.retention_metrics = {
+      subtitle_line_facts: { ...params.retentionMetrics.subtitle_line_facts },
+      retention_structure_facts: { ...params.retentionMetrics.retention_structure_facts },
+      shot_change_cadence_facts: { ...params.retentionMetrics.shot_change_cadence_facts },
+      retention_loop_rotation_facts: {
+        ...params.retentionMetrics.retention_loop_rotation_facts,
+      },
     };
   }
 

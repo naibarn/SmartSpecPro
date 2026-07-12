@@ -1,0 +1,21 @@
+{
+  "contract_version": 1,
+  "action": "multi_angle_grid",
+  "locale": "th",
+  "shot": {
+    "shot_number": 4,
+    "current_prompt": "Interior noodle shop at dusk, ฝ้าย stands behind the counter ladling broth into a bowl, warm neon glow through the window, steam rising, ใบข้าว sits at a stool watching her with a guarded expression.",
+    "current_negative_prompt": "blurry, extra fingers"
+  },
+  "repair_instruction": null,
+  "character_reference_manifest": [
+    { "index": 1, "character_id": "character-2", "name": "ฝ้าย" },
+    { "index": 2, "character_id": "character-5", "name": "ใบข้าว" }
+  ],
+  "target_audience_region": {
+    "code": "thai",
+    "descriptor": "Thai/Southeast Asian features and styling appropriate for Thai audiences"
+  },
+  "product_lock": { "active": false, "product_name": null, "product_description": null },
+  "grid_layout": { "panel_count": 9, "layout": "3x3" }
+}

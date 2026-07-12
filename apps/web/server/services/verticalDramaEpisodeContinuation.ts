@@ -13,13 +13,14 @@
 
 import { z } from "zod";
 import {
-  resolveStoryBibleModel,
   episodeBreakdownItemSchema,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import {
   verticalDramaLocaleEnglishName,
@@ -145,7 +146,10 @@ export async function generateNextEpisodesViaLlm(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId,
+  );
   const { systemPrompt, userPrompt } = buildContinuationPrompts(params);
 
   // Base ceiling raised from 3000 to 6000 — up to 5 new episodes (already

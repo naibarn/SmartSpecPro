@@ -1722,6 +1722,46 @@ function EpisodeWorkspaceShell({
     );
   }
 
+  /**
+   * Per-shot character/variant reference override (planning/vertical-drama-
+   * twin-variant-completeness/plan.md, W6 frontend) — separate from and
+   * additive to the series-wide "change reference image" swap. Sends the
+   * shot's FULL replacement `requiredCharacterRefs` array (empty array
+   * clears every reference for this shot). Refetches `getEpisodeDetail` on
+   * success (same convention as `saveShotProductReferencesMutation` above)
+   * so the shot's character chips re-render from the newly-patched
+   * `startFramePlan` without any manual cache surgery.
+   */
+  const [
+    savingShotCharacterReferencesForShot,
+    setSavingShotCharacterReferencesForShot,
+  ] = useState<number | null>(null);
+  const setShotCharacterReferenceMutation =
+    trpc.verticalDramaEpisodes.setShotCharacterReference.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "อัปเดตตัวละครอ้างอิงของช็อตนี้แล้ว"
+            : "This shot's character reference(s) updated."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleSetShotCharacterReferences(
+    shotNumber: number,
+    characterRefs: string[]
+  ) {
+    setSavingShotCharacterReferencesForShot(shotNumber);
+    setShotCharacterReferenceMutation.mutate(
+      { seriesId, episodeId, shotNumber, characterRefs },
+      {
+        onSettled: () => setSavingShotCharacterReferencesForShot(null),
+      }
+    );
+  }
+
   const handleSelectImageModel = (modelId: string) => {
     storeSeriesModelDefault(seriesId, "image", modelId);
     setEpisodeModelSelectionMutation.mutate({
@@ -3963,7 +4003,7 @@ function EpisodeWorkspaceShell({
         idempotencyKey: crypto.randomUUID(),
       },
       {
-        onSuccess: () => {
+        onSuccess: data => {
           void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
 
           const pack = episodeDetailQuery.data?.motionPromptPack;
@@ -3972,8 +4012,17 @@ function EpisodeWorkspaceShell({
           );
           const hasExistingVideoPrompt = Boolean(matchingClip?.prompt?.trim());
 
-          const successMessage =
-            lang === "th" ? "สร้างบทพูดใหม่แล้ว" : "New dialogue generated.";
+          // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+          // — `data.synced` is true only when the backend took the sync-only
+          // path (canonical Overview-page dialogue existed, no LLM call was
+          // made) rather than actually generating new dialogue.
+          const successMessage = data?.synced
+            ? lang === "th"
+              ? "อัปเดตจากหน้าภาพรวมแล้ว"
+              : "Synced from the Overview page."
+            : lang === "th"
+              ? "สร้างบทพูดใหม่แล้ว"
+              : "New dialogue generated.";
           if (hasExistingVideoPrompt) {
             toast.success(successMessage, {
               description:
@@ -4308,6 +4357,8 @@ function EpisodeWorkspaceShell({
             onChangeCharacterReference: characterId =>
               setImageSwapTarget({ type: "characterPortrait", characterId }),
             onDropCharacterReference: handleDropCharacterReference,
+            onSetShotCharacterReferences: handleSetShotCharacterReferences,
+            savingShotCharacterReferencesForShot,
             onDropStartFrame: handleDropStartFrame,
             onGenerateAngleVariations: shotNumber => {
               if (!requireMcpConnectionOrToast("image")) return;
@@ -4549,7 +4600,11 @@ function EpisodeWorkspaceShell({
           stage={repairStage ?? "plan_episode_script"}
           target={repairTarget}
           templateInstruction={repairTemplate}
-          jobStatus={repairMutation.isPending ? "submitting" : repairJobStatus}
+          jobStatus={
+            repairMutation.isPending || generateShotVideoPromptMutation.isPending
+              ? "submitting"
+              : repairJobStatus
+          }
           resultArtifactId={repairResultArtifactId}
           errorReason={repairError}
           onSubmit={({ instruction, target }) => {
@@ -4557,6 +4612,34 @@ function EpisodeWorkspaceShell({
             setRepairJobStatus("submitting");
             setRepairError(undefined);
             setRepairResultArtifactId(undefined);
+            if (repairStage === "video_motion_prompt_pack") {
+              const shotNumber = target?.parentShotNumber;
+              if (shotNumber == null) return;
+              generateShotVideoPromptMutation.mutate(
+                {
+                  seriesId,
+                  episodeId,
+                  shotNumber,
+                  instruction,
+                  idempotencyKey: crypto.randomUUID(),
+                },
+                {
+                  onSuccess: data => {
+                    setUsedVisionByShot(prev => ({
+                      ...prev,
+                      [shotNumber]: data.usedVision,
+                    }));
+                    setRepairJobStatus("succeeded");
+                    void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+                  },
+                  onError: err => {
+                    setRepairJobStatus("failed");
+                    setRepairError(err.message);
+                  },
+                }
+              );
+              return;
+            }
             repairMutation.mutate({
               seriesId,
               episodeId,

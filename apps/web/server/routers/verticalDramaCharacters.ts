@@ -23,7 +23,7 @@
 import crypto from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
@@ -51,6 +51,7 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
   readPresetVisualIdentityFromBible,
+  resolveFaceSourceReferenceForCharacter,
 } from "../services/verticalDramaCharacterImageGeneration";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
@@ -83,6 +84,18 @@ import {
   type VerticalDramaCharacterVoiceConfig,
   type VerticalDramaVoiceCatalogEntry,
 } from "@shared/verticalDramaSeries/voiceCasting";
+// F5 manual variant/twin CRUD
+// (`planning/vertical-drama-twin-variant-completeness/plan.md` W2) — TYPE-ONLY
+// imports only (erased at compile time, no runtime module load) so this
+// file's existing minimal-mock test suites are unaffected; the corresponding
+// RUNTIME functions (`generateCharacterVariantPlan`/`reconcileCharacterVariantPlan`/
+// `extractCharacterRosterDescription`/error classes, plus
+// `getActiveBreakdown`/`readItemShotDrafts`/`readItemCliffhangerLine`) are
+// loaded via a DYNAMIC `import()` INSIDE `detectCharacterVariantsNow` only —
+// see that procedure's own doc comment for why (same convention this file's
+// `listVoiceCatalog` already documents for `./media`).
+import type { StoryScriptLang, StoryScriptEpisodeInput } from "@shared/verticalDramaSeries/storyScriptText";
+import type { CharacterVariantPlannerCharacterInput } from "../services/verticalDramaCharacterVariantPlanner";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                          */
@@ -170,6 +183,115 @@ async function loadOwnedCharacter(
 }
 
 /**
+ * All `characterKey`s already used in a series (tenant + user scoped) — the
+ * dedup universe `generateUniqueCharacterKey` checks against when a manual
+ * variant/twin mutation mints a new `characterKey`. Mirrors
+ * `reconcileCharacterVariantPlan`'s own `usedKeys` set (built from a full
+ * roster `select()` in `verticalDramaCharacterVariantPlanner.ts`), just
+ * narrowed to the one column these mutations need.
+ */
+async function loadSeriesCharacterKeys(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+): Promise<Set<string>> {
+  const rows = await db
+    .select({ characterKey: verticalDramaCharacters.characterKey })
+    .from(verticalDramaCharacters)
+    .where(
+      and(
+        eq(verticalDramaCharacters.tenantId, tenantId),
+        eq(verticalDramaCharacters.userId, userId),
+        eq(verticalDramaCharacters.seriesId, seriesId),
+      ),
+    );
+  return new Set(rows.map((row: { characterKey: string }) => row.characterKey));
+}
+
+/**
+ * Slugify a variant label / twin name into a `characterKey` suffix
+ * candidate (lowercase, non-alphanumeric collapsed to `-`, trimmed). Falls
+ * back to `"variant"` for labels that are entirely non-alphanumeric (e.g.
+ * Thai-only text). Byte-identical duplicate of
+ * `verticalDramaCharacterVariantPlanner.ts`'s own `slugifyForCharacterKey` —
+ * this codebase's established convention is a small local slugify per file,
+ * not a shared util (see that function's own doc comment); this router
+ * cannot import it anyway, since it is a private (non-exported) function of
+ * that service file.
+ */
+function slugifyForCharacterKey(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "variant";
+}
+
+/**
+ * Appends `-2`, `-3`, ... until `baseKey` is not already present in
+ * `usedKeys`; mutates nothing, caller adds the result to `usedKeys` itself.
+ * Byte-identical duplicate of `verticalDramaCharacterVariantPlanner.ts`'s own
+ * helper of the same name (same non-exported-private reasoning as
+ * `slugifyForCharacterKey` above).
+ */
+function generateUniqueCharacterKey(baseKey: string, usedKeys: Set<string>): string {
+  const base = baseKey.trim() || "character";
+  let key = base;
+  let suffix = 2;
+  while (usedKeys.has(key)) {
+    key = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return key;
+}
+
+/**
+ * Best-effort attach of a caller-supplied reference image as a newly-created
+ * variant/twin character's `primary_portrait` reference, via the SAME
+ * `verticalDramaCharacterStockService.linkAsset` service call the `linkAsset`
+ * mutation itself uses (never a duplicated implementation). Deliberately
+ * does NOT use `mapStockError` here (unlike `linkAsset`'s own mutation,
+ * which propagates a mapped error to the caller) — this helper NEVER throws:
+ * the created character row is always the primary result of
+ * `createCharacterVariant`/`createCharacterTwin`, and a failed secondary
+ * asset attach must not roll back or fail that primary mutation (same
+ * "never block the primary mutation" convention as
+ * `recordVoiceChainAuditEvent`). Logs via `debugError` on failure so the gap
+ * stays observable.
+ */
+async function bestEffortLinkPrimaryPortrait(params: {
+  tenantId: string;
+  userId: number;
+  seriesId: number;
+  characterId: number;
+  mediaAssetId: number;
+  logSource: string;
+}): Promise<void> {
+  try {
+    await verticalDramaCharacterStockService.linkAsset({
+      tenantId: params.tenantId,
+      userId: params.userId,
+      seriesId: params.seriesId,
+      characterId: params.characterId,
+      mediaAssetId: params.mediaAssetId,
+      assetType: "character_reference",
+      role: "primary_portrait",
+      source: "imported",
+      containsHumanFace: null,
+      checksumSha256: null,
+      metadata: null,
+    });
+  } catch (error) {
+    debugError(
+      params.logSource,
+      `Failed to auto-attach reference image for newly-created character #${params.characterId} — best-effort, does not fail the create mutation`,
+      error,
+    );
+  }
+}
+
+/**
  * Resolves the series' stamped preset visual identity for character-prompt
  * flow-through (spec §8.2.2 flow-through rule, section-15 change D) —
  * flag-gated: returns `undefined` (no flow-through, legacy-tolerant
@@ -212,6 +334,63 @@ function mapStockError(err: unknown): never {
     }
   }
   throw err;
+}
+
+/**
+ * Resolve the identity-lock reference-portrait URL for a character render
+ * (Phase D1 reference picker,
+ * `planning/vertical-drama-reference-picker-outfit-lock/plan.md`; widened by
+ * Phase F1, `planning/vertical-drama-twin-variant-completeness/plan.md`
+ * W1). Three tiers, checked in order:
+ *
+ * 1. An explicit `referenceAssetLinkId` override takes precedence when
+ *    present (routed through `getReferenceImageUrlByAssetLinkId` +
+ *    `mapStockError`, same error-mapping convention every other
+ *    stock-service call site in this file uses) — UNCHANGED.
+ * 2. Otherwise falls back to the pre-existing auto-resolution — this
+ *    character's own approved portrait via `getPrimaryPortraitUrl` —
+ *    UNCHANGED.
+ * 3. NEW: if tier 2 returns `null` (the character has no portrait of its
+ *    own yet — e.g. a brand-new variant/twin on its very first render) AND
+ *    `fallbackSourceCharacterId` is supplied (callers pass the character's
+ *    `parentCharacterId ?? sharesFaceWithCharacterId`), fall back to that
+ *    source character's own portrait via a second `getPrimaryPortraitUrl`
+ *    call. A new variant/twin should default to borrowing its source's
+ *    identity-lock reference rather than getting zero visual identity lock
+ *    on its first render. If the source has no portrait either, returns
+ *    `null` as before — nothing more to fall back to.
+ *
+ * Shared by `generateCharacterImage` and `generateCharacterSheet` so the
+ * override contract can never drift between the two call sites.
+ */
+export async function resolveReferencePortraitUrl(
+  owner: { tenantId: string; userId: number; seriesId: number },
+  characterId: number,
+  referenceAssetLinkId: string | undefined,
+  fallbackSourceCharacterId?: number | null,
+): Promise<string | null> {
+  if (!referenceAssetLinkId) {
+    const ownPortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+      owner,
+      characterId,
+    );
+    if (ownPortraitUrl) return ownPortraitUrl;
+    if (fallbackSourceCharacterId != null) {
+      return verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+        owner,
+        fallbackSourceCharacterId,
+      );
+    }
+    return null;
+  }
+  try {
+    return await verticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId(
+      owner,
+      parseId(referenceAssetLinkId, "reference asset link id"),
+    );
+  } catch (err) {
+    mapStockError(err);
+  }
 }
 
 /**
@@ -340,6 +519,79 @@ export async function resolveCharacterImageModelId(selectedImageModelId?: string
 }
 
 /**
+ * Character Design Bible sheet formats (vertical-drama-character-sheet-
+ * consolidation plan) — the merged `generateCharacterSheet` mutation's
+ * `sheetType` input. `"auto"` resolves to `"turnaround"` (see
+ * `resolveCharacterSheetType`); `"turnaround"`/`"full_combined"` are the two
+ * pre-existing formats; the other 11 are new, defined in
+ * `skills/vertical-drama-character-visual-bible/skill.md`'s "Character Design
+ * Bible sheet types" section.
+ */
+export const CHARACTER_SHEET_TYPE_VALUES = [
+  "auto",
+  "turnaround",
+  "full_combined",
+  "cover",
+  "character_profile",
+  "face_detail",
+  "expression_12",
+  "hair_reference",
+  "costume_breakdown",
+  "material_fabric",
+  "color_palette",
+  "pose_library",
+  "body_proportion",
+  "ai_prompt_lock",
+] as const;
+export type VerticalDramaCharacterSheetType = (typeof CHARACTER_SHEET_TYPE_VALUES)[number];
+export type ResolvedVerticalDramaCharacterSheetType = Exclude<
+  VerticalDramaCharacterSheetType,
+  "auto"
+>;
+
+/**
+ * Resolve `"auto"` (the mutation's default) to `"turnaround"` — preserves
+ * today's cheaper/older default behavior for a caller that doesn't pick a
+ * specific Character Design Bible format (plan Decision 2). Every other value
+ * passes through unchanged.
+ */
+export function resolveCharacterSheetType(
+  sheetType: VerticalDramaCharacterSheetType | undefined,
+): ResolvedVerticalDramaCharacterSheetType {
+  if (!sheetType || sheetType === "auto") return "turnaround";
+  return sheetType;
+}
+
+/**
+ * Maps a resolved sheet type to the `verticalDramaCharacterAssets.role`/
+ * `metadata` pair the caller should use once the async render task completes
+ * and it calls the existing `linkAsset` mutation (plan Decision 4). Three
+ * tiers:
+ *  - `"turnaround"` -> the pre-existing `"character_sheet_turnaround"` role
+ *    (stays inside `CHARACTER_SHEET_ROLES` in `verticalDramaCharacterStock.ts`
+ *    — a real face turnaround, correct to use as a second identity-lock
+ *    reference).
+ *  - `"full_combined"` -> the pre-existing `"character_sheet_full"` role
+ *    (same reasoning).
+ *  - every other (new) format -> a brand-new `"character_design_bible"` role,
+ *    deliberately OUTSIDE `CHARACTER_SHEET_ROLES` — several of these formats
+ *    carry no face at all (e.g. `color_palette`, `material_fabric`), so they
+ *    must never be picked as a second identity-lock reference — plus
+ *    `metadata: { sheetType }` so the specific format stays recoverable.
+ */
+export function resolveCharacterSheetAssetTag(
+  resolvedType: ResolvedVerticalDramaCharacterSheetType,
+): { role: string; metadata: { sheetType: string } | null } {
+  if (resolvedType === "turnaround") {
+    return { role: "character_sheet_turnaround", metadata: null };
+  }
+  if (resolvedType === "full_combined") {
+    return { role: "character_sheet_full", metadata: null };
+  }
+  return { role: "character_design_bible", metadata: { sheetType: resolvedType } };
+}
+
+/**
  * Best-effort character description drawn from `verticalDramaCharacters.data`
  * (the free-form `VerticalDramaCharacter` payload — description/personality/
  * backstory/identityLock/wardrobeRules). `data.description` is the
@@ -393,6 +645,14 @@ function characterRowToDto(row: VerticalDramaCharacterRow, options: { includeVoi
     name: row.name,
     role: row.role ?? undefined,
     data: (row.data as Record<string, unknown> | null) ?? undefined,
+    // planning/vertical-drama-character-variants/plan.md Phase E — expose the
+    // Phase A schema columns so the Characters tab can group variant rows
+    // under their parent and badge twin (shares-face) rows.
+    parentCharacterId: row.parentCharacterId != null ? String(row.parentCharacterId) : undefined,
+    variantLabel: row.variantLabel ?? undefined,
+    variantType: (row.variantType as "outfit" | "age_stage" | null) ?? undefined,
+    sharesFaceWithCharacterId:
+      row.sharesFaceWithCharacterId != null ? String(row.sharesFaceWithCharacterId) : undefined,
     createdAt: (row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt)).toISOString(),
     updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
     ...(options.includeVoiceConfig
@@ -677,6 +937,408 @@ export const verticalDramaCharactersRouter = router({
       const voiceChainEnabled = await resolveVerticalDramaVoiceChainFlag(tenantId);
       return {
         character: characterRowToDto(row as VerticalDramaCharacterRow, { includeVoiceConfig: voiceChainEnabled }),
+      };
+    }),
+
+  /* ------------------------------------------------------------------------ */
+  /* W2 manual CRUD (F5) — variants/twins created directly by the user, not   */
+  /* only by the AI variant/twin-planning pipeline                            */
+  /* (`planning/vertical-drama-twin-variant-completeness/plan.md` W2)         */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * Manually create a VARIANT of an existing character (same person, a
+   * different recurring look — `"outfit"` = same age/face, different
+   * clothing; `"age_stage"` = same identity, a different life-stage
+   * appearance, loose face reference, NOT locked). Until this mutation, a
+   * variant row could ONLY be created by the AI `detectCharacterVariantsNow`/
+   * `runImproveScriptJob` pipeline (`reconcileCharacterVariantPlan`) — this
+   * is the manual counterpart, using the exact same `characterKey`-
+   * generation pattern and `data` shape that pipeline already writes, so a
+   * manually-created variant is indistinguishable from an AI-detected one to
+   * every downstream consumer (storyboard, render, reconcile).
+   *
+   * `data.description` is set from `customDescription`, trimmed (falling
+   * back to `variantLabel` itself when omitted — `data.description` must
+   * never be left empty, since `extractCharacterDescription`'s own contract
+   * puts it FIRST in the aggregated prompt string). `"outfit"` variants
+   * ALSO set `data.wardrobeRules` from the same text — mirrors
+   * `reconcileCharacterVariantPlan`'s own `dataPatch` shape exactly.
+   * `"age_stage"` intentionally does NOT lock the face 100% here — that is
+   * just a data/fact difference, not a prompt-level lock; the existing
+   * skill-first prompt-authoring logic already reads `variantType` to decide
+   * locking behavior downstream, so no lock logic belongs in this mutation.
+   *
+   * `referenceMediaAssetId` (optional): best-effort attaches it as the new
+   * variant's `primary_portrait` reference via
+   * `bestEffortLinkPrimaryPortrait` (see that helper's doc comment for the
+   * "never block the primary mutation" contract).
+   */
+  createCharacterVariant: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        parentCharacterId: z.string().min(1),
+        variantLabel: z.string().trim().min(1).max(64),
+        variantType: z.enum(["outfit", "age_stage"]),
+        customDescription: z.string().trim().max(2000).optional(),
+        referenceMediaAssetId: z.string().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const parentCharacterId = parseId(input.parentCharacterId, "parent character id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const parent = await loadOwnedCharacter(tenantId, userId, seriesId, parentCharacterId);
+
+      const usedKeys = await loadSeriesCharacterKeys(tenantId, userId, seriesId);
+      const characterKey = generateUniqueCharacterKey(
+        `${parent.characterKey}-${slugifyForCharacterKey(input.variantLabel)}`,
+        usedKeys,
+      );
+
+      const descriptionText = input.customDescription?.trim() || input.variantLabel;
+      const dataPatch: Record<string, unknown> = { description: descriptionText };
+      if (input.variantType === "outfit") {
+        dataPatch.wardrobeRules = [descriptionText];
+      }
+
+      const [row] = await db
+        .insert(verticalDramaCharacters)
+        .values({
+          tenantId,
+          userId,
+          seriesId,
+          characterKey,
+          name: parent.name,
+          role: parent.role,
+          parentCharacterId: parent.id,
+          variantLabel: input.variantLabel,
+          variantType: input.variantType,
+          data: dataPatch,
+        } as typeof verticalDramaCharacters.$inferInsert)
+        .returning();
+      const character = row as VerticalDramaCharacterRow;
+
+      if (input.referenceMediaAssetId) {
+        await bestEffortLinkPrimaryPortrait({
+          tenantId,
+          userId,
+          seriesId,
+          characterId: character.id,
+          mediaAssetId: parseId(input.referenceMediaAssetId, "reference media asset id"),
+          logSource: "verticalDramaCharacters.createCharacterVariant",
+        });
+      }
+
+      return { character: characterRowToDto(character) };
+    }),
+
+  /**
+   * Manually create a TWIN of an existing character — a brand-new,
+   * INDEPENDENT character row (its own `name`, its own `id` — NOT a variant:
+   * `parentCharacterId`/`variantLabel`/`variantType` are all left null) whose
+   * face reference should be resolved from `sharesFaceWithCharacterId`. Until
+   * this mutation, a twin row could ONLY be created by the AI pipeline
+   * (`reconcileCharacterVariantPlan`'s "identical twin" branch) — this is the
+   * manual counterpart.
+   *
+   * `data.description` is set from `customDescription` — the "distinguishing
+   * notes" text that keeps the twin visually distinct from its face-source —
+   * mirroring `reconcileCharacterVariantPlan`'s own
+   * `newCharacter.distinguishing_notes` -> `dataPatch.description` mapping
+   * exactly (same field name/shape).
+   *
+   * `referenceMediaAssetId` best-effort attach: same convention as
+   * `createCharacterVariant` above (see that mutation's + `bestEffortLinkPrimaryPortrait`'s
+   * doc comments).
+   */
+  createCharacterTwin: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        sharesFaceWithCharacterId: z.string().min(1),
+        name: z.string().trim().min(1).max(255),
+        role: z.string().trim().max(100).optional(),
+        customDescription: z.string().trim().max(2000).optional(),
+        referenceMediaAssetId: z.string().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const sourceCharacterId = parseId(input.sharesFaceWithCharacterId, "source character id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const source = await loadOwnedCharacter(tenantId, userId, seriesId, sourceCharacterId);
+
+      const usedKeys = await loadSeriesCharacterKeys(tenantId, userId, seriesId);
+      const characterKey = generateUniqueCharacterKey(`${source.characterKey}-twin`, usedKeys);
+
+      const description = input.customDescription?.trim();
+
+      const [row] = await db
+        .insert(verticalDramaCharacters)
+        .values({
+          tenantId,
+          userId,
+          seriesId,
+          characterKey,
+          name: input.name,
+          role: input.role ?? source.role,
+          sharesFaceWithCharacterId: source.id,
+          data: description ? { description } : null,
+        } as typeof verticalDramaCharacters.$inferInsert)
+        .returning();
+      const character = row as VerticalDramaCharacterRow;
+
+      if (input.referenceMediaAssetId) {
+        await bestEffortLinkPrimaryPortrait({
+          tenantId,
+          userId,
+          seriesId,
+          characterId: character.id,
+          mediaAssetId: parseId(input.referenceMediaAssetId, "reference media asset id"),
+          logSource: "verticalDramaCharacters.createCharacterTwin",
+        });
+      }
+
+      return { character: characterRowToDto(character) };
+    }),
+
+  /**
+   * Permanently delete a character row (tenant + user + series scoped).
+   * BLOCKS (never cascades) when any other row in the series still points at
+   * this one via `parentCharacterId` or `sharesFaceWithCharacterId` —
+   * product decision confirmed via a prior AskUserQuestion in this same plan
+   * (`planning/vertical-drama-twin-variant-completeness/plan.md`): the user
+   * must delete every dependent variant/twin first. This app-level
+   * precondition check exists so the caller gets a clear, actionable Thai
+   * message INSTEAD OF a raw Postgres FK constraint error — both self-FK
+   * columns (`parentCharacterId`/`sharesFaceWithCharacterId`) have no
+   * `onDelete` configured on `verticalDramaCharacters` (Postgres default
+   * `NO ACTION`), so an unblocked delete attempt would throw a lower-level
+   * DB error anyway.
+   *
+   * The character's own asset links (`vertical_drama_character_assets`) are
+   * NOT explicitly deleted here first — that table's `characterId` FK is
+   * declared `onDelete: "cascade"` in `drizzle/schema.ts`, so the database
+   * removes them automatically; a redundant manual delete here would just be
+   * dead code.
+   */
+  deleteCharacter: verticalDramaProcedure
+    .input(seriesScope.extend({ characterId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+
+      const dependents = await db
+        .select({ id: verticalDramaCharacters.id })
+        .from(verticalDramaCharacters)
+        .where(
+          and(
+            eq(verticalDramaCharacters.tenantId, tenantId),
+            eq(verticalDramaCharacters.userId, userId),
+            eq(verticalDramaCharacters.seriesId, seriesId),
+            or(
+              eq(verticalDramaCharacters.parentCharacterId, characterId),
+              eq(verticalDramaCharacters.sharesFaceWithCharacterId, characterId),
+            ),
+          ),
+        )
+        .limit(1);
+      if (dependents.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "ต้องลบ variant/แฝดที่อ้างอิงตัวละครนี้ให้หมดก่อนจึงจะลบตัวละครนี้ได้",
+        });
+      }
+
+      await db
+        .delete(verticalDramaCharacters)
+        .where(
+          and(
+            eq(verticalDramaCharacters.id, characterId),
+            eq(verticalDramaCharacters.tenantId, tenantId),
+            eq(verticalDramaCharacters.userId, userId),
+            eq(verticalDramaCharacters.seriesId, seriesId),
+          ),
+        );
+
+      return { success: true };
+    }),
+
+  /**
+   * Manually trigger the SAME season-wide character variant/twin detection
+   * `runImproveScriptJob`'s best-effort final phase already runs
+   * automatically after a script-improve pass (see
+   * `verticalDramaImproveScript.ts` step (g)) — this is the direct-trigger
+   * counterpart, callable on demand instead of only after an improve-script
+   * run. Reuses the EXACT same roster-building (`existing*CharacterKey`
+   * markers, W3 stable-ID reconcile, `extractCharacterRosterDescription`)
+   * and the exact same `generateCharacterVariantPlan` ->
+   * `reconcileCharacterVariantPlan` call pair, just run against the series'
+   * CURRENT drafted episode content instead of a just-improved one.
+   *
+   * `verticalDramaCharacterVariantPlanner`/`verticalDramaStoryBible` are
+   * loaded via a DYNAMIC `import()` INSIDE this procedure (never a static
+   * top-level import) — same "dynamic import, never static" convention this
+   * file's `listVoiceCatalog` already documents for `./media`:
+   * `verticalDramaCharacterVariantPlanner.ts`'s module graph transitively
+   * pulls in `verticalDramaStoryBible.ts` and `verticalDramaImproveScript.ts`
+   * (a heavy, DB/skill-registry-touching service pair), which this file's
+   * existing minimal-mock test suites (`modelSelection.test.ts`,
+   * `extractDescription.test.ts`, `voiceChain.test.ts`) do not mock — a
+   * static import would break them the moment this file loads.
+   *
+   * Credit-gated by `generateCharacterVariantPlan` ITSELF
+   * (`hasEnoughCredits`/`deductCredits` live inside that function, exactly
+   * as `runImproveScriptJob` already relies on) — this mutation invents no
+   * separate credit-charging scheme of its own, matching that established
+   * pattern.
+   *
+   * Throws `PRECONDITION_FAILED` when there is no usable episode content (no
+   * drafted episode) or no character roster to plan against — unlike
+   * `runImproveScriptJob`'s best-effort silent skip (appropriate there,
+   * since it's a bonus final phase of a larger job), a direct user action
+   * must tell the caller clearly why nothing happened.
+   */
+  detectCharacterVariantsNow: verticalDramaProcedure
+    .input(seriesScope)
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const [seriesRow] = await db
+        .select({
+          locale: verticalDramaSeries.locale,
+          bible: verticalDramaSeries.bible,
+        })
+        .from(verticalDramaSeries)
+        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+        .limit(1);
+      const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? {};
+      const lang: StoryScriptLang = seriesRow?.locale === "th" ? "th" : "en";
+
+      const { getActiveBreakdown, readItemShotDrafts, readItemCliffhangerLine } = await import(
+        "../services/verticalDramaStoryBible"
+      );
+      const {
+        generateCharacterVariantPlan,
+        reconcileCharacterVariantPlan,
+        extractCharacterRosterDescription,
+        InsufficientCreditsError,
+        VdSchemaValidationError,
+      } = await import("../services/verticalDramaCharacterVariantPlanner");
+
+      const activeItems = getActiveBreakdown(bible);
+      const draftedItems = activeItems.filter((item) => readItemShotDrafts(item) !== null);
+      if (draftedItems.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Generate deep story drafts first before detecting character variants/twins",
+        });
+      }
+      const episodes: StoryScriptEpisodeInput[] = draftedItems.map((item) => ({
+        episodeNumber: item.episodeNumber,
+        workingTitle: item.workingTitle,
+        logline: item.logline,
+        keyBeats: item.keyBeats,
+        shotDrafts: readItemShotDrafts(item),
+        cliffhangerLine: readItemCliffhangerLine(item),
+      }));
+
+      const characterRows: VerticalDramaCharacterRow[] = await db
+        .select()
+        .from(verticalDramaCharacters)
+        .where(
+          and(
+            eq(verticalDramaCharacters.tenantId, tenantId),
+            eq(verticalDramaCharacters.userId, userId),
+            eq(verticalDramaCharacters.seriesId, seriesId),
+          ),
+        );
+      // Same W3 stable-ID roster-building `runImproveScriptJob` step (g)
+      // already does — EVERY row (base/variant/twin alike) is sent back,
+      // carrying `existing*CharacterKey` markers so the skill can recognize
+      // "this is already known" (see `verticalDramaCharacterVariantPlanner.ts`'s
+      // `reconcileCharacterVariantPlan` doc comment for the matching side).
+      const characterKeyById = new Map<number, string>(
+        characterRows.map((row) => [row.id, row.characterKey]),
+      );
+      const characterInputs: CharacterVariantPlannerCharacterInput[] = characterRows.map((row) => {
+        const rowInput: CharacterVariantPlannerCharacterInput = {
+          characterKey: row.characterKey,
+          name: row.name,
+          role: row.role ?? "",
+          description: extractCharacterRosterDescription(
+            (row.data as Record<string, unknown> | null) ?? null,
+          ),
+        };
+        if (row.parentCharacterId != null) {
+          const parentKey = characterKeyById.get(row.parentCharacterId);
+          if (parentKey) rowInput.existingParentCharacterKey = parentKey;
+          if (row.variantLabel) rowInput.existingVariantLabel = row.variantLabel;
+        }
+        if (row.sharesFaceWithCharacterId != null) {
+          const sourceKey = characterKeyById.get(row.sharesFaceWithCharacterId);
+          if (sourceKey) rowInput.existingSharesFaceWithCharacterKey = sourceKey;
+        }
+        return rowInput;
+      });
+
+      if (characterInputs.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No characters in the roster to detect variants/twins for",
+        });
+      }
+
+      let planResult: Awaited<ReturnType<typeof generateCharacterVariantPlan>>;
+      try {
+        planResult = await generateCharacterVariantPlan({
+          userId,
+          tenantId,
+          seriesId,
+          lang,
+          characters: characterInputs,
+          episodes,
+        });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+        }
+        if (err instanceof VdSchemaValidationError) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Character variant detection failed",
+        });
+      }
+
+      const summary = await reconcileCharacterVariantPlan({ tenantId, userId, seriesId }, planResult.plan);
+
+      return {
+        variantsCreated: summary.createdCharacters.filter((c) => c.variantLabel !== null).length,
+        variantsUpdated: summary.updatedCharacters.length,
+        twinsCreated: summary.createdCharacters.filter((c) => c.variantLabel === null).length,
+        createdCharacters: summary.createdCharacters,
+        updatedCharacters: summary.updatedCharacters,
       };
     }),
 
@@ -966,20 +1628,34 @@ export const verticalDramaCharactersRouter = router({
     }),
 
   /**
-   * Preview-only leg of the character portrait/turnaround flow: runs ONLY the
+   * Preview-only leg of the character portrait/sheet flow: runs ONLY the
    * `generateCharacterVisualPrompts` LLM call (the same step-1 credit-gated
-   * call `generateCharacterImage`/`generateCharacterTurnaround` perform
+   * call `generateCharacterImage`/`generateCharacterSheet` perform
    * internally) and returns the resulting prompt text WITHOUT rendering an
    * image. This lets the frontend show the actual prompt for user approval
    * before any image-render credit is spent. Charges exactly the one
    * prompt-generation credit (via `generateCharacterVisualPrompts` itself) —
    * the caller then passes the approved text back as `approvedPrompt` /
    * `approvedNegativePrompt` on `generateCharacterImage` or
-   * `generateCharacterTurnaround` so that LLM leg is never re-run (and never
-   * double-charged) for the same spend.
+   * `generateCharacterSheet` so that LLM leg is never re-run (and never
+   * double-charged) for the same spend. This preview only ever runs the
+   * plain-turnaround leg (no `requestedSheetType`) — it does not (and, per
+   * the plan, need not) preview any of the 14 Character Design Bible sheet
+   * formats.
    */
   previewCharacterPrompt: verticalDramaProcedure
-    .input(seriesScope.extend({ characterId: z.string().min(1) }))
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        // Free-text framing/pose/crop/mood hint for THIS generation only
+        // (vertical-drama-character-custom-instruction plan) — threaded
+        // straight through to `generateCharacterVisualPrompts` as a raw fact;
+        // see that function's `customInstruction` doc comment. This is the
+        // PRIMARY path this field works through, since the UI always calls
+        // preview before confirm (see this procedure's own doc comment).
+        customInstruction: z.string().trim().max(500).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -1017,6 +1693,10 @@ export const verticalDramaCharactersRouter = router({
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
       );
+      const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
+        { tenantId, userId, seriesId },
+        character,
+      );
 
       let promptResult;
       try {
@@ -1034,6 +1714,8 @@ export const verticalDramaCharactersRouter = router({
             : undefined,
           targetAudienceRegion,
           presetVisualIdentity,
+          faceSourceReference,
+          customInstruction: input.customInstruction,
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -1102,6 +1784,21 @@ export const verticalDramaCharactersRouter = router({
         // `higgsfield/*`, `magnific-mcp/*`) — see
         // `resolveVdCharacterMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        // Optional explicit reference-image-picker override (Phase D1,
+        // `planning/vertical-drama-reference-picker-outfit-lock/plan.md`) —
+        // when present, pins the identity-lock reference image to this exact
+        // character-asset link instead of auto-resolving the newest approved
+        // `primary_portrait` via `getPrimaryPortraitUrl`. Absent: behavior is
+        // byte-identical to today's auto-resolution.
+        referenceAssetLinkId: z.string().min(1).optional(),
+        // Free-text framing/pose/crop/mood hint for THIS generation only
+        // (vertical-drama-character-custom-instruction plan) — only consumed
+        // on the no-`approvedPrompt` fallback path below, since the normal UI
+        // flow always calls `previewCharacterPrompt` first (which already
+        // ran the LLM leg with this hint applied) and supplies its output as
+        // `approvedPrompt` here. Kept here too so a future caller that skips
+        // preview still gets the hint applied.
+        customInstruction: z.string().trim().max(500).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1147,6 +1844,28 @@ export const verticalDramaCharactersRouter = router({
         (character.data as Record<string, unknown> | null) ?? null,
       );
 
+      // 0. Identity-lock reference — resolve BEFORE prompt generation (Phase
+      //    D2, `planning/vertical-drama-reference-picker-outfit-lock/plan.md`
+      //    section B) so its presence can be passed into
+      //    `generateCharacterVisualPrompts` as the `hasOwnReferenceImage`
+      //    fact — the skill (not this router) is then the sole author of the
+      //    identity-lock instruction language woven into the prompt,
+      //    including the outfit/clothing/accessories/shoes lock this fixes.
+      //    Attaches the character's existing approved portrait (if any) as a
+      //    `referenceImageUrls` input so the render is conditioned on the
+      //    actual likeness. Absent on a character's very first portrait AND
+      //    it has no parent/twin-source portrait to borrow either (nothing
+      //    to reference yet); present on every regeneration afterward, and
+      //    defaults to the parent/twin-source's portrait on a brand-new
+      //    variant/twin's first render (Phase F1,
+      //    `planning/vertical-drama-twin-variant-completeness/plan.md` W1).
+      const referencePortraitUrl = await resolveReferencePortraitUrl(
+        { tenantId, userId, seriesId },
+        characterId,
+        input.referenceAssetLinkId,
+        character.parentCharacterId ?? character.sharesFaceWithCharacterId,
+      );
+
       // 1. Prompt generation — credit-gated + deducted internally. Skipped
       //    entirely when the caller already ran `previewCharacterPrompt` and
       //    supplies the user-approved text via `approvedPrompt` (that credit
@@ -1161,6 +1880,10 @@ export const verticalDramaCharactersRouter = router({
         portraitPrompt = input.approvedPrompt;
         negativePrompt = input.approvedNegativePrompt;
       } else {
+        const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
+          { tenantId, userId, seriesId },
+          character,
+        );
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -1177,6 +1900,9 @@ export const verticalDramaCharactersRouter = router({
               : undefined,
             targetAudienceRegion,
             presetVisualIdentity,
+            faceSourceReference,
+            hasOwnReferenceImage: Boolean(referencePortraitUrl),
+            customInstruction: input.customInstruction,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1241,22 +1967,6 @@ export const verticalDramaCharactersRouter = router({
         mcpConnectionId: input.mcpConnectionId,
       });
 
-      // 2.5. Identity-lock reference — attach the character's existing
-      //      approved portrait (if any) as a `referenceImageUrls` input so
-      //      the render is conditioned on the actual likeness instead of
-      //      relying on the text prompt's "no identity drift" instruction
-      //      alone. Absent on a character's very first portrait (nothing to
-      //      reference yet); present on every regeneration afterward. The
-      //      prompt text itself must also call out the attached image, or
-      //      several models otherwise ignore a silently-attached reference.
-      const referencePortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
-        { tenantId, userId, seriesId },
-        characterId,
-      );
-      const renderPortraitPrompt = referencePortraitUrl
-        ? `${portraitPrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`
-        : portraitPrompt;
-
       // 3. Submit — async (matches `media.generateImageAsync` + `media.getTask`
       //    convention; shows in Media History; avoids a long-blocking
       //    mutation). Credits are RESERVED now; `media.getTask` reconciles
@@ -1288,7 +1998,7 @@ export const verticalDramaCharactersRouter = router({
       try {
         task = await mediaGenerationService.generateImageAsync(
           {
-            prompt: renderPortraitPrompt,
+            prompt: portraitPrompt,
             negativePrompt,
             model: resolvedImageModelId,
             numImages: 1,
@@ -1337,265 +2047,43 @@ export const verticalDramaCharactersRouter = router({
     }),
 
   /**
-   * Generate a multi-angle character-sheet "turnaround" reference image — a
-   * 360-degree/multi-angle composition intended to anchor identity across
-   * scenes (prevents likeness drift), rendered from the SAME
-   * `vertical-drama-character-visual-bible` skill response
-   * `generateCharacterImage` already produces, just reading the
-   * `turnaround_prompt` field (`promptResult.turnaroundPrompt`) that the
-   * portrait flow discards instead of `portraitPrompt`. No new skill / LLM
-   * prompt — mirrors `generateCharacterImage` exactly (same rate limit,
-   * same two-charge credit-gating: prompt-generation LLM call credited
-   * inside `generateCharacterVisualPrompts`, image render credited here),
-   * differing only in which prompt field is rendered and the stock `role`
-   * used at link time (`"character_sheet_turnaround"` vs
-   * `"primary_portrait"` — `role` is a free varchar(40), no enum/migration
-   * needed).
+   * Generate a Character Design Bible sheet — ONE reference image for
+   * whichever `sheetType` the caller requests (vertical-drama-character-
+   * sheet-consolidation plan, Phase B). Consolidates what used to be two
+   * separate mutations (`generateCharacterTurnaround` + the original
+   * `generateCharacterSheet`) into one, resolving the format via
+   * `resolveCharacterSheetType`:
+   *  - `"auto"` (the default) resolves to `"turnaround"` — a 360/multi-angle
+   *    composition read straight off `promptResult.turnaroundPrompt` (the
+   *    always-required `turnaround_prompt` skill field), preserving today's
+   *    cheaper/older default behavior.
+   *  - `"full_combined"` and the 11 new Character Design Bible formats
+   *    (`cover`, `character_profile`, `face_detail`, `expression_12`,
+   *    `hair_reference`, `costume_breakdown`, `material_fabric`,
+   *    `color_palette`, `pose_library`, `body_proportion`, `ai_prompt_lock`)
+   *    all render `promptResult.sheetPrompt` — a genuinely skill-authored
+   *    prompt for the requested format (see `skills/vertical-drama-character-
+   *    visual-bible/skill.md`'s "Character Design Bible sheet types"
+   *    section). This is the exact fix for the pre-existing skill-first
+   *    architecture violation this endpoint used to contain: no prompt text
+   *    is authored/concatenated in this file anymore — every character-
+   *    facing string comes from the skill's own response.
    *
    * `approvedPrompt` / `approvedNegativePrompt` (optional): same skip-
    * regeneration contract as `generateCharacterImage` — when present, the
-   * user-approved turnaround text (from `previewCharacterPrompt`) is used
-   * directly and the internal `generateCharacterVisualPrompts` call (already
-   * charged once at preview time) is not repeated.
-   */
-  generateCharacterTurnaround: verticalDramaProcedure
-    .input(
-      seriesScope.extend({
-        characterId: z.string().min(1),
-        approvedPrompt: z.string().min(1).optional(),
-        approvedNegativePrompt: z.string().optional(),
-        // Caller-selected image model — see `generateCharacterImage`'s same field.
-        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
-        mcpConnectionId: z.string().max(64).optional(),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      // Rate limiting — same shared per-user cap as generateCharacterImage
-      // (this mutation also performs a paid LLM prompt-generation call PLUS
-      // a paid image render). Checked first, before any DB reads/writes or
-      // paid calls.
-      const rateLimitKey = `user:${ctx.user.id}`;
-      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
-        });
-      }
-
-      const tenantId = requireTenantId(ctx.tenantId);
-      const userId = ctx.user.id;
-      const seriesId = parseId(input.seriesId, "series id");
-      const characterId = parseId(input.characterId, "character id");
-      await loadOwnedSeries(tenantId, userId, seriesId);
-      const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
-
-      const [seriesRow] = await db
-        .select({
-          title: verticalDramaSeries.title,
-          genre: verticalDramaSeries.genre,
-          tone: verticalDramaSeries.tone,
-          bible: verticalDramaSeries.bible,
-        })
-        .from(verticalDramaSeries)
-        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
-        .limit(1);
-      const targetAudienceRegion = readTargetAudienceRegionFromBible(
-        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-      );
-      const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
-        tenantId,
-        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-      );
-
-      const description = extractCharacterDescription(
-        (character.data as Record<string, unknown> | null) ?? null,
-      );
-
-      // 1. Prompt generation — credit-gated + deducted internally. Same call
-      //    generateCharacterImage makes; we just read a different field
-      //    (`turnaroundPrompt`) off the same result. Skipped entirely when
-      //    the caller already ran `previewCharacterPrompt` and supplies the
-      //    user-approved text via `approvedPrompt` (that credit was already
-      //    charged once, at preview time).
-      let turnaroundPrompt: string;
-      let negativePrompt: string | undefined;
-      let promptModel: string | null = null;
-      let visualBibleSummary: Record<string, unknown> | null = null;
-      let promptCreditsUsed = 0;
-
-      if (input.approvedPrompt) {
-        turnaroundPrompt = input.approvedPrompt;
-        negativePrompt = input.approvedNegativePrompt;
-      } else {
-        let promptResult;
-        try {
-          promptResult = await generateCharacterVisualPrompts({
-            userId,
-            tenantId,
-            seriesId,
-            characterId,
-            characterKey: character.characterKey,
-            name: character.name,
-            role: character.role,
-            description,
-            storyContext: seriesRow
-              ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
-              : undefined,
-            targetAudienceRegion,
-            presetVisualIdentity,
-          });
-        } catch (err) {
-          if (err instanceof InsufficientCreditsError) {
-            throw new TRPCError({ code: "FORBIDDEN", message: err.message });
-          }
-          if (err instanceof VdSchemaValidationError) {
-            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
-          }
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: err instanceof Error ? err.message : "Character visual prompt generation failed",
-          });
-        }
-        turnaroundPrompt = promptResult.turnaroundPrompt;
-        negativePrompt = promptResult.negativePrompt;
-        promptModel = promptResult.model;
-        visualBibleSummary = promptResult.raw.visual_bible_summary;
-        promptCreditsUsed = promptResult.creditsUsed;
-      }
-
-      // 2. Pre-flight credit check for the image render — a SEPARATE charge
-      //    from the prompt-generation LLM call above. Prices + generates
-      //    against the CALLER-SELECTED model — see generateCharacterImage's
-      //    same comment for the full rationale.
-      const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
-      const [pricingRow] = await db
-        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
-        .from(mediaModels)
-        .where(eq(mediaModels.modelId, resolvedImageModelId))
-        .limit(1);
-      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
-      const imageCreditCost = calculateCreditCost(pricingModel, { numImages: 1 });
-
-      const shouldChargeImageCredits = imageCreditCost > 0;
-      if (shouldChargeImageCredits) {
-        const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
-        if (!hasImageCredits) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `Insufficient credits for character sheet turnaround image render. Required: ${imageCreditCost}`,
-          });
-        }
-      }
-
-      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "image",
-        modelId: resolvedImageModelId,
-        configJson: pricingModel.configJson,
-        mcpConnectionId: input.mcpConnectionId,
-      });
-
-      // 2.5. Identity-lock reference — same rationale as generateCharacterImage:
-      //      attach the character's existing approved portrait as a
-      //      `referenceImageUrls` input (this is the exact case the reference
-      //      picker exists for — a turnaround generated after the portrait
-      //      should depict the same person), and call it out in the prompt
-      //      text itself so the model actually attends to the attached image.
-      const referencePortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
-        { tenantId, userId, seriesId },
-        characterId,
-      );
-      const renderTurnaroundPrompt = referencePortraitUrl
-        ? `${turnaroundPrompt} Use the attached reference image as this character's exact identity — match face, hairstyle, and skin tone precisely across every angle; do not alter identity.`
-        : turnaroundPrompt;
-
-      // 3. Submit — async, same convention as `generateCharacterImage` above
-      //    (see its doc comment for the full rationale). Credits are
-      //    RESERVED now; the caller polls `media.getTask({taskId})`, then
-      //    finalizes via `resolveMediaAssetForImport` + `linkAsset`.
-      if (shouldChargeImageCredits) {
-        await deductCredits({
-          userId,
-          tenantId,
-          amount: imageCreditCost,
-          description: `Vertical Drama — generate character sheet turnaround (character #${characterId}, reserved)`,
-          sourceType: "media_image",
-          metadata: {
-            feature: "vertical_drama_character_turnaround",
-            seriesId,
-            characterId,
-            type: "reservation",
-            creditCost: imageCreditCost,
-            modelId: resolvedImageModelId,
-          },
-        });
-      }
-
-      const userToken = getCharacterPortraitUserToken(ctx);
-      let task;
-      try {
-        task = await mediaGenerationService.generateImageAsync(
-          {
-            prompt: renderTurnaroundPrompt,
-            negativePrompt,
-            model: resolvedImageModelId,
-            numImages: 1,
-            aspectRatio: "9:16",
-            ...(referencePortraitUrl ? { referenceImageUrls: [referencePortraitUrl] } : {}),
-            // Series provenance tag — see generateCharacterImage's comment.
-            extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
-            publicUrl: ctx.publicUrl ?? undefined,
-            ...(transportMetadata ? { transportMetadata } : {}),
-            auditContext: {
-              userId,
-              traceId: crypto.randomUUID(),
-              source: "trpc.verticalDramaCharacters.generateCharacterTurnaround",
-              stage: "submission",
-            },
-          },
-          userToken,
-        );
-      } catch (err) {
-        if (shouldChargeImageCredits) {
-          await refundCredits({
-            userId,
-            amount: imageCreditCost,
-            description: `Refund: character sheet turnaround render failed to submit (character #${characterId})`,
-            sourceType: "media_image",
-            metadata: { feature: "vertical_drama_character_turnaround", seriesId, characterId },
-          });
-        }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: err instanceof Error ? err.message : "Character sheet turnaround image generation failed to submit",
-        });
-      }
-
-      return {
-        taskId: task.id,
-        turnaroundPrompt,
-        negativePrompt,
-        promptModel,
-        visualBibleSummary,
-        creditsUsed: { promptGeneration: promptCreditsUsed },
-      };
-    }),
-
-  /**
-   * Full-spec Character Sheet — ONE multi-panel infographic image combining
-   * portrait + turnaround (front/side/back) + facial-expression grid + outfit
-   * variations + a compact stats sidebar, in the style of a production
-   * character reference sheet. Distinct from `generateCharacterTurnaround`
-   * (which renders only the simpler multi-angle turnaround prompt) — this is
-   * a NEW, separate, additive action; the turnaround button is unchanged.
+   * user-approved text (from `previewCharacterPrompt`) is used directly and
+   * the internal `generateCharacterVisualPrompts` call (already charged once
+   * at preview time) is not repeated.
    *
-   * Combines `fullBodyPrompt`/`expressionSheetPrompt`/`outfitSheetPrompt`
-   * (computed by the visual-bible skill but previously discarded — see
-   * `verticalDramaCharacterImageGeneration.ts`) with `turnaroundPrompt` into
-   * one structured layout instruction, the same "instruct one image model
-   * call to produce a multi-panel grid" technique already shipped and
-   * live-verified for the Storyboard page's 3x3 multi-angle generation.
+   * Returns `assetRole`/`assetMetadata` (via `resolveCharacterSheetAssetTag`)
+   * so the caller can tag the eventual `linkAsset` call correctly once the
+   * async render task completes — `"turnaround"` -> the pre-existing
+   * `"character_sheet_turnaround"` role, `"full_combined"` -> the pre-
+   * existing `"character_sheet_full"` role, every new format ->
+   * `"character_design_bible"` (deliberately OUTSIDE
+   * `CHARACTER_SHEET_ROLES` in `verticalDramaCharacterStock.ts` — several of
+   * the new formats carry no face at all, so they must never be picked as a
+   * second identity-lock reference for storyboard/shot generation).
    *
    * Async submit + poll, same convention as every other real generation in
    * this codebase (shows in Media History, correct credit deduction).
@@ -1606,12 +2094,25 @@ export const verticalDramaCharactersRouter = router({
         characterId: z.string().min(1),
         approvedPrompt: z.string().min(1).optional(),
         approvedNegativePrompt: z.string().optional(),
+        /** Which Character Design Bible sheet format to render — `"auto"`
+         *  (default) resolves to `"turnaround"`. See
+         *  `resolveCharacterSheetType`/`CHARACTER_SHEET_TYPE_VALUES`. */
+        sheetType: z.enum(CHARACTER_SHEET_TYPE_VALUES).optional().default("auto"),
         /** Language of the STATS TEXT/labels on the sheet — the character's
-         *  own name is never translated, always rendered exactly as given. */
+         *  own name is never translated, always rendered exactly as given.
+         *  NOTE: the skill does not yet accept a language input (see
+         *  `skills/vertical-drama-character-visual-bible/schemas/
+         *  input.schema.json`) — kept on the input contract for API-surface
+         *  stability, currently unused by the handler pending skill support;
+         *  never wired into a code-authored prompt string (that would be the
+         *  exact violation this endpoint used to have). */
         sheetLanguage: z.enum(["en", "th"]).optional().default("en"),
         // Caller-selected image model — see `generateCharacterImage`'s same field.
         selectedImageModelId: z.string().trim().min(1).max(128).optional(),
         mcpConnectionId: z.string().max(64).optional(),
+        // Optional explicit reference-image-picker override — see
+        // `generateCharacterImage`'s identical field for the full contract.
+        referenceAssetLinkId: z.string().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1622,6 +2123,8 @@ export const verticalDramaCharactersRouter = router({
           message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
         });
       }
+
+      const resolvedSheetType = resolveCharacterSheetType(input.sheetType);
 
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
@@ -1651,31 +2154,46 @@ export const verticalDramaCharactersRouter = router({
       const description = extractCharacterDescription(
         (character.data as Record<string, unknown> | null) ?? null,
       );
-      const characterData = (character.data as Record<string, unknown> | null) ?? null;
-      const personality = typeof characterData?.personality === "string" ? characterData.personality : undefined;
-      const wardrobeRules = Array.isArray(characterData?.wardrobeRules)
-        ? (characterData.wardrobeRules as unknown[]).filter((w): w is string => typeof w === "string")
-        : [];
 
-      let turnaroundPrompt: string;
-      let fullBodyPrompt: string;
-      let expressionSheetPrompt: string;
-      let outfitSheetPrompt: string;
+      // Identity-lock reference — resolved BEFORE prompt generation (Phase
+      // D2, `planning/vertical-drama-reference-picker-outfit-lock/plan.md`
+      // section B) so its presence can be passed into
+      // `generateCharacterVisualPrompts` as the `hasOwnReferenceImage` fact —
+      // the skill (not this router) is then the sole author of the identity-
+      // lock instruction language woven into the prompt, including the
+      // outfit/clothing/accessories/shoes lock this fixes. Attaches the
+      // character's existing approved portrait (if any) as a
+      // `referenceImageUrls` input so the render is conditioned on the
+      // actual likeness — same established pattern `generateCharacterImage`
+      // uses, including the parent/twin-source portrait fallback for a
+      // brand-new variant/twin's first render (Phase F1,
+      // `planning/vertical-drama-twin-variant-completeness/plan.md` W1).
+      const referencePortraitUrl = await resolveReferencePortraitUrl(
+        { tenantId, userId, seriesId },
+        characterId,
+        input.referenceAssetLinkId,
+        character.parentCharacterId ?? character.sharesFaceWithCharacterId,
+      );
+
+      // Prompt generation — credit-gated + deducted internally. Skipped
+      // entirely when the caller already ran `previewCharacterPrompt` and
+      // supplies the user-approved text via `approvedPrompt` (that credit was
+      // already charged once, at preview time) — same skip-regeneration
+      // contract `generateCharacterImage` uses.
+      let sheetPromptText: string;
       let negativePrompt: string | undefined;
       let promptModel: string | null = null;
       let visualBibleSummary: Record<string, unknown> | null = null;
       let promptCreditsUsed = 0;
 
       if (input.approvedPrompt) {
-        // A single pre-approved combined prompt (from a preview step) skips
-        // regenerating the individual prompt fields — same skip-regeneration
-        // contract `generateCharacterImage`/`generateCharacterTurnaround` use.
-        turnaroundPrompt = input.approvedPrompt;
-        fullBodyPrompt = "";
-        expressionSheetPrompt = "";
-        outfitSheetPrompt = "";
+        sheetPromptText = input.approvedPrompt;
         negativePrompt = input.approvedNegativePrompt;
       } else {
+        const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
+          { tenantId, userId, seriesId },
+          character,
+        );
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -1692,6 +2210,13 @@ export const verticalDramaCharactersRouter = router({
               : undefined,
             targetAudienceRegion,
             presetVisualIdentity,
+            faceSourceReference,
+            hasOwnReferenceImage: Boolean(referencePortraitUrl),
+            // Only sent for a NON-turnaround format — plain "turnaround" is
+            // already fully covered by the always-required
+            // `turnaround_prompt` field, so no extra skill work is requested
+            // for it (see skill.md's "Character Design Bible sheet types").
+            requestedSheetType: resolvedSheetType === "turnaround" ? undefined : resolvedSheetType,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1705,20 +2230,37 @@ export const verticalDramaCharactersRouter = router({
             message: err instanceof Error ? err.message : "Character visual prompt generation failed",
           });
         }
-        turnaroundPrompt = promptResult.turnaroundPrompt;
-        fullBodyPrompt = promptResult.fullBodyPrompt;
-        expressionSheetPrompt = promptResult.expressionSheetPrompt;
-        outfitSheetPrompt = promptResult.outfitSheetPrompt;
+
+        if (resolvedSheetType === "turnaround") {
+          sheetPromptText = promptResult.turnaroundPrompt;
+        } else {
+          // `sheet_prompt` is schema-optional (legitimately absent when no
+          // sheet type was requested) but MUST be present here since a
+          // non-turnaround type was explicitly requested — surface a missing
+          // value as an error (matching this file's existing
+          // `VdSchemaValidationError` handling for other required-field
+          // violations), never a code-authored fallback string.
+          if (!promptResult.sheetPrompt) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: `Character visual bible skill did not return a sheet_prompt for requested sheet type "${resolvedSheetType}".`,
+            });
+          }
+          sheetPromptText = promptResult.sheetPrompt;
+        }
         negativePrompt = promptResult.negativePrompt;
         promptModel = promptResult.model;
         visualBibleSummary = promptResult.raw.visual_bible_summary;
         promptCreditsUsed = promptResult.creditsUsed;
       }
 
-      // Multi-panel grid render — priced like the Storyboard page's 3x3
-      // multi-angle generation (a single, more complex image call), not a
-      // single portrait. Prices + generates against the CALLER-SELECTED
-      // model — see generateCharacterImage's same comment for rationale.
+      // Pricing: the plain turnaround stays priced like a single image (same
+      // as the old, now-merged `generateCharacterTurnaround`); every other
+      // format (the pre-existing `full_combined` plus the 11 new Character
+      // Design Bible formats) is priced like the old `generateCharacterSheet`
+      // — a single, more complex multi-panel image call. Prices + generates
+      // against the CALLER-SELECTED model — see generateCharacterImage's same
+      // comment for rationale.
       const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
@@ -1726,7 +2268,9 @@ export const verticalDramaCharactersRouter = router({
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
       const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
-      const sheetCreditCost = calculateCreditCost(pricingModel, { numImages: 2 });
+      const sheetCreditCost = calculateCreditCost(pricingModel, {
+        numImages: resolvedSheetType === "turnaround" ? 1 : 2,
+      });
       const shouldChargeSheetCredits = sheetCreditCost > 0;
       if (shouldChargeSheetCredits) {
         const hasCredits = await hasEnoughCredits(userId, sheetCreditCost);
@@ -1747,51 +2291,18 @@ export const verticalDramaCharactersRouter = router({
         mcpConnectionId: input.mcpConnectionId,
       });
 
-      const referencePortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
-        { tenantId, userId, seriesId },
-        characterId,
-      );
-
-      const languageInstruction =
-        input.sheetLanguage === "th"
-          ? "All stat labels and text on the sheet must be in Thai, EXCEPT keep every UI-style section header readable."
-          : "All stat labels and text on the sheet must be in English.";
-      const statsBlock = [
-        `Role: ${character.role ?? "supporting"}`,
-        personality ? `Personality: ${personality}` : null,
-        wardrobeRules.length ? `Signature wardrobe: ${wardrobeRules.join(", ")}` : null,
-      ]
-        .filter(Boolean)
-        .join(". ");
-
-      const sheetPrompt = [
-        `Design a professional character reference sheet (production "character sheet" infographic layout) for a character named exactly "${character.name}" — do not translate or alter the name, render it exactly as given.`,
-        `${languageInstruction} The character's name itself is the one exception — always show it exactly as given, untranslated.`,
-        "Layout: a large portrait panel on one side; a 3-pose turnaround row (front view, side view, back view) using this reference: " + turnaroundPrompt + ".",
-        "A facial-expression grid (at least 4 small panels) using this reference: " + expressionSheetPrompt + ".",
-        "An outfit/full-body panel using this reference: " + outfitSheetPrompt + " and " + fullBodyPrompt + ".",
-        statsBlock ? `A compact stats sidebar with these details, formatted as short labeled lines: ${statsBlock}.` : null,
-        "Keep the SAME character identity, face, and wardrobe consistent across every panel on the sheet.",
-        "Clean, professional infographic background (light neutral), clear panel dividers, small section headers above each panel.",
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      const renderSheetPrompt = referencePortraitUrl
-        ? `${sheetPrompt} Use the attached reference image as this character's exact identity across every panel — match face shape, skin tone, hairstyle precisely; do not alter identity.`
-        : sheetPrompt;
-
       if (shouldChargeSheetCredits) {
         await deductCredits({
           userId,
           tenantId,
           amount: sheetCreditCost,
-          description: `Vertical Drama — generate character sheet (character #${characterId}, reserved)`,
+          description: `Vertical Drama — generate character sheet (${resolvedSheetType}) (character #${characterId}, reserved)`,
           sourceType: "media_image",
           metadata: {
             feature: "vertical_drama_character_sheet",
             seriesId,
             characterId,
+            sheetType: resolvedSheetType,
             type: "reservation",
             creditCost: sheetCreditCost,
             modelId: resolvedImageModelId,
@@ -1804,7 +2315,7 @@ export const verticalDramaCharactersRouter = router({
       try {
         task = await mediaGenerationService.generateImageAsync(
           {
-            prompt: renderSheetPrompt,
+            prompt: sheetPromptText,
             negativePrompt,
             model: resolvedImageModelId,
             numImages: 1,
@@ -1830,7 +2341,7 @@ export const verticalDramaCharactersRouter = router({
             amount: sheetCreditCost,
             description: `Refund: character sheet render failed to submit (character #${characterId})`,
             sourceType: "media_image",
-            metadata: { feature: "vertical_drama_character_sheet", seriesId, characterId },
+            metadata: { feature: "vertical_drama_character_sheet", seriesId, characterId, sheetType: resolvedSheetType },
           });
         }
         throw new TRPCError({
@@ -1839,11 +2350,18 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
+      const assetTag = resolveCharacterSheetAssetTag(resolvedSheetType);
+
       return {
         taskId: task.id,
+        sheetType: resolvedSheetType,
+        sheetPrompt: sheetPromptText,
+        negativePrompt,
         promptModel,
         visualBibleSummary,
         creditsUsed: { promptGeneration: promptCreditsUsed },
+        assetRole: assetTag.role,
+        assetMetadata: assetTag.metadata,
       };
     }),
 
@@ -1990,8 +2508,8 @@ export const verticalDramaCharactersRouter = router({
    * poll -> credit reserve/reconcile machinery every other paid generation
    * mutation in this router uses (`mediaGenerationService.generateAudioAsync`
    * directly — never `media.ts`'s own procedures, same convention as
-   * `generateCharacterImage`/`generateCharacterTurnaround`/
-   * `generateCharacterSheet` above). Never persists anything — `voiceConfig`
+   * `generateCharacterImage`/`generateCharacterSheet` above). Never persists
+   * anything — `voiceConfig`
    * here is a candidate to audition, not a cast (`setCharacterVoiceConfig` is
    * the separate, explicit lock action).
    */

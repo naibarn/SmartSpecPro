@@ -30,6 +30,18 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         }),
       },
+      // Manual LLM model override (added 2026-07-11) — the component always
+      // mounts this query/mutation now, so the watermark-focused tests below
+      // need a stub too (unrelated to what they're actually testing).
+      listQualityPlanningModels: {
+        useQuery: () => ({ data: [], isPending: false }),
+      },
+      setSeriesLlmModelPolicy: {
+        useMutation: () => ({
+          mutateAsync: vi.fn(),
+          isPending: false,
+        }),
+      },
       updateSeriesWatermark: {
         useMutation: (opts: { onSuccess?: () => void; onError?: (err: { message?: string }) => void }) => ({
           mutate: (input: unknown) => {

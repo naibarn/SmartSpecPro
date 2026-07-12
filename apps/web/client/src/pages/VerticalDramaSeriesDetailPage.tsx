@@ -109,19 +109,24 @@ import { vdTextOverlayCopy } from "@/components/verticalDramaSeries/verticalDram
 
 type TabId =
   | "overview"
+  | "characters"
   | "episodes"
   | "bible"
-  | "characters"
   | "memory"
   | "product"
   | "assets"
   | "settings";
 
+// Character-variants plan (planning/vertical-drama-character-variants/plan.md,
+// Phase A) — "characters" moved before "episodes": character (and character
+// variant) planning must exist before episode/storyboard generation can
+// reference the right look, so the tab order should guide the user through
+// the workflow in that sequence.
 const ALL_TABS: TabId[] = [
   "overview",
+  "characters",
   "episodes",
   "bible",
-  "characters",
   "memory",
   "product",
   "assets",
@@ -222,6 +227,11 @@ export default function VerticalDramaSeriesDetailPage() {
          *  has been configured yet. Passed through `get`'s full-row spread
          *  (`...row`), no server-side change needed for this new column. */
         watermark?: unknown;
+        /** Manual LLM model override (added 2026-07-11 — see
+         *  `/home/dev/.claude/plans/polished-toasting-gadget.md`) — `null`
+         *  when unset (fully automatic). Passed through `get`'s full-row
+         *  spread, no server-side change needed for this new column. */
+        llmModelPolicy?: unknown;
       }
     | undefined;
   const episodes = (detailQuery.data?.episodes ?? []) as Array<{
@@ -398,6 +408,7 @@ export default function VerticalDramaSeriesDetailPage() {
                       defaultEpisodeDurationSeconds={series.defaultEpisodeDurationSeconds}
                       locale={series.locale}
                       bible={series.bible}
+                      llmModelPolicy={series.llmModelPolicy}
                       readOnly={isArchived}
                       onSaved={() => detailQuery.refetch()}
                       textOverlaySuiteEnabled={textOverlaySuiteEnabled}
@@ -1540,12 +1551,26 @@ export function StoryBibleOverviewCard({
                         </Badge>
                       ) : null}
                     </p>
-                    <p className="text-xs text-muted-foreground">{ep.logline}</p>
-                    <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                      {ep.keyBeats.map((beat, i) => (
-                        <li key={i}>{beat}</li>
-                      ))}
-                    </ul>
+                    {ep.logline ? (
+                      <div className="mt-1.5 flex flex-col gap-0.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {lang === "th" ? "เรื่องย่อ" : "Logline"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{ep.logline}</p>
+                      </div>
+                    ) : null}
+                    {ep.keyBeats.length > 0 ? (
+                      <div className="mt-1.5 flex flex-col gap-0.5">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {lang === "th" ? "จุดดำเนินเรื่อง" : "Key beats"}
+                        </p>
+                        <ul className="list-inside list-disc text-xs text-muted-foreground">
+                          {ep.keyBeats.map((beat, i) => (
+                            <li key={i}>{beat}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
                     {deepDraftsFlagEnabled && (
                       <VerticalDramaDeepStoryDraftEpisodeDetail
                         lang={lang}

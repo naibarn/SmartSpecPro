@@ -203,6 +203,7 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "verticalDramaCharacterVisualQuality", label: "Character Visual Quality", description: "Persisted visual bible, expression set, image QC gate, consistency ledger (spec 132 §10.2-10.7)" },
       { key: "verticalDramaContinuityContracts", label: "Continuity Contracts", description: "Causal chain map + hook-to-opening enforcement (spec 132 §8.2)" },
       { key: "verticalDramaAngleGridQuality", label: "Angle Grid Quality", description: "Structured 9-angle camera schema, diversity/coverage rules, best-angle scoring rubric (spec 132 §19)" },
+      { key: "verticalDramaRetentionHooks", label: "Retention Hooks", description: "หลักการ hook/open-loop/retention-loop 12 ข้อ — genre-conditional guidance ในบท+ช็อต, scorecard v4 (open loop/retention loop/change cadence), motion energy ช็อตเปิด/ปิดตอน (planning/vertical-drama-retention-hooks)" },
     ],
   },
   {

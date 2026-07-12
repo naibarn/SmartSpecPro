@@ -86,6 +86,21 @@ is a FAILED clip. Concretely:
    storyboard's sharper camera language (fast push-in / whip cut rhythm) and make
    the acting direction show the power shift landing — e.g. one character's
    composure visibly cracking as the other's steadies.
+4. For the clip whose shot list is marked `is_opening_shot: true` (the
+   episode's FIRST shot — the hook), open that clip's motion on immediate
+   kinetic or visual interest matching the hook's energy — a sudden movement,
+   a sharp reaction, an action already in progress. NEVER open the pack's
+   opening clip with a slow establishing pan, a static held pose, or a
+   scene-setting drift; the hook must land in the very first instant of
+   motion, not build up to it.
+5. For the clip whose shot list is marked `is_retention_ending_shot: true`
+   (the episode's FINAL shot — the retention-loop ending), the motion must
+   LAND and HOLD the unresolved image or emotional turn — push in, hold the
+   beat, let an expression settle — rather than cutting away flatly. This is
+   the last thing the viewer sees before the episode ends; it must read as an
+   open breath the audience carries into the next episode, not a closed
+   scene. Use your own judgment for the specific camera move that best serves
+   this shot's own content.
 
 ## Every clip's prompt must be unique — MANDATORY
 

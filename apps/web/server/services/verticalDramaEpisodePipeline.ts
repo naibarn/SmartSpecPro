@@ -77,6 +77,7 @@ import {
   InsufficientCreditsError as StoryboardInsufficientCreditsError,
   VdSchemaValidationError as StoryboardVdSchemaValidationError,
   type StoryboardShotgridOutput,
+  type GenerateStoryboardShotgridParams,
 } from "./verticalDramaStoryboardGeneration";
 // Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
 // at compile time, zero runtime import). The VALUES (`getActiveBreakdown`/
@@ -101,10 +102,11 @@ import {
   generateVideoMotionPromptPack,
   syncDialogueOntoMotionPromptClips,
   syncStartFramesOntoMotionPromptClips,
-  // Speaker-aware sub-shots task (Package 5) — SAME per-shot sub-shot
-  // generator `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt`
-  // mutation uses (Package 3), reused here rather than reimplemented.
-  generateVerticalDramaShotVideoPromptSubShots,
+  // Speaker-aware sub-shots task (Package 5, 2026-07-11 consolidated-clip
+  // redesign) — SAME per-shot speaker-switch generator
+  // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses
+  // (Package 3), reused here rather than reimplemented.
+  generateVerticalDramaShotVideoPromptSpeakerSwitch,
   InsufficientCreditsError as MotionPromptInsufficientCreditsError,
   VdSchemaValidationError as MotionPromptVdSchemaValidationError,
   type VideoMotionPromptPackProjection,
@@ -1232,6 +1234,23 @@ export interface RunStageOptions {
    * byte-identical.
    */
   sceneContractsEnabled?: boolean;
+  /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W1,
+   * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — same
+   * "router resolves the tenant flag, the pipeline stays flag-agnostic
+   * beyond this bag" convention as `deepStoryDraftsFlagOn`/
+   * `sceneContractsEnabled` above. When on:
+   *  - `plan_episode_script`'s real-generation call (`generateRealScript`/
+   *    `generateEpisodeScript`) threads the series' `genre` fact and renders
+   *    skill.md's genre-conditional retention-loop/open-loop/
+   *    no-intro-opening guidance (W1/W2);
+   *  - `storyboard_shotgrid`'s real-generation call
+   *    (`generateRealStoryboard`/`generateStoryboardShotgrid`) threads the
+   *    SAME `genre` fact for shot styling (W3).
+   * Defaults to off when omitted, so every existing caller/test is
+   * byte-identical.
+   */
+  retentionHooksEnabled?: boolean;
 }
 
 export interface RunStageOutcome {
@@ -1306,18 +1325,20 @@ async function resolveEpisodeTieInPlacement(
 }
 
 /**
- * Speaker-aware sub-shots task (Package 5) — batch-path bug fix + speaker-
- * aware wiring, SAME wave. For each REAL clip `generateRealMotionPromptPack`
- * just produced (their `dialogue[]` already populated by
- * `syncDialogueOntoMotionPromptClips`, called just before this runs in
- * `runStage`) whose dialogue deterministically requires a shot-reverse-shot
- * split (`computeSpeakerSwitchSubShotPlan` — the SAME gate
+ * Speaker-aware sub-shots task (Package 5, 2026-07-11 consolidated-clip
+ * redesign) — batch-path bug fix + speaker-aware wiring, SAME wave. For each
+ * REAL clip `generateRealMotionPromptPack` just produced (their
+ * `dialogue[]` already populated by `syncDialogueOntoMotionPromptClips`,
+ * called just before this runs in `runStage`) whose dialogue
+ * deterministically requires cutting between speakers
+ * (`computeSpeakerSwitchSubShotPlan` — the SAME gate
  * `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` mutation uses,
- * reused here rather than reimplemented), replaces that ONE clip with N
- * speaker-anchored sub-shot clips
- * (`generateVerticalDramaShotVideoPromptSubShots` — the SAME generator,
- * reused). Every other clip (dialogue-free, or dialogue that doesn't need
- * splitting) passes through completely UNCHANGED.
+ * reused here rather than reimplemented), REPLACES that clip in place with
+ * ONE combined, timed motion-prompt clip carrying `extraReferenceAssetIds`
+ * for every additional speaker (`generateVerticalDramaShotVideoPromptSpeakerSwitch`
+ * — the SAME generator `verticalDramaEpisodes.ts`'s split-shot persistence
+ * path uses, reused). Every other clip (dialogue-free, or dialogue that
+ * doesn't need splitting) passes through completely UNCHANGED.
  *
  * THIS is the fix for the pre-existing bug: the OLD call site (still present
  * further below, for the `dry_run`/`plan_only` PLACEHOLDER builder only —
@@ -1510,7 +1531,7 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
     const tieInPlacement = findPlacementForShot(tieInPlacements, shotNumber);
 
     try {
-      const subShotGeneration = await generateVerticalDramaShotVideoPromptSubShots({
+      const speakerSwitchGeneration = await generateVerticalDramaShotVideoPromptSpeakerSwitch({
         userId: owner.userId,
         tenantId: owner.tenantId,
         seriesId: owner.seriesId,
@@ -1548,14 +1569,12 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
         subShotWindows: decision.windows,
       });
 
-      const distinctCharacterKeys = Array.from(
-        new Set(
-          subShotGeneration.subShots
-            .map(s => s.characterKey)
-            .filter((k): k is string => Boolean(k)),
-        ),
-      );
-      const startFrameAssetIdByCharacterKey = new Map<string, string>();
+      // Resolve every distinct speaker's own approved primary-portrait media
+      // asset id, in `distinctSpeakerCharacterKeys` order (anchor speaker
+      // first) — same resolution convention as
+      // `verticalDramaEpisodes.ts`'s `generateAndPersistSplitShotVideoPrompt`.
+      const distinctCharacterKeys = speakerSwitchGeneration.distinctSpeakerCharacterKeys;
+      const portraitAssetIdByCharacterKey = new Map<string, string>();
       if (distinctCharacterKeys.length > 0) {
         const characterRows = await db
           .select({
@@ -1570,42 +1589,49 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
               inArray(verticalDramaCharacters.characterKey, distinctCharacterKeys),
             ),
           );
-        for (const characterRow of characterRows) {
+        const characterRowByKey = new Map<string, (typeof characterRows)[number]>();
+        for (const c of characterRows) {
+          characterRowByKey.set(c.characterKey, c);
+        }
+        for (const key of distinctCharacterKeys) {
+          const characterRow = characterRowByKey.get(key);
+          if (!characterRow) continue;
           const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
             { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
             characterRow.id,
           );
           if (assetId) {
-            startFrameAssetIdByCharacterKey.set(characterRow.characterKey, String(assetId));
+            portraitAssetIdByCharacterKey.set(key, String(assetId));
           }
         }
       }
+      const orderedPortraitAssetIds = distinctCharacterKeys
+        .map(key => portraitAssetIdByCharacterKey.get(key))
+        .filter((id): id is string => Boolean(id));
+      const [anchorStartFrameAssetId, ...extraReferenceAssetIds] = orderedPortraitAssetIds;
 
-      const newClips = subShotGeneration.subShots.map((subShot, index) => {
-        const isLastWindow = index === subShotGeneration.subShots.length - 1;
-        return {
-          clipNumber: shotNumber * 100 + subShot.subShotNumber,
-          sourceShotNumbers: [shotNumber],
-          parentShotNumber: shotNumber,
-          subShotNumber: subShot.subShotNumber,
-          durationSeconds: subShot.durationSeconds,
-          prompt: subShot.prompt,
-          negativeMotionPrompt: subShot.negativeMotionPrompt,
-          startFrameAssetId: startFrameAssetIdByCharacterKey.get(subShot.characterKey),
-          dialogue: subShot.dialogue,
-          ...(isLastWindow
-            ? {
-                requiredDisclosure: subShotGeneration.requiredDisclosure,
-                audioDirection: subShotGeneration.audioDirection,
-              }
-            : {}),
-        };
-      });
+      // Exactly ONE clip, shaped IDENTICALLY to a normal single-shot clip
+      // (`clipNumber: shotNumber`, no `parentShotNumber`/`subShotNumber`) —
+      // same "consolidated clip" shape as
+      // `generateAndPersistSplitShotVideoPrompt`'s persistence path.
+      const newClip = {
+        clipNumber: shotNumber,
+        sourceShotNumbers: [shotNumber],
+        durationSeconds: speakerSwitchGeneration.durationSeconds,
+        prompt: speakerSwitchGeneration.prompt,
+        negativeMotionPrompt: speakerSwitchGeneration.negativeMotionPrompt,
+        startFrameAssetId: anchorStartFrameAssetId,
+        extraReferenceAssetIds: extraReferenceAssetIds.length ? extraReferenceAssetIds : undefined,
+        dialogue: speakerSwitchGeneration.dialogue,
+        requiredDisclosure: speakerSwitchGeneration.requiredDisclosure,
+        audioDirection: speakerSwitchGeneration.audioDirection,
+      };
 
       // Replace, don't append — same convention as
-      // `verticalDramaEpisodes.ts`'s `generateShotVideoPrompt` persistence
-      // (Package 3): remove every existing clip for this shot before
-      // inserting the new sub-shot set.
+      // `verticalDramaEpisodes.ts`'s `generateAndPersistSplitShotVideoPrompt`
+      // (Package 3): remove every existing clip for this shot (whether a
+      // single clip or a legacy pre-2026-07-11 N-clip split) before
+      // inserting the one new consolidated clip.
       updatedClips = [
         ...updatedClips.filter(
           c =>
@@ -1614,7 +1640,7 @@ async function applySpeakerSwitchSubShotsToRealMotionPromptPack(
               c.parentShotNumber === shotNumber
             ),
         ),
-        ...newClips,
+        newClip,
       ];
     } catch {
       // Best-effort per shot — never abort the whole batch over one shot's
@@ -1745,6 +1771,15 @@ export class VerticalDramaEpisodePipeline {
    * param's doc comment in `verticalDramaScriptGeneration.ts`). Omitted for
    * every `runStage` call site, which is byte-identical to before this
    * parameter existed.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W1, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag" convention as
+   * `sceneContractsEnabled` above. Threads the ALREADY-LOADED `seriesRow`'s
+   * `genre` column into `generateEpisodeScript` unconditionally (cheap,
+   * additive fact) and gates rendering it (plus skill.md's new
+   * genre-conditional retention-loop guidance) via `opts.retentionHooksEnabled`.
+   * Defaults to false, so every existing caller is byte-identical.
    */
   private async generateRealScript(
     owner: EpisodeRunOwner,
@@ -1752,7 +1787,8 @@ export class VerticalDramaEpisodePipeline {
     deepStoryDraftsFlagOn: boolean = false,
     repairInstruction?: string,
     tieInReplanFlagOn: boolean = false,
-    sceneContractsEnabled: boolean = false
+    sceneContractsEnabled: boolean = false,
+    retentionHooksEnabled: boolean = false
   ): Promise<{
     script: ScriptBuilderOutput;
     creditsUsed: number;
@@ -1865,9 +1901,17 @@ export class VerticalDramaEpisodePipeline {
       productTieIn,
       episodeDraft: episodeDraft ?? undefined,
       episodeTieInPlacement,
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W1) — the series' free-text `genre` column, already available on
+      // the full `seriesRow` select above. Passed unconditionally (cheap
+      // additive fact); only RENDERED into the prompt when
+      // `opts.retentionHooksEnabled` is true (see
+      // `verticalDramaScriptGeneration.ts`'s `genre` param doc comment).
+      genre: seriesRow?.genre ?? undefined,
       opts: {
         episodeDraftHydrationEnabled: episodeDraft !== null,
         sceneContractsEnabled,
+        retentionHooksEnabled,
       },
       storySource: {
         logline:
@@ -2044,13 +2088,23 @@ export class VerticalDramaEpisodePipeline {
    * `generateStoryboardShotgrid`'s `repairContext`. Omitted for every
    * `runStage` call site, which is byte-identical to before this parameter
    * existed.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W3, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag" convention as
+   * `sceneContractsEnabled` above and as `generateRealScript`'s identical
+   * parameter (W1). Threads the ALREADY-LOADED `seriesRow`'s `genre` column
+   * into `generateStoryboardShotgrid` unconditionally (cheap, additive
+   * fact) and gates rendering it via `opts.retentionHooksEnabled`. Defaults
+   * to false, so every existing caller is byte-identical.
    */
   private async generateRealStoryboard(
     owner: EpisodeRunOwner,
     episode: VerticalDramaEpisodeRow,
     deepStoryDraftsFlagOn: boolean = false,
     repairInstruction?: string,
-    sceneContractsEnabled: boolean = false
+    sceneContractsEnabled: boolean = false,
+    retentionHooksEnabled: boolean = false
   ): Promise<{
     storyboard: StoryboardShotgridOutput;
     creditsUsed: number;
@@ -2068,12 +2122,26 @@ export class VerticalDramaEpisodePipeline {
       )
       .limit(1);
 
-    const characterRows = await db
+    // Character variants (planning/vertical-drama-character-variants/plan.md
+    // Phase D) — fetch the WHOLE roster in one query (unchanged query shape
+    // otherwise) and partition it in-memory into base characters
+    // (`parentCharacterId == null` — includes twins, which are independent
+    // characters, not variants) and variant rows (`parentCharacterId` set).
+    // Only base characters are sent as top-level `characters` entries below
+    // (unchanged, byte-identical for a series with no variant rows yet); each
+    // base character's variant rows are attached under its own `variants[]`
+    // (see the `characters.map(...)` block below).
+    const allCharacterRows = await db
       .select({
         id: verticalDramaCharacters.id,
         characterKey: verticalDramaCharacters.characterKey,
         name: verticalDramaCharacters.name,
         role: verticalDramaCharacters.role,
+        parentCharacterId: verticalDramaCharacters.parentCharacterId,
+        variantLabel: verticalDramaCharacters.variantLabel,
+        variantType: verticalDramaCharacters.variantType,
+        sharesFaceWithCharacterId: verticalDramaCharacters.sharesFaceWithCharacterId,
+        data: verticalDramaCharacters.data,
       })
       .from(verticalDramaCharacters)
       .where(
@@ -2082,6 +2150,13 @@ export class VerticalDramaEpisodePipeline {
           eq(verticalDramaCharacters.seriesId, owner.seriesId)
         )
       );
+    type VdCharacterRosterRow = (typeof allCharacterRows)[number];
+    const characterRows = allCharacterRows.filter(
+      (c: VdCharacterRosterRow) => c.parentCharacterId == null
+    );
+    const variantRows = allCharacterRows.filter(
+      (c: VdCharacterRosterRow) => c.parentCharacterId != null
+    );
 
     // Identity-lock (upstream parity, see `referenceImageUrl` doc comment on
     // `GenerateStoryboardShotgridParams`) — reuses the same
@@ -2094,6 +2169,75 @@ export class VerticalDramaEpisodePipeline {
         verticalDramaCharacterStockService.getPrimaryPortraitUrl(owner, c.id)
       )
     );
+
+    // Each variant row is a normal `vertical_drama_characters` row with its
+    // OWN `vertical_drama_character_assets` entries (Phase A doc comment,
+    // `drizzle/schema.ts:20466-20487`) — resolve its portrait the SAME way as
+    // any base character, keyed by the VARIANT row's own id, never the
+    // parent's. A variant with no approved portrait yet (normal mid-flight
+    // state while Phase C's portrait-generation skill is still catching up)
+    // is EXCLUDED from the available-variants list entirely below — an
+    // unusable reference-less variant would only confuse the storyboard
+    // skill's per-shot pick, unlike a base character with no portrait (which
+    // still participates, just without `referenceImageUrl`, per the existing
+    // doc comment on `GenerateStoryboardShotgridParams.characters`).
+    const variantPortraitUrls = await Promise.all(
+      variantRows.map((v: { id: number }) =>
+        verticalDramaCharacterStockService.getPrimaryPortraitUrl(owner, v.id)
+      )
+    );
+    const variantsByParentId = new Map<
+      number,
+      NonNullable<GenerateStoryboardShotgridParams["characters"][number]["variants"]>
+    >();
+    variantRows.forEach((v: VdCharacterRosterRow, i: number) => {
+      const referenceImageUrl = variantPortraitUrls[i];
+      if (!referenceImageUrl) return; // no approved portrait yet — exclude
+      if (v.variantType !== "outfit" && v.variantType !== "age_stage") return; // defensive: malformed/unset row
+      if (!v.variantLabel) return; // defensive: malformed row
+      const variantData = (v.data as Record<string, unknown> | null) ?? null;
+      const description =
+        typeof variantData?.description === "string" && variantData.description.trim().length > 0
+          ? variantData.description
+          : v.variantLabel;
+      const list = variantsByParentId.get(v.parentCharacterId as number) ?? [];
+      list.push({
+        characterKey: v.characterKey,
+        variantLabel: v.variantLabel,
+        variantType: v.variantType,
+        description,
+        referenceImageUrl,
+      });
+      variantsByParentId.set(v.parentCharacterId as number, list);
+    });
+
+    // Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
+    // plan.md W5) — twins are independent base characters (parentCharacterId
+    // == null, already partitioned into `characterRows` above), never
+    // variant rows, that happen to share an identical face with another
+    // base character (`sharesFaceWithCharacterId`). Build a flat,
+    // order-independent list of `{characterKeyA, characterKeyB}` pairs from
+    // the same base-character roster already in scope — dedupe so a pair
+    // that could be discovered from either character's own
+    // `sharesFaceWithCharacterId` pointer (or, defensively, both sides
+    // pointing at each other) is only listed once. `characters[]` sent to
+    // `generateStoryboardShotgrid` is unaffected — this is purely additive,
+    // sibling to `variants` above, so a series with no twins produces an
+    // empty list and a byte-identical prompt to before this field existed.
+    const characterKeyById = new Map<number, string>(
+      characterRows.map((c: VdCharacterRosterRow) => [c.id, c.characterKey])
+    );
+    const twinPairs: NonNullable<GenerateStoryboardShotgridParams["twinPairs"]> = [];
+    const seenTwinPairKeys = new Set<string>();
+    for (const c of characterRows) {
+      if (c.sharesFaceWithCharacterId == null) continue;
+      const otherKey = characterKeyById.get(c.sharesFaceWithCharacterId);
+      if (!otherKey || otherKey === c.characterKey) continue;
+      const pairKey = [c.characterKey, otherKey].sort().join("::");
+      if (seenTwinPairKeys.has(pairKey)) continue;
+      seenTwinPairKeys.add(pairKey);
+      twinPairs.push({ characterKeyA: c.characterKey, characterKeyB: otherKey });
+    }
 
     const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? null;
     // Part B1 (planning/`polished-toasting-gadget.md`) — resolve from the
@@ -2162,9 +2306,17 @@ export class VerticalDramaEpisodePipeline {
       locale: normalizeVerticalDramaSeriesLocale(seriesRow?.locale),
       durationSeconds: episode.targetDurationSeconds ?? 60,
       episodeDraft: episodeDraft ?? undefined,
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W3) — the series' free-text `genre` column, already available on
+      // the full `seriesRow` select above. Passed unconditionally (cheap
+      // additive fact); only RENDERED into the prompt when
+      // `opts.retentionHooksEnabled` is true (see
+      // `verticalDramaStoryboardGeneration.ts`'s `genre` param doc comment).
+      genre: seriesRow?.genre ?? undefined,
       opts: {
         episodeDraftHydrationEnabled: episodeDraft !== null,
         sceneContractsEnabled,
+        retentionHooksEnabled,
       },
       storySource: {
         logline: matchingBreakdown?.logline,
@@ -2190,15 +2342,17 @@ export class VerticalDramaEpisodePipeline {
       sceneBeats: sceneBeats.length > 0 ? sceneBeats : undefined,
       characters: characterRows.map(
         (
-          c: { characterKey: string; name: string; role: string | null },
+          c: { id: number; characterKey: string; name: string; role: string | null },
           i: number
         ) => ({
           characterId: c.characterKey,
           name: c.name,
           role: c.role,
           referenceImageUrl: referenceImageUrls[i],
+          variants: variantsByParentId.get(c.id),
         })
       ),
+      twinPairs: twinPairs.length > 0 ? twinPairs : undefined,
       repairContext: repairInstruction
         ? {
             currentStoryboard: (episode.storyboard as Record<string, unknown> | null) ?? {},
@@ -2546,10 +2700,22 @@ export class VerticalDramaEpisodePipeline {
    * Build the `generateVideoMotionPromptPack` params from the episode's own
    * `storyboard` jsonb column and invoke it. Only called from `runStage` for
    * `video_motion_prompt_pack` when the mode is not dry_run/plan_only.
+   *
+   * `retentionHooksEnabled` (`planning/vertical-drama-retention-hooks/
+   * plan.md` W7, tenant flag `verticalDramaRetentionHooks`, added
+   * 2026-07-11) — same "router resolves the tenant flag, the pipeline stays
+   * flag-agnostic beyond this bag" convention as every other
+   * `RunStageOptions` field; threaded straight through to
+   * `generateVideoMotionPromptPack`'s own `retentionHooksEnabled` param,
+   * which self-derives `is_opening_shot`/`is_retention_ending_shot` from the
+   * `storyboardShots[]` already built below (min/max `shotNumber`) — no
+   * extra shot-count math needed here. Defaults to `false`, so every
+   * existing caller/test is byte-identical.
    */
   private async generateRealMotionPromptPack(
     owner: EpisodeRunOwner,
-    episode: VerticalDramaEpisodeRow
+    episode: VerticalDramaEpisodeRow,
+    retentionHooksEnabled: boolean = false
   ): Promise<{
     pack: VideoMotionPromptPackProjection;
     creditsUsed: number;
@@ -2636,6 +2802,7 @@ export class VerticalDramaEpisodePipeline {
       dialogueLanguage: existingLanguagePlan?.dialogueLanguage,
       thaiAccent: existingLanguagePlan?.thaiAccent,
       episodePlanContext,
+      retentionHooksEnabled,
       storyboardShots: shots.map(s => ({
         shotNumber: Number(s.shotNumber ?? s.shot_number ?? 0),
         description: String(s.description ?? s.visual_description ?? ""),
@@ -2855,7 +3022,8 @@ export class VerticalDramaEpisodePipeline {
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
           opts.tieInReplanFlagOn ?? false,
-          opts.sceneContractsEnabled ?? false
+          opts.sceneContractsEnabled ?? false,
+          opts.retentionHooksEnabled ?? false
         );
         payload = { stage, ...generated.script };
         // Persist to the episode's own `script` jsonb column.
@@ -2958,7 +3126,8 @@ export class VerticalDramaEpisodePipeline {
           episode,
           opts.deepStoryDraftsFlagOn ?? false,
           undefined,
-          opts.sceneContractsEnabled ?? false
+          opts.sceneContractsEnabled ?? false,
+          opts.retentionHooksEnabled ?? false
         );
         payload = { stage, ...generated.storyboard };
         // Persist to the episode's own `storyboard` jsonb column (not
@@ -3123,6 +3292,7 @@ export class VerticalDramaEpisodePipeline {
                 prompt: frame.imagePrompt,
                 userId: owner.userId,
                 tenantId: owner.tenantId,
+                seriesId: owner.seriesId,
                 idempotencyKey: `${owner.episodeId}:start_frame_render_plan:${frame.shotNumber}`,
                 label: `start-frame prompt (shot ${frame.shotNumber})`,
               });
@@ -3224,7 +3394,7 @@ export class VerticalDramaEpisodePipeline {
     // 5) on the REAL `generated.pack` BEFORE it is used for either `payload`
     // or persistence — reuses the exact same deterministic gate
     // (`computeSpeakerSwitchSubShotPlan`) and per-shot generator
-    // (`generateVerticalDramaShotVideoPromptSubShots`) the per-shot
+    // (`generateVerticalDramaShotVideoPromptSpeakerSwitch`) the per-shot
     // `generateShotVideoPrompt` mutation uses (Package 3), operating on the
     // REAL clips' own `dialogue[]` (already populated by
     // `syncDialogueOntoMotionPromptClips` just below) instead of
@@ -3234,7 +3404,8 @@ export class VerticalDramaEpisodePipeline {
       try {
         const generated = await this.generateRealMotionPromptPack(
           owner,
-          episode
+          episode,
+          opts.retentionHooksEnabled ?? false
         );
         // Phase 3.1: sync `dialogueAudioPlan` lines onto `clips[j].dialogue`
         // when the skill's own `.passthrough()` output didn't already carry
@@ -3267,6 +3438,7 @@ export class VerticalDramaEpisodePipeline {
                 prompt: clip.prompt,
                 userId: owner.userId,
                 tenantId: owner.tenantId,
+                seriesId: owner.seriesId,
                 idempotencyKey: `${owner.episodeId}:video_motion_prompt_pack:${clip.clipNumber}`,
                 label: `motion prompt (clip ${clip.clipNumber})`,
               });
@@ -3276,10 +3448,10 @@ export class VerticalDramaEpisodePipeline {
         };
         // Speaker-aware sub-shots (Package 5) — operates on the REAL clips'
         // own `dialogue[]` (populated above), replacing any shot whose
-        // dialogue needs a shot-reverse-shot split with real, speaker-
-        // anchored sub-shot clips. No-op (`generated.pack` unchanged) when
-        // `subShotFlagOn` is false — same fail-closed default as every other
-        // sub-shot gate.
+        // dialogue needs cutting between speakers with ONE real, combined,
+        // timed motion-prompt clip carrying `extraReferenceAssetIds`. No-op
+        // (`generated.pack` unchanged) when `subShotFlagOn` is false — same
+        // fail-closed default as every other sub-shot gate.
         generated.pack = await applySpeakerSwitchSubShotsToRealMotionPromptPack(
           owner,
           episode,
@@ -3760,6 +3932,17 @@ export class VerticalDramaEpisodePipeline {
        * caller is byte-identical to before this field existed.
        */
       sceneContractsEnabled?: boolean;
+      /**
+       * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+       * W1/W3, tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) —
+       * same router-resolves-the-flag convention as `sceneContractsEnabled`
+       * above. Threaded into BOTH `generateRealScript`'s
+       * `plan_episode_script` repair branch (W1) AND
+       * `generateRealStoryboard`'s `storyboard_shotgrid` repair branch (W3)
+       * below. Defaults to false, so every existing caller is byte-identical
+       * to before this field existed.
+       */
+      retentionHooksEnabled?: boolean;
     }
   ): Promise<RunStageOutcome> {
     const episode = await this.loadEpisode(owner);
@@ -3798,7 +3981,10 @@ export class VerticalDramaEpisodePipeline {
             owner,
             episode,
             false,
-            args.instruction
+            args.instruction,
+            false,
+            false,
+            args.retentionHooksEnabled ?? false
           );
           payload = { stage, ...generated.script };
           await db
@@ -3811,7 +3997,8 @@ export class VerticalDramaEpisodePipeline {
             episode,
             false,
             args.instruction,
-            args.sceneContractsEnabled ?? false
+            args.sceneContractsEnabled ?? false,
+            args.retentionHooksEnabled ?? false
           );
           payload = { stage, ...generated.storyboard };
           await db

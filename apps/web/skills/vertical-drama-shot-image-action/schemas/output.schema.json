@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-shot-image-action/output",
+  "title": "Shot Image Action Output",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "prompt", "negative_prompt"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 3500,
+      "description": "The final, fully-composed image-generation prompt — ready to send straight to the image render provider. 3500 characters or fewer (same hard cap as the sibling vertical-drama-shot-start-frame-render skill; a downstream QC pass may still refine/compress it, but a well-written prompt should not rely on that fallback)."
+    },
+    "negative_prompt": {
+      "type": "string",
+      "description": "The final negative prompt. Preserves the shot's existing negative-prompt content and adds any new negative terms this action's instructions require (e.g. anti-burned-in-text terms for multi_angle_grid)."
+    }
+  }
+}

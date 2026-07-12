@@ -1,0 +1,37 @@
+{
+  "skill": "vertical-drama-shot-image-action",
+  "pinned_metadata": {
+    "category": "video_prompt_generation",
+    "execution_mode": "llm-only",
+    "auto_trigger": false,
+    "enabled_by_default": false,
+    "credit_multiplier": 1,
+    "strict_provider_pin": false,
+    "contract_version": 1
+  },
+  "capabilities": [
+    "json_handoff",
+    "bilingual_ui",
+    "single_shot_image_action",
+    "multi_angle_grid",
+    "repair_edit"
+  ],
+  "required_top_level_output_fields": ["contract_version", "prompt", "negative_prompt"],
+  "pinned_literals": {
+    "contract_version": 1
+  },
+  "fixtures": {
+    "pass_input": "fixtures/pass.input.json",
+    "pass_output": "fixtures/pass.output.json",
+    "fail_input": "fixtures/fail.input.json",
+    "fail_output": "fixtures/fail.output.json"
+  },
+  "assertions": [
+    "input.schema.json parses",
+    "output.schema.json parses",
+    "pass.output.json contains all required top-level fields",
+    "pinned literal constraints hold in pass.output.json",
+    "fail.output.json violates at least one declared constraint (missing negative_prompt)",
+    "scripts/verify.sh runs without provider credentials"
+  ]
+}

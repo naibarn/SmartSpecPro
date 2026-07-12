@@ -206,6 +206,33 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
   })),
 }));
 
+// vertical-drama-skill-first-architecture plan, Phase 1 item 1 —
+// `generateStartFrameAngleVariations` now dynamically
+// `import("../services/verticalDramaShotImageAction")` (same
+// "adminProcedure transitive dependency" reasoning as every other dynamic
+// import in this router — see `verticalDramaEpisodes.ts`'s doc comment on
+// this exact pattern). Mocked here so this file never pulls in the real
+// module's `verticalDramaStoryBible.ts` -> `enabledLlmModels.ts` ->
+// `llmProviders.ts` chain, which needs `adminProcedure` (not exported by
+// this file's `../../_core/trpc` mock above). The mock echoes
+// `shot.currentPrompt`/`shot.currentNegativePrompt` back into its return
+// value so this file's reference-image-array assertions (which don't depend
+// on prompt text) are unaffected.
+vi.mock("../../services/verticalDramaShotImageAction", () => ({
+  generateShotImageAction: vi.fn(
+    async (params: {
+      shot: { currentPrompt: string; currentNegativePrompt: string };
+    }) => ({
+      prompt: params.shot.currentPrompt,
+      negativePrompt: params.shot.currentNegativePrompt,
+      creditsUsed: 0,
+      model: "mock-model",
+    })
+  ),
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+}));
+
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
@@ -423,8 +450,8 @@ describe("generateStartFrameAngleVariations — F131Z threading (second call sit
   });
 });
 
-describe("generateStartFrameImage — attached character reference image indexing (Image 1/2 mapping)", () => {
-  it("explicitly maps attached reference image indices (Image 1 = Name) and annotates character names in prompt", async () => {
+describe("generateStartFrameImage — attached character reference image indexing (vertical-drama-skill-first-architecture plan, Phase 3, item 2)", () => {
+  it("submits the stored plan prompt UNCHANGED at softenLevel 0 — no code-side 'Image 1 = Name' annotation or identity-lock bracket is appended anymore (that's now authored by the vertical-drama-shot-start-frame-render skill at planning time, in skill.md)", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({
       verticalDramaSeriesCharacterRefV2: false,
     } as any);
@@ -446,9 +473,16 @@ describe("generateStartFrameImage — attached character reference image indexin
     });
 
     const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.prompt).toContain("Image 1 = ใบข้าว, Image 2 = ฝ้าย");
-    expect(request.prompt).toContain("Attached character reference images:");
-    expect(mockDb.update).toHaveBeenCalled();
+    // The stored plan's `imagePrompt` (`baseEpisodeRow()`'s fixture text) is
+    // submitted byte-identical — production plans already carry the skill's
+    // own identity-lock prose baked in, so there is nothing left for the
+    // router to append.
+    expect(request.prompt).toBe("A moody establishing shot of the two leads.");
+    expect(request.prompt).not.toContain("Image 1 =");
+    expect(request.prompt).not.toContain("Attached character reference images:");
+    // No write-back — the QC'd prompt is identical to the stored prompt, so
+    // `imagePromptQc.prompt !== frame.imagePrompt` is false.
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
 

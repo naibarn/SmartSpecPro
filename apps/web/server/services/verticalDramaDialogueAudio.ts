@@ -48,12 +48,13 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 // Section 05 (spec §7.1/§7.3 dialogue rules v2 + speech profiles, F132D/
 // F132F, added 2026-07-09) — the ONE canonical quality-criteria bundle and
 // the speech-profile schema. Never re-declared here.
@@ -1287,7 +1288,10 @@ export async function generateEpisodeDialogueAudioPlan(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId,
+  );
   const systemPrompt = loadDialogueAudioPlannerSkillSystemPrompt();
   const userPrompt = buildDialogueAudioPlannerUserPrompt(params);
 
