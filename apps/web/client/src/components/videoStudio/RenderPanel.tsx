@@ -98,7 +98,7 @@ export function RenderPanel({
   return (
     <div className="flex flex-col gap-4" data-testid="video-studio-render-panel">
       {compiled?.kind === "single" ? (
-        <RemotionProjectPreview config={compiled.config} className="overflow-hidden rounded-xl border border-border" />
+        <RemotionProjectPreview config={compiled.config} className="overflow-hidden rounded-xl border border-border/60" />
       ) : compiled?.kind === "segmented" ? (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
@@ -106,7 +106,7 @@ export function RenderPanel({
         </Alert>
       ) : null}
 
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base">{pickCopy(lang, videoStudioCopy.renderCostEstimate)}</CardTitle>
         </CardHeader>

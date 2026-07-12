@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -48,6 +49,12 @@ export function MotionCreateDialog({
       <DialogContent data-testid="video-studio-motion-create-dialog">
         <DialogHeader>
           <DialogTitle>{pickCopy(lang, videoStudioCopy.newBlankProject)}</DialogTitle>
+          <DialogDescription>
+            {pickCopy(lang, {
+              th: "เริ่มต้นด้วยเอกสารวิดีโอเปล่า แล้วออกแบบฉากและโมชันได้อย่างอิสระ",
+              en: "Start from a blank video document and design scenes and motion freely.",
+            })}
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-1.5">
           <Label htmlFor="video-studio-motion-name">
@@ -61,6 +68,9 @@ export function MotionCreateDialog({
           />
         </div>
         <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            {pickCopy(lang, videoStudioCopy.cancel)}
+          </Button>
           <Button
             data-testid="video-studio-motion-create-submit"
             disabled={!name.trim() || createProject.isPending}

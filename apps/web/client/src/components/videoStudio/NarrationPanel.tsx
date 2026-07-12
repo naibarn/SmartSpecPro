@@ -42,7 +42,7 @@ export function NarrationPanel({
 
   return (
     <div className="flex flex-col gap-4" data-testid="video-studio-narration-panel">
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base">
             {pickCopy(lang, { th: "สังเคราะห์เสียงบรรยาย", en: "Synthesize narration" })}
@@ -70,7 +70,7 @@ export function NarrationPanel({
         {document.scenes.map((scene) => (
           <div
             key={scene.sceneId}
-            className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm"
+            className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 text-sm"
           >
             <span>{scene.sceneId}</span>
             {scene.narrationAudioAssetId ? (

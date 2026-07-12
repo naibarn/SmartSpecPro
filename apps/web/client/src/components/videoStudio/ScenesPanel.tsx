@@ -87,7 +87,11 @@ export function ScenesPanel({
         onRun={() => runScenePlan.mutate({ projectId })}
       />
       {document.scenes.map((scene, index) => (
-        <Card key={scene.sceneId} data-testid={`video-studio-scene-${scene.sceneId}`}>
+        <Card
+          key={scene.sceneId}
+          className="border-border/60"
+          data-testid={`video-studio-scene-${scene.sceneId}`}
+        >
           <CardHeader className="flex flex-row items-center justify-between gap-2">
             <CardTitle className="text-base">{scene.sceneId}</CardTitle>
             <Button

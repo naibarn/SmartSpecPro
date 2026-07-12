@@ -42,6 +42,7 @@ export const videoStudioCopy = {
   errorTitle: { th: "โหลดรายการโปรเจกต์ไม่สำเร็จ", en: "Failed to load projects" },
   notAvailable: { th: "ฟีเจอร์นี้ยังไม่เปิดใช้งานสำหรับบัญชีของคุณ", en: "This feature is not available for your account." },
   loading: { th: "กำลังโหลด...", en: "Loading..." },
+  cancel: { th: "ยกเลิก", en: "Cancel" },
   save: { th: "บันทึก", en: "Save" },
   saved: { th: "บันทึกแล้ว", en: "Saved" },
   unsavedChanges: { th: "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก", en: "You have unsaved changes" },

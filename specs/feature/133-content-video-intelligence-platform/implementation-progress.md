@@ -382,3 +382,69 @@ both are mandatory security-gate triggers per project policy. Dispatched
 `ssp-security-frontend` (client audit) in parallel; will aggregate via
 `ssp-security-review` next. No Python/FastAPI changes in this feature, so the
 fastapi specialist is not applicable this round.
+
+## Gap-closure pass 5 — visual polish + wiring regression (CLOSED)
+
+**UI polish** (dispatched to `ssp-ui-builder`, reviewed against `MediaStudio.tsx`
+for design-language consistency, per user request "UI ขาดความสวยงาม แก้ไข ให้
+สมบูรณ์ ตรวจสอบจากหน้า Media Studio ออกแบบให้สอดคล้องกัน"): 14 files, all
+cosmetic-only (Tailwind class changes, added `DialogDescription`/`Cancel`
+buttons, icon additions) — independently re-read every diff via `git diff`
+after the agent's report; confirmed zero logic changes, the `VI_*` error-code
+allowlist gating in `NotWiredJobCard.tsx` is untouched. `CatalogCreateDialog.tsx`
+got the deepest pass: widened to `sm:max-w-2xl`, added `DialogDescription`,
+search/results wrapped in a bordered surface matching `CreateSeriesWizard.tsx`'s
+established pattern, selected-product preview upgraded to a tinted
+`border-primary/30` chip, result cards got larger thumbnails + hover/focus
+states + a `role="alert"` error box.
+
+**Real regression found and fixed — NOT part of the UI-polish task itself.**
+The `ssp-ui-builder` agent's own `pnpm check` run surfaced 176 errors (up
+from the 131/131 baseline recorded above) and correctly traced 100% of the
+delta to `videoProjectsRouter` never being imported/registered into
+`apps/web/server/routers.ts`'s `AppRouterShape`/`appRouterInternal` — despite
+an earlier Wave-4 log entry in this file claiming it had been registered.
+Independently verified via `grep -n "videoProjects" server/routers.ts`
+(empty) before touching anything. Root-caused a SECOND, deeper problem in the
+same investigation: `apps/web/drizzle/schema.ts` had **no `pgTable`
+definitions at all** for `video_projects` / `video_project_revisions` /
+`brand_kits` — the tables exist in the live database (applied via the
+hand-authored `manual_video_intelligence_tables.sql`, per the Database Safety
+Protocol, with a full backup taken first), but the Drizzle ORM layer never
+had the TypeScript-side counterpart, so every import in
+`videoProjectRepo.ts` (`videoProjects`, `videoProjectRevisions`, `brandKits`,
+`VideoProjectRow`, etc.) failed to resolve. Fixed both:
+1. `apps/web/server/routers.ts` — added the `videoProjectsRouter` import,
+   `videoProjects: typeof videoProjectsRouter` to `AppRouterShape`, and
+   `videoProjects: videoProjectsRouter` to `appRouterInternal`.
+2. `apps/web/drizzle/schema.ts` — added `brandKits`, `videoProjects`,
+   `videoProjectRevisions` `pgTable(...)` definitions column-for-column
+   matching `manual_video_intelligence_tables.sql` (verified against `psql
+   \d` output on all three tables post-fix — every column name, type, and FK
+   matches exactly), plus the five inferred row/insert types
+   (`VideoProjectRow`, `InsertVideoProjectRow`, `VideoProjectRevisionRow`,
+   `InsertVideoProjectRevisionRow`, `BrandKitRow`, `InsertBrandKitRow`) that
+   `videoProjectRepo.ts` already imported. No new migration needed — this is
+   schema.ts catching up to database state that already existed, not a
+   database change, so the Database Safety Protocol backup/verify steps
+   don't apply here (no data touched).
+
+**Verified, not assumed:** `pnpm check` → back to exactly **131 errors**
+(the documented baseline, re-confirmed byte-for-byte against the earlier
+131/131 log entry — 0 new). Full video-studio + Dashboard test sweep:
+`VideoStudioListPage.test.tsx` + `VideoStudioWorkspacePage.test.tsx` +
+`components/videoStudio/__tests__/*` + `Dashboard.test.tsx` → **7 files, 45
+tests pass**. `psql \d video_projects / brand_kits / video_project_revisions`
+cross-checked column-for-column against the new schema.ts definitions.
+
+**Honesty note carried forward to the user:** this whole pass (UI polish +
+regression fix) was code-reviewed and test-verified only — no live-browser
+visual QA was performed. Four items the polish agent itself flagged as
+"less confident without visual QA" remain open for the user to eyeball:
+the `sm:max-w-2xl` dialog width, icon-size at narrow viewports, `bg-muted/30`
+contrast in light vs. dark mode, and the filter-pill padding (not full 44px
+touch target).
+
+**Files touched this pass:** the 14 UI files listed above, plus
+`apps/web/server/routers.ts` and `apps/web/drizzle/schema.ts` (regression fix,
+not UI polish).

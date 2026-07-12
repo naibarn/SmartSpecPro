@@ -105,7 +105,12 @@ export default function VideoStudioWorkspacePage() {
       ]}
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" asChild aria-label="back">
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            aria-label={pickCopy(lang, { th: "ย้อนกลับ", en: "Back" })}
+          >
             <Link href="/video-studio">
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -148,7 +153,11 @@ export default function VideoStudioWorkspacePage() {
           ) : null}
 
           {hasUnsavedChanges && !conflictBanner ? (
-            <p className="text-xs text-muted-foreground" data-testid="video-studio-unsaved-indicator">
+            <p
+              className="flex items-center gap-1.5 text-xs text-muted-foreground"
+              data-testid="video-studio-unsaved-indicator"
+            >
+              <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
               {pickCopy(lang, videoStudioCopy.unsavedChanges)}
             </p>
           ) : null}

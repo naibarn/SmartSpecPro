@@ -101,7 +101,7 @@ export function QaPanel({
         onRun={() => applyQualityRepairs.mutate({ projectId })}
       />
 
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base">
             {pickCopy(lang, { th: "การอ้างสิทธิ์สินค้า", en: "Product claims" })}
@@ -114,7 +114,7 @@ export function QaPanel({
             </p>
           ) : null}
           {document.claims.map((claim, index) => (
-            <div key={index} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <div key={index} className="flex flex-col gap-2 rounded-lg border border-border/60 p-3">
               <div className="flex items-center justify-between gap-2">
                 <Badge variant={CLAIM_STATUS_BADGE[claim.status]}>{claim.status}</Badge>
                 <Button variant="ghost" size="icon" onClick={() => removeClaim(index)} aria-label="remove claim">
@@ -158,7 +158,7 @@ export function QaPanel({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base">
             {pickCopy(lang, { th: "เกณฑ์คุณภาพ", en: "QA target" })}

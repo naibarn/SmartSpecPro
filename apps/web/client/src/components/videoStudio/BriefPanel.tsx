@@ -64,7 +64,7 @@ export function BriefPanel({
 
   return (
     <div className="flex flex-col gap-4" data-testid="video-studio-brief-panel">
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base">
             {pickCopy(lang, { th: "โจทย์โปรเจกต์", en: "Project brief" })}
@@ -117,7 +117,7 @@ export function BriefPanel({
       </Card>
 
       {document ? (
-        <Card>
+        <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="text-base">
               {pickCopy(lang, { th: "รูปแบบวิดีโอ", en: "Video format" })}
@@ -194,7 +194,7 @@ export function BriefPanel({
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="border-border/60">
           <CardHeader>
             <CardTitle className="text-base">
               {pickCopy(lang, { th: "เริ่มต้นโปรเจกต์", en: "Initialize project" })}

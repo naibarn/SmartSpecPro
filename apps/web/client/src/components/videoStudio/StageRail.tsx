@@ -44,7 +44,7 @@ export function StageRail({
     <nav
       aria-label={pickCopy(lang, { th: "ขั้นตอนโปรเจกต์", en: "Project stages" })}
       data-testid="video-studio-stage-rail"
-      className="flex flex-wrap gap-1.5"
+      className="flex flex-wrap gap-1.5 rounded-lg border border-border/60 bg-muted/30 p-2"
     >
       {VIDEO_STUDIO_STAGES.map((stage) => {
         const isActive = stage === active;
@@ -56,10 +56,10 @@ export function StageRail({
             aria-current={isActive ? "step" : undefined}
             onClick={() => onSelect(stage)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+              "rounded-full border px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
               isActive
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-input bg-background text-muted-foreground hover:bg-accent",
+                ? "border-primary bg-primary text-primary-foreground shadow-xs"
+                : "border-input bg-background text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-accent-foreground",
             )}
           >
             {pickCopy(lang, videoStudioCopy[STAGE_LABEL_KEY[stage]])}

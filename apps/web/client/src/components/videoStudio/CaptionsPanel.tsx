@@ -74,7 +74,7 @@ export function CaptionsPanel({
 
   return (
     <div className="flex flex-col gap-4" data-testid="video-studio-captions-panel">
-      <Card>
+      <Card className="border-border/60">
         <CardHeader>
           <CardTitle className="text-base">
             {pickCopy(lang, { th: "การตั้งค่าคำบรรยาย", en: "Caption settings" })}
@@ -104,7 +104,7 @@ export function CaptionsPanel({
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
             <Label htmlFor="video-studio-caption-burn-in">
               {pickCopy(lang, { th: "เผาคำบรรยายลงวิดีโอ", en: "Burn captions into video" })}
             </Label>

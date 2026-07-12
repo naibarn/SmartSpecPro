@@ -5,7 +5,7 @@
  * Never hides the action button; always shows a clear, specific notice
  * when the job comes back `failed` with a `VI_*_NOT_WIRED` error.
  */
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +37,7 @@ export function NotWiredJobCard({
   onRun: () => void;
 }) {
   return (
-    <Card>
+    <Card className="border-border/60">
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
@@ -60,23 +60,26 @@ export function NotWiredJobCard({
           <div
             role="status"
             data-testid={`${testId}-not-wired-notice`}
-            className="rounded-lg border border-amber-300/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200"
+            className="flex items-start gap-2 rounded-lg border border-amber-300/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200"
           >
-            <p className="font-medium">{pickCopy(lang, videoStudioCopy.notWiredTitle)}</p>
-            <p className="mt-1 text-xs opacity-90">{pickCopy(lang, videoStudioCopy.notWiredBody)}</p>
-            {jobStatus.error ? (
-              <p className="mt-2 break-words font-mono text-xs opacity-75">
-                {/* FE03 (LOW, pre-merge security gate): only render the raw
-                    job error verbatim when it is one of our own greppable
-                    `VI_*` codes (mirrors RenderPanel.tsx's `VI_*` handling
-                    for its own error surface) — any other value (e.g.
-                    arbitrary text a worker/job pipeline reported) falls back
-                    to a generic message instead of being echoed verbatim. */}
-                {jobStatus.error.startsWith("VI_")
-                  ? jobStatus.error
-                  : pickCopy(lang, videoStudioCopy.jobErrorGeneric)}
-              </p>
-            ) : null}
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-medium">{pickCopy(lang, videoStudioCopy.notWiredTitle)}</p>
+              <p className="mt-1 text-xs opacity-90">{pickCopy(lang, videoStudioCopy.notWiredBody)}</p>
+              {jobStatus.error ? (
+                <p className="mt-2 break-words font-mono text-xs opacity-75">
+                  {/* FE03 (LOW, pre-merge security gate): only render the raw
+                      job error verbatim when it is one of our own greppable
+                      `VI_*` codes (mirrors RenderPanel.tsx's `VI_*` handling
+                      for its own error surface) — any other value (e.g.
+                      arbitrary text a worker/job pipeline reported) falls back
+                      to a generic message instead of being echoed verbatim. */}
+                  {jobStatus.error.startsWith("VI_")
+                    ? jobStatus.error
+                    : pickCopy(lang, videoStudioCopy.jobErrorGeneric)}
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : null}
 

@@ -91,7 +91,11 @@ export function MotionPanel({
           (scene.visual.kind === "template" ? JSON.stringify(scene.visual.params ?? {}, null, 2) : "{}");
 
         return (
-          <Card key={scene.sceneId} data-testid={`video-studio-motion-scene-${scene.sceneId}`}>
+          <Card
+            key={scene.sceneId}
+            className="border-border/60"
+            data-testid={`video-studio-motion-scene-${scene.sceneId}`}
+          >
             <CardHeader>
               <CardTitle className="text-base">{scene.sceneId}</CardTitle>
             </CardHeader>

@@ -21078,3 +21078,123 @@ export type VerticalDramaGenrePresetRow =
   typeof verticalDramaGenrePresets.$inferSelect;
 export type InsertVerticalDramaGenrePresetRow =
   typeof verticalDramaGenrePresets.$inferInsert;
+
+/**
+ * Video Intelligence Platform (feature 133, section-05-db-tables-brand-kit)
+ * — mirrors `drizzle/manual_video_intelligence_tables.sql` exactly (that
+ * migration was hand-authored and applied directly via psql because
+ * `drizzle-kit generate` is blocked by the pre-existing meta-journal
+ * collision documented there; these `pgTable` definitions were the missing
+ * ORM-side counterpart — the tables already exist in the database).
+ * `brand_kits` is declared first so `video_projects.brandKitId` can
+ * reference it.
+ */
+export const brandKits = pgTable(
+  "brand_kits",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 200 }).notNull(),
+    logoAssetId: bigint("logoAssetId", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" },
+    ),
+    colors: jsonb("colors").$type<Record<string, unknown>>(),
+    fonts: jsonb("fonts").$type<Record<string, unknown>>(),
+    captionPresetId: varchar("captionPresetId", { length: 64 }),
+    locks: jsonb("locks").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [index("brand_kits_tenant_user_idx").on(t.tenantId, t.userId)],
+);
+
+export type BrandKitRow = typeof brandKits.$inferSelect;
+export type InsertBrandKitRow = typeof brandKits.$inferInsert;
+
+export const videoProjects = pgTable(
+  "video_projects",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    studioType: varchar("studioType", { length: 20 }).notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("brief"),
+    automationMode: varchar("automationMode", { length: 10 })
+      .notNull()
+      .default("guided"),
+    brief: jsonb("brief").$type<Record<string, unknown>>(),
+    document: jsonb("document").$type<Record<string, unknown>>(),
+    revision: integer("revision").notNull().default(1),
+    brandKitId: bigint("brandKitId", { mode: "number" }).references(
+      () => brandKits.id,
+      { onDelete: "set null" },
+    ),
+    sourceRefs: jsonb("sourceRefs").$type<Record<string, unknown>>(),
+    qaLedger: jsonb("qaLedger").$type<Record<string, unknown>>(),
+    renderJobId: varchar("renderJobId", { length: 36 }),
+    previewJobId: varchar("previewJobId", { length: 36 }),
+    resultLibraryItemId: integer("resultLibraryItemId").references(
+      () => libraryItems.id,
+      { onDelete: "set null" },
+    ),
+    videoEditorProjectId: integer("videoEditorProjectId"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("video_projects_tenant_user_status_idx").on(
+      t.tenantId,
+      t.userId,
+      t.status,
+    ),
+    index("video_projects_tenant_studio_idx").on(t.tenantId, t.studioType),
+  ],
+);
+
+export type VideoProjectRow = typeof videoProjects.$inferSelect;
+export type InsertVideoProjectRow = typeof videoProjects.$inferInsert;
+
+export const videoProjectRevisions = pgTable(
+  "video_project_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: bigint("projectId", { mode: "number" })
+      .notNull()
+      .references(() => videoProjects.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    document: jsonb("document").$type<Record<string, unknown>>().notNull(),
+    createdBy: integer("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reason: varchar("reason", { length: 200 }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("video_project_revisions_project_revision_unique").on(
+      t.projectId,
+      t.revision,
+    ),
+  ],
+);
+
+export type VideoProjectRevisionRow =
+  typeof videoProjectRevisions.$inferSelect;
+export type InsertVideoProjectRevisionRow =
+  typeof videoProjectRevisions.$inferInsert;
