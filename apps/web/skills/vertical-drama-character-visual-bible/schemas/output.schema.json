@@ -83,6 +83,14 @@
           "turnaround_prompt": {
             "type": "string"
           },
+          "sheet_prompt": {
+            "type": "string",
+            "description": "Optional — only authored when the input carried a requested_sheet_type other than 'auto'/'turnaround' (see skill.md's 'Character Design Bible sheet types' section). Additive to, never a replacement for, the 5 always-required prompt fields above."
+          },
+          "sheet_type": {
+            "type": "string",
+            "description": "Optional — echoes the input's requested_sheet_type back verbatim whenever sheet_prompt is authored."
+          },
           "negative_prompt": {
             "type": "string"
           },

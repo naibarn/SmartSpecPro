@@ -1,0 +1,15 @@
+{
+  "contract_version": 1,
+  "character_plans": [
+    {
+      "character_key": "character-1",
+      "variants": [
+        {
+          "variant_label": "ชุดไปเที่ยว",
+          "variant_type": "outfit",
+          "description": "invented — the story never actually describes a second outfit, this is a made-up variant that should never have been proposed"
+        }
+      ]
+    }
+  ]
+}

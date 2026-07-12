@@ -144,51 +144,38 @@ export function findMissingCharacterIdentityWarnings(
   return warnings;
 }
 
+const IDENTITY_LOCK_BRACKET_MARKER = "[Attached character reference images:";
+const IDENTITY_LOCK_GENERIC_MARKER =
+  "Use the attached reference image as this character's exact identity —";
+
 /**
- * Formats an image prompt to explicitly map attached reference image numbers
- * (Image 1 = Name, Image 2 = Name) and annotate character names in the prompt text
- * so diffusion models correctly bind attached images to character identities.
+ * Strips a previously-appended identity-lock suffix (the bracketed
+ * multi-character mapping block, or the generic single-character fallback
+ * sentence) from the end of a prompt.
+ *
+ * Historically this made `formatIdentityLockedImagePrompt` (removed
+ * 2026-07-11, vertical-drama-skill-first-architecture plan Phase 3, item 2 —
+ * both the canonical copy here and the router's drifted duplicate) idempotent
+ * — that function is gone now (the `vertical-drama-shot-start-frame-render`
+ * skill authors the identity-lock text itself, in its own prose, at planning
+ * time), but this stripper is KEPT as a standalone back-compat safety net:
+ * episodes whose `startFramePlan.frames[].imagePrompt` was persisted BEFORE
+ * this migration may still carry an old bracket-style suffix on disk, and
+ * every render-time call site that reads a stored prompt
+ * (`generateStartFrameImage`, `generateStartFrameAngleVariations`,
+ * `repairShotImage`) still strips it defensively so a stale suffix is never
+ * echoed back as if it were story content. Observed live (2026-07-10, series
+ * 6 episode 2 shot 2): the SAME shot's start-frame prompt accumulated FOUR
+ * stacked copies of this block across repeated image-render/retry clicks
+ * (each one persisted back to storage as the new base for the next),
+ * ballooning the prompt toward its length cap and degrading face fidelity.
+ * Strips from the FIRST marker occurrence onward, so it removes any number of
+ * stacked copies in one pass.
  */
-export function formatIdentityLockedImagePrompt(
-  basePrompt: string,
-  entries: readonly { name?: string | null }[]
-): string {
-  if (entries.length === 0) return basePrompt;
-
-  const uniqueCharacters: Array<{ name: string; imageIndex: number }> = [];
-  const seenNames = new Set<string>();
-  entries.forEach((e, idx) => {
-    const trimmedName = (e.name || "").trim();
-    if (trimmedName && !seenNames.has(trimmedName)) {
-      seenNames.add(trimmedName);
-      uniqueCharacters.push({ name: trimmedName, imageIndex: idx + 1 });
-    }
-  });
-
-  if (uniqueCharacters.length === 0) {
-    return `${basePrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`;
-  }
-
-  let annotatedPrompt = basePrompt;
-  const sortedChars = [...uniqueCharacters].sort(
-    (a, b) => b.name.length - a.name.length
-  );
-
-  for (const charInfo of sortedChars) {
-    const escapedName = charInfo.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(
-      `(${escapedName})(?!\\s*\\((?:see\\s+)?(?:attached\\s+)?Image\\s+\\d+)`,
-      "g"
-    );
-    annotatedPrompt = annotatedPrompt.replace(
-      regex,
-      `$1 (see attached Image ${charInfo.imageIndex})`
-    );
-  }
-
-  const mappingSummary = uniqueCharacters
-    .map(c => `Image ${c.imageIndex} = ${c.name}`)
-    .join(", ");
-
-  return `${annotatedPrompt} [Attached character reference images: ${mappingSummary}. Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.) — match face shape, skin tone, hairstyle, and distinguishing features precisely from the corresponding attached image; do not alter identity.]`;
+export function stripExistingIdentityLockSuffix(prompt: string): string {
+  const bracketIdx = prompt.indexOf(IDENTITY_LOCK_BRACKET_MARKER);
+  const genericIdx = prompt.indexOf(IDENTITY_LOCK_GENERIC_MARKER);
+  const candidates = [bracketIdx, genericIdx].filter((i) => i !== -1);
+  if (candidates.length === 0) return prompt;
+  return prompt.slice(0, Math.min(...candidates)).trimEnd();
 }

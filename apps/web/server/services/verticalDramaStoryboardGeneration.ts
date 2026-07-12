@@ -35,7 +35,6 @@ import {
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -62,6 +61,7 @@ import {
   // `verticalDramaStoryBible.ts`) for whoever next revisits that file.
   type VdSceneContract,
 } from "./verticalDramaStoryBible";
+import { resolveStoryboardModel } from "./verticalDramaImproveScript";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 
 // Re-exported so callers only need to import from this one module.
@@ -92,6 +92,8 @@ const SKILL_FOLDER_PATH = path.join(
 );
 
 let cachedSystemPrompt: string | null = null;
+let cachedSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 /**
  * Read the `vertical-drama-storyboard-shotgrid` skill's markdown body
@@ -101,7 +103,10 @@ let cachedSystemPrompt: string | null = null;
  * `./skillFiles`), so it works regardless of the process's cwd.
  */
 function loadSkillSystemPrompt(): string {
-  if (cachedSystemPrompt) return cachedSystemPrompt;
+  const now = Date.now();
+  if (cachedSystemPrompt && now - cachedSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS) {
+    return cachedSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -110,6 +115,7 @@ function loadSkillSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedSystemPrompt = content;
+        cachedSystemPromptTime = now;
         return cachedSystemPrompt;
       }
     }
@@ -197,6 +203,20 @@ const storyboardShotSchema = z
     body_language: storyboardActingDirectionSchema.optional(),
     gaze_direction: storyboardActingDirectionSchema.optional(),
     /**
+     * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W3,
+     * added 2026-07-11) — per-shot declaration of which dimension(s) changed
+     * vs. the PREVIOUS shot (shot 1 is `["visual","emotional","informational"]`
+     * by definition — see skill.md's "Change cadence" section). Optional so
+     * a shot generated before this rule existed, or a flag-off/legacy
+     * response, still validates unchanged. This is a declared FACT the LLM
+     * reports honestly, never something this schema/service computes or
+     * enforces (skill-first — no hard-gate on cadence in this file; the
+     * review LLM, a later round, is the enforcement point).
+     */
+    change_type: z
+      .array(z.enum(["visual", "emotional", "informational", "none"]))
+      .optional(),
+    /**
      * Feature 132 §6.1 (F132C, scene contracts) — see
      * `storyboardContractSchema`'s own doc comment. Absent on every shot
      * from a flag-off/legacy response, or a shot generated before this
@@ -214,7 +234,18 @@ export const storyboardShotgridOutputSchema = z
     shot_grid_plan: z.object({}).passthrough(),
     shots: z.array(storyboardShotSchema).length(9),
     plain_text_storyboard: z.string().min(1),
-    storyboard_handoff_json: z.object({}).passthrough(),
+    // Optional at the schema level: `generateStoryboardShotgrid` below
+    // deterministically constructs this field's required inner shape
+    // (`schema_version` / `handoff_type` / `grid_layout` / `shots`) from the
+    // already-validated `shots` array unconditionally, regardless of
+    // whether the LLM emitted it — see that block's doc comment. This is
+    // NOT a relaxation of the skill's own documented contract (skill.md /
+    // output.schema.json still list it as required); it just removes the
+    // runtime's dependency on the model re-emitting data it already
+    // produced, which was observed live to be omitted even when nowhere
+    // near the token ceiling (not a truncation issue — see traceId
+    // `L2fd3oiEUm_j5RsmaVXYZ`).
+    storyboard_handoff_json: z.object({}).passthrough().optional(),
   })
   .passthrough();
 
@@ -284,6 +315,58 @@ export interface GenerateStoryboardShotgridParams {
     name: string;
     role: string | null;
     referenceImageUrl?: string | null;
+    /**
+     * Character variants (planning/vertical-drama-character-variants/plan.md
+     * Phase D) — this BASE character's available outfit/age-stage "looks"
+     * (Phase A/B variant rows: same person, different `characterKey`, own
+     * approved portrait), supplied as input FACTS only. Code never decides
+     * which variant fits which shot — `skill.md`'s "Character variant
+     * selection" section teaches the LLM to read each shot's own scene
+     * content and pick whichever variant's `description` actually matches,
+     * emitting that variant's OWN `characterKey` in that shot's
+     * `characters`/`required_character_refs` instead of this base
+     * character's. Empty/absent for the vast majority of characters today
+     * (no variant rows yet) — `buildUserPrompt` renders nothing new for
+     * those, so their prompt stays byte-identical to before this field
+     * existed. Only variants with an already-resolved `referenceImageUrl`
+     * are ever included here (a variant with no approved portrait yet is
+     * excluded upstream — see `verticalDramaEpisodePipeline.ts`'s
+     * `generateRealStoryboard`).
+     */
+    variants?: Array<{
+      characterKey: string;
+      variantLabel: string;
+      variantType: "outfit" | "age_stage";
+      description: string;
+      referenceImageUrl: string;
+    }>;
+  }>;
+  /**
+   * Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
+   * plan.md W5) — sibling to `characters[].variants` above, but a DIFFERENT
+   * relationship: a twin is not an outfit/age-stage "look" of one
+   * character, it is a separate, independently-generated character row
+   * (its own `characterKey`, its own portrait) that happens to share an
+   * identical face with another character row
+   * (`sharesFaceWithCharacterId` in `vertical_drama_characters`). Supplied
+   * as input FACTS only, mirroring the `vertical-drama-character-visual-bible`
+   * skill's "Face reference locking" twin case's `lock_strength: "hard"` +
+   * mandatory distinct-styling requirement for a twin's own solo portrait —
+   * this field carries the same relationship down to the storyboard/shot
+   * level, where `skill.md`'s "Twin-aware shot styling" section teaches the
+   * LLM to check each shot's own `characters` selection against these pairs
+   * and, when a shot puts both twins on screen together, explicitly write
+   * that shot's styling (hair, outfit, accessories — never face) as
+   * clearly, visibly distinct between the two. A flat, order-independent
+   * list — each pair appears once regardless of which character's row the
+   * `sharesFaceWithCharacterId` pointer originates from. Optional/empty for
+   * the vast majority of series (no twins registered yet) — `buildUserPrompt`
+   * renders nothing new for those, so their prompt stays byte-identical to
+   * before this field existed.
+   */
+  twinPairs?: Array<{
+    characterKeyA: string;
+    characterKeyB: string;
   }>;
   /**
    * Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
@@ -301,6 +384,25 @@ export interface GenerateStoryboardShotgridParams {
     shots: VdDeepDraftShotDraft[];
     cliffhanger_line?: string;
   };
+  /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W3,
+   * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — the
+   * series' own free-text `genre` fact (`verticalDramaSeries.genre`), the
+   * SAME field `verticalDramaScriptGeneration.ts`'s
+   * `GenerateEpisodeScriptParams.genre` already accepts (see that file's doc
+   * comment for the full rationale — this is the identical decoupled
+   * payload-vs-flag convention, not a second design). Passed through
+   * unconditionally by `generateRealStoryboard` (`seriesRow?.genre` is
+   * already loaded there via the full-row `select()`), but only RENDERED
+   * into the prompt (as the `genre` key) when `opts.retentionHooksEnabled`
+   * is true — every existing caller omits/leaves this undefined, and every
+   * caller with the flag off gets a byte-identical prompt regardless of
+   * this value. Lets shot styling/lighting lean into the genre's tone where
+   * natural; the heavy genre-conditional retention-loop logic lives
+   * entirely in `vertical-drama-script-builder`'s skill.md, not here
+   * (skill-first — no genre-mapping logic in this file).
+   */
+  genre?: string | null;
   /**
    * Repair-mode override — see `GenerateEpisodeScriptParams.repairContext`'s
    * doc comment (`verticalDramaScriptGeneration.ts`) for the shared
@@ -340,6 +442,18 @@ export interface GenerateStoryboardShotgridParams {
      * byte-identical prompt to before this flag existed.
      */
     sceneContractsEnabled?: boolean;
+    /**
+     * Feature flag `verticalDramaRetentionHooks`
+     * (`planning/vertical-drama-retention-hooks/plan.md` W3, added
+     * 2026-07-11) — renders the `genre` fact (see `genre` above) into the
+     * prompt. All of the actual RULE TEXT for shot-1 hook realization and
+     * change cadence lives in skill.md's own "Shot 1 hook realization"/
+     * "Change cadence" sections — this flag only gates which structured
+     * facts are sent, per the skill-first architecture (no creative rule
+     * text is duplicated here). Omitted/false preserves today's
+     * byte-identical prompt.
+     */
+    retentionHooksEnabled?: boolean;
   };
 }
 
@@ -357,14 +471,53 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
           const refNote = c.referenceImageUrl
             ? " [has an approved reference image — identity lock applies]"
             : "";
-          return `- ${c.characterId}: ${c.name}${c.role ? ` (${c.role})` : ""}${refNote}`;
+          const baseLine = `- ${c.characterId}: ${c.name}${c.role ? ` (${c.role})` : ""}${refNote}`;
+          // Character variants (planning/vertical-drama-character-variants/
+          // plan.md Phase D) — additive; only rendered when this character
+          // has `variants`, so a character with none (the vast majority
+          // today) produces the exact same line as before this field
+          // existed. See skill.md "Character variant selection" for the
+          // per-shot pick instruction these lines feed.
+          if (!c.variants?.length) return baseLine;
+          const variantLines = c.variants
+            .map(v => {
+              const typeLabel = v.variantType === "age_stage" ? "age-stage" : "outfit";
+              return `  - ${v.characterKey} (${v.variantLabel}, ${typeLabel} variant of ${c.characterId}): ${v.description} [has an approved reference image]`;
+            })
+            .join("\n");
+          return `${baseLine}\n  Variants available for ${c.characterId} — see "Character variant selection" below:\n${variantLines}`;
         })
         .join("\n")
     : "(no characters registered yet — invent minimal placeholder character ids consistent with the story context)";
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W3,
+  // tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — additive;
+  // only rendered when `opts.retentionHooksEnabled` is true, so the flag-off
+  // prompt is byte-identical to before this change. `genre` is a free-text
+  // fact only — see skill.md's "Shot 1 hook realization"/"Change cadence"
+  // sections for the actual rule text (skill-first: no genre-mapping logic
+  // in this file).
+  const retentionHooksEnabled = params.opts?.retentionHooksEnabled === true;
+  const genreSection =
+    retentionHooksEnabled && params.genre ? `genre: ${params.genre}` : null;
+
   const identityLockInstruction = charactersWithRef.length
     ? `Identity lock: ${charactersWithRef.map(c => c.characterId).join(", ")} ${
         charactersWithRef.length === 1 ? "has" : "have"
       } an approved reference image attached below. List them in "required_character_refs" for every shot they appear in, and write each "image_prompt" so a downstream image model can keep face, hair, and wardrobe consistent with that reference — do not invent a different appearance for these characters.\n${VD_CHARACTER_LOCK_INSTRUCTION}`
+    : null;
+
+  // Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
+  // plan.md W5) — additive; only rendered when `twinPairs` is non-empty, so
+  // a series with no registered twins produces the exact same prompt as
+  // before this field existed. See skill.md "Twin-aware shot styling" for
+  // the per-shot instruction these lines feed.
+  const twinPairLines = params.twinPairs?.length
+    ? params.twinPairs
+        .map(p => `- ${p.characterKeyA} and ${p.characterKeyB} are twins — they share an identical face but are different people.`)
+        .join("\n")
+    : null;
+  const twinPairInstruction = twinPairLines
+    ? `Twin pairs (see "Twin-aware shot styling" below):\n${twinPairLines}`
     : null;
 
   const sceneBeatLines = params.sceneBeats?.length
@@ -437,6 +590,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     `Episode number: ${params.episodeNumber}`,
     `Episode duration: ${params.durationSeconds} seconds`,
     langInstruction,
+    genreSection,
     storySource.workingTitle ? `Working title: ${storySource.workingTitle}` : null,
     storySource.logline ? `Logline: ${storySource.logline}` : null,
     storySource.mainPlot ? `Main plot: ${storySource.mainPlot}` : null,
@@ -448,6 +602,7 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     storySource.cliffhanger ? `Cliffhanger: ${storySource.cliffhanger}` : null,
     sceneBeatInstruction,
     `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
+    twinPairInstruction,
     `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
     episodeDraftSection,
     sceneContractSection,
@@ -492,7 +647,7 @@ export async function generateStoryboardShotgrid(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveStoryboardModel(params.seriesId);
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 
@@ -533,7 +688,18 @@ export async function generateStoryboardShotgrid(
   // any real character whose actual name is mentioned directly in the
   // shot's Thai/English narrative text, which the model reliably writes
   // even when it gets the id field wrong.
-  const validCharacterIds = new Set(params.characters.map(c => c.characterId));
+  // Character variants (Phase D) — a variant's own `characterKey` (never the
+  // base character's) is a legitimate id the LLM may emit per
+  // `buildUserPrompt`'s "Character variant selection" instruction, so it
+  // must survive this real-id filter the same as any base `characterId`.
+  // No-op (empty flatMap contribution) for every character with no
+  // `variants`, so this stays byte-identical to before this field existed.
+  const validCharacterIds = new Set(
+    params.characters.flatMap(c => [
+      c.characterId,
+      ...(c.variants?.map(v => v.characterKey) ?? []),
+    ])
+  );
   for (const shot of storyboardData.shots) {
     const shotRecord = shot as unknown as Record<string, unknown>;
     const narrativeText = [
@@ -545,16 +711,65 @@ export async function generateStoryboardShotgrid(
     ]
       .filter((v): v is string => typeof v === "string" && v.length > 0)
       .join(" ");
-    const nameMatches = params.characters
-      .filter(c => narrativeText.includes(c.name))
-      .map(c => c.characterId);
     const validLlmIds = [...shot.characters, ...shot.required_character_refs].filter(
       id => validCharacterIds.has(id),
     );
+    // Character variants (Phase D) — a base character and its variants share
+    // the SAME `name` (same person, different look), so the name-match
+    // fallback below can no longer assume "name mentioned -> add the base
+    // id" is safe: when the LLM already deliberately picked ONE specific
+    // family member (base OR a variant — evidenced by it appearing in the
+    // LLM's own `validLlmIds`), force-adding the base id too would attach a
+    // SECOND, contradictory reference image (e.g. both the sleepwear base
+    // portrait and the school-uniform variant portrait) for what is meant to
+    // be a single person in a single look for this shot. Only fall back to
+    // the base id via name-match when NO family member is already present —
+    // for a character with no variants, its "family" is just itself, so this
+    // reduces to the exact original check and stays byte-identical.
+    const nameMatches = params.characters
+      .filter(c => narrativeText.includes(c.name))
+      .filter(c => {
+        const familyIds = [c.characterId, ...(c.variants?.map(v => v.characterKey) ?? [])];
+        return !familyIds.some(id => validLlmIds.includes(id));
+      })
+      .map(c => c.characterId);
     const resolvedIds = Array.from(new Set([...nameMatches, ...validLlmIds]));
     shot.characters = resolvedIds;
     shot.required_character_refs = resolvedIds;
   }
+
+  // `storyboard_handoff_json` deterministic reconstruction (root-cause fix,
+  // 2026-07-10 — traceId `L2fd3oiEUm_j5RsmaVXYZ`): the LLM was observed to
+  // consistently OMIT this field even well under the token ceiling (not a
+  // truncation issue — outputTokens were ~6500 against a 32000 ceiling on
+  // retry). Its documented required inner shape is entirely derivable from
+  // data the model already produced in the top-level `shots` array
+  // (`schema_version` / `handoff_type` / `grid_layout` are constants, and
+  // its own `shots` sub-array is just `{shot_number, image_prompt}` pairs —
+  // see the skill's `output.schema.json`), so rather than depending on the
+  // model to redundantly re-emit it, always construct it here from ground
+  // truth. This mirrors the existing `character_attachment_manifest`
+  // precedent below (never trust the model's own guess for data the code
+  // can derive authoritatively) and runs unconditionally — unlike the
+  // manifest, the base handoff fields must exist even when no character has
+  // a reference image.
+  const existingHandoff = (storyboardData.storyboard_handoff_json ??
+    {}) as Record<string, unknown>;
+  storyboardData.storyboard_handoff_json = {
+    ...existingHandoff,
+    schema_version: "1.0",
+    handoff_type: "storyboard_shot_prompts",
+    grid_layout: "3x3",
+    shots: storyboardData.shots.map(s => ({
+      shot_number: s.shot_number,
+      image_prompt: s.image_prompt,
+    })),
+    rendering_notes:
+      typeof existingHandoff.rendering_notes === "string" &&
+      existingHandoff.rendering_notes.length > 0
+        ? existingHandoff.rendering_notes
+        : "Handoff shot list re-derived server-side from the validated storyboard shots.",
+  };
 
   // Identity-lock plumbing (upstream parity — see the `referenceImageUrl` doc
   // comment on `GenerateStoryboardShotgridParams` above): the LLM has no way
@@ -567,10 +782,8 @@ export async function generateStoryboardShotgrid(
       Boolean(c.referenceImageUrl)
   );
   if (charactersWithRef.length > 0) {
-    const existingHandoff = (storyboardData.storyboard_handoff_json ??
-      {}) as Record<string, unknown>;
     storyboardData.storyboard_handoff_json = {
-      ...existingHandoff,
+      ...(storyboardData.storyboard_handoff_json as Record<string, unknown>),
       character_attachment_manifest: charactersWithRef.map(c => ({
         character_id: c.characterId,
         name: c.name,

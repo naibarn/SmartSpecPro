@@ -32,6 +32,9 @@ vi.mock("../../middleware/requireFeatureFlag", () => ({
 vi.mock("../../services/mediaGenerationService", () => ({
   mediaGenerationService: { generateImageAsync: vi.fn(), generateVideoAsync: vi.fn() },
   DEFAULT_MODELS: { image: "google-nano-banana-pro", video: "veo3/generate-veo-3-video-lite" },
+  resolveReferenceUrl: vi.fn((url: string, publicUrl?: string | null) =>
+    url.startsWith("http") ? url : `${publicUrl ?? ""}${url}`
+  ),
 }));
 
 vi.mock("../../services/pricingCalculator", () => ({
@@ -145,6 +148,7 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 }));
 
 import { resolveShotDialogueLines } from "../verticalDramaEpisodes";
+import type { VdDeepDraftShotDraft } from "../../services/verticalDramaStoryBible";
 
 describe("resolveShotDialogueLines", () => {
   it("prefers already-synced clip dialogue over every other source", () => {
@@ -494,5 +498,137 @@ describe("resolveShotDialogueLines — source 3a beat-index mapping", () => {
     });
 
     expect(result).toEqual([{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }]);
+  });
+});
+
+/**
+ * Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`,
+ * added 2026-07-11) — source 0: the deep-drafted shot's canonical dialogue
+ * (`bible.breakdownVersions[active].items[episode].shotDrafts[shot]`, the
+ * Overview page's user-editable source of truth). Tried BEFORE every other
+ * source, including the previously most-authoritative source 1
+ * (`matchingClip.dialogue`) — this is the actual fix for the recurring
+ * "wrong dialogue in the video prompt" bug (a stale/wrong persisted
+ * `matchingClip.dialogue` value was winning over what a human had since
+ * edited/confirmed at the Overview page).
+ */
+describe("resolveShotDialogueLines — source 0: deep-drafted canonical dialogue", () => {
+  it("wins over source 1 (matchingClip.dialogue) even when the clip carries a different, stale/wrong value (regression test for the actual bug this fix addresses)", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: {
+        clipNumber: 1,
+        dialogue: [{ lineTh: "ค่าที่ค้างผิดจากรอบก่อนหน้า", characterKey: "หนูนา" }],
+      },
+      dialogueAudioPlan: null,
+      script: null,
+      storyboardShotCount: 9,
+      deepDraftShot: {
+        shot_number: 1,
+        summary: "shot summary",
+        dialogue_lines: [{ speaker: "หนูนา", line: "TESTMARK123" }],
+      } as VdDeepDraftShotDraft,
+    });
+
+    expect(result).toEqual([{ characterKey: "หนูนา", lineTh: "TESTMARK123" }]);
+  });
+
+  it("maps speaker/line/delivery fields correctly (delivery folded into tone, same convention as source 3a)", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: undefined,
+      dialogueAudioPlan: null,
+      script: null,
+      storyboardShotCount: 9,
+      deepDraftShot: {
+        shot_number: 1,
+        summary: "shot summary",
+        dialogue_lines: [
+          { speaker: "ยายทวดจัน", line: "อย่าไปไหนนะยาย", delivery: "urgent whisper" },
+          { speaker: "หนูนา", line: "ค่ะยาย" },
+        ],
+      } as VdDeepDraftShotDraft,
+    });
+
+    expect(result).toEqual([
+      {
+        characterKey: "ยายทวดจัน",
+        lineTh: "อย่าไปไหนนะยาย",
+        delivery: { tone: "urgent whisper" },
+      },
+      { characterKey: "หนูนา", lineTh: "ค่ะยาย" },
+    ]);
+  });
+
+  it("returns [] for an explicit silence_intent shot, even when a lower-fidelity fallback source has real dialogue", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: {
+        clipNumber: 1,
+        dialogue: [{ lineTh: "ค่าเก่าบนคลิป", characterKey: "หนูนา" }],
+      },
+      dialogueAudioPlan: {
+        dialogue_lines: [{ shot_number: 1, dialogue_line: "จาก dialogueAudioPlan" }],
+      },
+      script: {
+        scene_dialogue_summary: [{ scene: 1, dialogue_lines: ["หนูนา: \"จากสคริปต์\""] }],
+      },
+      storyboardShotCount: 9,
+      deepDraftShot: {
+        shot_number: 1,
+        summary: "a wordless establishing shot",
+        dialogue_lines: [],
+        silence_intent: "establishing",
+      } as VdDeepDraftShotDraft,
+    });
+
+    expect(result).toEqual([]);
+  });
+
+  it("falls through to the pre-existing chain when the deep-draft entry has neither dialogue_lines nor silence_intent yet (in-progress draft)", () => {
+    const result = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: {
+        clipNumber: 1,
+        dialogue: [{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }],
+      },
+      dialogueAudioPlan: null,
+      script: null,
+      storyboardShotCount: 9,
+      deepDraftShot: {
+        shot_number: 1,
+        summary: "not drafted yet",
+        dialogue_lines: [],
+      } as VdDeepDraftShotDraft,
+    });
+
+    expect(result).toEqual([{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }]);
+  });
+
+  it("is byte-identical to the pre-existing behavior when deepDraftShot is omitted (undefined) — backward compatibility for callers that haven't adopted the new param", () => {
+    const withoutParam = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: {
+        clipNumber: 1,
+        dialogue: [{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }],
+      },
+      dialogueAudioPlan: null,
+      script: null,
+      storyboardShotCount: 9,
+    });
+    const withNullParam = resolveShotDialogueLines({
+      shotNumber: 1,
+      matchingClip: {
+        clipNumber: 1,
+        dialogue: [{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }],
+      },
+      dialogueAudioPlan: null,
+      script: null,
+      storyboardShotCount: 9,
+      deepDraftShot: null,
+    });
+
+    expect(withoutParam).toEqual([{ lineTh: "จากคลิปที่ซิงค์แล้ว", characterKey: "หนูนา" }]);
+    expect(withNullParam).toEqual(withoutParam);
   });
 });

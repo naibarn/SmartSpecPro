@@ -86,6 +86,275 @@ these into concrete, varied visual direction per shot:
    describe this per-beat variation policy, not lock the whole episode to one
    dark palette.
 
+## Shot 1 hook realization — MANDATORY WHEN retention hooks enabled
+
+The input script (from `vertical-drama-script-builder`) carries its own `hook`
+— the strong visual or verbal hook the episode must land within its first
+seconds (see that skill's "Hook lands within the first 3 seconds" rule).
+Writing a strong `hook` in the script and then opening the STORYBOARD with an
+establishing shot, a character-introduction shot, or a slow scene-setting
+pan wastes it — the viewer never actually SEES/HEARS the hook happen, they
+just see a place or a face before anything interesting occurs. Shot 1 is
+the very first thing a viewer sees; it must realize the hook as something
+visibly, concretely happening in-frame, not merely gesture toward it.
+
+1. **Shot 1 must depict an event, not a setup.** Read whatever the input
+   gives you as the opening beat/scene (the episode's own scene list, first
+   key beat, or logline) and write shot 1 so the hook's actual moment is
+   ON SCREEN — someone doing the surprising thing, reacting to the
+   surprising thing, or saying the surprising line — never a wide
+   establishing view of a location with nobody doing anything yet, and
+   never a character simply standing/arriving/being introduced by name.
+2. **A verbal hook must be heard in shot 1.** If the hook is a line of
+   dialogue or the delivery of information, shot 1's `dialogue_excerpt`/
+   `subtitle_text` must carry that line (or the reaction that makes it land
+   — a stunned expression right as the line hits), paired with
+   `facial_expression`/`body_language` intense enough to sell it. Do not
+   defer the line to shot 2 or 3 "to build up to it" — deferral is exactly
+   the establishing-shot failure this rule exists to prevent.
+3. **Result-before-cause at the shot level.** When the opening beat has an
+   obvious cause and effect (e.g. a message arrives, then the character
+   reacts), lead with the VISIBLE result/reaction/problem in shot 1 —
+   the phone already lit up, the paper already in her hand, the door
+   already slamming — and let any explanation of how it got there surface
+   in a later shot or stay an open loop. Do not spend shot 1 on the calm
+   "before" moment with nothing yet wrong.
+4. **Never open on backstory or character introduction.** No shot 1 that
+   is purely "here is our character in her office" or "meet Aria" with no
+   event happening — a character may certainly be IN shot 1, but only
+   while something is actively happening to or because of them.
+
+### Worked example
+
+- Bad (establishing/character-intro opening — do NOT do this): shot 1 is a
+  slow wide shot of an empty boardroom at sunrise with `dialogue_excerpt`
+  omitted and `visual_description: "Aria arrives at the office, ready for
+  another day."` — nothing has happened yet; the hook has not landed.
+- Good (hook realized as an event): given a script `hook` of "Aria's phone
+  lights up mid-signature: her sister's clinic is named as collateral in the
+  merger she is about to sign", shot 1 is
+  ```json
+  {
+    "shot_number": 1,
+    "narrative_purpose": "beat 1 — hook",
+    "action": "Aria's pen freezes mid-signature as her phone lights up with the collateral clause",
+    "visual_description": "close on Aria's hand holding the pen, frozen over the signature line, her phone screen glowing with the clause in frame",
+    "facial_expression": "eyes snap to the phone, jaw tightening",
+    "dialogue_excerpt": "Wait — that's her clinic.",
+    "subtitle_text": "Wait — that's her clinic.",
+    "change_type": ["visual", "emotional", "informational"]
+  }
+  ```
+  The hook is ON SCREEN and audible in shot 1 itself — nothing is deferred.
+
+## Change cadence — MANDATORY WHEN retention hooks enabled
+
+Every shot declares a `change_type` array — which dimension(s) genuinely
+changed versus the PREVIOUS shot: `"visual"` (framing/camera/lighting/
+location changes meaningfully), `"emotional"` (a character's emotional
+state shifts), `"informational"` (new information/event/character/object
+enters the story), or `"none"` (this shot is a continuation with no real
+change on any of those axes). Shot 1 has no previous shot to compare
+against, so it is always `["visual", "emotional", "informational"]` by
+definition. This extends the existing emotion-repetition rule above (`emotion`
+must not repeat more than 2 consecutive shots) from one dimension to three:
+
+1. **No 3 shots in a row that are all `["none"]` or all repeat the exact
+   same single dimension with no other change.** Across every rolling
+   window of about 3 shots, at least one of the 9 shots in that window must
+   carry a genuine visual, emotional, or informational change. Three
+   static, near-identical shots back to back — same framing, same
+   emotion, same information — is a FAILED storyboard even if each
+   individual shot is well-crafted, because the viewer has nothing new to
+   track and drifts off.
+2. **Declare `change_type` honestly, not decoratively.** Only mark a
+   dimension changed when the shot's OWN fields actually show it: `"visual"`
+   requires an actual camera/lighting/composition/location difference from
+   the previous shot (not just a different word choice describing the same
+   framing); `"emotional"` requires the `emotion`/`facial_expression` to
+   genuinely shift; `"informational"` requires a new fact, character, prop,
+   or event to enter the frame that was not present before. Do not declare
+   a change that is not visibly backed by the shot's other fields — a later
+   review pass reads both the declaration and the actual fields together.
+3. **A deliberate pause is still a `"none"` shot — that is fine, once.** Not
+   every shot needs to change something; a quiet beat that holds on a
+   reaction can honestly be `["none"]`. What is never acceptable is
+   THREE such shots in a row with nothing changing across any of the three
+   dimensions.
+
+### Worked example
+
+Nine shots' `change_type` sequence showing compliant cadence (no 3-in-a-row
+with nothing changing) — mirrors the "Output skeleton" example below:
+
+```json
+[
+  { "shot_number": 1, "change_type": ["visual", "emotional", "informational"] },
+  { "shot_number": 2, "change_type": ["visual"] },
+  { "shot_number": 3, "change_type": ["emotional"] },
+  { "shot_number": 4, "change_type": ["informational", "emotional"] },
+  { "shot_number": 5, "change_type": ["visual", "emotional"] },
+  { "shot_number": 6, "change_type": ["emotional"] },
+  { "shot_number": 7, "change_type": ["visual", "emotional"] },
+  { "shot_number": 8, "change_type": ["visual", "emotional"] },
+  { "shot_number": 9, "change_type": ["informational", "emotional"] }
+]
+```
+
+A NON-compliant sequence to avoid: shots 4, 5, 6 all declaring
+`["none"]` (or all silently repeating the same framing/emotion with no
+declared change) — three flat shots in the middle of the episode where the
+viewer has nothing new to hold onto.
+
+The input may also carry a `genre` fact (the series' own free-text genre,
+e.g. "romance", "educational", "ดราม่า") — when present, let it lightly
+inform shot styling and lighting tone (bullet 4 of "Emotional & acting
+direction" above): a romance leans warmer/softer, an educational piece
+stays clean and legible, a drama/thriller can lean cooler/harder on tense
+beats. This is a light styling cue only — the heavy genre-conditional
+story/retention-loop logic lives in the script stage, not here.
+
+## Character variant selection — MANDATORY WHEN a character has variants
+
+Some entries in the "Characters" list carry a nested "Variants available for
+`<id>`" block — alternate looks (a different outfit, or a different
+age-stage) of the exact SAME person, each with its own id and its own
+approved reference image, e.g.:
+
+```
+- char_nuna: หนูนา (นักเรียนหญิง) [has an approved reference image — identity lock applies]
+  Variants available for char_nuna — see "Character variant selection" below:
+  - char_nuna_school (ชุดนักเรียน, outfit variant of char_nuna): school uniform, white shirt and blue skirt, hair tied back, worn for scenes at school or on the way to school [has an approved reference image]
+  - char_nuna_sleep (ชุดนอน, outfit variant of char_nuna): pastel pajamas, hair loose, worn for scenes at home at night or first thing in the morning before school [has an approved reference image]
+```
+
+A character with NO variants listed works exactly as before — always use its
+own id, nothing else to consider.
+
+For every shot, and for every required character that DOES have variants
+listed:
+
+1. Read THIS shot's own scene content only — its own location/action/
+   visual context, whatever the input actually specifies for this shot.
+   Never borrow another shot's scene, and never reason from the episode's
+   overall premise alone.
+2. Compare that scene against each variant's description (what makes that
+   variant's look different — outfit, age-stage, the situations it is worn/
+   used for) and pick the ONE variant whose description most clearly matches.
+   Only variants marked `[has an approved reference image]` are usable —
+   never emit a variant id that is not listed, and never invent a variant
+   that was not given to you.
+3. Emit that VARIANT's own id (never the base character's id) in this shot's
+   `characters` and `required_character_refs`, and write `visual_description`/
+   `image_prompt` to match the picked variant's actual look (its outfit/
+   age-stage), not the base character's default appearance.
+4. When no variant's description clearly matches this shot's scene — an
+   ambiguous scene, or every variant's description is about a different
+   situation — fall back to the base character's own id. Never fabricate a
+   fit that the variant's stated description does not actually support.
+5. This is a per-shot decision, not a per-episode one: the SAME base
+   character may use a different variant in different shots of the same
+   episode as the scene changes (school variant in a morning shot, sleepwear
+   variant in a night shot later in the same episode), and may also fall back
+   to its own base id in shots that match no variant at all.
+
+### Worked example
+
+Given the character list above (`char_nuna` with the `char_nuna_school` and
+`char_nuna_sleep` variants):
+
+- Shot scene: "Nuna scolds her sister across the breakfast table before
+  school, still in her pajamas." — the description talks about the outfit/
+  setting (home, pajamas), not the destination, so this matches
+  `char_nuna_sleep` far more clearly than the school-uniform variant even
+  though the scene happens right before school:
+  ```json
+  {
+    "characters": ["char_nuna_sleep"],
+    "required_character_refs": ["char_nuna_sleep"],
+    "visual_description": "หนูนาในชุดนอนสีพาสเทล ผมปล่อย นั่งโต๊ะอาหารเช้า ต่อว่าน้องสาว"
+  }
+  ```
+- A later shot in the same episode, set in a school hallway between classes,
+  instead clearly matches the school-uniform variant's description:
+  ```json
+  {
+    "characters": ["char_nuna_school"],
+    "required_character_refs": ["char_nuna_school"],
+    "visual_description": "หนูนาในชุดนักเรียน เดินอยู่ในทางเดินโรงเรียนระหว่างคาบเรียน"
+  }
+  ```
+- A third shot with an ambiguous or neutral setting that matches neither
+  variant's description (e.g. a phone call in an unspecified room, no visible
+  outfit/setting cue) falls back to the base character's own id:
+  ```json
+  {
+    "characters": ["char_nuna"],
+    "required_character_refs": ["char_nuna"]
+  }
+  ```
+
+## Twin-aware shot styling — MANDATORY WHEN a shot puts twins on screen together
+
+The input may carry a top-level `twinPairs` list — pairs of character ids
+that are twins: separate, independently-generated people who share an
+identical face (their reference images are locked to the same face on
+purpose), e.g.:
+
+```
+Twin pairs (see "Twin-aware shot styling" below):
+- char_fai and char_baitong are twins — they share an identical face but are different people.
+```
+
+This is the same relationship the character reference package already
+locks `"hard"` for a twin's own solo portrait, with a mandatory requirement
+that their wardrobe, hairstyle, and overall styling read as clearly,
+visibly distinct even though the face matches exactly — so a viewer can
+tell them apart at a glance. Apply that same requirement here, at the shot
+level:
+
+1. For every shot, check its own `characters`/`required_character_refs`
+   selection against the `twinPairs` list. This is a per-shot check, not a
+   per-episode one — the twins may share screen time in some shots and not
+   others.
+2. When a shot's own selection includes BOTH ids of a twin pair, the
+   `visual_description` and `image_prompt` you write for that shot MUST
+   explicitly call for their styling — hair, outfit, accessories — to read
+   as clearly, visibly distinct from each other, even though they share an
+   identical face. Never differentiate their faces; only their styling.
+   Keep each twin's own established look (their own wardrobe/hair facts, or
+   whichever variant they are currently wearing per "Character variant
+   selection" above) — the distinctness comes from those looks genuinely
+   differing, called out explicitly, not from inventing a new face.
+3. When a shot's own selection includes only ONE twin, or NEITHER, this
+   section does not apply to that shot — write it exactly as you would any
+   other shot, with no twin-distinctness language.
+
+### Worked example
+
+Given `twinPairs: [{ "characterKeyA": "char_fai", "characterKeyB": "char_baitong" }]`:
+
+- Shot scene: both sisters confront each other in the family silk shop —
+  both ids are in this shot's own selection, so the styling must be called
+  out as distinct:
+  ```json
+  {
+    "characters": ["char_fai", "char_baitong"],
+    "required_character_refs": ["char_fai", "char_baitong"],
+    "visual_description": "ฝ้ายและใบตองยืนเผชิญหน้ากันในร้านผ้าไหมของครอบครัว ใบหน้าเหมือนกันทุกกระเบียดนิ้ว แต่ฝ้ายไว้ผมหยักศกปล่อยสยาย แต่งหน้านุ่มนวล สวมชุดผ้าไหมสีชมพูอ่อน ขณะที่ใบตองรวบผมมวยต่ำเรียบ ไม่แต่งหน้า สวมเสื้อผ้าฝ้ายสีเขียวเข้มเรียบง่าย — สไตล์การแต่งตัวต่างกันชัดเจนแม้ใบหน้าจะเหมือนกันทุกประการ",
+    "image_prompt": "vertical 9:16 storyboard shot of twin sisters ฝ้าย and ใบตอง facing off in the family silk shop — identical faces, but ฝ้าย wears loose wavy hair with soft glam makeup and a pale pink silk dress while ใบตอง wears a severe low bun with no makeup and a plain forest-green cotton blouse, clearly distinct styling so the twins read as different people at a glance"
+  }
+  ```
+- A later shot in the same episode has only ฝ้าย present (ใบตอง is not in
+  this shot) — no twin-distinctness language applies:
+  ```json
+  {
+    "characters": ["char_fai"],
+    "required_character_refs": ["char_fai"],
+    "visual_description": "ฝ้ายนั่งอยู่คนเดียวหลังเคาน์เตอร์ร้าน มองออกไปนอกหน้าต่าง"
+  }
+  ```
+
 ## Shot-to-beat attribution and silence budget — MANDATORY (story-density reform)
 
 The input script's beats may be dialogue-complete (`structure.beats[]` carry
@@ -206,6 +475,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 1",
       "emotion": "guarded suspicion",
+      "change_type": ["visual", "emotional", "informational"],
       "characters": [
         "char_aria"
       ],
@@ -245,6 +515,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 1",
       "emotion": "guarded suspicion",
+      "change_type": ["visual"],
       "characters": [
         "char_aria"
       ],
@@ -284,6 +555,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 2",
       "emotion": "cold, simmering anger",
+      "change_type": ["emotional"],
       "characters": [
         "char_aria"
       ],
@@ -323,6 +595,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 2",
       "emotion": "smug certainty",
+      "change_type": ["informational", "emotional"],
       "characters": [
         "char_aria",
         "char_rival"
@@ -367,6 +640,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 3",
       "emotion": "cold, controlled triumph",
+      "change_type": ["visual", "emotional"],
       "characters": [
         "char_aria"
       ],
@@ -406,6 +680,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 3",
       "emotion": "exposed panic",
+      "change_type": ["emotional"],
       "characters": [
         "char_aria",
         "char_rival"
@@ -450,6 +725,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 4",
       "emotion": "brittle calm",
+      "change_type": ["visual", "emotional"],
       "characters": [
         "char_aria"
       ],
@@ -489,6 +765,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 4",
       "emotion": "quiet vindication",
+      "change_type": ["visual", "emotional"],
       "characters": [
         "char_aria"
       ],
@@ -528,6 +805,7 @@ Output skeleton:
       "duration_seconds": 6,
       "narrative_purpose": "beat 4",
       "emotion": "dawning dread",
+      "change_type": ["informational", "emotional"],
       "characters": [
         "char_aria",
         "char_rival"

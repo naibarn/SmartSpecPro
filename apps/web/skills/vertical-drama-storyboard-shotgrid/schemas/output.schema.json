@@ -241,6 +241,19 @@
             "description": "Optional superset: this shot's speech target derived from its own duration_seconds (clamp(duration_seconds * 0.68, 2.5, duration_seconds - 0.75), mirroring the platform's canonical per-shot speech-budget calculation). Omit or set to 0 for a declared silence_intent shot.",
             "type": "number",
             "minimum": 0
+          },
+          "change_type": {
+            "description": "Optional superset (planning/vertical-drama-retention-hooks/plan.md W3, added 2026-07-11) — honest per-shot declaration of which dimension(s) changed vs. the PREVIOUS shot (shot 1 is every dimension, by definition — see skill.md 'Change cadence'). Not enforced/counted by this schema or any TS validator; the review LLM (a later round) is the enforcement point.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "visual",
+                "emotional",
+                "informational",
+                "none"
+              ]
+            }
           }
         },
         "required": [

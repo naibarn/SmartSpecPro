@@ -10,12 +10,36 @@
  */
 
 import { randomUUID } from "crypto";
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
+import { parseSkillFile } from "@smartspec/skills";
+import {
+  resolveSkillDirCandidates,
+  resolveSkillManifestPath,
+} from "./skillFiles";
 import { executeWithFallback } from "./llmRouter";
 import {
   loadEnabledLlmModelRows,
   type EnabledLlmModelRow,
 } from "./enabledLlmModels";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
+// NOTE: `resolveQualityLargeContextModelId` is imported LAZILY (dynamic
+// `await import("./verticalDramaImproveScript")`) inside `generateStoryBible`
+// below, NOT as a top-level static import — unlike the already-established
+// `verticalDramaPresetSynthesis.ts` cycle (safe as a static import there),
+// `verticalDramaImproveScript.ts` also imports FROM this file
+// (`resolveStoryBibleModel`, `getActiveBreakdown`, etc.), and a top-level
+// static import here was confirmed (via a real vitest run) to break test
+// files that partially-mock this module via `vi.importActual` + `vi.mock`
+// spread — the mock factory's `importActual` call fully evaluates this file,
+// which would eagerly evaluate `verticalDramaImproveScript.ts` too, and the
+// resulting module-registry ordering caused OTHER test files (that mock this
+// module's `resolveStoryBibleModel` export) to silently receive the REAL
+// implementation instead of the mock. A dynamic import deferred to
+// call-time avoids that eager evaluation entirely, following this
+// codebase's already-established lazy-import convention (see e.g.
+// `verticalDramaEpisodePipeline.ts`'s `await import("./verticalDramaStoryBible")`).
 import { selectBestLlmModel } from "./intelligentModelSelector";
 import {
   hasEnoughCredits,
@@ -88,8 +112,12 @@ import {
   getVerticalDramaQualityCriteriaBundle,
 } from "./verticalDramaQualityCriteria";
 // Feature 132 §4 (F132A, user-premise-preset-mix) — the deterministic,
-// no-LLM premise-coverage guard, reused here at story-bible generation time.
-// NOTE: `verticalDramaPresetSynthesis.ts` also imports FROM this file
+// no-LLM premise-coverage guard, still used by `appendDeepDraftPremiseCoverageWarning`
+// (the deep-draft-stage premise check, below) — but NO LONGER by
+// `generateStoryBible`, whose own call site now uses the generation call's
+// own `premise_coverage` self-assessment instead
+// (`vertical-drama-skill-first-architecture` plan, Phase 4 item 2). NOTE:
+// `verticalDramaPresetSynthesis.ts` also imports FROM this file
 // (`resolveStoryBibleModel`) — this is an intentional, already-established
 // circular service pair; both exports here are only ever called from inside
 // function bodies (never at module-evaluation time), so the cycle resolves
@@ -562,6 +590,24 @@ export const episodeBreakdownItemSchema = z.object({
   price_paid: z.string().min(1).optional(),
 });
 
+/**
+ * `vertical-drama-skill-first-architecture` plan, Phase 4 item 2 — the
+ * generation call's OWN self-reported premise-coverage assessment, replacing
+ * the deterministic token-overlap heuristic
+ * (`verticalDramaPresetSynthesis.ts`'s `evaluatePremiseCoverage`) for THIS
+ * call site (`generateStoryBible`). Optional: only ever requested (see
+ * `buildPrompts`) when `params.userPremise` is a non-empty trimmed string;
+ * absent for every response that predates this field or that didn't carry a
+ * user premise, so this schema stays byte-compatible with every existing
+ * caller. The LLM authors `note` itself — code never invents warning text.
+ */
+const premiseCoverageSchema = z
+  .object({
+    sufficient: z.boolean(),
+    note: z.string().min(1),
+  })
+  .passthrough();
+
 const expandedStoryBibleSchema = z.object({
   expandedSeasonArc: z.string().min(1),
   refinedCharacters: z
@@ -574,6 +620,7 @@ const expandedStoryBibleSchema = z.object({
     )
     .min(1),
   episodeBreakdown: z.array(episodeBreakdownItemSchema).min(1),
+  premise_coverage: premiseCoverageSchema.optional(),
 });
 
 export type ExpandedVerticalDramaStoryBible = z.infer<
@@ -1083,16 +1130,37 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     MIN_EPISODE_COVERAGE_RATIO * episodeDurationSeconds
   );
 
+  // Feature 132 §4.2.7 (F132A) — moved ahead of `systemPrompt` so the
+  // premise-coverage self-assessment request below can gate on it. An
+  // absent/empty `userPremise` renders nothing anywhere this variable is
+  // used (byte-identical), per the `.filter(Boolean).join("\n")`
+  // conditional-block idiom used throughout this file.
+  const trimmedUserPremise = params.userPremise?.trim();
+
+  const responseShape = trimmedUserPremise
+    ? '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}], "premise_coverage": {"sufficient": boolean, "note": string}}'
+    : '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}';
+
   const systemPrompt = [
     renderCriteriaVersionMarker(),
     "You are a vertical-drama (short-form mobile drama series) story bible writer.",
     "Given a series' basic setup, expand it into a fuller production-ready story bible.",
     langInstruction,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}',
+    responseShape,
     `"episodeBreakdown" must contain exactly ${params.targetEpisodeCount} entries, numbered 1..${params.targetEpisodeCount} in order, each with 3-5 short keyBeats.`,
     speechBudgetEnabled
       ? `Each episode is a fixed ${episodeDurationSeconds}-second episode that must carry AT LEAST ${minEpisodeSpeechSeconds} seconds of spoken dialogue (the platform's minimum speech-coverage floor) — plan enough plot/conflict per episode to genuinely fill that budget instead of padding a thin episode afterward. Each entry in "episodeBreakdown" must ALSO include a "contentBudget" object: {"beatCount": number (5-7 story beats), "estimatedSpeechSeconds": number (this episode's planned total spoken-dialogue seconds, >= ${minEpisodeSpeechSeconds}), "conflictLevel": integer 1-5 (this episode's position on the SEASON'S escalation curve — start low in early episodes and rise toward 5 near the finale; never flat across the season), "reversalTarget": integer (at least 2 reversals planned for this episode), "arcThreads": string[] (season threads this episode advances)}.`
+      : null,
+    // `vertical-drama-skill-first-architecture` plan, Phase 4 item 2 —
+    // replaces `evaluatePremiseCoverage`'s deterministic token-overlap
+    // heuristic for THIS call site: the generation call now self-assesses
+    // its own premise coverage as a structured output field instead of code
+    // computing it (and authoring the warning text) after the fact. Only
+    // requested when a premise was actually supplied — absent otherwise,
+    // byte-identical to before this field existed.
+    trimmedUserPremise
+      ? 'Also self-assess how well your OWN "expandedSeasonArc" + "episodeBreakdown" reflect the USER PREMISE given below, as a "premise_coverage" object: {"sufficient": boolean (true when the season you wrote genuinely develops the premise\'s core idea/conflict/hook — false when it drifted away from it or only nodded to it superficially), "note": string (one or two sentences, in the same language as your other string values, explaining your own assessment — if sufficient is false, name specifically what part of the premise got lost or under-developed)}.'
       : null,
   ]
     .filter(Boolean)
@@ -1102,7 +1170,6 @@ function buildPrompts(params: GenerateStoryBibleParams): {
   // absent/empty `userPremise` renders nothing (byte-identical), per the
   // `.filter(Boolean).join("\n")` conditional-block idiom used throughout
   // this file.
-  const trimmedUserPremise = params.userPremise?.trim();
   const userPremiseBlock = trimmedUserPremise
     ? `USER PREMISE (PRIMARY):\n${trimmedUserPremise}\nThis premise is the PRIMARY story spine — the series' genre/tone/existing bible fields below are supporting flavor. Do not contradict this premise.`
     : null;
@@ -1136,11 +1203,14 @@ export async function generateStoryBible(
   creditsUsed: number;
   model: string;
   /**
-   * Feature 132 §4.2.7 (F132A) — deterministic, warn-only findings from
-   * `evaluatePremiseCoverage` (never present when `params.userPremise` is
-   * absent/blank, or when the produced bible covers the premise). Additive:
-   * every existing caller destructuring `{ expanded, creditsUsed, model }`
-   * is unaffected.
+   * Feature 132 §4.2.7 (F132A) — warn-only, sourced from the generation
+   * call's OWN `premise_coverage` self-assessment (`vertical-drama-skill-
+   * first-architecture` plan, Phase 4 item 2 — replaces the deterministic
+   * `evaluatePremiseCoverage` heuristic for this call site). Never present
+   * when `params.userPremise` is absent/blank, or when the LLM assessed its
+   * own output as sufficiently covering the premise. Additive: every
+   * existing caller destructuring `{ expanded, creditsUsed, model }` is
+   * unaffected.
    */
   warnings?: Array<{ code: string; message: string }>;
 }> {
@@ -1149,7 +1219,15 @@ export async function generateStoryBible(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  // Lazy import — see the doc comment near this file's top import block for
+  // why this cannot be a static top-level import.
+  const { resolveQualityLargeContextModelId } = await import(
+    "./verticalDramaImproveScript"
+  );
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const { systemPrompt, userPrompt } = buildPrompts(params);
 
   // Base ceiling raised from 3500 to 6000 — `episodeBreakdown` grows with
@@ -1194,26 +1272,30 @@ export async function generateStoryBible(
     },
   });
 
-  // Feature 132 §4.2.7 (F132A) — deterministic, no-LLM premise-coverage
-  // guard, only run when a premise was actually supplied this call
-  // (router-level flag gate already forces `undefined` when the
-  // `verticalDramaUserPremise` tenant flag is off — see `verticalDramaSeries.ts`).
-  const trimmedUserPremiseForCoverage = params.userPremise?.trim();
-  const coverage = trimmedUserPremiseForCoverage
-    ? evaluatePremiseCoverage(trimmedUserPremiseForCoverage, {
-        logline: params.title,
-        mainPlot: validatedData.expandedSeasonArc,
-        seasonArc: validatedData.episodeBreakdown
-          .map(ep => `${ep.workingTitle}: ${ep.logline}`)
-          .join(" "),
-      })
-    : undefined;
+  // `vertical-drama-skill-first-architecture` plan, Phase 4 item 2 — the
+  // generation call's OWN `premise_coverage` self-assessment (requested by
+  // `buildPrompts` above only when a premise was supplied) replaces
+  // `evaluatePremiseCoverage`'s deterministic token-overlap heuristic for
+  // THIS call site. The LLM authors `note` itself; code only decides
+  // whether to surface it as a warning (`sufficient === false`) — it never
+  // invents the warning text. `validatedData.premise_coverage` is absent
+  // whenever no premise was supplied (see `buildPrompts`) or an older/
+  // lenient response omitted it, in which case no warning is produced —
+  // same "additive, never present unless a premise was given" contract the
+  // deterministic heuristic used to provide.
+  const premiseCoverage = validatedData.premise_coverage;
 
   return {
     expanded: validatedData,
     creditsUsed,
     model,
-    ...(coverage?.warning ? { warnings: [coverage.warning] } : {}),
+    ...(premiseCoverage && !premiseCoverage.sufficient
+      ? {
+          warnings: [
+            { code: "premise_coverage_low", message: premiseCoverage.note },
+          ],
+        }
+      : {}),
   };
 }
 
@@ -3548,6 +3630,51 @@ function buildPremiumEpisodeDigest(params: {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * `vertical-drama-skill-first-architecture` plan, Phase 4 item 1 — the
+ * previously-orphaned `vertical-drama-season-dramaturgy-critic` skill's
+ * system prompt, now the sole author of the judge/re-judge instructional
+ * content below (rubric definitions, output-shape template). Mirrors
+ * `verticalDramaScriptGeneration.ts`'s `loadSkillSystemPrompt` exactly (same
+ * resolve -> read -> parse -> cache shape). Loads the skill's Mode 2
+ * ("draft_quality_score") content — see that skill's own skill.md.
+ */
+const DRAMATURGY_CRITIC_SKILL_FOLDER_PATH = path.join(
+  "skills",
+  "vertical-drama-season-dramaturgy-critic"
+);
+
+let cachedDramaturgyCriticSystemPrompt: string | null = null;
+let cachedDramaturgyCriticSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
+
+function loadDramaturgyCriticSkillSystemPrompt(): string {
+  const now = Date.now();
+  if (
+    cachedDramaturgyCriticSystemPrompt &&
+    now - cachedDramaturgyCriticSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS
+  ) {
+    return cachedDramaturgyCriticSystemPrompt;
+  }
+
+  for (const dir of resolveSkillDirCandidates(DRAMATURGY_CRITIC_SKILL_FOLDER_PATH)) {
+    const manifestPath = resolveSkillManifestPath(dir);
+    if (manifestPath && fs.existsSync(manifestPath)) {
+      const raw = fs.readFileSync(manifestPath, "utf-8");
+      const { content } = parseSkillFile(raw);
+      if (content && content.trim().length > 0) {
+        cachedDramaturgyCriticSystemPrompt = content;
+        cachedDramaturgyCriticSystemPromptTime = now;
+        return cachedDramaturgyCriticSystemPrompt;
+      }
+    }
+  }
+
+  throw new Error(
+    `Could not locate skill.md for "vertical-drama-season-dramaturgy-critic" under any known skills directory`
+  );
+}
+
+/**
  * Duplicated verbatim from `buildDeepDraftPrompts`'s inline speakability
  * rules (NOT extracted into a shared const) so that function's own source
  * stays completely untouched — this file's standard-mode byte-identity
@@ -3577,22 +3704,20 @@ const VD_PREMIUM_NO_SILENCE_INTENT_WITH_DIALOGUE_RULE =
 
 /**
  * Task #22 — the `tie_in_naturalness` judge-prompt addition, shared by
- * `buildPremiumJudgePrompts`/`buildPremiumRejudgePrompts`: an extra scoring
- * instruction (appended to the systemPrompt) plus a `"tie_in_naturalness":
- * number` suffix for the score-shape JSON spec line. BOTH `null`/`""`
- * (render/add nothing) unless at least one episode being judged THIS call
- * actually has `hasPlannedTieIn: true`, so a chunk/judge call with no placed
- * episode renders byte-identical to before task #22.
+ * `buildPremiumJudgePrompts`/`buildPremiumRejudgePrompts`. `null` (renders
+ * nothing) unless at least one episode being judged THIS call actually has
+ * `hasPlannedTieIn: true`, so a chunk/judge call with no placed episode
+ * renders byte-identical to before task #22 (see
+ * `verticalDramaStoryBible.tieInDraft.test.ts`'s
+ * ".not.toContain('tie_in_naturalness')" regression coverage). Kept as a
+ * narrow, deliberately-code-appended addendum rather than folded into the
+ * `vertical-drama-season-dramaturgy-critic` skill's static Mode 2 content —
+ * see that skill.md's Mode 2 section, which intentionally never mentions
+ * `tie_in_naturalness` in its own static rubric for exactly this reason.
  */
-function buildTieInJudgeInstructionAndShapeSuffix(
-  hasAnyPlacedEpisode: boolean
-): { instruction: string | null; scoreShapeSuffix: string } {
-  if (!hasAnyPlacedEpisode) return { instruction: null, scoreShapeSuffix: "" };
-  return {
-    instruction:
-      'Additionally, for any episode digest marked "hasPlannedTieIn": true, ALSO score "tie_in_naturalness" 1-5 (1 = reads like a forced advertisement, 5 = reads like real, organic product placement) — omit this field entirely for an episode NOT marked "hasPlannedTieIn": true.',
-    scoreShapeSuffix: ', "tie_in_naturalness": number',
-  };
+function buildTieInJudgeInstruction(hasAnyPlacedEpisode: boolean): string | null {
+  if (!hasAnyPlacedEpisode) return null;
+  return 'Additionally, for any episode digest marked "hasPlannedTieIn": true, ALSO score "tie_in_naturalness" 1-5 (1 = reads like a forced advertisement, 5 = reads like real, organic product placement) — omit this field entirely for an episode NOT marked "hasPlannedTieIn": true.';
 }
 
 function buildPremiumJudgePrompts(params: {
@@ -3617,21 +3742,15 @@ function buildPremiumJudgePrompts(params: {
   const hasAnyPlacedEpisode = params.candidates.some(c =>
     c.episodes.some(e => e.hasPlannedTieIn === true)
   );
-  const tieInAddon = buildTieInJudgeInstructionAndShapeSuffix(hasAnyPlacedEpisode);
-  const scoreShape =
-    VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.map(d => `"${d}": number`).join(", ") +
-    tieInAddon.scoreShapeSuffix;
+  // `vertical-drama-skill-first-architecture` plan, Phase 4 item 1 — the
+  // dramaturgy-critic skill's Mode 2 content is the sole author of the
+  // rubric/output-shape instructions below; this function supplies only
+  // structured input facts (title/genre/tone/locale/recap/candidates) plus
+  // the one narrow, deliberately-code-appended tie-in addendum (see
+  // `buildTieInJudgeInstruction`'s own doc comment).
   const systemPrompt = [
-    "You are a strict vertical-drama story-quality judge.",
-    `You are given ${params.candidates.length} DIFFERENT candidate drafts, each covering the SAME set of episodes. Score EVERY candidate's EVERY episode independently on these ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.length} dimensions, each 1-5 (1 = weak, 5 = excellent): ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.join(", ")}. Also give an "overall" 1-5 holistic score per candidate per episode.`,
-    "Judge dialogue_naturalness/pacing/emotion_variety/reversal_sharpness/hook_strength/cliffhanger_strength from each episode's own shots. Judge continuity_with_recap against the continuity recap given below (does this candidate respect and build on it, without contradiction?). Judge season_cohesion against how well this candidate's set of episodes reads as one coherent stretch of the season, together with the recap.",
-    params.locale === "th"
-      ? 'For dialogue_naturalness in Thai: 5 means the lines sound like real Thai people speaking under pressure, with character-appropriate pronouns/particles and subtext; 3 means understandable but stiff or expositional; 1-2 means translated, textbook-like, formal-report-like, or plot-summary language.'
-      : null,
-    tieInAddon.instruction,
-    "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"scores": [{"candidateIndex": number, "episodeNumber": number, ${scoreShape}, "overall": number}]}`,
-    `"scores" must contain exactly one entry for EVERY (candidateIndex, episodeNumber) pair across all ${params.candidates.length} candidates.`,
+    loadDramaturgyCriticSkillSystemPrompt(),
+    buildTieInJudgeInstruction(hasAnyPlacedEpisode),
   ]
     .filter(Boolean)
     .join("\n");
@@ -3642,10 +3761,13 @@ function buildPremiumJudgePrompts(params: {
   );
 
   const userPrompt = [
+    'Action: "draft_quality_score"',
     `Series title: ${params.title}`,
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
+    `Locale: ${params.locale}`,
     recapText,
+    `Number of candidate drafts given below: ${params.candidates.length}`,
     `Candidates to judge: ${JSON.stringify(
       params.candidates.map(c => ({
         candidateIndex: c.candidateIndex,
@@ -3686,21 +3808,12 @@ function buildPremiumRejudgePrompts(params: {
   const hasAnyPlacedEpisode = params.episodes.some(
     e => e.hasPlannedTieIn === true
   );
-  const tieInAddon = buildTieInJudgeInstructionAndShapeSuffix(hasAnyPlacedEpisode);
-  const scoreShape =
-    VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.map(d => `"${d}": number`).join(", ") +
-    tieInAddon.scoreShapeSuffix;
+  // Same skill-driven system prompt as `buildPremiumJudgePrompts` — the
+  // skill's Mode 2 content already covers the "single ungrouped set of
+  // episodes" (re-judge) case (see skill.md Mode 2's own framing).
   const systemPrompt = [
-    "You are a strict vertical-drama story-quality judge.",
-    `Score EVERY episode given below on these ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.length} dimensions, each 1-5 (1 = weak, 5 = excellent): ${VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.join(", ")}. Also give an "overall" 1-5 holistic score per episode.`,
-    "Judge continuity_with_recap against the continuity recap given below, and season_cohesion against how well this episode fits the season so far.",
-    params.locale === "th"
-      ? 'For dialogue_naturalness in Thai: 5 means the lines sound like real Thai people speaking under pressure, with character-appropriate pronouns/particles and subtext; 3 means understandable but stiff or expositional; 1-2 means translated, textbook-like, formal-report-like, or plot-summary language.'
-      : null,
-    tieInAddon.instruction,
-    "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"scores": [{"episodeNumber": number, ${scoreShape}, "overall": number}]}`,
-    '"scores" must contain exactly one entry for EVERY episode given below.',
+    loadDramaturgyCriticSkillSystemPrompt(),
+    buildTieInJudgeInstruction(hasAnyPlacedEpisode),
   ]
     .filter(Boolean)
     .join("\n");
@@ -3711,11 +3824,13 @@ function buildPremiumRejudgePrompts(params: {
   );
 
   const userPrompt = [
+    'Action: "draft_quality_score"',
     `Series title: ${params.title}`,
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
+    `Locale: ${params.locale}`,
     recapText,
-    `Episodes to score: ${JSON.stringify(
+    `Episodes to score (no candidate grouping — treat as a single implicit candidate, candidateIndex 0): ${JSON.stringify(
       params.episodes.map(e =>
         buildPremiumEpisodeDigest({
           sourceItem: e.sourceItem,
@@ -4505,6 +4620,12 @@ async function runPremiumSeasonSweep(
     tone?: string | null;
     allEpisodes: StoredEpisodeBreakdownItem[];
     byEpisode: Map<number, PremiumEpisodeState>;
+    // Bug fix (2026-07-11): this sweep's revise/rejudge calls previously
+    // never received tie-in context at all — a tie-in-placed episode caught
+    // by the season sweep silently lost its `tie_in` instruction during
+    // revise and was never scored on `tie_in_naturalness` during rejudge.
+    // Mirrors `runPremiumChunk`'s own `tieInDraftContext` plumbing exactly.
+    tieInDraftContext?: VdTieInDraftContext;
   },
   callAccounting: PremiumCallAccounting
 ): Promise<{ issuesFound: number }> {
@@ -4602,6 +4723,7 @@ async function runPremiumSeasonSweep(
       openThreads: [],
       label: "Premium deep draft season sweep spot-revise",
       episodes: reviseEpisodesInput,
+      tieInDraftContext: params.tieInDraftContext,
     });
   } catch (err) {
     // Phase A reliability fix (added 2026-07-09) — was a bare `catch {}`
@@ -4642,6 +4764,10 @@ async function runPremiumSeasonSweep(
         sourceItem: findPremiumSourceItem(params.allEpisodes, ep.episodeNumber),
         cliffhangerLine: ep.cliffhanger_line,
         shotDrafts: ep.shotDrafts,
+        hasPlannedTieIn: params.tieInDraftContext
+          ? findTieInDraftPlacement(params.tieInDraftContext, ep.episodeNumber)
+              ?.planned === true
+          : undefined,
       })),
     });
   } catch (err) {
@@ -4916,6 +5042,7 @@ async function generateStoryBibleDeepPremium(
         tone: params.tone,
         allEpisodes: episodes,
         byEpisode: allDraftedByEpisode,
+        tieInDraftContext: params.tieInDraftContext,
       },
       callAccounting
     );

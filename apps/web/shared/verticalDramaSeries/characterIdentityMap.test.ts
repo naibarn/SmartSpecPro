@@ -3,7 +3,7 @@ import {
   buildCharacterDescriptorLine,
   buildCharacterIdentityMapBlock,
   findMissingCharacterIdentityWarnings,
-  formatIdentityLockedImagePrompt,
+  stripExistingIdentityLockSuffix,
   type VerticalDramaCharacterDescriptorSource,
 } from "./characterIdentityMap";
 
@@ -173,29 +173,34 @@ describe("findMissingCharacterIdentityWarnings", () => {
   });
 });
 
-describe("formatIdentityLockedImagePrompt", () => {
-  it("returns basePrompt unchanged when entries array is empty", () => {
-    expect(formatIdentityLockedImagePrompt("A scenic view of a city.", [])).toBe(
-      "A scenic view of a city."
+// `formatIdentityLockedImagePrompt` (and its test coverage, formerly here)
+// was removed (2026-07-11, vertical-drama-skill-first-architecture plan,
+// Phase 3, item 2) — the `vertical-drama-shot-start-frame-render` skill now
+// authors the full identity-lock text itself, in its own prose, so no
+// code-side formatter is needed. `stripExistingIdentityLockSuffix` remains a
+// standalone back-compat safety net (see its doc comment) and keeps its own
+// coverage below.
+
+describe("stripExistingIdentityLockSuffix", () => {
+  it("returns the prompt unchanged when no identity-lock suffix is present", () => {
+    expect(stripExistingIdentityLockSuffix("A scenic view.")).toBe(
+      "A scenic view."
     );
   });
 
-  it("adds generic attached reference instruction when names are empty", () => {
-    const formatted = formatIdentityLockedImagePrompt("A close-up shot.", [{ name: "" }]);
-    expect(formatted).toContain("Use the attached reference image as this character's exact identity");
+  it("strips the bracketed multi-character block and trims trailing whitespace", () => {
+    const withSuffix =
+      "A scene description. [Attached character reference images: Image 1 = A. Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.) — match face shape, skin tone, hairstyle, clothing/outfit, and distinguishing features precisely from the corresponding attached image; do not alter identity or wardrobe.]";
+    expect(stripExistingIdentityLockSuffix(withSuffix)).toBe(
+      "A scene description."
+    );
   });
 
-  it("annotates character names and appends numbered Image 1 / Image 2 lock mapping", () => {
-    const prompt = "ใบข้าว talks to ฝ้าย in the shop.";
-    const formatted = formatIdentityLockedImagePrompt(prompt, [
-      { name: "ใบข้าว" },
-      { name: "ฝ้าย" },
-    ]);
-    expect(formatted).toContain("ใบข้าว (see attached Image 1)");
-    expect(formatted).toContain("ฝ้าย (see attached Image 2)");
-    expect(formatted).toContain("Image 1 = ใบข้าว, Image 2 = ฝ้าย");
-    expect(formatted).toContain(
-      "Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.)"
+  it("strips the generic single-character fallback sentence", () => {
+    const withSuffix =
+      "A close-up shot. Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, clothing/outfit, and distinguishing features precisely; do not alter identity or wardrobe.";
+    expect(stripExistingIdentityLockSuffix(withSuffix)).toBe(
+      "A close-up shot."
     );
   });
 });

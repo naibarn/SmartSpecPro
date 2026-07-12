@@ -575,6 +575,22 @@ export const VD_PRODUCT_LOCK_NEGATIVE_PROMPT_FRAGMENT = VD_PRODUCT_LOCK_NEGATIVE
  * unchanged (no redesign/recolor/resize/logo drift) across the clip's motion,
  * distinct from the image-side wording since video prompts describe change
  * over time rather than a single frame.
+ *
+ * DEFERRED for vertical-drama-skill-first-architecture plan, Phase 3, item 3
+ * (2026-07-11) — used inline in
+ * `verticalDramaVideoMotionPromptGeneration.ts`'s per-shot user-prompt
+ * builders (`buildShotVideoPromptUserPrompt` and its sub-shots variant) as
+ * part of the INPUT sent to the `vertical-drama-shot-video-prompt` skill —
+ * not a post-hoc output append, so architecturally closer to Tier 1/5's
+ * "code authors instructional prompt text" issue than Tier 3's append
+ * pattern. Converting this (pass `productName`/`description`/`placementStyle`
+ * as structured facts, let skill.md phrase the lock itself, mirroring
+ * `vertical-drama-shot-image-action/skill.md`'s "weave into prose, never
+ * append verbatim" pattern) is achievable without touching any off-limits
+ * file, but was intentionally bundled into the same deferred follow-up as
+ * `appendPresetVisualIdentityStyleTokensToMotionPrompt` above (same file,
+ * same skill, same review pass) rather than done as an isolated partial
+ * edit to the video pipeline in this phase.
  */
 export const VD_PRODUCT_LOCK_VIDEO_INSTRUCTION =
   "PRODUCT LOCK (MANDATORY): the product must remain visually unchanged while in motion — same shape, proportions, size relative to the scene, colors, materials, logo, and label text as the reference image, for the entire clip. Never let the product warp, morph, recolor, resize, or drift its logo/label during the motion.";
@@ -598,6 +614,22 @@ export const VD_PRODUCT_LOCK_VIDEO_INSTRUCTION =
  * alone; omit it to fall back to `buildGenericProductDescriptor`'s default.
  * `productName` is still accepted (for backward-compat call sites) but is
  * intentionally never interpolated into the outgoing directive text.
+ *
+ * DEFERRED for vertical-drama-skill-first-architecture plan, Phase 3, item 3
+ * (2026-07-11) — the `VD_PRODUCT_LOCK_INSTRUCTION` sentence appended below is
+ * still code-authored, intentionally not migrated to skill.md this phase:
+ * this function's ONLY call site (grep-confirmed) is
+ * `verticalDramaEpisodePipeline.ts`'s `generateRealStartFramePlan`, applied
+ * ONCE right after the `vertical-drama-shot-start-frame-render` planning
+ * skill call returns, before the plan is persisted — outside this phase's
+ * authorized file list. Converting it properly requires threading product
+ * facts (`productName`, `placement`, `categoryDescriptor`) into that skill
+ * call's own input (mirroring how `characters` already flows into
+ * `buildStartFrameRenderPlanUserPrompt`) and teaching skill.md to phrase the
+ * lock itself, then removing this call site from the pipeline file — that
+ * pipeline-side change is out of scope here. `VD_PRODUCT_LOCK_NEGATIVE_TERMS`/
+ * `mergeProductLockNegativePrompt` are unaffected (pure keyword-list merge,
+ * not an authored instruction sentence — legitimate as-is).
  */
 export function appendProductPresenceDirective(
   imagePrompt: string,

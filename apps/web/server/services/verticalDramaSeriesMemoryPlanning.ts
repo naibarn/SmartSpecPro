@@ -42,12 +42,13 @@ import {
 } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { debugError } from "../_core/logger";
 import {
   verticalDramaLocaleEnglishName,
@@ -77,10 +78,15 @@ const SKILL_FOLDER_PATH = path.join(
 );
 
 let cachedSystemPrompt: string | null = null;
+let cachedSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 /** Mirrors `verticalDramaScriptGeneration.ts`'s `loadSkillSystemPrompt`. */
 function loadSkillSystemPrompt(): string {
-  if (cachedSystemPrompt) return cachedSystemPrompt;
+  const now = Date.now();
+  if (cachedSystemPrompt && now - cachedSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS) {
+    return cachedSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -89,6 +95,7 @@ function loadSkillSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedSystemPrompt = content;
+        cachedSystemPromptTime = now;
         return cachedSystemPrompt;
       }
     }
@@ -225,7 +232,10 @@ export async function runVerticalDramaSeriesMemoryPlanning(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 

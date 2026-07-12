@@ -56,6 +56,9 @@ vi.mock("../../middleware/requireFeatureFlag", () => ({
 vi.mock("../../services/mediaGenerationService", () => ({
   mediaGenerationService: { generateImageAsync: vi.fn(), generateVideoAsync: vi.fn() },
   DEFAULT_MODELS: { image: "google-nano-banana-pro", video: "veo3/generate-veo-3-video-lite" },
+  resolveReferenceUrl: vi.fn((url: string, publicUrl?: string | null) =>
+    url.startsWith("http") ? url : `${publicUrl ?? ""}${url}`
+  ),
 }));
 
 vi.mock("../../services/pricingCalculator", () => ({
@@ -80,8 +83,26 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
+  mockGetTenantFeatureFlags: vi.fn(),
+}));
 vi.mock("../../services/tenantFeatureFlagService", () => ({
-  getTenantFeatureFlags: vi.fn(),
+  getTenantFeatureFlags: mockGetTenantFeatureFlags,
+}));
+
+// Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`) —
+// `regenerateClipDialogue` resolves `deepDraftShotForRegen` via a dynamic
+// `import()` of `verticalDramaStoryBible.ts` (same "avoid the
+// `adminProcedure` chain" reasoning as every other mock in this file).
+// Default `null` so every pre-existing test (which never opts into
+// `verticalDramaSeriesDeepStoryDrafts`) never even calls it.
+const { mockGetActiveBreakdown, mockReadItemShotDrafts } = vi.hoisted(() => ({
+  mockGetActiveBreakdown: vi.fn(() => []),
+  mockReadItemShotDrafts: vi.fn(() => null),
+}));
+vi.mock("../../services/verticalDramaStoryBible", () => ({
+  getActiveBreakdown: mockGetActiveBreakdown,
+  readItemShotDrafts: mockReadItemShotDrafts,
 }));
 
 vi.mock("../../services/mediaTransportResolver", () => ({
@@ -355,6 +376,88 @@ describe("regenerateClipDialogue", () => {
     ]);
   });
 
+  it("2026-07-11 dup-clip fix: collapses a stale split's leftover sub-shot clips into exactly one clip, seeded from the first matching sub-shot", async () => {
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        { clipNumber: 1, sourceShotNumbers: [1], prompt: "shot 1 prompt", durationSeconds: 6 },
+        {
+          clipNumber: 301,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          prompt: "stale sub-shot 1 prompt",
+          durationSeconds: 3,
+          dialogue: [{ lineTh: "stale sub-shot 1 line" }],
+        },
+        {
+          clipNumber: 302,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 2,
+          prompt: "stale sub-shot 2 prompt",
+          durationSeconds: 3,
+          dialogue: [{ lineTh: "stale sub-shot 2 line" }],
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({
+      motionPromptPack: pack,
+      storyboard: {
+        gridLayout: "3x3",
+        shotCount: 9,
+        shots: [
+          {
+            shotNumber: 3,
+            description: "Two characters argue",
+            cameraSetup: "medium shot",
+            characterIds: ["a", "b"],
+            continuityNotes: [],
+            durationSeconds: 6,
+          },
+        ],
+      },
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    await router.regenerateClipDialogue({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 3 },
+    });
+
+    const shot3Clips = capturedSet.motionPromptPack.clips.filter(
+      (c: any) => c.sourceShotNumbers?.includes(3) || c.parentShotNumber === 3,
+    );
+    // Exactly one clip survives for shot 3 — the stale sub-shot 2 clip
+    // (clipNumber 302) must be gone, not left behind as a duplicate.
+    expect(shot3Clips).toHaveLength(1);
+    expect(shot3Clips[0]).toMatchObject({
+      prompt: "stale sub-shot 1 prompt",
+      dialogue: [{ lineTh: "อย่าไปไหนนะยาย รอฉันกลับมาก่อน", characterKey: "หนูนา" }],
+    });
+    // No longer a sub-shot once collapsed.
+    expect(shot3Clips[0].parentShotNumber).toBeUndefined();
+    expect(shot3Clips[0].subShotNumber).toBeUndefined();
+    // Shot 1's own clip is untouched.
+    expect(capturedSet.motionPromptPack.clips).toContainEqual(
+      expect.objectContaining({ clipNumber: 1, prompt: "shot 1 prompt" }),
+    );
+  });
+
   it("passes the optional instruction through to the service call", async () => {
     const pack = {
       selectedVideoModelId: "veo-3-1",
@@ -479,5 +582,162 @@ describe("regenerateClipDialogue", () => {
         input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+/**
+ * Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`,
+ * added 2026-07-11) — when this shot carries a canonical dialogue (or an
+ * explicit `silence_intent`) at the Overview page, `regenerateClipDialogue`
+ * always syncs to / rejects based on THAT source alone, ignoring any
+ * user-typed `instruction`, and never calls the LLM.
+ */
+describe("regenerateClipDialogue — dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)", () => {
+  it("syncs to the canonical Overview-page dialogue without calling the LLM, ignoring the instruction, creditsUsed 0, synced: true", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesDeepStoryDrafts: true });
+    mockGetActiveBreakdown.mockReturnValue([
+      { episodeNumber: 1, workingTitle: "t", logline: "l", keyBeats: [] },
+    ]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 1,
+        summary: "s",
+        dialogue_lines: [{ speaker: "หนูนา", line: "TESTMARK123", delivery: "soft" }],
+      },
+    ]);
+
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "existing video prompt",
+          durationSeconds: 6,
+          dialogue: [{ lineTh: "เสียง…ชา…อืม…ใครมาฝากอีกแล้วหรือเปล่า" }],
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({ motionPromptPack: pack, episodeNumber: 1 });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ bible: null }])); // locale/bible lookup (deep-draft resolution)
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    const result = await router.regenerateClipDialogue({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        // Deliberately supplied — must be IGNORED once canonical dialogue
+        // exists, never falls through to the LLM path just because an
+        // instruction was supplied.
+        instruction: "ทำให้สั้นลง",
+      },
+    });
+
+    expect(mockGenerateVerticalDramaClipDialogue).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      dialogue: [{ characterKey: "หนูนา", lineTh: "TESTMARK123", delivery: { tone: "soft" } }],
+      creditsUsed: 0,
+      synced: true,
+    });
+    expect(capturedSet.motionPromptPack.clips[0].dialogue).toEqual([
+      { characterKey: "หนูนา", lineTh: "TESTMARK123", delivery: { tone: "soft" } },
+    ]);
+  });
+
+  it("throws PRECONDITION_FAILED when the shot is marked silence_intent at the Overview page — touches no clip, calls neither the LLM nor db.update", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesDeepStoryDrafts: true });
+    mockGetActiveBreakdown.mockReturnValue([
+      { episodeNumber: 1, workingTitle: "t", logline: "l", keyBeats: [] },
+    ]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 1,
+        summary: "wordless establishing shot",
+        dialogue_lines: [],
+        silence_intent: "establishing",
+      },
+    ]);
+
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ bible: null }]));
+
+    await expect(
+      router.regenerateClipDialogue({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      }),
+    ).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "ช็อตนี้ถูกกำหนดไว้ว่าตั้งใจไม่มีบทพูด — แก้ไขได้ที่หน้าภาพรวม (Overview)",
+    });
+
+    expect(mockGenerateVerticalDramaClipDialogue).not.toHaveBeenCalled();
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("flag ON but this shot has no deep-drafted entry yet — falls through to the pre-existing LLM path unchanged (regression guard)", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesDeepStoryDrafts: true });
+    mockGetActiveBreakdown.mockReturnValue([]); // no matching episode plan item at all
+
+    const pack = {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber: 1,
+          sourceShotNumbers: [1],
+          prompt: "existing video prompt",
+          durationSeconds: 6,
+          dialogue: [{ lineTh: "เสียง…ชา…อืม…ใครมาฝากอีกแล้วหรือเปล่า" }],
+        },
+      ],
+      warnings: [],
+    };
+    const episodeRow = baseEpisodeRow({ motionPromptPack: pack, episodeNumber: 1 });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ bible: null }])) // locale/bible lookup
+      .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    const result = await router.regenerateClipDialogue({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGenerateVerticalDramaClipDialogue).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      dialogue: [{ lineTh: "อย่าไปไหนนะยาย รอฉันกลับมาก่อน", characterKey: "หนูนา" }],
+      creditsUsed: 2,
+    });
+    expect(capturedSet.motionPromptPack.clips[0].dialogue).toEqual([
+      { lineTh: "อย่าไปไหนนะยาย รอฉันกลับมาก่อน", characterKey: "หนูนา" },
+    ]);
   });
 });

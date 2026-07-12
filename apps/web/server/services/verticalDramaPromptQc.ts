@@ -33,10 +33,11 @@ import { parseSkillFile } from "@smartspec/skills";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFiles";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { debugLog, debugError } from "../_core/logger";
 import { VD_IMAGE_PROMPT_MAX, VD_VIDEO_PROMPT_MAX } from "@shared/verticalDramaSeries";
 
@@ -45,6 +46,8 @@ export { VD_IMAGE_PROMPT_MAX, VD_VIDEO_PROMPT_MAX };
 const SKILL_FOLDER_PATH = path.join("skills", "cinematic-prompt-refiner-pro");
 
 let cachedSystemPrompt: string | null = null;
+let cachedSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 /**
  * Read the `cinematic-prompt-refiner-pro` skill's markdown body (everything
@@ -53,7 +56,10 @@ let cachedSystemPrompt: string | null = null;
  * `verticalDramaStartFrameGeneration.ts`'s `loadSkillSystemPrompt`.
  */
 function loadRefinerSystemPrompt(): string {
-  if (cachedSystemPrompt) return cachedSystemPrompt;
+  const now = Date.now();
+  if (cachedSystemPrompt && now - cachedSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS) {
+    return cachedSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -62,6 +68,7 @@ function loadRefinerSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedSystemPrompt = content;
+        cachedSystemPromptTime = now;
         return cachedSystemPrompt;
       }
     }
@@ -101,6 +108,7 @@ export interface EnsurePromptWithinLimitParams {
   context?: string;
   userId: number;
   tenantId?: string;
+  seriesId: number;
   idempotencyKey?: string;
   /** Human-readable label used only in log lines / credit transaction descriptions, e.g. "start-frame prompt (shot 3)". */
   label?: string;
@@ -175,6 +183,7 @@ async function refineOnce(params: {
   strict: boolean;
   userId: number;
   tenantId?: string;
+  seriesId: number;
   idempotencyKey?: string;
   label: string;
 }): Promise<{ optimizedPrompt: string; creditsUsed: number }> {
@@ -183,7 +192,10 @@ async function refineOnce(params: {
     throw new Error("Insufficient credits for prompt QC refinement");
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId,
+  );
   const systemPrompt = loadRefinerSystemPrompt();
   const userPrompt = buildRefinerUserPrompt({
     kind: params.kind,
@@ -249,7 +261,7 @@ async function refineOnce(params: {
 export async function ensurePromptWithinLimit(
   params: EnsurePromptWithinLimitParams,
 ): Promise<EnsurePromptWithinLimitResult> {
-  const { kind, prompt, context, userId, tenantId, idempotencyKey } = params;
+  const { kind, prompt, context, userId, tenantId, seriesId, idempotencyKey } = params;
   const maxChars = promptCapForKind(kind);
   const label = params.label ?? `${kind} prompt`;
 
@@ -268,6 +280,7 @@ export async function ensurePromptWithinLimit(
       strict: false,
       userId,
       tenantId,
+      seriesId,
       idempotencyKey,
       label,
     });
@@ -290,6 +303,7 @@ export async function ensurePromptWithinLimit(
       strict: true,
       userId,
       tenantId,
+      seriesId,
       idempotencyKey,
       label,
     });

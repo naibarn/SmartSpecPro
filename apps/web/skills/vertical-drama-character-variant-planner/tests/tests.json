@@ -1,0 +1,37 @@
+{
+  "skill": "vertical-drama-character-variant-planner",
+  "pinned_metadata": {
+    "category": "other",
+    "execution_mode": "llm-only",
+    "auto_trigger": false,
+    "enabled_by_default": false,
+    "credit_multiplier": 1,
+    "strict_provider_pin": false,
+    "contract_version": 1
+  },
+  "capabilities": [
+    "json_handoff",
+    "bilingual_ui",
+    "whole_season_analysis",
+    "character_variant_planning",
+    "twin_detection"
+  ],
+  "required_top_level_output_fields": ["contract_version", "character_plans", "twin_detections"],
+  "pinned_literals": {
+    "contract_version": 1
+  },
+  "fixtures": {
+    "pass_input": "fixtures/pass.input.json",
+    "pass_output": "fixtures/pass.output.json",
+    "fail_input": "fixtures/fail.input.json",
+    "fail_output": "fixtures/fail.output.json"
+  },
+  "assertions": [
+    "input.schema.json parses",
+    "output.schema.json parses",
+    "pass.output.json contains all required top-level fields",
+    "pinned literal constraints hold in pass.output.json",
+    "fail.output.json violates at least one declared constraint (missing twin_detections)",
+    "scripts/verify.sh runs without provider credentials"
+  ]
+}

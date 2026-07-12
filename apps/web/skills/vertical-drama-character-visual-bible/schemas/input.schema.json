@@ -172,6 +172,79 @@
     "app_metadata": {
       "type": "object",
       "additionalProperties": true
+    },
+    "face_source_reference": {
+      "type": ["object", "null"],
+      "description": "Face-reference input for a variant/twin character row (planning/vertical-drama-character-variants/plan.md Phase C) — ground truth the skill cannot invent, woven into the character's prose per skill.md's 'Face reference locking' section. Absent/null for a standalone character (today's default, unchanged behavior).",
+      "additionalProperties": true,
+      "properties": {
+        "image_url": {
+          "type": "string",
+          "description": "URL of the source character's approved reference portrait to lock/reference this character's face against."
+        },
+        "lock_strength": {
+          "type": "string",
+          "enum": ["hard", "loose"],
+          "description": "'hard' = twin or same-age outfit variant, lock the face essentially exactly to image_url. 'loose' = age-stage variant, use image_url only as a family-resemblance guide, never a hard lock."
+        },
+        "relationship_note": {
+          "type": "string",
+          "description": "Short human-readable fact about WHY this reference exists (e.g. 'twin sibling', 'outfit variant of the same person', 'age-stage variant of the same person') — a fact for the skill to weave into its own reasoning, never pre-written instruction text."
+        }
+      }
+    },
+    "requested_sheet_type": {
+      "type": "string",
+      "description": "Which Character Design Bible sheet format to author, in addition to the 5 always-required prompt fields. 'auto' and 'turnaround' both resolve to the existing turnaround_prompt (no extra sheet_prompt field authored). 'full_combined' and the 11 named formats each author an additional sheet_prompt/sheet_type pair per skill.md's 'Character Design Bible sheet types' section. Absent entirely = same as 'auto' (legacy/default behavior, unchanged).",
+      "enum": [
+        "auto",
+        "turnaround",
+        "full_combined",
+        "cover",
+        "character_profile",
+        "face_detail",
+        "expression_12",
+        "hair_reference",
+        "costume_breakdown",
+        "material_fabric",
+        "color_palette",
+        "pose_library",
+        "body_proportion",
+        "ai_prompt_lock"
+      ]
+    },
+    "has_own_reference_image": {
+      "type": "boolean",
+      "description": "True when the render step will attach an existing, already-approved image of THIS EXACT character (not a parent/twin) as a reference image alongside the authored prompt. When true, every authored prompt field must explicitly lock face shape, skin tone, hairstyle, outfit, clothing, accessories, and shoes to that attached reference per skill.md's 'Own reference image locking' section. Absent/false = legacy/default behavior (character's first portrait, nothing to reference yet), unchanged."
+    },
+    "custom_instruction": {
+      "type": "string",
+      "description": "Raw, unvalidated, user-typed free-text hint about framing/pose/crop/composition/mood for THIS generation only (e.g. 'front-facing', 'half-body shot', 'full-body', 'wider shot', 'different angle') — ground truth the skill cannot invent, never a pre-authored instruction. Woven naturally into primary_portrait_prompt and any other prompt field it genuinely relates to, per skill.md's 'Custom instruction' section. ALWAYS subordinate to identity-lock/reference-lock/role-tier/child-safety rules; never overrides them. Absent = legacy/default behavior, unchanged."
+    },
+    "preset_visual_identity": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "description": "Series-level preset visual identity facts (spec §8.2.2 flow-through rule) — ground truth the skill cannot invent, woven into the character's prose per skill.md's 'Preset visual identity' section. Absent/null for legacy series or when the preset-mix feature flag is off.",
+      "properties": {
+        "style_name": {
+          "type": "string"
+        },
+        "palette": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "wardrobe_grammar": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "matched_archetype_look": {
+          "type": "string"
+        }
+      }
     }
   }
 }

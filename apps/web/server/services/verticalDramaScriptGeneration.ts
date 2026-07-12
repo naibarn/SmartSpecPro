@@ -54,7 +54,6 @@ import {
   estimateVerticalDramaSpeechSeconds,
 } from "@shared/verticalDramaSeries/dialogueQuality";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -66,6 +65,8 @@ import {
   // transitive chain is already loaded by every test of this file.
   type VdDeepDraftShotDraft,
 } from "./verticalDramaStoryBible";
+import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 // Section 05 (spec §7.1/§7.3 dialogue rules v2 + speech profiles, F132D/
 // F132F, added 2026-07-09) — the ONE canonical quality-criteria bundle
 // (spec §11 "Unified Criteria Application") and the speech-profile schema +
@@ -81,10 +82,15 @@ export { InsufficientCreditsError, VdSchemaValidationError };
 const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-script-builder");
 
 let cachedSystemPrompt: string | null = null;
+let cachedSystemPromptTime = 0;
+const SYSTEM_PROMPT_CACHE_TTL_MS = 60000; // 1 minute cache, mirrors skillRegistry.ts's CACHE_TTL_MS
 
 /** Mirrors `verticalDramaStoryboardGeneration.ts`'s `loadSkillSystemPrompt`. */
 function loadSkillSystemPrompt(): string {
-  if (cachedSystemPrompt) return cachedSystemPrompt;
+  const now = Date.now();
+  if (cachedSystemPrompt && now - cachedSystemPromptTime < SYSTEM_PROMPT_CACHE_TTL_MS) {
+    return cachedSystemPrompt;
+  }
 
   for (const dir of resolveSkillDirCandidates(SKILL_FOLDER_PATH)) {
     const manifestPath = resolveSkillManifestPath(dir);
@@ -93,6 +99,7 @@ function loadSkillSystemPrompt(): string {
       const { content } = parseSkillFile(raw);
       if (content && content.trim().length > 0) {
         cachedSystemPrompt = content;
+        cachedSystemPromptTime = now;
         return cachedSystemPrompt;
       }
     }
@@ -182,6 +189,68 @@ const characterEmotionalArcSchema = z
   })
   .passthrough();
 
+/**
+ * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W2,
+ * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — a single
+ * declared open loop: an unanswered question the episode plants for the
+ * viewer to carry forward. Optional/passthrough, same convention as
+ * `scriptBeatPowerShiftSchema`/`characterEmotionalArcSchema` above — every
+ * sub-field is optional so scripts predating this rule (and any
+ * fixture/test payload that omits it) still validate unchanged. skill.md
+ * marks `open_loops[]` MANDATORY (>=1 entry) when the flag is on; that rule
+ * is enforced by the quality-review LLM in a later round, never by a Zod
+ * hard-requirement here (skill-first architecture).
+ */
+const scriptOpenLoopSchema = z
+  .object({
+    question: z.string().optional(),
+    planted_at_beat: z.number().int().optional(),
+    expected_resolution: z
+      .enum(["this_episode", "future_episode", "season"])
+      .optional(),
+  })
+  .passthrough();
+
+/**
+ * Retention hooks (same plan/flag as `scriptOpenLoopSchema` above) — the
+ * structured companion to the existing `cliffhanger` string: names WHICH of
+ * six canonical retention-loop types the episode ends on. `cliffhanger`
+ * itself is UNCHANGED by this addition (still required, still a string) —
+ * skill.md instructs the two to stay consistent (`cliffhanger` is the full
+ * prose telling of `retention_loop.description`). Optional/passthrough,
+ * same rationale as `scriptOpenLoopSchema`.
+ */
+const scriptRetentionLoopSchema = z
+  .object({
+    type: z
+      .enum([
+        "new_question",
+        "unresolved_image",
+        "clue",
+        "threat",
+        "promise",
+        "emotional_turn",
+      ])
+      .optional(),
+    description: z.string().optional(),
+    ties_to_beat: z.number().int().optional(),
+  })
+  .passthrough();
+
+/**
+ * `warnings`/`repair_queue` items are contractually `{code, message}`-shaped
+ * objects (see skill.md's `warnings` example), but a drifted model
+ * occasionally emits a bare string instead (observed in production for
+ * `repair_queue` — see vertical_drama_episode_runs row 64,
+ * VD_SCHEMA_VALIDATION_FAILED). Tolerantly coerce a bare string into
+ * `{ message: string }` rather than hard-failing the whole episode script;
+ * an already-well-formed object passes through unchanged.
+ */
+const scriptNoteItemSchema = z.union([
+  z.string().transform((message) => ({ message })),
+  z.object({}).passthrough(),
+]);
+
 export const scriptBuilderOutputSchema = z
   .object({
     contract_version: z.literal(1),
@@ -193,10 +262,17 @@ export const scriptBuilderOutputSchema = z
     character_state_deltas: z.array(z.object({}).passthrough()),
     product_tie_in_plan: z.object({}).passthrough(),
     continuity_notes: z.array(z.string()),
-    warnings: z.array(z.object({}).passthrough()),
-    repair_queue: z.array(z.object({}).passthrough()),
+    warnings: z.array(scriptNoteItemSchema),
+    repair_queue: z.array(scriptNoteItemSchema),
     /** Optional narrative-quality superset — see skill.md §Narrative grammar. */
     character_emotional_arcs: z.array(characterEmotionalArcSchema).optional(),
+    /**
+     * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W2)
+     * — optional superset, see `scriptOpenLoopSchema`/
+     * `scriptRetentionLoopSchema` above for the backward-compat rationale.
+     */
+    open_loops: z.array(scriptOpenLoopSchema).optional(),
+    retention_loop: scriptRetentionLoopSchema.optional(),
   })
   .passthrough();
 
@@ -339,6 +415,37 @@ export interface GenerateEpisodeScriptParams {
     cliffhanger_line?: string;
   };
   /**
+   * Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W1,
+   * tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — the
+   * series' own free-text `genre` fact (`verticalDramaSeries.genre`, a
+   * varchar column, NOT an enum — e.g. "romance", "educational", "ดราม่า").
+   * Passed through unconditionally by every call site (matches
+   * `seriesRow?.genre` already being available wherever `seriesRow` is
+   * loaded), but only RENDERED into the prompt (as the `genre` key, matching
+   * `schemas/input.schema.json`) when `opts.retentionHooksEnabled` is true —
+   * same decoupled payload-vs-flag convention as `speechBudget`/
+   * `episodeDraft` above. Every existing caller omits/leaves this
+   * undefined, and every caller with the flag off gets a byte-identical
+   * prompt regardless of this value. skill.md's own "Retention loop by
+   * genre" section does the genre -> behavior-group mapping (skill-first —
+   * no genre-mapping logic in this file).
+   */
+  genre?: string | null;
+  /**
+   * Retention-loop type rotation (`planning/vertical-drama-retention-hooks/
+   * plan.md` W5) — the `retention_loop.type` used by the last few episodes,
+   * for the model to avoid repeating (see skill.md's "Narrative grammar"
+   * rule on retention-loop endings). Only rendered (as
+   * `recent_retention_loop_types`, matching `schemas/input.schema.json`)
+   * when `opts.retentionHooksEnabled` is true AND this array is non-empty.
+   * Defined here so `buildUserPrompt` can render it now; no pipeline call
+   * site populates it yet — that wiring is a LATER round (W5/R4), tracked in
+   * the plan above. Every existing/current caller omits this field, so the
+   * prompt is byte-identical to before this field existed regardless of the
+   * flag.
+   */
+  recentRetentionLoopTypes?: string[];
+  /**
    * Repair-mode override (added so `verticalDramaEpisodePipeline.ts`'s
    * `repairStage` can drive a REAL, targeted repair of an existing script
    * instead of the deterministic placeholder it used to always return —
@@ -350,9 +457,12 @@ export interface GenerateEpisodeScriptParams {
    * user/loop-composed repair instruction (which, when W11.6 "Story Lock"
    * is on, already carries the execution-only hard-constraint block — see
    * `verticalDramaQualityReviewApply.ts`'s
-   * `appendVerticalDramaStoryLockRepairConstraint`). The model is told to
-   * apply ONLY the targeted change the instruction calls for and preserve
-   * everything else. Every existing (fresh-generation) call site omits this
+   * `appendVerticalDramaStoryLockRepairConstraint`). `buildUserPrompt` only
+   * supplies these two raw facts under labeled keys — the "apply ONLY the
+   * targeted change, preserve everything else" behavioral contract is
+   * authored once in skill.md's "Repair Mode" section (skill-first
+   * architecture), not restated here. Every existing (fresh-generation) call
+   * site omits this
    * field, so the prompt it produces is byte-identical to before this field
    * existed whenever `repairContext` is absent — same decoupled-payload
    * convention as `episodeDraft`/`speechBudget` above. The post-generation
@@ -408,6 +518,19 @@ export interface GenerateEpisodeScriptParams {
      * `episodeDraft` supplied, preserves today's byte-identical prompt.
      */
     sceneContractsEnabled?: boolean;
+    /**
+     * Feature flag `verticalDramaRetentionHooks`
+     * (`planning/vertical-drama-retention-hooks/plan.md`, added 2026-07-11)
+     * — renders the `genre` fact and (when supplied)
+     * `recent_retention_loop_types` into the prompt (see those params'
+     * doc comments above). All of the actual RULE TEXT for open loops,
+     * retention-loop endings, no-intro openings, result-before-cause
+     * ordering, and genre-conditional retention behavior lives in
+     * skill.md — this flag only gates which structured facts are sent, per
+     * the skill-first architecture (no creative rule text is duplicated
+     * here). Omitted/false preserves today's byte-identical prompt.
+     */
+    retentionHooksEnabled?: boolean;
   };
 }
 
@@ -527,6 +650,23 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     ? getVerticalDramaQualityCriteriaBundle().dialogueRulesV2
     : null;
 
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W1,
+  // tenant flag `verticalDramaRetentionHooks`, added 2026-07-11) — additive;
+  // only rendered when `opts.retentionHooksEnabled` is true, so the flag-off
+  // prompt is byte-identical to before this change. `genre` is a free-text
+  // fact only — the genre -> retention-loop-behavior mapping instruction
+  // lives entirely in skill.md's "Retention loop by genre" section
+  // (skill-first: no genre-mapping logic in this file).
+  // `recent_retention_loop_types` is defined/rendered here now but not yet
+  // populated by any pipeline call site (tracked as a later round, W5/R4).
+  const retentionHooksEnabled = params.opts?.retentionHooksEnabled === true;
+  const genreSection =
+    retentionHooksEnabled && params.genre ? `genre: ${params.genre}` : null;
+  const recentRetentionLoopTypesSection =
+    retentionHooksEnabled && params.recentRetentionLoopTypes?.length
+      ? `recent_retention_loop_types: ${JSON.stringify(params.recentRetentionLoopTypes)}`
+      : null;
+
   const storyBrief = [
     storySource.logline ? `Logline: ${storySource.logline}` : null,
     storySource.mainPlot ? `Main plot: ${storySource.mainPlot}` : null,
@@ -551,7 +691,14 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   // Product tie-in policy (spec §13) — only sent when the series has tie-in
   // enabled. Requires a STRUCTURED, shot-numbered placement so downstream
   // stages (start-frame image generation, dialogue) can reliably wire the
-  // product into concrete shots instead of a vague freeform mention.
+  // product into concrete shots instead of a vague freeform mention. Only
+  // the raw facts (`product_tie_in_policy`, plus whether this episode's
+  // placement is REQUIRED vs merely MANDATORY-when-enabled) are supplied
+  // here — the `tie_ins[]` field-by-field output shape and the "return an
+  // empty placement if it can't be placed naturally" escape hatch are
+  // authored once, in skill.md's "Product Tie-In" section, not restated in
+  // code (skill-first architecture, see
+  // `planning/vertical-drama-skill-first-architecture/plan.md` Tier 5).
   //
   // Task #31 (spec §7.7.2/§7.7.3, added 2026-07-09) — `episodeTieInPlacement`
   // (see this param's own doc comment above) narrows this from a purely
@@ -599,10 +746,6 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
         ? `PRODUCT TIE-IN (REQUIRED this episode — the season plan assigns this episode a placement): weave "${tieIn.productName ?? "the product"}" naturally into this episode like real TV-drama product placement — it must serve an explicit story function (never unrealistically resolve the main conflict), and must NEVER use any forbidden claim listed above. Unlike a routine/opportunistic placement, this episode's plan requires the placement to appear — do NOT return an empty "tie_ins" citing "no product this episode".`
         : `PRODUCT TIE-IN (MANDATORY when enabled): weave "${tieIn.productName ?? "the product"}" naturally into this episode like real TV-drama product placement — it must serve an explicit story function (never unrealistically resolve the main conflict), and must NEVER use any forbidden claim listed above.`,
       planGuidanceLine,
-      `Populate "product_tie_in_plan.tie_ins" as an array of 1 or more objects, each with EXACTLY these fields: "shot_numbers" (array of integers 1-9, the specific storyboard shots that carry this placement), "story_function" (one of ${JSON.stringify(tieIn.allowedStoryFunctions ?? ["daily_use"])}, required, never empty), "placement_style" (one of "hero_prop", "background", "in_use_moment" — how the product physically appears in the shot), and "benefit_talking_point" (a short, natural benefit the dialogue in that shot can reference — never hard-sell copy, must fit the scene's emotion).`,
-      forced
-        ? null
-        : `If tie-in cannot be placed naturally this episode, return "product_tie_in_plan": { "tie_ins": [], "note": "<reason>" } instead of forcing an unnatural placement.`,
     ]
       .filter((line): line is string => Boolean(line))
       .join("\n");
@@ -654,11 +797,15 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   // doc comment) — additive; only rendered when a caller explicitly supplies
   // `repairContext` (only `repairStage`'s real-repair path does), so every
   // fresh-generation call site's prompt is byte-identical to before this
-  // section existed.
+  // section existed. Only the raw facts (`current_script`/
+  // `repair_instruction`) are supplied here — the full "you are repairing,
+  // not writing from scratch; apply only the requested change; preserve
+  // everything else" behavioral contract is authored once, in skill.md's
+  // "Repair Mode" section, and applies as a standing instruction whenever
+  // these two keys are present (skill-first architecture, see
+  // `planning/vertical-drama-skill-first-architecture/plan.md` Tier 5).
   const repairSection = params.repairContext
     ? [
-        "REPAIR MODE: You are REPAIRING an existing episode script that was already generated — you are NOT writing a new one from scratch.",
-        "Apply ONLY the targeted change(s) the instruction below calls for. Preserve every other beat, dialogue line, hook, cliffhanger, and field from the CURRENT script exactly as-is unless the instruction specifically requires changing it — do not rewrite unrelated content.",
         `current_script: ${JSON.stringify(params.repairContext.currentScript)}`,
         `repair_instruction: ${params.repairContext.instruction}`,
       ].join("\n")
@@ -672,6 +819,8 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     langInstruction,
     `characters:\n${characterLines}`,
     voiceCardsSection,
+    genreSection,
+    recentRetentionLoopTypesSection,
     memorySection,
     tieInSection,
     speechBudgetSection,
@@ -1011,7 +1160,10 @@ export async function generateEpisodeScript(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveVerticalDramaSeriesModel(
+    params.seriesId,
+    resolveQualityLargeContextModelId
+  );
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildUserPrompt(params);
 

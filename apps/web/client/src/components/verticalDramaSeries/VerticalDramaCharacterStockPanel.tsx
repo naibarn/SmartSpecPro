@@ -14,7 +14,7 @@
  *  - inline Thai/English copy driven by the shared language hook.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -24,15 +24,29 @@ import {
   Grid3x3,
   Loader2,
   Plus,
+  Shirt,
   Sparkles,
   Trash2,
+  UploadCloud,
   User,
+  UserPlus,
+  Users,
+  Wand2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +61,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalDramaCopy";
+import { VD_COPY } from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
 import { VerticalDramaCharacterVoiceCastingCard } from "@/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard";
 import type {
@@ -168,6 +183,462 @@ export function dedupeCharacterAssetsForDisplay(
     }
   }
   return order.map(key => byGroup.get(key)!);
+}
+
+/** Result of {@link resolveCharacterCardPortraitAsset}: the URL a card
+ *  thumbnail should render, plus the winning asset's `assetLinkId` so
+ *  callers can offer a delete action on it. */
+export interface VdCharacterCardPortraitAsset {
+  thumbnailUrl: string;
+  /** `null` only in the rare transient race where the thumbnail is showing
+   *  purely from this session's local generation cache
+   *  (`generatedImageUrls`) and hasn't yet appeared as a linked asset row —
+   *  in that window there's nothing durable to delete yet. Self-heals once
+   *  the asset list refetches. */
+  assetLinkId: string | null;
+}
+
+/**
+ * Resolves the single `primary_portrait` asset a character card's
+ * thumbnail shows for `characterId`: the `approved` one if present, else
+ * the most-recently-updated `generated`/`imported` one, else (matched by
+ * `mediaAssetId`) this session's local generation cache. Same selection
+ * rule the roster card thumbnail has always used (see
+ * `getCharacterCardThumbnail` in the component body, which now delegates
+ * here) — extracted as a standalone pure function so it can carry an
+ * `assetLinkId` (needed by the card-level delete button added 2026-07-11)
+ * without duplicating the selection logic, and so it's unit-testable
+ * without mounting the component.
+ *
+ * Reused for BOTH the main portrait thumbnail (`characterId` = the
+ * character's own id) and every variant "look" chip underneath it
+ * (`characterId` = the variant row's own id — each variant is its own
+ * character row with its own portrait, so no extra filtering is needed
+ * beyond what this function already does).
+ */
+export function resolveCharacterCardPortraitAsset(
+  assets: VerticalDramaCharacterAsset[],
+  characterId: string,
+  sessionCachedImage?: { imageUrl: string; mediaAssetId: string }
+): VdCharacterCardPortraitAsset | null {
+  const portraitAssets = assets.filter(
+    a => a.characterId === characterId && a.role === "primary_portrait"
+  );
+  const approved = portraitAssets.find(a => a.state === "approved");
+  const latestGenerated = [...portraitAssets]
+    .filter(a => a.state === "generated" || a.state === "imported")
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )[0];
+  const chosen = approved ?? latestGenerated;
+  if (chosen?.thumbnailUrl) {
+    return { thumbnailUrl: chosen.thumbnailUrl, assetLinkId: chosen.assetLinkId };
+  }
+  if (
+    sessionCachedImage &&
+    (!chosen || String(chosen.mediaAssetId) === sessionCachedImage.mediaAssetId)
+  ) {
+    return {
+      thumbnailUrl: sessionCachedImage.imageUrl,
+      assetLinkId: chosen?.assetLinkId ?? null,
+    };
+  }
+  return null;
+}
+
+/** A single candidate the reference-image picker
+ *  (planning/vertical-drama-reference-picker-outfit-lock/plan.md, Phase D3)
+ *  can offer for the identity-lock reference of the NEXT
+ *  generateCharacterImage/generateCharacterSheet call. */
+export interface VdReferenceCandidate {
+  assetLinkId: string;
+  thumbnailUrl: string;
+  /** `"own"` — one of this character's own `primary_portrait` assets.
+   *  `"parent"` — a variant borrowing its parent character's portrait.
+   *  `"twin"` — a twin (`sharesFaceWithCharacterId`, either direction)
+   *  sharing a face with the source character. `"variant"` — one of THIS
+   *  character's own outfit/age-stage variants (reverse of `"parent"` —
+   *  shown when viewing the PARENT, offering a child variant's portrait). */
+  sourceLabel: "own" | "parent" | "twin" | "variant";
+  /** Set for every candidate except `"own"` — the source character's
+   *  display name (`"parent"`/`"twin"`) or variant label (`"variant"`), for
+   *  the "จาก {name}" / "from {name}" caption. */
+  sourceName?: string;
+}
+
+/** Minimum shape {@link buildReferenceCandidates} needs from a character
+ *  DTO — deliberately narrower than {@link VdRosterCharacterFields} (no
+ *  `name`/`variantLabel`) since the picker only needs to know THIS
+ *  character's id and which other character (if any) it borrows its
+ *  identity reference from. */
+export interface VdReferenceCandidateCharacterFields {
+  characterId: string;
+  parentCharacterId?: string;
+  sharesFaceWithCharacterId?: string;
+}
+
+/** Lookup entry {@link buildReferenceCandidates} needs for every OTHER
+ *  character in the series — carries the relationship fields too (not just
+ *  `characterId`/`name`) so the function can scan for characters that
+ *  borrow identity FROM the one being viewed (reverse direction), not just
+ *  resolve the name of a source the viewed character itself points at. */
+export interface VdReferenceCandidateLookupEntry {
+  characterId: string;
+  name: string;
+  parentCharacterId?: string;
+  sharesFaceWithCharacterId?: string;
+  variantLabel?: string;
+}
+
+/**
+ * Candidate reference images for the character-detail-panel picker: every
+ * one of this character's OWN `primary_portrait` assets (not just the
+ * auto-picked one — show every candidate when there's more than one), PLUS
+ * two symmetric cross-character cases:
+ *  - UPWARD: when the character IS a variant (`parentCharacterId` set) or
+ *    twin (`sharesFaceWithCharacterId` set), the resolved source
+ *    character's own `primary_portrait` assets too.
+ *  - DOWNWARD (2026-07-11 fix — a parent/twin-source character's own detail
+ *    panel used to show ONLY its own portrait, never its variants'/twins'
+ *    portraits, even though they're the exact same face): every OTHER
+ *    character that points AT this one — this character's own outfit/
+ *    age-stage variants, and any twin that shares ITS face with this
+ *    character — offered the same way, labeled with the variant's
+ *    `variantLabel` (variants share the parent's `name`, so the label is
+ *    what actually distinguishes them) or the twin's `name`.
+ * This is the UI surface that lets a variant/twin with no portrait of its
+ * own yet actually attach a reference image at render time (see the plan
+ * doc's "real, confirmed gap" note — `getPrimaryPortraitUrl` never
+ * consulted the face-source relationship server-side, so a brand-new
+ * variant/twin got ZERO reference image attached before this picker
+ * existed) — and, symmetrically, lets a parent character borrow a look from
+ * one of its own variants when regenerating its base portrait.
+ *
+ * Deliberately does NOT dedupe or cap the "own" list to one entry — every
+ * approved/generated/imported `primary_portrait` this character has is
+ * offered, so the user can pick an older look on purpose.
+ */
+export function buildReferenceCandidates(
+  assets: VerticalDramaCharacterAsset[],
+  character: VdReferenceCandidateCharacterFields,
+  charactersById: Map<string, VdReferenceCandidateLookupEntry>
+): VdReferenceCandidate[] {
+  const ownPortraits = assets.filter(
+    a =>
+      a.characterId === character.characterId &&
+      a.role === "primary_portrait" &&
+      a.thumbnailUrl
+  );
+  const candidates: VdReferenceCandidate[] = ownPortraits.map(a => ({
+    assetLinkId: a.assetLinkId,
+    thumbnailUrl: a.thumbnailUrl!,
+    sourceLabel: "own",
+  }));
+
+  const crossSourceId =
+    character.sharesFaceWithCharacterId ?? character.parentCharacterId;
+  if (crossSourceId) {
+    const sourceName = charactersById.get(crossSourceId)?.name;
+    const crossPortraits = assets.filter(
+      a =>
+        a.characterId === crossSourceId &&
+        a.role === "primary_portrait" &&
+        a.thumbnailUrl
+    );
+    candidates.push(
+      ...crossPortraits.map(a => ({
+        assetLinkId: a.assetLinkId,
+        thumbnailUrl: a.thumbnailUrl!,
+        sourceLabel: character.sharesFaceWithCharacterId
+          ? ("twin" as const)
+          : ("parent" as const),
+        sourceName,
+      }))
+    );
+  }
+
+  for (const entry of charactersById.values()) {
+    if (entry.characterId === character.characterId) continue;
+    const isVariantOfThis = entry.parentCharacterId === character.characterId;
+    const isTwinOfThis =
+      entry.sharesFaceWithCharacterId === character.characterId;
+    if (!isVariantOfThis && !isTwinOfThis) continue;
+    const reversePortraits = assets.filter(
+      a =>
+        a.characterId === entry.characterId &&
+        a.role === "primary_portrait" &&
+        a.thumbnailUrl
+    );
+    candidates.push(
+      ...reversePortraits.map(a => ({
+        assetLinkId: a.assetLinkId,
+        thumbnailUrl: a.thumbnailUrl!,
+        sourceLabel: isTwinOfThis ? ("twin" as const) : ("variant" as const),
+        sourceName: isTwinOfThis ? entry.name : (entry.variantLabel ?? entry.name),
+      }))
+    );
+  }
+
+  return candidates;
+}
+
+/**
+ * Mirrors the backend's `getPrimaryPortraitUrl` selection ordering exactly
+ * (approved-first, then newest-updated — same rule
+ * {@link resolveCharacterCardPortraitAsset} already applies for the roster
+ * card thumbnail) so the picker's default/pre-selected candidate always
+ * matches today's auto-resolution behavior byte-for-byte until the user
+ * actively picks a different one. Returns `null` when the character has no
+ * `primary_portrait` of its own yet (matches the real "no reference
+ * attached" auto behavior for a brand-new variant/twin — see
+ * {@link buildReferenceCandidates}'s doc comment).
+ */
+export function resolveDefaultReferenceAssetLinkId(
+  assets: VerticalDramaCharacterAsset[],
+  characterId: string
+): string | null {
+  const own = assets
+    .filter(a => a.characterId === characterId && a.role === "primary_portrait")
+    .sort((a, b) => {
+      const aApproved = a.state === "approved";
+      const bApproved = b.state === "approved";
+      if (aApproved !== bApproved) return aApproved ? -1 : 1;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+  return own[0]?.assetLinkId ?? null;
+}
+
+/** Minimum shape `buildCharacterRosterEntries` needs from a character DTO
+ *  (planning/vertical-drama-character-variants/plan.md Phase E) — kept
+ *  separate from the full `characterRowToDto` response shape so this stays
+ *  testable with plain fixtures rather than the full tRPC response type. */
+export interface VdRosterCharacterFields {
+  characterId: string;
+  name: string;
+  parentCharacterId?: string;
+  variantLabel?: string;
+  sharesFaceWithCharacterId?: string;
+}
+
+export interface VdRosterEntry<T extends VdRosterCharacterFields> {
+  character: T;
+  /** Variant rows (`parentCharacterId` === this entry's `characterId`), in
+   *  the same relative order they appear in the source list. Empty for
+   *  plain characters and twins — a variant row is never itself a
+   *  top-level roster entry (see the filter below). */
+  variants: T[];
+  /** Resolved `name` of the character this row shares a face with (twins),
+   *  or `undefined` when this row isn't a twin OR the source character
+   *  can't be found in the same list — defensive, never throws; the caller
+   *  should simply omit the shares-face badge in that case rather than
+   *  render broken text. */
+  shareFaceSourceName: string | undefined;
+}
+
+/**
+ * Partitions a flat character list (as returned by
+ * `verticalDramaCharacters.listCharacters`) into roster grid entries:
+ * - one entry per TOP-LEVEL character (no `parentCharacterId`) — this
+ *   includes plain standalone characters, parent characters that HAVE
+ *   variants (their variants nest inside the SAME entry, not separate
+ *   top-level entries), and twins (independent people who just share a
+ *   face reference, annotated via `shareFaceSourceName`);
+ * - variant rows (`parentCharacterId` set) are grouped onto their parent's
+ *   entry and never produce their own top-level entry.
+ *
+ * Pure/derived from the already-fetched flat list — callers should NOT run
+ * a separate query for this.
+ */
+export function buildCharacterRosterEntries<T extends VdRosterCharacterFields>(
+  characters: T[]
+): VdRosterEntry<T>[] {
+  const variantsByParentId = new Map<string, T[]>();
+  for (const c of characters) {
+    if (!c.parentCharacterId) continue;
+    const existing = variantsByParentId.get(c.parentCharacterId);
+    if (existing) {
+      existing.push(c);
+    } else {
+      variantsByParentId.set(c.parentCharacterId, [c]);
+    }
+  }
+  return characters
+    .filter(c => !c.parentCharacterId)
+    .map(c => ({
+      character: c,
+      variants: variantsByParentId.get(c.characterId) ?? [],
+      shareFaceSourceName: c.sharesFaceWithCharacterId
+        ? characters.find(other => other.characterId === c.sharesFaceWithCharacterId)?.name
+        : undefined,
+    }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* W2 manual CRUD (plan: vertical-drama-twin-variant-completeness, F6) —      */
+/* pure mutation-input builders + copy helpers, kept separate from the        */
+/* dialog JSX below so they stay testable with plain fixtures (matches this   */
+/* file's own established convention — see `buildCharacterRosterEntries`/     */
+/* `buildReferenceCandidates` above and their sibling `__tests__/*.test.ts`   */
+/* files — a full render test of this ~4000-line panel is impractical).       */
+/* -------------------------------------------------------------------------- */
+
+/** Exact payload shape `verticalDramaCharacters.createCharacterVariant`
+ *  expects (`server/routers/verticalDramaCharacters.ts`, ~line 977) — kept as
+ *  a local literal type rather than importing the router's Zod-inferred type
+ *  directly, since that file pulls in server-only modules that must never
+ *  reach the client bundle (same rationale as `VD_CHARACTER_SHEET_TYPE_VALUES`
+ *  above). If the router's input schema ever changes, update this to match. */
+export interface VdCreateCharacterVariantInput {
+  seriesId: string;
+  parentCharacterId: string;
+  variantLabel: string;
+  variantType: "outfit" | "age_stage";
+  customDescription?: string;
+  referenceMediaAssetId?: string;
+}
+
+/** Builds the `createCharacterVariant` mutation payload from the "เพิ่มลุค"
+ *  dialog's raw form state: trims `variantLabel`/`customDescription`, and
+ *  omits `customDescription`/`referenceMediaAssetId` entirely when empty/null
+ *  rather than sending an empty string (matches the input schema's own
+ *  `.optional()` — an empty string would otherwise pass Zod's `.max(2000)`
+ *  but pointlessly override the mutation's own `variantLabel` fallback for
+ *  `data.description`, see that mutation's doc comment). */
+export function buildCreateCharacterVariantInput(params: {
+  seriesId: string;
+  parentCharacterId: string;
+  variantLabel: string;
+  variantType: "outfit" | "age_stage";
+  customDescription: string;
+  referenceMediaAssetId: string | null;
+}): VdCreateCharacterVariantInput {
+  const variantLabel = params.variantLabel.trim();
+  const customDescription = params.customDescription.trim();
+  return {
+    seriesId: params.seriesId,
+    parentCharacterId: params.parentCharacterId,
+    variantLabel,
+    variantType: params.variantType,
+    ...(customDescription ? { customDescription } : {}),
+    ...(params.referenceMediaAssetId
+      ? { referenceMediaAssetId: params.referenceMediaAssetId }
+      : {}),
+  };
+}
+
+/** Exact payload shape `verticalDramaCharacters.createCharacterTwin` expects
+ *  (`server/routers/verticalDramaCharacters.ts`, ~line 1057) — same rationale
+ *  as `VdCreateCharacterVariantInput` above for why this isn't imported from
+ *  the router file directly. */
+export interface VdCreateCharacterTwinInput {
+  seriesId: string;
+  sharesFaceWithCharacterId: string;
+  name: string;
+  role?: string;
+  customDescription?: string;
+  referenceMediaAssetId?: string;
+}
+
+/** Builds the `createCharacterTwin` mutation payload from the "เพิ่มแฝด"
+ *  dialog's raw form state — same trim/omit-when-empty convention as
+ *  `buildCreateCharacterVariantInput` above. */
+export function buildCreateCharacterTwinInput(params: {
+  seriesId: string;
+  sharesFaceWithCharacterId: string;
+  name: string;
+  role: string;
+  customDescription: string;
+  referenceMediaAssetId: string | null;
+}): VdCreateCharacterTwinInput {
+  const name = params.name.trim();
+  const role = params.role.trim();
+  const customDescription = params.customDescription.trim();
+  return {
+    seriesId: params.seriesId,
+    sharesFaceWithCharacterId: params.sharesFaceWithCharacterId,
+    name,
+    ...(role ? { role } : {}),
+    ...(customDescription ? { customDescription } : {}),
+    ...(params.referenceMediaAssetId
+      ? { referenceMediaAssetId: params.referenceMediaAssetId }
+      : {}),
+  };
+}
+
+/** Exact payload shape `verticalDramaCharacters.previewCharacterPrompt`
+ *  expects (`server/routers/verticalDramaCharacters.ts`) — the
+ *  `customInstruction` field name/cap (500 chars, enforced server-side via
+ *  `z.string().trim().max(500).optional()`) is fixed by
+ *  `planning/vertical-drama-character-custom-instruction/plan.md` and must
+ *  match the backend exactly. */
+export interface VdPreviewCharacterPromptInput {
+  seriesId: string;
+  characterId: string;
+  customInstruction?: string;
+}
+
+/** Builds the `previewCharacterPrompt` mutation payload from the optional
+ *  per-character "additional details" hint (roster-card compact input +
+ *  detail-panel textarea) — same trim/omit-when-blank convention as
+ *  `buildCreateCharacterVariantInput` above: never sends an empty string,
+ *  so omitting the field entirely preserves today's exact default backend
+ *  behavior when the user types nothing. */
+export function buildPreviewCharacterPromptInput(params: {
+  seriesId: string;
+  characterId: string;
+  customInstruction: string;
+}): VdPreviewCharacterPromptInput {
+  const customInstruction = params.customInstruction.trim();
+  return {
+    seriesId: params.seriesId,
+    characterId: params.characterId,
+    ...(customInstruction ? { customInstruction } : {}),
+  };
+}
+
+/** Bilingual summary toast copy for a `detectCharacterVariantsNow` success
+ *  response — matches the exact wording confirmed in the task brief. All
+ *  three counts at 0 gets its own "nothing found" message rather than
+ *  "Created 0 variant(s), 0 twin(s), updated 0", which reads as a bug/error
+ *  even though the call succeeded. */
+export function buildDetectCharacterVariantsSummaryMessage(
+  lang: Lang,
+  result: {
+    variantsCreated: number;
+    variantsUpdated: number;
+    twinsCreated: number;
+  }
+): string {
+  if (
+    result.variantsCreated === 0 &&
+    result.variantsUpdated === 0 &&
+    result.twinsCreated === 0
+  ) {
+    return t(
+      lang,
+      "ไม่พบ variant/แฝดใหม่จากเนื้อเรื่องปัจจุบัน",
+      "No new variants/twins found in the current story"
+    );
+  }
+  return t(
+    lang,
+    `สร้าง variant ${result.variantsCreated} รายการ, แฝด ${result.twinsCreated} รายการ, อัปเดต ${result.variantsUpdated} รายการ`,
+    `Created ${result.variantsCreated} variant(s), ${result.twinsCreated} twin(s), updated ${result.variantsUpdated}`
+  );
+}
+
+/** Shared error-message resolution for every mutation's `onError` in this
+ *  panel — extracted to a pure, exported function so it's independently
+ *  testable (e.g. that `deleteCharacter`'s PRECONDITION_FAILED Thai message
+ *  passes straight through unmodified) without needing a full component
+ *  render. Byte-identical logic to what `onError` inlined before this
+ *  extraction. */
+export function resolveVdCharacterMutationErrorMessage(
+  err: { message?: string } | null | undefined,
+  lang: Lang
+): string {
+  return err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong");
 }
 
 function extractCharacterDescriptionForDisplay(
@@ -306,6 +777,124 @@ export function formStateToSpeechProfile(
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 
+/**
+ * Character Design Bible sheet formats (vertical-drama-character-sheet-
+ * consolidation plan, Phase C). Value-for-value mirror of the router's own
+ * `CHARACTER_SHEET_TYPE_VALUES` (`apps/web/server/routers/
+ * verticalDramaCharacters.ts`) — kept as a local literal array rather than
+ * importing that export directly: the router file pulls in server-only
+ * modules (db, TRPCError, etc.) that must never end up in the client bundle,
+ * and this array is needed as a runtime VALUE here (to build
+ * `SHEET_TYPE_OPTIONS` below), not just a type, so a type-only import can't
+ * substitute for it. If the router's array ever changes, update this to
+ * match.
+ */
+const VD_CHARACTER_SHEET_TYPE_VALUES = [
+  "auto",
+  "turnaround",
+  "full_combined",
+  "cover",
+  "character_profile",
+  "face_detail",
+  "expression_12",
+  "hair_reference",
+  "costume_breakdown",
+  "material_fabric",
+  "color_palette",
+  "pose_library",
+  "body_proportion",
+  "ai_prompt_lock",
+] as const;
+type VdCharacterSheetType = (typeof VD_CHARACTER_SHEET_TYPE_VALUES)[number];
+
+interface VdSheetTypeOption {
+  value: VdCharacterSheetType;
+  labelTh: string;
+  labelEn: string;
+}
+
+/** Options for the unified sheet-type `<Select>` in the character detail
+ *  panel (replaces the old two separate "สร้างชีทตัวละคร"/"Character Sheet
+ *  แบบเต็ม" buttons) — one entry per `VD_CHARACTER_SHEET_TYPE_VALUES` value,
+ *  in the same order. */
+const SHEET_TYPE_OPTIONS: VdSheetTypeOption[] = [
+  { value: "auto", labelTh: "อัตโนมัติ", labelEn: "Auto" },
+  {
+    value: "turnaround",
+    labelTh: "ชีทหมุนรอบตัว (3 มุม)",
+    labelEn: "Turnaround (3-angle)",
+  },
+  {
+    value: "full_combined",
+    labelTh: "Character Sheet แบบเต็ม",
+    labelEn: "Full character sheet",
+  },
+  { value: "cover", labelTh: "หน้าปก", labelEn: "Cover" },
+  {
+    value: "character_profile",
+    labelTh: "โปรไฟล์ตัวละคร",
+    labelEn: "Character profile",
+  },
+  {
+    value: "face_detail",
+    labelTh: "รายละเอียดใบหน้า",
+    labelEn: "Face detail",
+  },
+  {
+    value: "expression_12",
+    labelTh: "ชีทสีหน้า (12 แบบ)",
+    labelEn: "Expression sheet (12)",
+  },
+  {
+    value: "hair_reference",
+    labelTh: "อ้างอิงทรงผม",
+    labelEn: "Hair reference",
+  },
+  {
+    value: "costume_breakdown",
+    labelTh: "แจกแจงชุด",
+    labelEn: "Costume breakdown",
+  },
+  {
+    value: "material_fabric",
+    labelTh: "วัสดุ/เนื้อผ้า",
+    labelEn: "Material & fabric",
+  },
+  { value: "color_palette", labelTh: "จานสี", labelEn: "Color palette" },
+  {
+    value: "pose_library",
+    labelTh: "คลังท่าโพส",
+    labelEn: "Pose library",
+  },
+  {
+    value: "body_proportion",
+    labelTh: "สัดส่วนร่างกาย",
+    labelEn: "Scale & proportion",
+  },
+  {
+    value: "ai_prompt_lock",
+    labelTh: "AI Prompt Lock",
+    labelEn: "AI prompt lock",
+  },
+];
+
+/** Best-effort label for a `character_design_bible`-role asset, derived from
+ *  its `metadata.sheetType` (see `resolveCharacterSheetAssetTag` server-side)
+ *  via `SHEET_TYPE_OPTIONS`. Returns `undefined` when the metadata is
+ *  missing/unrecognized so callers can fall back to a generic label. */
+function sheetTypeLabelFromMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+  langKey: "th" | "en"
+): string | undefined {
+  const sheetType =
+    metadata && typeof metadata.sheetType === "string"
+      ? metadata.sheetType
+      : undefined;
+  if (!sheetType) return undefined;
+  const option = SHEET_TYPE_OPTIONS.find(o => o.value === sheetType);
+  if (!option) return undefined;
+  return langKey === "th" ? option.labelTh : option.labelEn;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Props                                                                       */
@@ -412,8 +1001,15 @@ export function VerticalDramaCharacterStockPanel({
    *  own name is never translated). Defaults to English per the confirmed
    *  product decision; toggleable per-generation. */
   const [sheetLanguage, setSheetLanguage] = useState<"en" | "th">("en");
+  /** Which Character Design Bible sheet format the unified generate button
+   *  (detail panel) will request — bound to the `<Select>` that replaced the
+   *  old two separate "สร้างชีทตัวละคร"/"Character Sheet แบบเต็ม" buttons
+   *  (vertical-drama-character-sheet-consolidation plan, Phase C). Defaults
+   *  to `"auto"`, which the backend resolves to `"turnaround"`. */
+  const [selectedSheetType, setSelectedSheetType] =
+    useState<VdCharacterSheetType>("auto");
   /** Tracks which character+role pairs are between "task submitted" and
-   *  "task completed" — `generateImageMutation.isPending`/`generateTurnaroundMutation.isPending`
+   *  "task completed" — `generateImageMutation.isPending`/`generateSheetMutation.isPending`
    *  only cover the (fast) submit call itself; the actual generation happens
    *  async and is tracked here for the duration of the poll. A Set (not a
    *  single value) — bug fix, 2026-07-05: this used to be a single
@@ -426,10 +1022,42 @@ export function VerticalDramaCharacterStockPanel({
   const [pollingCharacters, setPollingCharacters] = useState<Set<string>>(
     new Set()
   );
-  const pollingCharacterKey = (
-    characterId: string,
-    role: "primary_portrait" | "character_sheet_turnaround" | "character_sheet_full"
-  ) => `${characterId}::${role}`;
+  /** `role` is intentionally `string`, not a narrow literal union: since the
+   *  vertical-drama-character-sheet-consolidation plan (Phase C) merged the
+   *  turnaround/full-sheet mutations into one, the backend
+   *  (`generateCharacterSheet`) is the sole source of truth for which role a
+   *  given `sheetType` resolves to (`"character_sheet_turnaround"`,
+   *  `"character_sheet_full"`, or the new `"character_design_bible"` — see
+   *  `resolveCharacterSheetAssetTag` server-side), so this key must accept
+   *  whatever the response returns rather than a fixed client-side list. */
+  const pollingCharacterKey = (characterId: string, role: string) =>
+    `${characterId}::${role}`;
+
+  /** Reference-image-picker (vertical-drama-reference-picker-outfit-lock
+   *  plan, Phase D3): explicit per-character override of which
+   *  `primary_portrait` asset is attached as the identity-lock reference on
+   *  the next `generateCharacterImage`/`generateCharacterSheet` call for
+   *  that character. Keyed by characterId so switching characters never
+   *  clobbers another character's choice; absent key = "use auto-
+   *  resolution" (today's exact default backend behavior, unchanged).
+   *  In-memory only, matches this file's existing per-character state
+   *  convention (see `generatedImageUrls`/`pollingCharacters` above) — not
+   *  persisted, not reset when the character selection changes. */
+  const [referenceOverrideByCharacter, setReferenceOverrideByCharacter] =
+    useState<Record<string, string>>({});
+
+  /** Optional free-text hint (framing/pose/crop, e.g. "หน้าตรง"/"ภาพเต็มตัว")
+   *  sent alongside the `previewCharacterPrompt` call as a raw
+   *  `customInstruction` fact — lets the LLM vary repeated portrait
+   *  generations instead of producing near-identical prompts every click
+   *  (planning/vertical-drama-character-custom-instruction/plan.md). Keyed
+   *  by characterId, same rationale and lifecycle as
+   *  `referenceOverrideByCharacter` above: in-memory only, per-character, not
+   *  reset on selection change, absent key = today's exact default (no
+   *  `customInstruction` sent). Shared by both the roster-card compact input
+   *  and the detail-panel textarea for the same character. */
+  const [customInstructionByCharacter, setCustomInstructionByCharacter] =
+    useState<Record<string, string>>({});
 
   /** Persistent right-side sidebar column (Library / History / Grid cutter
    *  reference picker) — mirrors Media Studio's own collapsible right panel
@@ -529,9 +1157,7 @@ export function VerticalDramaCharacterStockPanel({
     utils.verticalDramaCharacters.listCharacters.invalidate({ seriesId });
 
   const onError = (err: { message?: string }) =>
-    toast.error(
-      err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong")
-    );
+    toast.error(resolveVdCharacterMutationErrorMessage(err, lang));
 
   /* ---- W12-B voice chain — per-character voice casting ----
    * Series-scoped (not per-character), so this query is fetched once
@@ -792,20 +1418,146 @@ export function VerticalDramaCharacterStockPanel({
   const [confirmingDeleteAssetLinkId, setConfirmingDeleteAssetLinkId] =
     useState<string | null>(null);
 
+  /* ------------------------------------------------------------------ */
+  /* W2 manual CRUD (plan: vertical-drama-twin-variant-completeness, F6) */
+  /* ------------------------------------------------------------------ */
+
+  /** "เพิ่มลุค" dialog — `null` when closed, else the BASE character it's
+   *  being opened for (`buildCharacterRosterEntries`'s top-level entry). */
+  const [variantDialogCharacter, setVariantDialogCharacter] = useState<{
+    characterId: string;
+    name: string;
+  } | null>(null);
+  const [variantLabelInput, setVariantLabelInput] = useState("");
+  const [variantTypeInput, setVariantTypeInput] = useState<
+    "outfit" | "age_stage"
+  >("outfit");
+  const [variantDescriptionInput, setVariantDescriptionInput] = useState("");
+  const [variantReferenceMediaAssetId, setVariantReferenceMediaAssetId] =
+    useState<string | null>(null);
+  const [variantReferencePreviewUrl, setVariantReferencePreviewUrl] =
+    useState<string | null>(null);
+  const [variantReferenceResolving, setVariantReferenceResolving] =
+    useState(false);
+  const [variantReferenceDragOver, setVariantReferenceDragOver] =
+    useState(false);
+  const variantReferenceInputRef = useRef<HTMLInputElement>(null);
+
+  const openVariantDialog = (character: { characterId: string; name: string }) => {
+    setVariantDialogCharacter(character);
+    setVariantLabelInput("");
+    setVariantTypeInput("outfit");
+    setVariantDescriptionInput("");
+    setVariantReferenceMediaAssetId(null);
+    setVariantReferencePreviewUrl(null);
+  };
+  const closeVariantDialog = () => setVariantDialogCharacter(null);
+
+  /** "เพิ่มแฝด" dialog — same open/closed convention as the variant dialog
+   *  above, holding the SOURCE (face-sharing) character it was opened for. */
+  const [twinDialogCharacter, setTwinDialogCharacter] = useState<{
+    characterId: string;
+    name: string;
+  } | null>(null);
+  const [twinNameInput, setTwinNameInput] = useState("");
+  const [twinRoleInput, setTwinRoleInput] = useState("");
+  const [twinDescriptionInput, setTwinDescriptionInput] = useState("");
+  const [twinReferenceMediaAssetId, setTwinReferenceMediaAssetId] = useState<
+    string | null
+  >(null);
+  const [twinReferencePreviewUrl, setTwinReferencePreviewUrl] = useState<
+    string | null
+  >(null);
+  const [twinReferenceResolving, setTwinReferenceResolving] = useState(false);
+  const [twinReferenceDragOver, setTwinReferenceDragOver] = useState(false);
+  const twinReferenceInputRef = useRef<HTMLInputElement>(null);
+
+  const openTwinDialog = (character: { characterId: string; name: string }) => {
+    setTwinDialogCharacter(character);
+    setTwinNameInput("");
+    setTwinRoleInput("");
+    setTwinDescriptionInput("");
+    setTwinReferenceMediaAssetId(null);
+    setTwinReferencePreviewUrl(null);
+  };
+  const closeTwinDialog = () => setTwinDialogCharacter(null);
+
+  /** Delete-CHARACTER confirm state (distinct from `confirmingDeleteAssetLinkId`
+   *  above, which only ever deletes a reference IMAGE) — same 2-step
+   *  inline-confirm convention, shared across the base-character card, twin
+   *  card, and variant-chip delete affordances below. */
+  const [confirmingDeleteCharacterId, setConfirmingDeleteCharacterId] =
+    useState<string | null>(null);
+
+  const createVariantMutation =
+    trpc.verticalDramaCharacters.createCharacterVariant.useMutation({
+      onSuccess: res => {
+        invalidate();
+        setSelectedCharacterId(res.character.characterId);
+        toast.success(t(lang, "เพิ่มลุคแล้ว", "Look added"));
+        closeVariantDialog();
+      },
+      onError,
+    });
+
+  const createTwinMutation =
+    trpc.verticalDramaCharacters.createCharacterTwin.useMutation({
+      onSuccess: res => {
+        invalidate();
+        setSelectedCharacterId(res.character.characterId);
+        toast.success(t(lang, "เพิ่มแฝดแล้ว", "Twin added"));
+        closeTwinDialog();
+      },
+      onError,
+    });
+
+  const deleteCharacterMutation =
+    trpc.verticalDramaCharacters.deleteCharacter.useMutation({
+      onSuccess: () => {
+        invalidate();
+        toast.success(t(lang, "ลบตัวละครแล้ว", "Character deleted"));
+      },
+      onError,
+    });
+
+  /** "ตรวจจับ variant/แฝด" (`detectCharacterVariantsNow`) — a real, slow LLM
+   *  call (seconds, costs credits), so it's deliberately NOT folded into the
+   *  shared `mutating` flag below (would needlessly disable every other
+   *  roster control for the whole duration); its own button carries its own
+   *  `isPending` spinner instead. */
+  const detectVariantsMutation =
+    trpc.verticalDramaCharacters.detectCharacterVariantsNow.useMutation({
+      onSuccess: res => {
+        invalidate();
+        toast.success(buildDetectCharacterVariantsSummaryMessage(lang, res));
+      },
+      onError,
+    });
+
   /**
-   * Poll a submitted character portrait/turnaround generation task
-   * (`generateCharacterImage`/`generateCharacterTurnaround` now return
-   * `{taskId, ...promptMeta}` — async submit, matching how every other real
+   * Poll a submitted character portrait/sheet generation task
+   * (`generateCharacterImage`/`generateCharacterSheet` return `{taskId,
+   * ...promptMeta}` — async submit, matching how every other real
    * image/video generation in the app works, so it shows in Media History
    * with correct credit deduction) until it completes, then finalize via the
    * same already-tested resolve-then-link flow the Library/History picker
    * uses: `resolveMediaAssetForImport` -> `linkAsset`.
+   *
+   * `role`/`metadata` are NOT a fixed client-side list for the sheet flow —
+   * since `generateCharacterSheet` was consolidated (vertical-drama-
+   * character-sheet-consolidation plan, Phase B/C) it can now return any of
+   * `"character_sheet_turnaround"`, `"character_sheet_full"`, or the new
+   * `"character_design_bible"` (with `metadata: {sheetType}`) depending on
+   * the caller's `sheetType`, via `resolveCharacterSheetAssetTag` server-
+   * side — this function just tags the `linkAsset` call with whatever the
+   * mutation's response says, never re-deciding the role itself.
    */
   async function pollCharacterImageTask(
     taskId: string,
     characterId: string,
-    role: "primary_portrait" | "character_sheet_turnaround" | "character_sheet_full",
-    promptCreditsUsed: number
+    role: string,
+    promptCreditsUsed: number,
+    metadata?: Record<string, unknown> | null
   ) {
     const key = pollingCharacterKey(characterId, role);
     setPollingCharacters(prev => new Set(prev).add(key));
@@ -834,6 +1586,7 @@ export function VerticalDramaCharacterStockPanel({
             assetType: "character_reference",
             role,
             source: "generated",
+            ...(metadata ? { metadata } : {}),
           });
           const setCache =
             role === "primary_portrait"
@@ -846,9 +1599,23 @@ export function VerticalDramaCharacterStockPanel({
             [characterId]: { imageUrl: resultUrl, mediaAssetId: resolved.mediaAssetId },
           }));
           const roleLabelTh =
-            role === "primary_portrait" ? "ภาพตัวละคร" : role === "character_sheet_turnaround" ? "ชีทตัวละคร" : "Character Sheet แบบเต็ม";
+            role === "primary_portrait"
+              ? "ภาพตัวละคร"
+              : role === "character_sheet_turnaround"
+                ? "ชีทตัวละคร"
+                : role === "character_sheet_full"
+                  ? "Character Sheet แบบเต็ม"
+                  : (sheetTypeLabelFromMetadata(metadata, "th") ??
+                    "ชีท Character Design Bible");
           const roleLabelEn =
-            role === "primary_portrait" ? "Character image" : role === "character_sheet_turnaround" ? "Character sheet" : "Full character sheet";
+            role === "primary_portrait"
+              ? "Character image"
+              : role === "character_sheet_turnaround"
+                ? "Character sheet"
+                : role === "character_sheet_full"
+                  ? "Full character sheet"
+                  : (sheetTypeLabelFromMetadata(metadata, "en") ??
+                    "Character Design Bible sheet");
           toast.success(
             t(
               lang,
@@ -893,80 +1660,75 @@ export function VerticalDramaCharacterStockPanel({
     });
 
   /**
-   * "Character sheet" / multi-angle turnaround reference — a sibling mutation
-   * to `generateCharacterImage` (same async-submit response shape: `{taskId,
-   * ...promptMeta}`). Tagged `role: "character_sheet_turnaround"` when linked
-   * into stock via `pollCharacterImageTask`.
-   */
-  const generateTurnaroundMutation =
-    trpc.verticalDramaCharacters.generateCharacterTurnaround.useMutation({
-      onSuccess: (
-        res: { taskId: string; creditsUsed?: { promptGeneration?: number } },
-        variables: { characterId: string }
-      ) => {
-        void pollCharacterImageTask(
-          res.taskId,
-          variables.characterId,
-          "character_sheet_turnaround",
-          res.creditsUsed?.promptGeneration ?? 0
-        );
-      },
-      onError,
-    });
-
-  /**
-   * Full-spec Character Sheet — a THIRD, separate generation mode alongside
-   * portrait/turnaround (confirmed product decision: additive, not a
-   * replacement for the existing turnaround button). One multi-panel
-   * infographic image (portrait + turnaround + expressions + outfit + a
-   * stats sidebar). Does not go through the preview-prompt gate the other
-   * two actions use (see below) — a simpler direct-confirm flow, since this
-   * combines multiple already-approved-elsewhere prompt fields rather than
-   * needing its own separate preview text.
+   * Character Design Bible sheet generation — ONE mutation for whichever
+   * `sheetType` the caller requests (vertical-drama-character-sheet-
+   * consolidation plan, Phase C). Replaces what used to be two separate
+   * mutations here (`generateTurnaroundMutation`, bound to the now-deleted
+   * `generateCharacterTurnaround`; and this file's own former
+   * `generateSheetMutation`, bound to a `full_combined`-only
+   * `generateCharacterSheet`). The backend (`generateCharacterSheet`, Phase
+   * B) is now the sole source of truth for which `role`/`metadata` the
+   * resulting asset gets tagged with — `assetRole`/`assetMetadata` in its
+   * response, via `resolveCharacterSheetAssetTag` — so this reads those
+   * straight off the response instead of hardcoding a role client-side. Does
+   * not go through the preview-prompt gate the portrait action uses (see
+   * below) — a direct-confirm flow, matching how "Character Sheet แบบเต็ม"
+   * already worked before this consolidation, kept simple across all 14
+   * possible formats.
    */
   const generateSheetMutation =
     trpc.verticalDramaCharacters.generateCharacterSheet.useMutation({
       onSuccess: (
-        res: { taskId: string; creditsUsed?: { promptGeneration?: number } },
+        res: {
+          taskId: string;
+          creditsUsed?: { promptGeneration?: number };
+          assetRole: string;
+          assetMetadata: Record<string, unknown> | null;
+        },
         variables: { characterId: string }
       ) => {
         void pollCharacterImageTask(
           res.taskId,
           variables.characterId,
-          "character_sheet_full",
-          res.creditsUsed?.promptGeneration ?? 0
+          res.assetRole,
+          res.creditsUsed?.promptGeneration ?? 0,
+          res.assetMetadata
         );
       },
       onError,
     });
 
   /**
-   * Prompt-preview confirmation step (spec fix-round-3, Section C): both the
-   * portrait ("Generate character image") and turnaround ("Generate
-   * character sheet") actions must show the actual LLM-produced prompt for
-   * user approval BEFORE any image-render credit is spent. `previewCharacterPrompt`
-   * runs only the (already credit-gated) prompt-generation LLM leg and
-   * returns both `portraitPrompt` and `turnaroundPrompt` from a single call —
-   * reused for whichever action the user triggered. The real
-   * `generateCharacterImage` / `generateCharacterTurnaround` mutation is only
-   * invoked from `handleCharacterPromptConfirm`, with `approvedPrompt` set,
-   * so the backend skips its own internal prompt-generation call and never
-   * double-charges the same spend.
+   * Prompt-preview confirmation step (spec fix-round-3, Section C): the
+   * portrait ("Generate character image") action must show the actual LLM-
+   * produced prompt for user approval BEFORE any image-render credit is
+   * spent. `previewCharacterPrompt` runs only the (already credit-gated)
+   * prompt-generation LLM leg and returns `portraitPrompt` (plus a
+   * `turnaroundPrompt` this file no longer reads — the merged sheet-
+   * generation flow below is a direct-confirm flow with no preview step, see
+   * `generateSheetMutation`'s doc comment). The real `generateCharacterImage`
+   * mutation is only invoked from `handleCharacterPromptConfirm`, with
+   * `approvedPrompt` set, so the backend skips its own internal prompt-
+   * generation call and never double-charges the same spend.
+   *
+   * NOTE: prior to the vertical-drama-character-sheet-consolidation plan
+   * (Phase C) this preview step was shared between the portrait AND
+   * turnaround-sheet actions (an `action: "image" | "turnaround"`
+   * discriminator threaded through this whole preview flow) — the turnaround
+   * action was removed once the sheet-generation buttons stopped using the
+   * preview step at all, so everything below is portrait-only now.
    */
   const previewCharacterPromptMutation =
     trpc.verticalDramaCharacters.previewCharacterPrompt.useMutation({
       onError,
     });
 
-  /** Which character+action is currently waiting on `previewCharacterPromptMutation`
-   *  — tracked separately from the mutation's own `variables` because that
-   *  shared mutation carries no `action` discriminator (one call returns both
-   *  prompts), but the two generate buttons on a card need independent
-   *  loading spinners. Cleared as soon as the preview resolves (success or
-   *  error). */
+  /** Which character is currently waiting on `previewCharacterPromptMutation`
+   *  — tracked separately from the mutation's own `variables` purely for
+   *  clarity/parity with the rest of this file's per-character loading-state
+   *  pattern. Cleared as soon as the preview resolves (success or error). */
   const [pendingPreviewTarget, setPendingPreviewTarget] = useState<{
     characterId: string;
-    action: "image" | "turnaround";
   } | null>(null);
 
   /** Populated once `previewCharacterPromptMutation` resolves — drives the
@@ -974,33 +1736,32 @@ export function VerticalDramaCharacterStockPanel({
   const [pendingCharacterPromptPreview, setPendingCharacterPromptPreview] =
     useState<{
       characterId: string;
-      action: "image" | "turnaround";
       portraitPrompt: string;
       turnaroundPrompt: string;
       negativePrompt?: string;
       model?: string;
     } | null>(null);
 
-  /** Entry point for both generate buttons (card grid + selected-character
-   *  detail panel) — replaces the previous direct `generateImageMutation` /
-   *  `generateTurnaroundMutation` calls. Still gates on `requireModelSelected()`
-   *  exactly as before; only inserts the preview fetch in between "click" and
-   *  "real mutation fires". */
-  const startCharacterPromptPreview = (
-    characterId: string,
-    action: "image" | "turnaround"
-  ) => {
+  /** Entry point for the portrait generate button (card grid + selected-
+   *  character detail panel) — replaces the previous direct
+   *  `generateImageMutation` call. Still gates on `requireModelSelected()`
+   *  exactly as before; only inserts the preview fetch in between "click"
+   *  and "real mutation fires". */
+  const startCharacterPromptPreview = (characterId: string) => {
     if (!requireModelSelected()) return;
     if (!requireMcpConnectionOrToast()) return;
-    setPendingPreviewTarget({ characterId, action });
+    setPendingPreviewTarget({ characterId });
     previewCharacterPromptMutation.mutate(
-      { seriesId, characterId },
+      buildPreviewCharacterPromptInput({
+        seriesId,
+        characterId,
+        customInstruction: customInstructionByCharacter[characterId] ?? "",
+      }),
       {
         onSuccess: res => {
           setPendingPreviewTarget(null);
           setPendingCharacterPromptPreview({
             characterId,
-            action,
             portraitPrompt: res.portraitPrompt,
             turnaroundPrompt: res.turnaroundPrompt,
             negativePrompt: res.negativePrompt,
@@ -1020,28 +1781,23 @@ export function VerticalDramaCharacterStockPanel({
    *  re-charging) its own internal prompt-generation step. */
   const handleCharacterPromptConfirm = (editedPrompt: string) => {
     if (!pendingCharacterPromptPreview) return;
-    const { characterId, action, negativePrompt } =
-      pendingCharacterPromptPreview;
+    const { characterId, negativePrompt } = pendingCharacterPromptPreview;
     setPendingCharacterPromptPreview(null);
-    if (action === "image") {
-      generateImageMutation.mutate({
-        seriesId,
-        characterId,
-        approvedPrompt: editedPrompt,
-        ...(negativePrompt ? { approvedNegativePrompt: negativePrompt } : {}),
-        ...(selectedImageModelId ? { selectedImageModelId } : {}),
-        ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
-      });
-    } else {
-      generateTurnaroundMutation.mutate({
-        seriesId,
-        characterId,
-        approvedPrompt: editedPrompt,
-        ...(negativePrompt ? { approvedNegativePrompt: negativePrompt } : {}),
-        ...(selectedImageModelId ? { selectedImageModelId } : {}),
-        ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
-      });
-    }
+    generateImageMutation.mutate({
+      seriesId,
+      characterId,
+      approvedPrompt: editedPrompt,
+      ...(negativePrompt ? { approvedNegativePrompt: negativePrompt } : {}),
+      ...(selectedImageModelId ? { selectedImageModelId } : {}),
+      ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+      // Reference-image-picker (Phase D3) — only passed when the user has
+      // explicitly overridden the reference for this character; omitted
+      // entirely otherwise so existing auto-resolution behavior is
+      // byte-identical to before this feature.
+      ...(referenceOverrideByCharacter[characterId]
+        ? { referenceAssetLinkId: referenceOverrideByCharacter[characterId] }
+        : {}),
+    });
   };
 
   /** User cancelled the preview — clear state only, no mutation call, no
@@ -1051,33 +1807,33 @@ export function VerticalDramaCharacterStockPanel({
   const handleCharacterPromptCancel = () =>
     setPendingCharacterPromptPreview(null);
 
-  const isPreviewLoadingFor = (
-    characterId: string,
-    action: "image" | "turnaround"
-  ) =>
+  const isPreviewLoadingFor = (characterId: string) =>
     previewCharacterPromptMutation.isPending &&
-    pendingPreviewTarget?.characterId === characterId &&
-    pendingPreviewTarget.action === action;
+    pendingPreviewTarget?.characterId === characterId;
 
   const isImageGeneratingFor = (characterId: string) =>
-    isPreviewLoadingFor(characterId, "image") ||
+    isPreviewLoadingFor(characterId) ||
     (generateImageMutation.isPending &&
       generateImageMutation.variables?.characterId === characterId) ||
     pollingCharacters.has(pollingCharacterKey(characterId, "primary_portrait"));
 
-  const isTurnaroundGeneratingFor = (characterId: string) =>
-    isPreviewLoadingFor(characterId, "turnaround") ||
-    (generateTurnaroundMutation.isPending &&
-      generateTurnaroundMutation.variables?.characterId === characterId) ||
-    pollingCharacters.has(
-      pollingCharacterKey(characterId, "character_sheet_turnaround")
-    );
-
+  /** Covers the merged sheet-generation mutation regardless of which
+   *  `sheetType` was requested — i.e. regardless of whether the resulting
+   *  `role` turns out to be `"character_sheet_turnaround"`,
+   *  `"character_sheet_full"`, or `"character_design_bible"` (see
+   *  `generateSheetMutation`'s doc comment). Rather than hardcoding that
+   *  role list here too, this treats ANY `pollingCharacters` entry for this
+   *  character that isn't the portrait key as a sheet-generation in
+   *  progress — stays correct automatically if the backend's role set ever
+   *  changes. Also doubles as the busy-state for the roster card's mini
+   *  "auto" shortcut icon, since it fires the exact same mutation. */
   const isSheetGeneratingFor = (characterId: string) =>
     (generateSheetMutation.isPending &&
       generateSheetMutation.variables?.characterId === characterId) ||
-    pollingCharacters.has(
-      pollingCharacterKey(characterId, "character_sheet_full")
+    Array.from(pollingCharacters).some(
+      key =>
+        key.startsWith(`${characterId}::`) &&
+        key !== pollingCharacterKey(characterId, "primary_portrait")
     );
 
   /**
@@ -1099,34 +1855,48 @@ export function VerticalDramaCharacterStockPanel({
   const cardResolveMutation =
     trpc.verticalDramaCharacters.resolveMediaAssetForImport.useMutation();
 
+  /** Resolves a dropped/uploaded image (a `data:` URL from a file/grid-cutter
+   *  tile, or an already-hosted URL from Library/History) into a canonical
+   *  `media_assets` id, via `resolveMediaAssetForImport` — same 2-branch
+   *  resolution `assignDroppedReference` below already performed inline;
+   *  extracted here so the "เพิ่มลุค"/"เพิ่มแฝด" dialogs' optional reference-
+   *  image attach (W2, plan: vertical-drama-twin-variant-completeness) can
+   *  reuse the EXACT same resolution without also calling `linkAsset` — those
+   *  dialogs create the character first and pass `referenceMediaAssetId` to
+   *  `createCharacterVariant`/`createCharacterTwin`, which best-effort-link
+   *  it themselves server-side. */
+  const resolveReferenceImageToMediaAssetId = async (
+    url: string
+  ): Promise<string> => {
+    if (url.startsWith("data:")) {
+      // Grid-cutter tiles carry client-side data URLs — upload first
+      // (mirrors `VerticalDramaCharacterReferencePanel.resolveAndLinkFromDataUrl`).
+      const uploadResult = await cardUploadMutation.mutateAsync({
+        fileName: `character-reference-${Date.now()}.jpg`,
+        fileType: "image/jpeg",
+        fileBase64: url,
+      });
+      const resolved = await cardResolveMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: uploadResult.url,
+        mimeType: uploadResult.fileType,
+      });
+      return resolved.mediaAssetId;
+    }
+    const resolved = await cardResolveMutation.mutateAsync({
+      seriesId,
+      source: "url",
+      url,
+      mimeType: "image/jpeg",
+    });
+    return resolved.mediaAssetId;
+  };
+
   const assignDroppedReference = async (characterId: string, url: string) => {
     setAssigningCharacterId(characterId);
     try {
-      let mediaAssetId: string;
-      if (url.startsWith("data:")) {
-        // Grid-cutter tiles carry client-side data URLs — upload first
-        // (mirrors `VerticalDramaCharacterReferencePanel.resolveAndLinkFromDataUrl`).
-        const uploadResult = await cardUploadMutation.mutateAsync({
-          fileName: `character-reference-${Date.now()}.jpg`,
-          fileType: "image/jpeg",
-          fileBase64: url,
-        });
-        const resolved = await cardResolveMutation.mutateAsync({
-          seriesId,
-          source: "url",
-          url: uploadResult.url,
-          mimeType: uploadResult.fileType,
-        });
-        mediaAssetId = resolved.mediaAssetId;
-      } else {
-        const resolved = await cardResolveMutation.mutateAsync({
-          seriesId,
-          source: "url",
-          url,
-          mimeType: "image/jpeg",
-        });
-        mediaAssetId = resolved.mediaAssetId;
-      }
+      const mediaAssetId = await resolveReferenceImageToMediaAssetId(url);
       linkMutation.mutate({
         seriesId,
         characterId,
@@ -1149,6 +1919,109 @@ export function VerticalDramaCharacterStockPanel({
     }
   };
 
+  /** Factory for the "เพิ่มลุค"/"เพิ่มแฝด" dialogs' reference-image drop
+   *  zone + upload-button handlers — parameterized by that dialog's own
+   *  `mediaAssetId`/`previewUrl`/`resolving` setters so the variant and twin
+   *  dialogs can each get their own independent instance without duplicating
+   *  the drag/drop validation + resolve-and-store logic twice. Mirrors
+   *  `VerticalDramaCharacterReferencePanel`'s own drop-zone + "อัปโหลดภาพ"
+   *  button validation copy exactly (unsupported type / too-large / no-image
+   *  messages), just resolving to a stored `mediaAssetId` instead of
+   *  immediately linking it (no character exists yet to link onto). */
+  const makeReferenceAttachHandlers = (
+    setMediaAssetId: (id: string | null) => void,
+    setPreviewUrl: (url: string | null) => void,
+    setResolving: (resolving: boolean) => void
+  ) => {
+    const resolve = async (url: string) => {
+      setResolving(true);
+      try {
+        const mediaAssetId = await resolveReferenceImageToMediaAssetId(url);
+        setMediaAssetId(mediaAssetId);
+        setPreviewUrl(url);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : t(lang, "นำเข้าอ้างอิงไม่สำเร็จ", "Failed to import reference")
+        );
+      } finally {
+        setResolving(false);
+      }
+    };
+    const handleDrop = (event: React.DragEvent) => {
+      event.preventDefault();
+      const { input, error } = readDroppedImageInput(event);
+      if (error) {
+        if (error.kind === "unsupported-file-type") {
+          toast.error(
+            t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported")
+          );
+        } else {
+          toast.error(
+            t(
+              lang,
+              `ไฟล์ภาพใหญ่เกินไป (สูงสุด ${Math.round(error.maxBytes / (1024 * 1024))}MB)`,
+              `Image is too large (max ${Math.round(error.maxBytes / (1024 * 1024))}MB)`
+            )
+          );
+        }
+        return;
+      }
+      if (!input) {
+        toast.error(
+          t(
+            lang,
+            "ไม่พบภาพที่ลากมา — ลองใหม่อีกครั้ง",
+            "No draggable image found — please try again"
+          )
+        );
+        return;
+      }
+      if (input.kind === "url") {
+        void resolve(input.url);
+      } else {
+        void readFileAsDataUrl(input.file).then(dataUrl => resolve(dataUrl));
+      }
+    };
+    const handleFileInput = (
+      event: React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        toast.error(
+          t(lang, "รองรับเฉพาะไฟล์ภาพ", "Only image files are supported")
+        );
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        toast.error(
+          t(
+            lang,
+            "ไฟล์ภาพใหญ่เกินไป (สูงสุด 15MB)",
+            "Image is too large (max 15MB)"
+          )
+        );
+        return;
+      }
+      void readFileAsDataUrl(file).then(dataUrl => resolve(dataUrl));
+    };
+    return { handleDrop, handleFileInput };
+  };
+
+  const variantReferenceHandlers = makeReferenceAttachHandlers(
+    setVariantReferenceMediaAssetId,
+    setVariantReferencePreviewUrl,
+    setVariantReferenceResolving
+  );
+  const twinReferenceHandlers = makeReferenceAttachHandlers(
+    setTwinReferenceMediaAssetId,
+    setTwinReferencePreviewUrl,
+    setTwinReferenceResolving
+  );
+
   const characters = listQuery.data?.characters ?? [];
   const manifest = listQuery.data?.manifest;
   const assets = (manifest?.assets ?? []) as VerticalDramaCharacterAsset[];
@@ -1162,31 +2035,58 @@ export function VerticalDramaCharacterStockPanel({
    * image cache (`generatedImageUrls`), matched by `mediaAssetId`, for the
    * rare race where the asset list hasn't reflected a just-linked asset yet.
    */
-  const getCharacterCardThumbnail = (characterId: string): string | null => {
-    const portraitAssets = assets.filter(
-      a => a.characterId === characterId && a.role === "primary_portrait"
+  const getCharacterCardPortraitAsset = (
+    characterId: string
+  ): VdCharacterCardPortraitAsset | null =>
+    resolveCharacterCardPortraitAsset(
+      assets,
+      characterId,
+      generatedImageUrls[characterId]
     );
-    const approved = portraitAssets.find(a => a.state === "approved");
-    const latestGenerated = [...portraitAssets]
-      .filter(a => a.state === "generated" || a.state === "imported")
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      )[0];
-    const chosen = approved ?? latestGenerated;
-    if (chosen?.thumbnailUrl) return chosen.thumbnailUrl;
-    const cached = generatedImageUrls[characterId];
-    if (
-      cached &&
-      (!chosen || String(chosen.mediaAssetId) === cached.mediaAssetId)
-    ) {
-      return cached.imageUrl;
-    }
-    return null;
-  };
+
+  const getCharacterCardThumbnail = (characterId: string): string | null =>
+    getCharacterCardPortraitAsset(characterId)?.thumbnailUrl ?? null;
 
   // Auto-select the first character once data loads.
   type VdCharacterListItem = (typeof characters)[number];
+
+  /** Reference-picker (Phase D3, widened 2026-07-11 for the reverse/
+   *  "downward" case) reusable `characterId -> VdReferenceCandidateLookupEntry`
+   *  lookup — the same resolution `buildCharacterRosterEntries`'s own inline
+   *  `shareFaceSourceName` computation already does per-twin (see below),
+   *  built once as a `Map` so `buildReferenceCandidates` can resolve a
+   *  variant/twin's source character name AND scan for characters that
+   *  point back at the one being viewed, without re-scanning the flat list
+   *  for every character. */
+  const charactersById = useMemo(() => {
+    const map = new Map<string, VdReferenceCandidateLookupEntry>();
+    for (const c of characters as VdCharacterListItem[]) {
+      map.set(c.characterId, {
+        characterId: c.characterId,
+        name: c.name,
+        parentCharacterId: c.parentCharacterId,
+        sharesFaceWithCharacterId: c.sharesFaceWithCharacterId,
+        variantLabel: c.variantLabel,
+      });
+    }
+    return map;
+  }, [characters]);
+
+  /** planning/vertical-drama-character-variants/plan.md Phase E — the flat
+   *  `characters` list now mixes plain characters, variant rows
+   *  (`parentCharacterId` set — same person, different outfit/age-stage
+   *  look, each with its OWN portrait) and twin rows
+   *  (`sharesFaceWithCharacterId` set — a different, independent person who
+   *  just shares a face reference). `buildCharacterRosterEntries` groups
+   *  variant rows under their parent's entry so the roster grid can nest
+   *  them as chips instead of rendering every row as an unrelated
+   *  top-level card; twins deliberately stay top-level (independent
+   *  people) with their shares-face source resolved for the badge. Derived
+   *  purely from the already-fetched flat list — no extra query. */
+  const rosterEntries = useMemo(
+    () => buildCharacterRosterEntries(characters as VdCharacterListItem[]),
+    [characters]
+  );
   const effectiveSelectedId = useMemo(() => {
     if (
       selectedCharacterId &&
@@ -1243,13 +2143,16 @@ export function VerticalDramaCharacterStockPanel({
   // Deliberately does NOT include the per-character generate/poll flags
   // (`generateImageMutation.isPending` etc., `pollingCharacters`) — those
   // gate only THAT character's own generate buttons (via
-  // `isImageGeneratingFor`/`isTurnaroundGeneratingFor`/`isSheetGeneratingFor`
-  // below), so generating one character's image never blocks starting
+  // `isImageGeneratingFor`/`isSheetGeneratingFor` below), so generating one
+  // character's image never blocks starting
   // another character's generation concurrently.
   const mutating =
     createMutation.isPending ||
     linkMutation.isPending ||
-    deleteAssetMutation.isPending;
+    deleteAssetMutation.isPending ||
+    createVariantMutation.isPending ||
+    createTwinMutation.isPending ||
+    deleteCharacterMutation.isPending;
 
   const requireModelSelected = (): boolean => {
     if (selectedImageModelId) return true;
@@ -1315,13 +2218,53 @@ export function VerticalDramaCharacterStockPanel({
           visible so users know which region/ethnicity default is currently
           applied to every generated character image. Changed from the
           Series Settings tab. */}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-muted-foreground">
           {t(lang, "ตัวละครในซีรีย์", "Series characters")}
         </span>
-        <Badge variant="outline" className="gap-1 text-xs font-normal">
-          {t(lang, "กลุ่มผู้ชมเป้าหมาย", "Target audience")}: {targetAudienceRegionLabel}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="gap-1 text-xs font-normal">
+            {t(lang, "กลุ่มผู้ชมเป้าหมาย", "Target audience")}: {targetAudienceRegionLabel}
+          </Badge>
+          {/* W2 "ตรวจจับ variant/แฝดตอนนี้" (plan: vertical-drama-twin-
+          variant-completeness, F6) — manual on-demand trigger for the same
+          detection `runImproveScriptJob` already runs automatically after a
+          script-improve pass, so a user doesn't have to re-run improve-
+          script just to pick up variants/twins from the current draft. Real
+          LLM call (seconds, costs credits) — button carries its own
+          `isPending` spinner rather than the shared `mutating` flag (see that
+          flag's own doc comment). */}
+          {!readOnly && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              disabled={detectVariantsMutation.isPending}
+              aria-label={t(
+                lang,
+                "ตรวจจับ variant/แฝดตอนนี้",
+                "Detect variants/twins now"
+              )}
+              title={t(
+                lang,
+                "สแกนเนื้อเรื่องปัจจุบันหา variant/แฝดใหม่ (ใช้ LLM จริง อาจใช้เวลาสักครู่)",
+                "Scans the current story for new variants/twins (real LLM call, may take a moment)"
+              )}
+              onClick={() => detectVariantsMutation.mutate({ seriesId })}
+            >
+              {detectVariantsMutation.isPending ? (
+                <Loader2
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 animate-spin"
+                />
+              ) : (
+                <Wand2 aria-hidden="true" className="h-3.5 w-3.5" />
+              )}
+              {t(lang, "ตรวจจับ variant/แฝด", "Detect variants/twins")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Top-level 2-column layout (fix-round-4): the reference/import panel
@@ -1387,18 +2330,39 @@ export function VerticalDramaCharacterStockPanel({
                   className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
                   aria-label={t(lang, "รายชื่อตัวละคร", "Character list")}
                 >
-                  {characters.map((c: (typeof characters)[number]) => {
+                  {rosterEntries.map(
+                    ({
+                      character: c,
+                      variants,
+                      shareFaceSourceName,
+                    }: VdRosterEntry<VdCharacterListItem>) => {
                     const active = c.characterId === effectiveSelectedId;
                     const generatingThis = isImageGeneratingFor(c.characterId);
-                    const generatingTurnaroundThis = isTurnaroundGeneratingFor(
+                    const generatingSheetThis = isSheetGeneratingFor(
                       c.characterId
                     );
                     const isDropTarget = dragOverCharacterId === c.characterId;
                     const isAssigningThis =
                       assigningCharacterId === c.characterId;
-                    const thumbnailUrl = getCharacterCardThumbnail(
+                    const confirmingThisCharacterDelete =
+                      confirmingDeleteCharacterId === c.characterId;
+                    const deletingThisCharacter =
+                      deleteCharacterMutation.isPending &&
+                      deleteCharacterMutation.variables?.characterId ===
+                        c.characterId;
+                    const portraitAsset = getCharacterCardPortraitAsset(
                       c.characterId
                     );
+                    const thumbnailUrl = portraitAsset?.thumbnailUrl ?? null;
+                    const portraitAssetLinkId =
+                      portraitAsset?.assetLinkId ?? null;
+                    const confirmingThisPortraitDelete =
+                      portraitAssetLinkId !== null &&
+                      confirmingDeleteAssetLinkId === portraitAssetLinkId;
+                    const deletingThisPortrait =
+                      deleteAssetMutation.isPending &&
+                      deleteAssetMutation.variables?.assetLinkId ===
+                        portraitAssetLinkId;
                     return (
                       <li key={c.characterId}>
                         <div
@@ -1464,28 +2428,126 @@ export function VerticalDramaCharacterStockPanel({
                         >
                           <div className="flex items-start gap-2.5">
                             {thumbnailUrl ? (
-                              <button
-                                type="button"
-                                aria-label={t(
-                                  lang,
-                                  `ดูภาพขยายของ ${c.name}`,
-                                  `View full-size image of ${c.name}`
+                              <div className="group/portrait relative shrink-0">
+                                <button
+                                  type="button"
+                                  aria-label={t(
+                                    lang,
+                                    `ดูภาพขยายของ ${c.name}`,
+                                    `View full-size image of ${c.name}`
+                                  )}
+                                  onClick={event => {
+                                    event.stopPropagation();
+                                    setLightboxImage({
+                                      src: thumbnailUrl,
+                                      alt: c.name,
+                                    });
+                                  }}
+                                  className="block rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                >
+                                  <img
+                                    src={thumbnailUrl}
+                                    alt=""
+                                    className="aspect-[9/16] w-28 rounded-md border border-border object-cover"
+                                  />
+                                </button>
+                                {/* Card-level delete (2026-07-11): lets the
+                                user clear the current portrait so the next
+                                "regenerate" no longer identity-locks onto a
+                                face they no longer want — previously delete
+                                only existed buried in the side "Character
+                                references" panel. Reuses the exact same
+                                `deleteAssetMutation` +
+                                `confirmingDeleteAssetLinkId` 2-step confirm
+                                the side panel already uses; keyed by
+                                `assetLinkId`, so it stays unambiguous even
+                                though the state is shared across this card,
+                                the variant chips below, and the side panel. */}
+                                {!readOnly && portraitAssetLinkId && (
+                                  confirmingThisPortraitDelete ? (
+                                    <div
+                                      className="absolute right-1 top-1 flex items-center gap-1 rounded-md bg-background/95 p-1 shadow"
+                                      onClick={event => event.stopPropagation()}
+                                    >
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-6 w-6"
+                                        disabled={mutating}
+                                        aria-label={t(lang, "ยกเลิก", "Cancel")}
+                                        title={t(lang, "ยกเลิก", "Cancel")}
+                                        onClick={event => {
+                                          event.stopPropagation();
+                                          setConfirmingDeleteAssetLinkId(null);
+                                        }}
+                                      >
+                                        <X aria-hidden="true" className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="destructive"
+                                        className="h-6 w-6"
+                                        disabled={mutating}
+                                        aria-label={t(
+                                          lang,
+                                          "ยืนยันลบภาพนี้",
+                                          "Confirm delete this image"
+                                        )}
+                                        title={t(
+                                          lang,
+                                          "ยืนยันลบภาพนี้",
+                                          "Confirm delete this image"
+                                        )}
+                                        onClick={event => {
+                                          event.stopPropagation();
+                                          setConfirmingDeleteAssetLinkId(null);
+                                          deleteAssetMutation.mutate({
+                                            seriesId,
+                                            assetLinkId: portraitAssetLinkId,
+                                          });
+                                        }}
+                                      >
+                                        {deletingThisPortrait ? (
+                                          <Loader2
+                                            aria-hidden="true"
+                                            className="h-3.5 w-3.5 animate-spin"
+                                          />
+                                        ) : (
+                                          <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      size="icon"
+                                      variant="secondary"
+                                      className="absolute right-1 top-1 h-6 w-6 opacity-0 shadow transition-opacity group-hover/portrait:opacity-100 focus-visible:opacity-100"
+                                      disabled={mutating}
+                                      aria-label={t(
+                                        lang,
+                                        `ลบภาพตัวละครนี้ (${c.name})`,
+                                        `Delete this character's image (${c.name})`
+                                      )}
+                                      title={t(
+                                        lang,
+                                        "ลบภาพตัวละครนี้",
+                                        "Delete this character's image"
+                                      )}
+                                      onClick={event => {
+                                        event.stopPropagation();
+                                        setConfirmingDeleteAssetLinkId(
+                                          portraitAssetLinkId
+                                        );
+                                      }}
+                                    >
+                                      <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )
                                 )}
-                                onClick={event => {
-                                  event.stopPropagation();
-                                  setLightboxImage({
-                                    src: thumbnailUrl,
-                                    alt: c.name,
-                                  });
-                                }}
-                                className="shrink-0 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
-                              >
-                                <img
-                                  src={thumbnailUrl}
-                                  alt=""
-                                  className="aspect-[9/16] w-28 rounded-md border border-border object-cover"
-                                />
-                              </button>
+                              </div>
                             ) : (
                               <span className="flex aspect-[9/16] w-28 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
                                 <User aria-hidden="true" className="h-8 w-8" />
@@ -1520,8 +2582,472 @@ export function VerticalDramaCharacterStockPanel({
                                   {c.role}
                                 </Badge>
                               )}
+                              {/* Phase E — twin annotation: a character that
+                              shares its face reference with another
+                              (independent) character in the roster, e.g.
+                              identical siblings. Omitted entirely if the
+                              source character can't be resolved from the
+                              current list rather than showing broken text. */}
+                              {shareFaceSourceName && (
+                                <Badge
+                                  variant="outline"
+                                  className="w-fit gap-1 border-sky-200 bg-sky-50 text-[10px] text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300"
+                                >
+                                  <Users
+                                    aria-hidden="true"
+                                    className="h-3 w-3 shrink-0"
+                                  />
+                                  <span className="truncate">
+                                    {t(
+                                      lang,
+                                      `ใช้ใบหน้าเดียวกับ ${shareFaceSourceName}`,
+                                      `Shares face with ${shareFaceSourceName}`
+                                    )}
+                                  </span>
+                                </Badge>
+                              )}
+                              {/* Phase E — discoverability hint when this
+                              character is a parent with variant looks
+                              (outfit/age-stage rows nested below). */}
+                              {variants.length > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="w-fit text-[10px] text-muted-foreground"
+                                >
+                                  {t(
+                                    lang,
+                                    `${variants.length} ลุค`,
+                                    `${variants.length} looks`
+                                  )}
+                                </Badge>
+                              )}
                             </button>
                           </div>
+
+                          {/* Phase E — variant chips: each row shares this
+                          same person's identity but has its own portrait
+                          (different outfit/age-stage look). Nested under the
+                          parent's card instead of rendering as separate
+                          top-level roster items. Clicking a chip reuses the
+                          exact same selection call as clicking a top-level
+                          card (`setSelectedCharacterId`), just
+                          `stopPropagation`-ed so it doesn't also trigger the
+                          parent card's own onClick. */}
+                          {variants.length > 0 && (
+                            <div
+                              className="flex flex-wrap gap-1.5 border-t border-dashed border-border pt-2"
+                              aria-label={t(
+                                lang,
+                                `ลุคของ ${c.name}`,
+                                `${c.name}'s looks`
+                              )}
+                            >
+                              {variants.map(v => {
+                                const variantActive =
+                                  v.characterId === effectiveSelectedId;
+                                const variantPortraitAsset =
+                                  getCharacterCardPortraitAsset(v.characterId);
+                                const variantThumbnailUrl =
+                                  variantPortraitAsset?.thumbnailUrl ?? null;
+                                const variantAssetLinkId =
+                                  variantPortraitAsset?.assetLinkId ?? null;
+                                const confirmingThisVariantDelete =
+                                  variantAssetLinkId !== null &&
+                                  confirmingDeleteAssetLinkId ===
+                                    variantAssetLinkId;
+                                const deletingThisVariant =
+                                  deleteAssetMutation.isPending &&
+                                  deleteAssetMutation.variables
+                                    ?.assetLinkId === variantAssetLinkId;
+                                const variantLabel =
+                                  v.variantLabel ??
+                                  t(lang, "ตัวแปร", "Variant");
+                                const isVariantDropTarget =
+                                  dragOverCharacterId === v.characterId;
+                                const confirmingThisVariantCharacterDelete =
+                                  confirmingDeleteCharacterId ===
+                                  v.characterId;
+                                const deletingThisVariantCharacter =
+                                  deleteCharacterMutation.isPending &&
+                                  deleteCharacterMutation.variables
+                                    ?.characterId === v.characterId;
+                                return (
+                                  /* Card-level image controls (2026-07-11):
+                                  a variant chip used to be ONE `<button>`
+                                  covering the whole pill (thumbnail + label)
+                                  that only selected the look. It now needs
+                                  its OWN nested interactive controls
+                                  (expand, delete) on the thumbnail plus a
+                                  separately focusable "select" affordance —
+                                  real `<button>`s can't nest, so this
+                                  outermost element is a plain `<div>` (mouse
+                                  convenience `onClick` for background/gap
+                                  clicks, stopPropagation-ed away by every
+                                  nested control) with the real keyboard-
+                                  reachable "select this look" affordance
+                                  living on the label `<button>` below —
+                                  mirrors how the main portrait above already
+                                  splits "view image" and "select character"
+                                  into sibling buttons instead of one. */
+                                  <div
+                                    key={v.characterId}
+                                    className={cn(
+                                      "group/variant relative flex max-w-[10rem] items-center gap-1.5 rounded-md border px-1.5 py-1 transition-colors",
+                                      variantActive
+                                        ? "border-purple-400 bg-purple-50/60 ring-1 ring-purple-100"
+                                        : "border-border hover:border-muted-foreground/40",
+                                      isVariantDropTarget &&
+                                        "border-sky-400 bg-sky-50/70 ring-2 ring-sky-200"
+                                    )}
+                                    onClick={() =>
+                                      setSelectedCharacterId(v.characterId)
+                                    }
+                                    onDragOver={event => {
+                                      if (readOnly) return;
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      event.dataTransfer.dropEffect = "copy";
+                                      setDragOverCharacterId(v.characterId);
+                                    }}
+                                    onDragLeave={event => {
+                                      event.stopPropagation();
+                                      setDragOverCharacterId(prev =>
+                                        prev === v.characterId ? null : prev
+                                      );
+                                    }}
+                                    onDrop={event => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      setDragOverCharacterId(null);
+                                      if (readOnly) return;
+                                      const { input, error } =
+                                        readDroppedImageInput(event);
+                                      if (error) {
+                                        if (
+                                          error.kind ===
+                                          "unsupported-file-type"
+                                        ) {
+                                          toast.error(
+                                            t(
+                                              lang,
+                                              "รองรับเฉพาะไฟล์ภาพ",
+                                              "Only image files are supported"
+                                            )
+                                          );
+                                        } else {
+                                          toast.error(
+                                            t(
+                                              lang,
+                                              `ไฟล์ภาพใหญ่เกินไป (สูงสุด ${Math.round(error.maxBytes / (1024 * 1024))}MB)`,
+                                              `Image is too large (max ${Math.round(error.maxBytes / (1024 * 1024))}MB)`
+                                            )
+                                          );
+                                        }
+                                        return;
+                                      }
+                                      if (!input) {
+                                        toast.error(
+                                          t(
+                                            lang,
+                                            "ไม่พบภาพที่ลากมา — ลองใหม่อีกครั้ง",
+                                            "No draggable image found — please try again"
+                                          )
+                                        );
+                                        return;
+                                      }
+                                      if (input.kind === "url") {
+                                        void assignDroppedReference(
+                                          v.characterId,
+                                          input.url
+                                        );
+                                      } else {
+                                        void readFileAsDataUrl(
+                                          input.file
+                                        ).then(dataUrl =>
+                                          assignDroppedReference(
+                                            v.characterId,
+                                            dataUrl
+                                          )
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <div className="relative shrink-0">
+                                      {variantThumbnailUrl ? (
+                                        <button
+                                          type="button"
+                                          aria-label={t(
+                                            lang,
+                                            `ดูภาพขยายลุค ${variantLabel} ของ ${c.name}`,
+                                            `View full-size image of ${c.name}'s ${variantLabel} look`
+                                          )}
+                                          onClick={event => {
+                                            event.stopPropagation();
+                                            setLightboxImage({
+                                              src: variantThumbnailUrl,
+                                              alt: variantLabel,
+                                            });
+                                          }}
+                                          className="block rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                        >
+                                          <img
+                                            src={variantThumbnailUrl}
+                                            alt=""
+                                            className="aspect-[9/16] h-20 w-14 shrink-0 rounded object-cover"
+                                          />
+                                        </button>
+                                      ) : (
+                                        <span className="flex aspect-[9/16] h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-border text-muted-foreground">
+                                          <User
+                                            aria-hidden="true"
+                                            className="h-5 w-5"
+                                          />
+                                        </span>
+                                      )}
+                                      {!readOnly &&
+                                        variantAssetLinkId &&
+                                        (confirmingThisVariantDelete ? (
+                                          <div
+                                            className="absolute -right-1 -top-1 z-10 flex items-center gap-0.5 rounded border border-border bg-background p-0.5 shadow-md"
+                                            onClick={event =>
+                                              event.stopPropagation()
+                                            }
+                                          >
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="ghost"
+                                              className="h-5 w-5"
+                                              disabled={mutating}
+                                              aria-label={t(
+                                                lang,
+                                                "ยกเลิก",
+                                                "Cancel"
+                                              )}
+                                              title={t(
+                                                lang,
+                                                "ยกเลิก",
+                                                "Cancel"
+                                              )}
+                                              onClick={event => {
+                                                event.stopPropagation();
+                                                setConfirmingDeleteAssetLinkId(
+                                                  null
+                                                );
+                                              }}
+                                            >
+                                              <X
+                                                aria-hidden="true"
+                                                className="h-3 w-3"
+                                              />
+                                            </Button>
+                                            <Button
+                                              type="button"
+                                              size="icon"
+                                              variant="destructive"
+                                              className="h-5 w-5"
+                                              disabled={mutating}
+                                              aria-label={t(
+                                                lang,
+                                                "ยืนยันลบภาพนี้",
+                                                "Confirm delete this image"
+                                              )}
+                                              title={t(
+                                                lang,
+                                                "ยืนยันลบภาพนี้",
+                                                "Confirm delete this image"
+                                              )}
+                                              onClick={event => {
+                                                event.stopPropagation();
+                                                setConfirmingDeleteAssetLinkId(
+                                                  null
+                                                );
+                                                deleteAssetMutation.mutate({
+                                                  seriesId,
+                                                  assetLinkId:
+                                                    variantAssetLinkId,
+                                                });
+                                              }}
+                                            >
+                                              {deletingThisVariant ? (
+                                                <Loader2
+                                                  aria-hidden="true"
+                                                  className="h-3 w-3 animate-spin"
+                                                />
+                                              ) : (
+                                                <Trash2
+                                                  aria-hidden="true"
+                                                  className="h-3 w-3"
+                                                />
+                                              )}
+                                            </Button>
+                                          </div>
+                                        ) : (
+                                          <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="secondary"
+                                            className="absolute -right-1 -top-1 h-5 w-5 opacity-0 shadow transition-opacity group-hover/variant:opacity-100 focus-visible:opacity-100"
+                                            disabled={mutating}
+                                            aria-label={t(
+                                              lang,
+                                              `ลบภาพลุค ${variantLabel} ของ ${c.name}`,
+                                              `Delete ${c.name}'s ${variantLabel} look image`
+                                            )}
+                                            title={t(
+                                              lang,
+                                              "ลบภาพลุคนี้",
+                                              "Delete this look's image"
+                                            )}
+                                            onClick={event => {
+                                              event.stopPropagation();
+                                              setConfirmingDeleteAssetLinkId(
+                                                variantAssetLinkId
+                                              );
+                                            }}
+                                          >
+                                            <Trash2
+                                              aria-hidden="true"
+                                              className="h-3 w-3"
+                                            />
+                                          </Button>
+                                        ))}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      aria-pressed={variantActive}
+                                      aria-label={t(
+                                        lang,
+                                        `เลือกลุค ${variantLabel} ของ ${c.name}`,
+                                        `Select ${c.name}'s ${variantLabel} look`
+                                      )}
+                                      onClick={event => {
+                                        event.stopPropagation();
+                                        setSelectedCharacterId(v.characterId);
+                                      }}
+                                      className="min-w-0 flex-1 truncate rounded text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1"
+                                    >
+                                      <span
+                                        className={cn(
+                                          "truncate text-xs",
+                                          variantActive
+                                            ? "font-semibold"
+                                            : "font-medium"
+                                        )}
+                                      >
+                                        {variantLabel}
+                                      </span>
+                                    </button>
+                                    {/* W2 delete-CHARACTER for this variant
+                                    row (distinct from the portrait-image
+                                    delete on the thumbnail above) — same
+                                    2-step inline confirm convention as the
+                                    top-level card's own delete-character
+                                    button. */}
+                                    {confirmingThisVariantCharacterDelete ? (
+                                      <div
+                                        className="flex shrink-0 items-center gap-0.5"
+                                        onClick={event =>
+                                          event.stopPropagation()
+                                        }
+                                      >
+                                        <Button
+                                          type="button"
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-5 w-5"
+                                          disabled={mutating}
+                                          aria-label={t(
+                                            lang,
+                                            "ยกเลิก",
+                                            "Cancel"
+                                          )}
+                                          title={t(lang, "ยกเลิก", "Cancel")}
+                                          onClick={() =>
+                                            setConfirmingDeleteCharacterId(
+                                              null
+                                            )
+                                          }
+                                        >
+                                          <X
+                                            aria-hidden="true"
+                                            className="h-3 w-3"
+                                          />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          size="icon"
+                                          variant="destructive"
+                                          className="h-5 w-5"
+                                          disabled={mutating}
+                                          aria-label={t(
+                                            lang,
+                                            `ยืนยันลบลุค ${variantLabel} ของ ${c.name}`,
+                                            `Confirm delete ${c.name}'s ${variantLabel} look`
+                                          )}
+                                          title={t(
+                                            lang,
+                                            "ยืนยันลบลุคนี้ทั้งตัว",
+                                            "Confirm delete this look"
+                                          )}
+                                          onClick={() => {
+                                            setConfirmingDeleteCharacterId(
+                                              null
+                                            );
+                                            deleteCharacterMutation.mutate({
+                                              seriesId,
+                                              characterId: v.characterId,
+                                            });
+                                          }}
+                                        >
+                                          {deletingThisVariantCharacter ? (
+                                            <Loader2
+                                              aria-hidden="true"
+                                              className="h-3 w-3 animate-spin"
+                                            />
+                                          ) : (
+                                            <Trash2
+                                              aria-hidden="true"
+                                              className="h-3 w-3"
+                                            />
+                                          )}
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-5 w-5 shrink-0 opacity-0 transition-opacity group-hover/variant:opacity-100 focus-visible:opacity-100"
+                                        disabled={mutating}
+                                        aria-label={t(
+                                          lang,
+                                          `ลบลุค ${variantLabel} ของ ${c.name}`,
+                                          `Delete ${c.name}'s ${variantLabel} look`
+                                        )}
+                                        title={t(
+                                          lang,
+                                          "ลบลุคนี้ทั้งตัว",
+                                          "Delete this look"
+                                        )}
+                                        onClick={event => {
+                                          event.stopPropagation();
+                                          setConfirmingDeleteCharacterId(
+                                            v.characterId
+                                          );
+                                        }}
+                                      >
+                                        <Trash2
+                                          aria-hidden="true"
+                                          className="h-3 w-3"
+                                        />
+                                      </Button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
 
                           {!readOnly && (
                             <div className="flex items-center justify-end gap-1">
@@ -1542,10 +3068,7 @@ export function VerticalDramaCharacterStockPanel({
                                   "Generate character image"
                                 )}
                                 onClick={() =>
-                                  startCharacterPromptPreview(
-                                    c.characterId,
-                                    "image"
-                                  )
+                                  startCharacterPromptPreview(c.characterId)
                                 }
                               >
                                 {generatingThis ? (
@@ -1560,30 +3083,50 @@ export function VerticalDramaCharacterStockPanel({
                                   />
                                 )}
                               </Button>
+                              {/* Roster-card "auto" shortcut (vertical-drama-
+                              character-sheet-consolidation plan, Phase C):
+                              fires the merged `generateSheetMutation`
+                              directly with `sheetType: "auto"` (today's
+                              default turnaround behavior) — no room for a
+                              14-option dropdown on a small card, and no
+                              preview step (matches how the unified detail-
+                              panel button below also skips preview). Open
+                              the detail panel via the card itself to pick a
+                              specific format instead. */}
                               <Button
                                 type="button"
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7 shrink-0"
-                                disabled={mutating || generatingTurnaroundThis}
+                                disabled={mutating || generatingSheetThis}
                                 aria-label={t(
                                   lang,
-                                  "สร้างชีทตัวละคร",
-                                  "Generate character sheet"
+                                  "สร้างชีทตัวละคร (อัตโนมัติ)",
+                                  "Generate character sheet (auto)"
                                 )}
                                 title={t(
                                   lang,
-                                  "สร้างชีทตัวละคร (มุมมองหลายด้าน)",
-                                  "Generate character sheet (multi-angle turnaround)"
+                                  "สร้างชีทตัวละคร (อัตโนมัติ) — เข้าไปในแผงรายละเอียดเพื่อเลือกรูปแบบอื่น",
+                                  "Generate character sheet (auto) — open the detail panel to pick a specific format"
                                 )}
-                                onClick={() =>
-                                  startCharacterPromptPreview(
-                                    c.characterId,
-                                    "turnaround"
-                                  )
-                                }
+                                onClick={() => {
+                                  if (!requireModelSelected()) return;
+                                  if (!requireMcpConnectionOrToast()) return;
+                                  generateSheetMutation.mutate({
+                                    seriesId,
+                                    characterId: c.characterId,
+                                    sheetType: "auto",
+                                    sheetLanguage,
+                                    ...(selectedImageModelId
+                                      ? { selectedImageModelId }
+                                      : {}),
+                                    ...(imageModelUsesMcp && mcpConnectionId
+                                      ? { mcpConnectionId }
+                                      : {}),
+                                  });
+                                }}
                               >
-                                {generatingTurnaroundThis ? (
+                                {generatingSheetThis ? (
                                   <Loader2
                                     aria-hidden="true"
                                     className="h-3.5 w-3.5 animate-spin"
@@ -1595,7 +3138,199 @@ export function VerticalDramaCharacterStockPanel({
                                   />
                                 )}
                               </Button>
+                              {/* W2 "เพิ่มลุค"/"เพิ่มแฝด" (plan: vertical-
+                              drama-twin-variant-completeness, F6) — only on
+                              BASE characters (no `sharesFaceWithCharacterId`;
+                              `c.parentCharacterId` is always unset here since
+                              `buildCharacterRosterEntries` already filters
+                              variant rows out of the top-level list, see that
+                              function's own doc comment). A twin is an
+                              independent person, not itself a face-source for
+                              a further look/twin, so it doesn't get these. */}
+                              {!c.sharesFaceWithCharacterId && (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(
+                                      lang,
+                                      `เพิ่มลุคให้ ${c.name}`,
+                                      `Add a look for ${c.name}`
+                                    )}
+                                    title={t(lang, "เพิ่มลุค", "Add look")}
+                                    onClick={() =>
+                                      openVariantDialog({
+                                        characterId: c.characterId,
+                                        name: c.name,
+                                      })
+                                    }
+                                  >
+                                    <Shirt
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(
+                                      lang,
+                                      `เพิ่มแฝดของ ${c.name}`,
+                                      `Add a twin for ${c.name}`
+                                    )}
+                                    title={t(lang, "เพิ่มแฝด", "Add twin")}
+                                    onClick={() =>
+                                      openTwinDialog({
+                                        characterId: c.characterId,
+                                        name: c.name,
+                                      })
+                                    }
+                                  >
+                                    <UserPlus
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
+                                  </Button>
+                                </>
+                              )}
+                              {/* W2 delete-CHARACTER (distinct from the
+                              portrait-image delete button above this card's
+                              thumbnail) — 2-step inline confirm, same
+                              convention as `confirmingDeleteAssetLinkId`.
+                              Available on every top-level card (base
+                              characters AND twins); `deleteCharacter` itself
+                              throws `PRECONDITION_FAILED` (surfaced via the
+                              shared `onError` toast) when this character
+                              still has variants/twins pointing at it. */}
+                              {confirmingThisCharacterDelete ? (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(lang, "ยกเลิก", "Cancel")}
+                                    title={t(lang, "ยกเลิก", "Cancel")}
+                                    onClick={() =>
+                                      setConfirmingDeleteCharacterId(null)
+                                    }
+                                  >
+                                    <X
+                                      aria-hidden="true"
+                                      className="h-3.5 w-3.5"
+                                    />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="destructive"
+                                    className="h-7 w-7 shrink-0"
+                                    disabled={mutating}
+                                    aria-label={t(
+                                      lang,
+                                      `ยืนยันลบตัวละคร ${c.name}`,
+                                      `Confirm delete character ${c.name}`
+                                    )}
+                                    title={t(
+                                      lang,
+                                      "ยืนยันลบตัวละครนี้ทั้งตัว",
+                                      "Confirm delete this character"
+                                    )}
+                                    onClick={() => {
+                                      setConfirmingDeleteCharacterId(null);
+                                      deleteCharacterMutation.mutate({
+                                        seriesId,
+                                        characterId: c.characterId,
+                                      });
+                                    }}
+                                  >
+                                    {deletingThisCharacter ? (
+                                      <Loader2
+                                        aria-hidden="true"
+                                        className="h-3.5 w-3.5 animate-spin"
+                                      />
+                                    ) : (
+                                      <Trash2
+                                        aria-hidden="true"
+                                        className="h-3.5 w-3.5"
+                                      />
+                                    )}
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 shrink-0"
+                                  disabled={mutating}
+                                  aria-label={t(
+                                    lang,
+                                    `ลบตัวละคร ${c.name}`,
+                                    `Delete character ${c.name}`
+                                  )}
+                                  title={t(
+                                    lang,
+                                    "ลบตัวละครนี้ทั้งตัว",
+                                    "Delete this character"
+                                  )}
+                                  onClick={() =>
+                                    setConfirmingDeleteCharacterId(
+                                      c.characterId
+                                    )
+                                  }
+                                >
+                                  <Trash2
+                                    aria-hidden="true"
+                                    className="h-3.5 w-3.5"
+                                  />
+                                </Button>
+                              )}
                             </div>
+                          )}
+
+                          {/* Optional "additional details" hint for the
+                          portrait generate button above — compact single-line
+                          input since the roster card is narrow (`sm:grid-
+                          cols-2 lg:grid-cols-3`, no room for a multi-row
+                          textarea; the wider detail panel below gets a full
+                          Textarea instead). Keyed by characterId so typing in
+                          one card never leaks into another's field (see
+                          `customInstructionByCharacter` doc comment).
+                          planning/vertical-drama-character-custom-
+                          instruction/plan.md */}
+                          {!readOnly && (
+                            <Input
+                              value={
+                                customInstructionByCharacter[c.characterId] ??
+                                ""
+                              }
+                              onChange={e =>
+                                setCustomInstructionByCharacter(prev => ({
+                                  ...prev,
+                                  [c.characterId]: e.target.value,
+                                }))
+                              }
+                              maxLength={500}
+                              className="h-7 text-xs"
+                              placeholder={t(
+                                lang,
+                                VD_COPY.th.characterCustomInstructionPlaceholder,
+                                VD_COPY.en.characterCustomInstructionPlaceholder
+                              )}
+                              aria-label={t(
+                                lang,
+                                VD_COPY.th.characterCustomInstructionLabel,
+                                VD_COPY.en.characterCustomInstructionLabel
+                              )}
+                            />
                           )}
 
                           {/* Rendered here only when this card's character is NOT the
@@ -1608,25 +3343,13 @@ export function VerticalDramaCharacterStockPanel({
                             effectiveSelectedId !== c.characterId && (
                               <MediaPromptPreview
                                 prompt={
-                                  pendingCharacterPromptPreview.action ===
-                                  "image"
-                                    ? pendingCharacterPromptPreview.portraitPrompt
-                                    : pendingCharacterPromptPreview.turnaroundPrompt
+                                  pendingCharacterPromptPreview.portraitPrompt
                                 }
-                                skillName={
-                                  pendingCharacterPromptPreview.action ===
-                                  "image"
-                                    ? t(
-                                        lang,
-                                        "สร้างภาพตัวละคร",
-                                        "Generate character image"
-                                      )
-                                    : t(
-                                        lang,
-                                        "สร้างชีทตัวละคร",
-                                        "Generate character sheet"
-                                      )
-                                }
+                                skillName={t(
+                                  lang,
+                                  "สร้างภาพตัวละคร",
+                                  "Generate character image"
+                                )}
                                 skillCategory="image_generation"
                                 mediaParams={{
                                   ...(pendingCharacterPromptPreview.model
@@ -1642,12 +3365,7 @@ export function VerticalDramaCharacterStockPanel({
                                       }
                                     : {}),
                                 }}
-                                isExecuting={
-                                  pendingCharacterPromptPreview.action ===
-                                  "image"
-                                    ? generateImageMutation.isPending
-                                    : generateTurnaroundMutation.isPending
-                                }
+                                isExecuting={generateImageMutation.isPending}
                                 onConfirm={handleCharacterPromptConfirm}
                                 onCancel={handleCharacterPromptCancel}
                               />
@@ -1709,14 +3427,95 @@ export function VerticalDramaCharacterStockPanel({
               <>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <User aria-hidden="true" className="h-4 w-4" />
-                      {selectedCharacter.name}
-                      {selectedCharacter.role && (
-                        <Badge variant="outline" className="text-[10px]">
-                          {selectedCharacter.role}
-                        </Badge>
-                      )}
+                    <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                      {/* Variant/twin disambiguation (vertical-drama-
+                      character-sheet-consolidation plan, Phase C): a variant
+                      row (`parentCharacterId` set — same person, different
+                      outfit/age-stage look) has the exact same `.name` as its
+                      parent, so showing just `{name}` here was indistinguish-
+                      able from viewing the parent itself. A twin
+                      (`sharesFaceWithCharacterId` set — a different,
+                      independent character that shares a face reference)
+                      already got a badge on the roster card, but not here —
+                      added for parity. */}
+                      {(() => {
+                        const isVariant = Boolean(
+                          selectedCharacter.parentCharacterId
+                        );
+                        const parentName = isVariant
+                          ? (characters.find(
+                              (other: VdCharacterListItem) =>
+                                other.characterId ===
+                                selectedCharacter.parentCharacterId
+                            )?.name ?? selectedCharacter.name)
+                          : null;
+                        const variantLabel =
+                          selectedCharacter.variantLabel ??
+                          t(lang, "ตัวแปร", "Variant");
+                        const twinSourceName =
+                          selectedCharacter.sharesFaceWithCharacterId
+                            ? characters.find(
+                                (other: VdCharacterListItem) =>
+                                  other.characterId ===
+                                  selectedCharacter.sharesFaceWithCharacterId
+                              )?.name
+                            : undefined;
+                        return (
+                          <>
+                            <User aria-hidden="true" className="h-4 w-4" />
+                            {isVariant ? (
+                              <span className="flex min-w-0 items-center gap-1">
+                                <span>{parentName}</span>
+                                <span
+                                  aria-hidden="true"
+                                  className="text-muted-foreground"
+                                >
+                                  ›
+                                </span>
+                                <span>{variantLabel}</span>
+                              </span>
+                            ) : (
+                              selectedCharacter.name
+                            )}
+                            {selectedCharacter.role && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {selectedCharacter.role}
+                              </Badge>
+                            )}
+                            {isVariant && (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px]",
+                                  selectedCharacter.variantType === "age_stage"
+                                    ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300"
+                                    : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                )}
+                              >
+                                {selectedCharacter.variantType === "age_stage"
+                                  ? t(lang, "ช่วงอายุ", "Age stage")
+                                  : t(lang, "ชุด/ลุค", "Outfit")}
+                              </Badge>
+                            )}
+                            {twinSourceName && (
+                              <Badge
+                                variant="outline"
+                                className="gap-1 border-sky-200 bg-sky-50 text-[10px] text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300"
+                              >
+                                <Users
+                                  aria-hidden="true"
+                                  className="h-3 w-3 shrink-0"
+                                />
+                                {t(
+                                  lang,
+                                  `ใช้ใบหน้าร่วมกับ ${twinSourceName}`,
+                                  `Shares face with ${twinSourceName}`
+                                )}
+                              </Badge>
+                            )}
+                          </>
+                        );
+                      })()}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex flex-col gap-2 text-xs text-muted-foreground">
@@ -1753,6 +3552,140 @@ export function VerticalDramaCharacterStockPanel({
                       );
                     })()}
 
+                    {/* Reference-image picker (vertical-drama-reference-
+                    picker-outfit-lock plan, Phase D3) — shows which
+                    `primary_portrait` asset(s) are available as the
+                    identity-lock reference for the NEXT generate call, and
+                    which one is currently selected (explicit override, or
+                    the same asset the backend would auto-pick). Rendered
+                    UNCONDITIONALLY (not gated on `!readOnly`) so a
+                    read-only viewer still sees what would be used, for
+                    transparency — only the click-to-select interaction is
+                    disabled when `readOnly`. Renders nothing when there are
+                    no candidates at all (nothing to show/pick). */}
+                    {(() => {
+                      const referenceCandidates = buildReferenceCandidates(
+                        assets,
+                        selectedCharacter,
+                        charactersById
+                      );
+                      if (referenceCandidates.length === 0) return null;
+                      const defaultReferenceAssetLinkId =
+                        resolveDefaultReferenceAssetLinkId(
+                          assets,
+                          selectedCharacter.characterId
+                        );
+                      const selectedReferenceAssetLinkId =
+                        referenceOverrideByCharacter[
+                          selectedCharacter.characterId
+                        ] ?? defaultReferenceAssetLinkId ?? undefined;
+                      return (
+                        <div className="mt-1 flex flex-col gap-1">
+                          <span className="text-[11px] font-medium text-foreground/80">
+                            {t(lang, "ภาพอ้างอิงตัวตน", "Identity reference")}
+                          </span>
+                          <div className="flex flex-wrap items-start gap-2">
+                            {referenceCandidates.map(candidate => {
+                              const isSelected =
+                                candidate.assetLinkId ===
+                                selectedReferenceAssetLinkId;
+                              return (
+                                <button
+                                  key={candidate.assetLinkId}
+                                  type="button"
+                                  disabled={readOnly}
+                                  aria-pressed={isSelected}
+                                  aria-label={t(
+                                    lang,
+                                    "เลือกภาพนี้เป็นภาพอ้างอิงตัวตน",
+                                    "Select this identity reference image"
+                                  )}
+                                  className={cn(
+                                    "flex flex-col items-center gap-0.5",
+                                    readOnly
+                                      ? "cursor-default"
+                                      : "cursor-pointer"
+                                  )}
+                                  onClick={() => {
+                                    if (readOnly) return;
+                                    setReferenceOverrideByCharacter(prev => ({
+                                      ...prev,
+                                      [selectedCharacter.characterId]:
+                                        candidate.assetLinkId,
+                                    }));
+                                  }}
+                                >
+                                  <img
+                                    src={candidate.thumbnailUrl}
+                                    alt=""
+                                    className={cn(
+                                      "h-10 w-10 rounded border border-border object-cover",
+                                      isSelected &&
+                                        "border-primary ring-2 ring-primary"
+                                    )}
+                                  />
+                                  {candidate.sourceLabel !== "own" &&
+                                    candidate.sourceName && (
+                                      <span className="max-w-[48px] truncate text-center text-[9px] text-muted-foreground">
+                                        {t(
+                                          lang,
+                                          `จาก ${candidate.sourceName}`,
+                                          `from ${candidate.sourceName}`
+                                        )}
+                                      </span>
+                                    )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Optional "additional details" hint for the portrait
+                    generate button below — sent as `customInstruction` on
+                    `previewCharacterPrompt` so repeated clicks vary the
+                    generated prompt instead of producing near-identical
+                    images every time (planning/vertical-drama-character-
+                    custom-instruction/plan.md). Shares
+                    `customInstructionByCharacter` state, keyed by
+                    characterId, with the roster-card compact input above. */}
+                    {!readOnly && (
+                      <div className="mt-1 flex flex-col gap-1">
+                        <Label
+                          htmlFor="vd-character-custom-instruction"
+                          className="text-xs"
+                        >
+                          {t(
+                            lang,
+                            VD_COPY.th.characterCustomInstructionLabel,
+                            VD_COPY.en.characterCustomInstructionLabel
+                          )}
+                        </Label>
+                        <Textarea
+                          id="vd-character-custom-instruction"
+                          value={
+                            customInstructionByCharacter[
+                              selectedCharacter.characterId
+                            ] ?? ""
+                          }
+                          onChange={e =>
+                            setCustomInstructionByCharacter(prev => ({
+                              ...prev,
+                              [selectedCharacter.characterId]: e.target.value,
+                            }))
+                          }
+                          maxLength={500}
+                          rows={2}
+                          placeholder={t(
+                            lang,
+                            VD_COPY.th.characterCustomInstructionPlaceholder,
+                            VD_COPY.en.characterCustomInstructionPlaceholder
+                          )}
+                        />
+                      </div>
+                    )}
+
                     {!readOnly && (
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Button
@@ -1788,8 +3721,7 @@ export function VerticalDramaCharacterStockPanel({
                           }
                           onClick={() =>
                             startCharacterPromptPreview(
-                              selectedCharacter.characterId,
-                              "image"
+                              selectedCharacter.characterId
                             )
                           }
                         >
@@ -1812,41 +3744,38 @@ export function VerticalDramaCharacterStockPanel({
                             "Generate character image"
                           )}
                         </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="gap-2"
-                          disabled={
-                            mutating ||
-                            isTurnaroundGeneratingFor(selectedCharacter.characterId)
+                        {/* Unified sheet-format select + single generate
+                        button (vertical-drama-character-sheet-consolidation
+                        plan, Phase C) — replaces the previous two buttons
+                        ("สร้างชีทตัวละคร"/turnaround and "Character Sheet
+                        แบบเต็ม"/full_combined), which used the same wording
+                        and icon and confused users. `selectedSheetType`
+                        defaults to `"auto"` (backend resolves that to
+                        `"turnaround"`, preserving the old default button's
+                        behavior). No preview step, matching how "Character
+                        Sheet แบบเต็ม" already worked (direct-confirm) — kept
+                        simple across all 14 possible formats. */}
+                        <Select
+                          value={selectedSheetType}
+                          onValueChange={value =>
+                            setSelectedSheetType(value as VdCharacterSheetType)
                           }
-                          onClick={() =>
-                            startCharacterPromptPreview(
-                              selectedCharacter.characterId,
-                              "turnaround"
-                            )
-                          }
+                          disabled={readOnly}
                         >
-                          {isTurnaroundGeneratingFor(
-                            selectedCharacter.characterId
-                          ) ? (
-                            <Loader2
-                              aria-hidden="true"
-                              className="h-3.5 w-3.5 animate-spin"
-                            />
-                          ) : (
-                            <Grid3x3
-                              aria-hidden="true"
-                              className="h-3.5 w-3.5"
-                            />
-                          )}
-                          {t(
-                            lang,
-                            "สร้างชีทตัวละคร",
-                            "Generate character sheet"
-                          )}
-                        </Button>
+                          <SelectTrigger
+                            className="h-8 w-[210px] text-xs"
+                            data-testid="vd-sheet-type-select"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SHEET_TYPE_OPTIONS.map(opt => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {t(lang, opt.labelTh, opt.labelEn)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Button
                           type="button"
                           size="sm"
@@ -1862,19 +3791,33 @@ export function VerticalDramaCharacterStockPanel({
                             generateSheetMutation.mutate({
                               seriesId,
                               characterId: selectedCharacter.characterId,
+                              sheetType: selectedSheetType,
                               sheetLanguage,
                               ...(selectedImageModelId ? { selectedImageModelId } : {}),
                               ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+                              // Reference-image-picker (Phase D3) — same
+                              // override/omit rule as `generateImageMutation`
+                              // above.
+                              ...(referenceOverrideByCharacter[
+                                selectedCharacter.characterId
+                              ]
+                                ? {
+                                    referenceAssetLinkId:
+                                      referenceOverrideByCharacter[
+                                        selectedCharacter.characterId
+                                      ],
+                                  }
+                                : {}),
                             });
                           }}
-                          data-testid="vd-generate-full-character-sheet"
+                          data-testid="vd-generate-character-sheet"
                         >
                           {isSheetGeneratingFor(selectedCharacter.characterId) ? (
                             <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
                           ) : (
                             <Grid3x3 aria-hidden="true" className="h-3.5 w-3.5" />
                           )}
-                          {t(lang, "Character Sheet แบบเต็ม", "Full character sheet")}
+                          {t(lang, "สร้างชีทตัวละคร", "Generate character sheet")}
                         </Button>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <span>{t(lang, "ภาษา:", "Language:")}</span>
@@ -1912,24 +3855,12 @@ export function VerticalDramaCharacterStockPanel({
                       pendingCharacterPromptPreview.characterId ===
                         selectedCharacter.characterId && (
                         <MediaPromptPreview
-                          prompt={
-                            pendingCharacterPromptPreview.action === "image"
-                              ? pendingCharacterPromptPreview.portraitPrompt
-                              : pendingCharacterPromptPreview.turnaroundPrompt
-                          }
-                          skillName={
-                            pendingCharacterPromptPreview.action === "image"
-                              ? t(
-                                  lang,
-                                  "สร้างภาพตัวละคร",
-                                  "Generate character image"
-                                )
-                              : t(
-                                  lang,
-                                  "สร้างชีทตัวละคร",
-                                  "Generate character sheet"
-                                )
-                          }
+                          prompt={pendingCharacterPromptPreview.portraitPrompt}
+                          skillName={t(
+                            lang,
+                            "สร้างภาพตัวละคร",
+                            "Generate character image"
+                          )}
                           skillCategory="image_generation"
                           mediaParams={{
                             ...(pendingCharacterPromptPreview.model
@@ -1942,11 +3873,7 @@ export function VerticalDramaCharacterStockPanel({
                                 }
                               : {}),
                           }}
-                          isExecuting={
-                            pendingCharacterPromptPreview.action === "image"
-                              ? generateImageMutation.isPending
-                              : generateTurnaroundMutation.isPending
-                          }
+                          isExecuting={generateImageMutation.isPending}
                           onConfirm={handleCharacterPromptConfirm}
                           onCancel={handleCharacterPromptCancel}
                         />
@@ -2105,8 +4032,8 @@ export function VerticalDramaCharacterStockPanel({
                                     src: sheet.imageUrl,
                                     alt: t(
                                       lang,
-                                      "Character Sheet แบบเต็ม",
-                                      "Full character sheet"
+                                      "ชีทตัวละคร (Design Bible)",
+                                      "Character sheet (Design Bible)"
                                     ),
                                   })
                                 }
@@ -2114,12 +4041,20 @@ export function VerticalDramaCharacterStockPanel({
                               >
                                 <img
                                   src={sheet.imageUrl}
-                                  alt={t(lang, "Character Sheet แบบเต็ม", "Full character sheet")}
+                                  alt={t(
+                                    lang,
+                                    "ชีทตัวละคร (Design Bible)",
+                                    "Character sheet (Design Bible)"
+                                  )}
                                   className="max-h-56 max-w-56 rounded-md border border-border object-contain"
                                 />
                               </button>
                               <span className="text-[10px]">
-                                {t(lang, "Character Sheet แบบเต็ม", "Full character sheet")}
+                                {t(
+                                  lang,
+                                  "ชีทตัวละคร (Design Bible)",
+                                  "Character sheet (Design Bible)"
+                                )}
                               </span>
                               <Button
                                 type="button"
@@ -2519,32 +4454,53 @@ export function VerticalDramaCharacterStockPanel({
                           // resolvable URL — matched by characterId + mediaAssetId.
                           // Older/imported assets fall back to the plain-text label.
                           // Checks both the portrait cache and the character-sheet
-                          // (turnaround) cache, since both mutations link into the
-                          // same asset list, distinguished by `asset.role`.
+                          // cache, since both mutations link into the same asset
+                          // list, distinguished by `asset.role`.
                           const generatedForCharacter =
                             generatedImageUrls[asset.characterId];
                           const turnaroundForCharacter =
                             generatedTurnaroundUrls[asset.characterId];
-                          const isTurnaroundAsset =
+                          const sheetForCharacter =
+                            generatedSheetUrls[asset.characterId];
+                          const isTurnaroundRoleAsset =
                             asset.role === "character_sheet_turnaround";
+                          // `"character_sheet_full"` (the pre-existing full-
+                          // combined sheet) and `"character_design_bible"`
+                          // (the 11 new Character Design Bible formats, e.g.
+                          // color_palette / material_fabric — several of
+                          // which carry no face at all) are ALSO multi-panel
+                          // infographic pages, not 9:16 portrait crops —
+                          // widened from turnaround-only (vertical-drama-
+                          // character-sheet-consolidation plan, Phase C).
+                          const isSheetRoleAsset =
+                            asset.role === "character_sheet_full" ||
+                            asset.role === "character_design_bible";
+                          const isMultiPanelSheetAsset =
+                            isTurnaroundRoleAsset || isSheetRoleAsset;
                           // Prefer the durable, server-joined `thumbnailUrl`
                           // (survives reload) — the session-local generate
                           // caches are only a fallback for the brief window
                           // before a refetch has picked it up.
-                          const sessionCachedUrl = isTurnaroundAsset
+                          const sessionCachedUrl = isTurnaroundRoleAsset
                             ? turnaroundForCharacter &&
                               String(asset.mediaAssetId) ===
                                 turnaroundForCharacter.mediaAssetId
                               ? turnaroundForCharacter.imageUrl
                               : null
-                            : generatedForCharacter &&
+                            : isSheetRoleAsset
+                              ? sheetForCharacter &&
                                 String(asset.mediaAssetId) ===
-                                  generatedForCharacter.mediaAssetId
-                              ? generatedForCharacter.imageUrl
-                              : null;
+                                  sheetForCharacter.mediaAssetId
+                                ? sheetForCharacter.imageUrl
+                                : null
+                              : generatedForCharacter &&
+                                  String(asset.mediaAssetId) ===
+                                    generatedForCharacter.mediaAssetId
+                                ? generatedForCharacter.imageUrl
+                                : null;
                           const thumbnailUrl =
                             asset.thumbnailUrl ?? sessionCachedUrl;
-                          const thumbnailAlt = isTurnaroundAsset
+                          const thumbnailAlt = isMultiPanelSheetAsset
                             ? t(
                                 lang,
                                 "ชีทตัวละคร (มุมมองหลายด้าน)",
@@ -2581,7 +4537,7 @@ export function VerticalDramaCharacterStockPanel({
                                     alt={thumbnailAlt}
                                     className={cn(
                                       "rounded-md border border-border",
-                                      isTurnaroundAsset
+                                      isMultiPanelSheetAsset
                                         ? "max-h-24 max-w-24 object-contain"
                                         : "aspect-[9/16] w-16 object-cover"
                                     )}
@@ -2870,6 +4826,368 @@ export function VerticalDramaCharacterStockPanel({
           </div>
         )}
       </div>
+
+      {/* W2 "เพิ่มลุค" dialog (plan: vertical-drama-twin-variant-
+      completeness, F6) — manual counterpart of the AI-only
+      `detectCharacterVariantsNow`/`reconcileCharacterVariantPlan` path (see
+      `createCharacterVariant`'s doc comment, `server/routers/
+      verticalDramaCharacters.ts`). */}
+      <Dialog
+        open={variantDialogCharacter !== null}
+        onOpenChange={open => {
+          if (!open) closeVariantDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t(
+                lang,
+                `เพิ่มลุคให้ ${variantDialogCharacter?.name ?? ""}`,
+                `Add a look for ${variantDialogCharacter?.name ?? ""}`
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                lang,
+                "สร้างตัวละคร variant ใหม่ — คนเดิม หน้าเดิม แค่ลุค/ช่วงวัยต่างออกไป มีภาพอ้างอิงของตัวเอง",
+                "Creates a new variant character — same person, same identity, just a different look/life-stage, with its own reference image."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-variant-label" className="text-xs">
+                {t(lang, "ชื่อลุค", "Look name")}
+              </Label>
+              <Input
+                id="vd-variant-label"
+                value={variantLabelInput}
+                onChange={e => setVariantLabelInput(e.target.value)}
+                placeholder={t(lang, "เช่น ชุดทำงาน", "e.g. Work outfit")}
+                maxLength={64}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-variant-type" className="text-xs">
+                {t(lang, "ประเภทลุค", "Look type")}
+              </Label>
+              <Select
+                value={variantTypeInput}
+                onValueChange={value =>
+                  setVariantTypeInput(value as "outfit" | "age_stage")
+                }
+              >
+                <SelectTrigger id="vd-variant-type" className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="outfit">
+                    {t(lang, "ชุด/ลุค (outfit)", "Outfit")}
+                  </SelectItem>
+                  <SelectItem value="age_stage">
+                    {t(lang, "ช่วงอายุ (age_stage)", "Age stage")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {variantTypeInput === "outfit"
+                  ? t(
+                      lang,
+                      "ชุด/ลุค (outfit) — หน้าเหมือนเดิม 100% เปลี่ยนเฉพาะการแต่งตัว",
+                      "Outfit — face stays 100% identical, only the clothing changes."
+                    )
+                  : t(
+                      lang,
+                      "ช่วงอายุ (age_stage) — คนเดิมต่างวัย หน้าอ้างอิงหลวมๆ ไม่ล็อก 100%",
+                      "Age stage — same person at a different life stage; the face reference is loose, not locked 100%."
+                    )}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-variant-description" className="text-xs">
+                {t(lang, "คำอธิบาย (ไม่บังคับ)", "Description (optional)")}
+              </Label>
+              <Textarea
+                id="vd-variant-description"
+                value={variantDescriptionInput}
+                onChange={e => setVariantDescriptionInput(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder={
+                  variantTypeInput === "outfit"
+                    ? t(
+                        lang,
+                        "อธิบายชุด/สไตล์ที่ต้องการ เช่น ชุดยูนิฟอร์มสีขาว มัดผมหางม้า",
+                        "Describe the outfit/style, e.g. white uniform, hair in a ponytail"
+                      )
+                    : t(
+                        lang,
+                        "อธิบายช่วงวัย/ลักษณะที่เปลี่ยนไป เช่น วัยกลางคน ผมสั้นแซมสีเทา",
+                        "Describe the life-stage/appearance change, e.g. middle-aged, short greying hair"
+                      )
+                }
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">
+                {t(lang, "ภาพอ้างอิง (ไม่บังคับ)", "Reference image (optional)")}
+              </Label>
+              <div
+                onDragOver={event => {
+                  event.preventDefault();
+                  setVariantReferenceDragOver(true);
+                }}
+                onDragLeave={() => setVariantReferenceDragOver(false)}
+                onDrop={event => {
+                  setVariantReferenceDragOver(false);
+                  variantReferenceHandlers.handleDrop(event);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-3 text-center text-xs text-muted-foreground transition-colors",
+                  variantReferenceDragOver
+                    ? "border-purple-400 bg-purple-50/60"
+                    : "border-border"
+                )}
+              >
+                {variantReferencePreviewUrl ? (
+                  <img
+                    src={variantReferencePreviewUrl}
+                    alt=""
+                    className="aspect-[9/16] h-20 w-14 rounded object-cover"
+                  />
+                ) : variantReferenceResolving ? (
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                ) : (
+                  <UploadCloud aria-hidden="true" className="h-4 w-4" />
+                )}
+                <span>
+                  {t(lang, "ลากภาพมาวาง หรือ", "Drag an image here, or")}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs"
+                  disabled={variantReferenceResolving}
+                  onClick={() => variantReferenceInputRef.current?.click()}
+                >
+                  <UploadCloud aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t(lang, "อัปโหลดภาพ", "Upload image")}
+                </Button>
+                <input
+                  ref={variantReferenceInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={variantReferenceHandlers.handleFileInput}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={closeVariantDialog}>
+              {t(lang, "ยกเลิก", "Cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={
+                !variantDialogCharacter ||
+                variantLabelInput.trim() === "" ||
+                createVariantMutation.isPending
+              }
+              onClick={() => {
+                if (!variantDialogCharacter) return;
+                createVariantMutation.mutate(
+                  buildCreateCharacterVariantInput({
+                    seriesId,
+                    parentCharacterId: variantDialogCharacter.characterId,
+                    variantLabel: variantLabelInput,
+                    variantType: variantTypeInput,
+                    customDescription: variantDescriptionInput,
+                    referenceMediaAssetId: variantReferenceMediaAssetId,
+                  })
+                );
+              }}
+            >
+              {createVariantMutation.isPending ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus aria-hidden="true" className="h-4 w-4" />
+              )}
+              {t(lang, "เพิ่มลุค", "Add look")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* W2 "เพิ่มแฝด" dialog — manual counterpart of `createCharacterTwin`
+      (`server/routers/verticalDramaCharacters.ts`), same pattern as the
+      variant dialog above. */}
+      <Dialog
+        open={twinDialogCharacter !== null}
+        onOpenChange={open => {
+          if (!open) closeTwinDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t(
+                lang,
+                `เพิ่มแฝดของ ${twinDialogCharacter?.name ?? ""}`,
+                `Add a twin for ${twinDialogCharacter?.name ?? ""}`
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {t(
+                lang,
+                "สร้างตัวละครใหม่ที่เป็นคนละคน (ชื่อ/id ของตัวเอง) แต่ใช้ใบหน้าเดียวกัน — เช่น พี่น้องแฝด",
+                "Creates a brand-new, independent character (its own name/id) that shares the same face reference — e.g. identical siblings."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-twin-name" className="text-xs">
+                {t(lang, "ชื่อ", "Name")}
+              </Label>
+              <Input
+                id="vd-twin-name"
+                value={twinNameInput}
+                onChange={e => setTwinNameInput(e.target.value)}
+                placeholder={t(lang, "เช่น มีนา", "e.g. Mina")}
+                maxLength={255}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-twin-role" className="text-xs">
+                {t(lang, "บทบาท (ไม่บังคับ)", "Role (optional)")}
+              </Label>
+              <Input
+                id="vd-twin-role"
+                value={twinRoleInput}
+                onChange={e => setTwinRoleInput(e.target.value)}
+                placeholder={t(lang, "น้องสาวฝาแฝด", "Twin sister")}
+                maxLength={100}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="vd-twin-description" className="text-xs">
+                {t(lang, "คำอธิบาย (ไม่บังคับ)", "Description (optional)")}
+              </Label>
+              <Textarea
+                id="vd-twin-description"
+                value={twinDescriptionInput}
+                onChange={e => setTwinDescriptionInput(e.target.value)}
+                maxLength={2000}
+                rows={3}
+                placeholder={t(
+                  lang,
+                  "อธิบายจุดที่ทำให้แฝดคนนี้ดูต่างจากตัวต้นแบบ เช่น ทรงผม สไตล์เสื้อผ้า",
+                  "Describe what makes this twin look distinct from the source, e.g. hairstyle, clothing style"
+                )}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">
+                {t(lang, "ภาพอ้างอิง (ไม่บังคับ)", "Reference image (optional)")}
+              </Label>
+              <div
+                onDragOver={event => {
+                  event.preventDefault();
+                  setTwinReferenceDragOver(true);
+                }}
+                onDragLeave={() => setTwinReferenceDragOver(false)}
+                onDrop={event => {
+                  setTwinReferenceDragOver(false);
+                  twinReferenceHandlers.handleDrop(event);
+                }}
+                className={cn(
+                  "flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-3 text-center text-xs text-muted-foreground transition-colors",
+                  twinReferenceDragOver
+                    ? "border-purple-400 bg-purple-50/60"
+                    : "border-border"
+                )}
+              >
+                {twinReferencePreviewUrl ? (
+                  <img
+                    src={twinReferencePreviewUrl}
+                    alt=""
+                    className="aspect-[9/16] h-20 w-14 rounded object-cover"
+                  />
+                ) : twinReferenceResolving ? (
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                ) : (
+                  <UploadCloud aria-hidden="true" className="h-4 w-4" />
+                )}
+                <span>
+                  {t(lang, "ลากภาพมาวาง หรือ", "Drag an image here, or")}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs"
+                  disabled={twinReferenceResolving}
+                  onClick={() => twinReferenceInputRef.current?.click()}
+                >
+                  <UploadCloud aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t(lang, "อัปโหลดภาพ", "Upload image")}
+                </Button>
+                <input
+                  ref={twinReferenceInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={twinReferenceHandlers.handleFileInput}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={closeTwinDialog}>
+              {t(lang, "ยกเลิก", "Cancel")}
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={
+                !twinDialogCharacter ||
+                twinNameInput.trim() === "" ||
+                createTwinMutation.isPending
+              }
+              onClick={() => {
+                if (!twinDialogCharacter) return;
+                createTwinMutation.mutate(
+                  buildCreateCharacterTwinInput({
+                    seriesId,
+                    sharesFaceWithCharacterId: twinDialogCharacter.characterId,
+                    name: twinNameInput,
+                    role: twinRoleInput,
+                    customDescription: twinDescriptionInput,
+                    referenceMediaAssetId: twinReferenceMediaAssetId,
+                  })
+                );
+              }}
+            >
+              {createTwinMutation.isPending ? (
+                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus aria-hidden="true" className="h-4 w-4" />
+              )}
+              {t(lang, "เพิ่มแฝด", "Add twin")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ImageLightbox
         images={lightboxImage ? [lightboxImage] : []}

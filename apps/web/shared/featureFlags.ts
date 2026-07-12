@@ -198,6 +198,7 @@ export interface TenantFeatureFlags {
   verticalDramaCharacterVisualQuality: boolean; // F132G — spec 132 §10.2-10.7 persisted bible, expression set, image QC, consistency ledger (fail-closed)
   verticalDramaContinuityContracts: boolean; // F132H — spec 132 §8.2 causal chain / hook-to-opening enforcement (fail-closed)
   verticalDramaAngleGridQuality: boolean; // F132I — spec 132 §19 structured 9-angle schema, diversity/coverage rules, best-angle scoring rubric (fail-closed)
+  verticalDramaRetentionHooks: boolean; // planning/vertical-drama-retention-hooks/plan.md — 12-principle hook/open-loop/retention-loop upgrade: genre-conditional retention-loop guidance in script-builder + shotgrid (W1-W3), deterministic retention facts fed to quality-review (W4/W6, scorecard v4/contract_version 4), and hook/retention-ending motion energy in the video-prompt layer (W7) (fail-closed)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -399,6 +400,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "verticalDramaCharacterVisualQuality",
   "verticalDramaContinuityContracts",
   "verticalDramaAngleGridQuality",
+  "verticalDramaRetentionHooks",
 ]);
 
 /**
@@ -600,6 +602,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaCharacterVisualQuality: false,
   verticalDramaContinuityContracts: false,
   verticalDramaAngleGridQuality: false,
+  verticalDramaRetentionHooks: false,
 };
 
 export const AGE_SAFETY_FEATURE_FLAG_KEYS = [
