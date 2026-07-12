@@ -39,6 +39,18 @@ vi.mock("../_core/logger", () => ({
   debugLog: vi.fn(),
   debugError: vi.fn(),
 }));
+// Centralized per-series model policy resolver
+// (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 3) — its
+// own override/fallback contract is covered by
+// `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
+// passthrough to `autoFallback` (the mocked `resolveStoryBibleModel` above)
+// so this file's pre-existing "no override configured" behavior/assertions
+// are unaffected and no real DB access happens.
+vi.mock("../verticalDramaLlmModelPolicy", () => ({
+  resolveVerticalDramaSeriesModel: vi.fn(
+    (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
+  ),
+}));
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -142,6 +154,7 @@ describe("verticalDramaPromptQc", () => {
         kind: "image",
         prompt,
         userId: 1,
+        seriesId: 6,
       });
 
       expect(result).toEqual({ prompt, refined: false, creditsUsed: 0, truncated: false });
@@ -159,6 +172,7 @@ describe("verticalDramaPromptQc", () => {
         kind: "image",
         prompt: overCapPrompt,
         userId: 1,
+        seriesId: 6,
         tenantId: "tenant-1",
         idempotencyKey: "idem-1",
         label: "test image prompt",
@@ -192,6 +206,7 @@ describe("verticalDramaPromptQc", () => {
         kind: "video",
         prompt: overCapPrompt,
         userId: 1,
+        seriesId: 6,
       });
 
       expect(mockExecuteRetry).toHaveBeenCalledTimes(2);
@@ -214,6 +229,7 @@ describe("verticalDramaPromptQc", () => {
         kind: "image",
         prompt: overCapPrompt,
         userId: 1,
+        seriesId: 6,
       });
 
       expect(result.truncated).toBe(false);
@@ -232,6 +248,7 @@ describe("verticalDramaPromptQc", () => {
         kind: "image",
         prompt: overCapPrompt,
         userId: 1,
+        seriesId: 6,
       });
 
       expect(result.truncated).toBe(true);
@@ -247,6 +264,7 @@ describe("verticalDramaPromptQc", () => {
         kind: "image",
         prompt: overCapPrompt,
         userId: 1,
+        seriesId: 6,
       });
 
       expect(result.truncated).toBe(true);

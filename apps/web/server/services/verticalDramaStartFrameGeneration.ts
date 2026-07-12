@@ -26,12 +26,12 @@ import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFile
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import {
-  resolveStoryBibleModel,
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import { resolveStartFramePlanModel } from "./verticalDramaImproveScript";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import {
   buildTargetAudienceRegionInstruction,
@@ -40,7 +40,6 @@ import {
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 import {
   buildCharacterIdentityMapBlock,
-  formatIdentityLockedImagePrompt,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
@@ -199,7 +198,6 @@ export function projectStartFramePlan(
    * reintroduce the same bug one stage later.
    */
   shotCharacterIdsByShotNumber?: Map<number, string[]>,
-  characters?: readonly VerticalDramaCharacterDescriptorSource[],
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -220,19 +218,18 @@ export function projectStartFramePlan(
             : (r.reference_assets ?? [])
                 .map((ref) => ref.character_id)
                 .filter((id): id is string => typeof id === "string" && id.length > 0);
-        const charEntries = requiredCharacterRefs
-          .map((id) => {
-            const found = characters?.find((c) => c.characterKey === id);
-            return found ? { name: found.name } : null;
-          })
-          .filter((c): c is { name: string } => c !== null);
-        const identityLockedPrompt =
-          charEntries.length > 0
-            ? formatIdentityLockedImagePrompt(r.prompt, charEntries)
-            : r.prompt;
+        // `r.prompt` is now the FINAL text as-authored by the
+        // `vertical-drama-shot-start-frame-render` skill — no code-side
+        // identity-lock append (vertical-drama-skill-first-architecture
+        // plan, Phase 3, item 2: the skill's own "Attached Character
+        // Reference Image Indexing" instruction now also states the full
+        // identity-lock constraint — face shape, skin tone, hairstyle,
+        // clothing/outfit, distinguishing features — for every required
+        // character in its own prose, so `formatIdentityLockedImagePrompt`'s
+        // post-hoc bracket append is no longer needed here).
         return {
           shotNumber: r.shot_number,
-          imagePrompt: identityLockedPrompt,
+          imagePrompt: r.prompt,
           negativePrompt: r.negative_prompt ?? "",
           requiredCharacterRefs,
           productReferenceAssetIds: [],
@@ -295,9 +292,6 @@ export interface GenerateStartFrameRenderPlanParams {
   episodePlanContext?: string;
 }
 
-const VD_CHARACTER_REF_INDEXING_INSTRUCTION =
-  "Attached Character Reference Image Indexing: When writing each shot's `prompt` for shots with required characters, reference character names alongside attached image indexing (e.g., 'emphasis on ใบข้าว (attached Image 2)'s face' or 'Image 1 = ฝ้าย, Image 2 = ใบข้าว') so diffusion image models correctly link each character identity to their corresponding attached reference image.";
-
 export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
   const shotLines = params.storyboardShots
     .map(
@@ -332,8 +326,13 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
       : null,
     `Storyboard shots (build exactly one start-frame render request per shot, 9 total):\n${shotLines}`,
     characterIdentityMapBlock,
-    params.storyboardShots.some((s) => s.characterIds.length > 0) ? VD_CHARACTER_LOCK_INSTRUCTION : null,
-    params.storyboardShots.some((s) => s.characterIds.length > 0) ? VD_CHARACTER_REF_INDEXING_INSTRUCTION : null,
+    // The skill's own "Attached Character Reference Image Indexing"
+    // instruction (`skill.md`, "Encode emotion into every image prompt")
+    // already covers annotating character names with their attached image
+    // index AND stating the full identity-lock constraint — no separate
+    // code-authored instruction sentence needed here (2026-07-11,
+    // vertical-drama-skill-first-architecture plan Phase 3, item 1: this
+    // used to duplicate a near-verbatim copy of that skill.md instruction).
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -375,7 +374,7 @@ export async function generateStartFrameRenderPlan(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStoryBibleModel();
+  const model = await resolveStartFramePlanModel(params.seriesId);
   const systemPrompt = loadSkillSystemPrompt();
   const userPrompt = buildStartFrameRenderPlanUserPrompt(params);
 
@@ -427,7 +426,6 @@ export async function generateStartFrameRenderPlan(
     validatedData,
     params.selectedImageModelId ?? "dry-run-image-model",
     shotCharacterIdsByShotNumber,
-    params.characters,
   );
 
   return { plan, raw: validatedData, creditsUsed, model };
@@ -449,6 +447,23 @@ export async function generateStartFrameRenderPlan(
 /* of what the one-time render-plan LLM call happened to produce for a given  */
 /* shot's stored `imagePrompt`. Pure — no DB/LLM — and both are no-ops when   */
 /* `identity` is absent (flag off, or the series carries no preset identity). */
+/*                                                                            */
+/* DEFERRED for vertical-drama-skill-first-architecture plan, Phase 3, item   */
+/* 3 (2026-07-11) — NOT converted to skill input, intentionally: these two    */
+/* functions have 3 call sites in `server/routers/verticalDramaEpisodes.ts`   */
+/* — `generateStartFrameImage`'s softenLevel===0 branch (in scope), PLUS      */
+/* `generateStartFrameAngleVariations` and `repairShotImage`, both explicitly */
+/* off-limits for this phase (Phase 1 of this same plan, already shipped —   */
+/* see that phase's own doc comments in the router). Moving this authorship  */
+/* into the planning skill and deleting these functions would leave those 2  */
+/* off-limits call sites either broken (function gone) or — if migrated      */
+/* halfway by only touching the in-scope call site — silently double-        */
+/* appending the SAME fragments (planning-time skill prose + this func) on   */
+/* every grid/repair render, since neither append is idempotent. Fixing this */
+/* properly requires touching `generateStartFrameAngleVariations`/           */
+/* `repairShotImage`, which is out of scope here. Recommend a dedicated      */
+/* follow-up phase that revisits Phase 1's grid/repair skill call together   */
+/* with this conversion.                                                     */
 /* -------------------------------------------------------------------------- */
 
 /**

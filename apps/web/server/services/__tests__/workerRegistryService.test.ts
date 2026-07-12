@@ -1229,6 +1229,192 @@ describe("workerRegistryService", () => {
     expect(repo.listClaimableJobs).not.toHaveBeenCalled();
   });
 
+  describe("remotion_render_video defense-in-depth claim capability (implementation-progress.md gap #2)", () => {
+    function remotionJob(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "job-remotion-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        workerId: null,
+        runtimeType: "desktop_zeroclaw_managed",
+        jobType: "remotion_render_video",
+        status: "queued",
+        priority: 30,
+        // Empty on purpose: proves this rejection is independent of the
+        // PRIMARY `.every()` capabilityFamilies check (which is a no-op
+        // when `capabilityRequirementsJson.capabilityFamilies` is empty).
+        capabilityRequirementsJson: {},
+        inputJson: {},
+        instructionsJson: {},
+        outputJson: null,
+        failureReason: null,
+        timeoutSeconds: 7200,
+        retryPolicyJson: {},
+        idempotencyKey: null,
+        leaseOwnerToken: null,
+        leaseExpiresAt: null,
+        createdAt: new Date("2026-04-06T00:00:00.000Z"),
+        startedAt: null,
+        finishedAt: null,
+        ...overrides,
+      };
+    }
+
+    function remotionWorkerRepo(job: ReturnType<typeof remotionJob>) {
+      return {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "desktop_zeroclaw_managed",
+          status: "online",
+          capabilitiesJson: {},
+        }),
+        listClaimableJobs: vi.fn().mockResolvedValue([job]),
+        tryClaimJob: vi.fn().mockResolvedValue({
+          ...job,
+          workerId: "worker-1",
+          status: "claimed",
+          leaseOwnerToken: "lease-remotion-1",
+          leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+        }),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...job, ...values })),
+      };
+    }
+
+    it("skips (does not claim) a remotion_render_video job when the worker does not advertise remotion-render — and does NOT throw (F133-05 fix: skip-candidate, not fail-whole-attempt)", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = remotionJob();
+      const repo = remotionWorkerRepo(job);
+
+      // Before the F133-05 fix, this single-candidate case `throw`n a
+      // `capability_mismatch` error out of the WHOLE claim attempt. The fix
+      // changes that to `continue` (skip just this candidate), so with no
+      // other candidate available the call now resolves with `job: null`
+      // instead of rejecting.
+      const result = await claimWorkerJob(
+        {
+          auth: {
+            tenantId: "tenant-1",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+          } as any,
+          workerId: "worker-1",
+          // Advertises SOME capabilities, but not the required one — the
+          // primary `.every()` check would already reject this if
+          // capabilityRequirementsJson declared families, but it doesn't
+          // here, so only this defense-in-depth check catches it.
+          payload: { maxJobs: 1, capabilityHints: ["ffmpeg-probe"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job).toBeNull();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+    });
+
+    it("F133-05 fix: a worker with empty capabilityHints can still claim a DIFFERENT, unrelated job when a mismatched remotion_render_video job is also in its candidate pool", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const remotionCandidate = remotionJob({ id: "job-remotion-mismatch" });
+      const hyperframesCandidate = remotionJob({
+        id: "job-hf-unrelated",
+        jobType: "hyperframes_final_composite",
+      });
+
+      const repo = {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "desktop_zeroclaw_managed",
+          status: "online",
+          capabilitiesJson: {},
+        }),
+        // Remotion candidate listed FIRST — proves the loop moves past the
+        // disqualified candidate to the next one, rather than aborting.
+        listClaimableJobs: vi.fn().mockResolvedValue([remotionCandidate, hyperframesCandidate]),
+        tryClaimJob: vi.fn().mockImplementation(async (jobId: string) =>
+          jobId === "job-hf-unrelated"
+            ? {
+                ...hyperframesCandidate,
+                workerId: "worker-1",
+                status: "claimed",
+                leaseOwnerToken: "lease-hf-1",
+                leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+              }
+            : null,
+        ),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...hyperframesCandidate, ...values })),
+      };
+
+      const result = await claimWorkerJob(
+        {
+          auth: {
+            tenantId: "tenant-1",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+          } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hf-unrelated");
+      // The remotion candidate must never reach tryClaimJob.
+      expect(repo.tryClaimJob).not.toHaveBeenCalledWith("job-remotion-mismatch", expect.anything(), expect.anything(), expect.anything());
+      expect(repo.tryClaimJob).toHaveBeenCalledWith(
+        "job-hf-unrelated",
+        "worker-1",
+        expect.any(String),
+        expect.any(Date),
+      );
+    });
+
+    it("succeeds when the worker advertises remotion-render", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = remotionJob();
+      const repo = remotionWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: {
+            tenantId: "tenant-1",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+          } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["remotion-render", "chromium-render", "ffmpeg-probe"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-remotion-1");
+      expect(repo.tryClaimJob).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not affect non-remotion job claims with an empty capabilityHints array (no regression)", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = remotionJob({ id: "job-hf-x", jobType: "hyperframes_final_composite" });
+      const repo = remotionWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: {
+            tenantId: "tenant-1",
+            workerId: "worker-1",
+            runtimeType: "desktop_zeroclaw_managed",
+          } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hf-x");
+    });
+  });
+
   it("requires matching assignmentAttempt for HyperFrames progress events", async () => {
     const { recordWorkerJobEvent } = await import("../workerRegistryService");
 

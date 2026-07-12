@@ -2,63 +2,123 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "vertical-drama-season-dramaturgy-critic/output",
   "title": "Vertical Drama Season Dramaturgy Critic Output",
+  "description": "Two output shapes, mirroring the two input modes (see input.schema.json). Mode 1 (season_finding_critique) returns overallScore/strengths/findings. Mode 2 (draft_quality_score) returns a scores[] array of per-(candidate, episode) 1-5 dimensional scores.",
   "type": "object",
   "additionalProperties": true,
-  "required": [
-    "overallScore",
-    "strengths",
-    "findings"
-  ],
-  "properties": {
-    "overallScore": {
-      "type": "number",
-      "minimum": 1,
-      "maximum": 10
+  "oneOf": [
+    {
+      "title": "Mode 1 output — season_finding_critique",
+      "required": ["overallScore", "strengths", "findings"],
+      "properties": {
+        "overallScore": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "strengths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["kind", "evidenceEpisodes", "problem", "fixInstruction"],
+            "properties": {
+              "kind": {
+                "description": "7 of these 11 kinds are ALSO independently checked deterministically in code by analyzeSeasonDramaturgy (world_rules_undefined, key_character_late_intro, character_agency_zero_decisions, antagonist_tactic_repetition, finale_no_price_paid, on_the_nose_dialogue, tie_in_distribution); protagonist_no_stake, unnatural_dialogue_language, and info_heavy_low_action are LLM-only judgment; other is the fallback.",
+                "type": "string",
+                "enum": [
+                  "protagonist_no_stake",
+                  "world_rules_undefined",
+                  "key_character_late_intro",
+                  "character_agency_zero_decisions",
+                  "antagonist_tactic_repetition",
+                  "finale_no_price_paid",
+                  "on_the_nose_dialogue",
+                  "unnatural_dialogue_language",
+                  "info_heavy_low_action",
+                  "tie_in_distribution",
+                  "other"
+                ]
+              },
+              "evidenceEpisodes": {
+                "type": "array",
+                "items": { "type": "integer", "minimum": 1 }
+              },
+              "problem": {
+                "description": "The problem, described in Thai.",
+                "type": "string",
+                "minLength": 1
+              },
+              "fixInstruction": {
+                "description": "A concrete fix instruction that PRESERVES the season's existing premise, characters, and already-resolved plot.",
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
     },
-    "strengths": {
-      "type": "array",
-      "items": { "type": "string", "minLength": 1 }
-    },
-    "findings": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["kind", "evidenceEpisodes", "problem", "fixInstruction"],
-        "properties": {
-          "kind": {
-            "description": "7 of these 11 kinds are ALSO independently checked deterministically in code by analyzeSeasonDramaturgy (world_rules_undefined, key_character_late_intro, character_agency_zero_decisions, antagonist_tactic_repetition, finale_no_price_paid, on_the_nose_dialogue, tie_in_distribution); protagonist_no_stake, unnatural_dialogue_language, and info_heavy_low_action are LLM-only judgment; other is the fallback.",
-            "type": "string",
-            "enum": [
-              "protagonist_no_stake",
-              "world_rules_undefined",
-              "key_character_late_intro",
-              "character_agency_zero_decisions",
-              "antagonist_tactic_repetition",
-              "finale_no_price_paid",
-              "on_the_nose_dialogue",
-              "unnatural_dialogue_language",
-              "info_heavy_low_action",
-              "tie_in_distribution",
-              "other"
-            ]
-          },
-          "evidenceEpisodes": {
-            "type": "array",
-            "items": { "type": "integer", "minimum": 1 }
-          },
-          "problem": {
-            "description": "The problem, described in Thai.",
-            "type": "string",
-            "minLength": 1
-          },
-          "fixInstruction": {
-            "description": "A concrete fix instruction that PRESERVES the season's existing premise, characters, and already-resolved plot.",
-            "type": "string",
-            "minLength": 1
+    {
+      "title": "Mode 2 output — draft_quality_score",
+      "required": ["scores"],
+      "properties": {
+        "scores": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "candidateIndex",
+              "episodeNumber",
+              "hook_strength",
+              "reversal_sharpness",
+              "emotion_variety",
+              "dialogue_naturalness",
+              "pacing",
+              "cliffhanger_strength",
+              "continuity_with_recap",
+              "season_cohesion",
+              "clarity",
+              "character_consistency",
+              "evidence_payoff",
+              "threat_escalation",
+              "overall"
+            ],
+            "properties": {
+              "candidateIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The scored candidate's index, matching an input candidate's own candidateIndex. 0 when the input gave a single ungrouped set of episodes (no candidate grouping)."
+              },
+              "episodeNumber": { "type": "integer", "minimum": 1 },
+              "hook_strength": { "type": "number", "minimum": 1, "maximum": 5 },
+              "reversal_sharpness": { "type": "number", "minimum": 1, "maximum": 5 },
+              "emotion_variety": { "type": "number", "minimum": 1, "maximum": 5 },
+              "dialogue_naturalness": { "type": "number", "minimum": 1, "maximum": 5 },
+              "pacing": { "type": "number", "minimum": 1, "maximum": 5 },
+              "cliffhanger_strength": { "type": "number", "minimum": 1, "maximum": 5 },
+              "continuity_with_recap": { "type": "number", "minimum": 1, "maximum": 5 },
+              "season_cohesion": { "type": "number", "minimum": 1, "maximum": 5 },
+              "clarity": { "type": "number", "minimum": 1, "maximum": 5 },
+              "character_consistency": { "type": "number", "minimum": 1, "maximum": 5 },
+              "evidence_payoff": { "type": "number", "minimum": 1, "maximum": 5 },
+              "threat_escalation": { "type": "number", "minimum": 1, "maximum": 5 },
+              "tie_in_naturalness": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 5,
+                "description": "ONLY present when the corresponding input episode was marked hasPlannedTieIn: true — omitted otherwise."
+              },
+              "overall": { "type": "number", "minimum": 1, "maximum": 5 }
+            }
           }
         }
       }
     }
-  }
+  ]
 }

@@ -12,7 +12,7 @@
 import crypto from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { db } from "../db";
@@ -30,6 +30,7 @@ import {
 import {
   mediaGenerationService,
   DEFAULT_MODELS,
+  resolveReferenceUrl,
 } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
 import {
@@ -63,11 +64,16 @@ import {
 import {
   runVerticalDramaEpisodeQualityReview,
   computeVerticalDramaDensityMetrics,
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W6,
+  // added 2026-07-11) — same "deterministic fact computed in TS, fed to the
+  // review LLM" role as `computeVerticalDramaDensityMetrics` above.
+  computeRetentionMetrics,
   InsufficientCreditsError as QualityReviewInsufficientCreditsError,
   VdSchemaValidationError as QualityReviewVdSchemaValidationError,
   RateLimitExceededError as QualityReviewRateLimitExceededError,
   type EpisodeQualityReviewOutput,
   type VerticalDramaDensityMetrics,
+  type VerticalDramaRetentionMetrics,
 } from "../services/verticalDramaEpisodeQualityReview";
 import {
   groupQualityReviewIssuesByStage,
@@ -111,7 +117,7 @@ import {
 } from "../services/verticalDramaVideoPromptFormatter";
 import {
   generateVerticalDramaShotVideoPrompt,
-  generateVerticalDramaShotVideoPromptSubShots,
+  generateVerticalDramaShotVideoPromptSpeakerSwitch,
   generateVerticalDramaClipDialogue,
   InsufficientCreditsError as ClipDialogueInsufficientCreditsError,
   VdSchemaValidationError as ClipDialogueSchemaValidationError,
@@ -130,12 +136,14 @@ import {
   mergeAndTrimReferenceImageUrls,
   mergeProductLockNegativePrompt,
   sanitizeBrandMentionsInPrompt,
-  VD_PRODUCT_LOCK_INSTRUCTION,
+  // vertical-drama-skill-first-architecture plan, Phase 1 item 2 —
+  // `VD_PRODUCT_LOCK_INSTRUCTION` (the authored positive-prompt sentence) is
+  // no longer used by `repairShotImage`/`generateStartFrameAngleVariations`;
+  // the `vertical-drama-shot-image-action` skill now phrases the product
+  // lock instruction itself from raw product facts. Still used by other,
+  // out-of-scope call sites via `verticalDramaProductTieIn.ts` directly.
 } from "../services/verticalDramaProductTieIn";
 import {
-  softenCharacterLockPrompt,
-  softenCharacterLockNegativePrompt,
-  VD_CHARACTER_LOCK_INSTRUCTION,
   VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
 } from "@shared/verticalDramaSeries/characterLock";
 import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
@@ -162,6 +170,7 @@ import {
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import {
   buildCharacterIdentityMapBlock,
+  stripExistingIdentityLockSuffix,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
 import {
@@ -233,6 +242,16 @@ import type { ScriptBuilderOutput } from "../services/verticalDramaScriptGenerat
 // `generateShotVideoPrompt`'s per-shot video-prompt call. Safe as a static
 // import (no server/DB code, `@shared` module).
 import { formatStoryScriptEpisodePlanContext, type StoryScriptLang } from "@shared/verticalDramaSeries/storyScriptText";
+// Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`) —
+// TYPE-ONLY import of the deep-drafted shot's canonical dialogue shapes
+// (erased at compile time, zero runtime `require`, so safe despite
+// `verticalDramaStoryBible.ts` itself needing the lazy `import()` treatment
+// for its VALUE exports — see `getActiveBreakdown`'s existing dynamic-import
+// call site below for that established convention).
+import type {
+  VdDeepDraftShotDraft,
+  VdDeepDraftShotDialogueLine,
+} from "../services/verticalDramaStoryBible";
 import type {
   VerticalDramaMemoryKind,
   VerticalDramaPipelineStage,
@@ -263,8 +282,16 @@ import type {
   VerticalDramaSeparateTtsPlanItem,
 } from "@shared/verticalDramaSeries/audio";
 import {
-  buildTargetAudienceRegionInstruction,
   readTargetAudienceRegionFromBible,
+  // vertical-drama-skill-first-architecture plan, Phase 1 items 1-2 — the
+  // FACT (descriptor label) is passed to `vertical-drama-shot-image-action`
+  // as skill input; the old `buildTargetAudienceRegionInstruction`'s full
+  // authored sentence (with the "apply only as default" policy prose) is no
+  // longer used at those two call sites, since the skill now phrases that
+  // policy itself (taught once in skill.md rather than re-sent as prose per
+  // call). Still used by other, out-of-scope call sites that import it
+  // directly from `@shared/verticalDramaSeries/targetAudienceRegion`.
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import {
   verticalDramaEpisodePipeline,
@@ -531,6 +558,44 @@ async function loadSeriesTargetAudienceRegion(
   return readTargetAudienceRegionFromBible(
     (row?.bible as Record<string, unknown> | null) ?? null
   );
+}
+
+/**
+ * Series-level product tie-in NAME/DESCRIPTION facts (vertical-drama
+ * skill-first-architecture plan, Phase 1 item 2) — read for a caller-owned
+ * series ONLY when the caller already knows this shot has a product
+ * reference attached (`hasProductReference`), so a non-tie-in shot never
+ * pays for the extra query. Returns `null` on no product tie-in configured /
+ * `hasProductReference` false — never throws. Used by
+ * `generateStartFrameAngleVariations`/`repairShotImage` to pass real product
+ * FACTS (name/description) as skill input, instead of the code-authored
+ * `VD_PRODUCT_LOCK_INSTRUCTION` sentence — the skill now phrases the lock
+ * instruction itself from these facts.
+ */
+async function loadSeriesProductTieInFacts(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  hasProductReference: boolean
+): Promise<{ productName: string | null; productDescription: string | null } | null> {
+  if (!hasProductReference) return null;
+  const [row] = await db
+    .select({ productTieIn: verticalDramaSeries.productTieIn })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, seriesId),
+        eq(verticalDramaSeries.tenantId, tenantId),
+        eq(verticalDramaSeries.userId, userId)
+      )
+    )
+    .limit(1);
+  const config = row?.productTieIn as VerticalDramaProductTieInConfig | null;
+  if (!config) return null;
+  return {
+    productName: config.productName ?? null,
+    productDescription: config.productDescription ?? null,
+  };
 }
 
 /**
@@ -984,7 +1049,15 @@ async function repairVerticalDramaStageWithStoryLockGuard(
   owner: EpisodeRunOwner,
   stage: VerticalDramaPipelineStage,
   instruction: string,
-  storyLockEnabled: boolean
+  storyLockEnabled: boolean,
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W1/W3,
+  // router-wiring package, added 2026-07-11) — threaded straight through to
+  // `repairStage`'s own `args.retentionHooksEnabled` (see that method's doc
+  // comment: it threads into BOTH the `plan_episode_script` and
+  // `storyboard_shotgrid` real-regeneration branches). Defaults to `false`
+  // so every pre-existing caller of this wrapper (before this param existed)
+  // stays byte-identical.
+  retentionHooksEnabled: boolean = false
 ): Promise<{
   outcome: Awaited<ReturnType<typeof verticalDramaEpisodePipeline.repairStage>>;
   storyLockViolated: boolean;
@@ -1008,6 +1081,7 @@ async function repairVerticalDramaStageWithStoryLockGuard(
 
   const outcome = await verticalDramaEpisodePipeline.repairStage(owner, stage, {
     instruction: finalInstruction,
+    retentionHooksEnabled,
   });
 
   if (!guarded) {
@@ -1195,6 +1269,18 @@ async function resolveMediaAssetUrlsByIds(
  * "which character(s) does this shot need" directly on the shot card, so
  * identity-lock is visible/correctable per shot instead of only happening
  * invisibly inside generation calls.
+ *
+ * planning/vertical-drama-twin-variant-completeness/plan.md (W6 backend) —
+ * additive relationship metadata (`parentCharacterId`/`variantLabel`/
+ * `variantType`/`sharesFaceWithCharacterId`), same fields/projection
+ * convention `verticalDramaCharacters.ts`'s `characterRowToDto` already uses
+ * for the Characters tab. Purely additive: every field is `undefined` (not
+ * present as an own-enumerable key with a value, but present in the type) for
+ * a plain base character with no variant/twin relationships, so every
+ * existing consumer that only reads `{characterId, name, portraitUrl}`
+ * continues to work unchanged. Lets a per-shot character picker (built
+ * later) group variant/twin entries under their parent instead of showing an
+ * undifferentiated flat list of unrelated-looking character keys.
  */
 async function resolveSeriesCharacterPortraits(
   tenantId: string,
@@ -1203,7 +1289,15 @@ async function resolveSeriesCharacterPortraits(
 ): Promise<
   Record<
     string,
-    { characterId: string; name: string; portraitUrl: string | null }
+    {
+      characterId: string;
+      name: string;
+      portraitUrl: string | null;
+      parentCharacterId?: string;
+      variantLabel?: string;
+      variantType?: "outfit" | "age_stage";
+      sharesFaceWithCharacterId?: string;
+    }
   >
 > {
   const characterRows = await db
@@ -1211,6 +1305,11 @@ async function resolveSeriesCharacterPortraits(
       id: verticalDramaCharacters.id,
       characterKey: verticalDramaCharacters.characterKey,
       name: verticalDramaCharacters.name,
+      parentCharacterId: verticalDramaCharacters.parentCharacterId,
+      variantLabel: verticalDramaCharacters.variantLabel,
+      variantType: verticalDramaCharacters.variantType,
+      sharesFaceWithCharacterId:
+        verticalDramaCharacters.sharesFaceWithCharacterId,
     })
     .from(verticalDramaCharacters)
     .where(
@@ -1231,14 +1330,41 @@ async function resolveSeriesCharacterPortraits(
 
   const result: Record<
     string,
-    { characterId: string; name: string; portraitUrl: string | null }
+    {
+      characterId: string;
+      name: string;
+      portraitUrl: string | null;
+      parentCharacterId?: string;
+      variantLabel?: string;
+      variantType?: "outfit" | "age_stage";
+      sharesFaceWithCharacterId?: string;
+    }
   > = {};
   characterRows.forEach(
-    (c: { id: number; characterKey: string; name: string }, i: number) => {
+    (
+      c: {
+        id: number;
+        characterKey: string;
+        name: string;
+        parentCharacterId: number | null;
+        variantLabel: string | null;
+        variantType: string | null;
+        sharesFaceWithCharacterId: number | null;
+      },
+      i: number
+    ) => {
       result[c.characterKey] = {
         characterId: String(c.id),
         name: c.name,
         portraitUrl: portraitUrls[i],
+        parentCharacterId:
+          c.parentCharacterId != null ? String(c.parentCharacterId) : undefined,
+        variantLabel: c.variantLabel ?? undefined,
+        variantType: (c.variantType as "outfit" | "age_stage" | null) ?? undefined,
+        sharesFaceWithCharacterId:
+          c.sharesFaceWithCharacterId != null
+            ? String(c.sharesFaceWithCharacterId)
+            : undefined,
       };
     }
   );
@@ -1286,66 +1412,17 @@ interface ShotCharacterRefEntry {
   url: string;
 }
 
-/**
- * Formats a start-frame or multi-angle image prompt when character reference
- * images are attached (`entries`).
- *
- * Diffusion image models receive reference images as an indexed array (`Image 1`,
- * `Image 2`, etc.) alongside the text prompt. Without an explicit mapping, a
- * prompt stating "fast close-up emphasis on ใบข้าว's face" leaves the model
- * unable to determine which attached image corresponds to ใบข้าว vs other
- * attached characters (e.g. ฝ้าย).
- *
- * This function:
- * 1. Annotates occurrences of each character's name in the prompt with their
- *    attached image index (e.g., "ใบข้าว (see attached Image 2)").
- * 2. Appends an explicit, numbered reference mapping instruction block at the end
- *    of the prompt so diffusion models clearly bind each attached image index to
- *    the exact character identity.
- */
-function formatIdentityLockedImagePrompt(
-  basePrompt: string,
-  entries: ShotCharacterRefEntry[]
-): string {
-  if (entries.length === 0) return basePrompt;
-
-  const uniqueCharacters: Array<{ name: string; imageIndex: number }> = [];
-  const seenNames = new Set<string>();
-  entries.forEach((e, idx) => {
-    const trimmedName = (e.name || "").trim();
-    if (trimmedName && !seenNames.has(trimmedName)) {
-      seenNames.add(trimmedName);
-      uniqueCharacters.push({ name: trimmedName, imageIndex: idx + 1 });
-    }
-  });
-
-  if (uniqueCharacters.length === 0) {
-    return `${basePrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`;
-  }
-
-  let annotatedPrompt = basePrompt;
-  const sortedChars = [...uniqueCharacters].sort(
-    (a, b) => b.name.length - a.name.length
-  );
-
-  for (const charInfo of sortedChars) {
-    const escapedName = charInfo.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(
-      `(${escapedName})(?!\\s*\\((?:see\\s+)?(?:attached\\s+)?Image\\s+\\d+)`,
-      "g"
-    );
-    annotatedPrompt = annotatedPrompt.replace(
-      regex,
-      `$1 (see attached Image ${charInfo.imageIndex})`
-    );
-  }
-
-  const mappingSummary = uniqueCharacters
-    .map(c => `Image ${c.imageIndex} = ${c.name}`)
-    .join(", ");
-
-  return `${annotatedPrompt} [Attached character reference images: ${mappingSummary}. Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.) — match face shape, skin tone, hairstyle, and distinguishing features precisely from the corresponding attached image; do not alter identity.]`;
-}
+// `formatIdentityLockedImagePrompt` (formerly defined here, a near-duplicate
+// of `@shared/verticalDramaSeries/characterIdentityMap.ts`'s canonical copy)
+// was removed (vertical-drama-skill-first-architecture plan, Phase 3, item
+// 2) — its only caller (`generateStartFrameImage`'s `effectiveSoftenLevel
+// === 0` branch) now uses the planning skill's own prompt text unmodified,
+// since `vertical-drama-shot-start-frame-render/skill.md` now authors the
+// full identity-lock constraint itself. `stripExistingIdentityLockSuffix`
+// (imported from the shared module) is UNRELATED and still used below — it
+// is a back-compat safety net that strips a stale bracket-style suffix a
+// PRE-migration stored prompt may still carry, so it is never echoed back as
+// if it were story content.
 
 async function resolveShotCharacterReferenceEntries(
   tenantId: string,
@@ -1542,6 +1619,35 @@ type ShotDialogueLine = {
 };
 
 /**
+ * Shared mapping (planning/`polished-toasting-gadget.md`): a deep-drafted
+ * shot's canonical `{speaker, line, delivery}` dialogue line
+ * (`VdDeepDraftShotDialogueLine` — the Overview page's user-editable source
+ * of truth, `verticalDramaStoryBible.ts`) to this router's own
+ * `ShotDialogueLine` shape. Used by BOTH `resolveShotDialogueLines`'s new
+ * source 0 below AND `regenerateClipDialogue`'s sync-only short-circuit — a
+ * single function so the two call sites can never drift apart.
+ *
+ * `characterKey`/`delivery` follow the EXACT same conventions already
+ * established by source 3a below (deterministic beat-index mapping, itself
+ * reading the same `{speaker, line, delivery}` shape from
+ * `script.structure.beats[].dialogue_lines[]`): `characterKey` is stored
+ * VERBATIM as the speaker label (no consumer resolves it to a real character
+ * id — only rendered as a label / used to detect a speaker switch), and the
+ * freeform `delivery` STRING is folded into the structured shape's `tone`
+ * field (the closest single-field bridge between the two conventions; the
+ * original text is preserved verbatim in `tone`, not lost).
+ */
+function mapDeepDraftDialogueLineToShotDialogueLine(
+  line: VdDeepDraftShotDialogueLine
+): ShotDialogueLine {
+  return {
+    characterKey: line.speaker,
+    lineTh: line.line,
+    delivery: line.delivery ? { tone: line.delivery } : undefined,
+  };
+}
+
+/**
  * Resolve the dialogue line(s) for ONE shot's per-shot video prompt
  * (`generateShotVideoPrompt`) — a fallback chain, tried in order, since a
  * real Thai/whatever-locale dialogue line for this shot can live in any of
@@ -1630,6 +1736,22 @@ export function resolveShotDialogueLines(params: {
    * ready wiring for when it does).
    */
   sourceBeatIndexes?: number[];
+  /**
+   * Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+   * — this shot's deep-drafted entry (`bible.breakdownVersions[active]
+   * .items[episode].shotDrafts[shot]`, the Overview page's user-EDITABLE
+   * canonical dialogue source), when the caller has already resolved one.
+   * The caller resolves this (never a DB/import call inside this pure
+   * function — same "caller resolves, this function only consumes" contract
+   * as `matchingClip` above), gated by the `verticalDramaSeriesDeepStoryDrafts`
+   * tenant flag. `undefined` (every pre-existing caller that hasn't adopted
+   * this yet) or `null` (flag off, or this series/episode/shot has no deep
+   * draft) both preserve the exact pre-existing fallback chain below,
+   * byte-identical — this parameter's mere PRESENCE in the call signature
+   * changes nothing; only an actually-resolved non-null value with content
+   * changes the result.
+   */
+  deepDraftShot?: VdDeepDraftShotDraft | null;
 }): ShotDialogueLine[] {
   const {
     shotNumber,
@@ -1639,9 +1761,33 @@ export function resolveShotDialogueLines(params: {
     storyboardShotCount,
     knownSpeakerKeys,
     sourceBeatIndexes,
+    deepDraftShot,
   } = params;
 
-  // 1. Already-synced clip dialogue — most authoritative.
+  // 0. Deep-drafted canonical dialogue (planning/`polished-toasting-gadget.md`)
+  // — the Overview page's user-editable source of truth, when the caller has
+  // resolved one. Tried BEFORE every other source (including the previously
+  // most-authoritative source 1, `matchingClip.dialogue`) because a
+  // previously-persisted WRONG value on the clip must never keep winning over
+  // dialogue a human has since edited/confirmed on the Overview page (the
+  // exact bug this fix addresses — see this function's own updated doc
+  // comment above for the full incident).
+  if (deepDraftShot) {
+    // Explicit "intentionally no speech" — never guess a line for it, even
+    // if a lower-fidelity fallback source below has something.
+    if (deepDraftShot.silence_intent) return [];
+    if (deepDraftShot.dialogue_lines.length > 0) {
+      return deepDraftShot.dialogue_lines
+        .map(mapDeepDraftDialogueLineToShotDialogueLine)
+        .filter(l => l.lineTh.trim().length > 0);
+    }
+    // Deep-draft entry exists but carries NEITHER `dialogue_lines` NOR
+    // `silence_intent` (an in-progress/never-drafted shot) — fall through to
+    // the pre-existing chain below exactly as if `deepDraftShot` were absent.
+  }
+
+  // 1. Already-synced clip dialogue — most authoritative (among the
+  // pre-existing sources; source 0 above always wins when present).
   if (matchingClip?.dialogue && matchingClip.dialogue.length > 0) {
     return matchingClip.dialogue.filter(l => l.lineTh?.trim().length > 0);
   }
@@ -2400,6 +2546,82 @@ async function resolveVerticalDramaTextOverlaySuiteFlag(
 ): Promise<boolean> {
   const flags = await getTenantFeatureFlags(tenantId);
   return flags?.verticalDramaSeriesTextOverlaySuite === true;
+}
+
+/**
+ * Resolve the `verticalDramaRetentionHooks` tenant flag (`planning/vertical-
+ * drama-retention-hooks/plan.md`, router-wiring package, added 2026-07-11) —
+ * mirrors `resolveVerticalDramaTextOverlaySuiteFlag` exactly (same "one
+ * focused helper per flag-group" convention, optional-chaining fail-closed
+ * default). This is the SINGLE flag that gates every retention-hooks
+ * behavior across the pipeline (W1/W2/W3 script+shotgrid genre/retention-
+ * loop guidance, W6 quality-review scorecard v4 + `retention_metrics`, W7
+ * video-prompt hook/retention-ending motion energy) — every downstream
+ * service param this resolves into (`RunStageOptions.retentionHooksEnabled`,
+ * `repairStage`'s `args.retentionHooksEnabled`,
+ * `RunEpisodeQualityReviewParams.scoreRetentionDimensions`,
+ * `GenerateVerticalDramaShotVideoPromptParams.retentionHooksEnabled`,
+ * `GenerateVideoMotionPromptPackParams.retentionHooksEnabled`) already
+ * defaults to `false`/byte-identical when omitted, so resolving this ONCE
+ * per request and threading the same boolean everywhere is safe.
+ */
+async function resolveVerticalDramaRetentionHooksFlag(
+  tenantId: string
+): Promise<boolean> {
+  const flags = await getTenantFeatureFlags(tenantId);
+  return flags?.verticalDramaRetentionHooks === true;
+}
+
+/**
+ * Retention hooks W5/W6 (`planning/vertical-drama-retention-hooks/plan.md`)
+ * — nearest-first `retention_loop.type` of this series' last `limit` PRIOR
+ * episodes' persisted script artifacts (`episodeNumber` strictly less than
+ * `currentEpisodeNumber`), read directly off the
+ * `verticalDramaEpisodes.script` jsonb column. No dedicated "last N
+ * episodes' scripts" helper exists in this file today (the pipeline's
+ * `prior_episode_recap`/memory-bundle assembly goes through
+ * `memoryService.buildEpisodeMemoryBundle`, a durable memory-EVENT read, not
+ * a raw script-column read) — per the plan's explicit "a simple scoped
+ * DB query is fine, don't over-engineer" guidance, this is a small,
+ * read-only, tenant/user/series-scoped query instead of a new shared
+ * service. Feeds `computeRetentionMetrics`'s `recentRetentionLoopTypes`
+ * ADVISORY rotation fact ONLY (never gates/blocks anything — see that
+ * function's own doc comment). Tolerant of episodes with no script yet, or
+ * a script whose `retention_loop.type` is missing/malformed/not a string
+ * (skipped, never coerced to `null`), so the returned array can be shorter
+ * than `limit` (including empty, e.g. episode 1) rather than ever erroring.
+ */
+async function loadRecentVerticalDramaRetentionLoopTypes(
+  owner: EpisodeRunOwner,
+  currentEpisodeNumber: number,
+  limit = 3
+): Promise<string[]> {
+  const rows = await db
+    .select({ script: verticalDramaEpisodes.script })
+    .from(verticalDramaEpisodes)
+    .where(
+      and(
+        eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+        eq(verticalDramaEpisodes.userId, owner.userId),
+        eq(verticalDramaEpisodes.seriesId, owner.seriesId),
+        lt(verticalDramaEpisodes.episodeNumber, currentEpisodeNumber)
+      )
+    )
+    .orderBy(desc(verticalDramaEpisodes.episodeNumber))
+    .limit(limit);
+
+  const types: string[] = [];
+  for (const row of rows) {
+    const script = row.script as Record<string, unknown> | null;
+    const retentionLoop = script?.retention_loop as
+      | Record<string, unknown>
+      | undefined;
+    const type = retentionLoop?.type;
+    if (typeof type === "string" && type.length > 0) {
+      types.push(type);
+    }
+  }
+  return types;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -4805,13 +5027,17 @@ async function runArcDriftCheckAndProposeIfNeeded(params: {
 
 const idempotencyKey = z.string().trim().min(1).max(128).optional();
 /**
- * Character-lock auto-soften level (2026-07-06 prompt-safety upgrade) — 0/
- * absent = full lock (default/first attempt), 1 = softened wording, 2 =
- * minimal lock. The client resubmits the SAME mutation with `softenLevel + 1`
- * (capped at `VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL`) when a generation task
- * fails with a policy/content/safety-category provider error — see
- * `isCharacterLockPolicyFailureMessage` / `softenCharacterLockPrompt` in
- * `@shared/verticalDramaSeries/characterLock`.
+ * Character-lock auto-soften level (2026-07-06 prompt-safety upgrade,
+ * skill-authored per `vertical-drama-skill-first-architecture` plan Phase
+ * 1.3) — 0/absent = full lock (default/first attempt), 1 = softened wording,
+ * 2 = minimal lock. The client resubmits the SAME mutation with
+ * `softenLevel + 1` (capped at `VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL`) when a
+ * generation task fails with a policy/content/safety-category provider
+ * error — see `isCharacterLockPolicyFailureMessage` in
+ * `@shared/verticalDramaSeries/characterLock`. The actual softening is now
+ * authored by the `vertical-drama-shot-image-action` skill's `soften_level`
+ * input (`server/services/verticalDramaShotImageAction.ts`), not a regex
+ * ladder in this file.
  */
 const softenLevel = z
   .number()
@@ -4881,6 +5107,13 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
   );
   const { tieInQcEnabled, storyLockEnabled } =
     await resolveVerticalDramaQualityLoopFlags(tenantId);
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`,
+  // router-wiring package, added 2026-07-11) — resolved ONCE for the whole
+  // bounded loop (every round's `effects.runReview`/`effects.repairStage`
+  // reuse this same boolean), same "resolve once per request" convention as
+  // every other flag above.
+  const retentionHooksEnabled =
+    await resolveVerticalDramaRetentionHooksFlag(tenantId);
 
   // Credit pre-check for the WHOLE bounded loop, shown/enforced up-front —
   // each round's own LLM call is separately credit-checked/deducted inside
@@ -4968,6 +5201,24 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
         string,
         unknown
       > | null;
+      // Retention hooks (W6) — same conditional-computation convention as
+      // `densityMetrics` (computed by `runVerticalDramaQualityLoop`'s own
+      // caller, only ever supplied when its gating flag is on): only build
+      // `retentionMetrics` when the flag is actually on, so a flag-off round
+      // never even calls `computeRetentionMetrics` (zero observable side
+      // effect either way — it's a pure function — but this keeps the
+      // "nothing extra happens when the flag is off" contract literal).
+      const retentionMetrics: VerticalDramaRetentionMetrics | undefined =
+        retentionHooksEnabled
+          ? computeRetentionMetrics({
+              script,
+              storyboard,
+              recentRetentionLoopTypes: await loadRecentVerticalDramaRetentionLoopTypes(
+                owner,
+                refreshed.episodeNumber
+              ),
+            })
+          : undefined;
       const outcome = await runVerticalDramaEpisodeQualityReview({
         userId,
         tenantId,
@@ -4988,6 +5239,10 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
         // as `runEpisodeQualityReview`; omitted (byte-identical prompt)
         // whenever the tenant flag is off.
         reviewMode: storyLockEnabled ? "execution" : undefined,
+        // Retention hooks (W6) — omitted (both) whenever the flag is off,
+        // reproducing the exact prior prompt/contract_version unchanged.
+        scoreRetentionDimensions: retentionHooksEnabled,
+        retentionMetrics,
       });
       // `EpisodeQualityReviewOutput` is a structural superset of
       // `VerticalDramaQualityLoopReviewLike` (scorecard + issues) — returned
@@ -5017,7 +5272,8 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
             owner,
             "plan_episode_script",
             `[ปรับเฉพาะส่วนสินค้า ห้ามแก้โครงเรื่องหลัก] ${instruction}`,
-            storyLockEnabled
+            storyLockEnabled,
+            retentionHooksEnabled
           );
         // W11.6 "Story Lock" — a REJECTED round already reverted the live
         // content back to prior (see `repairVerticalDramaStageWithStoryLockGuard`),
@@ -5035,7 +5291,8 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
           owner,
           stage,
           instruction,
-          storyLockEnabled
+          storyLockEnabled,
+          retentionHooksEnabled
         );
       if (!storyLockViolated) {
         stagesRepaired.push(stage);
@@ -5144,20 +5401,27 @@ async function runApplyQualityReviewSuggestionsLoop(params: {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Speaker-aware sub-shots (Package 3) — split-path generation + persistence  */
+/* Speaker-switch consolidated clip (Package 3, 2026-07-11 redesign) —        */
+/* split-path generation + persistence, now producing exactly ONE clip       */
 /* -------------------------------------------------------------------------- */
 
 /**
- * The split-shot ("shot-reverse-shot") counterpart of `generateShotVideoPrompt`'s
- * single-clip generation + persistence — called instead of
- * `generateVerticalDramaShotVideoPrompt` whenever
+ * The split-shot ("speaker-switch consolidated clip") counterpart of
+ * `generateShotVideoPrompt`'s single-clip generation + persistence — called
+ * instead of `generateVerticalDramaShotVideoPrompt` whenever
  * `computeSpeakerSwitchSubShotPlan` decided this shot's dialogue needs
  * splitting (see that mutation's own call site). Applies the SAME brand-
  * sanitize -> length-cap-QC -> preset-visual-identity-token passes the
- * single-clip path applies, once per sub-shot prompt, then REPLACES every
- * existing clip for this shot (`sourceShotNumbers.includes(shotNumber)` OR
- * `parentShotNumber === shotNumber`) with the newly generated sub-shot clips
- * — never appends alongside a stale single clip or a stale prior split.
+ * single-clip path applies, once (not looped — this path produces exactly
+ * ONE combined timed prompt now, see `generateVerticalDramaShotVideoPromptSpeakerSwitch`),
+ * then REPLACES every existing clip for this shot
+ * (`sourceShotNumbers.includes(shotNumber)` OR `parentShotNumber ===
+ * shotNumber`) with exactly ONE new clip, shaped IDENTICALLY to a normal
+ * single-shot clip (`clipNumber: shotNumber`, no `parentShotNumber`/
+ * `subShotNumber`) — never appends alongside a stale single clip or a stale
+ * legacy (pre-2026-07-11) N-clip split. Identity for every referenced
+ * speaker rides `extraReferenceAssetIds` (multi-reference-image support on
+ * ONE `generateVideoClip` call) instead of a per-clip reference switch.
  */
 async function generateAndPersistSplitShotVideoPrompt(args: {
   tenantId: string;
@@ -5212,7 +5476,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     subShotWindows,
   } = args;
 
-  const subShotGeneration = await generateVerticalDramaShotVideoPromptSubShots({
+  const speakerSwitchGeneration = await generateVerticalDramaShotVideoPromptSpeakerSwitch({
     userId,
     tenantId,
     seriesId,
@@ -5252,61 +5516,51 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     subShotWindows,
   });
 
-  // Same 3 passes the single-clip path applies (brand sanitize -> length-cap
-  // QC -> preset-visual-identity tokens), looped per sub-shot prompt.
+  // Same 2 passes the single-clip path applies (brand sanitize -> length-cap
+  // QC), applied ONCE — no loop, this path now produces exactly one combined
+  // prompt.
+  let prompt = speakerSwitchGeneration.prompt;
+  let negativeMotionPrompt = speakerSwitchGeneration.negativeMotionPrompt;
+  if (tieInPlacement) {
+    prompt = sanitizeBrandMentionsInPrompt(prompt, [tieInProductName], tieInProductCategory);
+    if (negativeMotionPrompt) {
+      negativeMotionPrompt = sanitizeBrandMentionsInPrompt(
+        negativeMotionPrompt,
+        [tieInProductName],
+        tieInProductCategory
+      );
+    }
+  }
+  const qc = await ensurePromptWithinLimit({
+    kind: "video",
+    prompt,
+    userId,
+    tenantId,
+    seriesId,
+    idempotencyKey: idempotencyKey ? `${idempotencyKey}:prompt-qc` : undefined,
+    label: `shot video prompt (episode #${episodeId}, shot ${shotNumber})`,
+  });
+  prompt = qc.prompt;
+
   const { presetMixV2Enabled } = await resolveVerticalDramaQualityLoopFlags(tenantId);
-  const presetVisualIdentity = presetMixV2Enabled
-    ? await loadSeriesPresetVisualIdentity(tenantId, userId, seriesId)
-    : null;
+  if (presetMixV2Enabled) {
+    const presetVisualIdentity = await loadSeriesPresetVisualIdentity(tenantId, userId, seriesId);
+    if (presetVisualIdentity) {
+      prompt = appendPresetVisualIdentityStyleTokensToMotionPrompt(prompt, presetVisualIdentity);
+    }
+  }
 
-  const processedSubShots = await Promise.all(
-    subShotGeneration.subShots.map(async subShot => {
-      let prompt = subShot.prompt;
-      let negativeMotionPrompt = subShot.negativeMotionPrompt;
-      if (tieInPlacement) {
-        prompt = sanitizeBrandMentionsInPrompt(
-          prompt,
-          [tieInProductName],
-          tieInProductCategory
-        );
-        if (negativeMotionPrompt) {
-          negativeMotionPrompt = sanitizeBrandMentionsInPrompt(
-            negativeMotionPrompt,
-            [tieInProductName],
-            tieInProductCategory
-          );
-        }
-      }
-      const qc = await ensurePromptWithinLimit({
-        kind: "video",
-        prompt,
-        userId,
-        tenantId,
-        idempotencyKey: idempotencyKey
-          ? `${idempotencyKey}:subshot-${subShot.subShotNumber}:prompt-qc`
-          : undefined,
-        label: `shot video prompt (episode #${episodeId}, shot ${shotNumber}, sub-shot ${subShot.subShotNumber})`,
-      });
-      prompt = qc.prompt;
-      if (presetVisualIdentity) {
-        prompt = appendPresetVisualIdentityStyleTokensToMotionPrompt(
-          prompt,
-          presetVisualIdentity
-        );
-      }
-      return { ...subShot, prompt, negativeMotionPrompt };
-    })
-  );
-
-  // Resolve each window's anchor-character start frame asset id (Package 3
-  // step 4) — the character's own approved primary-portrait media asset id;
-  // omitted (falls back to the shot's existing single approved start frame
-  // at render time) when the character has no portrait yet. No image
-  // generation happens here — bounded scope per the task's plan.
-  const distinctCharacterKeys = Array.from(
-    new Set(processedSubShots.map(s => s.characterKey).filter(Boolean))
-  );
-  const startFrameAssetIdByCharacterKey = new Map<string, string>();
+  // Resolve every distinct speaker's own approved primary-portrait media
+  // asset id, in `distinctSpeakerCharacterKeys` order (anchor speaker
+  // first) — anchor becomes `startFrameAssetId`, the rest become
+  // `extraReferenceAssetIds` so identity for every referenced speaker rides
+  // the video model's multi-reference-image support on this ONE
+  // `generateVideoClip` call instead of switching the reference image per
+  // segment. Omitted (falls back to the shot's existing single approved
+  // start frame at render time) for any character with no portrait yet. No
+  // image generation happens here — bounded scope per the task's plan.
+  const distinctCharacterKeys = speakerSwitchGeneration.distinctSpeakerCharacterKeys;
+  const portraitAssetIdByCharacterKey = new Map<string, string>();
   if (distinctCharacterKeys.length > 0) {
     const characterRows = await db
       .select({
@@ -5321,107 +5575,117 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
           inArray(verticalDramaCharacters.characterKey, distinctCharacterKeys)
         )
       );
-    for (const characterRow of characterRows) {
+    const characterRowByKey = new Map<string, (typeof characterRows)[number]>();
+    for (const c of characterRows) {
+      characterRowByKey.set(c.characterKey, c);
+    }
+    for (const key of distinctCharacterKeys) {
+      const characterRow = characterRowByKey.get(key);
+      if (!characterRow) continue;
       const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
         { tenantId, userId, seriesId },
         characterRow.id
       );
       if (assetId) {
-        startFrameAssetIdByCharacterKey.set(characterRow.characterKey, String(assetId));
+        portraitAssetIdByCharacterKey.set(key, String(assetId));
       }
     }
   }
+  const orderedPortraitAssetIds = distinctCharacterKeys
+    .map(key => portraitAssetIdByCharacterKey.get(key))
+    .filter((id): id is string => Boolean(id));
+  const [anchorStartFrameAssetId, ...extraReferenceAssetIds] = orderedPortraitAssetIds;
 
-  // Clip numbering: `shotNumber * 100 + subShotNumber` (e.g. shot 3 -> 301,
-  // 302, 303) — collision-free with every other shot's bare `clipNumber`
-  // (1-9) so writing this shot's clips never disturbs any other shot's
-  // already-rendered `videoTask`.
-  const newClips = processedSubShots.map((subShot, index) => {
-    const isLastWindow = index === processedSubShots.length - 1;
-    return {
-      clipNumber: shotNumber * 100 + subShot.subShotNumber,
-      sourceShotNumbers: [shotNumber],
-      parentShotNumber: shotNumber,
-      subShotNumber: subShot.subShotNumber,
-      durationSeconds: subShot.durationSeconds,
-      prompt: subShot.prompt,
-      negativeMotionPrompt: subShot.negativeMotionPrompt,
-      startFrameAssetId: startFrameAssetIdByCharacterKey.get(subShot.characterKey),
-      dialogue: subShot.dialogue,
-      // Any tie-in disclosure / native-audio direction is computed ONCE for
-      // the whole (split) shot — attached only to the LAST window's clip
-      // (closest to end-of-shot), never duplicated onto every sub-shot.
-      ...(isLastWindow
-        ? {
-            requiredDisclosure: subShotGeneration.requiredDisclosure,
-            audioDirection: subShotGeneration.audioDirection,
-          }
-        : {}),
-    };
+  // Exactly ONE clip, shaped IDENTICALLY to a normal single-shot clip —
+  // `clipNumber: shotNumber` (never `shotNumber * 100 + n`), no
+  // `parentShotNumber`/`subShotNumber` — this is what makes the frontend's
+  // existing generic per-clip render loop need ZERO changes.
+  const newClip = {
+    clipNumber: shotNumber,
+    sourceShotNumbers: [shotNumber],
+    durationSeconds: speakerSwitchGeneration.durationSeconds,
+    prompt,
+    negativeMotionPrompt,
+    startFrameAssetId: anchorStartFrameAssetId,
+    extraReferenceAssetIds: extraReferenceAssetIds.length ? extraReferenceAssetIds : undefined,
+    dialogue: speakerSwitchGeneration.dialogue,
+    requiredDisclosure: speakerSwitchGeneration.requiredDisclosure,
+    audioDirection: speakerSwitchGeneration.audioDirection,
+  };
+
+  // 2026-07-11 lost-update race fix, applied to this path for the same
+  // reason `generateShotVideoPrompt`'s own persist step below was fixed
+  // (see that mutation's transaction block doc comment for the full
+  // incident) — this path never had a lock before. A SEPARATE, parallel
+  // transaction block (NOT shared with that fix's code) — both call sites
+  // now converge on "replace this shot's clip(s) with exactly ONE fresh
+  // clip", so both deserve the same row-lock protection against concurrent
+  // overlapping calls for the same episode.
+  await db.transaction(async tx => {
+    const [freshRow] = await tx
+      .select({ motionPromptPack: verticalDramaEpisodes.motionPromptPack })
+      .from(verticalDramaEpisodes)
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, episodeId),
+          eq(verticalDramaEpisodes.tenantId, tenantId),
+          eq(verticalDramaEpisodes.userId, userId),
+          eq(verticalDramaEpisodes.seriesId, seriesId)
+        )
+      )
+      .for("update")
+      .limit(1);
+    const freshPack =
+      (freshRow?.motionPromptPack as VerticalDramaMotionPromptPack | null) ?? pack;
+
+    let updatedPack: VerticalDramaMotionPromptPack;
+    if (freshPack) {
+      // Replace, don't append: remove every existing clip for this shot
+      // (whether it was previously a single clip or a legacy N-clip split)
+      // before inserting exactly ONE fresh clip.
+      const remainingClips = freshPack.clips.filter(
+        c =>
+          !(
+            c.sourceShotNumbers?.includes(shotNumber) ||
+            c.parentShotNumber === shotNumber
+          )
+      );
+      updatedPack = {
+        ...freshPack,
+        clips: [...remainingClips, newClip],
+        nativeAudioEnabled: requestedNativeAudioEnabled,
+      };
+    } else {
+      updatedPack = {
+        selectedVideoModelId: selectedVideoModel.id,
+        durationProfileId:
+          row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+        motionMode: "first_frame_to_video",
+        nativeAudioEnabled: requestedNativeAudioEnabled,
+        clips: [newClip],
+        warnings: [],
+      };
+    }
+
+    await tx
+      .update(verticalDramaEpisodes)
+      .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, episodeId),
+          eq(verticalDramaEpisodes.tenantId, tenantId),
+          eq(verticalDramaEpisodes.userId, userId),
+          eq(verticalDramaEpisodes.seriesId, seriesId)
+        )
+      );
   });
 
-  // Replace, don't append: remove every existing clip for this shot
-  // (whether it was previously a single clip or a prior split's sub-shots)
-  // before inserting the new set — same "regenerate overwrites" convention
-  // the single-clip path already has.
-  let updatedPack: VerticalDramaMotionPromptPack;
-  if (pack) {
-    const remainingClips = pack.clips.filter(
-      c =>
-        !(
-          c.sourceShotNumbers?.includes(shotNumber) ||
-          c.parentShotNumber === shotNumber
-        )
-    );
-    updatedPack = {
-      ...pack,
-      clips: [...remainingClips, ...newClips],
-      nativeAudioEnabled: requestedNativeAudioEnabled,
-    };
-  } else {
-    updatedPack = {
-      selectedVideoModelId: selectedVideoModel.id,
-      durationProfileId:
-        row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
-      motionMode: "first_frame_to_video",
-      nativeAudioEnabled: requestedNativeAudioEnabled,
-      clips: newClips,
-      warnings: [],
-    };
-  }
-
-  await db
-    .update(verticalDramaEpisodes)
-    .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
-    .where(
-      and(
-        eq(verticalDramaEpisodes.id, episodeId),
-        eq(verticalDramaEpisodes.tenantId, tenantId),
-        eq(verticalDramaEpisodes.userId, userId),
-        eq(verticalDramaEpisodes.seriesId, seriesId)
-      )
-    );
-
   return {
-    // Additive/backward-compatible top-level fields for callers that only
-    // read the single-clip shape (pre-existing UI does not know about
-    // sub-shots yet — see the task's frontend work package): a joined
-    // preview of every sub-shot's prompt/dialogue. Real per-clip access is
-    // via `subShots` below.
-    prompt: processedSubShots.map(s => s.prompt).join("\n\n"),
-    dialogue: processedSubShots.flatMap(s => s.dialogue),
-    creditsUsed: subShotGeneration.creditsUsed + extraDialogueCreditsUsed,
-    usedVision: subShotGeneration.usedVision,
-    audioDirection: subShotGeneration.audioDirection,
-    subShots: processedSubShots.map(s => ({
-      clipNumber: shotNumber * 100 + s.subShotNumber,
-      subShotNumber: s.subShotNumber,
-      characterKey: s.characterKey,
-      durationSeconds: s.durationSeconds,
-      prompt: s.prompt,
-      negativeMotionPrompt: s.negativeMotionPrompt,
-      dialogue: s.dialogue,
-    })),
+    prompt: newClip.prompt,
+    dialogue: newClip.dialogue,
+    creditsUsed: speakerSwitchGeneration.creditsUsed + extraDialogueCreditsUsed,
+    usedVision: speakerSwitchGeneration.usedVision,
+    audioDirection: speakerSwitchGeneration.audioDirection,
   };
 }
 
@@ -6055,12 +6319,17 @@ export const verticalDramaEpisodesRouter = router({
         );
       }
 
-      const [{ flagOn, policy }, deepStoryDraftsFlagOn, tieInReplanFlagOn] =
-        await Promise.all([
-          resolveSubShotPolicy(tenantId, input.subShotPolicy),
-          resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
-          resolveVerticalDramaTieInReplanFlag(tenantId),
-        ]);
+      const [
+        { flagOn, policy },
+        deepStoryDraftsFlagOn,
+        tieInReplanFlagOn,
+        retentionHooksEnabled,
+      ] = await Promise.all([
+        resolveSubShotPolicy(tenantId, input.subShotPolicy),
+        resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
+        resolveVerticalDramaTieInReplanFlag(tenantId),
+        resolveVerticalDramaRetentionHooksFlag(tenantId),
+      ]);
       const outcome = await pipelineForMode(input.mode).runStage(
         owner,
         input.stage,
@@ -6071,6 +6340,7 @@ export const verticalDramaEpisodesRouter = router({
           idempotencyKey: input.idempotencyKey,
           deepStoryDraftsFlagOn,
           tieInReplanFlagOn,
+          retentionHooksEnabled,
         }
       );
       return outcome;
@@ -6208,12 +6478,17 @@ export const verticalDramaEpisodesRouter = router({
           );
       }
 
-      const [{ flagOn, policy }, deepStoryDraftsFlagOn, tieInReplanFlagOn] =
-        await Promise.all([
-          resolveSubShotPolicy(tenantId, input.subShotPolicy),
-          resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
-          resolveVerticalDramaTieInReplanFlag(tenantId),
-        ]);
+      const [
+        { flagOn, policy },
+        deepStoryDraftsFlagOn,
+        tieInReplanFlagOn,
+        retentionHooksEnabled,
+      ] = await Promise.all([
+        resolveSubShotPolicy(tenantId, input.subShotPolicy),
+        resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
+        resolveVerticalDramaTieInReplanFlag(tenantId),
+        resolveVerticalDramaRetentionHooksFlag(tenantId),
+      ]);
       const outcome = await pipelineForMode("full").runStage(
         owner,
         input.stage,
@@ -6224,6 +6499,7 @@ export const verticalDramaEpisodesRouter = router({
           idempotencyKey: input.idempotencyKey,
           deepStoryDraftsFlagOn,
           tieInReplanFlagOn,
+          retentionHooksEnabled,
         }
       );
       return outcome;
@@ -6274,12 +6550,25 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      const [{ flagOn, policy }, deepStoryDraftsFlagOn, tieInReplanFlagOn] =
-        await Promise.all([
-          resolveSubShotPolicy(tenantId, input.subShotPolicy),
-          resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
-          resolveVerticalDramaTieInReplanFlag(tenantId),
-        ]);
+      const [
+        { flagOn, policy },
+        deepStoryDraftsFlagOn,
+        tieInReplanFlagOn,
+        retentionHooksEnabled,
+      ] = await Promise.all([
+        resolveSubShotPolicy(tenantId, input.subShotPolicy),
+        resolveVerticalDramaDeepStoryDraftsFlag(tenantId),
+        resolveVerticalDramaTieInReplanFlag(tenantId),
+        // Retention hooks — `runEpisode` shares the SAME `RunStageOptions`
+        // bag every per-stage call in this router resolves this flag for
+        // (`runStage`/`regenerateStage` above); not one of the 4 call sites
+        // explicitly enumerated by the router-wiring plan, but wiring it
+        // here too keeps a full sequential episode run consistent with a
+        // single-stage run of the exact same stages (otherwise a tenant
+        // with the flag on would get retention-hooks guidance one stage at
+        // a time but not via "run whole episode").
+        resolveVerticalDramaRetentionHooksFlag(tenantId),
+      ]);
       return pipelineForMode(input.mode).runEpisode(owner, {
         mode: input.mode as never,
         fromStage: input.fromStage,
@@ -6288,6 +6577,7 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
         deepStoryDraftsFlagOn,
         tieInReplanFlagOn,
+        retentionHooksEnabled,
       });
     }),
 
@@ -6434,6 +6724,8 @@ export const verticalDramaEpisodesRouter = router({
       // so this is inert for every other stage regardless of the flag.
       const { storyLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
+      const retentionHooksEnabled =
+        await resolveVerticalDramaRetentionHooksFlag(tenantId);
       const instruction = storyLockEnabled
         ? appendVerticalDramaStoryLockRepairConstraint(
             input.instruction,
@@ -6449,6 +6741,7 @@ export const verticalDramaEpisodesRouter = router({
           instruction,
           subShotFlagOn: flagOn,
           subShotPolicy: policy,
+          retentionHooksEnabled,
         }
       );
       return outcome;
@@ -7325,6 +7618,108 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Manually override which character(s) — or which specific
+   * variant/age-stage/twin `characterKey` of a character — are used as the
+   * identity-lock reference(s) for ONE shot only (planning/vertical-drama-
+   * twin-variant-completeness/plan.md, W6 backend). Today
+   * `requiredCharacterRefs` is only ever set by the storyboard/start-frame-
+   * plan LLM generation stages; this is a pure, cheap, direct data patch —
+   * no LLM/skill call, no regeneration of any kind. Patches ONLY the
+   * matching entry's `requiredCharacterRefs` in `startFramePlan.frames[]`,
+   * same "find by shotNumber, replace one array entry, write the whole
+   * jsonb column back" pattern as `setApprovedStartFrameAsset` above.
+   *
+   * `characterRefs` is the shot's new FULL `requiredCharacterRefs` array
+   * (full replacement, not a merge/append) — every key must already exist
+   * in this series' character roster (base character OR one of its
+   * variant/twin rows' own `characterKey`), otherwise the whole call is
+   * rejected with BAD_REQUEST rather than silently persisting a key that
+   * would later resolve to zero reference images.
+   */
+  setShotCharacterReference: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        characterRefs: z.array(z.string().min(1)),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      if (!plan || !Array.isArray(plan.frames)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No start-frame plan exists yet for this episode",
+        });
+      }
+      const frameIndex = plan.frames.findIndex(
+        f => f.shotNumber === input.shotNumber
+      );
+      if (frameIndex === -1) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `No start-frame plan entry for shot ${input.shotNumber}`,
+        });
+      }
+
+      // Every requested characterKey must exist in this series' roster —
+      // reject unknown keys instead of silently persisting garbage that
+      // would later resolve to zero reference images at render time.
+      const uniqueKeys = Array.from(new Set(input.characterRefs));
+      if (uniqueKeys.length > 0) {
+        const rosterRows = await db
+          .select({ characterKey: verticalDramaCharacters.characterKey })
+          .from(verticalDramaCharacters)
+          .where(
+            and(
+              eq(verticalDramaCharacters.tenantId, tenantId),
+              eq(verticalDramaCharacters.seriesId, seriesId),
+              inArray(verticalDramaCharacters.characterKey, uniqueKeys)
+            )
+          );
+        const foundKeys = new Set(
+          rosterRows.map((r: { characterKey: string }) => r.characterKey)
+        );
+        const unknownKeys = uniqueKeys.filter(k => !foundKeys.has(k));
+        if (unknownKeys.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Unknown character key(s): ${unknownKeys.join(", ")}`,
+          });
+        }
+      }
+
+      const updatedFrames = plan.frames.slice();
+      updatedFrames[frameIndex] = {
+        ...updatedFrames[frameIndex],
+        requiredCharacterRefs: input.characterRefs,
+      };
+      const updatedPlan: VerticalDramaStartFramePlan = {
+        ...plan,
+        frames: updatedFrames,
+      };
+
+      await db
+        .update(verticalDramaEpisodes)
+        .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+        .where(eq(verticalDramaEpisodes.id, episodeId));
+
+      return { startFramePlan: updatedPlan };
+    }),
+
+  /**
    * Set the episode-level image/video model selection (Vertical Drama
    * Storyboard Completion Plan, Phase 1.1). Deliberately EPISODE-level only —
    * no per-shot/per-clip override (2026-07-05 product decision, see
@@ -7692,20 +8087,27 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // Character-lock auto-soften (2026-07-06 prompt-safety upgrade) — a
-      // no-op at `softenLevel` 0/absent (the default/first attempt). Applied
-      // to the STORED prompt text before any further appends below, so a
-      // softened retry also carries through to the product-lock/QC steps
-      // untouched.
+      // Content-policy-risk soften level (vertical-drama-skill-first-
+      // architecture plan, Phase 1.3) — `effectiveSoftenLevel` 0/absent is
+      // the default/first-attempt path and MUST stay a zero-extra-LLM-call
+      // no-op: this mutation runs on EVERY normal image render, not just
+      // retries. `effectiveSoftenLevel > 0` is an explicit client resubmit
+      // after a provider content-policy rejection; that branch calls the
+      // `vertical-drama-shot-image-action` skill's `"soften"` action further
+      // below, once `keptCharEntries` (the identity-lock facts) are
+      // resolved — see that block's doc comment. (Phase 3, item 2:
+      // `formatIdentityLockedImagePrompt` no longer exists at all — the
+      // level-0 branch below now uses `softenedImagePrompt` unmodified,
+      // since the planning skill already authored the identity-lock text.)
       const effectiveSoftenLevel = input.softenLevel ?? 0;
-      let softenedImagePrompt = softenCharacterLockPrompt(
-        frame.imagePrompt,
-        effectiveSoftenLevel
-      );
-      let softenedNegativePrompt = softenCharacterLockNegativePrompt(
-        frame.negativePrompt,
-        effectiveSoftenLevel
-      );
+      // `stripExistingIdentityLockSuffix` is NOT part of the soften
+      // mechanism — it is the unrelated, always-on idempotency fix
+      // (2026-07-10 incident) that strips a stale identity-lock suffix a
+      // PRIOR call may have persisted onto this shot's stored prompt, so it
+      // is never echoed back as if it were story content on ANY call,
+      // softened or not.
+      let softenedImagePrompt = stripExistingIdentityLockSuffix(frame.imagePrompt);
+      let softenedNegativePrompt: string | undefined = frame.negativePrompt;
 
       // Wave-4A (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
       // — deterministically append the series' preset visual identity's
@@ -7848,21 +8250,135 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
       });
 
-      // Identity-lock prompt reinforcement — explicitly map attached reference
-      // images by number (Image 1 = Name, Image 2 = Name) and annotate character
-      // names in prompt so diffusion models correctly bind attached images to
-      // character identities.
+      // Identity-lock references — which character entries actually have a
+      // reference image attached, after `mergeAndTrimReferenceImageUrls`'s
+      // `maxReferenceImages` trimming. Still needed below (the soften>0
+      // branch's `characterReferenceManifest` input), even though the
+      // level-0 branch no longer formats a prompt from it — see that doc
+      // comment.
       const keptCharCount = Math.min(
         characterRefEntries.length,
         referenceImageUrls.length
       );
       const keptCharEntries = characterRefEntries.slice(0, keptCharCount);
-      const renderStartFramePrompt =
-        keptCharEntries.length > 0
-          ? formatIdentityLockedImagePrompt(softenedImagePrompt, keptCharEntries)
-          : characterRefUrls.length > 0
-            ? `${softenedImagePrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`
-            : softenedImagePrompt;
+
+      let renderStartFramePrompt: string;
+      if (effectiveSoftenLevel === 0) {
+        // Default/first-attempt path (vertical-drama-skill-first-
+        // architecture plan, Phase 3, item 2) — `softenedImagePrompt` IS the
+        // final render prompt now: the `vertical-drama-shot-start-frame-
+        // render` skill's own output already states the full identity-lock
+        // constraint (face shape, skin tone, hairstyle, clothing/outfit,
+        // distinguishing features) per required character in its own prose
+        // (skill.md's "Attached Character Reference Image Indexing"
+        // instruction), so no code-side `formatIdentityLockedImagePrompt`
+        // append is needed here anymore. Zero extra LLM calls, same as
+        // before.
+        renderStartFramePrompt = softenedImagePrompt;
+      } else {
+        // Explicit client retry after a provider content-policy rejection
+        // (vertical-drama-skill-first-architecture plan, Phase 1.3) — the
+        // `vertical-drama-shot-image-action` skill's `"soften"` action
+        // authors BOTH the softened wording AND its own appropriately-toned
+        // identity-lock phrase from `characterReferenceManifest` in one
+        // call. `formatIdentityLockedImagePrompt` is deliberately SKIPPED on
+        // this branch only: running it afterward at full strength would
+        // immediately overwrite the skill's toned-down identity language
+        // with the strict version, defeating the soften request. This is
+        // not a broader Phase-3 migration — softening and identity-lock
+        // phrasing are inherently the same decision at reduced intensity.
+        const softenRegionCode = await loadSeriesTargetAudienceRegion(
+          tenantId,
+          userId,
+          seriesId
+        );
+        const softenProductLockFacts = await loadSeriesProductTieInFacts(
+          tenantId,
+          userId,
+          seriesId,
+          productRefUrls.length > 0
+        );
+        const {
+          generateShotImageAction,
+          InsufficientCreditsError: ShotImageActionInsufficientCreditsError,
+          VdSchemaValidationError: ShotImageActionSchemaValidationError,
+        } = await import("../services/verticalDramaShotImageAction");
+
+        let softenActionResult: { prompt: string; negativePrompt: string };
+        try {
+          softenActionResult = await generateShotImageAction({
+            userId,
+            tenantId,
+            seriesId,
+            action: "soften",
+            softenLevel: effectiveSoftenLevel,
+            shot: {
+              shotNumber: input.shotNumber,
+              currentPrompt: softenedImagePrompt,
+              currentNegativePrompt: softenedNegativePrompt ?? "",
+            },
+            repairInstruction: null,
+            characterReferenceManifest: keptCharEntries.map((e, idx) => ({
+              index: idx + 1,
+              characterId: null,
+              name: e.name,
+            })),
+            targetAudienceRegion: {
+              code: softenRegionCode,
+              descriptor:
+                VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[
+                  softenRegionCode
+                ],
+            },
+            productLock: {
+              active: productRefUrls.length > 0,
+              productName: softenProductLockFacts?.productName ?? null,
+              productDescription:
+                softenProductLockFacts?.productDescription ?? null,
+            },
+            gridLayout: null,
+            idempotencyKey: input.idempotencyKey,
+          });
+        } catch (err) {
+          if (shouldChargeImageCredits) {
+            await refundCredits({
+              userId,
+              amount: imageCreditCost,
+              description: `Refund: start-frame soften prompt authoring failed (episode #${episodeId}, shot ${input.shotNumber})`,
+              sourceType: "media_image",
+              metadata: {
+                feature: "vertical_drama_series",
+                seriesId,
+                episodeId,
+                shotNumber: input.shotNumber,
+                error: err instanceof Error ? err.message : "Unknown error",
+              },
+            });
+          }
+          if (err instanceof ShotImageActionInsufficientCreditsError) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Insufficient credits to author the softened image prompt",
+            });
+          }
+          if (err instanceof ShotImageActionSchemaValidationError) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "Failed to author the softened image prompt — try again",
+            });
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              err instanceof Error
+                ? err.message
+                : "Failed to author the softened image prompt",
+          });
+        }
+
+        renderStartFramePrompt = softenActionResult.prompt;
+        softenedNegativePrompt = softenActionResult.negativePrompt || softenedNegativePrompt;
+      }
 
       // Final-prompt QC (hard length cap) — enforced right before the
       // outgoing image render call. No-op (zero LLM calls / zero credits)
@@ -7872,6 +8388,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: renderStartFramePrompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
@@ -8042,25 +8559,28 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // Character-lock auto-soften — same convention as `generateStartFrameImage`.
+      // Content-policy-risk soften level (vertical-drama-skill-first-
+      // architecture plan, Phase 1.3) — no longer applied here via a regex
+      // ladder; `effectiveSoftenLevel` is instead passed straight through
+      // as `softenLevel` on the SAME `generateShotImageAction({action:
+      // "multi_angle_grid", ...})` call below, which authors the grid
+      // prompt AND the soften wording together in one skill call. See that
+      // call site's doc comment.
       const effectiveSoftenLevel = input.softenLevel ?? 0;
-      let softenedImagePrompt = softenCharacterLockPrompt(
-        frame.imagePrompt,
-        effectiveSoftenLevel
-      );
-      let softenedNegativePrompt = softenCharacterLockNegativePrompt(
-        frame.negativePrompt,
-        effectiveSoftenLevel
-      );
+      // `stripExistingIdentityLockSuffix` is NOT part of the soften
+      // mechanism — see the matching comment in `generateStartFrameImage`.
+      let softenedImagePrompt = stripExistingIdentityLockSuffix(frame.imagePrompt);
+      let softenedNegativePrompt: string | undefined = frame.negativePrompt;
 
       // Wave-7D (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
       // — same deterministic append `generateStartFrameImage` already does,
-      // anchored the same way (before the grid prompt is assembled below —
-      // the grid's `gridPrompt` starts with this same `softenedImagePrompt`,
-      // so the fragments flow straight through into the 9-panel grid render
-      // too). Dynamic `import()` for the same reason documented on this
-      // file's `appendPresetVisualIdentityFragmentsToImagePrompt` import-site
-      // doc comment near the top of the file.
+      // anchored the same way (before the grid prompt is authored below — the
+      // grid skill call's `shot.currentPrompt` input is this same
+      // `softenedImagePrompt`, so the fragments flow straight through into
+      // the 9-panel grid render too). Dynamic `import()` for the same reason
+      // documented on this file's
+      // `appendPresetVisualIdentityFragmentsToImagePrompt` import-site doc
+      // comment near the top of the file.
       const { presetMixV2Enabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
       if (presetMixV2Enabled) {
@@ -8099,9 +8619,10 @@ export const verticalDramaEpisodesRouter = router({
 
       // Character identity map (2026-07-07 non-human-character-vanishing
       // fix) — re-injected directly into the grid prompt (not just relying
-      // on the base `imagePrompt` already carrying it) since
-      // `softenCharacterLockPrompt` may progressively relax identity-lock
-      // wording on repeated policy-failure retries. See
+      // on the base `imagePrompt` already carrying it) since the
+      // `vertical-drama-shot-image-action` skill's `soften_level` input may
+      // progressively relax identity-lock wording on repeated
+      // policy-failure retries. See
       // `@shared/verticalDramaSeries/characterIdentityMap.ts`.
       const angleGridCharacterIdentitySources =
         await resolveShotCharacterIdentitySources(
@@ -8182,27 +8703,23 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // Series-level target-audience region — continuity-only note (the
-      // region is already baked into `frame.imagePrompt` by the start-frame
-      // planner; this is just a reminder so the 9-panel grid never drifts
-      // the region/ethnicity across panels).
+      // Series-level target-audience region — passed to the skill as a raw
+      // FACT (code, descriptor), not a pre-authored instruction sentence.
       const gridRegion = await loadSeriesTargetAudienceRegion(
         tenantId,
         userId,
         seriesId
       );
 
-      // Storyboard-complete plan Phase 6.3: the previous prompt listed each
-      // angle by NAME ("wide establishing shot", "close-up (pan)", etc.)
-      // inside the same sentence the image model renders — several image
-      // models interpret that as an instruction to actually PRINT that label
-      // as on-image text/caption per panel, producing burned-in text that
-      // makes the grid unusable as a Veo start frame (start frames must be
-      // pure photographic content, no overlay text). Fix: keep the angle
-      // DIVERSITY instruction (still lists example angles so the model still
-      // varies framing) but make the "no text anywhere in the image" rule
-      // extremely explicit and repeated, and mirror it into the negative
-      // prompt too so it's enforced on both sides of the request.
+      // vertical-drama-skill-first-architecture plan, Phase 1 item 1: the
+      // `vertical-drama-shot-image-action` skill authors the ENTIRE grid
+      // prompt (scene restatement, 3x3 grid-layout instruction, camera-angle
+      // diversity, identity lock, and the "no text anywhere in the image"
+      // warning — a real production failure this wording was hand-tuned
+      // against once via a code/redeploy cycle; the skill now owns that
+      // wording so future tuning happens in skill.md, not here) from these
+      // ground-truth facts. Code no longer authors any instructional prompt
+      // text for this call site.
       const keptAngleCharCount = Math.min(
         characterRefEntries.length,
         referenceImageUrls.length
@@ -8211,85 +8728,129 @@ export const verticalDramaEpisodesRouter = router({
         0,
         keptAngleCharCount
       );
-      const identityLockInstruction =
-        keptAngleCharEntries.length > 0
-          ? `[Attached character reference images: ${keptAngleCharEntries.map((e, idx) => `Image ${idx + 1} = ${e.name}`).join(", ")}. Strictly reference each character's exact facial and physical identity from their assigned attached image number (Image 1, Image 2, etc.) — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.]`
-          : characterRefUrls.length > 0
-            ? "Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity."
-            : null;
-      const gridPrompt = [
-        softenedImagePrompt,
-        identityLockInstruction,
-        "",
-        "Render this EXACT same scene, subject, wardrobe, lighting, and moment as a single image containing a 3x3 grid of 9 panels — 3 rows, 3 columns, each panel a full 9:16 vertical frame with a thin visible divider between panels.",
-        "Each of the 9 panels must show the SAME moment from a DIFFERENT camera angle/framing (for example: wide establishing shot, medium shot, close-up, over-the-shoulder, low angle, high angle, dutch angle, extreme close-up, three-quarter profile) — vary ONLY the camera position/framing per panel, purely through the photographed composition itself.",
-        "Keep character identity, wardrobe, and lighting perfectly consistent across all 9 panels — only the camera position/framing changes.",
-        `Continuity note (region/ethnicity): ${buildTargetAudienceRegionInstruction(gridRegion)}`,
+      const gridProductLockFacts = await loadSeriesProductTieInFacts(
+        tenantId,
+        userId,
+        seriesId,
+        productRefUrls.length > 0
+      );
+
+      const {
+        generateShotImageAction,
+        InsufficientCreditsError: ShotImageActionInsufficientCreditsError,
+        VdSchemaValidationError: ShotImageActionSchemaValidationError,
+      } = await import("../services/verticalDramaShotImageAction");
+
+      let gridActionResult: { prompt: string; negativePrompt: string };
+      try {
+        gridActionResult = await generateShotImageAction({
+          userId,
+          tenantId,
+          seriesId,
+          action: "multi_angle_grid",
+          // Content-policy-risk soften level (Phase 1.3) — the skill
+          // authors the grid prompt AND the soften wording together in this
+          // one call; no separate softening pass runs before or after it.
+          softenLevel: effectiveSoftenLevel,
+          shot: {
+            shotNumber: input.shotNumber,
+            currentPrompt: softenedImagePrompt,
+            currentNegativePrompt: softenedNegativePrompt ?? "",
+          },
+          repairInstruction: null,
+          characterReferenceManifest: keptAngleCharEntries.map((e, idx) => ({
+            index: idx + 1,
+            characterId: null,
+            name: e.name,
+          })),
+          targetAudienceRegion: {
+            code: gridRegion,
+            descriptor:
+              VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[gridRegion],
+          },
+          productLock: {
+            active: productRefUrls.length > 0,
+            productName: gridProductLockFacts?.productName ?? null,
+            productDescription:
+              gridProductLockFacts?.productDescription ?? null,
+          },
+          gridLayout: { panelCount: 9, layout: "3x3" },
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (err) {
+        if (shouldChargeGridCredits) {
+          await refundCredits({
+            userId,
+            amount: gridCreditCost,
+            description: `Refund: multi-angle grid prompt authoring failed (episode #${episodeId}, shot ${input.shotNumber})`,
+            sourceType: "media_image",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
+        if (err instanceof ShotImageActionInsufficientCreditsError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Insufficient credits to author the multi-angle grid prompt",
+          });
+        }
+        if (err instanceof ShotImageActionSchemaValidationError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "Failed to author the multi-angle grid prompt — try again",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to author the multi-angle grid prompt",
+        });
+      }
+
+      // The non-human/species-aware character-identity-map FACT block
+      // (`buildCharacterIdentityMapBlock`) stays a deterministic, unauthored
+      // append here — it is shared verbatim with the planning-time skill
+      // call and is out of scope for this work package (Phase 3 of
+      // `planning/vertical-drama-skill-first-architecture/plan.md`).
+      const gridPromptWithIdentityMap = [
+        gridActionResult.prompt,
         angleGridCharacterIdentityMapBlock,
-        "ABSOLUTELY NO TEXT ANYWHERE IN THE IMAGE: do not render any captions, labels, titles, shot-type names, camera-angle names, panel numbers, watermarks, logos, subtitles, or any other typography or lettering in any panel or in the grid dividers. The grid must contain photographic content ONLY — no on-image text of any kind, in any language, anywhere in the frame.",
       ]
         .filter((part): part is string => Boolean(part))
         .join(" ");
+
       // Final-prompt QC (hard length cap) — enforced on the FINAL grid
-      // prompt (base imagePrompt + fixed grid instructions), since that
-      // concatenated string is what actually gets sent to the provider.
+      // prompt (skill-authored prompt + the identity-map fact block), since
+      // that concatenated string is what actually gets sent to the provider.
       const gridPromptQc = await ensurePromptWithinLimit({
         kind: "image",
-        prompt: gridPrompt,
+        prompt: gridPromptWithIdentityMap,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
         label: `multi-angle grid prompt (episode #${episodeId}, shot ${input.shotNumber})`,
       });
 
-      const identityLockedShotPrompt =
-        keptAngleCharEntries.length > 0
-          ? formatIdentityLockedImagePrompt(softenedImagePrompt, keptAngleCharEntries)
-          : characterRefUrls.length > 0
-            ? `${softenedImagePrompt} Use the attached reference image as this character's exact identity — match face shape, skin tone, hairstyle, and distinguishing features precisely; do not alter identity.`
-            : softenedImagePrompt;
-
-      if (
-        identityLockedShotPrompt !== frame.imagePrompt &&
-        Array.isArray(plan.frames)
-      ) {
-        const updatedFrames = plan.frames.map(
-          (f: { shotNumber: number; imagePrompt: string }) =>
-            f.shotNumber === input.shotNumber
-              ? { ...f, imagePrompt: identityLockedShotPrompt }
-              : f
-        );
-        const updatedPlan = { ...plan, frames: updatedFrames };
-        await db
-          .update(verticalDramaEpisodes)
-          .set({
-            startFramePlan: updatedPlan,
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, episodeId),
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId)
-            )
-          );
-      }
-
-      // Product lock (spec follow-up to tie-in) — same negative-prompt guard
-      // as `generateStartFrameImage`, applied only when this shot actually
-      // has product reference image(s) attached to the grid call.
-      const gridNegativePrompt = [
-        mergeProductLockNegativePrompt(
-          softenedNegativePrompt,
-          productRefUrls.length > 0
-        ),
-        "text, caption, captions, label, labels, title, titles, watermark, watermarks, logo, subtitle, subtitles, typography, lettering, writing, words, on-screen text, panel numbers, shot names, camera angle names",
-      ]
-        .filter((part): part is string => Boolean(part?.trim()))
-        .join(", ");
+      // Product-lock negative-prompt TERM merge (data, not authored prose)
+      // stays a deterministic append here — same convention as
+      // `generateStartFrameImage`; out of scope for this work package (Phase
+      // 3 of the plan referenced above).
+      const gridNegativePrompt = mergeProductLockNegativePrompt(
+        gridActionResult.negativePrompt,
+        productRefUrls.length > 0
+      );
 
       // MCP-transport models — see the matching comment in `generateStartFrameImage`.
       const transportMetadata = await resolveVdMcpTransportMetadata({
@@ -8545,10 +9106,12 @@ export const verticalDramaEpisodesRouter = router({
         idempotencyKey: input.idempotencyKey,
       });
 
-      // Series-level target-audience region — preservation directive so an
-      // image-to-image repair never drifts the character's region/ethnicity
-      // away from the series' configured default (the character's own
-      // description, already baked into the reference image, still wins).
+      // vertical-drama-skill-first-architecture plan, Phase 1 item 2: the
+      // `vertical-drama-shot-image-action` skill authors the ENTIRE repair
+      // prompt (applying the user's free-text `repair_instruction` to the
+      // shot's current prompt while preserving identity/region/product-lock
+      // facts) from these ground-truth facts. Code no longer authors any
+      // instructional prompt text for this call site.
       const repairRegion = await loadSeriesTargetAudienceRegion(
         tenantId,
         userId,
@@ -8560,27 +9123,119 @@ export const verticalDramaEpisodesRouter = router({
       // either (e.g. an instruction like "change the lighting" must not also
       // let the model reinterpret the product sitting in frame).
       const repairIsTieInShot = Boolean(frame.productReferenceAssetIds?.length);
-
-      const repairPrompt = [
-        input.instruction.trim(),
-        VD_CHARACTER_LOCK_INSTRUCTION,
-        "Pose, composition, and framing should follow the requested change; apply ONLY the requested change beyond the identity lock above.",
-        `Preservation directive (region/ethnicity): ${buildTargetAudienceRegionInstruction(repairRegion)}`,
-        repairIsTieInShot ? VD_PRODUCT_LOCK_INSTRUCTION : null,
-      ]
-        .filter((part): part is string => Boolean(part))
-        .join(" ");
-
-      // Character-lock auto-soften — same convention as `generateStartFrameImage`.
-      const effectiveSoftenLevel = input.softenLevel ?? 0;
-      let softenedRepairPrompt = softenCharacterLockPrompt(
-        repairPrompt,
-        effectiveSoftenLevel
-      );
-      let repairNegativePrompt = mergeProductLockNegativePrompt(
-        undefined,
+      const repairProductLockFacts = await loadSeriesProductTieInFacts(
+        tenantId,
+        userId,
+        seriesId,
         repairIsTieInShot
       );
+      const repairCharacterIdentitySources =
+        await resolveShotCharacterIdentitySources(
+          tenantId,
+          seriesId,
+          frame.requiredCharacterRefs
+        );
+      // Strip any leftover identity-lock suffix `generateStartFrameImage` may
+      // have persisted onto this shot's stored prompt (see
+      // `stripExistingIdentityLockSuffix`'s doc comment) before handing it to
+      // the skill as scene ground truth — never repeat stale boilerplate back
+      // as if it were story content.
+      const repairBasePrompt = stripExistingIdentityLockSuffix(
+        frame.imagePrompt
+      );
+
+      // Content-policy-risk soften level (vertical-drama-skill-first-
+      // architecture plan, Phase 1.3) — passed straight through as
+      // `softenLevel` on the SAME `generateShotImageAction({action:
+      // "repair", ...})` call below, which authors the repair edit AND the
+      // soften wording together in one skill call. No separate regex
+      // softening pass runs on the skill's result afterward.
+      const effectiveSoftenLevel = input.softenLevel ?? 0;
+
+      const {
+        generateShotImageAction,
+        InsufficientCreditsError: ShotImageActionInsufficientCreditsError,
+        VdSchemaValidationError: ShotImageActionSchemaValidationError,
+      } = await import("../services/verticalDramaShotImageAction");
+
+      let repairActionResult: { prompt: string; negativePrompt: string };
+      try {
+        repairActionResult = await generateShotImageAction({
+          userId,
+          tenantId,
+          seriesId,
+          action: "repair",
+          softenLevel: effectiveSoftenLevel,
+          shot: {
+            shotNumber: input.shotNumber,
+            currentPrompt: repairBasePrompt,
+            currentNegativePrompt: frame.negativePrompt ?? "",
+          },
+          repairInstruction: input.instruction,
+          characterReferenceManifest: repairCharacterIdentitySources.map(
+            c => ({
+              index: null,
+              characterId: c.characterKey,
+              name: c.name ?? c.characterKey,
+            })
+          ),
+          targetAudienceRegion: {
+            code: repairRegion,
+            descriptor:
+              VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[repairRegion],
+          },
+          productLock: {
+            active: repairIsTieInShot,
+            productName: repairProductLockFacts?.productName ?? null,
+            productDescription:
+              repairProductLockFacts?.productDescription ?? null,
+          },
+          gridLayout: null,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (err) {
+        if (shouldChargeImageCredits) {
+          await refundCredits({
+            userId,
+            amount: imageCreditCost,
+            description: `Refund: image repair prompt authoring failed (episode #${episodeId}, shot ${input.shotNumber})`,
+            sourceType: "media_image",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
+        if (err instanceof ShotImageActionInsufficientCreditsError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Insufficient credits to author the image repair prompt",
+          });
+        }
+        if (err instanceof ShotImageActionSchemaValidationError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to author the image repair prompt — try again",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to author the image repair prompt",
+        });
+      }
+
+      // The skill already authored the softened wording (if any) as part of
+      // the `generateShotImageAction` call above — no separate soften pass
+      // runs on its output.
+      let softenedRepairPrompt = repairActionResult.prompt;
+      let repairNegativePrompt: string | undefined =
+        repairActionResult.negativePrompt || undefined;
 
       // Wave-7D (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
       // — same deterministic append `generateStartFrameImage` already does,
@@ -8622,6 +9277,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: softenedRepairPrompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
@@ -8816,10 +9472,21 @@ export const verticalDramaEpisodesRouter = router({
         configJson: model.configJson,
       });
       const maxReferenceImages = capabilities.maxReferenceImages ?? 0;
-      const orderedReferenceAssetIds = shotReferences
-        .slice()
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map(r => Number(r.mediaAssetId));
+      // Speaker-switch consolidated clips (2026-07-11 redesign) carry one
+      // portrait per additional speaker in `clip.extraReferenceAssetIds`
+      // (ordered by priority, anchor speaker already covered by
+      // `startFrameAssetId` below) — merged IN FRONT OF the shot-level
+      // manual reference list so they're kept first when trimmed to this
+      // model's `maxReferenceImages`. A clip without the field (every clip
+      // predating this task, and every non-speaker-switch clip) behaves
+      // byte-identically: `?? []` contributes nothing.
+      const orderedReferenceAssetIds = [
+        ...(clip.extraReferenceAssetIds ?? []).map(id => Number(id)),
+        ...shotReferences
+          .slice()
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map(r => Number(r.mediaAssetId)),
+      ];
       const trimmedReferenceCount = Math.max(
         0,
         orderedReferenceAssetIds.length - maxReferenceImages
@@ -8896,6 +9563,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: formatted.prompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
@@ -9382,13 +10050,22 @@ export const verticalDramaEpisodesRouter = router({
       const urlsByAssetId = await resolveMediaAssetUrlsByIds(tenantId, userId, [
         approvedMediaAssetId,
       ]);
-      const imageUrl = urlsByAssetId.get(approvedMediaAssetId);
-      if (!imageUrl) {
+      const rawImageUrl = urlsByAssetId.get(approvedMediaAssetId);
+      if (!rawImageUrl) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "ต้องมีภาพหลักของช็อตก่อน",
         });
       }
+      // `resolveMediaAssetUrlsByIds` returns `mediaAssets.originalUrl` as
+      // stored — a relative storage path (e.g. `/api/storage/files/...`).
+      // This URL goes straight into a vision-capable LLM's `image_url`
+      // content part below (`buildVisionAwareContent`), which the provider
+      // rejects as an invalid URL format unless it's absolute — same
+      // relative-to-absolute conversion every other reference-image call
+      // site in this router already applies via `mediaGenerationService`'s
+      // internal `resolveReferenceUrl`.
+      const imageUrl = resolveReferenceUrl(rawImageUrl, ctx.publicUrl ?? undefined);
 
       // Story-density reform (spec §7.7.2 Layer 3/4, section-13, added
       // 2026-07-07) — gates BOTH the beat-index dialogue mapping and the
@@ -9398,11 +10075,23 @@ export const verticalDramaEpisodesRouter = router({
       const { speechBudgetEnabled } =
         await resolveVerticalDramaDensityFlags(tenantId);
 
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W7, router-wiring package, added 2026-07-11) — resolved once for
+      // this mutation.
+      const retentionHooksEnabled =
+        await resolveVerticalDramaRetentionHooksFlag(tenantId);
+
       // Shot context: description/camera/emotion from the storyboard shot.
       const storyboard = row.storyboard as VerticalDramaShotgrid | null;
       const storyboardShot = storyboard?.shots?.find(
         s => s.shotNumber === input.shotNumber
       );
+      // Retention hooks (W7) — this episode's total shot count, used ONLY to
+      // derive `is_retention_ending_shot` (see
+      // `GenerateVerticalDramaShotVideoPromptParams.totalShotCount`'s doc
+      // comment). `undefined` whenever the storyboard has no shots yet, same
+      // as every other storyboard-derived optional fact in this mutation.
+      const shotVideoTotalShotCount = storyboard?.shots?.length || undefined;
       // Additive/defensive: today's shotgrid output does not populate this
       // field yet (W1-B shotgrid schema superset, a different file/wave) —
       // read tolerantly off the raw shot object so this wiring activates
@@ -9424,6 +10113,21 @@ export const verticalDramaEpisodesRouter = router({
       // `product_tie_in_plan.tie_ins[]`. Drives the mandatory natural
       // product/benefit mention in `generateVerticalDramaShotVideoPrompt`.
       const scriptPayload = row.script as Record<string, unknown> | null;
+      // Retention hooks (W7) — grounding TEXT context for the opening/
+      // retention-ending shot rules (see `GenerateVerticalDramaShotVideoPromptParams
+      // .hookText`/`.retentionLoopDescription`'s own doc comments). Read
+      // straight off the already-loaded `scriptPayload` — tolerant of a
+      // pre-retention-hooks script artifact that has neither field.
+      const shotVideoHookText =
+        typeof scriptPayload?.hook === "string" ? scriptPayload.hook : undefined;
+      const shotVideoRetentionLoopDescription = (() => {
+        const retentionLoop = scriptPayload?.retention_loop as
+          | Record<string, unknown>
+          | undefined;
+        return typeof retentionLoop?.description === "string"
+          ? retentionLoop.description
+          : undefined;
+      })();
       const tieInPlacements = extractShotProductPlacements(
         scriptPayload?.product_tie_in_plan
       );
@@ -9458,11 +10162,97 @@ export const verticalDramaEpisodesRouter = router({
             : undefined;
       }
 
+      // Hoisted from further below (planning/`polished-toasting-gadget.md`
+      // — was previously computed only for `episodePlanContext`, right
+      // before the `subShotDecision?.needsSplit` branch) so its result
+      // (`shotEpisodePlanItem`) is also available for
+      // `deepDraftShotForDialogue` below, BEFORE `resolveShotDialogueLines`
+      // is called. Pure code-motion — same query, same position relative to
+      // `row`/`seriesId`/`tenantId`/`userId` being already in scope, no new
+      // DB round trip added.
+      const [localeSeriesRow] = await db
+        .select({ locale: verticalDramaSeries.locale, bible: verticalDramaSeries.bible })
+        .from(verticalDramaSeries)
+        .where(
+          and(
+            eq(verticalDramaSeries.id, seriesId),
+            eq(verticalDramaSeries.tenantId, tenantId),
+            eq(verticalDramaSeries.userId, userId)
+          )
+        )
+        .limit(1);
+
+      // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
+      // scene-setting plan context, resolved from the ALREADY-loaded
+      // `localeSeriesRow.bible` above (no extra DB round trip).
+      //
+      // Cliffhanger-bleed fix (confirmed production bug, 2026-07-11):
+      // `cliffhangerLine` is intentionally the NEXT episode's teased theme
+      // (good serialized-drama writing — see `readItemCliffhangerLine`'s own
+      // doc comment / the story bible), so it must NEVER be included in the
+      // context sent to THIS per-shot generator. This call site builds
+      // `episodePlanContext` for `generateVerticalDramaShotVideoPrompt`
+      // below, which runs once per shot (`generateShotVideoPrompt` mutation)
+      // — including the next episode's cliffhanger here meant every single
+      // shot's independent LLM call saw next-episode content as "reference"
+      // context, and cheaper models (observed: `openai/gpt-5.4-nano`) did
+      // not reliably honor the "reference only, do not copy" instruction,
+      // bleeding next-episode dialogue/themes into unrelated current-episode
+      // shots (confirmed: series 6 / episode 41, shots 2/3/6). A single shot
+      // never needs forward-looking plot info — `storyboardShot` already
+      // supplies everything this generation needs — so `cliffhangerLine` is
+      // deliberately omitted (`undefined`) here. `logline`/`keyBeats`/
+      // `workingTitle` are legitimate current-episode continuity grounding
+      // and stay included. Contrast with the whole-EPISODE-PACK generator
+      // (`generateVideoMotionPromptPack`, built in
+      // `verticalDramaEpisodePipeline.ts`'s `generateRealMotionPromptPack`),
+      // which renders this context as ONE global block for the whole
+      // episode (not per-shot) and legitimately keeps the cliffhanger to
+      // shape the episode's own ending beat — see the reasoning comment at
+      // `verticalDramaVideoMotionPromptGeneration.ts`'s `buildUserPrompt`.
+      const { getActiveBreakdown, readItemShotDrafts } = await import(
+        "../services/verticalDramaStoryBible"
+      );
+      const shotEpisodePlanItem = getActiveBreakdown(
+        (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
+      ).find(item => item.episodeNumber === Number(row.episodeNumber));
+      const shotEpisodePlanContext = shotEpisodePlanItem
+        ? formatStoryScriptEpisodePlanContext(
+            resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
+            {
+              episodeNumber: shotEpisodePlanItem.episodeNumber,
+              workingTitle: shotEpisodePlanItem.workingTitle,
+              logline: shotEpisodePlanItem.logline,
+              keyBeats: shotEpisodePlanItem.keyBeats,
+              cliffhangerLine: undefined,
+            }
+          )
+        : undefined;
+
+      // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+      // — gated behind the SAME `verticalDramaSeriesDeepStoryDrafts` tenant
+      // flag convention already used for `shotSourceBeatIndexes` above
+      // (`speechBudgetEnabled`). Reuses `shotEpisodePlanItem` (just resolved
+      // above) — no additional DB read. `null` when the flag is off, or this
+      // series/episode/shot has no deep-drafted `shotDrafts` entry yet —
+      // `resolveShotDialogueLines` treats `null` identically to `undefined`
+      // (falls straight through to the pre-existing fallback chain).
+      const deepStoryDraftsEnabledForDialogue =
+        await resolveVerticalDramaDeepStoryDraftsFlag(tenantId);
+      const deepDraftShotForDialogue: VdDeepDraftShotDraft | null =
+        deepStoryDraftsEnabledForDialogue && shotEpisodePlanItem
+          ? ((readItemShotDrafts(shotEpisodePlanItem) ?? []).find(
+              s => s.shot_number === input.shotNumber
+            ) ?? null)
+          : null;
+
       // Dialogue lines matching this shot — fallback chain (2026-07-06 fix:
       // dialogue was silently dropped whenever the `dialogue_audio_plan`
       // pipeline stage was never run, even though the script already has
       // dialogue for every scene — see `resolveShotDialogueLines`'s doc
-      // comment for the full chain order).
+      // comment for the full chain order; source 0, the deep-drafted
+      // canonical dialogue above, was added 2026-07-11 — see that
+      // function's doc comment for the full incident).
       const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
       const matchingClip = pack?.clips?.find(c =>
         c.sourceShotNumbers?.includes(input.shotNumber)
@@ -9481,6 +10271,7 @@ export const verticalDramaEpisodesRouter = router({
         storyboardShotCount: storyboard?.shots?.length,
         knownSpeakerKeys: knownSpeakerKeysForShot,
         sourceBeatIndexes: shotSourceBeatIndexes,
+        deepDraftShot: deepDraftShotForDialogue,
       });
 
       // Speaker-aware sub-shots (speaker-aware sub-shots task, Package 3) —
@@ -9536,8 +10327,23 @@ export const verticalDramaEpisodesRouter = router({
         shotVideoCharacterIdentitySources
       );
 
+      // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+      // — a shot whose dialogue was actually resolved from the Overview
+      // page's canonical source above (`deepDraftShotForDialogue`, either an
+      // explicit `silence_intent` or one-or-more `dialogue_lines`) must never
+      // be handed to this heuristic quality gate: a human already
+      // authored/confirmed this exact dialogue (or explicitly intended
+      // silence), so it must never be auto-rewritten by
+      // `generateVerticalDramaClipDialogue` just because it happens to look
+      // "underfilled"/duplicated to the heuristic below.
+      const dialogueResolvedFromCanonicalSource =
+        deepDraftShotForDialogue !== null &&
+        (deepDraftShotForDialogue.silence_intent !== undefined ||
+          deepDraftShotForDialogue.dialogue_lines.length > 0);
+
       let extraDialogueCreditsUsed = 0;
       if (
+        !dialogueResolvedFromCanonicalSource &&
         shouldRegenerateDialogueForVideoPrompt({
           pack,
           shotNumber: input.shotNumber,
@@ -9607,40 +10413,6 @@ export const verticalDramaEpisodesRouter = router({
           )
         : null;
 
-      const [localeSeriesRow] = await db
-        .select({ locale: verticalDramaSeries.locale, bible: verticalDramaSeries.bible })
-        .from(verticalDramaSeries)
-        .where(
-          and(
-            eq(verticalDramaSeries.id, seriesId),
-            eq(verticalDramaSeries.tenantId, tenantId),
-            eq(verticalDramaSeries.userId, userId)
-          )
-        )
-        .limit(1);
-
-      // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
-      // scene-setting plan context, resolved from the ALREADY-loaded
-      // `localeSeriesRow.bible` above (no extra DB round trip).
-      const { getActiveBreakdown, readItemCliffhangerLine } = await import(
-        "../services/verticalDramaStoryBible"
-      );
-      const shotEpisodePlanItem = getActiveBreakdown(
-        (localeSeriesRow?.bible as Record<string, unknown> | null) ?? null
-      ).find(item => item.episodeNumber === Number(row.episodeNumber));
-      const shotEpisodePlanContext = shotEpisodePlanItem
-        ? formatStoryScriptEpisodePlanContext(
-            resolveStoryScriptLangFromLocale(localeSeriesRow?.locale),
-            {
-              episodeNumber: shotEpisodePlanItem.episodeNumber,
-              workingTitle: shotEpisodePlanItem.workingTitle,
-              logline: shotEpisodePlanItem.logline,
-              keyBeats: shotEpisodePlanItem.keyBeats,
-              cliffhangerLine: readItemCliffhangerLine(shotEpisodePlanItem),
-            }
-          )
-        : undefined;
-
       if (subShotDecision?.needsSplit) {
         return generateAndPersistSplitShotVideoPrompt({
           tenantId,
@@ -9693,6 +10465,12 @@ export const verticalDramaEpisodesRouter = router({
               }
             : undefined,
         },
+        // Retention hooks (W7) — omitted (all four) whenever the tenant flag
+        // is off, reproducing the exact prior prompt byte-for-byte.
+        retentionHooksEnabled,
+        totalShotCount: shotVideoTotalShotCount,
+        hookText: shotVideoHookText,
+        retentionLoopDescription: shotVideoRetentionLoopDescription,
         selectedVideoModelId: selectedVideoModel.id,
         selectedVideoModel,
         locale: normalizeVerticalDramaSeriesLocale(localeSeriesRow?.locale),
@@ -9751,6 +10529,7 @@ export const verticalDramaEpisodesRouter = router({
         prompt: result.prompt,
         userId,
         tenantId,
+        seriesId,
         idempotencyKey: input.idempotencyKey
           ? `${input.idempotencyKey}:prompt-qc`
           : undefined,
@@ -9783,85 +10562,154 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
+      // Persist-pin (planning/`polished-toasting-gadget.md`) — the
+      // video-prompt LLM's own `dialogue[]` output field is an ECHO of the
+      // resolved `dialogueLines` sent into it above, not a guaranteed
+      // pass-through (models occasionally reword/paraphrase a spoken line
+      // while writing the surrounding motion prompt). Pin the PERSISTED (and
+      // returned) dialogue back to `dialogueLines` verbatim — the exact
+      // value that was resolved to feed the LLM, whether that came from the
+      // new canonical Overview-page source (source 0) or any pre-existing
+      // fallback source — so it can never silently drift from whatever the
+      // user actually sees/edits at the Overview page. The ONE exception:
+      // when a translation is actually required (`dialogueLanguage` set to a
+      // non-Thai locale), the LLM's own translated `dialogue[]` remains
+      // authoritative — there is no source-language line to pin back to in
+      // that case. Also skipped when `dialogueLines` is empty (this shot has
+      // no resolved source dialogue at all, so there is nothing to pin to —
+      // whatever `result.dialogue` the LLM invented, if anything, is kept).
+      const shouldPinDialogueToResolvedSource =
+        dialogueLines.length > 0 &&
+        (pack?.dialogueLanguage === "th" || pack?.dialogueLanguage === undefined);
+      const persistedDialogue = shouldPinDialogueToResolvedSource
+        ? dialogueLines
+        : result.dialogue;
+
       // Persist onto the matching clip — create a minimal clip entry if the
       // pack exists but has no matching clip, or a minimal pack if the pack
       // itself is entirely absent (mirrors `setEpisodeModelSelection`'s
       // create-minimal-pack convention so the user's selected video model
       // stays intact).
-      let updatedPack: VerticalDramaMotionPromptPack;
-      if (pack) {
-        const existingIndex = pack.clips.findIndex(c =>
-          c.sourceShotNumbers?.includes(input.shotNumber)
-        );
-        const updatedClips = pack.clips.slice();
-        if (existingIndex === -1) {
-          updatedClips.push({
-            clipNumber: input.shotNumber,
-            sourceShotNumbers: [input.shotNumber],
-            prompt: result.prompt,
-            negativeMotionPrompt: result.negativeMotionPrompt,
-            durationSeconds: storyboardShot?.durationSeconds ?? 8,
-            dialogue: result.dialogue,
-            requiredDisclosure: result.requiredDisclosure,
-            audioDirection: result.audioDirection,
-          });
-        } else {
-          updatedClips[existingIndex] = {
-            ...updatedClips[existingIndex],
-            prompt: result.prompt,
-            negativeMotionPrompt: result.negativeMotionPrompt,
-            dialogue: result.dialogue,
-            requiredDisclosure: result.requiredDisclosure,
-            audioDirection: result.audioDirection,
-          };
-        }
-        // Vertical Drama task #36 — persist the RAW user preference
-        // (independent of the rollout gate) so it survives the flag
-        // switching on later; see `requestedNativeAudioEnabled`'s own doc
-        // comment above.
-        updatedPack = {
-          ...pack,
-          clips: updatedClips,
-          nativeAudioEnabled: requestedNativeAudioEnabled,
-        };
-      } else {
-        updatedPack = {
-          selectedVideoModelId: selectedVideoModel.id,
-          durationProfileId:
-            row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
-          motionMode: "first_frame_to_video",
-          nativeAudioEnabled: requestedNativeAudioEnabled,
-          clips: [
+      //
+      // 2026-07-11 lost-update race fix (bug report: "clicking generate on
+      // several shots at once — only some shots show a result, no error").
+      // This mutation is slow (LLM vision call above can take many
+      // seconds), and every call for this episode read `pack` from the SAME
+      // `loadOwnedEpisode` snapshot taken near the top of this procedure.
+      // When two shots' calls overlap, both built their `updatedClips` off
+      // that same stale `pack.clips` and then did a blind whole-column
+      // `UPDATE ... SET motionPromptPack = updatedPack`, so whichever call's
+      // write landed LAST silently clobbered the earlier call's
+      // just-persisted clip — each individual call still returned 200 (no
+      // TRPCError, hence no toast), so the data loss was invisible until
+      // the next `getEpisodeDetail` refetch. Fix: lock the row and re-read
+      // the FRESHEST `motionPromptPack` inside a transaction immediately
+      // before merging + writing, so the merge is always based on
+      // up-to-date data and concurrent writers serialize instead of
+      // clobbering each other. The slow LLM call itself still runs OUTSIDE
+      // the transaction/lock (only the final merge+write is atomic).
+      await db.transaction(async tx => {
+        const [freshRow] = await tx
+          .select({ motionPromptPack: verticalDramaEpisodes.motionPromptPack })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          )
+          .for("update")
+          .limit(1);
+        const freshPack =
+          (freshRow?.motionPromptPack as VerticalDramaMotionPromptPack | null) ??
+          pack;
+
+        let updatedPack: VerticalDramaMotionPromptPack;
+        if (freshPack) {
+          // Replace, don't in-place-overwrite: remove every existing clip
+          // for this shot (whether it was previously a single clip or a
+          // prior split's 2-3 sub-shot clips, matched by EITHER
+          // `sourceShotNumbers` OR `parentShotNumber` — a stale split
+          // sub-shot clip's `sourceShotNumbers` still includes this shot
+          // even though it's not the first match) before inserting exactly
+          // ONE fresh clip. This mirrors
+          // `generateAndPersistSplitShotVideoPrompt`'s own
+          // "regenerate overwrites" convention, and is required here
+          // because a shot can transition from split -> single between two
+          // calls (the split decision is recomputed fresh every call), in
+          // which case a `findIndex`-based in-place overwrite only touches
+          // the FIRST matching sub-shot clip and leaves the rest behind as
+          // stale duplicates (2026-07-11 dup-clip bug fix).
+          const remainingClips = freshPack.clips.filter(
+            c =>
+              !(
+                c.sourceShotNumbers?.includes(input.shotNumber) ||
+                c.parentShotNumber === input.shotNumber
+              )
+          );
+          const updatedClips = [
+            ...remainingClips,
             {
               clipNumber: input.shotNumber,
               sourceShotNumbers: [input.shotNumber],
               prompt: result.prompt,
               negativeMotionPrompt: result.negativeMotionPrompt,
               durationSeconds: storyboardShot?.durationSeconds ?? 8,
-              dialogue: result.dialogue,
+              dialogue: persistedDialogue,
               requiredDisclosure: result.requiredDisclosure,
               audioDirection: result.audioDirection,
             },
-          ],
-          warnings: [],
-        };
-      }
+          ];
+          // Vertical Drama task #36 — persist the RAW user preference
+          // (independent of the rollout gate) so it survives the flag
+          // switching on later; see `requestedNativeAudioEnabled`'s own doc
+          // comment above.
+          updatedPack = {
+            ...freshPack,
+            clips: updatedClips,
+            nativeAudioEnabled: requestedNativeAudioEnabled,
+          };
+        } else {
+          updatedPack = {
+            selectedVideoModelId: selectedVideoModel.id,
+            durationProfileId:
+              row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
+            motionMode: "first_frame_to_video",
+            nativeAudioEnabled: requestedNativeAudioEnabled,
+            clips: [
+              {
+                clipNumber: input.shotNumber,
+                sourceShotNumbers: [input.shotNumber],
+                prompt: result.prompt,
+                negativeMotionPrompt: result.negativeMotionPrompt,
+                durationSeconds: storyboardShot?.durationSeconds ?? 8,
+                dialogue: persistedDialogue,
+                requiredDisclosure: result.requiredDisclosure,
+                audioDirection: result.audioDirection,
+              },
+            ],
+            warnings: [],
+          };
+        }
 
-      await db
-        .update(verticalDramaEpisodes)
-        .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
-        .where(
-          and(
-            eq(verticalDramaEpisodes.id, episodeId),
-            eq(verticalDramaEpisodes.tenantId, tenantId),
-            eq(verticalDramaEpisodes.userId, userId),
-            eq(verticalDramaEpisodes.seriesId, seriesId)
-          )
-        );
+        await tx
+          .update(verticalDramaEpisodes)
+          .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          );
+      });
 
       return {
         prompt: result.prompt,
-        dialogue: result.dialogue,
+        dialogue: persistedDialogue,
         creditsUsed: result.creditsUsed + extraDialogueCreditsUsed,
         usedVision: result.usedVision,
         audioDirection: result.audioDirection,
@@ -9920,86 +10768,145 @@ export const verticalDramaEpisodesRouter = router({
         c.sourceShotNumbers?.includes(input.shotNumber)
       );
 
-      // Existing (possibly broken) dialogue + nearby script scene dialogue —
-      // passed only as TONE/CONTINUITY context, never copied verbatim; see
-      // `generateVerticalDramaClipDialogue`'s system prompt for the explicit
-      // "do not reuse a broken/fragment line as-is" instruction.
-      const knownSpeakerKeysForDialogueRegen = await loadSeriesKnownSpeakerKeys(
-        tenantId,
-        seriesId
-      );
-      const existingDialogueLines = resolveShotDialogueLines({
-        shotNumber: input.shotNumber,
-        matchingClip,
-        dialogueAudioPlan: row.dialogueAudioPlan as {
-          dialogue_lines?: Array<Record<string, unknown>>;
-        } | null,
-        script: row.script as Record<string, unknown> | null,
-        storyboardShotCount: storyboard?.shots?.length,
-        knownSpeakerKeys: knownSpeakerKeysForDialogueRegen,
-      });
-      const sceneDialogueContext = existingDialogueLines
-        .map(l =>
-          l.characterKey ? `${l.characterKey}: "${l.lineTh}"` : `"${l.lineTh}"`
-        )
-        .filter(l => l.length > 0);
-
-      // Character identity map — same convention as `generateShotVideoPrompt`,
-      // so the dialogue writer knows exactly which character keys are valid
-      // speakers for this shot (used by the parser-cleanup rules too).
-      const clipDialogueCharacterIdentitySources =
-        await resolveShotCharacterIdentitySources(
-          tenantId,
-          seriesId,
-          frame?.requiredCharacterRefs
+      // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
+      // — resolved BEFORE any LLM/credit/rate-limit work below (same gate/
+      // resolution shape as `generateShotVideoPrompt`'s
+      // `deepDraftShotForDialogue`): when this shot carries a canonical
+      // dialogue (or an explicit `silence_intent`) at the Overview page,
+      // this mutation always syncs to / rejects based on THAT source alone
+      // and never calls the LLM, confirmed with the user — "สร้างบทพูดใหม่"
+      // is not a substitute editor for Overview-authored dialogue.
+      const deepStoryDraftsEnabledForRegen =
+        await resolveVerticalDramaDeepStoryDraftsFlag(tenantId);
+      let deepDraftShotForRegen: VdDeepDraftShotDraft | null = null;
+      if (deepStoryDraftsEnabledForRegen) {
+        const [regenLocaleSeriesRow] = await db
+          .select({ bible: verticalDramaSeries.bible })
+          .from(verticalDramaSeries)
+          .where(
+            and(
+              eq(verticalDramaSeries.id, seriesId),
+              eq(verticalDramaSeries.tenantId, tenantId),
+              eq(verticalDramaSeries.userId, userId)
+            )
+          )
+          .limit(1);
+        const { getActiveBreakdown, readItemShotDrafts } = await import(
+          "../services/verticalDramaStoryBible"
         );
-      const clipDialogueCharacterIdentityMapBlock =
-        buildCharacterIdentityMapBlock(
-          frame?.requiredCharacterRefs ?? [],
-          clipDialogueCharacterIdentitySources
-        );
-      const shotDurationSeconds =
-        matchingClip?.durationSeconds ?? storyboardShot?.durationSeconds ?? 8;
+        const regenEpisodePlanItem = getActiveBreakdown(
+          (regenLocaleSeriesRow?.bible as Record<string, unknown> | null) ??
+            null
+        ).find(item => item.episodeNumber === Number(row.episodeNumber));
+        deepDraftShotForRegen = regenEpisodePlanItem
+          ? ((readItemShotDrafts(regenEpisodePlanItem) ?? []).find(
+              s => s.shot_number === input.shotNumber
+            ) ?? null)
+          : null;
+      }
 
-      let result;
-      try {
-        result = await generateVerticalDramaClipDialogue({
-          userId,
-          tenantId,
-          seriesId,
-          episodeId,
-          shotNumber: input.shotNumber,
-          shotContext: {
-            description: storyboardShot?.description,
-            camera: storyboardShot?.cameraSetup,
-            durationSeconds: shotDurationSeconds,
-            characterIdentityMap: clipDialogueCharacterIdentityMapBlock,
-            sceneDialogueContext: sceneDialogueContext.length
-              ? sceneDialogueContext
-              : undefined,
-          },
-          instruction: input.instruction,
-          dialogueLanguage: pack?.dialogueLanguage,
-          thaiAccent: pack?.thaiAccent,
-          idempotencyKey: input.idempotencyKey,
+      if (deepDraftShotForRegen?.silence_intent) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "ช็อตนี้ถูกกำหนดไว้ว่าตั้งใจไม่มีบทพูด — แก้ไขได้ที่หน้าภาพรวม (Overview)",
         });
-      } catch (err) {
-        if (err instanceof ClipDialogueInsufficientCreditsError) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "เครดิตไม่พอ" });
-        }
-        if (err instanceof ClipDialogueRateLimitExceededError) {
-          throw new TRPCError({
-            code: "TOO_MANY_REQUESTS",
-            message: err.message,
+      }
+      const canonicalDialogueLinesForRegen: ShotDialogueLine[] | null =
+        deepDraftShotForRegen && deepDraftShotForRegen.dialogue_lines.length > 0
+          ? deepDraftShotForRegen.dialogue_lines
+              .map(mapDeepDraftDialogueLineToShotDialogueLine)
+              .filter(l => l.lineTh.trim().length > 0)
+          : null;
+
+      let result: { dialogue: ShotDialogueLine[]; creditsUsed: number };
+      const syncedFromCanonical = canonicalDialogueLinesForRegen !== null;
+      if (canonicalDialogueLinesForRegen) {
+        // Sync-only: no LLM call, no credits, `input.instruction` (if any)
+        // is deliberately ignored — the canonical Overview-page dialogue
+        // always wins.
+        result = { dialogue: canonicalDialogueLinesForRegen, creditsUsed: 0 };
+      } else {
+        // Existing (possibly broken) dialogue + nearby script scene dialogue —
+        // passed only as TONE/CONTINUITY context, never copied verbatim; see
+        // `generateVerticalDramaClipDialogue`'s system prompt for the explicit
+        // "do not reuse a broken/fragment line as-is" instruction.
+        const knownSpeakerKeysForDialogueRegen = await loadSeriesKnownSpeakerKeys(
+          tenantId,
+          seriesId
+        );
+        const existingDialogueLines = resolveShotDialogueLines({
+          shotNumber: input.shotNumber,
+          matchingClip,
+          dialogueAudioPlan: row.dialogueAudioPlan as {
+            dialogue_lines?: Array<Record<string, unknown>>;
+          } | null,
+          script: row.script as Record<string, unknown> | null,
+          storyboardShotCount: storyboard?.shots?.length,
+          knownSpeakerKeys: knownSpeakerKeysForDialogueRegen,
+        });
+        const sceneDialogueContext = existingDialogueLines
+          .map(l =>
+            l.characterKey ? `${l.characterKey}: "${l.lineTh}"` : `"${l.lineTh}"`
+          )
+          .filter(l => l.length > 0);
+
+        // Character identity map — same convention as `generateShotVideoPrompt`,
+        // so the dialogue writer knows exactly which character keys are valid
+        // speakers for this shot (used by the parser-cleanup rules too).
+        const clipDialogueCharacterIdentitySources =
+          await resolveShotCharacterIdentitySources(
+            tenantId,
+            seriesId,
+            frame?.requiredCharacterRefs
+          );
+        const clipDialogueCharacterIdentityMapBlock =
+          buildCharacterIdentityMapBlock(
+            frame?.requiredCharacterRefs ?? [],
+            clipDialogueCharacterIdentitySources
+          );
+        const shotDurationSeconds =
+          matchingClip?.durationSeconds ?? storyboardShot?.durationSeconds ?? 8;
+
+        try {
+          result = await generateVerticalDramaClipDialogue({
+            userId,
+            tenantId,
+            seriesId,
+            episodeId,
+            shotNumber: input.shotNumber,
+            shotContext: {
+              description: storyboardShot?.description,
+              camera: storyboardShot?.cameraSetup,
+              durationSeconds: shotDurationSeconds,
+              characterIdentityMap: clipDialogueCharacterIdentityMapBlock,
+              sceneDialogueContext: sceneDialogueContext.length
+                ? sceneDialogueContext
+                : undefined,
+            },
+            instruction: input.instruction,
+            dialogueLanguage: pack?.dialogueLanguage,
+            thaiAccent: pack?.thaiAccent,
+            idempotencyKey: input.idempotencyKey,
           });
+        } catch (err) {
+          if (err instanceof ClipDialogueInsufficientCreditsError) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "เครดิตไม่พอ" });
+          }
+          if (err instanceof ClipDialogueRateLimitExceededError) {
+            throw new TRPCError({
+              code: "TOO_MANY_REQUESTS",
+              message: err.message,
+            });
+          }
+          if (err instanceof ClipDialogueSchemaValidationError) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "สร้างบทพูดใหม่ไม่สำเร็จ ลองอีกครั้ง",
+            });
+          }
+          throw err;
         }
-        if (err instanceof ClipDialogueSchemaValidationError) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "สร้างบทพูดใหม่ไม่สำเร็จ ลองอีกครั้ง",
-          });
-        }
-        throw err;
       }
 
       // Persist onto the matching clip's `dialogue` — OVERWRITES any existing
@@ -10008,24 +10915,48 @@ export const verticalDramaEpisodesRouter = router({
       // `generateShotVideoPrompt`'s create-minimal-pack convention.
       let updatedPack: VerticalDramaMotionPromptPack;
       if (pack) {
-        const existingIndex = pack.clips.findIndex(c =>
-          c.sourceShotNumbers?.includes(input.shotNumber)
+        // Replace, don't in-place-overwrite: this mutation has no concept
+        // of per-sub-shot dialogue (the caller only ever passes a bare
+        // `shotNumber`, never a `subShotNumber` — see
+        // `handleRegenerateClipDialogue` in `VerticalDramaEpisodePage.tsx`),
+        // so writing a dialogue result here always COLLAPSES whatever is
+        // currently on this shot (one single clip, or a stale/live split's
+        // 2-3 sub-shot clips) down to exactly ONE clip. A `findIndex`-based
+        // in-place overwrite only touched the FIRST matching sub-shot clip
+        // and left any remaining sub-shot clips behind as stale duplicates
+        // (2026-07-11 dup-clip bug fix) — mirrors
+        // `generateAndPersistSplitShotVideoPrompt`'s own
+        // "regenerate overwrites" filter convention.
+        //
+        // The survivor is seeded from `matchingClip` (the first match,
+        // i.e. whichever sub-shot the user was actually looking at) so its
+        // `prompt`/other fields carry over as the merged clip's baseline —
+        // then `parentShotNumber`/`subShotNumber` are cleared since it's no
+        // longer a sub-shot once collapsed.
+        const remainingClips = pack.clips.filter(
+          c =>
+            !(
+              c.sourceShotNumbers?.includes(input.shotNumber) ||
+              c.parentShotNumber === input.shotNumber
+            )
         );
-        const updatedClips = pack.clips.slice();
-        if (existingIndex === -1) {
-          updatedClips.push({
+        const { parentShotNumber: _droppedParentShotNumber, subShotNumber: _droppedSubShotNumber, ...matchingClipRest } =
+          matchingClip ?? {};
+        const updatedClips = [
+          ...remainingClips,
+          {
+            ...matchingClipRest,
+            // Explicit overrides AFTER the spread — must win over whatever
+            // `matchingClip` (the pre-collapse sub-shot) happened to carry,
+            // since the collapsed clip is scoped to the whole shot, not the
+            // sub-shot `matchingClip` came from.
             clipNumber: input.shotNumber,
             sourceShotNumbers: [input.shotNumber],
             prompt: matchingClip?.prompt ?? "",
             durationSeconds: storyboardShot?.durationSeconds ?? 8,
             dialogue: result.dialogue,
-          });
-        } else {
-          updatedClips[existingIndex] = {
-            ...updatedClips[existingIndex],
-            dialogue: result.dialogue,
-          };
-        }
+          },
+        ];
         updatedPack = { ...pack, clips: updatedClips };
       } else {
         const fallbackVideoModel = await resolveEpisodeVideoModel(null);
@@ -10062,6 +10993,12 @@ export const verticalDramaEpisodesRouter = router({
       return {
         dialogue: result.dialogue,
         creditsUsed: result.creditsUsed,
+        // Additive (planning/`polished-toasting-gadget.md`) — `true` only on
+        // the sync-only path above, so the frontend can swap the toast copy
+        // from "generated new dialogue" to "synced from the Overview page".
+        // Omitted (not `false`) on the pre-existing LLM path, matching this
+        // field's own "additive optional" contract.
+        ...(syncedFromCanonical ? { synced: true } : {}),
       };
     }),
 
@@ -10333,6 +11270,11 @@ export const verticalDramaEpisodesRouter = router({
         await resolveVerticalDramaDensityFlags(tenantId);
       const { qualityLoopV2Enabled, tieInQcEnabled, storyLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`
+      // W6, router-wiring package, added 2026-07-11) — resolved once for
+      // this mutation, same convention as every other flag above.
+      const retentionHooksEnabled =
+        await resolveVerticalDramaRetentionHooksFlag(tenantId);
       const resolvedPolicy = resolveQualityPolicy(
         (qualityReviewSeriesRow?.qualityPolicy as Partial<VerticalDramaQualityPolicy> | null) ??
           null,
@@ -10366,6 +11308,22 @@ export const verticalDramaEpisodesRouter = router({
           ? { ...seriesTieInConfig, enabled: true as const }
           : undefined;
 
+      // Retention hooks (W6) — same conditional-computation convention as
+      // `densityMetrics` above: only built when the flag is actually on, so
+      // a flag-off request never even calls `computeRetentionMetrics` or
+      // queries prior episodes.
+      const retentionMetrics: VerticalDramaRetentionMetrics | undefined =
+        retentionHooksEnabled
+          ? computeRetentionMetrics({
+              script,
+              storyboard,
+              recentRetentionLoopTypes: await loadRecentVerticalDramaRetentionLoopTypes(
+                owner,
+                row.episodeNumber
+              ),
+            })
+          : undefined;
+
       let outcome: {
         review: EpisodeQualityReviewOutput;
         creditsUsed: number;
@@ -10393,6 +11351,10 @@ export const verticalDramaEpisodesRouter = router({
           // (story dims still scored as usual). Omitted (byte-identical
           // prompt) whenever the tenant flag is off.
           reviewMode: storyLockEnabled ? "execution" : undefined,
+          // Retention hooks (W6) — omitted (both, byte-identical prompt)
+          // whenever the tenant flag is off.
+          scoreRetentionDimensions: retentionHooksEnabled,
+          retentionMetrics,
         });
       } catch (err) {
         if (err instanceof QualityReviewInsufficientCreditsError) {
@@ -10517,6 +11479,14 @@ export const verticalDramaEpisodesRouter = router({
 
       const { qualityLoopV2Enabled, storyLockEnabled } =
         await resolveVerticalDramaQualityLoopFlags(tenantId);
+      // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md`,
+      // router-wiring package, added 2026-07-11) — resolved ONCE for this
+      // mutation, reused by both the repair loop below and the auto
+      // re-review call. `runApplyQualityReviewSuggestionsLoop` resolves its
+      // own copy internally (separate function, separate request-scoped
+      // resolution), same convention as `storyLockEnabled` above.
+      const retentionHooksEnabled =
+        await resolveVerticalDramaRetentionHooksFlag(tenantId);
 
       if (input.loop) {
         if (qualityLoopV2Enabled) {
@@ -10556,7 +11526,8 @@ export const verticalDramaEpisodesRouter = router({
             owner,
             group.stage,
             instruction,
-            storyLockEnabled
+            storyLockEnabled,
+            retentionHooksEnabled
           );
         if (storyLockViolated) {
           storyLockRejectionsThisApply++;
@@ -10595,6 +11566,21 @@ export const verticalDramaEpisodesRouter = router({
               )
             )
             .limit(1);
+          // Retention hooks (W6) — same conditional-computation convention
+          // as the loop's `effects.runReview` above: only built when the
+          // flag is actually on.
+          const reReviewRetentionMetrics: VerticalDramaRetentionMetrics | undefined =
+            retentionHooksEnabled
+              ? computeRetentionMetrics({
+                  script,
+                  storyboard,
+                  recentRetentionLoopTypes:
+                    await loadRecentVerticalDramaRetentionLoopTypes(
+                      owner,
+                      refreshedRow.episodeNumber
+                    ),
+                })
+              : undefined;
           const reReviewOutcome = await runVerticalDramaEpisodeQualityReview({
             userId,
             tenantId,
@@ -10611,6 +11597,9 @@ export const verticalDramaEpisodesRouter = router({
               : undefined,
             // W11.6 "Story Lock" — see `runEpisodeQualityReview`'s identical wiring.
             reviewMode: storyLockEnabled ? "execution" : undefined,
+            // Retention hooks (W6) — omitted (both) whenever the flag is off.
+            scoreRetentionDimensions: retentionHooksEnabled,
+            retentionMetrics: reReviewRetentionMetrics,
           });
           newReview = reReviewOutcome.review;
           await persistQualityReviewArtifact(owner, newReview);

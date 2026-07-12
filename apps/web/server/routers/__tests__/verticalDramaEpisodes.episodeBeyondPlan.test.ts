@@ -708,3 +708,166 @@ describe("runEpisode — VD_EPISODE_BEYOND_PLAN gate (task #26)", () => {
     expect(mockRunEpisode).toHaveBeenCalled();
   });
 });
+
+/**
+ * Retention hooks router wiring (`planning/vertical-drama-retention-hooks
+ * /plan.md`, router-wiring package, added 2026-07-11) — `runStage`/
+ * `regenerateStage`/`runEpisode`/`repairStageOutput` all resolve the
+ * `verticalDramaRetentionHooks` tenant flag and thread `retentionHooksEnabled`
+ * into the pipeline call. Same "mock the whole module graph" harness as
+ * every describe block above in this file (`mockGetActiveBreakdown` stays
+ * `[]` throughout — none of these tests touch a `plan_episode_script`
+ * beyond-plan gate).
+ */
+describe("retentionHooksEnabled threading (planning/vertical-drama-retention-hooks/plan.md)", () => {
+  describe("runStage", () => {
+    it("passes retentionHooksEnabled: false when the tenant flag is off (byte-identical default)", async () => {
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+
+      await router.runStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "storyboard_shotgrid",
+          mode: "dry_run",
+        },
+      });
+
+      const opts = mockRunStage.mock.calls[0][2];
+      expect(opts.retentionHooksEnabled).toBe(false);
+    });
+
+    it("resolves verticalDramaRetentionHooks and passes retentionHooksEnabled: true when on", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+
+      await router.runStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "storyboard_shotgrid",
+          mode: "dry_run",
+        },
+      });
+
+      expect(mockGetTenantFeatureFlags).toHaveBeenCalledWith("tenant-1");
+      const opts = mockRunStage.mock.calls[0][2];
+      expect(opts.retentionHooksEnabled).toBe(true);
+    });
+  });
+
+  describe("regenerateStage", () => {
+    it("passes retentionHooksEnabled: true into the full-mode runStage call when the flag is on", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+      mockDb.delete.mockReturnValueOnce({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) })),
+      });
+
+      await router.regenerateStage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "storyboard_shotgrid",
+        },
+      });
+
+      const opts = mockRunStage.mock.calls[0][2];
+      expect(opts.retentionHooksEnabled).toBe(true);
+    });
+  });
+
+  describe("runEpisode", () => {
+    it("passes retentionHooksEnabled: true into the pipeline's runEpisode options when the flag is on", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+
+      await router.runEpisode({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", mode: "dry_run" },
+      });
+
+      const opts = mockRunEpisode.mock.calls[0][1];
+      expect(opts.retentionHooksEnabled).toBe(true);
+    });
+
+    it("passes retentionHooksEnabled: false when the tenant flag is off", async () => {
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+
+      await router.runEpisode({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", mode: "dry_run" },
+      });
+
+      const opts = mockRunEpisode.mock.calls[0][1];
+      expect(opts.retentionHooksEnabled).toBe(false);
+    });
+  });
+
+  describe("repairStageOutput", () => {
+    it("threads retentionHooksEnabled into the pipeline's repairStage args", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+      mockRepairStage.mockResolvedValueOnce({
+        runId: 1,
+        result: {} as any,
+        staleStages: [],
+      });
+
+      await router.repairStageOutput({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "plan_episode_script",
+          instruction: "make the hook sharper",
+        },
+      });
+
+      expect(mockRepairStage).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: "tenant-1", seriesId: 10, episodeId: 100 }),
+        "plan_episode_script",
+        expect.objectContaining({ retentionHooksEnabled: true })
+      );
+    });
+
+    it("passes retentionHooksEnabled: false when the tenant flag is off", async () => {
+      mockDb.select.mockReturnValueOnce(selectChain([episodeRow(3)])); // loadOwnedEpisode
+      mockRepairStage.mockResolvedValueOnce({
+        runId: 1,
+        result: {} as any,
+        staleStages: [],
+      });
+
+      await router.repairStageOutput({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          stage: "plan_episode_script",
+          instruction: "make the hook sharper",
+        },
+      });
+
+      expect(mockRepairStage).toHaveBeenCalledWith(
+        expect.anything(),
+        "plan_episode_script",
+        expect.objectContaining({ retentionHooksEnabled: false })
+      );
+    });
+  });
+});

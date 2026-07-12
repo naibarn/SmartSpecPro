@@ -327,6 +327,7 @@ export const VD_COPY = {
     editDialogue: "Edit",
     emotionLabel: "Emotion",
     deliveryLabel: "Delivery",
+    estimatedDialogueSecondsLabel: "Estimated total speech",
 
     /* ---- One-click generate + inline prompt editing (Phase 4.1/4.2) ---- */
     generatePromptAndImage: "Generate prompt + image",
@@ -799,6 +800,34 @@ export const VD_COPY = {
     episodePlanKeyBeatsLabel: "Key beats",
     episodePlanCliffhangerLabel: "Cliffhanger",
     episodePlanEmptyState: "This episode has no drafted story plan yet.",
+
+    /* ---- Per-shot character/variant reference picker (planning/vertical-
+       drama-twin-variant-completeness/plan.md, W6 frontend) — distinct from
+       the series-wide "change reference image" swap (`changeProductImage`'s
+       sibling for characters, `onChangeCharacterReference`). ---- */
+    shotCharacterRefEditLabel:
+      "Change character reference(s) for this shot only",
+    shotCharacterRefPickerTitle: "Character reference for this shot",
+    shotCharacterRefPickerHint:
+      "This selection only affects this shot — other shots are unaffected.",
+    shotCharacterRefPickerOutfitBadge: "Outfit",
+    shotCharacterRefPickerAgeStageBadge: "Age stage",
+    shotCharacterRefPickerTwinBadge: "twin of {name}",
+    shotCharacterRefPickerUnknownSectionTitle:
+      "Keys not found in the character roster (removable)",
+    shotCharacterRefPickerNoCharacters:
+      "This series has no characters yet.",
+    shotCharacterRefPickerSave: "Save",
+    shotCharacterRefPickerSelectedCount: "{n} selected",
+    shotCharacterRefPickerSaved: "This shot's character reference(s) updated.",
+
+    /* ---- Character portrait "additional details" hint (planning/vertical-
+       drama-character-custom-instruction/plan.md) — optional free-text fact
+       sent to `previewCharacterPrompt` so repeated portrait generations vary
+       instead of producing near-identical prompts every click. ---- */
+    characterCustomInstructionLabel: "Additional details (optional)",
+    characterCustomInstructionPlaceholder:
+      "e.g. front-facing, half-body, full-body",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
@@ -934,6 +963,7 @@ export const VD_COPY = {
     editDialogue: "แก้ไข",
     emotionLabel: "อารมณ์",
     deliveryLabel: "น้ำเสียง/การแสดง",
+    estimatedDialogueSecondsLabel: "รวมบทพูดประมาณ",
 
     /* ---- One-click generate + inline prompt editing (Phase 4.1/4.2) ---- */
     generatePromptAndImage: "สร้าง prompt + ภาพ",
@@ -1372,6 +1402,30 @@ export const VD_COPY = {
     episodePlanKeyBeatsLabel: "จุดดำเนินเรื่อง",
     episodePlanCliffhangerLabel: "จุดค้าง",
     episodePlanEmptyState: "ยังไม่มีแผนเนื้อเรื่องของตอนนี้",
+
+    /* ---- Per-shot character/variant reference picker (planning/vertical-
+       drama-twin-variant-completeness/plan.md, W6 frontend) ---- */
+    shotCharacterRefEditLabel: "เปลี่ยนเฉพาะช็อตนี้",
+    shotCharacterRefPickerTitle: "ตัวละครอ้างอิงสำหรับช็อตนี้",
+    shotCharacterRefPickerHint:
+      "การเลือกนี้มีผลเฉพาะช็อตนี้เท่านั้น ไม่กระทบช็อตอื่น",
+    shotCharacterRefPickerOutfitBadge: "ชุด",
+    shotCharacterRefPickerAgeStageBadge: "วัย",
+    shotCharacterRefPickerTwinBadge: "แฝดของ {name}",
+    shotCharacterRefPickerUnknownSectionTitle:
+      "คีย์ที่ไม่พบในรายชื่อตัวละคร (สามารถลบได้)",
+    shotCharacterRefPickerNoCharacters: "ซีรีย์นี้ยังไม่มีตัวละคร",
+    shotCharacterRefPickerSave: "บันทึก",
+    shotCharacterRefPickerSelectedCount: "เลือกแล้ว {n} รายการ",
+    shotCharacterRefPickerSaved: "อัปเดตตัวละครอ้างอิงของช็อตนี้แล้ว",
+
+    /* ---- Character portrait "additional details" hint (planning/vertical-
+       drama-character-custom-instruction/plan.md) — optional free-text fact
+       sent to `previewCharacterPrompt` so repeated portrait generations vary
+       instead of producing near-identical prompts every click. ---- */
+    characterCustomInstructionLabel: "รายละเอียดเพิ่มเติม (ไม่บังคับ)",
+    characterCustomInstructionPlaceholder:
+      "เช่น หน้าตรง, ภาพครึ่งตัว, ภาพเต็มตัว",
   },
 } as const;
 

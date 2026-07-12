@@ -32,6 +32,20 @@ import {
   verticalDramaQcReports,
   mediaAssets,
   apiAuditEvents,
+  /**
+   * Manual LLM model override for the "generate start-frame render plan" /
+   * "generate storyboard" pipeline stages (added 2026-07-11 — see
+   * `/home/dev/.claude/plans/polished-toasting-gadget.md`). Only these two
+   * pure table definitions are imported statically here (NOT
+   * `services/enabledLlmModels.ts`/`services/verticalDramaImproveScript.ts`
+   * themselves, which pull in a heavy `routers/llmProviders.ts` transitive
+   * chain — see this file's own established lazy-import convention
+   * documented a few hundred lines below, e.g. the Ad Banner Overlay import
+   * block) — used by `listQualityPlanningModels` to join in a display
+   * label (`modelName`/`displayName`) for each eligible model id.
+   */
+  llmProviders,
+  modelProviderMap,
   type VerticalDramaSeriesRow,
   type VerticalDramaGenrePresetRow,
   type VerticalDramaMemoryEventRow,
@@ -48,6 +62,13 @@ import type {
    * `productTieIn` read site in this file (see `resolveTieInDraftBootstrap`).
    */
   VerticalDramaProductTieInConfig,
+  /**
+   * Manual LLM model override (added 2026-07-11 — see
+   * `/home/dev/.claude/plans/polished-toasting-gadget.md`) — the series'
+   * `llmModelPolicy` jsonb shape, read/written by `listQualityPlanningModels`
+   * / `setSeriesLlmModelPolicy` below.
+   */
+  VerticalDramaSeriesLlmModelPolicy,
 } from "@shared/verticalDramaSeries";
 import {
   VERTICAL_DRAMA_SERIES_LOCALES,
@@ -2709,6 +2730,128 @@ export const verticalDramaSeriesRouter = router({
       const [row] = await db
         .update(verticalDramaSeries)
         .set({ bible: nextBible, updatedAt: new Date() })
+        .where(seriesOwnershipWhere(tenantId, userId, seriesId))
+        .returning();
+
+      return { series: { ...row, id: String(row.id) } };
+    }),
+
+  /**
+   * Manual LLM model override (added 2026-07-11 — see
+   * `/home/dev/.claude/plans/polished-toasting-gadget.md`) — lists the
+   * eligible model set the "generate start-frame render plan" / "generate
+   * storyboard" stages' automatic selector would pick from (the SAME
+   * `contextLength >= 1,000,000 && !isFree && supportsThinking === true`
+   * filter "improve script" already uses), sorted cheapest-first (the same
+   * order the auto-selector would pick from) — for the series settings
+   * dropdown's "automatic" + explicit-model-list options. No input; not
+   * series-scoped (the eligible model catalog is tenant-independent).
+   *
+   * `loadEnabledLlmModelRows`/`selectQualityLargeContextEligibleModels` are
+   * loaded via a lazy `await import(...)` — see this file's own established
+   * "narrow vi.mock safety" convention documented on the Ad Banner
+   * Overlay/`runImproveScriptJob` import blocks above: both pull in a heavy
+   * `routers/llmProviders.ts` transitive chain that would otherwise break
+   * every sibling test file's narrow `vi.mock` graph the instant this module
+   * loads. `llmProviders`/`modelProviderMap` (imported statically above —
+   * pure table definitions, no heavy transitive chain) are used here only to
+   * join in a richer display label (`modelName`/provider `displayName`),
+   * mirroring `multiProvider.ts`'s `listAdminModelCatalog` join.
+   */
+  listQualityPlanningModels: verticalDramaProcedure.query(async () => {
+    const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
+    const { selectQualityLargeContextEligibleModels } = await import(
+      "../services/verticalDramaImproveScript"
+    );
+
+    const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+    const eligible = selectQualityLargeContextEligibleModels(rows);
+    if (eligible.length === 0) {
+      return [] as Array<{ modelId: string; label: string }>;
+    }
+
+    type QualityPlanningModelLabelRow = {
+      modelId: string;
+      modelName: string;
+      providerName: string;
+      providerDisplayName: string;
+    };
+    const modelIds = eligible.map((row) => row.modelId);
+    const labelRows: QualityPlanningModelLabelRow[] = await db
+      .select({
+        modelId: modelProviderMap.modelId,
+        modelName: modelProviderMap.modelName,
+        providerName: llmProviders.providerName,
+        providerDisplayName: llmProviders.displayName,
+      })
+      .from(modelProviderMap)
+      .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+      .where(inArray(modelProviderMap.modelId, modelIds));
+    const labelByModelId = new Map<string, QualityPlanningModelLabelRow>(
+      labelRows.map((row) => [row.modelId, row]),
+    );
+
+    return eligible.map((row) => {
+      const labelRow = labelByModelId.get(row.modelId);
+      const providerLabel = labelRow?.providerDisplayName || labelRow?.providerName || row.providerName;
+      const modelLabel = labelRow?.modelName || row.modelId;
+      return { modelId: row.modelId, label: `${providerLabel} — ${modelLabel}` };
+    });
+  }),
+
+  /**
+   * Manual LLM model override (added 2026-07-11, widened the same day to a
+   * single series-wide field —
+   * `planning/vertical-drama-centralized-model-policy/plan.md`) — sets the
+   * series' `llmModelPolicy.defaultModelId`, the ONE override that applies to
+   * every LLM call in the Vertical Drama chain for this series (see
+   * `server/services/verticalDramaLlmModelPolicy.ts`). `defaultModelId` is
+   * `required-but-nullable`: `null` always means "automatic" (each stage's
+   * own auto-selector); a non-null model id must be present in
+   * `listQualityPlanningModels`' eligible set, or this throws `BAD_REQUEST`
+   * — never silently persists an ineligible pin. The whole `llmModelPolicy`
+   * column is overwritten (not merged) since there is now only one field.
+   */
+  setSeriesLlmModelPolicy: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        defaultModelId: z.string().min(1).nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      if (input.defaultModelId !== null) {
+        const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
+        const { selectQualityLargeContextEligibleModels } = await import(
+          "../services/verticalDramaImproveScript"
+        );
+        const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+        const eligibleModelIds = new Set(
+          selectQualityLargeContextEligibleModels(rows).map((row) => row.modelId),
+        );
+        if (!eligibleModelIds.has(input.defaultModelId)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Model "${input.defaultModelId}" is not eligible for this planning stage`,
+          });
+        }
+      }
+
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const nextPolicy: VerticalDramaSeriesLlmModelPolicy = {
+        defaultModelId: input.defaultModelId,
+      };
+
+      const [row] = await db
+        .update(verticalDramaSeries)
+        .set({ llmModelPolicy: nextPolicy, updatedAt: new Date() })
         .where(seriesOwnershipWhere(tenantId, userId, seriesId))
         .returning();
 

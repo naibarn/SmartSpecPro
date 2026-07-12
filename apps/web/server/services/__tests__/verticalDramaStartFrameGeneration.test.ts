@@ -34,15 +34,9 @@ vi.mock("fs", async () => {
     readFileSync: vi.fn(),
   };
 });
-vi.mock("../verticalDramaStoryBible", async () => {
-  const actual = await vi.importActual<typeof import("../verticalDramaStoryBible")>(
-    "../verticalDramaStoryBible",
-  );
-  return {
-    ...actual,
-    resolveStoryBibleModel: vi.fn(),
-  };
-});
+vi.mock("../verticalDramaImproveScript", () => ({
+  resolveStartFramePlanModel: vi.fn(),
+}));
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -57,17 +51,14 @@ import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import { mediaGenerationLimiter } from "../rateLimiter";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
-import {
-  resolveStoryBibleModel,
-  InsufficientCreditsError,
-  VdSchemaValidationError,
-} from "../verticalDramaStoryBible";
+import { InsufficientCreditsError, VdSchemaValidationError } from "../verticalDramaStoryBible";
+import { resolveStartFramePlanModel } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
-const mockResolveModel = vi.mocked(resolveStoryBibleModel);
+const mockResolveModel = vi.mocked(resolveStartFramePlanModel);
 const mockIsAllowed = vi.mocked(mediaGenerationLimiter.isAllowed);
 const mockGetResetTime = vi.mocked(mediaGenerationLimiter.getResetTime);
 const mockResolveSkillDirCandidates = vi.mocked(resolveSkillDirCandidates);

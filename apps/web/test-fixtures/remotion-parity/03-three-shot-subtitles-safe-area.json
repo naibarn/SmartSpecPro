@@ -1,0 +1,56 @@
+{
+  "id": "three-shot-subtitles-safe-area",
+  "description": "Three shots (~9s total), mixed fade/none transitions (both supported), longer Thai subtitle text and a non-default Thai font family, exercises safe-zone/subtitle placement handling.",
+  "expectRemotionSupported": true,
+  "finalComposite": {
+    "finalVideoLengthSec": 9,
+    "width": 1080,
+    "height": 1920,
+    "fps": 24,
+    "burnInSubtitles": true,
+    "preserveNativeAudio": true,
+    "fontFamily": "Kanit",
+    "subtitlePlacement": "bottom",
+    "subtitleFontSizePx": 36,
+    "safeZonePercent": 10,
+    "hookText": "รีวิวสินค้าแบบละเอียด",
+    "shots": [
+      {
+        "id": "shot_1",
+        "index": 0,
+        "sourceVideoUrl": "urn:remotion-parity-fixture:scene-1",
+        "startSec": 0,
+        "durationSec": 3,
+        "transition": "none",
+        "onScreenText": ["จุดเด่นของสินค้า"],
+        "subtitleCues": [
+          { "startSec": 0.2, "endSec": 2.8, "text": "มาดูจุดเด่นของสินค้าตัวนี้กันก่อนเลย" }
+        ]
+      },
+      {
+        "id": "shot_2",
+        "index": 1,
+        "sourceVideoUrl": "urn:remotion-parity-fixture:scene-2",
+        "startSec": 3,
+        "durationSec": 3,
+        "transition": "fade",
+        "onScreenText": ["สเปกครบ คุ้มค่า"],
+        "subtitleCues": [
+          { "startSec": 3.3, "endSec": 5.8, "text": "สเปกจัดเต็มในราคาที่คุ้มค่าที่สุด" }
+        ]
+      },
+      {
+        "id": "shot_3",
+        "index": 2,
+        "sourceVideoUrl": "urn:remotion-parity-fixture:scene-1",
+        "startSec": 6,
+        "durationSec": 3,
+        "transition": "fade",
+        "onScreenText": ["สั่งซื้อได้แล้ววันนี้"],
+        "subtitleCues": [
+          { "startSec": 6.2, "endSec": 8.8, "text": "กดสั่งซื้อได้เลยตอนนี้ ก่อนของหมด" }
+        ]
+      }
+    ]
+  }
+}

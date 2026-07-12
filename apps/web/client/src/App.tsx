@@ -169,6 +169,8 @@ const VerticalDramaSeriesPage = lazy(() => import("./pages/VerticalDramaSeriesPa
 const VerticalDramaSeriesDetailPage = lazy(() => import("./pages/VerticalDramaSeriesDetailPage"));
 const VerticalDramaEpisodePage = lazy(() => import("./pages/VerticalDramaEpisodePage"));
 const VerticalDramaSharedSeriesPage = lazy(() => import("./pages/VerticalDramaSharedSeriesPage"));
+const VideoStudioListPage = lazy(() => import("./pages/VideoStudioListPage"));
+const VideoStudioWorkspacePage = lazy(() => import("./pages/VideoStudioWorkspacePage"));
 const RenderJobsPage = lazy(() => import("./pages/RenderJobsPage"));
 const Credits = lazy(() => import("./pages/Credits"));
 const BillingCenter = lazy(() => import("./pages/BillingCenter"));
@@ -309,6 +311,37 @@ function RequireVerticalDramaSeries({ children }: { children: React.ReactNode })
             Vertical Drama Series is not enabled for your account.
             <br />
             ซีรีย์แนวตั้งยังไม่เปิดใช้งานสำหรับบัญชีของคุณ
+          </p>
+        </div>
+      </main>
+    );
+  }
+  return <>{children}</>;
+}
+
+/**
+ * Route-level guard for the feature-flagged Video Intelligence Platform
+ * workspace (Feature 133). Requires the `videoIntelligencePlatformEnabled`
+ * tenant flag (F133A, fail-closed). Mirrors `RequireVerticalDramaSeries`'s
+ * announced (role="alert") text-notice convention rather than silently
+ * 404-ing. Must be nested inside <RequireAuth>. Per-studio flags
+ * (F133C/F133-motion) are enforced separately, inside the pages themselves
+ * (they gate individual create actions/menu entries, not the whole route).
+ */
+function RequireVideoIntelligence({ children }: { children: React.ReactNode }) {
+  const enabled = useTenantFeatureFlag("videoIntelligencePlatformEnabled");
+  if (!enabled) {
+    return (
+      <main className="min-h-screen bg-background text-foreground">
+        <div
+          role="alert"
+          className="mx-auto flex max-w-lg flex-col items-center gap-3 px-6 py-24 text-center"
+        >
+          <h1 className="text-lg font-semibold">This feature is not available</h1>
+          <p className="text-sm text-muted-foreground">
+            Video Studio is not enabled for your account.
+            <br />
+            สตูดิโอวิดีโอยังไม่เปิดใช้งานสำหรับบัญชีของคุณ
           </p>
         </div>
       </main>
@@ -653,6 +686,8 @@ function Router() {
         <Route path="/storyboard-review/:reviewId"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
         <Route path="/storyboard-review"><RequireAuth><StoryboardReviewPage /></RequireAuth></Route>
         <Route path="/render-jobs"><RequireAuth><RenderJobsPage /></RequireAuth></Route>
+        <Route path="/video-studio/:id"><RequireAuth><RequireVideoIntelligence><VideoStudioWorkspacePage /></RequireVideoIntelligence></RequireAuth></Route>
+        <Route path="/video-studio"><RequireAuth><RequireVideoIntelligence><VideoStudioListPage /></RequireVideoIntelligence></RequireAuth></Route>
         <Route path="/credits"><RequireAuth><Credits /></RequireAuth></Route>
         <Route path="/billing/invoices/:invoiceId"><RequireAuth><BillingCenter /></RequireAuth></Route>
         <Route path="/billing"><RequireAuth><BillingCenter /></RequireAuth></Route>

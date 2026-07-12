@@ -3,20 +3,54 @@ import { marketplaceAutoReviewOutboxJobs } from "../../drizzle/schema";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  copyFileSync,
+  existsSync,
+  mkdtempSync,
+  openSync,
+  readFileSync,
+  readSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { storageCopyToPath, storagePutFromPath } from "../storage";
 import {
-  executeHyperframesCliRender,
-  executeHyperframesProducerRender,
   getHyperframesRuntimeMode,
   type HyperframesRuntimeAdapterEnv,
+  type HyperframesRuntimeRenderResult,
   isHyperframesCliRuntimeAllowed,
   isHyperframesProducerRuntimeAllowed,
 } from "../services/hyperframesRuntimeAdapter";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import { redactHyperframesDiagnostics } from "../services/hyperframesCompositionSanitizer";
+import { executeVideoRender, resolveVideoRenderEngine } from "../services/videoRenderer";
+import { executeRemotionRender } from "../services/remotionRuntimeAdapter";
+import {
+  buildAssBurnSubtitleFileContent,
+  planPostPasses,
+} from "../services/remotionPostPassArgs";
+import {
+  defaultFfmpegRunner,
+  probeDurationSeconds,
+  type FfmpegRunner,
+} from "../services/verticalDramaEpisodeVideoAssembly";
+import { GENERIC_TEMPLATE_COMPOSITION_ID } from "../remotion/Root";
+import { isAllowedInternalAssetUrl } from "../services/videoProjectAssetResolver";
+import { auditLogger, type AuditEventType } from "../services/auditLogger";
+import {
+  REMOTION_RENDER_VIDEO_FAILURE_CODES,
+  REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
+  REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
+  REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
+  remotionRenderVideoWorkerInputSchema,
+  type RemotionRenderVideoFailureCode,
+  type RemotionRenderVideoProgressStage,
+  type RemotionRenderVideoWorkerInput,
+} from "../../shared/workerRuntime";
 
 const HYPERFRAMES_WORKER_JOB_TYPES = [
   "hyperframes_asset_stage",
@@ -1511,26 +1545,29 @@ export async function executeLocalHyperframesSmokeRender(input: {
   );
   try {
     const outputPath = join(workspace, "output.mp4");
-    const runtimeMode = getHyperframesRuntimeMode(input.runtimeEnv);
+    const renderEngine = await resolveVideoRenderEngine({
+      tenantId: input.tenantId,
+      env: input.runtimeEnv,
+    });
     let runtimeFailureMessage: string | null = null;
-    let runtimeRender = null as Awaited<ReturnType<typeof executeHyperframesCliRender>> | null;
+    let runtimeRender: HyperframesRuntimeRenderResult | null = null;
     try {
-      runtimeRender =
-        runtimeMode === "producer"
-          ? await executeHyperframesProducerRender({
-              workspace,
-              outputPath,
-              payload: input.payload,
-              env: input.runtimeEnv,
-            })
-          : runtimeMode === "cli"
-            ? await executeHyperframesCliRender({
-                workspace,
-                outputPath,
-                payload: input.payload,
-                env: input.runtimeEnv,
-              })
-          : null;
+      const renderOutcome = await executeVideoRender(renderEngine, {
+        workspace,
+        outputPath,
+        payload: input.payload,
+        env: input.runtimeEnv,
+      });
+      // Phase 1: only the "hyperframes" engine is reachable in practice
+      // (the flag defaults off and "remotion" always throws today — see
+      // remotionRuntimeAdapter.ts). `result` is the original
+      // HyperframesRuntimeRenderResult returned by executeHyperframesCliRender/
+      // executeHyperframesProducerRender, unchanged. Phase 2 must replace this
+      // cast with an explicit per-engine mapping once Remotion renders for
+      // real.
+      runtimeRender = renderOutcome
+        ? (renderOutcome.result as HyperframesRuntimeRenderResult)
+        : null;
     } catch (error) {
       runtimeFailureMessage = runtimeErrorMessage(error);
       if (
@@ -1686,6 +1723,489 @@ export async function executeLocalHyperframesSmokeRender(input: {
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/* Feature 133 (Video Intelligence Platform) — section-04 — remotion_render_video
+ * Lane A in-process dispatch.
+ * specs/feature/133-content-video-intelligence-platform/sections/section-04-queue-lane-a-worker.md §5.3
+ * -------------------------------------------------------------------------- */
+
+class RemotionRenderVideoJobError extends Error {
+  code: RemotionRenderVideoFailureCode;
+  constructor(code: RemotionRenderVideoFailureCode, message: string) {
+    super(message);
+    this.name = "RemotionRenderVideoJobError";
+    this.code = code;
+  }
+}
+
+/** Stage-scoped fallback failure code for an error that isn't already a `RemotionRenderVideoJobError` — never a single blanket default irrespective of stage. */
+const REMOTION_RENDER_VIDEO_STAGE_FALLBACK_FAILURE_CODE: Record<
+  RemotionRenderVideoProgressStage,
+  RemotionRenderVideoFailureCode
+> = {
+  resolve_inputs: "contract_version_unsupported",
+  stage_assets: "asset_stage_failed",
+  bundle_composition: "bundle_failed",
+  select_composition: "composition_select_failed",
+  render_frames: "render_failed",
+  run_post_passes: "post_pass_failed",
+  verify_outputs: "server_verification_failed",
+  upload_artifacts: "artifact_upload_failed",
+  server_verify_artifacts: "server_verification_failed",
+  publish_artifacts: "artifact_upload_failed",
+};
+
+/** Maps an `executeRemotionRender` failure message onto a specific failure code — never a blanket `render_failed`. */
+function classifyRemotionRenderFailure(message: string): RemotionRenderVideoFailureCode {
+  const lower = message.toLowerCase();
+  if (lower.includes("bundle") || lower.includes("webpack") || lower.includes("esbuild")) {
+    return "bundle_failed";
+  }
+  if (lower.includes("composition") && (lower.includes("not found") || lower.includes("select") || lower.includes("unknown"))) {
+    return "composition_select_failed";
+  }
+  if (lower.includes("chromium") || lower.includes("chrome") || lower.includes("browser") || lower.includes("executable")) {
+    return "chromium_launch_failed";
+  }
+  return "render_failed";
+}
+
+export interface RemotionRenderVideoProgressEvent {
+  jobId: string;
+  stage: RemotionRenderVideoProgressStage;
+  traceId?: string;
+  shotIndex?: number;
+  shotTotal?: number;
+  message?: string;
+}
+
+/**
+ * Default `emitEvent`: this in-process Lane A dispatch does not hold a
+ * `WorkerAccessAuthContext`/lease token (those are minted for the external
+ * claim/lease HTTP flow — `workerRegistryService.ts`'s `claimWorkerJob` /
+ * `recordWorkerJobEvent`), so it cannot call `recordWorkerJobEvent` directly.
+ * Section-07's Lane-A BullMQ integration is the intended place to inject a
+ * real `emitEvent` that forwards into `recordWorkerJobEvent` (which is where
+ * `assertRuntimeSpecificJobEventContract`'s `remotion_render_video` branch,
+ * added by section-03, actually validates these stage names). This default
+ * just traces to console so local/dev runs stay observable without that
+ * wiring.
+ */
+function defaultEmitRemotionRenderVideoEvent(event: RemotionRenderVideoProgressEvent): void {
+  console.debug(
+    `[remotionRenderVideoJob] job=${event.jobId} stage=${event.stage}` +
+      (event.shotIndex != null ? ` shot=${event.shotIndex}/${event.shotTotal ?? "?"}` : "") +
+      (event.message ? ` — ${event.message}` : ""),
+  );
+}
+
+function auditLogRemotionRenderEvent(
+  eventType: "remotion_render.started" | "remotion_render.post_pass" | "remotion_render.completed" | "remotion_render.failed",
+  input: {
+    tenantId?: string | null;
+    traceId: string;
+    renderJobId: string;
+    metadata?: Record<string, unknown>;
+  },
+): void {
+  auditLogger.log({
+    eventType: eventType as AuditEventType,
+    traceId: input.traceId,
+    userId: null,
+    tenantId: input.tenantId ?? null,
+    metadata: { renderJobId: input.renderJobId, ...(input.metadata ?? {}) },
+  });
+}
+
+export interface RemotionRenderVideoAssetStageResult {
+  verifiedCount: number;
+  skippedCount: number;
+}
+
+/**
+ * Best-effort default asset-manifest verification: for every source whose
+ * `url` is a directly-fetchable `http(s)://` URL, fetch it and compare its
+ * sha256 against the manifest-declared hash (defense-in-depth integrity
+ * check per spec §6.2/§6.3, before Chromium/render time is spent on
+ * possibly-tampered assets). Sources referencing an in-app relative storage
+ * path (`/api/storage/files/...`, `/uploads/...`) are counted as `skipped`
+ * — by the time this payload reaches the worker, `remotionTemplate.layers[].src`
+ * fields are already schema-validated absolute URLs
+ * (`shared/remotion/layerTemplateSchemas.ts`), so relative asset-manifest
+ * entries are informational provenance records, not render inputs Remotion
+ * itself fetches.
+ */
+async function defaultStageRemotionRenderVideoAssets(input: {
+  workspace: string;
+  assetManifest: RemotionRenderVideoWorkerInput["assetManifest"];
+}): Promise<RemotionRenderVideoAssetStageResult> {
+  let verifiedCount = 0;
+  let skippedCount = 0;
+  for (const source of input.assetManifest.sources) {
+    if (!/^https?:\/\//i.test(source.url)) {
+      skippedCount += 1;
+      continue;
+    }
+    // F133-04 (MEDIUM, bundled with the F133-01 SSRF fix): defense-in-depth
+    // §17.3 host allowlist at this second, independent fetch site — even if
+    // a bug reopened the F133-01 checkpoints (`saveDocument` /
+    // `resolveProjectAssets`), this server process itself must never fetch
+    // an arbitrary/attacker-controlled URL, including internal IPs/cloud
+    // metadata endpoints. Reuses the SAME allowlist helper (never a parallel
+    // mechanism).
+    if (!isAllowedInternalAssetUrl(source.url)) {
+      throw new Error(
+        `Asset URL rejected by §17.3 SSRF host allowlist for ${source.role} source: ${source.url}`,
+      );
+    }
+    const response = await fetch(source.url);
+    if (!response.ok) {
+      throw new Error(`Asset fetch failed (${response.status}) for ${source.role} source: ${source.url}`);
+    }
+    const bytes = Buffer.from(await response.arrayBuffer());
+    const actualHash = createHash("sha256").update(bytes).digest("hex");
+    if (actualHash !== source.sha256) {
+      throw new Error(`Asset checksum mismatch for ${source.role} source: ${source.url}`);
+    }
+    verifiedCount += 1;
+  }
+  return { verifiedCount, skippedCount };
+}
+
+function verifyRemotionRenderMp4Sanity(filePath: string): {
+  passed: boolean;
+  sizeBytes: number;
+  message?: string;
+} {
+  const MIN_BYTES = 10_000;
+  if (!existsSync(filePath)) {
+    return { passed: false, sizeBytes: 0, message: "output file does not exist" };
+  }
+  const sizeBytes = statSync(filePath).size;
+  if (sizeBytes < MIN_BYTES) {
+    return { passed: false, sizeBytes, message: `output too small (${sizeBytes} bytes)` };
+  }
+  const fd = openSync(filePath, "r");
+  try {
+    const header = Buffer.alloc(64);
+    readSync(fd, header, 0, 64, 0);
+    const hasFtyp = header.includes("ftyp");
+    return {
+      passed: hasFtyp,
+      sizeBytes,
+      message: hasFtyp ? undefined : "missing ftyp MP4 box signature",
+    };
+  } finally {
+    closeSync(fd);
+  }
+}
+
+export interface RemotionRenderVideoJobExecutorDeps {
+  render?: typeof executeRemotionRender;
+  ffmpeg?: FfmpegRunner;
+  storagePut?: typeof storagePutFromPath;
+  emitEvent?: (event: RemotionRenderVideoProgressEvent) => Promise<void> | void;
+  stageAssets?: (input: {
+    workspace: string;
+    assetManifest: RemotionRenderVideoWorkerInput["assetManifest"];
+  }) => Promise<RemotionRenderVideoAssetStageResult>;
+}
+
+// Concurrency (spec §18.6): one Remotion render at a time per worker
+// process (Chromium memory). Every call is chained onto this promise so
+// concurrent `executeRemotionRenderVideoJob` invocations within this
+// process serialize rather than run in parallel.
+let remotionRenderVideoQueueTail: Promise<unknown> = Promise.resolve();
+
+function withRemotionRenderVideoLock<T>(run: () => Promise<T>): Promise<T> {
+  const result = remotionRenderVideoQueueTail.then(run, run);
+  remotionRenderVideoQueueTail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
+
+async function runRemotionRenderVideoJob(
+  input: {
+    tenantId?: string | null;
+    runId: string;
+    renderJobId: string;
+    payload: RemotionRenderVideoWorkerInput;
+    runtimeEnv?: HyperframesRuntimeAdapterEnv;
+  },
+  deps: RemotionRenderVideoJobExecutorDeps,
+): Promise<Record<string, unknown>> {
+  const render = deps.render ?? executeRemotionRender;
+  const ffmpeg = deps.ffmpeg ?? defaultFfmpegRunner;
+  const storagePut = deps.storagePut ?? storagePutFromPath;
+  const emitEvent = deps.emitEvent ?? defaultEmitRemotionRenderVideoEvent;
+  const stageAssets = deps.stageAssets ?? defaultStageRemotionRenderVideoAssets;
+  const payload = input.payload;
+
+  let currentStage: RemotionRenderVideoProgressStage = "resolve_inputs";
+  const emit = async (
+    stage: RemotionRenderVideoProgressStage,
+    extra: Partial<RemotionRenderVideoProgressEvent> = {},
+  ) => {
+    currentStage = stage;
+    await emitEvent({
+      jobId: input.renderJobId,
+      stage,
+      traceId: payload.traceId,
+      ...extra,
+    });
+  };
+
+  auditLogRemotionRenderEvent("remotion_render.started", {
+    tenantId: input.tenantId,
+    traceId: payload.traceId,
+    renderJobId: input.renderJobId,
+    metadata: {
+      videoProjectId: payload.videoProjectId,
+      projectRevision: payload.projectRevision,
+      renderProfile: payload.renderProfile.profile,
+    },
+  });
+
+  const workspace = mkdtempSync(join(tmpdir(), `smartspec-remotion-render-video-${input.renderJobId}-`));
+  try {
+    await emit("resolve_inputs");
+    if (
+      payload.platformContractVersion !== REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION
+      || payload.rendererPolicyVersion !== REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION
+    ) {
+      throw new RemotionRenderVideoJobError(
+        "contract_version_unsupported",
+        `Unsupported platformContractVersion/rendererPolicyVersion: ${payload.platformContractVersion}/${payload.rendererPolicyVersion} (expected ${REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION}/${REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION})`,
+      );
+    }
+    if (payload.compositionId !== GENERIC_TEMPLATE_COMPOSITION_ID) {
+      throw new RemotionRenderVideoJobError(
+        "composition_select_failed",
+        `Unexpected compositionId "${payload.compositionId}" (expected "${GENERIC_TEMPLATE_COMPOSITION_ID}")`,
+      );
+    }
+
+    await emit("stage_assets");
+    try {
+      await stageAssets({ workspace, assetManifest: payload.assetManifest });
+    } catch (error) {
+      throw new RemotionRenderVideoJobError("asset_stage_failed", runtimeErrorMessage(error));
+    }
+
+    await emit("bundle_composition");
+    await emit("select_composition");
+    await emit("render_frames");
+    const renderedOutputPath = join(workspace, "render.mp4");
+    let renderResult: Awaited<ReturnType<typeof executeRemotionRender>>;
+    try {
+      renderResult = await render({
+        workspace,
+        outputPath: renderedOutputPath,
+        payload: payload as unknown as Record<string, unknown>,
+        env: input.runtimeEnv as Record<string, string | undefined> | undefined,
+      });
+    } catch (error) {
+      const message = runtimeErrorMessage(error);
+      throw new RemotionRenderVideoJobError(classifyRemotionRenderFailure(message), message);
+    }
+
+    await emit("run_post_passes");
+    let finalOutputPath = renderedOutputPath;
+    if (payload.postPasses.length > 0) {
+      auditLogRemotionRenderEvent("remotion_render.post_pass", {
+        tenantId: input.tenantId,
+        traceId: payload.traceId,
+        renderJobId: input.renderJobId,
+        metadata: { postPasses: payload.postPasses },
+      });
+      try {
+        let assFilePath: string | null = null;
+        if (payload.postPasses.includes("ass_burn")) {
+          // implementation-progress.md gap #3 (CLOSED): real caption cues
+          // are threaded through the frozen `remotionRenderVideoWorkerInputSchema`'s
+          // additive, optional `captionLines` field (section-07's
+          // `queueRender` populates it from `document.scenes[].captionCues`
+          // when `renderProfile.burnInAssCaptions` is true). Falls back to
+          // an empty (but structurally valid) `.ass` file only when the
+          // caller genuinely has no caption lines to burn (e.g. a project
+          // with `captions.burnIn: true` but no narration/captions yet).
+          //
+          // implementation-progress.md gap #3 follow-up (CLOSED): the preset
+          // is threaded through the same schema's additive, optional
+          // `captionPresetId` field (`document.captions.presetId`, wired by
+          // `queueRender`) instead of the hardcoded `"no_subtitle_style"`
+          // sentinel, which maps to `null` in
+          // `VD_CAPTION_PRESET_ASS_STYLES` and therefore produces ZERO
+          // visible `Dialogue:` events regardless of caption content. When
+          // omitted, fall back to `"classic_box"` — a real, non-null entry
+          // in `VD_CAPTION_PRESET_ASS_STYLES` (opaque box, bottom-center) —
+          // so burn-in without an explicit preset still renders visible
+          // captions.
+          const assContent = buildAssBurnSubtitleFileContent(
+            payload.captionLines ?? [],
+            payload.captionPresetId ?? "classic_box",
+            { playResX: payload.renderProfile.width, playResY: payload.renderProfile.height },
+          );
+          assFilePath = join(workspace, "captions.ass");
+          writeFileSync(assFilePath, assContent, "utf-8");
+        }
+        const steps = planPostPasses(payload, {
+          renderedMp4Path: renderedOutputPath,
+          workspaceDir: workspace,
+          assFilePath,
+        });
+        for (const step of steps) {
+          // eslint-disable-next-line no-await-in-loop
+          const runResult = await ffmpeg(step.argv);
+          if (runResult.code !== 0) {
+            throw new Error(
+              `ffmpeg post-pass "${step.code}" exited with code ${runResult.code}: ${runResult.stderr.slice(-2_000)}`,
+            );
+          }
+          finalOutputPath = step.outputPath;
+        }
+      } catch (error) {
+        throw new RemotionRenderVideoJobError("post_pass_failed", runtimeErrorMessage(error));
+      }
+    }
+
+    await emit("verify_outputs");
+    // `probeDurationSeconds` is deliberately best-effort (returns undefined
+    // on any ffprobe failure, per its own doc comment) — a duration probe
+    // failure alone must not fail the render (ffprobe may be unavailable in
+    // a given environment); the hard gate is the ftyp/min-bytes sanity
+    // check below, same posture as the sibling HyperFrames verification.
+    const durationSec = await probeDurationSeconds(finalOutputPath);
+    const sanity = verifyRemotionRenderMp4Sanity(finalOutputPath);
+    if (!sanity.passed) {
+      throw new RemotionRenderVideoJobError(
+        "server_verification_failed",
+        sanity.message ?? "output sanity check failed",
+      );
+    }
+    const fileBuffer = readFileSync(finalOutputPath);
+    const contentHash = sha256Hash(fileBuffer);
+
+    await emit("upload_artifacts");
+    const storageKey = [
+      "video-intelligence",
+      input.tenantId ?? "default",
+      payload.videoProjectId,
+      String(payload.projectRevision),
+      input.renderJobId,
+      "output.mp4",
+    ].join("/");
+    let stored: { key: string; url: string };
+    try {
+      stored = await storagePut(storageKey, finalOutputPath, "video/mp4");
+    } catch (error) {
+      throw new RemotionRenderVideoJobError("artifact_upload_failed", runtimeErrorMessage(error));
+    }
+
+    await emit("server_verify_artifacts");
+    await emit("publish_artifacts");
+
+    const artifacts = [
+      {
+        artifactType: "remotion_render_mp4",
+        storageRef: stored.key,
+        url: stored.url,
+        contentHash,
+        mimeType: "video/mp4",
+        sizeBytes: fileBuffer.byteLength,
+      },
+      {
+        artifactType: "remotion_render_manifest",
+        inline: {
+          compositionId: payload.compositionId,
+          width: payload.renderProfile.width,
+          height: payload.renderProfile.height,
+          fps: payload.renderProfile.fps,
+          durationInFrames: payload.durationInFrames,
+          postPasses: payload.postPasses,
+          renderResult: (renderResult as { result?: unknown }).result ?? null,
+        },
+      },
+      {
+        artifactType: "remotion_render_log",
+        inline: {
+          stagesCompleted: [...REMOTION_RENDER_VIDEO_PROGRESS_STAGES],
+        },
+      },
+      {
+        artifactType: "remotion_render_probe_report",
+        inline: {
+          durationSec,
+          sizeBytes: sanity.sizeBytes,
+        },
+      },
+    ];
+
+    auditLogRemotionRenderEvent("remotion_render.completed", {
+      tenantId: input.tenantId,
+      traceId: payload.traceId,
+      renderJobId: input.renderJobId,
+      metadata: { contentHash, sizeBytes: fileBuffer.byteLength, durationSec },
+    });
+
+    return {
+      videoProjectId: payload.videoProjectId,
+      projectRevision: payload.projectRevision,
+      traceId: payload.traceId,
+      outputUrl: stored.url,
+      outputArtifactRef: artifacts[0],
+      artifacts,
+    };
+  } catch (error) {
+    const failureCode = error instanceof RemotionRenderVideoJobError
+      ? error.code
+      : REMOTION_RENDER_VIDEO_STAGE_FALLBACK_FAILURE_CODE[currentStage];
+    const message = error instanceof Error ? error.message : String(error);
+    // Belt-and-suspenders: this can only diverge from the enum contract if a
+    // new failure code is ever added to REMOTION_RENDER_VIDEO_FAILURE_CODES
+    // without updating this file — assert rather than silently emit an
+    // invalid code.
+    if (!(REMOTION_RENDER_VIDEO_FAILURE_CODES as readonly string[]).includes(failureCode)) {
+      throw new Error(`Invalid remotion_render_video failure code: ${failureCode}`);
+    }
+    await emit("verify_outputs", { message: `failed: ${message}` }).catch(() => {});
+    auditLogRemotionRenderEvent("remotion_render.failed", {
+      tenantId: input.tenantId,
+      traceId: payload.traceId,
+      renderJobId: input.renderJobId,
+      metadata: {
+        failureCode,
+        stage: currentStage,
+        stderrTail: message.slice(-2_000),
+      },
+    });
+    throw new RemotionRenderVideoJobError(failureCode, message);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+}
+
+/**
+ * `remotion_render_video` Lane A executor (Feature 133 section-04 §5.3).
+ * Injectable-deps so it can be unit-tested without a real render/ffmpeg
+ * process. Serializes against any other in-flight
+ * `executeRemotionRenderVideoJob` call in this process (spec §18.6).
+ */
+export async function executeRemotionRenderVideoJob(
+  input: {
+    tenantId?: string | null;
+    runId: string;
+    renderJobId: string;
+    payload: RemotionRenderVideoWorkerInput;
+    runtimeEnv?: HyperframesRuntimeAdapterEnv;
+  },
+  deps: RemotionRenderVideoJobExecutorDeps = {},
+): Promise<Record<string, unknown>> {
+  return withRemotionRenderVideoLock(() => runRemotionRenderVideoJob(input, deps));
+}
+
 async function executeHyperframesWorkerJob(input: {
   jobType: string;
   tenantId?: string | null;
@@ -1693,6 +2213,17 @@ async function executeHyperframesWorkerJob(input: {
   renderJobId: string;
   payload: Record<string, unknown>;
 }): Promise<Record<string, unknown>> {
+  if (input.jobType === "remotion_render_video") {
+    // Remotion-native — calls executeRemotionRender directly, never the
+    // HyperFrames engine-selection/fallback path (section-04 §3 constraint).
+    const parsedPayload = remotionRenderVideoWorkerInputSchema.parse(input.payload);
+    return executeRemotionRenderVideoJob({
+      tenantId: input.tenantId,
+      runId: input.runId,
+      renderJobId: input.renderJobId,
+      payload: parsedPayload,
+    });
+  }
   if (
     input.jobType === "hyperframes_render" ||
     input.jobType === "hyperframes_finalize"

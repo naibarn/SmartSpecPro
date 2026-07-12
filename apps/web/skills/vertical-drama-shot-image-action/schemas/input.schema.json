@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-shot-image-action/input",
+  "title": "Shot Image Action Input",
+  "description": "On-demand, single-shot image-prompt authoring request — a 3x3 multi-angle grid render, a user-instructed repair edit, or a content-policy-risk soften pass over one Vertical Drama shot's image prompt. Code supplies only ground-truth facts here; this skill authors all creative/instructional prompt text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "action", "shot"],
+  "properties": {
+    "contract_version": { "const": 1 },
+    "action": {
+      "type": "string",
+      "enum": ["multi_angle_grid", "repair", "soften"],
+      "description": "Which single-shot image action to author a prompt for. \"soften\" re-expresses `shot.current_prompt` (same scene, same identity lock, same everything) with content-policy-risk wording reduced per `soften_level` — no grid layout, no repair instruction."
+    },
+    "soften_level": {
+      "type": "integer",
+      "enum": [0, 1, 2],
+      "default": 0,
+      "description": "Content-policy-risk reduction level, applicable to every action (a grid or repair prompt can also be authored at a softened level on a client retry, not only \"soften\" itself). 0 = no softening (default/first attempt) — write with normal, full-strength wording. 1 = avoid absolutist/risk-triggering wording while preserving scene content and the identity lock's substance. 2 = express identity as a soft recognizability statement and drop explicit ethnicity/skin/complexion wording. See the \"Soften levels\" section below."
+    },
+    "locale": {
+      "type": "string",
+      "enum": ["th", "en"],
+      "default": "th",
+      "description": "UI locale of the calling user — informational only. The authored prompt/negative_prompt are always written in English (the render provider's working language), matching every other Vertical Drama image-prompt skill."
+    },
+    "shot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shot_number", "current_prompt", "current_negative_prompt"],
+      "properties": {
+        "shot_number": { "type": "integer", "minimum": 1 },
+        "current_prompt": {
+          "type": "string",
+          "description": "The shot's existing, already-approved image prompt, at full strength (never pre-softened by the caller — `soften_level` above is how a policy retry is now expressed). This is the scene ground truth — its content must never be dropped or reinvented, only reframed/extended per the requested action."
+        },
+        "current_negative_prompt": {
+          "type": "string",
+          "description": "The shot's existing negative prompt, if any. May be an empty string."
+        }
+      }
+    },
+    "repair_instruction": {
+      "type": ["string", "null"],
+      "description": "Required (non-null) when action == \"repair\": the user's own free-text edit request, taken verbatim. Null/omitted for action == \"multi_angle_grid\" or \"soften\"."
+    },
+    "character_reference_manifest": {
+      "type": "array",
+      "description": "Ground-truth image-index <-> character-name binding for any character reference image(s) actually attached to this render call. For \"multi_angle_grid\", index is the 1-based position of each character's reference image in the attached reference list (Image 1, Image 2, ...). For \"repair\", there is normally only ONE attached image (the shot's own current approved render, not per-character portraits), so index is typically null — the manifest still lists which characters must have their identity preserved.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "index": { "type": ["integer", "null"], "minimum": 1 },
+          "character_id": { "type": ["string", "null"] },
+          "name": { "type": "string", "minLength": 1 }
+        }
+      },
+      "default": []
+    },
+    "target_audience_region": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string" },
+        "descriptor": {
+          "type": "string",
+          "description": "Short English descriptor of the region/ethnicity look, e.g. \"Thai/Southeast Asian features and styling appropriate for Thai audiences\". A DEFAULT only — any ethnicity/nationality already implied by the scene or a character's own established appearance always wins."
+        }
+      }
+    },
+    "product_lock": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["active"],
+      "properties": {
+        "active": {
+          "type": "boolean",
+          "description": "True when this shot has a product tie-in reference image attached to the render call."
+        },
+        "product_name": { "type": ["string", "null"] },
+        "product_description": { "type": ["string", "null"] }
+      }
+    },
+    "grid_layout": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "description": "Present only when action == \"multi_angle_grid\". Null for \"repair\" and \"soften\".",
+      "properties": {
+        "panel_count": { "const": 9 },
+        "layout": { "const": "3x3" }
+      }
+    }
+  }
+}

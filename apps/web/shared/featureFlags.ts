@@ -198,6 +198,13 @@ export interface TenantFeatureFlags {
   verticalDramaCharacterVisualQuality: boolean; // F132G — spec 132 §10.2-10.7 persisted bible, expression set, image QC, consistency ledger (fail-closed)
   verticalDramaContinuityContracts: boolean; // F132H — spec 132 §8.2 causal chain / hook-to-opening enforcement (fail-closed)
   verticalDramaAngleGridQuality: boolean; // F132I — spec 132 §19 structured 9-angle schema, diversity/coverage rules, best-angle scoring rubric (fail-closed)
+  verticalDramaRetentionHooks: boolean; // planning/vertical-drama-retention-hooks/plan.md — 12-principle hook/open-loop/retention-loop upgrade: genre-conditional retention-loop guidance in script-builder + shotgrid (W1-W3), deterministic retention facts fed to quality-review (W4/W6, scorecard v4/contract_version 4), and hook/retention-ending motion energy in the video-prompt layer (W7) (fail-closed)
+  marketplaceRemotionRendererEnabled: boolean; // F132J — planning/remotion-migration/plan.md — Marketplace Auto-Review render engine: opt in to the Remotion renderer instead of HyperFrames (default off, per-tenant rollout). Now redundant since Remotion is the default engine, but left in place for backward compat — harmless if left on.
+  marketplaceHyperframesRendererForced: boolean; // F132K — planning/remotion-migration/plan.md §7 (Phase 6) — Marketplace Auto-Review render engine: per-tenant rollback lever that forces HyperFrames even though Remotion is now the default engine (default off, independent of the global RENDERER_ENGINE env var kill-switch)
+  videoIntelligencePlatformEnabled: boolean; // F133A — specs/feature/133-content-video-intelligence-platform — Video Intelligence Platform entry point (Catalog/Motion Video Studio routes + videoProjects router gate), default off
+  remotionRenderVideoJobEnabled: boolean; // F133B — specs/feature/133-content-video-intelligence-platform §5 — queueRemotionRenderVideoJob dispatch gate (Lane A in-process Remotion render worker), default off
+  videoIntelligenceCatalogStudioEnabled: boolean; // F133C — specs/feature/133-content-video-intelligence-platform §10 — Catalog Video Studio surface (product-seeded video projects), default off
+  videoIntelligenceMotionStudioEnabled: boolean; // F133-motion — specs/feature/133-content-video-intelligence-platform §10 — Motion Studio surface (blank/template-seeded video projects), default off
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -302,6 +309,12 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "hyperframesWorkerFinalComposite",
   "marketplaceHyperframesLibrarySaveEnabled",
   "marketplaceHyperframesOperatorEnabled",
+  "marketplaceRemotionRendererEnabled",
+  "marketplaceHyperframesRendererForced",
+  "videoIntelligencePlatformEnabled",
+  "remotionRenderVideoJobEnabled",
+  "videoIntelligenceCatalogStudioEnabled",
+  "videoIntelligenceMotionStudioEnabled",
   "storyboardPreviewMatchCaptureEnabled",
   "storyboardPreviewMatchCaptureServerWorkerEnabled",
   "storyboardPreviewMatchCaptureHighEnabled",
@@ -399,6 +412,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "verticalDramaCharacterVisualQuality",
   "verticalDramaContinuityContracts",
   "verticalDramaAngleGridQuality",
+  "verticalDramaRetentionHooks",
 ]);
 
 /**
@@ -502,6 +516,12 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   hyperframesWorkerFinalComposite: false,
   marketplaceHyperframesLibrarySaveEnabled: false,
   marketplaceHyperframesOperatorEnabled: false,
+  marketplaceRemotionRendererEnabled: false,
+  marketplaceHyperframesRendererForced: false,
+  videoIntelligencePlatformEnabled: false,
+  remotionRenderVideoJobEnabled: false,
+  videoIntelligenceCatalogStudioEnabled: false,
+  videoIntelligenceMotionStudioEnabled: false,
   storyboardPreviewMatchCaptureEnabled: false,
   storyboardPreviewMatchCaptureServerWorkerEnabled: false,
   storyboardPreviewMatchCaptureHighEnabled: false,
@@ -600,6 +620,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaCharacterVisualQuality: false,
   verticalDramaContinuityContracts: false,
   verticalDramaAngleGridQuality: false,
+  verticalDramaRetentionHooks: false,
 };
 
 export const AGE_SAFETY_FEATURE_FLAG_KEYS = [

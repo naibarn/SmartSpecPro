@@ -1,0 +1,28 @@
+{
+  "id": "single-shot-basic",
+  "description": "Single 4s shot, schema-default presets, one on-screen text line and one subtitle cue. Smallest possible parity fixture.",
+  "expectRemotionSupported": true,
+  "finalComposite": {
+    "finalVideoLengthSec": 4,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "burnInSubtitles": true,
+    "preserveNativeAudio": true,
+    "fontFamily": "Prompt",
+    "hookText": "ทดสอบ Parity",
+    "shots": [
+      {
+        "id": "shot_1",
+        "index": 0,
+        "sourceVideoUrl": "urn:remotion-parity-fixture:scene-1",
+        "startSec": 0,
+        "durationSec": 4,
+        "onScreenText": ["ทดสอบ Remotion Parity"],
+        "subtitleCues": [
+          { "startSec": 0.5, "endSec": 3.5, "text": "บทพากย์ทดสอบความถูกต้องของซับไตเติล" }
+        ]
+      }
+    ]
+  }
+}

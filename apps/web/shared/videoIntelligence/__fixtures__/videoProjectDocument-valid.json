@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "format": { "width": 1080, "height": 1920, "fps": 30, "durationMs": 8000 },
+  "content": {
+    "topic": "AI Agent",
+    "audience": "general",
+    "language": "th",
+    "platformPreset": "tiktok_9_16"
+  },
+  "brandKitId": "bk-001",
+  "scenes": [
+    {
+      "sceneId": "SC-001",
+      "startMs": 0,
+      "endMs": 5000,
+      "narration": "AI Agent คือผู้ช่วยที่ลงมือทำงานแทนเราได้",
+      "narrationAudioAssetId": 123,
+      "visual": { "kind": "layers" },
+      "layers": [
+        {
+          "id": "sc001_bg",
+          "type": "image",
+          "startFrame": 0,
+          "durationFrames": 150,
+          "x": 0,
+          "y": 0,
+          "width": 100,
+          "height": 100,
+          "rotationDeg": 0,
+          "opacity": 1,
+          "zIndex": 0,
+          "src": "https://cdn.example.com/agent-bg.png",
+          "fit": "cover"
+        }
+      ],
+      "motion": { "intensity": "medium", "camera": "push-in" },
+      "captionCues": [{ "startMs": 0, "endMs": 2200, "text": "AI Agent คืออะไร" }]
+    },
+    {
+      "sceneId": "SC-002",
+      "startMs": 5000,
+      "endMs": 8000,
+      "narration": null,
+      "narrationAudioAssetId": null,
+      "visual": { "kind": "layers" },
+      "layers": [],
+      "motion": { "intensity": "low", "camera": "static" },
+      "captionCues": []
+    }
+  ],
+  "audioTracks": [
+    { "kind": "narration", "assetRefs": [123], "gainDb": 0 },
+    { "kind": "music", "assetRefs": [200], "gainDb": -14, "ducking": true },
+    { "kind": "sfx", "events": [{ "assetRef": 301, "atMs": 4800 }] }
+  ],
+  "captions": { "presetId": "classic_box", "burnIn": false, "language": "th" },
+  "claims": [
+    { "claim": "AI Agent ช่วยลดเวลาทำงาน", "source": "catalog.description", "status": "approved" }
+  ],
+  "qa": { "targetScore": 8, "maxLoops": 5 }
+}

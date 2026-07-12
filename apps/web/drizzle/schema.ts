@@ -20384,6 +20384,19 @@ export const verticalDramaSeries = pgTable(
     policy: jsonb("policy"),
     /** VerticalDramaQualityPolicy (spec 131 §16.1) — null → tenant default → built-in defaults */
     qualityPolicy: jsonb("qualityPolicy"),
+    /**
+     * VerticalDramaSeriesLlmModelPolicy (manual LLM model override for the
+     * "generate start-frame render plan" / "generate storyboard" pipeline
+     * stages, added 2026-07-11 — see
+     * `/home/dev/.claude/plans/polished-toasting-gadget.md`). Nullable JSONB,
+     * additive; absent/null field(s) mean "automatic" (the stage's own
+     * quality/large-context model selector picks the model). See
+     * `@shared/verticalDramaSeries/contracts.ts` for the field shape and
+     * `server/services/verticalDramaImproveScript.ts`'s
+     * `resolveStartFramePlanModel`/`resolveStoryboardModel` for the
+     * resolution logic.
+     */
+    llmModelPolicy: jsonb("llmModelPolicy"),
     /** VerticalDramaSeriesTrailerState (series-level narrated trailer, Bible tab) */
     trailer: jsonb("trailer"),
     /**
@@ -20450,6 +20463,35 @@ export const verticalDramaCharacters = pgTable(
      * (flag-gated on `verticalDramaSeriesVoiceChain`, W12-A).
      */
     voiceConfig: jsonb("voiceConfig"),
+    /**
+     * Character variant/twin relationships (planning/vertical-drama-character-variants/plan.md
+     * Phase A). These support 3 relationships:
+     * - `parentCharacterId`+`variantLabel`+`variantType` — this row is a
+     *   variant of another character row (same person): `variantType:
+     *   "outfit"` = same age/face, different look; `variantType:
+     *   "age_stage"` = same identity, different life-stage appearance
+     *   (loose face reference, not locked).
+     * - `sharesFaceWithCharacterId` — this row is a DIFFERENT person (e.g. a
+     *   twin) whose face reference should be resolved from another
+     *   character row.
+     * All four columns nullable/additive; `null` = a standalone character or
+     * a parent itself. Hand-applied via
+     * `manual_vertical_drama_character_variant_columns.sql` — same "hand-
+     * authored migration, schema.ts catches up separately" convention as
+     * this table's sibling `voiceConfig` column (drizzle-kit generate is
+     * blocked for this table lineage by the pre-existing meta-journal
+     * collision documented on that column and its sibling
+     * `manual_vertical_drama_*.sql` files).
+     */
+    parentCharacterId: bigint("parentCharacterId", {
+      mode: "number",
+    }).references((): AnyPgColumn => verticalDramaCharacters.id),
+    variantLabel: varchar("variantLabel", { length: 64 }),
+    /** "outfit" | "age_stage" | null — plain varchar, matches this table's `role` column style. */
+    variantType: varchar("variantType", { length: 16 }),
+    sharesFaceWithCharacterId: bigint("sharesFaceWithCharacterId", {
+      mode: "number",
+    }).references((): AnyPgColumn => verticalDramaCharacters.id),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -21036,3 +21078,123 @@ export type VerticalDramaGenrePresetRow =
   typeof verticalDramaGenrePresets.$inferSelect;
 export type InsertVerticalDramaGenrePresetRow =
   typeof verticalDramaGenrePresets.$inferInsert;
+
+/**
+ * Video Intelligence Platform (feature 133, section-05-db-tables-brand-kit)
+ * — mirrors `drizzle/manual_video_intelligence_tables.sql` exactly (that
+ * migration was hand-authored and applied directly via psql because
+ * `drizzle-kit generate` is blocked by the pre-existing meta-journal
+ * collision documented there; these `pgTable` definitions were the missing
+ * ORM-side counterpart — the tables already exist in the database).
+ * `brand_kits` is declared first so `video_projects.brandKitId` can
+ * reference it.
+ */
+export const brandKits = pgTable(
+  "brand_kits",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 200 }).notNull(),
+    logoAssetId: bigint("logoAssetId", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" },
+    ),
+    colors: jsonb("colors").$type<Record<string, unknown>>(),
+    fonts: jsonb("fonts").$type<Record<string, unknown>>(),
+    captionPresetId: varchar("captionPresetId", { length: 64 }),
+    locks: jsonb("locks").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [index("brand_kits_tenant_user_idx").on(t.tenantId, t.userId)],
+);
+
+export type BrandKitRow = typeof brandKits.$inferSelect;
+export type InsertBrandKitRow = typeof brandKits.$inferInsert;
+
+export const videoProjects = pgTable(
+  "video_projects",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    studioType: varchar("studioType", { length: 20 }).notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("brief"),
+    automationMode: varchar("automationMode", { length: 10 })
+      .notNull()
+      .default("guided"),
+    brief: jsonb("brief").$type<Record<string, unknown>>(),
+    document: jsonb("document").$type<Record<string, unknown>>(),
+    revision: integer("revision").notNull().default(1),
+    brandKitId: bigint("brandKitId", { mode: "number" }).references(
+      () => brandKits.id,
+      { onDelete: "set null" },
+    ),
+    sourceRefs: jsonb("sourceRefs").$type<Record<string, unknown>>(),
+    qaLedger: jsonb("qaLedger").$type<Record<string, unknown>>(),
+    renderJobId: varchar("renderJobId", { length: 36 }),
+    previewJobId: varchar("previewJobId", { length: 36 }),
+    resultLibraryItemId: integer("resultLibraryItemId").references(
+      () => libraryItems.id,
+      { onDelete: "set null" },
+    ),
+    videoEditorProjectId: integer("videoEditorProjectId"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("video_projects_tenant_user_status_idx").on(
+      t.tenantId,
+      t.userId,
+      t.status,
+    ),
+    index("video_projects_tenant_studio_idx").on(t.tenantId, t.studioType),
+  ],
+);
+
+export type VideoProjectRow = typeof videoProjects.$inferSelect;
+export type InsertVideoProjectRow = typeof videoProjects.$inferInsert;
+
+export const videoProjectRevisions = pgTable(
+  "video_project_revisions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    projectId: bigint("projectId", { mode: "number" })
+      .notNull()
+      .references(() => videoProjects.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    document: jsonb("document").$type<Record<string, unknown>>().notNull(),
+    createdBy: integer("createdBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reason: varchar("reason", { length: 200 }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("video_project_revisions_project_revision_unique").on(
+      t.projectId,
+      t.revision,
+    ),
+  ],
+);
+
+export type VideoProjectRevisionRow =
+  typeof videoProjectRevisions.$inferSelect;
+export type InsertVideoProjectRevisionRow =
+  typeof videoProjectRevisions.$inferInsert;

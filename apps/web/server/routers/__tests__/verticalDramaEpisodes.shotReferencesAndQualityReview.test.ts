@@ -252,6 +252,46 @@ vi.mock("../../services/verticalDramaStartFrameGeneration", () => ({
     mockMergePresetVisualIdentityNegativeFragments,
 }));
 
+// vertical-drama-skill-first-architecture plan, Phase 1 items 1-2 —
+// `generateStartFrameAngleVariations`/`repairShotImage` now dynamically
+// `import("../services/verticalDramaShotImageAction")` (same "adminProcedure
+// transitive dependency" reasoning as every other dynamic import in this
+// file) to author the grid/repair prompt via the
+// `vertical-drama-shot-image-action` skill instead of hand-built strings.
+// The mock ECHOES `shot.currentPrompt`/`repair_instruction` back into its
+// returned `prompt` (and `shot.currentNegativePrompt` back into
+// `negativePrompt`) so every pre-existing assertion about facts flowing
+// THROUGH this call (preset-visual-identity fragments, the user's repair
+// instruction, the shot's own negative prompt) keeps working unchanged —
+// only the assertions that checked literal ROUTER-authored instructional
+// text (grid layout wording, "no text" warning, character-identity-lock
+// wording) move to this skill's own fixtures/skill.md, since the router no
+// longer authors that text at all.
+const { mockGenerateShotImageAction } = vi.hoisted(() => ({
+  mockGenerateShotImageAction: vi.fn(
+    async (params: {
+      action: "multi_angle_grid" | "repair";
+      shot: { currentPrompt: string; currentNegativePrompt: string };
+      repairInstruction?: string | null;
+    }) => ({
+      prompt:
+        params.action === "repair"
+          ? [params.shot.currentPrompt, params.repairInstruction]
+              .filter(Boolean)
+              .join(" ")
+          : `${params.shot.currentPrompt} [multi_angle_grid authored by skill]`,
+      negativePrompt: params.shot.currentNegativePrompt || "",
+      creditsUsed: 0,
+      model: "mock-model",
+    })
+  ),
+}));
+vi.mock("../../services/verticalDramaShotImageAction", () => ({
+  generateShotImageAction: mockGenerateShotImageAction,
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+}));
+
 const { mockShotReferencesService, MockVerticalDramaShotReferenceError } =
   vi.hoisted(() => {
     class MockVerticalDramaShotReferenceError extends Error {
@@ -283,6 +323,7 @@ vi.mock("../../services/verticalDramaShotReferences", () => ({
 const {
   mockRunVerticalDramaEpisodeQualityReview,
   mockComputeVerticalDramaDensityMetrics,
+  mockComputeRetentionMetrics,
   MockInsufficientCreditsError,
   MockVdSchemaValidationError,
   MockRateLimitExceededError,
@@ -305,6 +346,24 @@ const {
     reversal_count: 1,
     max_consecutive_same_emotion: 1,
   })),
+  // Retention hooks (`planning/vertical-drama-retention-hooks/plan.md` W6,
+  // router-wiring package, added 2026-07-11) — same "deterministic fake so
+  // tests can assert the computed value flows through unchanged" role as
+  // `mockComputeVerticalDramaDensityMetrics` above.
+  mockComputeRetentionMetrics: vi.fn(() => ({
+    subtitle_line_facts: { max_line_chars: 10, longest_line_excerpt: "hi" },
+    retention_structure_facts: {
+      open_loop_count: 1,
+      retention_loop_type: "unresolved_image",
+      retention_loop_present: true,
+    },
+    shot_change_cadence_facts: {
+      max_static_streak: 0,
+      windows_without_change: 0,
+      declared_change_mismatch_count: 0,
+    },
+    retention_loop_rotation_facts: { repeated_streak: 0 },
+  })),
   MockInsufficientCreditsError: class extends Error {},
   MockVdSchemaValidationError: class extends Error {},
   MockRateLimitExceededError: class extends Error {},
@@ -314,6 +373,7 @@ vi.mock("../../services/verticalDramaEpisodeQualityReview", () => ({
   runVerticalDramaEpisodeQualityReview:
     mockRunVerticalDramaEpisodeQualityReview,
   computeVerticalDramaDensityMetrics: mockComputeVerticalDramaDensityMetrics,
+  computeRetentionMetrics: mockComputeRetentionMetrics,
   InsufficientCreditsError: MockInsufficientCreditsError,
   VdSchemaValidationError: MockVdSchemaValidationError,
   RateLimitExceededError: MockRateLimitExceededError,
@@ -748,6 +808,134 @@ describe("setApprovedStartFrameAsset — main-image-swap-history (demotion + pro
     });
 
     expect(result.startFramePlan.frames[0].approvedMediaAssetId).toBe("901");
+  });
+});
+
+describe("setShotCharacterReference — manual per-shot character/variant override (planning/vertical-drama-twin-variant-completeness W6 backend)", () => {
+  function episodeRowWithTwoShots() {
+    return {
+      id: 100,
+      tenantId: "tenant-1",
+      userId: 42,
+      seriesId: 10,
+      startFramePlan: {
+        selectedImageModelId: null,
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "shot one prompt",
+            requiredCharacterRefs: ["hero"],
+          },
+          {
+            shotNumber: 2,
+            imagePrompt: "shot two prompt",
+            requiredCharacterRefs: ["villain"],
+          },
+        ],
+      },
+      motionPromptPack: null,
+    };
+  }
+
+  it("patches only the target shot's requiredCharacterRefs and leaves every other shot untouched", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ characterKey: "hero-formal" }])); // roster validation
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotCharacterReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        characterRefs: ["hero-formal"],
+      },
+    });
+
+    expect(result.startFramePlan.frames[0]).toMatchObject({
+      shotNumber: 1,
+      requiredCharacterRefs: ["hero-formal"],
+    });
+    // Shot 2 is byte-identical to before — this mutation never touches any
+    // shot other than the one targeted by `shotNumber`.
+    expect(result.startFramePlan.frames[1]).toMatchObject({
+      shotNumber: 2,
+      requiredCharacterRefs: ["villain"],
+    });
+    expect(mockDb.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows clearing a shot's character refs to an empty array", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])); // loadOwnedEpisode
+    // No roster validation query when `characterRefs` is empty.
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotCharacterReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        characterRefs: [],
+      },
+    });
+
+    expect(result.startFramePlan.frames[0].requiredCharacterRefs).toEqual([]);
+    expect(mockDb.select).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects an unknown/nonexistent characterKey with BAD_REQUEST and does not write anything", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ characterKey: "hero-formal" }])); // roster validation — "ghost-key" missing
+
+    await expect(
+      router.setShotCharacterReference({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          characterRefs: ["hero-formal", "ghost-key"],
+        },
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects a caller who does not own the series/episode with NOT_FOUND", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([])); // loadOwnedEpisode -> no row
+
+    await expect(
+      router.setShotCharacterReference({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "999",
+          shotNumber: 1,
+          characterRefs: ["hero-formal"],
+        },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unknown shotNumber with NOT_FOUND", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRowWithTwoShots()])); // loadOwnedEpisode
+
+    await expect(
+      router.setShotCharacterReference({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 99,
+          characterRefs: [],
+        },
+      })
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });
 
@@ -1267,6 +1455,113 @@ describe("runEpisodeQualityReview", () => {
       expect(mockDb.insert).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe("Retention hooks (planning/vertical-drama-retention-hooks/plan.md W6, router-wiring package)", () => {
+    beforeEach(() => {
+      mockComputeRetentionMetrics.mockClear();
+    });
+
+    it("flags off: scoreRetentionDimensions/retentionMetrics stay undefined/false, computeRetentionMetrics never called, no extra prior-episodes query", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { locale: "th", productTieIn: null, qualityPolicy: null },
+          ])
+        ); // series row
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: {
+          episode_title: "Episode 1",
+          scorecard: {},
+          summary: "ok",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockComputeRetentionMetrics).not.toHaveBeenCalled();
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scoreRetentionDimensions: false,
+          retentionMetrics: undefined,
+        })
+      );
+      // Exactly the v1 shape: 2 selects (loadOwnedEpisode + series row), no
+      // extra "recent episodes" query.
+      expect(mockDb.select).toHaveBeenCalledTimes(2);
+    });
+
+    it("verticalDramaRetentionHooks on: computes retentionMetrics (fed by the last 3 prior episodes' retention_loop.type) and passes scoreRetentionDimensions: true", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(
+          selectChain([
+            { locale: "th", productTieIn: null, qualityPolicy: null },
+          ])
+        ) // series row
+        .mockReturnValueOnce(
+          selectChain([
+            { script: { retention_loop: { type: "clue" } } },
+            { script: { retention_loop: { type: "threat" } } },
+          ])
+        ); // loadRecentVerticalDramaRetentionLoopTypes
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: {
+          episode_title: "Episode 1",
+          scorecard: {},
+          summary: "ok",
+          issues: [],
+          warnings: [],
+          repair_queue: [],
+        },
+        creditsUsed: 3,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.runEpisodeQualityReview({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockComputeRetentionMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          script: expect.anything(),
+          storyboard: expect.anything(),
+          recentRetentionLoopTypes: ["clue", "threat"],
+        })
+      );
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scoreRetentionDimensions: true,
+          retentionMetrics: expect.objectContaining({
+            retention_structure_facts: expect.objectContaining({
+              open_loop_count: 1,
+            }),
+          }),
+        })
+      );
+    });
+  });
 });
 
 describe("applyQualityReviewSuggestions", () => {
@@ -1739,6 +2034,105 @@ describe("applyQualityReviewSuggestions", () => {
       expect(result.warning).not.toContain("เนื้อเรื่องเปลี่ยนเกินกำหนด");
     });
   });
+
+  describe("Retention hooks — v1 single-apply path (planning/vertical-drama-retention-hooks/plan.md, router-wiring package)", () => {
+    beforeEach(() => {
+      mockRepairStage.mockReset();
+      mockComputeRetentionMetrics.mockClear();
+    });
+
+    it("flags off: repairStage gets retentionHooksEnabled: false, re-review gets scoreRetentionDimensions: false and retentionMetrics: undefined, computeRetentionMetrics never called", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({} as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ jsonPayload: STORED_REVIEW }])) // loadLatestQualityReview
+        .mockReturnValueOnce(selectChain([episodeRow()])) // refreshedRow
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])); // locale lookup
+      mockRepairStage.mockResolvedValue({
+        runId: 1,
+        result: {} as any,
+        staleStages: [],
+      });
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: STORED_REVIEW,
+        creditsUsed: 1,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.applyQualityReviewSuggestions({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      for (const call of mockRepairStage.mock.calls) {
+        expect(call[2]).toEqual(
+          expect.objectContaining({ retentionHooksEnabled: false })
+        );
+      }
+      expect(mockComputeRetentionMetrics).not.toHaveBeenCalled();
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scoreRetentionDimensions: false,
+          retentionMetrics: undefined,
+        })
+      );
+    });
+
+    it("verticalDramaRetentionHooks on: repairStage gets retentionHooksEnabled: true for every repaired group, and the re-review computes + passes retentionMetrics", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaRetentionHooks: true,
+      } as any);
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow()])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ jsonPayload: STORED_REVIEW }])) // loadLatestQualityReview
+        .mockReturnValueOnce(selectChain([episodeRow()])) // refreshedRow
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])); // loadRecentVerticalDramaRetentionLoopTypes (no prior episodes)
+      mockRepairStage.mockResolvedValue({
+        runId: 1,
+        result: {} as any,
+        staleStages: [],
+      });
+      mockRunVerticalDramaEpisodeQualityReview.mockResolvedValue({
+        review: STORED_REVIEW,
+        creditsUsed: 1,
+        model: "gpt-x",
+      });
+      mockDb.insert
+        .mockReturnValueOnce(insertChain([{ id: 555 }]))
+        .mockReturnValueOnce(insertChain([{ id: 777 }]));
+      mockDb.update.mockReturnValueOnce(updateChain([]));
+
+      await router.applyQualityReviewSuggestions({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100" },
+      });
+
+      expect(mockRepairStage.mock.calls.length).toBeGreaterThan(0);
+      for (const call of mockRepairStage.mock.calls) {
+        expect(call[2]).toEqual(
+          expect.objectContaining({ retentionHooksEnabled: true })
+        );
+      }
+      expect(mockComputeRetentionMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({ recentRetentionLoopTypes: [] })
+      );
+      expect(mockRunVerticalDramaEpisodeQualityReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scoreRetentionDimensions: true,
+          retentionMetrics: expect.objectContaining({
+            retention_structure_facts: expect.objectContaining({
+              open_loop_count: 1,
+            }),
+          }),
+        })
+      );
+    });
+  });
 });
 
 describe("repairStageOutput — W11.6 Story Lock", () => {
@@ -1876,6 +2270,97 @@ describe("getEpisodeDetail — qualityReview field", () => {
     });
 
     expect(result.qualityReview).toEqual(review);
+  });
+
+  it("planning/vertical-drama-twin-variant-completeness W6: characterPortraits includes variant/twin relationship metadata for a variant row and omits it (undefined) for a plain base character", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 100,
+            tenantId: "tenant-1",
+            userId: 42,
+            seriesId: 10,
+            script: null,
+            dialogueAudioPlan: null,
+            storyboard: null,
+            storyboardReviewId: null,
+            startFramePlan: null,
+            motionPromptPack: null,
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 1,
+            characterKey: "hero",
+            name: "Hero",
+            parentCharacterId: null,
+            variantLabel: null,
+            variantType: null,
+            sharesFaceWithCharacterId: null,
+          },
+          {
+            id: 2,
+            characterKey: "hero-formal",
+            name: "Hero",
+            parentCharacterId: 1,
+            variantLabel: "Formal outfit",
+            variantType: "outfit",
+            sharesFaceWithCharacterId: null,
+          },
+          {
+            id: 3,
+            characterKey: "hero-twin",
+            name: "Evil Twin",
+            parentCharacterId: null,
+            variantLabel: null,
+            variantType: null,
+            sharesFaceWithCharacterId: 1,
+          },
+        ])
+      ) // resolveSeriesCharacterPortraits
+      .mockReturnValueOnce(selectChain([])); // loadLatestQualityReview
+
+    const result = await router.getEpisodeDetail({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100" },
+    });
+
+    // Plain base character: relationship fields are undefined, not
+    // null-noise (the widened map is purely additive for existing rows).
+    expect(result.characterPortraits.hero).toMatchObject({
+      characterId: "1",
+      name: "Hero",
+    });
+    expect(result.characterPortraits.hero.parentCharacterId).toBeUndefined();
+    expect(result.characterPortraits.hero.variantLabel).toBeUndefined();
+    expect(result.characterPortraits.hero.variantType).toBeUndefined();
+    expect(
+      result.characterPortraits.hero.sharesFaceWithCharacterId
+    ).toBeUndefined();
+
+    // Outfit variant row: carries parentCharacterId/variantLabel/variantType.
+    expect(result.characterPortraits["hero-formal"]).toMatchObject({
+      characterId: "2",
+      parentCharacterId: "1",
+      variantLabel: "Formal outfit",
+      variantType: "outfit",
+    });
+    expect(
+      result.characterPortraits["hero-formal"].sharesFaceWithCharacterId
+    ).toBeUndefined();
+
+    // Twin row: carries sharesFaceWithCharacterId, no parent/variant fields.
+    expect(result.characterPortraits["hero-twin"]).toMatchObject({
+      characterId: "3",
+      sharesFaceWithCharacterId: "1",
+    });
+    expect(
+      result.characterPortraits["hero-twin"].parentCharacterId
+    ).toBeUndefined();
+    expect(result.characterPortraits["hero-twin"].variantLabel).toBeUndefined();
   });
 
   it("Wave-4A: all new keys are null/0 and flags all false when every 2026-07-07 flag is off", async () => {
@@ -3069,6 +3554,94 @@ describe("generateVideoClip — reference trimming (Phase 2.6)", () => {
     );
   });
 
+  it("2026-07-11 speaker-switch redesign: merges clip.extraReferenceAssetIds IN FRONT OF shot-level manual references (kept first when trimmed)", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+    mockShotReferencesService.listForShot.mockResolvedValue([
+      shotReference({ mediaAssetId: "5", sortOrder: 0 }),
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithPack({ extraReferenceAssetIds: ["3"] })])
+      ) // loadOwnedEpisode — clip carries one additional speaker portrait
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 900, originalUrl: "https://cdn/900.png" },
+          { id: 3, originalUrl: "https://cdn/3.png" },
+          { id: 5, originalUrl: "https://cdn/5.png" },
+        ])
+      ) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+    const result = await router.generateVideoClip({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+    });
+
+    // extraReferenceAssetIds (1) + shot-level reference (1) = 2, within
+    // maxReferenceImages(3) -> nothing trimmed, extra reference ordered
+    // BEFORE the shot-level manual reference.
+    expect(result.trimmedReferenceCount).toBe(0);
+    expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: [
+          "https://cdn/900.png",
+          "https://cdn/3.png",
+          "https://cdn/5.png",
+        ],
+      }),
+      expect.any(String)
+    );
+  });
+
+  it("2026-07-11 speaker-switch redesign: extraReferenceAssetIds are kept first when trimmed to maxReferenceImages, dropping the shot-level manual reference instead", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 2,
+      nativeAudioDialogue: true,
+      verticalDramaReady: true,
+    });
+    mockShotReferencesService.listForShot.mockResolvedValue([
+      shotReference({ mediaAssetId: "5", sortOrder: 0 }),
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([episodeRowWithPack({ extraReferenceAssetIds: ["3", "4"] })])
+      ) // loadOwnedEpisode — 2 additional speaker portraits
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 900, originalUrl: "https://cdn/900.png" },
+          { id: 3, originalUrl: "https://cdn/3.png" },
+          { id: 4, originalUrl: "https://cdn/4.png" },
+        ])
+      ) // resolveMediaAssetUrlsByIds — only start frame + the 2 kept extra references (shot-level "5" trimmed away)
+      .mockReturnValueOnce(selectChain([{ creditCost: 50, configJson: null }])); // pricing lookup
+
+    const result = await router.generateVideoClip({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", clipNumber: 1 },
+    });
+
+    // extraReferenceAssetIds (2) + shot-level reference (1) = 3, trimmed to
+    // maxReferenceImages(2) -> the shot-level manual reference (lower
+    // priority) is the one dropped, not either extra reference.
+    expect(result.trimmedReferenceCount).toBe(1);
+    expect(mockGenerateVideoAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        referenceImageUrls: [
+          "https://cdn/900.png",
+          "https://cdn/3.png",
+          "https://cdn/4.png",
+        ],
+      }),
+      expect.any(String)
+    );
+  });
+
   it("forwards idempotencyKey through to deductCredits (T2)", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       supportsStartFrame: true,
@@ -3595,7 +4168,18 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
     mockDeriveModelResolutionOptions.mockReturnValue(undefined);
   });
 
-  it("instructs no text/captions/labels/watermarks anywhere in the image, both in the prompt and the negative prompt", async () => {
+  // vertical-drama-skill-first-architecture plan, Phase 1 item 1 — the
+  // literal "no text/captions/labels/watermarks" grid-instruction wording
+  // is now authored entirely by the `vertical-drama-shot-image-action`
+  // skill (see that skill's `skill.md` "Action: multi_angle_grid" section
+  // and its fixtures for that wording's own coverage), not by this router.
+  // These tests now verify the ROUTER's responsibility instead: it must ask
+  // the skill for a `multi_angle_grid` action with the right grid layout and
+  // the shot's own current prompt/negative-prompt as facts, and must forward
+  // the skill's returned prompt/negative-prompt through to the actual render
+  // call unmutated (via this file's `mockGenerateShotImageAction`, which
+  // echoes those facts back into its return value).
+  it("calls the shot-image-action skill with action=multi_angle_grid, a 3x3/9-panel grid_layout, and the shot's own prompt/negative-prompt facts", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRowWithStartFramePlan()])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ creditCost: 10, configJson: null }])) // pricing lookup
@@ -3609,28 +4193,29 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
 
+    expect(mockGenerateShotImageAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "multi_angle_grid",
+        shot: expect.objectContaining({
+          shotNumber: 1,
+          currentPrompt: "a prompt",
+          currentNegativePrompt: "blurry",
+        }),
+        repairInstruction: null,
+        gridLayout: { panelCount: 9, layout: "3x3" },
+      })
+    );
+
     const call = (
       mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
     ).mock.calls[0][0];
-
-    // Prompt must explicitly forbid on-image text and must NOT phrase angle
-    // names as something to render as a label (still lists example angle
-    // names for diversity, but the "no text" instruction must be present and
-    // unambiguous).
-    expect(call.prompt).toMatch(/no text/i);
-    expect(call.prompt).toMatch(/caption/i);
-    expect(call.prompt).toMatch(/watermark/i);
-    expect(call.prompt).toMatch(/3x3 grid of 9 panels/i);
-
-    // Negative prompt must also enforce it (defense in depth), while still
-    // preserving the shot's own negativePrompt.
+    // Skill-authored prompt (mocked, echoes the input facts) flows through
+    // to the render call, and the shot's own negativePrompt is preserved.
+    expect(call.prompt).toMatch(/a prompt/);
     expect(call.negativePrompt).toMatch(/blurry/);
-    expect(call.negativePrompt).toMatch(/text/i);
-    expect(call.negativePrompt).toMatch(/caption/i);
-    expect(call.negativePrompt).toMatch(/watermark/i);
   });
 
-  it("still includes negative-prompt no-text terms even when the shot has no negativePrompt of its own", async () => {
+  it("passes an empty current_negative_prompt fact (never undefined) when the shot has no negativePrompt of its own", async () => {
     mockDb.select
       .mockReturnValueOnce(
         selectChain([
@@ -3648,10 +4233,11 @@ describe("no burned-in text in the 3x3 multi-angle grid prompt (Phase 6.3)", () 
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
 
-    const call = (
-      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
-    ).mock.calls[0][0];
-    expect(call.negativePrompt).toMatch(/text/i);
+    expect(mockGenerateShotImageAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shot: expect.objectContaining({ currentNegativePrompt: "" }),
+      })
+    );
   });
 
   it("Wave-7D: appends the series' preset visual identity fragments onto the grid prompt/negative-prompt when verticalDramaSeriesPresetMixV2 is on", async () => {
@@ -3942,15 +4528,23 @@ describe("repairShotImage (Phase 6.5)", () => {
       }),
       expect.any(String)
     );
-    const call = (
-      mediaGenerationService.generateImageAsync as ReturnType<typeof vi.fn>
-    ).mock.calls[0][0];
-    // Repair prompt now uses the standardized two-tier character-lock
-    // instruction (2026-07-06 prompt-safety upgrade) instead of an inline
-    // "same character identity" sentence.
-    expect(call.prompt).toMatch(/CHARACTER IDENTITY LOCK/i);
-    expect(call.prompt).toMatch(/PERSISTENT/);
-    expect(call.prompt).toMatch(/VARIABLE/);
+    // vertical-drama-skill-first-architecture plan, Phase 1 item 2 — the
+    // character-identity-lock wording is now authored entirely by the
+    // `vertical-drama-shot-image-action` skill (see that skill's `skill.md`
+    // "Action: repair" section), not by this router. Verify instead that the
+    // router asked the skill for a `repair` action with the shot's current
+    // prompt and the user's own instruction as facts.
+    expect(mockGenerateShotImageAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "repair",
+        shot: expect.objectContaining({
+          shotNumber: 1,
+          currentPrompt: "a prompt",
+        }),
+        repairInstruction: "change the jacket to red",
+        gridLayout: null,
+      })
+    );
   });
 
   it("refunds credits when generation submission fails", async () => {

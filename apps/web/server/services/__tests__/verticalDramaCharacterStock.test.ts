@@ -49,6 +49,7 @@ import {
   characterRefChangeStaleTargets,
   pickBestCharacterSheetAsset,
   VerticalDramaCharacterStockService,
+  VerticalDramaCharacterStockError,
   type CharacterSheetAssetCandidate,
 } from "../verticalDramaCharacterStock";
 
@@ -482,5 +483,118 @@ describe("VerticalDramaCharacterStockService.getCharacterReferenceUrls (F131Z)",
       "https://cdn.example.com/portrait.png",
       "https://cdn.example.com/sheet-full.png",
     ]);
+  });
+});
+
+describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (Phase D1 reference picker)", () => {
+  const owner = { tenantId: "t1", userId: 42, seriesId: 10 };
+
+  beforeEach(() => {
+    mockSelect.mockClear();
+    mockFrom.mockClear();
+    mockWhereSelect.mockClear();
+    mockLimit.mockClear();
+  });
+
+  function portraitRow(over: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: 55,
+      tenantId: "t1",
+      userId: 42,
+      seriesId: 10,
+      characterId: 5,
+      mediaAssetId: 100,
+      assetType: "character_reference",
+      role: "primary_portrait",
+      approved: true,
+      containsHumanFace: true,
+      qcStatus: "passed",
+      checksumSha256: null,
+      metadata: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: new Date("2026-01-01T00:00:00.000Z"),
+      ...over,
+    };
+  }
+
+  it("resolves the media asset URL for the caller's own character's primary_portrait", async () => {
+    mockLimit
+      .mockResolvedValueOnce([portraitRow()]) // loadOwnedRow
+      .mockResolvedValueOnce([{ url: "https://cdn.example.com/portrait.png" }]); // media lookup
+
+    const service = new VerticalDramaCharacterStockService();
+    const url = await service.getReferenceImageUrlByAssetLinkId(owner, 55);
+
+    expect(url).toBe("https://cdn.example.com/portrait.png");
+  });
+
+  it("resolves a DIFFERENT character's primary_portrait within the same series (not scoped by characterId — the deliberate variant/twin design)", async () => {
+    // The resolved row's own characterId (9) never matches any caller-side
+    // characterId — the method signature doesn't even accept one, which is
+    // exactly what proves the underlying query can never filter on it.
+    mockLimit
+      .mockResolvedValueOnce([portraitRow({ characterId: 9 })])
+      .mockResolvedValueOnce([{ url: "https://cdn.example.com/parent-portrait.png" }]);
+
+    const service = new VerticalDramaCharacterStockService();
+    const url = await service.getReferenceImageUrlByAssetLinkId(owner, 55);
+
+    expect(url).toBe("https://cdn.example.com/parent-portrait.png");
+  });
+
+  it("rejects a non-primary_portrait asset (asset_wrong_role) — e.g. a character sheet or color palette can never be smuggled in as an identity-lock reference", async () => {
+    mockLimit.mockResolvedValueOnce([portraitRow({ role: "character_sheet_full" })]);
+
+    const service = new VerticalDramaCharacterStockService();
+    let caught: unknown;
+    try {
+      await service.getReferenceImageUrlByAssetLinkId(owner, 55);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
+    expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_wrong_role");
+  });
+
+  it("rejects when the asset link does not exist / does not belong to the caller (asset_not_found — covers not-found AND cross-tenant/cross-user identically, since loadOwnedRow's ownership-scoped WHERE simply finds no row in either case)", async () => {
+    mockLimit.mockResolvedValueOnce([]); // loadOwnedRow finds no matching row
+
+    const service = new VerticalDramaCharacterStockService();
+    let caught: unknown;
+    try {
+      await service.getReferenceImageUrlByAssetLinkId(owner, 999);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
+    expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_not_found");
+  });
+
+  it("rejects with asset_not_found when the row has no mediaAssetId linked", async () => {
+    mockLimit.mockResolvedValueOnce([portraitRow({ mediaAssetId: null })]);
+
+    const service = new VerticalDramaCharacterStockService();
+    let caught: unknown;
+    try {
+      await service.getReferenceImageUrlByAssetLinkId(owner, 55);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
+    expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_not_found");
+  });
+
+  it("rejects with asset_not_found when the linked media_assets row has no originalUrl", async () => {
+    mockLimit.mockResolvedValueOnce([portraitRow()]).mockResolvedValueOnce([{ url: null }]);
+
+    const service = new VerticalDramaCharacterStockService();
+    let caught: unknown;
+    try {
+      await service.getReferenceImageUrlByAssetLinkId(owner, 55);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
+    expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_not_found");
   });
 });

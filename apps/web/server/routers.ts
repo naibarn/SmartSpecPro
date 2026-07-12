@@ -130,6 +130,7 @@ import { localAiRouter } from "./routers/localAi";
 import { workpackRouter } from "./routers/workpack";
 import { roleMonitorRouter } from "./routers/roleMonitor";
 import { workerJobsRouter } from "./routers/workerJobs";
+import { videoProjectsRouter } from "./routers/videoProjects";
 import {
   clearPendingTwoFactorCookie,
   readPendingTwoFactorCookie,
@@ -1931,6 +1932,7 @@ type AppRouterShape = {
   workpack: typeof workpackRouter;
   roleMonitor: typeof roleMonitorRouter;
   workerJobs: typeof workerJobsRouter;
+  videoProjects: typeof videoProjectsRouter;
   agentRegistry: typeof agentRegistryRouter;
   auth: typeof authRouter;
   credits: typeof creditsRouter;
@@ -2032,6 +2034,7 @@ const appRouterInternal = router<AppRouterShape>({
   workpack: workpackRouter,
   roleMonitor: roleMonitorRouter,
   workerJobs: workerJobsRouter,
+  videoProjects: videoProjectsRouter,
   agentRegistry: agentRegistryRouter,
 
   auth: authRouter,

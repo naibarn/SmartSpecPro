@@ -220,6 +220,28 @@ export const VERTICAL_DRAMA_GENERATION_MODES = [
 ] as const;
 export type VerticalDramaGenerationMode = (typeof VERTICAL_DRAMA_GENERATION_MODES)[number];
 
+/**
+ * Manual LLM model override for the ENTIRE Vertical Drama content-generation
+ * chain (added 2026-07-11, originally scoped to just the "generate
+ * start-frame render plan" / "generate storyboard" stages; widened the same
+ * day to a single series-wide field per
+ * `planning/vertical-drama-centralized-model-policy/plan.md` — see that plan
+ * for the full rationale). Persisted on the series' `llmModelPolicy` jsonb
+ * column. Absent/`null` = "automatic" (each call site's own auto-selector —
+ * `resolveStoryBibleModel`/`resolveQualityLargeContextModelId`/etc — keeps
+ * picking the model as before). A non-null `defaultModelId` overrides EVERY
+ * LLM call in the Vertical Drama chain uniformly (script writing, character
+ * analysis, storyboard, video prompts, etc), regardless of which auto-tier
+ * that call site would otherwise use, as long as the pinned model is still
+ * enabled at resolution time — see
+ * `server/services/verticalDramaLlmModelPolicy.ts`'s
+ * `resolveVerticalDramaSeriesModel`, the single resolver every Vertical Drama
+ * LLM call site should route through.
+ */
+export type VerticalDramaSeriesLlmModelPolicy = {
+  defaultModelId?: string | null;
+};
+
 /* -------------------------------------------------------------------------- */
 /* Minimal input contracts (spec §7.2.1)                                      */
 /* -------------------------------------------------------------------------- */
@@ -732,8 +754,32 @@ export type VerticalDramaMotionPromptPack = {
     negativeMotionPrompt?: string;
     startFrameAssetId?: string;
     endFrameAssetId?: string;
+    /**
+     * Additional reference-image asset ids (beyond `startFrameAssetId`) this
+     * clip's video generation should send — e.g. one portrait per additional
+     * speaker in a consolidated speaker-switch clip (2026-07-11 redesign,
+     * see `subShotNumber`'s doc comment below), so identity for every
+     * referenced character rides the model's multi-reference-image support
+     * instead of per-segment reference switching. Ordered by priority (kept
+     * first when trimmed to the model's `maxReferenceImages` — see
+     * `generateVideoClip`'s reference-merge step in
+     * `verticalDramaEpisodes.ts`). Generic field, usable by any future
+     * multi-reference clip need — not exclusive to speaker-switch clips.
+     */
+    extraReferenceAssetIds?: string[];
     durationSeconds: number;
+    /**
+     * Legacy field (pre-2026-07-11) — set only on a stale, previously-
+     * persisted speaker-switch split clip (`shotNumber * 100 + subShotNumber`
+     * clip numbering, N clips per shot). The 2026-07-11 redesign consolidates
+     * a speaker-switch shot into exactly ONE clip (`clipNumber: shotNumber`,
+     * `extraReferenceAssetIds` above instead) and never writes this field
+     * again — kept only so any still-persisted legacy split clip (until the
+     * user regenerates that shot, which replaces it) keeps rendering via the
+     * frontend's existing "(1/N)" legacy-compat render path.
+     */
     parentShotNumber?: number;
+    /** Legacy field (pre-2026-07-11) — see `parentShotNumber`'s doc comment above. */
     subShotNumber?: number;
     /** Dialogue line(s) spoken during this clip (Phase 3.1) — optional, empty/omitted for silent clips. */
     dialogue?: VerticalDramaMotionPromptClipDialogueLine[];

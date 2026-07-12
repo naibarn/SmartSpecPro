@@ -62,7 +62,11 @@ import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import type { SkillDefinition } from "@smartspec/skills";
 import { db } from "../db";
-import { verticalDramaSeries } from "../../drizzle/schema";
+import {
+  verticalDramaSeries,
+  verticalDramaCharacters,
+  type VerticalDramaCharacterRow,
+} from "../../drizzle/schema";
 import {
   buildStoryScriptText,
   parseStoryScriptEpisodeBlock,
@@ -79,6 +83,7 @@ import {
   enforceEpisodeShotDraftSpeakability,
   computeDraftCompleteness,
   VD_DEEP_DRAFT_SHOTS_PER_EPISODE,
+  resolveStoryBibleModel,
   type StoredEpisodeBreakdownItem,
   type VdDeepDraftShotDraft,
   type VdDeepDraftWarning,
@@ -86,9 +91,25 @@ import {
 import { getSkillByIdAsync } from "./skillRegistry";
 import { resolveSkillExecutionPolicy, type SkillExecutionPolicyResult } from "./skillExecutionPolicy";
 import { executeSkillLlmWithFallback, type SkillLlmResult } from "./skillModelFallback";
-import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import { loadEnabledLlmModelRows, type EnabledLlmModelRow } from "./enabledLlmModels";
 import { deductCreditsForModel } from "./creditService";
 import type { VerticalDramaStoryJobProgress } from "./verticalDramaStoryJobs";
+import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
+// `planning/vertical-drama-character-variants/plan.md` Phase B — season-wide
+// character variant/twin planning, wired as this job's final, best-effort
+// phase (see step (g) near the bottom of `runImproveScriptJob`). Circular
+// import (safe — see `verticalDramaCharacterVariantPlanner.ts`'s doc comment):
+// that file imports `resolveQualityLargeContextModelId` FROM this file, only
+// ever inside a function body, same already-established pattern as
+// `verticalDramaStoryBible.ts` <-> `verticalDramaPresetSynthesis.ts`.
+import {
+  generateCharacterVariantPlan,
+  reconcileCharacterVariantPlan,
+  extractCharacterRosterDescription,
+  logCharacterVariantPlanningFailure,
+  type CharacterVariantReconciliationSummary,
+  type CharacterVariantPlannerCharacterInput,
+} from "./verticalDramaCharacterVariantPlanner";
 
 /** The skill this whole feature is built around — already shipped, previously unused. */
 export const VD_IMPROVE_SCRIPT_SKILL_ID = "drama-script-evaluate-improve";
@@ -242,6 +263,41 @@ export function buildStoryScriptTextFromBible(
 const IMPROVE_SCRIPT_MIN_CONTEXT_LENGTH = 1_000_000;
 
 /**
+ * Filters `rows` down to the models that (a) meet the
+ * `IMPROVE_SCRIPT_MIN_CONTEXT_LENGTH` floor, (b) are not free-tier, and (c)
+ * `supportsThinking === true`, sorted CHEAPEST-first (by summed
+ * input+output price per 1M tokens). Extracted out of
+ * `resolveQualityLargeContextModelId` (2026-07-11, manual LLM model override
+ * feature — see `/home/dev/.claude/plans/polished-toasting-gadget.md`) so
+ * this exact filter/sort definition is shared by every caller that needs the
+ * "quality large-context" eligibility bar — `resolveQualityLargeContextModelId`
+ * itself (below), the scoped `resolveStartFramePlanModel`/
+ * `resolveStoryboardModel` resolvers (which validate a manual override
+ * against this same list), and `verticalDramaSeries.ts`'s
+ * `listQualityPlanningModels` query (which lists this same eligible set for
+ * the override dropdown) — they must never drift apart. Callers are expected
+ * to have already applied this codebase's own "safe to auto-pick"
+ * catalog-eligibility filter (`loadEnabledLlmModelRows({ autoSelectionOnly:
+ * true })`) before calling this — this function does not re-check
+ * `catalogEligibility` itself.
+ */
+export function selectQualityLargeContextEligibleModels(
+  rows: EnabledLlmModelRow[],
+): EnabledLlmModelRow[] {
+  const eligible = rows.filter(
+    (row) =>
+      (row.contextLength ?? 0) >= IMPROVE_SCRIPT_MIN_CONTEXT_LENGTH &&
+      !row.isFree &&
+      row.supportsThinking === true,
+  );
+  return [...eligible].sort(
+    (a, b) =>
+      Number(a.pricingInput ?? 0) + Number(a.pricingOutput ?? 0) -
+      (Number(b.pricingInput ?? 0) + Number(b.pricingOutput ?? 0)),
+  );
+}
+
+/**
  * Picks the CHEAPEST enabled model (by summed input+output price per 1M
  * tokens) among those that (a) meet the `IMPROVE_SCRIPT_MIN_CONTEXT_LENGTH`
  * floor, (b) are not free-tier, (c) pass this codebase's own "safe to
@@ -259,26 +315,38 @@ const IMPROVE_SCRIPT_MIN_CONTEXT_LENGTH = 1_000_000;
  * (`google/gemini-3.1-flash-lite-preview` today) while still preferring the
  * cheapest option that clears every bar — this is a capability floor, not a
  * hardcoded model pin.
+ *
+ * Behavior is byte-identical to before the 2026-07-11 extraction — this now
+ * just delegates the filter/sort to `selectQualityLargeContextEligibleModels`.
  */
 export async function resolveQualityLargeContextModelId(): Promise<string | null> {
   try {
     const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
-    const eligible = rows.filter(
-      (row) =>
-        (row.contextLength ?? 0) >= IMPROVE_SCRIPT_MIN_CONTEXT_LENGTH &&
-        !row.isFree &&
-        row.supportsThinking === true,
-    );
-    if (eligible.length === 0) return null;
-    const sorted = [...eligible].sort(
-      (a, b) =>
-        Number(a.pricingInput ?? 0) + Number(a.pricingOutput ?? 0) -
-        (Number(b.pricingInput ?? 0) + Number(b.pricingOutput ?? 0)),
-    );
-    return sorted[0]?.modelId ?? null;
+    return selectQualityLargeContextEligibleModels(rows)[0]?.modelId ?? null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Scoped resolvers for the `start_frame_render_plan`/`storyboard_shotgrid`
+ * stages. Originally (2026-07-11) each had its own inline `llmModelPolicy`
+ * field-reading logic; now (`planning/vertical-drama-centralized-model-policy/
+ * plan.md`, Phase 1) both just delegate to the single series-wide resolver,
+ * `resolveVerticalDramaSeriesModel` in `./verticalDramaLlmModelPolicy` — see
+ * that file's doc comment for the full override contract. Signatures are
+ * UNCHANGED from the first cut so existing callers
+ * (`verticalDramaStartFrameGeneration.ts`/`verticalDramaStoryboardGeneration.ts`)
+ * keep working without modification. Both stages use
+ * `resolveQualityLargeContextModelId` as their auto-fallback (their pre-
+ * existing tier), same as before this refactor.
+ */
+export async function resolveStartFramePlanModel(seriesId: number): Promise<string> {
+  return resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
+}
+
+export async function resolveStoryboardModel(seriesId: number): Promise<string> {
+  return resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
 }
 
 async function resolveImproveScriptExecutionPolicy(skill: SkillDefinition): Promise<SkillExecutionPolicyResult> {
@@ -623,6 +691,17 @@ export interface RunImproveScriptJobResult {
   callsMade: number;
   /** Sum across the whole-block pass AND every straggler episode. */
   creditsUsed: number;
+  /**
+   * `planning/vertical-drama-character-variants/plan.md` Phase B — outcome of
+   * the season-wide character variant/twin planning phase, run ONLY when
+   * `improvedItems.length > 0` (best-effort, see step (g) below). `null`
+   * means the phase was either skipped (nothing improved, or no standalone
+   * characters/episodes to plan against) OR it ran and failed for any reason
+   * — a failure here NEVER fails the overall job, so this field alone cannot
+   * distinguish "skipped" from "failed"; see the server log
+   * (`vd_character_variant_planner`) for failure detail.
+   */
+  characterVariantSummary: CharacterVariantReconciliationSummary | null;
 }
 
 /** Thrown by step (a) when the caller owns no series matching `seriesId` — mirrors the router's own `loadOwnedSeries` "NOT_FOUND, never discloses existence" convention (duplicated here rather than imported, since that helper is private to `routers/verticalDramaSeries.ts`). */
@@ -1288,6 +1367,117 @@ export async function runImproveScriptJob(
     ...stragglerRawTextParts,
   ].join("\n\n");
 
+  // (g) BEST-EFFORT final phase — season-wide character variant/twin
+  // planning (`planning/vertical-drama-character-variants/plan.md` Phase B).
+  // Runs ONLY when the improve pass produced at least one usable episode
+  // (`improvedItems.length > 0`) — a whole-job failure has nothing improved
+  // to plan variants against, so the phase is skipped entirely in that case,
+  // same as it's skipped when there are no standalone characters or no
+  // episode content to send. This phase can NEVER fail/block the overall
+  // job: any error (insufficient credits, a bad LLM response, a DB error) is
+  // caught here and logged; `characterVariantSummary` simply stays `null`
+  // and the job's otherwise-successful script-improvement result is returned
+  // unchanged.
+  let characterVariantSummary: CharacterVariantReconciliationSummary | null = null;
+  if (improvedItems.length > 0) {
+    try {
+      // Reuses the existing "fix" phase marker (never a new
+      // `VerticalDramaStoryJobProgressPhase` value) — the client's own
+      // `VerticalDramaStoryJobProgressLike.phase` union
+      // (`VerticalDramaDeepStoryDraftsPanel.tsx`/`VerticalDramaImproveScriptCard.tsx`)
+      // is a hand-declared literal type, not derived from this server type,
+      // so a genuinely new phase value would break the client build; out of
+      // scope for this phase (client/src/ is Phase E's work package).
+      onProgress({ phase: "fix", callsDone: callsMade });
+
+      const characterRows: VerticalDramaCharacterRow[] = await db
+        .select()
+        .from(verticalDramaCharacters)
+        .where(
+          and(
+            eq(verticalDramaCharacters.tenantId, tenantId),
+            eq(verticalDramaCharacters.userId, userId),
+            eq(verticalDramaCharacters.seriesId, seriesId),
+          ),
+        );
+      // W3 stable-ID reconcile
+      // (`planning/vertical-drama-twin-variant-completeness/plan.md` W3):
+      // EVERY row (base characters, existing variants, existing twins alike)
+      // is sent back into the roster now — a prior run's variant/twin rows
+      // are no longer filtered out, they carry `existing*CharacterKey`
+      // markers instead (resolved below via `characterKeyById`) so the skill
+      // can recognize "this is already known" and echo it back via
+      // `existing_character_key` rather than re-describing a duplicate (see
+      // `verticalDramaCharacterVariantPlanner.ts`'s
+      // `reconcileCharacterVariantPlan` doc comment for the matching side).
+      const characterKeyById = new Map<number, string>(
+        characterRows.map((row) => [row.id, row.characterKey]),
+      );
+      const characterInputs: CharacterVariantPlannerCharacterInput[] = characterRows.map((row) => {
+        const input: CharacterVariantPlannerCharacterInput = {
+          characterKey: row.characterKey,
+          name: row.name,
+          role: row.role ?? "",
+          description: extractCharacterRosterDescription(
+            (row.data as Record<string, unknown> | null) ?? null,
+          ),
+        };
+        if (row.parentCharacterId != null) {
+          const parentKey = characterKeyById.get(row.parentCharacterId);
+          if (parentKey) input.existingParentCharacterKey = parentKey;
+          if (row.variantLabel) input.existingVariantLabel = row.variantLabel;
+        }
+        if (row.sharesFaceWithCharacterId != null) {
+          const sourceKey = characterKeyById.get(row.sharesFaceWithCharacterId);
+          if (sourceKey) input.existingSharesFaceWithCharacterKey = sourceKey;
+        }
+        return input;
+      });
+
+      // The (now-improved) whole season's content: improved episodes win,
+      // any episode the straggler path never fixed falls back to its
+      // original content — same "merge improved over original" shape
+      // `buildStoryScriptTextFromBible`'s own mapping (step (b) above) uses,
+      // just applied to the post-improvement merged set instead of the
+      // pre-improvement `activeItems`.
+      const mergedEpisodes: StoryScriptEpisodeInput[] = expectedEpisodeNumbers
+        .map((n) => improvedItemsByEpisode.get(n) ?? activeItemByEpisode.get(n))
+        .filter((item): item is StoredEpisodeBreakdownItem => Boolean(item))
+        .map((item) => ({
+          episodeNumber: item.episodeNumber,
+          workingTitle: item.workingTitle,
+          logline: item.logline,
+          keyBeats: item.keyBeats,
+          shotDrafts: readItemShotDrafts(item),
+          cliffhangerLine: readItemCliffhangerLine(item),
+        }));
+
+      if (characterInputs.length > 0 && mergedEpisodes.length > 0) {
+        const { plan, creditsUsed: variantCreditsUsed } = await generateCharacterVariantPlan({
+          userId,
+          tenantId,
+          seriesId,
+          lang,
+          characters: characterInputs,
+          episodes: mergedEpisodes,
+          idempotencyKey: params.idempotencyKey,
+        });
+        creditsUsed += variantCreditsUsed;
+        callsMade += 1;
+
+        characterVariantSummary = await reconcileCharacterVariantPlan(
+          { tenantId, userId, seriesId },
+          plan,
+        );
+      }
+
+      onProgress({ phase: "fix", callsDone: callsMade });
+    } catch (error) {
+      logCharacterVariantPlanningFailure(seriesId, error);
+      characterVariantSummary = null;
+    }
+  }
+
   return {
     scoreSummary,
     expectedEpisodeNumbers,
@@ -1305,5 +1495,6 @@ export async function runImproveScriptJob(
     modelSource: executionPolicy.modelSource,
     callsMade,
     creditsUsed,
+    characterVariantSummary,
   };
 }

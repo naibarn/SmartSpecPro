@@ -1,6 +1,6 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 const setLocationMock = vi.fn();
 const authState = {
@@ -968,6 +968,16 @@ describe("Dashboard", () => {
     fireEvent.click(socialAutomationButton);
 
     expect(setLocationMock).toHaveBeenCalledWith("/social/automation");
+  });
+
+  it("surfaces the Video Studio quick action on the dashboard home screen", () => {
+    render(<Dashboard />);
+
+    const quickLinks = screen.getByTestId("dashboard-quick-links");
+    const videoStudioButton = within(quickLinks).getByRole("button", { name: /video studio/i });
+
+    fireEvent.click(videoStudioButton);
+    expect(setLocationMock).toHaveBeenCalledWith("/video-studio");
   });
 
   it("does not show hidden social menu items in the fallback social section", () => {

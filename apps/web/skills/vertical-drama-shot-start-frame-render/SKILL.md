@@ -57,7 +57,30 @@ plan. Specifically, each `prompt` must include:
    (drawn / raised / relaxed), mouth (tight line / ghost of a smile / trembling) —
    lifted directly from the shot's `facial_expression` field, written as vivid
    visual language a diffusion image model can render (not abstract labels).
-2. **Mood lighting + color** derived from the shot's `emotion` and the storyboard's
+2. **Mutual gaze / facing direction for multi-character interactive shots —
+   MANDATORY.** When a shot has 2+ required characters who are actively
+   interacting in this beat (talking to, listening to, reacting to, or
+   emotionally engaging with each other — check the shot's `gaze_direction`,
+   `dialogue_excerpt`, and `action` for this), the prompt MUST explicitly
+   direct each involved character's head/eye-line toward the OTHER character,
+   not toward the camera. Reference-image portraits are typically flat,
+   front-facing headshots; without an explicit instruction here, a diffusion
+   model defaults every character back to that camera-facing pose, which
+   reads as each person addressing an unseen audience instead of each other —
+   breaking the sense that they are actually talking together. Write this
+   woven into each character's own description, in natural cinematic
+   language (e.g. "ฝ้าย's face turned three-quarter toward ใบข้าว, her eyes
+   meeting ใบข้าว's" or "eyeline locked on ใบข้าว, not the camera"), never a
+   separate bolted-on sentence. A character deliberately avoiding eye contact
+   (a real emotional choice — shame, exhaustion, distraction) still needs
+   that avoidance anchored relative to the scene partner (e.g. "gaze drops
+   away from ใบข้าว's questioning look, down toward the counter") rather than
+   a vague, disconnected gaze direction that reads as generic distraction
+   instead of a reaction to the other character. Skip this rule only when a
+   shot is genuinely solo-focused (the other character is out of frame/
+   background, not part of the interaction) or a wide establishing shot where
+   facial engagement isn't the point.
+3. **Mood lighting + color** derived from the shot's `emotion` and the storyboard's
    `canonical_style_bible` — e.g. a cold-triumph beat leans harder rim-lit
    contrast and cooler color; a panic beat may use a harsher, less flattering key
    light. Do not default every shot to the same generic "moody key light".
@@ -68,13 +91,32 @@ plan. Specifically, each `prompt` must include:
    night, secrecy, or dread. Across the 9 shots the episode's start frames must
    show real lighting variety (not one repeated "low-key rim light" line for
    every shot) unless the script's setting genuinely keeps every shot dark.
-3. **Composition that expresses the beat's power dynamic** — who is framed higher
+4. **Composition that expresses the beat's power dynamic** — who is framed higher
    or lower in the frame, camera height relative to each character, and the
    physical distance between characters (closer for intimacy/threat, more
    negative space for isolation/exposure). For a shot whose beat is a reversal,
    composition should visually favor the character who just gained power (e.g.
    camera looks slightly up at them, or the other character is pushed to the
    frame edge / smaller in a wider shot).
+5. **Attached Character Reference Image Indexing + Identity Lock (MANDATORY, self-
+   contained — nothing else in the pipeline appends this for you)** — When writing
+   each shot's `prompt` for shots with required characters, reference character
+   names alongside attached image indexing (e.g., `"emphasis on ใบข้าว (attached
+   Image 2)'s face"` or `"Image 1 = ฝ้าย, Image 2 = ใบข้าว"`) so diffusion image
+   models correctly link each character identity to their corresponding attached
+   reference image number (`Image 1`, `Image 2`, matching the order characters are
+   listed for that shot in the input). Immediately alongside each character's
+   indexed mention, state — in your own natural cinematic prose, woven into the
+   shot description, never a separate bolted-on sentence at the end — that their
+   identity must match that reference image precisely: **face shape, skin tone,
+   hairstyle, clothing/outfit, and distinguishing features**. This exact attribute
+   list is the locked-identity standard used everywhere else in this pipeline;
+   never let a required character's face, wardrobe, or distinguishing features
+   drift from their attached reference image across shots. Every required
+   character in every shot needs both the index annotation AND this identity-lock
+   phrasing inside `prompt` itself — no other stage of the pipeline adds it
+   afterward, so an omission here means that shot renders with no identity lock at
+   all.
 
 ## Prompt length limit — MANDATORY
 
@@ -82,7 +124,8 @@ Every `start_frame_requests[].prompt` MUST be **3500 characters or fewer**.
 Write vivid, specific cinematic language within that budget — do not pad with
 repeated adjectives or restate the same detail in multiple phrasings. If a
 shot's full description would exceed the limit, prioritize (in order):
-facial micro-expression, mood lighting/color, composition/power-dynamic —
+facial micro-expression, mutual gaze/facing direction (for multi-character
+interactive shots), mood lighting/color, composition/power-dynamic —
 and compress or drop the least story-critical detail first. A downstream
 quality-control pass will refine/compress any prompt that is still over the
 limit, but a well-written render plan should not rely on that fallback.
@@ -203,8 +246,8 @@ Output skeleton:
       "shot_number": 4,
       "shot_title": "Shot 4",
       "timecode": "00:18-00:24",
-      "prompt": "vertical 9:16 start frame for shot 4, Aria in boardroom. Expression: aria: composed, watching closely; rival: smug half-smile. Emotion: smug certainty. Lighting/color: warm golden-hour light spilling across the table, deceptively pleasant. Composition: eye-level two-shot balance, neither character dominates the frame yet.",
-      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression",
+      "prompt": "vertical 9:16 start frame for shot 4, Aria (attached Image 1) across the boardroom table from her rival (attached Image 2), locked in conversation. Expression: Aria (attached Image 1) composed, watching closely, her face turned three-quarter toward the rival with her eyeline meeting the rival's eyes, not the camera — her face shape, skin tone, hairstyle, and blazer/gold-hoop outfit must match Image 1 precisely, no identity or wardrobe drift; the rival (attached Image 2) wears a smug half-smile, her gaze held steady on Aria's face as she speaks — her face shape, skin tone, hairstyle, and outfit must match Image 2 precisely, with the same distinguishing features locked from that reference. Emotion: smug certainty. Lighting/color: warm golden-hour light spilling across the table, deceptively pleasant. Composition: eye-level two-shot balance, both faces angled toward each other so they read as genuinely speaking to one another, neither character dominates the frame yet.",
+      "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression, no characters facing/staring at the camera instead of each other",
       "reference_assets": [
         {
           "character_id": "char_aria",
@@ -213,6 +256,14 @@ Output skeleton:
           "file_id": "file_aria_001",
           "image_url": "/uploads/vd/aria_primary_portrait.png",
           "local_path": "uploads/vd/aria_primary_portrait.png"
+        },
+        {
+          "character_id": "char_rival",
+          "asset_id": "asset_rival_portrait",
+          "asset_type": "primary_portrait",
+          "file_id": "file_rival_001",
+          "image_url": "/uploads/vd/rival_primary_portrait.png",
+          "local_path": "uploads/vd/rival_primary_portrait.png"
         }
       ],
       "render_parameters": {
@@ -222,14 +273,16 @@ Output skeleton:
         "quality": "high",
         "n": 1
       },
-      "continuity_notes": "keep blazer + gold hoops",
+      "continuity_notes": "keep blazer + gold hoops; rival keeps her own established outfit",
       "qc_checklist": [
         "identity match",
         "wardrobe continuity",
         "9:16 framing",
-        "expression matches shot emotion (not flat/neutral)"
+        "expression matches shot emotion (not flat/neutral)",
+        "both attached reference images correctly indexed and identity-locked in prompt",
+        "both characters' gaze/face angle reads as engaging each other, not the camera"
       ],
-      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria identity anchors and the shot's emotional expression",
+      "repair_prompt_template": "regenerate shot {shot_number} preserving Aria and rival identity anchors and the shot's emotional expression",
       "expected_output_asset_id": "start_frame_shot_4"
     },
     {
@@ -455,7 +508,8 @@ Output skeleton:
       "all 9 frames approved",
       "identity locked",
       "no unsafe content",
-      "expression/emotion matches the storyboard beat (not flat)"
+      "expression/emotion matches the storyboard beat (not flat)",
+      "multi-character interactive shots read as the characters engaging each other, not each one facing the camera"
     ],
     "common_failure_repairs": [
       {
@@ -465,6 +519,10 @@ Output skeleton:
       {
         "issue": "flat_expression",
         "fix": "re-emphasize facial_expression detail from the storyboard shot in the prompt"
+      },
+      {
+        "issue": "camera_facing_gaze",
+        "fix": "redirect each interacting character's head/eye-line toward the other character in the scene instead of the camera, woven into their own description"
       }
     ]
   }
