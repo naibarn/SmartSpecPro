@@ -457,20 +457,23 @@ export class VerticalDramaLocationStockService {
   /**
    * Load the durable location ROSTER for a series (tenant + user scoped) —
    * every `vertical_drama_locations` row, each annotated with a
-   * `primaryReferenceUrl` when (and only when) an APPROVED
-   * `establishing_plate` asset exists for it. Deliberately stricter than
-   * `getPrimaryReferenceUrl`'s render-time fallback-to-any-state behavior: a
-   * roster/listing view should never surface a not-yet-reviewed image as
-   * "the" reference thumbnail for a location. There is no character-stock
-   * equivalent of this method to mirror directly — the character system's
-   * own `listRows` lists ASSET rows, not roster rows (its roster listing
-   * lives in the character ROUTER, composed separately from the asset
-   * manifest); this method intentionally folds both concerns into one
-   * service-layer query since the location system has no router yet.
+   * `primaryReferenceUrl` (and its owning `primaryReferenceAssetLinkId`)
+   * when (and only when) an APPROVED `establishing_plate` asset exists for
+   * it. Deliberately stricter than `getPrimaryReferenceUrl`'s render-time
+   * fallback-to-any-state behavior: a roster/listing view should never
+   * surface a not-yet-reviewed image as "the" reference thumbnail for a
+   * location. There is no character-stock equivalent of this method to
+   * mirror directly — the character system's own `listRows` lists ASSET
+   * rows, not roster rows (its roster listing lives in the character
+   * ROUTER, composed separately from the asset manifest); this method
+   * intentionally folds both concerns into one service-layer query since
+   * the location system has no router yet.
    */
   async listRows(
     owner: VerticalDramaLocationStockOwner,
-  ): Promise<Array<VerticalDramaLocationRow & { primaryReferenceUrl?: string }>> {
+  ): Promise<
+    Array<VerticalDramaLocationRow & { primaryReferenceUrl?: string; primaryReferenceAssetLinkId?: number }>
+  > {
     const rosterRows: VerticalDramaLocationRow[] = await db
       .select()
       .from(verticalDramaLocations)
@@ -485,6 +488,7 @@ export class VerticalDramaLocationStockService {
 
     const approvedCandidates = await db
       .select({
+        id: verticalDramaLocationAssets.id,
         locationId: verticalDramaLocationAssets.locationId,
         url: mediaAssets.originalUrl,
         updatedAt: verticalDramaLocationAssets.updatedAt,
@@ -501,19 +505,27 @@ export class VerticalDramaLocationStockService {
         ),
       );
 
-    const bestByLocationId = new Map<number, { url: string; updatedAt: Date }>();
+    const bestByLocationId = new Map<number, { url: string; updatedAt: Date; linkId: number }>();
     for (const candidate of approvedCandidates) {
       if (candidate.locationId == null || !candidate.url) continue;
       const existing = bestByLocationId.get(candidate.locationId);
       if (!existing || new Date(candidate.updatedAt).getTime() > new Date(existing.updatedAt).getTime()) {
-        bestByLocationId.set(candidate.locationId, { url: candidate.url, updatedAt: candidate.updatedAt });
+        bestByLocationId.set(candidate.locationId, {
+          url: candidate.url,
+          updatedAt: candidate.updatedAt,
+          linkId: candidate.id,
+        });
       }
     }
 
-    return rosterRows.map((row) => ({
-      ...row,
-      primaryReferenceUrl: bestByLocationId.get(row.id)?.url,
-    }));
+    return rosterRows.map((row) => {
+      const best = bestByLocationId.get(row.id);
+      return {
+        ...row,
+        primaryReferenceUrl: best?.url,
+        primaryReferenceAssetLinkId: best?.linkId,
+      };
+    });
   }
 }
 

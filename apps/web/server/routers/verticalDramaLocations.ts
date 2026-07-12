@@ -79,6 +79,20 @@ import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+// Whole-series location detection (`detectLocationsNow` below) — TYPE-ONLY
+// import only (erased at compile time, no runtime module load), same
+// "dynamic import, never static" convention `verticalDramaCharacters.ts`
+// documents for its own `detectCharacterVariantsNow`:
+// `verticalDramaStoryBible.ts`/`verticalDramaLocationDetector.ts`'s module
+// graphs transitively pull in `verticalDramaImproveScript.ts` (a heavy,
+// DB/skill-registry-touching service), which this file's existing
+// minimal-mock test suite (`verticalDramaLocations.test.ts`) does not mock —
+// a static import would break it the moment this file loads. The
+// corresponding RUNTIME functions (`generateLocationDetectionPlan`/
+// `reconcileLocationDetectionPlan`/error classes, plus
+// `getActiveBreakdown`/`readItemShotDrafts`) are loaded via a DYNAMIC
+// `import()` INSIDE `detectLocationsNow` only.
+import type { StoryScriptLang, StoryScriptEpisodeInput } from "@shared/verticalDramaSeries/storyScriptText";
 
 /* -------------------------------------------------------------------------- */
 /* Base procedure + ownership helpers                                          */
@@ -217,8 +231,19 @@ function buildLocationSeriesContext(
   return parts.length > 0 ? parts.join(" | ") : undefined;
 }
 
-/** Browser-safe projection of a location roster row (never leaks internal ids as numbers). */
-function locationRowToDto(row: VerticalDramaLocationRow & { primaryReferenceUrl?: string }) {
+/**
+ * Browser-safe projection of a location roster row (never leaks internal ids
+ * as numbers). `primaryReferenceAssetLinkId` (added alongside
+ * `primaryReferenceUrl`, same "only when an APPROVED establishing_plate
+ * asset exists" condition — see `listRows`'s own doc comment) is the
+ * `verticalDramaLocationAssets` row id backing that URL, stringified like
+ * every other id on this DTO — lets the client address that specific asset
+ * link directly (e.g. for `deleteAsset`/`transitionAsset`) without a second
+ * round-trip to look it up.
+ */
+function locationRowToDto(
+  row: VerticalDramaLocationRow & { primaryReferenceUrl?: string; primaryReferenceAssetLinkId?: number },
+) {
   return {
     locationId: String(row.id),
     seriesId: String(row.seriesId),
@@ -226,6 +251,8 @@ function locationRowToDto(row: VerticalDramaLocationRow & { primaryReferenceUrl?
     name: row.name,
     description: extractLocationDescription((row.data as Record<string, unknown> | null) ?? null),
     primaryReferenceUrl: row.primaryReferenceUrl,
+    primaryReferenceAssetLinkId:
+      row.primaryReferenceAssetLinkId != null ? String(row.primaryReferenceAssetLinkId) : undefined,
     createdAt: (row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt)).toISOString(),
     updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
   };
@@ -922,5 +949,149 @@ export const verticalDramaLocationsRouter = router({
       } catch (err) {
         mapLocationStockError(err);
       }
+    }),
+
+  /**
+   * Location Visual Bible — whole-series location detection. Reads the
+   * entire season's drafted deep-story content and proposes a roster of
+   * every distinct physical setting the story establishes, reconciling the
+   * result into the durable `vertical_drama_locations` roster. Location-side
+   * companion to `verticalDramaCharacters.ts`'s `detectCharacterVariantsNow`,
+   * callable on demand exactly like that procedure. Reuses the EXACT same
+   * "read every drafted episode's shot content -> generate a whole-season
+   * plan -> reconcile into durable rows" shape, just with a flat location
+   * roster instead of a variant/twin character graph (locations have no
+   * variant/twin relationship concept at all — see
+   * `verticalDramaLocationReconciliation.ts`'s own doc comment).
+   *
+   * `verticalDramaLocationDetector`/`verticalDramaStoryBible` are loaded via
+   * a DYNAMIC `import()` INSIDE this procedure (never a static top-level
+   * import) — see this file's own type-only import note above for why.
+   *
+   * Credit-gated by `generateLocationDetectionPlan` ITSELF
+   * (`hasEnoughCredits`/`deductCredits` live inside that function) — this
+   * mutation invents no separate credit-charging scheme of its own, matching
+   * `detectCharacterVariantsNow`'s established pattern.
+   *
+   * Throws `PRECONDITION_FAILED` when there is no usable episode content (no
+   * drafted episode) — same precondition `detectCharacterVariantsNow`
+   * enforces, for the same reason (a direct user action must tell the
+   * caller clearly why nothing happened, unlike a best-effort background
+   * phase).
+   *
+   * DELIBERATE DIVERGENCE from `detectCharacterVariantsNow`: this procedure
+   * does NOT throw on an empty existing-location roster. Characters require
+   * a non-empty roster because that endpoint only ever proposes
+   * variants/twins OF existing characters — there is nothing to vary when
+   * the roster is empty. Locations have no such requirement: starting from
+   * zero (an older series, or an empty wizard textarea) is exactly the case
+   * this button exists to fix, and the skill is explicitly written to
+   * propose a fresh roster from nothing (see `skill.md`'s own "may start
+   * completely EMPTY" framing).
+   */
+  detectLocationsNow: verticalDramaProcedure
+    .input(seriesScope)
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const [seriesRow] = await db
+        .select({
+          locale: verticalDramaSeries.locale,
+          bible: verticalDramaSeries.bible,
+        })
+        .from(verticalDramaSeries)
+        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+        .limit(1);
+      const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? {};
+      const lang: StoryScriptLang = seriesRow?.locale === "th" ? "th" : "en";
+
+      const { getActiveBreakdown, readItemShotDrafts, readItemCliffhangerLine } = await import(
+        "../services/verticalDramaStoryBible"
+      );
+      const {
+        generateLocationDetectionPlan,
+        reconcileLocationDetectionPlan,
+        InsufficientCreditsError,
+        VdSchemaValidationError,
+      } = await import("../services/verticalDramaLocationDetector");
+
+      const activeItems = getActiveBreakdown(bible);
+      const draftedItems = activeItems.filter((item) => readItemShotDrafts(item) !== null);
+      if (draftedItems.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Generate deep story drafts first before detecting locations",
+        });
+      }
+      const episodes: StoryScriptEpisodeInput[] = draftedItems.map((item) => ({
+        episodeNumber: item.episodeNumber,
+        workingTitle: item.workingTitle,
+        logline: item.logline,
+        keyBeats: item.keyBeats,
+        shotDrafts: readItemShotDrafts(item),
+        cliffhangerLine: readItemCliffhangerLine(item),
+      }));
+
+      // DELIBERATE DIVERGENCE from `detectCharacterVariantsNow` — no
+      // precondition on a non-empty existing roster here. See this
+      // procedure's own doc comment above.
+      const locationRows: VerticalDramaLocationRow[] = await db
+        .select()
+        .from(verticalDramaLocations)
+        .where(
+          and(
+            eq(verticalDramaLocations.tenantId, tenantId),
+            eq(verticalDramaLocations.userId, userId),
+            eq(verticalDramaLocations.seriesId, seriesId),
+          ),
+        );
+      const existingLocations = locationRows.map((row) => ({
+        locationKey: row.locationKey,
+        name: row.name,
+        description: extractLocationDescription((row.data as Record<string, unknown> | null) ?? null),
+      }));
+
+      let planResult: Awaited<ReturnType<typeof generateLocationDetectionPlan>>;
+      try {
+        planResult = await generateLocationDetectionPlan({
+          userId,
+          tenantId,
+          seriesId,
+          lang,
+          existingLocations,
+          episodes,
+        });
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+        }
+        if (err instanceof VdSchemaValidationError) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Location detection failed",
+        });
+      }
+
+      const summary = await reconcileLocationDetectionPlan({ tenantId, userId, seriesId }, planResult.plan);
+
+      return {
+        locationsCreated: summary.createdLocations.length,
+        locationsReused: summary.reusedLocations.length,
+        createdLocations: summary.createdLocations,
+        reusedLocations: summary.reusedLocations,
+      };
     }),
 });
