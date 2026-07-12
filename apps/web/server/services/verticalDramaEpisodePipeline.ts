@@ -156,6 +156,7 @@ import {
 // `enabledLlmModels.ts` -> `adminProcedure`, unlike the dynamic-import-only
 // modules this file already documents that concern for.
 import { reconcileEpisodeLocations } from "./verticalDramaLocationReconciliation";
+import { verticalDramaLocationStockService } from "./verticalDramaLocationStock";
 import type { VerticalDramaStoryboardLocationGroup } from "@shared/verticalDramaSeries/storyboardLocations";
 import { debugError } from "../_core/logger";
 
@@ -2787,9 +2788,34 @@ export class VerticalDramaEpisodePipeline {
     const distinctLocationGroups = Array.isArray(storyboard?.distinct_locations)
       ? (storyboard!.distinct_locations as Array<Record<string, unknown>>)
       : [];
+    // Which of this series' locations already have an APPROVED reference image
+    // (Phase 2/D fix, 2026-07-13) — resolved once from the durable roster so
+    // the per-shot `hasReferenceImage` flag below reflects reality instead of
+    // the Phase-1 hardcoded `false`. `listRows` sets `primaryReferenceUrl`
+    // only when an approved establishing_plate exists (honoring the explicit
+    // primary marker, Phase C), so its presence is the exact signal the
+    // single-shot path (`resolveShotLocationReferenceEntry`) already uses.
+    // Best-effort: a roster read failure must never fail storyboard→start-
+    // frame planning, so it degrades to "no images known" (the prior behavior).
+    let locationKeysWithApprovedImage = new Set<string>();
+    try {
+      const rosterRows = await verticalDramaLocationStockService.listRows({
+        tenantId: owner.tenantId,
+        userId: owner.userId,
+        seriesId: owner.seriesId,
+      });
+      locationKeysWithApprovedImage = new Set(
+        rosterRows
+          .filter(r => Boolean(r.primaryReferenceUrl))
+          .map(r => r.locationKey)
+      );
+    } catch {
+      // Keep the empty set — the location text fact still renders (name +
+      // description); only the "environment lock applies" suffix is omitted.
+    }
     const locationByShotNumber = new Map<
       number,
-      { name: string; description: string }
+      { name: string; description: string; hasReferenceImage: boolean }
     >();
     for (const group of distinctLocationGroups) {
       const name =
@@ -2797,10 +2823,16 @@ export class VerticalDramaEpisodePipeline {
       const description =
         typeof group.description === "string" ? group.description : undefined;
       if (!name || !description) continue;
+      const locationKey =
+        typeof group.location_key === "string" ? group.location_key : undefined;
+      const hasReferenceImage = locationKey
+        ? locationKeysWithApprovedImage.has(locationKey)
+        : false;
       const shotNumbers = Array.isArray(group.shot_numbers) ? group.shot_numbers : [];
       for (const raw of shotNumbers) {
         const n = Number(raw);
-        if (Number.isInteger(n)) locationByShotNumber.set(n, { name, description });
+        if (Number.isInteger(n))
+          locationByShotNumber.set(n, { name, description, hasReferenceImage });
       }
     }
 
@@ -2843,13 +2875,18 @@ export class VerticalDramaEpisodePipeline {
               ? (s.characterIds as string[])
               : [];
         const shotNumber = Number(s.shotNumber ?? s.shot_number ?? 0);
-        // Phase 1 of `planning/polished-toasting-gadget.md` —
-        // `hasReferenceImage` is hardcoded `false` everywhere in Phase 1 (no
-        // location roster/image system exists yet — that's Phase 2). The
-        // `location` key itself is omitted entirely (not merely `undefined`
-        // in a spread) when no `distinct_locations` group covers this shot,
-        // so the downstream prompt builder's byte-identical guard sees no
-        // shape difference at all for that shot.
+        // Location fact for this shot (Phase 1 text grounding + Phase 2/D
+        // reference-image awareness, 2026-07-13). `hasReferenceImage` now
+        // reflects the real roster (`locationKeysWithApprovedImage` above)
+        // instead of the Phase-1 hardcoded `false`, so a shot whose location
+        // already has an approved reference image gets the "[environment lock
+        // applies]" prompt suffix — matching what the single-shot
+        // `generateShotStartFramePrompt` path already does, and consistent
+        // with `generateStartFrameImage` actually attaching that image at
+        // render time. The `location` key is omitted entirely (not merely
+        // `undefined` in a spread) when no `distinct_locations` group covers
+        // this shot, so the downstream prompt builder's byte-identical guard
+        // sees no shape difference for that shot.
         const locationGroup = locationByShotNumber.get(shotNumber);
         return {
           shotNumber,
@@ -2862,7 +2899,7 @@ export class VerticalDramaEpisodePipeline {
                 location: {
                   name: locationGroup.name,
                   description: locationGroup.description,
-                  hasReferenceImage: false,
+                  hasReferenceImage: locationGroup.hasReferenceImage,
                 },
               }
             : {}),
