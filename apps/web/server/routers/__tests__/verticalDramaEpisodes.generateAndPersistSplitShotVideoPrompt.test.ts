@@ -578,4 +578,40 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
       }),
     );
   });
+
+  it("instruction passed to generateShotVideoPrompt on a split-triggering shot reaches generateVerticalDramaShotVideoPromptSpeakerSwitch as repairInstruction", async () => {
+    const episodeRow = baseEpisodeRow();
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+      .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 501, characterKey: "hero" },
+          { id: 502, characterKey: "villain" },
+        ]),
+      ); // verticalDramaCharacters portrait lookup (anchor speaker first)
+
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn(() => updateChain([episodeRow])),
+    });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        instruction: "make the villain's line land harder",
+      },
+    });
+
+    expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repairInstruction: "make the villain's line land harder",
+      }),
+    );
+  });
 });

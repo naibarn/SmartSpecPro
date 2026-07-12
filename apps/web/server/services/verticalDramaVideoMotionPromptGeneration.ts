@@ -1283,6 +1283,20 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * legitimately keeps the cliffhanger (whole-episode, single global block).
    */
   episodePlanContext?: string;
+  /**
+   * The user's free-text repair/adjustment instruction for this shot's
+   * video motion prompt, when the caller is regenerating in response to the
+   * "AI adjust" (ให้ AI ปรับ) button rather than the plain "generate video
+   * prompt" button. An ADDITIONAL directive layered on top of every Hard
+   * Rule in the skill — never a replacement for them (see that skill's
+   * "User repair instruction (optional)" section). This skill already
+   * regenerates fresh from the shot's own facts on every call, so there is
+   * no "preserve the previous prompt" nuance to add. Optional/omitted (the
+   * plain "generate video prompt" button never sends one) preserves the
+   * exact byte-identical prompt — no new instruction text is rendered at
+   * all when absent.
+   */
+  repairInstruction?: string;
 }
 
 export interface GenerateVerticalDramaShotVideoPromptResult {
@@ -1427,6 +1441,9 @@ function buildShotVideoPromptUserPrompt(
     // before this task.
     nativeAudioDirectionEnabled
       ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot: SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
+      : null,
+    params.repairInstruction
+      ? `User repair instruction (MANDATORY — apply as an ADDITIONAL directive on top of the Hard Rules above, not a replacement for them): ${params.repairInstruction}`
       : null,
     `Locale: ${params.locale}`,
     VD_COMPACT_JSON_INSTRUCTION,
@@ -1668,6 +1685,13 @@ export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams
   extends GenerateVerticalDramaShotVideoPromptParams {
   /** Speaker-anchored timed windows already decided by `computeSpeakerSwitchSubShotPlan` — this function only writes ONE combined timed-narrative prompt describing them, it never re-decides the split. */
   subShotWindows: SpeakerSwitchSubShotWindow[];
+  /**
+   * Already inherited from `GenerateVerticalDramaShotVideoPromptParams.repairInstruction`
+   * (see that field's own doc comment for the full contract); redeclared
+   * here only so it's documented at its actual point of use in this file,
+   * `buildSpeakerSwitchUserPrompt`.
+   */
+  repairInstruction?: string;
 }
 
 export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
@@ -1770,6 +1794,9 @@ function buildSpeakerSwitchUserPrompt(
       : `The selected video model (${params.selectedVideoModelId}) has NO native lip-sync/audio channel — describe mouth movement + acting direction only in "prompt" (in the PROMPT LANGUAGE, no literal transcript embedded), and return the resolved ${dialogueLanguageName} lines, in chronological order across all segments, in the "dialogue" array so the caller can route them to text-to-speech.`,
     nativeAudioDirectionEnabled
       ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot (ONCE for the whole shot, not per segment): SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
+      : null,
+    params.repairInstruction
+      ? `User repair instruction (MANDATORY — apply as an ADDITIONAL directive on top of the Hard Rules above, not a replacement for them): ${params.repairInstruction}`
       : null,
     `Locale: ${params.locale}`,
     VD_COMPACT_JSON_INSTRUCTION,

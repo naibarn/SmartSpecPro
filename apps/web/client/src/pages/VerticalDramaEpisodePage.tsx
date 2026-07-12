@@ -4600,7 +4600,11 @@ function EpisodeWorkspaceShell({
           stage={repairStage ?? "plan_episode_script"}
           target={repairTarget}
           templateInstruction={repairTemplate}
-          jobStatus={repairMutation.isPending ? "submitting" : repairJobStatus}
+          jobStatus={
+            repairMutation.isPending || generateShotVideoPromptMutation.isPending
+              ? "submitting"
+              : repairJobStatus
+          }
           resultArtifactId={repairResultArtifactId}
           errorReason={repairError}
           onSubmit={({ instruction, target }) => {
@@ -4608,6 +4612,34 @@ function EpisodeWorkspaceShell({
             setRepairJobStatus("submitting");
             setRepairError(undefined);
             setRepairResultArtifactId(undefined);
+            if (repairStage === "video_motion_prompt_pack") {
+              const shotNumber = target?.parentShotNumber;
+              if (shotNumber == null) return;
+              generateShotVideoPromptMutation.mutate(
+                {
+                  seriesId,
+                  episodeId,
+                  shotNumber,
+                  instruction,
+                  idempotencyKey: crypto.randomUUID(),
+                },
+                {
+                  onSuccess: data => {
+                    setUsedVisionByShot(prev => ({
+                      ...prev,
+                      [shotNumber]: data.usedVision,
+                    }));
+                    setRepairJobStatus("succeeded");
+                    void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+                  },
+                  onError: err => {
+                    setRepairJobStatus("failed");
+                    setRepairError(err.message);
+                  },
+                }
+              );
+              return;
+            }
             repairMutation.mutate({
               seriesId,
               episodeId,

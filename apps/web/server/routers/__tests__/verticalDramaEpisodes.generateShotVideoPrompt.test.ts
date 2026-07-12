@@ -1156,6 +1156,69 @@ describe("generateShotVideoPrompt", () => {
       );
     });
   });
+
+  describe("instruction (\"ให้ AI ปรับ\" AI-adjust threading)", () => {
+    it("instruction present: threaded into the service call as repairInstruction and reflected in the persisted prompt", async () => {
+      mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+        prompt: "prompt reflecting the repair instruction",
+        negativeMotionPrompt: "no glitching",
+        dialogue: [],
+        creditsUsed: 3,
+        model: "gpt-vision",
+        usedVision: true,
+      });
+      const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+        .mockReturnValueOnce(selectChain([]));
+      let capturedSet: any;
+      mockDb.update.mockReturnValueOnce({
+        set: vi.fn((v: any) => {
+          capturedSet = v;
+          return updateChain([episodeRow]);
+        }),
+      });
+
+      const result = await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          instruction: "make the camera push in faster",
+        },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ repairInstruction: "make the camera push in faster" }),
+      );
+      expect(result.prompt).toBe("prompt reflecting the repair instruction");
+      expect(capturedSet.motionPromptPack.clips[0].prompt).toBe(
+        "prompt reflecting the repair instruction",
+      );
+    });
+
+    it("instruction absent: the service call receives repairInstruction: undefined (byte-identical to pre-fix behavior — the \"generate video prompt\" button never sends this field)", async () => {
+      const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+        .mockReturnValueOnce(selectChain([]));
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+        expect.objectContaining({ repairInstruction: undefined }),
+      );
+    });
+  });
 });
 
 /**

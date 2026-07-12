@@ -250,5 +250,22 @@ Write `audio_direction` in TWO TIERS, in this order:
 3. Stay strictly within SFX cues + ambient soundscape + intensity guidance —
    nothing else belongs in `audio_direction`.
 
+## User repair instruction (optional)
+
+The caller sometimes supplies a `repair_instruction` — the user's own
+free-text request for how they want THIS shot's video motion prompt changed
+(e.g. "make the camera push in faster", "she should look more nervous", "add
+a glance toward the door"). When present, treat it as an ADDITIONAL directive
+layered on top of every Hard Rule above (1-10) — never a replacement for
+them, and never a reason to skip any rule. This skill already regenerates the
+motion prompt fresh from the shot's own facts (image, description, camera,
+dialogue) on every call, so there is no "preserve the previous prompt's
+wording" concept to apply here, unlike an image-repair skill working from an
+already-approved image: simply write this shot's full, rule-compliant motion
+prompt exactly as you always do, folding in whatever `repair_instruction`
+asks for as part of that same regeneration. When no `repair_instruction` is
+supplied, this section does not apply — write the prompt exactly as every
+rule above already describes, unchanged.
+
 This skill does not auto-trigger. It is invoked once per shot by the Vertical
 Drama episode's shot-level "generate video prompt" action.

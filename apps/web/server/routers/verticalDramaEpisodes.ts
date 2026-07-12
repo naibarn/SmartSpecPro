@@ -5448,6 +5448,14 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
   requestedNativeAudioEnabled: boolean;
   extraDialogueCreditsUsed: number;
   subShotWindows: SpeakerSwitchSubShotWindow[];
+  /**
+   * Threaded straight through to `generateVerticalDramaShotVideoPromptSpeakerSwitch`'s
+   * own `repairInstruction` (same contract — see
+   * `GenerateVerticalDramaShotVideoPromptParams.repairInstruction`'s doc
+   * comment). Optional/omitted by every caller except the AI-adjust call
+   * site, preserving today's behavior.
+   */
+  repairInstruction?: string;
 }) {
   const {
     tenantId,
@@ -5474,6 +5482,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     requestedNativeAudioEnabled,
     extraDialogueCreditsUsed,
     subShotWindows,
+    repairInstruction,
   } = args;
 
   const speakerSwitchGeneration = await generateVerticalDramaShotVideoPromptSpeakerSwitch({
@@ -5514,6 +5523,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     nativeAudioEnabled: effectiveNativeAudioEnabled,
     idempotencyKey,
     subShotWindows,
+    repairInstruction,
   });
 
   // Same 2 passes the single-clip path applies (brand sanitize -> length-cap
@@ -10017,6 +10027,12 @@ export const verticalDramaEpisodesRouter = router({
         // resolved model's `supportsNativeAudio` capability both still have
         // to be true for this to actually take effect.
         nativeAudioEnabled: z.boolean().optional(),
+        // The user's free-text repair/adjustment instruction from the "ให้
+        // AI ปรับ" (AI-adjust) dialog next to a shot's video prompt. Purely
+        // additive: omitted (undefined) reproduces today's exact
+        // prompt/behavior — the plain "generate video prompt" button never
+        // sends this field.
+        instruction: z.string().trim().max(2000).optional(),
         idempotencyKey,
       })
     )
@@ -10439,6 +10455,11 @@ export const verticalDramaEpisodesRouter = router({
           requestedNativeAudioEnabled,
           extraDialogueCreditsUsed,
           subShotWindows: subShotDecision.windows,
+          // Mirrors the non-split branch's identical
+          // `repairInstruction: input.instruction` below; `undefined` when
+          // the caller doesn't supply one (byte-identical to before this
+          // fix).
+          repairInstruction: input.instruction,
         });
       }
 
@@ -10499,6 +10520,10 @@ export const verticalDramaEpisodesRouter = router({
         // Part B3 (planning/`polished-toasting-gadget.md`) — compact episode
         // scene-setting plan context, resolved above.
         episodePlanContext: shotEpisodePlanContext,
+        // Threaded straight through; `undefined` when the caller doesn't
+        // supply one, which `buildShotVideoPromptUserPrompt` renders as no
+        // new instruction line at all (byte-identical to before this fix).
+        repairInstruction: input.instruction,
       });
 
       // Brand/public-figure sanitize pass (Thai ad-compliance + video-policy
