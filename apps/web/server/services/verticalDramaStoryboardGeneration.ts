@@ -882,6 +882,57 @@ export async function generateStoryboardShotgrid(
       .join(" ");
   }
 
+  // Root-cause fix (2026-07-12, live episode #43 regenerate producing 0
+  // `distinct_locations` groups twice in a row despite skill.md's explicit
+  // "a single entry covering all 9 shot_numbers in the default one-location
+  // case" instruction) — same failure class as `plain_text_storyboard`
+  // above: the field is optional at the zod level (for legacy-response
+  // compatibility), so the LLM silently omitting it produces no validation
+  // error, just an empty Location Visual Bible. Unlike `plain_text_storyboard`
+  // this field IS read downstream (grounds the location reference-image
+  // prompt), so the fallback groups by each shot's own reliable `location`
+  // string (unlike `distinct_locations` itself, every shot has always
+  // carried this field) rather than emitting a placeholder, and seeds each
+  // group's `description` from the real `visual_description` text the model
+  // already committed to for those shots — mechanical, but grounded in
+  // actual model output, not invented. Only fires when the LLM's own
+  // grouping is absent entirely; a partial/malformed attempt from the model
+  // is left as-is (Zod already accepts anything satisfying
+  // `distinctLocationSchema`, malformed shapes fail validation upstream).
+  if (
+    !storyboardData.distinct_locations ||
+    storyboardData.distinct_locations.length === 0
+  ) {
+    const groupOrder: string[] = [];
+    const groupsByName = new Map<
+      string,
+      { shotNumbers: number[]; descriptions: string[] }
+    >();
+    for (const shot of storyboardData.shots) {
+      const shotRecord = shot as unknown as Record<string, unknown>;
+      const locationName =
+        typeof shotRecord.location === "string" && shotRecord.location.length > 0
+          ? shotRecord.location
+          : "ฉากหลัก";
+      if (!groupsByName.has(locationName)) {
+        groupsByName.set(locationName, { shotNumbers: [], descriptions: [] });
+        groupOrder.push(locationName);
+      }
+      const group = groupsByName.get(locationName)!;
+      group.shotNumbers.push(shot.shot_number);
+      group.descriptions.push(shot.visual_description);
+    }
+    storyboardData.distinct_locations = groupOrder.map((locationName, index) => {
+      const group = groupsByName.get(locationName)!;
+      return {
+        location_key: `location-${index + 1}`,
+        location_name: locationName,
+        description: group.descriptions.slice(0, 3).join(" "),
+        shot_numbers: group.shotNumbers,
+      };
+    });
+  }
+
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,

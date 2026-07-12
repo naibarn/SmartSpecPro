@@ -315,11 +315,38 @@ describe("generateStoryboardShotgrid — distinct_locations pass-through", () =>
     );
   });
 
-  it("still succeeds when the LLM omits distinct_locations entirely (legacy/flag-off response)", async () => {
+  it("falls back to a mechanically-derived single group when the LLM omits distinct_locations entirely (2026-07-12 reliability fix — same failure class as plain_text_storyboard)", async () => {
     mockExecute.mockResolvedValue(successResponse(validOutput()));
 
     const result = await generateStoryboardShotgrid(baseParams());
-    expect(result.storyboard.distinct_locations).toBeUndefined();
+    expect(result.storyboard.distinct_locations).toHaveLength(1);
+    expect(result.storyboard.distinct_locations![0]).toMatchObject({
+      location_key: "location-1",
+      location_name: "ฉากหลัก",
+      shot_numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    });
+  });
+
+  it("groups the fallback by each shot's own location string instead of one bucket when shots specify different locations", async () => {
+    const output = validOutput();
+    output.shots = output.shots.map((s, i) => ({
+      ...s,
+      location: i < 5 ? "ร้านสะดวกซื้อ" : "ครัวหลังร้าน",
+    })) as typeof output.shots;
+    mockExecute.mockResolvedValue(successResponse(output));
+
+    const result = await generateStoryboardShotgrid(baseParams());
+    expect(result.storyboard.distinct_locations).toHaveLength(2);
+    expect(result.storyboard.distinct_locations![0]).toMatchObject({
+      location_key: "location-1",
+      location_name: "ร้านสะดวกซื้อ",
+      shot_numbers: [1, 2, 3, 4, 5],
+    });
+    expect(result.storyboard.distinct_locations![1]).toMatchObject({
+      location_key: "location-2",
+      location_name: "ครัวหลังร้าน",
+      shot_numbers: [6, 7, 8, 9],
+    });
   });
 });
 
