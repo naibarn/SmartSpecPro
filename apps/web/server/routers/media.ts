@@ -3879,7 +3879,25 @@ export const mediaRouter = router({
 
         if (!response.ok) {
           const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-          throw new Error(error.detail || `Fetch result failed: ${response.status}`);
+          const message = error.detail || `Fetch result failed: ${response.status}`;
+          // Preserve the upstream HTTP status. The most common non-ok case here
+          // is a transient/expected 404 "Task ... not found" — the task row is
+          // not yet queryable (creation race) while the generation itself is
+          // still in flight and self-resolves on the next poll. Collapsing that
+          // into INTERNAL_SERVER_ERROR makes the client-side systemErrorMonitor
+          // escalate it into a scary "report this bug" notification even though
+          // nothing is actually broken. Map the status so a not-found is a
+          // user/not-found class error (silently handled per call site) and only
+          // genuine 5xx/unknown failures reach the system-error escalation.
+          throw new TRPCError({
+            code:
+              response.status === 400 ? "BAD_REQUEST"
+              : response.status === 401 ? "UNAUTHORIZED"
+              : response.status === 403 ? "FORBIDDEN"
+              : response.status === 404 ? "NOT_FOUND"
+              : "INTERNAL_SERVER_ERROR",
+            message,
+          });
         }
 
         const payload = await response.json() as Record<string, unknown>;
@@ -3891,9 +3909,17 @@ export const mediaRouter = router({
             : undefined,
         };
       } catch (error) {
+        // Re-throw already-mapped TRPCErrors (e.g. the non-ok branch above)
+        // unchanged; only wrap genuinely-unexpected failures. A stringified
+        // "not found" from a lower layer is still treated as NOT_FOUND so it
+        // does not trip the system-error escalation.
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        const message = error instanceof Error ? error.message : "Failed to fetch task result";
         throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: error instanceof Error ? error.message : "Failed to fetch task result",
+          code: /not found/i.test(message) ? "NOT_FOUND" : "INTERNAL_SERVER_ERROR",
+          message,
         });
       }
     }),

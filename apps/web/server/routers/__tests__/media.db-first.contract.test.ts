@@ -154,6 +154,12 @@ vi.mock("../../services/tenantContext", () => ({
   resolveTenantIdVarchar: vi.fn().mockReturnValue("tenant-1"),
 }));
 
+vi.mock("../../services/appRuntimeConfig", () => ({
+  getAppRuntimeConfig: vi.fn().mockResolvedValue({
+    pythonBackendUrl: "http://localhost:8000",
+  }),
+}));
+
 vi.mock("../../_core/trpc", () => {
   const createProcedure = () => {
     const proc: any = {
@@ -2205,5 +2211,68 @@ describe("media router DB-first model contract", () => {
         },
       }),
     ).resolves.toMatchObject({ success: true });
+  });
+});
+
+describe("media.fetchTaskResult upstream error mapping", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  // Regression: a transient/expected 404 ("Task ... not found" — task row not
+  // yet queryable while generation is still in flight and self-resolves on the
+  // next poll) must surface as a NOT_FOUND, not INTERNAL_SERVER_ERROR. The
+  // client systemErrorMonitor classifies INTERNAL_SERVER_ERROR as a "system"
+  // outage and escalates it into a scary "report this bug" notification even
+  // though nothing is broken.
+  it("maps an upstream 404 to NOT_FOUND (not INTERNAL_SERVER_ERROR)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: "Task mcp_deadbeef not found" }),
+      }),
+    );
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "mcp_deadbeef" } }),
+    ).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "Task mcp_deadbeef not found",
+    });
+  });
+
+  it("keeps a genuine upstream 5xx as INTERNAL_SERVER_ERROR (still escalates)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        json: async () => ({ detail: "Kie.ai client not configured" }),
+      }),
+    );
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "mcp_deadbeef" } }),
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
+  });
+
+  it("returns the payload on success without escalating", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true, fetched: false, message: "Task still in progress" }),
+      }),
+    );
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "mcp_deadbeef" } }),
+    ).resolves.toMatchObject({ success: true, task: undefined });
   });
 });
