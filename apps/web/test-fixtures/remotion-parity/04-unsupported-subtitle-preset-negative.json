@@ -1,0 +1,30 @@
+{
+  "id": "unsupported-subtitle-preset-negative",
+  "description": "Negative-path fixture: subtitlePreset is NOT the schema-default 'classic_box' Remotion phase-2 supports. This fixture is not a real parity comparison — it only asserts that the Remotion adapter fails closed (UnsupportedPresetError) instead of silently mis-rendering, per remotionCompositionService.ts's assertRemotionPresetSupport(). The Hyperframes side is not exercised for this fixture (it supports every preset already).",
+  "expectRemotionSupported": false,
+  "expectedUnsupportedPresetMessageContains": "subtitlePreset",
+  "finalComposite": {
+    "finalVideoLengthSec": 3,
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "burnInSubtitles": true,
+    "preserveNativeAudio": true,
+    "fontFamily": "Prompt",
+    "subtitlePreset": "minimal_shadow",
+    "hookText": "พรีเซ็ตที่ยังไม่รองรับ",
+    "shots": [
+      {
+        "id": "shot_1",
+        "index": 0,
+        "sourceVideoUrl": "urn:remotion-parity-fixture:scene-1",
+        "startSec": 0,
+        "durationSec": 3,
+        "onScreenText": ["ทดสอบพรีเซ็ตที่ยังไม่รองรับ"],
+        "subtitleCues": [
+          { "startSec": 0.2, "endSec": 2.6, "text": "ทดสอบว่า Remotion ปฏิเสธพรีเซ็ตที่ยังไม่รองรับอย่างถูกต้อง" }
+        ]
+      }
+    ]
+  }
+}
