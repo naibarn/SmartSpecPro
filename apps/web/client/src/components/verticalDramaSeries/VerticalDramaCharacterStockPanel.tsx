@@ -86,6 +86,7 @@ import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import { splitImage, type SplitResult } from "@/lib/imageGridSplitter";
 import type { VerticalDramaCharacterAsset } from "@shared/verticalDramaSeries/characterAssets";
+import type { VerticalDramaApprovedCharacterDesignSnapshot } from "@shared/verticalDramaSeries/characterProfile";
 import {
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN,
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH,
@@ -594,6 +595,69 @@ export function buildPreviewCharacterPromptInput(params: {
     seriesId: params.seriesId,
     characterId: params.characterId,
     ...(customInstruction ? { customInstruction } : {}),
+  };
+}
+
+export interface VdCharacterPromptConfirmPayload<TSnapshot> {
+  seriesId: string;
+  characterId: string;
+  approvedPrompt: string;
+  approvedNegativePrompt?: string;
+  approvedDesignSnapshot?: TSnapshot;
+  selectedImageModelId?: string;
+  mcpConnectionId?: string;
+  referenceAssetLinkId?: string;
+}
+
+/**
+ * Builds the portrait-confirm mutation payload while preventing a stale DNA
+ * snapshot from being persisted for user-edited prompt text. Whitespace-only
+ * changes are treated as unchanged because the server applies the same trim
+ * correlation rule.
+ */
+export function buildCharacterPromptConfirmPayload<TSnapshot>(params: {
+  seriesId: string;
+  characterId: string;
+  originalPrompt: string;
+  editedPrompt: string;
+  negativePrompt?: string;
+  approvedDesignSnapshot?: TSnapshot;
+  selectedImageModelId?: string | null;
+  imageModelUsesMcp: boolean;
+  mcpConnectionId?: string | null;
+  referenceAssetLinkId?: string | null;
+}): {
+  payload: VdCharacterPromptConfirmPayload<TSnapshot>;
+  wasPromptEdited: boolean;
+  carriesApprovedDna: boolean;
+} {
+  const wasPromptEdited =
+    params.originalPrompt.trim() !== params.editedPrompt.trim();
+  const carriesApprovedDna =
+    !wasPromptEdited && params.approvedDesignSnapshot !== undefined;
+  return {
+    wasPromptEdited,
+    carriesApprovedDna,
+    payload: {
+      seriesId: params.seriesId,
+      characterId: params.characterId,
+      approvedPrompt: params.editedPrompt,
+      ...(params.negativePrompt
+        ? { approvedNegativePrompt: params.negativePrompt }
+        : {}),
+      ...(carriesApprovedDna
+        ? { approvedDesignSnapshot: params.approvedDesignSnapshot }
+        : {}),
+      ...(params.selectedImageModelId
+        ? { selectedImageModelId: params.selectedImageModelId }
+        : {}),
+      ...(params.imageModelUsesMcp && params.mcpConnectionId
+        ? { mcpConnectionId: params.mcpConnectionId }
+        : {}),
+      ...(params.referenceAssetLinkId
+        ? { referenceAssetLinkId: params.referenceAssetLinkId }
+        : {}),
+    },
   };
 }
 
@@ -1649,6 +1713,15 @@ export function VerticalDramaCharacterStockPanel({
   const generateImageMutation =
     trpc.verticalDramaCharacters.generateCharacterImage.useMutation({
       onSuccess: (res, variables) => {
+        if (res.dnaPersistenceStatus === "failed" && res.dnaPersistenceWarning) {
+          toast.warning(
+            t(
+              lang,
+              "ส่งงานสร้างภาพแล้ว แต่บันทึก Character DNA ไม่สำเร็จ ระบบไม่ได้ส่งงานซ้ำ",
+              res.dnaPersistenceWarning
+            )
+          );
+        }
         void pollCharacterImageTask(
           res.taskId,
           variables.characterId,
@@ -1684,9 +1757,20 @@ export function VerticalDramaCharacterStockPanel({
           creditsUsed?: { promptGeneration?: number };
           assetRole: string;
           assetMetadata: Record<string, unknown> | null;
+          dnaPersistenceStatus?: "persisted" | "skipped" | "failed";
+          dnaPersistenceWarning?: string | null;
         },
         variables: { characterId: string }
       ) => {
+        if (res.dnaPersistenceStatus === "failed" && res.dnaPersistenceWarning) {
+          toast.warning(
+            t(
+              lang,
+              "ส่งงานสร้างชีตแล้ว แต่บันทึก Character DNA ไม่สำเร็จ ระบบไม่ได้ส่งงานซ้ำ",
+              res.dnaPersistenceWarning
+            )
+          );
+        }
         void pollCharacterImageTask(
           res.taskId,
           variables.characterId,
@@ -1740,6 +1824,7 @@ export function VerticalDramaCharacterStockPanel({
       turnaroundPrompt: string;
       negativePrompt?: string;
       model?: string;
+      approvedDesignSnapshot: VerticalDramaApprovedCharacterDesignSnapshot;
     } | null>(null);
 
   /** Entry point for the portrait generate button (card grid + selected-
@@ -1766,6 +1851,7 @@ export function VerticalDramaCharacterStockPanel({
             turnaroundPrompt: res.turnaroundPrompt,
             negativePrompt: res.negativePrompt,
             model: res.model,
+            approvedDesignSnapshot: res.approvedDesignSnapshot,
           });
         },
         onError: () => {
@@ -1781,23 +1867,35 @@ export function VerticalDramaCharacterStockPanel({
    *  re-charging) its own internal prompt-generation step. */
   const handleCharacterPromptConfirm = (editedPrompt: string) => {
     if (!pendingCharacterPromptPreview) return;
-    const { characterId, negativePrompt } = pendingCharacterPromptPreview;
-    setPendingCharacterPromptPreview(null);
-    generateImageMutation.mutate({
+    const {
+      characterId,
+      portraitPrompt,
+      negativePrompt,
+      approvedDesignSnapshot,
+    } = pendingCharacterPromptPreview;
+    const confirmation = buildCharacterPromptConfirmPayload({
       seriesId,
       characterId,
-      approvedPrompt: editedPrompt,
-      ...(negativePrompt ? { approvedNegativePrompt: negativePrompt } : {}),
-      ...(selectedImageModelId ? { selectedImageModelId } : {}),
-      ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
-      // Reference-image-picker (Phase D3) — only passed when the user has
-      // explicitly overridden the reference for this character; omitted
-      // entirely otherwise so existing auto-resolution behavior is
-      // byte-identical to before this feature.
-      ...(referenceOverrideByCharacter[characterId]
-        ? { referenceAssetLinkId: referenceOverrideByCharacter[characterId] }
-        : {}),
+      originalPrompt: portraitPrompt,
+      editedPrompt,
+      negativePrompt,
+      approvedDesignSnapshot,
+      selectedImageModelId,
+      imageModelUsesMcp,
+      mcpConnectionId,
+      referenceAssetLinkId: referenceOverrideByCharacter[characterId] ?? null,
     });
+    setPendingCharacterPromptPreview(null);
+    if (confirmation.wasPromptEdited) {
+      toast.info(
+        t(
+          lang,
+          "ระบบจะสร้างภาพจาก Prompt ที่แก้ไข แต่จะยังไม่ล็อก Character DNA หากต้องการล็อกหน้าตาใหม่นี้ ให้สร้าง Preview ใหม่ก่อนยืนยัน",
+          "The edited prompt will render, but Character DNA was not locked. Generate a fresh preview to lock the edited identity."
+        )
+      );
+    }
+    generateImageMutation.mutate(confirmation.payload);
   };
 
   /** User cancelled the preview — clear state only, no mutation call, no

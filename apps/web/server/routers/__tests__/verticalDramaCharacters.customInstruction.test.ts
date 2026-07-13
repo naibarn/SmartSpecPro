@@ -116,6 +116,22 @@ vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
   resolveFaceSourceReferenceForCharacter: mockResolveFaceSourceReferenceForCharacter,
 }));
 
+const { mockLoadCharacterDesignContext, mockPersistCharacterVisualBible } = vi.hoisted(() => ({
+  mockLoadCharacterDesignContext: vi.fn(async () => ({
+    seriesDna: {},
+    currentCast: [],
+    recentLeadArchive: [],
+  })),
+  mockPersistCharacterVisualBible: vi.fn(async () => undefined),
+}));
+vi.mock("../../services/verticalDramaCharacterDesignContext", () => ({
+  loadCharacterDesignContext: mockLoadCharacterDesignContext,
+}));
+
+vi.mock("../../services/verticalDramaCharacterDnaPersistence", () => ({
+  persistCharacterVisualBible: mockPersistCharacterVisualBible,
+}));
+
 vi.mock("../../services/rateLimiter", () => ({
   mediaGenerationLimiter: { isAllowed: vi.fn(() => true), getResetTime: vi.fn(() => 0) },
 }));
@@ -154,7 +170,14 @@ function selectChain(rows: unknown[]) {
 }
 
 const SERIES_ROW = { id: 10 };
-const SERIES_CONTEXT_ROW = { title: "Sisters of the Silk Market", genre: "family drama", tone: "warm", bible: null };
+const SERIES_CONTEXT_ROW = {
+  id: 10,
+  title: "Sisters of the Silk Market",
+  genre: "family drama",
+  tone: "warm",
+  bible: null,
+  updatedAt: new Date("2026-07-13T00:00:00.000Z"),
+};
 const CHARACTER_ROW = {
   id: 1,
   tenantId: "tenant-1",
@@ -184,6 +207,12 @@ function visualPromptResult(overrides: Partial<Record<string, unknown>> = {}) {
     raw: { visual_bible_summary: {} },
     creditsUsed: 4,
     model: "gpt-4o-mini",
+    visualBibleSnapshot: {
+      version: 1,
+      createdAt: "2026-07-13T00:00:00.000Z",
+      model: "gpt-4o-mini",
+      visualIdentitySummary: "story-grounded lead",
+    },
     ...overrides,
   };
 }
@@ -197,6 +226,12 @@ beforeEach(() => {
   mockDeductCredits.mockResolvedValue(undefined);
   mockGenerateImageAsync.mockResolvedValue({ id: "task-1" });
   mockGenerateCharacterVisualPrompts.mockResolvedValue(visualPromptResult());
+  mockLoadCharacterDesignContext.mockResolvedValue({
+    seriesDna: {},
+    currentCast: [],
+    recentLeadArchive: [],
+  });
+  mockPersistCharacterVisualBible.mockResolvedValue(undefined);
 });
 
 /* -------------------------------------------------------------------------- */
@@ -210,14 +245,27 @@ describe("previewCharacterPrompt — customInstruction flow-through", () => {
       .mockReturnValueOnce(selectChain([CHARACTER_ROW])) // loadOwnedCharacter
       .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW])); // series title/genre/tone/bible
 
-    await router.previewCharacterPrompt({
+    const result = await router.previewCharacterPrompt({
       ctx: ctx(),
       input: { seriesId: "10", characterId: "1", customInstruction: "half-body shot, front-facing" },
     });
 
     expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
-      expect.objectContaining({ customInstruction: "half-body shot, front-facing" }),
+      expect.objectContaining({
+        customInstruction: "half-body shot, front-facing",
+        characterDesignContext: expect.any(Object),
+      }),
     );
+    expect(mockLoadCharacterDesignContext).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42 },
+      SERIES_CONTEXT_ROW,
+      CHARACTER_ROW,
+    );
+    expect(result.approvedDesignSnapshot).toMatchObject({
+      characterKey: "fai",
+      portraitPrompt: "a portrait prompt",
+    });
+    expect(mockPersistCharacterVisualBible).not.toHaveBeenCalled();
   });
 
   it("passes customInstruction as undefined when not supplied (legacy tolerant, no crash)", async () => {
@@ -294,5 +342,172 @@ describe("generateCharacterImage — customInstruction flow-through (no-approved
     });
 
     expect(mockGenerateCharacterVisualPrompts).not.toHaveBeenCalled();
+    expect(mockPersistCharacterVisualBible).not.toHaveBeenCalled();
+  });
+
+  it("persists generated DNA only after the media task is submitted", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+
+    const result = await router.generateCharacterImage({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "1" },
+    });
+
+    expect(mockPersistCharacterVisualBible).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      1,
+      expect.objectContaining({ visualIdentitySummary: "story-grounded lead" }),
+    );
+    expect(mockGenerateImageAsync.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPersistCharacterVisualBible.mock.invocationCallOrder[0],
+    );
+    expect(result.dnaPersistenceStatus).toBe("persisted");
+  });
+
+  it("persists an unedited matching preview snapshot without rerunning the LLM", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+    const visualBible = { visualIdentitySummary: "previewed design" };
+
+    const result = await router.generateCharacterImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        approvedPrompt: "approved portrait",
+        approvedDesignSnapshot: {
+          characterKey: "fai",
+          portraitPrompt: "approved portrait",
+          visualBible,
+        },
+      },
+    });
+
+    expect(mockGenerateCharacterVisualPrompts).not.toHaveBeenCalled();
+    expect(mockPersistCharacterVisualBible).toHaveBeenCalledWith(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      1,
+      visualBible,
+    );
+    expect(result.dnaPersistenceStatus).toBe("persisted");
+  });
+
+  it("renders an edited approved prompt but does not persist the preview DNA", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+
+    const result = await router.generateCharacterImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        characterId: "1",
+        approvedPrompt: "edited portrait",
+        approvedDesignSnapshot: {
+          characterKey: "fai",
+          portraitPrompt: "original portrait",
+          visualBible: { visualIdentitySummary: "previewed design" },
+        },
+      },
+    });
+
+    expect(mockGenerateImageAsync).toHaveBeenCalledTimes(1);
+    expect(mockPersistCharacterVisualBible).not.toHaveBeenCalled();
+    expect(result.dnaPersistenceWarning).toMatch(/edited after preview/i);
+  });
+
+  it("rejects a snapshot correlated to another character before media submission", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([CHARACTER_ROW]));
+
+    await expect(
+      router.generateCharacterImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          characterId: "1",
+          approvedPrompt: "approved portrait",
+          approvedDesignSnapshot: {
+            characterKey: "another-character",
+            portraitPrompt: "approved portrait",
+            visualBible: { visualIdentitySummary: "wrong character" },
+          },
+        },
+      }),
+    ).rejects.toThrow(/another character/i);
+
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+    expect(mockPersistCharacterVisualBible).not.toHaveBeenCalled();
+  });
+
+  it("returns a non-fatal warning when persistence fails after task submission", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+    mockPersistCharacterVisualBible.mockRejectedValueOnce(new Error("database unavailable"));
+
+    const result = await router.generateCharacterImage({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "1" },
+    });
+
+    expect(result.taskId).toBe("task-1");
+    expect(result.dnaPersistenceStatus).toBe("failed");
+    expect(result.dnaPersistenceWarning).toMatch(/not resubmitted/i);
+    expect(mockGenerateImageAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not persist when media submission fails", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+    mockGenerateImageAsync.mockRejectedValueOnce(new Error("submit failed"));
+
+    await expect(
+      router.generateCharacterImage({
+        ctx: ctx(),
+        input: { seriesId: "10", characterId: "1" },
+      }),
+    ).rejects.toThrow(/submit failed/i);
+
+    expect(mockPersistCharacterVisualBible).not.toHaveBeenCalled();
+  });
+});
+
+describe("generateCharacterSheet — Character DNA persistence", () => {
+  it("loads design context and persists the just-generated DNA after sheet submission", async () => {
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([CHARACTER_ROW]))
+      .mockReturnValueOnce(selectChain([SERIES_CONTEXT_ROW]))
+      .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
+
+    const result = await router.generateCharacterSheet({
+      ctx: ctx(),
+      input: { seriesId: "10", characterId: "1", sheetType: "auto" },
+    });
+
+    expect(mockGenerateCharacterVisualPrompts).toHaveBeenCalledWith(
+      expect.objectContaining({ characterDesignContext: expect.any(Object) }),
+    );
+    expect(mockPersistCharacterVisualBible).toHaveBeenCalledTimes(1);
+    expect(mockGenerateImageAsync.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPersistCharacterVisualBible.mock.invocationCallOrder[0],
+    );
+    expect(result.dnaPersistenceStatus).toBe("persisted");
   });
 });

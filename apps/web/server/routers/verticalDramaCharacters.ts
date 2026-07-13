@@ -63,6 +63,9 @@ import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
 import { getModelsByTypeAsync } from "../services/modelRegistry";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import { verticalDramaApprovedCharacterDesignSnapshotSchema } from "@shared/verticalDramaSeries/characterProfile";
+import { loadCharacterDesignContext } from "../services/verticalDramaCharacterDesignContext";
+import { persistCharacterVisualBible } from "../services/verticalDramaCharacterDnaPersistence";
 // W12-A voice chain note: `listVoiceCatalog` below reuses the EXACT
 // server-side voice-option resolution `media.listModelFieldOptions` already
 // implements (dynamic UVoice/provider-API fetch with its own module-level
@@ -1674,10 +1677,12 @@ export const verticalDramaCharactersRouter = router({
 
       const [seriesRow] = await db
         .select({
+          id: verticalDramaSeries.id,
           title: verticalDramaSeries.title,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
           bible: verticalDramaSeries.bible,
+          updatedAt: verticalDramaSeries.updatedAt,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
@@ -1697,6 +1702,9 @@ export const verticalDramaCharactersRouter = router({
         { tenantId, userId, seriesId },
         character,
       );
+      const characterDesignContext = seriesRow
+        ? await loadCharacterDesignContext({ tenantId, userId }, seriesRow, character)
+        : undefined;
 
       let promptResult;
       try {
@@ -1716,6 +1724,7 @@ export const verticalDramaCharactersRouter = router({
           presetVisualIdentity,
           faceSourceReference,
           customInstruction: input.customInstruction,
+          characterDesignContext,
         });
       } catch (err) {
         if (err instanceof InsufficientCreditsError) {
@@ -1735,6 +1744,14 @@ export const verticalDramaCharactersRouter = router({
         turnaroundPrompt: promptResult.turnaroundPrompt,
         negativePrompt: promptResult.negativePrompt,
         model: promptResult.model,
+        approvedDesignSnapshot: {
+          characterKey: character.characterKey,
+          portraitPrompt: promptResult.portraitPrompt,
+          ...(promptResult.negativePrompt
+            ? { negativePrompt: promptResult.negativePrompt }
+            : {}),
+          visualBible: promptResult.visualBibleSnapshot,
+        },
       };
     }),
 
@@ -1776,6 +1793,7 @@ export const verticalDramaCharactersRouter = router({
         characterId: z.string().min(1),
         approvedPrompt: z.string().min(1).optional(),
         approvedNegativePrompt: z.string().optional(),
+        approvedDesignSnapshot: verticalDramaApprovedCharacterDesignSnapshotSchema.optional(),
         // Caller-selected image model (character tab's own model picker) —
         // validated + must be enabled; falls back to `DEFAULT_MODELS.image`
         // when absent. See `resolveCharacterImageModelId`.
@@ -1821,13 +1839,30 @@ export const verticalDramaCharactersRouter = router({
       const characterId = parseId(input.characterId, "character id");
       await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      if (input.approvedDesignSnapshot && !input.approvedPrompt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "An approved Character DNA snapshot requires its approved prompt.",
+        });
+      }
+      if (
+        input.approvedDesignSnapshot &&
+        input.approvedDesignSnapshot.characterKey !== character.characterKey
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The approved Character DNA snapshot belongs to another character.",
+        });
+      }
 
       const [seriesRow] = await db
         .select({
+          id: verticalDramaSeries.id,
           title: verticalDramaSeries.title,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
           bible: verticalDramaSeries.bible,
+          updatedAt: verticalDramaSeries.updatedAt,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
@@ -1875,6 +1910,12 @@ export const verticalDramaCharactersRouter = router({
       let promptModel: string | null = null;
       let visualBibleSummary: Record<string, unknown> | null = null;
       let promptCreditsUsed = 0;
+      let visualBibleToPersist =
+        input.approvedPrompt &&
+        input.approvedDesignSnapshot &&
+        input.approvedDesignSnapshot.portraitPrompt.trim() === input.approvedPrompt.trim()
+          ? input.approvedDesignSnapshot.visualBible
+          : undefined;
 
       if (input.approvedPrompt) {
         portraitPrompt = input.approvedPrompt;
@@ -1884,6 +1925,9 @@ export const verticalDramaCharactersRouter = router({
           { tenantId, userId, seriesId },
           character,
         );
+        const characterDesignContext = seriesRow
+          ? await loadCharacterDesignContext({ tenantId, userId }, seriesRow, character)
+          : undefined;
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -1903,6 +1947,7 @@ export const verticalDramaCharactersRouter = router({
             faceSourceReference,
             hasOwnReferenceImage: Boolean(referencePortraitUrl),
             customInstruction: input.customInstruction,
+            characterDesignContext,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -1921,6 +1966,7 @@ export const verticalDramaCharactersRouter = router({
         promptModel = promptResult.model;
         visualBibleSummary = promptResult.raw.visual_bible_summary;
         promptCreditsUsed = promptResult.creditsUsed;
+        visualBibleToPersist = promptResult.visualBibleSnapshot;
       }
 
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
@@ -2036,6 +2082,31 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
+      let dnaPersistenceStatus: "persisted" | "skipped" | "failed" = "skipped";
+      let dnaPersistenceWarning: string | null = null;
+      if (visualBibleToPersist) {
+        try {
+          await persistCharacterVisualBible(
+            { tenantId, userId, seriesId },
+            characterId,
+            visualBibleToPersist,
+          );
+          dnaPersistenceStatus = "persisted";
+        } catch (error) {
+          dnaPersistenceStatus = "failed";
+          dnaPersistenceWarning =
+            "Image task submitted, but Character DNA could not be saved. The image task was not resubmitted.";
+          debugError(
+            "verticalDramaCharacters.generateCharacterImage",
+            `Character DNA persistence failed after media task ${task.id}`,
+            error,
+          );
+        }
+      } else if (input.approvedDesignSnapshot && input.approvedPrompt) {
+        dnaPersistenceWarning =
+          "Character DNA was not saved because the approved prompt was edited after preview.";
+      }
+
       return {
         taskId: task.id,
         portraitPrompt,
@@ -2043,6 +2114,8 @@ export const verticalDramaCharactersRouter = router({
         promptModel,
         visualBibleSummary,
         creditsUsed: { promptGeneration: promptCreditsUsed },
+        dnaPersistenceStatus,
+        dnaPersistenceWarning,
       };
     }),
 
@@ -2094,6 +2167,7 @@ export const verticalDramaCharactersRouter = router({
         characterId: z.string().min(1),
         approvedPrompt: z.string().min(1).optional(),
         approvedNegativePrompt: z.string().optional(),
+        approvedDesignSnapshot: verticalDramaApprovedCharacterDesignSnapshotSchema.optional(),
         /** Which Character Design Bible sheet format to render — `"auto"`
          *  (default) resolves to `"turnaround"`. See
          *  `resolveCharacterSheetType`/`CHARACTER_SHEET_TYPE_VALUES`. */
@@ -2132,13 +2206,30 @@ export const verticalDramaCharactersRouter = router({
       const characterId = parseId(input.characterId, "character id");
       await loadOwnedSeries(tenantId, userId, seriesId);
       const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      if (input.approvedDesignSnapshot && !input.approvedPrompt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "An approved Character DNA snapshot requires its approved prompt.",
+        });
+      }
+      if (
+        input.approvedDesignSnapshot &&
+        input.approvedDesignSnapshot.characterKey !== character.characterKey
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The approved Character DNA snapshot belongs to another character.",
+        });
+      }
 
       const [seriesRow] = await db
         .select({
+          id: verticalDramaSeries.id,
           title: verticalDramaSeries.title,
           genre: verticalDramaSeries.genre,
           tone: verticalDramaSeries.tone,
           bible: verticalDramaSeries.bible,
+          updatedAt: verticalDramaSeries.updatedAt,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
@@ -2185,6 +2276,12 @@ export const verticalDramaCharactersRouter = router({
       let promptModel: string | null = null;
       let visualBibleSummary: Record<string, unknown> | null = null;
       let promptCreditsUsed = 0;
+      let visualBibleToPersist =
+        input.approvedPrompt &&
+        input.approvedDesignSnapshot &&
+        input.approvedDesignSnapshot.portraitPrompt.trim() === input.approvedPrompt.trim()
+          ? input.approvedDesignSnapshot.visualBible
+          : undefined;
 
       if (input.approvedPrompt) {
         sheetPromptText = input.approvedPrompt;
@@ -2194,6 +2291,9 @@ export const verticalDramaCharactersRouter = router({
           { tenantId, userId, seriesId },
           character,
         );
+        const characterDesignContext = seriesRow
+          ? await loadCharacterDesignContext({ tenantId, userId }, seriesRow, character)
+          : undefined;
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -2217,6 +2317,7 @@ export const verticalDramaCharactersRouter = router({
             // `turnaround_prompt` field, so no extra skill work is requested
             // for it (see skill.md's "Character Design Bible sheet types").
             requestedSheetType: resolvedSheetType === "turnaround" ? undefined : resolvedSheetType,
+            characterDesignContext,
           });
         } catch (err) {
           if (err instanceof InsufficientCreditsError) {
@@ -2252,6 +2353,7 @@ export const verticalDramaCharactersRouter = router({
         promptModel = promptResult.model;
         visualBibleSummary = promptResult.raw.visual_bible_summary;
         promptCreditsUsed = promptResult.creditsUsed;
+        visualBibleToPersist = promptResult.visualBibleSnapshot;
       }
 
       // Pricing: the plain turnaround stays priced like a single image (same
@@ -2352,6 +2454,31 @@ export const verticalDramaCharactersRouter = router({
 
       const assetTag = resolveCharacterSheetAssetTag(resolvedSheetType);
 
+      let dnaPersistenceStatus: "persisted" | "skipped" | "failed" = "skipped";
+      let dnaPersistenceWarning: string | null = null;
+      if (visualBibleToPersist) {
+        try {
+          await persistCharacterVisualBible(
+            { tenantId, userId, seriesId },
+            characterId,
+            visualBibleToPersist,
+          );
+          dnaPersistenceStatus = "persisted";
+        } catch (error) {
+          dnaPersistenceStatus = "failed";
+          dnaPersistenceWarning =
+            "Image task submitted, but Character DNA could not be saved. The image task was not resubmitted.";
+          debugError(
+            "verticalDramaCharacters.generateCharacterSheet",
+            `Character DNA persistence failed after media task ${task.id}`,
+            error,
+          );
+        }
+      } else if (input.approvedDesignSnapshot && input.approvedPrompt) {
+        dnaPersistenceWarning =
+          "Character DNA was not saved because the approved prompt was edited after preview.";
+      }
+
       return {
         taskId: task.id,
         sheetType: resolvedSheetType,
@@ -2362,6 +2489,8 @@ export const verticalDramaCharactersRouter = router({
         creditsUsed: { promptGeneration: promptCreditsUsed },
         assetRole: assetTag.role,
         assetMetadata: assetTag.metadata,
+        dnaPersistenceStatus,
+        dnaPersistenceWarning,
       };
     }),
 
