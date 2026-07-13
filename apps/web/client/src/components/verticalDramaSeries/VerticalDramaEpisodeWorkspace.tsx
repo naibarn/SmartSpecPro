@@ -542,8 +542,6 @@ export interface VerticalDramaStoryboardPanelData {
   compiledVideo?: VerticalDramaCompiledVideoView | null;
   onAssembleCompiledVideo?: (opts?: { allowPartial?: boolean }) => void;
   assemblingCompiledVideo?: boolean;
-  totalClipCount?: number;
-  readyClipNumbers?: number[];
 
   /* ---- Wave-5A (2026-07-07 production-grade upgrade) — density meter,
      scorecard v2, tie-in report. Mirrors the same-named
@@ -1281,8 +1279,6 @@ export function VerticalDramaEpisodeWorkspace({
           compiledVideo={storyboardPanel?.compiledVideo}
           onAssembleCompiledVideo={storyboardPanel?.onAssembleCompiledVideo}
           assemblingCompiledVideo={storyboardPanel?.assemblingCompiledVideo}
-          totalClipCount={storyboardPanel?.totalClipCount}
-          readyClipNumbers={storyboardPanel?.readyClipNumbers}
           speechBudgetEnabled={storyboardPanel?.speechBudgetEnabled}
           onRepairWholeEpisodeScript={
             storyboardPanel?.onRepairWholeEpisodeScript

@@ -49,6 +49,7 @@ import { db } from "../db";
 import { verticalDramaEpisodes } from "../../drizzle/schema";
 import { storagePutFromPath } from "../storage";
 import type { VerticalDramaMotionPromptPack } from "@shared/verticalDramaSeries";
+import { resolveCanonicalShotAssembly } from "@shared/verticalDramaSeries/assemblyReadiness";
 import type { VdAdBannerPlacementId } from "@shared/verticalDramaSeries/adBannerPresets";
 // W12-A voice chain wave — imported by DIRECT PATH (not the shared barrel),
 // same convention `audio.ts`'s own doc comment documents for itself (also
@@ -296,37 +297,51 @@ export function deriveMissingShotNumbers(missing: MissingClip[]): number[] {
 }
 
 /**
- * Resolve which clips actually go into the concat, honoring `allowPartial`.
+ * Resolve exactly one completed clip per canonical shot for the concat,
+ * honoring `allowPartial`. Expected shots come from storyboard, then start
+ * frames, then clip-derived identities for historical episodes.
  * Throws a plain `Error` with a human-readable, user-facing message (mapped to
  * `PRECONDITION_FAILED` at the router) when clips are missing and partial
- * assembly was not explicitly requested. The message reports PARENT SHOT
- * numbers (via `deriveMissingShotNumbers`), not raw `clipNumber`s — a raw
- * sub-shot `clipNumber` like `301` is meaningless to a user who thinks in
- * terms of shots, not clips.
+ * assembly was not explicitly requested. The message reports canonical shot
+ * numbers, not raw `clipNumber`s — a raw sub-shot `clipNumber` like `301` is
+ * meaningless to a user who thinks in terms of shots, not clips.
  */
 export function resolveClipsForAssembly(
   clips: EpisodeClipSource[],
-  opts: { allowPartial?: boolean } = {}
+  opts: {
+    allowPartial?: boolean;
+    storyboardShotNumbers?: readonly unknown[];
+    startFrameShotNumbers?: readonly unknown[];
+  } = {}
 ): { ordered: EpisodeClipSource[]; missing: MissingClip[] } {
-  const ordered = clips.slice().sort(compareClipSourceOrder);
-  const missing = findMissingClips(ordered);
+  const canonical = resolveCanonicalShotAssembly({
+    clips,
+    storyboardShotNumbers: opts.storyboardShotNumbers,
+    startFrameShotNumbers: opts.startFrameShotNumbers,
+  });
+  const missing: MissingClip[] = canonical.missingShotNumbers.map(
+    shotNumber => ({
+      clipNumber: shotNumber,
+      parentShotNumber: shotNumber,
+      sourceShotNumbers: [shotNumber],
+    })
+  );
 
   if (missing.length > 0 && !opts.allowPartial) {
-    const shotList = deriveMissingShotNumbers(missing).join(", ");
+    const shotList = canonical.missingShotNumbers.join(", ");
     throw new Error(
       `vertical_drama_assembly_missing_clips: shot(s) ${shotList} still need a rendered video. ` +
         `Generate those shots first, or assemble only the completed shots.`
     );
   }
 
-  const usable = ordered.filter(c => c.videoUrl && c.videoUrl.trim());
-  if (usable.length === 0) {
+  if (canonical.selectedClips.length === 0) {
     throw new Error(
       "vertical_drama_assembly_no_clips: no completed video clips exist for this episode yet."
     );
   }
 
-  return { ordered: usable, missing };
+  return { ordered: canonical.selectedClips, missing };
 }
 
 /* -------------------------------------------------------------------------- */

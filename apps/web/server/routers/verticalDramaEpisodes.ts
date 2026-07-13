@@ -5023,7 +5023,8 @@ function buildPerShotDialoguePreview(
  *    false-negative / circular gate) is now
  *    `motionPromptPack?.clips.filter(c => Boolean(c.videoTask?.videoUrl)).length`
  *    — the same real "has a rendered video" signal this file's own
- *    `assembleEpisodeVideo` doc comment and the client's `readyClipNumbers`
+ *    `assembleEpisodeVideo` doc comment and the shared canonical-shot
+ *    assembly-readiness resolver
  *    already use elsewhere. The PREVIOUS heuristic (`required` once
  *    `assemblyManifest` exists, else `0`) was circular: `assemblyManifest`
  *    is only ever created by the `final_episode` step's `assemble_episode`
@@ -13581,6 +13582,21 @@ export const verticalDramaEpisodesRouter = router({
       try {
         resolved = resolveClipsForAssembly(clipSources, {
           allowPartial: input.allowPartial,
+          storyboardShotNumbers: (
+            row.storyboard as
+              | {
+                  shots?: Array<{
+                    shot_number?: unknown;
+                    shotNumber?: unknown;
+                  }>;
+                }
+              | null
+          )?.shots?.map(shot => shot.shot_number ?? shot.shotNumber),
+          startFrameShotNumbers: (
+            row.startFramePlan as
+              | { frames?: Array<{ shotNumber?: unknown }> }
+              | null
+          )?.frames?.map(frame => frame.shotNumber),
         });
       } catch (err) {
         throw new TRPCError({

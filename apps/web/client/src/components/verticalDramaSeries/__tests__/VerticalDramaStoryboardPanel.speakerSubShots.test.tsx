@@ -70,7 +70,7 @@ describe("VerticalDramaStoryboardPanel — speaker-aware sub-shots (regression g
     ).not.toBeInTheDocument();
   });
 
-  it("reports real missing split clips and blocks full assembly until complete", () => {
+  it("counts legacy split records by canonical shot and enables full assembly", () => {
     render(
       <VerticalDramaStoryboardPanel
         {...(baseProps({
@@ -108,15 +108,52 @@ describe("VerticalDramaStoryboardPanel — speaker-aware sub-shots (regression g
             ],
           },
           compiledVideo: null,
-          totalClipCount: 4,
-          readyClipNumbers: [1, 302, 4],
           onAssembleCompiledVideo: vi.fn(),
         }) as any)}
       />
     );
 
+    expect(screen.getByText("พร้อม 3/3 คลิป")).toBeInTheDocument();
+    expect(screen.queryByText(/ยังไม่มีคลิป:/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("vd-compiled-video-assemble")).toBeEnabled();
+    expect(
+      screen.queryByTestId("vd-compiled-video-assemble-partial")
+    ).not.toBeInTheDocument();
+  });
+
+  it("blocks full assembly only when a canonical shot is genuinely missing", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          storyboard: {
+            shots: [
+              { shot_number: 1, visual_description: "shot 1" },
+              { shot_number: 3, visual_description: "shot 3" },
+              { shot_number: 4, visual_description: "shot 4" },
+            ],
+          },
+          startFramePlan: {
+            frames: [
+              { shotNumber: 1, imagePrompt: "frame 1" },
+              { shotNumber: 3, imagePrompt: "frame 3" },
+              { shotNumber: 4, imagePrompt: "frame 4" },
+            ],
+          },
+          motionPromptPack: {
+            clips: [
+              { clipNumber: 1, sourceShotNumbers: [1], videoTask: { videoUrl: "/1.mp4" } },
+              { clipNumber: 3, sourceShotNumbers: [3] },
+              { clipNumber: 4, sourceShotNumbers: [4], videoTask: { videoUrl: "/4.mp4" } },
+            ],
+          },
+          compiledVideo: null,
+          onAssembleCompiledVideo: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    expect(screen.getByText("พร้อม 2/3 คลิป")).toBeInTheDocument();
     expect(screen.getByText(/ยังไม่มีคลิป: 3/)).toBeInTheDocument();
-    expect(screen.queryByText(/ยังไม่มีคลิป: 3, 4/)).not.toBeInTheDocument();
     expect(screen.getByTestId("vd-compiled-video-assemble")).toBeDisabled();
     expect(screen.getByTestId("vd-compiled-video-assemble-partial")).toBeEnabled();
   });

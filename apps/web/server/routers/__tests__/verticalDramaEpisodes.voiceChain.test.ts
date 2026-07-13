@@ -675,6 +675,69 @@ describe("assembleEpisodeVideo — dialogueAudioTimeline merge (W12-A)", () => {
     },
   });
 
+  it("passes canonical identities to the resolver and submits its one-per-shot selection", async () => {
+    const rawClipSources = [
+      { clipNumber: 1, videoUrl: "https://cdn.example.com/1.mp4" },
+      { clipNumber: 301 },
+      { clipNumber: 302, videoUrl: "https://cdn.example.com/302.mp4" },
+      { clipNumber: 4, videoUrl: "https://cdn.example.com/4.mp4" },
+    ];
+    const selectedClipSources = [
+      rawClipSources[0],
+      rawClipSources[2],
+      rawClipSources[3],
+    ];
+    vi.mocked(
+      episodeVideoAssembly.extractClipSourcesFromMotionPromptPack,
+    ).mockReturnValue(rawClipSources as any);
+    vi.mocked(episodeVideoAssembly.resolveClipsForAssembly).mockReturnValue({
+      ordered: selectedClipSources as any,
+      missing: [],
+    });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesVoiceChain: false,
+    });
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          ...EPISODE_ROW_BASE,
+          storyboard: {
+            shots: [
+              { shot_number: 1 },
+              { shot_number: 3 },
+              { shot_number: 4 },
+            ],
+          },
+          startFramePlan: {
+            frames: [
+              { shotNumber: 1 },
+              { shotNumber: 3 },
+              { shotNumber: 4 },
+            ],
+          },
+          motionPromptPack: { clips: [] },
+        },
+      ]),
+    );
+
+    await router.assembleEpisodeVideo({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "20" },
+    });
+
+    expect(episodeVideoAssembly.resolveClipsForAssembly).toHaveBeenCalledWith(
+      rawClipSources,
+      {
+        allowPartial: undefined,
+        storyboardShotNumbers: [1, 3, 4],
+        startFrameShotNumbers: [1, 3, 4],
+      },
+    );
+    expect(episodeVideoAssembly.submitAssemblyJob).toHaveBeenCalledWith(
+      expect.objectContaining({ clips: selectedClipSources }),
+    );
+  });
+
   it("flag OFF: never queries for a fresh manifest or writes dialogueAudioTimeline", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesVoiceChain: false });
     mockDb.select.mockReturnValueOnce(

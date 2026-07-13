@@ -145,9 +145,8 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     expect(findMissingClips(clips).map(m => m.clipNumber)).toEqual([2, 3]);
   });
 
-  it("reports a missing split clip by its explicit parent shot", () => {
-    expect(() =>
-      resolveClipsForAssembly([
+  it("uses clip-derived canonical fallback for legacy split clips", () => {
+    const result = resolveClipsForAssembly([
         {
           clipNumber: 301,
           parentShotNumber: 3,
@@ -161,8 +160,36 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
           sourceShotNumbers: [3],
           videoUrl: "/302.mp4",
         },
-      ])
-    ).toThrowError(/shot\(s\) 3/);
+      ]);
+
+    expect(result.ordered.map(clip => clip.clipNumber)).toEqual([302]);
+    expect(result.missing).toEqual([]);
+  });
+
+  it("treats a completed legacy sibling as canonical-shot readiness", () => {
+    const { ordered, missing } = resolveClipsForAssembly(
+      [
+        { clipNumber: 1, sourceShotNumbers: [1], videoUrl: "/1.mp4" },
+        {
+          clipNumber: 301,
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          sourceShotNumbers: [3],
+        },
+        {
+          clipNumber: 302,
+          parentShotNumber: 3,
+          subShotNumber: 2,
+          sourceShotNumbers: [3],
+          videoUrl: "/302.mp4",
+        },
+        { clipNumber: 4, sourceShotNumbers: [4], videoUrl: "/4.mp4" },
+      ],
+      { storyboardShotNumbers: [1, 3, 4] },
+    );
+
+    expect(ordered.map(clip => clip.clipNumber)).toEqual([1, 302, 4]);
+    expect(missing).toEqual([]);
   });
 
   it("throws with the missing clip list when clips are incomplete and allowPartial is not set", () => {
@@ -185,6 +212,25 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     });
     expect(ordered.map(c => c.clipNumber)).toEqual([1, 3]);
     expect(missing.map(m => m.clipNumber)).toEqual([2]);
+  });
+
+  it("uses canonical partial assembly with clip-derived fallback", () => {
+    const { ordered, missing } = resolveClipsForAssembly(
+      [
+        { clipNumber: 1, sourceShotNumbers: [1], videoUrl: "/1.mp4" },
+        {
+          clipNumber: 301,
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          sourceShotNumbers: [3],
+        },
+        { clipNumber: 4, sourceShotNumbers: [4], videoUrl: "/4.mp4" },
+      ],
+      { allowPartial: true },
+    );
+
+    expect(ordered.map(clip => clip.clipNumber)).toEqual([1, 4]);
+    expect(missing.map(item => item.clipNumber)).toEqual([3]);
   });
 
   it("throws when there are zero completed clips even with allowPartial", () => {

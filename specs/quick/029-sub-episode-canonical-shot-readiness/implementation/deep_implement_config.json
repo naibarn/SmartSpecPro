@@ -1,0 +1,28 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/029-sub-episode-canonical-shot-readiness/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/029-sub-episode-canonical-shot-readiness/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-canonical-readiness",
+    "section-02-ui-server-integration"
+  ],
+  "sections_state": {
+    "section-01-shared-canonical-readiness": {
+      "status": "complete",
+      "commit_hash": "44aca96dc"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-13T12:28:15.232134+00:00"
+}

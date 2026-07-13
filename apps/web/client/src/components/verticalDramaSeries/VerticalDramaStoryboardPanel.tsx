@@ -89,6 +89,7 @@ import {
   VD_IMAGE_PROMPT_MAX,
   VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
+import { resolveCanonicalShotAssembly } from "@shared/verticalDramaSeries/assemblyReadiness";
 import {
   analyzeVerticalDramaClipDialogueQuality,
   analyzeVerticalDramaEpisodeDialogueQuality,
@@ -1216,11 +1217,6 @@ interface VerticalDramaStoryboardPanelProps {
   /** True while the submit mutation itself is in flight (distinct from the
    *  server-side job, which is reflected by `compiledVideo.status`). */
   assemblingCompiledVideo?: boolean;
-  /** Number of clips in the persisted motion prompt pack, used for the
-   *  "{ready}/{total} clips" hint — independent of `compiledVideo` itself. */
-  totalClipCount?: number;
-  /** Clip numbers that already have a completed `videoTask.videoUrl`. */
-  readyClipNumbers?: number[];
 
   /* ---- Production Wizard meta/shot-grid disclosure split (2026-07-08 fix)
      — `VerticalDramaEpisodeWorkspace`'s "ขั้นสูง" (`vd-advanced-stages-toggle`)
@@ -1427,8 +1423,6 @@ export function VerticalDramaStoryboardPanel({
   compiledVideo = null,
   onAssembleCompiledVideo,
   assemblingCompiledVideo = false,
-  totalClipCount = 0,
-  readyClipNumbers = [],
   productionWizardEnabled = false,
   advancedMetaOpen = false,
   onRegenerateStoryboard,
@@ -1436,6 +1430,16 @@ export function VerticalDramaStoryboardPanel({
   className,
 }: VerticalDramaStoryboardPanelProps) {
   const t2 = vdCopy(locale as VdLocale);
+  const canonicalAssemblyReadiness = resolveCanonicalShotAssembly({
+    clips: motionPromptPack?.clips ?? [],
+    storyboardShotNumbers: storyboard?.shots?.map(shot => shot.shot_number),
+    startFrameShotNumbers: startFramePlan?.frames?.map(
+      frame => frame.shotNumber
+    ),
+  });
+  const totalShotCount = canonicalAssemblyReadiness.expectedShotNumbers.length;
+  const readyShotNumbers = canonicalAssemblyReadiness.readyShotNumbers;
+  const missingShotNumbers = canonicalAssemblyReadiness.missingShotNumbers;
   const episodeDialogueQuality = useMemo(() => {
     const clips = motionPromptPack?.clips ?? [];
     if (clips.length === 0) return null;
@@ -4628,8 +4632,8 @@ export function VerticalDramaStoryboardPanel({
                   </Badge>
                 ) : null}
                 {typeof compiledVideo.shotCount === "number" &&
-                totalClipCount > 0 &&
-                compiledVideo.shotCount < totalClipCount ? (
+                totalShotCount > 0 &&
+                compiledVideo.shotCount < totalShotCount ? (
                   <Badge variant="outline" className="px-1.5 py-0 text-[9px]">
                     {vdCopyWithCount(
                       t2.compiledVideoPartialBadge,
@@ -4739,36 +4743,17 @@ export function VerticalDramaStoryboardPanel({
             <div className="flex flex-col gap-2">
               <p className="text-xs text-muted-foreground">
                 {t2.compiledVideoReadyHint
-                  .replace("{ready}", String(readyClipNumbers.length))
-                  .replace("{total}", String(totalClipCount))}
+                  .replace("{ready}", String(readyShotNumbers.length))
+                  .replace("{total}", String(totalShotCount))}
               </p>
-              {(() => {
-                // Do not assume clip numbers are 1..N: speaker-aware
-                // splitting uses ids such as 301/302 for shot 3. Derive the
-                // warning from the actual persisted clips, then collapse a
-                // missing sub-shot to its human-facing parent shot number.
-                const missing = Array.from(
-                  new Set(
-                    (motionPromptPack?.clips ?? [])
-                      .filter(clip => !readyClipNumbers.includes(clip.clipNumber))
-                      .map(
-                        clip =>
-                          clip.parentShotNumber ??
-                          clip.sourceShotNumbers?.[0] ??
-                          clip.clipNumber
-                      )
-                  )
-                ).sort((a, b) => a - b);
-                if (missing.length === 0) return null;
-                return (
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    {t2.compiledVideoMissingWarning.replace(
-                      "{list}",
-                      missing.join(", ")
-                    )}
-                  </p>
-                );
-              })()}
+              {missingShotNumbers.length > 0 ? (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  {t2.compiledVideoMissingWarning.replace(
+                    "{list}",
+                    missingShotNumbers.join(", ")
+                  )}
+                </p>
+              ) : null}
               <div className="flex flex-wrap gap-1.5">
                 <Button
                   type="button"
@@ -4777,8 +4762,8 @@ export function VerticalDramaStoryboardPanel({
                   onClick={() => onAssembleCompiledVideo()}
                   disabled={
                     assemblingCompiledVideo ||
-                    readyClipNumbers.length === 0 ||
-                    readyClipNumbers.length < totalClipCount
+                    readyShotNumbers.length === 0 ||
+                    readyShotNumbers.length < totalShotCount
                   }
                   data-testid="vd-compiled-video-assemble"
                 >
@@ -4792,9 +4777,9 @@ export function VerticalDramaStoryboardPanel({
                   )}
                   {t2.compiledVideoAssemble}
                 </Button>
-                {totalClipCount > 0 &&
-                readyClipNumbers.length > 0 &&
-                readyClipNumbers.length < totalClipCount ? (
+                {totalShotCount > 0 &&
+                readyShotNumbers.length > 0 &&
+                readyShotNumbers.length < totalShotCount ? (
                   <Button
                     type="button"
                     size="sm"
