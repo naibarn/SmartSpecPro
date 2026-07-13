@@ -17,12 +17,19 @@ import {
   buildBannerInputArgs,
   buildBgmMixFfmpegArgs,
   buildBgmMixFilterComplex,
+  buildCreditsAssFile,
+  buildCreditsBurnFfmpegArgs,
   buildFinalRenderFfmpegArgs,
+  buildSubtitlesFilterOption,
   buildWatermarkInputArgs,
   escapeFfmpegFilterPath,
   resolveBannerOverlayChain,
+  resolveCreditsRollGeometry,
+  resolveCreditsRollWindow,
   resolveWatermarkOverlayFragment,
+  splitCreditsRollLines,
   validateResolvedBanners,
+  VD_CREDITS_ROLL_WINDOW_SEC,
   VD_TEXT_OVERLAY_ASS_KINDS,
   type ResolvedBanner,
   type ResolvedWatermarkImage,
@@ -1163,5 +1170,213 @@ describe("buildBgmMixFfmpegArgs", () => {
   it("ends with the output path as the final argv element", () => {
     const args = buildBgmMixFfmpegArgs(BASE_INPUT);
     expect(args[args.length - 1]).toBe("/tmp/production-episode-bgm.mp4");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Production Episode credits roll (Phase C-1,                                */
+/* planning/vertical-drama-production-render/plan.md Phase C)                 */
+/* -------------------------------------------------------------------------- */
+
+describe("splitCreditsRollLines", () => {
+  it("normalizes CRLF and lone CR to \\n", () => {
+    expect(splitCreditsRollLines("A\r\nB\r\nC")).toEqual(["A", "B", "C"]);
+    expect(splitCreditsRollLines("A\rB\rC")).toEqual(["A", "B", "C"]);
+  });
+
+  it("trims leading and trailing fully-blank lines", () => {
+    expect(splitCreditsRollLines("\n\nA\nB\n\n\n")).toEqual(["A", "B"]);
+  });
+
+  it("preserves interior blank lines as intentional section spacing", () => {
+    expect(splitCreditsRollLines("Cast\nJane Doe\n\nCrew\nJohn Smith")).toEqual([
+      "Cast",
+      "Jane Doe",
+      "",
+      "Crew",
+      "John Smith",
+    ]);
+  });
+
+  it("trims trailing whitespace per line but preserves leading indentation", () => {
+    expect(splitCreditsRollLines("  Jane Doe   \nJohn Smith\t")).toEqual([
+      "  Jane Doe",
+      "John Smith",
+    ]);
+  });
+
+  it("returns an empty array for whitespace-only text", () => {
+    expect(splitCreditsRollLines("   \n\n  \t \n")).toEqual([]);
+  });
+});
+
+describe("resolveCreditsRollWindow", () => {
+  it("tail-anchors a normal-length video to the fixed window constant", () => {
+    expect(resolveCreditsRollWindow(300)).toEqual({
+      startSec: 300 - VD_CREDITS_ROLL_WINDOW_SEC,
+      endSec: 300,
+    });
+  });
+
+  it("shrinks the window (never starts before 0) for a video shorter than the window", () => {
+    expect(resolveCreditsRollWindow(8)).toEqual({ startSec: 0, endSec: 8 });
+  });
+
+  it("collapses to a zero-length window for a zero-duration video", () => {
+    expect(resolveCreditsRollWindow(0)).toEqual({ startSec: 0, endSec: 0 });
+  });
+
+  it("clamps a defensive negative duration to a zero-length window, never negative", () => {
+    expect(resolveCreditsRollWindow(-5)).toEqual({ startSec: 0, endSec: 0 });
+  });
+
+  it("handles the exact boundary where duration equals the window length", () => {
+    expect(resolveCreditsRollWindow(VD_CREDITS_ROLL_WINDOW_SEC)).toEqual({
+      startSec: 0,
+      endSec: VD_CREDITS_ROLL_WINDOW_SEC,
+    });
+  });
+});
+
+describe("resolveCreditsRollGeometry", () => {
+  it("centers horizontally at playResX/2 and starts the block fully below the frame", () => {
+    const geometry = resolveCreditsRollGeometry(1, { playResX: 1080, playResY: 1920 });
+    expect(geometry.centerX).toBe(540);
+    expect(geometry.startY).toBe(1920);
+  });
+
+  it("ends with the block's top edge above the frame by its own estimated height", () => {
+    const oneLine = resolveCreditsRollGeometry(1, { playResX: 1080, playResY: 1920 });
+    // fontSize 42 * 1.4 multiplier, rounded = 59px per line.
+    expect(oneLine.endY).toBe(-59);
+
+    const tenLines = resolveCreditsRollGeometry(10, { playResX: 1080, playResY: 1920 });
+    expect(tenLines.endY).toBe(-590);
+  });
+
+  it("treats a zero/negative lineCount the same as a single line (never divides by zero or inverts direction)", () => {
+    expect(resolveCreditsRollGeometry(0, { playResX: 1080, playResY: 1920 })).toEqual(
+      resolveCreditsRollGeometry(1, { playResX: 1080, playResY: 1920 })
+    );
+  });
+
+  it("respects a non-default playResX/Y", () => {
+    const geometry = resolveCreditsRollGeometry(2, { playResX: 720, playResY: 1280 });
+    expect(geometry.centerX).toBe(360);
+    expect(geometry.startY).toBe(1280);
+  });
+});
+
+describe("buildCreditsAssFile", () => {
+  it("emits the mapped VdCreditsRoll style line", () => {
+    const ass = buildCreditsAssFile("Jane Doe", 300, { playResX: 1080, playResY: 1920 });
+    expect(ass).toContain("PlayResX: 1080");
+    expect(ass).toContain("PlayResY: 1920");
+    expect(ass).toContain("WrapStyle: 0");
+    expect(ass).toContain(
+      "Style: VdCreditsRoll,Noto Sans Thai,42,&H00FFFFFF,&H000000FF,&HA0000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,8,90,90,0,1"
+    );
+  });
+
+  it("joins every credits line into ONE \\N-separated, \\move-driven Dialogue event, tail-anchored to the video's end", () => {
+    const ass = buildCreditsAssFile(
+      "Jane Doe — Writer\nJohn Smith — Director",
+      300,
+      { playResX: 1080, playResY: 1920 }
+    );
+    // resolveCreditsRollWindow(300) -> {startSec: 288, endSec: 300};
+    // resolveCreditsRollGeometry(2, ...) -> centerX 540, startY 1920, endY -118.
+    expect(ass).toContain(
+      "Dialogue: 0,0:04:48.00,0:05:00.00,VdCreditsRoll,,0,0,0,,{\\move(540,1920,540,-118)}Jane Doe — Writer\\NJohn Smith — Director"
+    );
+    // Exactly one Dialogue event for the whole block, not one per line.
+    expect(ass.match(/Dialogue:/g)?.length).toBe(1);
+  });
+
+  it("escapes braces the same way every other Dialogue builder in this file does", () => {
+    const ass = buildCreditsAssFile("Producer {Executive}", 20, {
+      playResX: 1080,
+      playResY: 1920,
+    });
+    expect(ass).toContain("Producer ｛Executive｝");
+    expect(ass).not.toMatch(/,\{[^\\]/);
+  });
+
+  it("emits a header-only, zero-event file for whitespace-only credits text", () => {
+    const ass = buildCreditsAssFile("   \n\n  ", 300, { playResX: 1080, playResY: 1920 });
+    expect(ass).toContain("[Events]");
+    expect(ass).not.toContain("Dialogue:");
+    // The style is still emitted (mirrors buildAssSubtitleFile's own
+    // "header always valid" convention) — only the EVENT is conditional.
+    expect(ass).toContain("Style: VdCreditsRoll");
+  });
+
+  it("emits a header-only, zero-event file for a zero-duration video even with real credits text", () => {
+    const ass = buildCreditsAssFile("Jane Doe", 0, { playResX: 1080, playResY: 1920 });
+    expect(ass).not.toContain("Dialogue:");
+  });
+
+  it("still renders when the video is shorter than the fixed roll window — window shrinks to the whole clip", () => {
+    const ass = buildCreditsAssFile("Jane Doe", 5, { playResX: 1080, playResY: 1920 });
+    expect(ass).toContain("Dialogue: 0,0:00:00.00,0:00:05.00,VdCreditsRoll");
+  });
+
+  it("records fontsDir as an informational comment line, same convention as buildAssSubtitleFile", () => {
+    const ass = buildCreditsAssFile("Jane Doe", 300, {
+      playResX: 1080,
+      playResY: 1920,
+      fontsDir: "/opt/fonts/thai",
+    });
+    expect(ass).toContain(
+      "; Fonts directory (resolved by caller; not embedded): /opt/fonts/thai"
+    );
+  });
+
+  it("omitting credits (empty string) is the same as whitespace-only — no Dialogue event", () => {
+    const ass = buildCreditsAssFile("", 300, { playResX: 1080, playResY: 1920 });
+    expect(ass).not.toContain("Dialogue:");
+  });
+});
+
+describe("buildCreditsBurnFfmpegArgs", () => {
+  const BASE_INPUT = {
+    videoPath: "/tmp/production-episode.mp4",
+    credits: { assPath: "/tmp/credits.ass" },
+    output: "/tmp/production-episode-credits.mp4",
+  };
+
+  it("burns the credits .ass via a plain -vf subtitles= filter (no -filter_complex)", () => {
+    const args = buildCreditsBurnFfmpegArgs(BASE_INPUT);
+    expect(args.slice(0, 3)).toEqual(["-y", "-i", "/tmp/production-episode.mp4"]);
+    const vfIndex = args.indexOf("-vf");
+    expect(vfIndex).toBeGreaterThan(-1);
+    expect(args[vfIndex + 1]).toBe("subtitles=filename='/tmp/credits.ass'");
+    expect(args).not.toContain("-filter_complex");
+  });
+
+  it("reuses the EXACT SAME subtitles= option string buildSubtitlesFilterOption produces for the same input", () => {
+    const withFonts = {
+      ...BASE_INPUT,
+      credits: { assPath: "/tmp/credits.ass", fontsDir: "/opt/fonts/thai" },
+    };
+    const args = buildCreditsBurnFfmpegArgs(withFonts);
+    const vfIndex = args.indexOf("-vf");
+    expect(args[vfIndex + 1]).toBe(
+      `subtitles=${buildSubtitlesFilterOption(withFonts.credits)}`
+    );
+    expect(args[vfIndex + 1]).toContain("fontsdir='/opt/fonts/thai'");
+  });
+
+  it("RE-ENCODES video (libx264) but stream-copies audio (-c:a copy) — unlike the -c:v copy bgm post-pass", () => {
+    const args = buildCreditsBurnFfmpegArgs(BASE_INPUT);
+    const cvIndex = args.indexOf("-c:v");
+    expect(args[cvIndex + 1]).toBe("libx264");
+    const caIndex = args.indexOf("-c:a");
+    expect(args[caIndex + 1]).toBe("copy");
+  });
+
+  it("ends with the output path as the final argv element", () => {
+    const args = buildCreditsBurnFfmpegArgs(BASE_INPUT);
+    expect(args[args.length - 1]).toBe("/tmp/production-episode-credits.mp4");
   });
 });

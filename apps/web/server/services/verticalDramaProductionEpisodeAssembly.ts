@@ -69,6 +69,17 @@
  * `VerticalDramaProductionEpisodeGroupStateWithBgm`'s own doc comment for why
  * that widening is LOCAL to this file rather than the shared
  * `@shared/verticalDramaSeries/assembly.ts` module).
+ *
+ * Phase C-1 (`planning/vertical-drama-production-render/plan.md` Phase C)
+ * adds a SECOND, independently-optional post-pass — a scrolling credits
+ * roll — run AFTER the bgm post-pass (if any): when the caller supplies
+ * `credits`, `buildCreditsAssFile` renders the credits text into a `.ass`
+ * file tail-anchored to the group's own (already-probed) duration, and
+ * `buildCreditsBurnFfmpegArgs` burns it in via ffmpeg's `subtitles` filter
+ * (both pure builders in `verticalDramaFinalRenderGraph.ts`). Omitted
+ * `credits` (every pre-existing caller) is byte-identical to before this
+ * wave: no extra ffmpeg pass. `credits` is persisted onto each group's state
+ * the SAME way `bgm` is (see `VerticalDramaProductionEpisodeGroupStateWithBgm`).
  */
 
 import { randomUUID } from "crypto";
@@ -91,6 +102,7 @@ import {
   probeDurationSeconds,
   resolveClipsForAssembly,
   resolveEpisodeDialogueAudioAndSubtitlesRunInputs,
+  resolveVdSubtitleFontsDir,
   runAssemblyJob,
   type AssembleEpisodeVideoOwner,
   type FfmpegRunner,
@@ -100,7 +112,9 @@ import {
 // `ProductionEpisodeRenderOptions` below. Phase B-1
 // (`planning/vertical-drama-production-render/plan.md` Phase B) additionally
 // imports the pure `buildBgmMixFfmpegArgs` graph builder for the BGM-mix
-// post-pass (`runProductionEpisodeGroupJob` below). Both are from a pure,
+// post-pass, and Phase C-1 (Phase C) the pure `buildCreditsAssFile`/
+// `buildCreditsBurnFfmpegArgs` graph builders for the credits-roll post-pass
+// (both `runProductionEpisodeGroupJob` below). All are from a pure,
 // side-effect-free sibling service (only imports `zod` +
 // `@shared/hyperframes/runtimeApiSchemas` + `@shared/verticalDramaSeries/adBannerPresets`
 // — no `../storage`, no ffmpeg spawn, no DB), so a normal static import here
@@ -111,6 +125,8 @@ import {
 // either way.
 import {
   buildBgmMixFfmpegArgs,
+  buildCreditsAssFile,
+  buildCreditsBurnFfmpegArgs,
   type CaptionPresetId,
   type SubtitleFontSizeId,
 } from "./verticalDramaFinalRenderGraph";
@@ -196,25 +212,51 @@ export interface ProductionEpisodeBgmOptions {
 }
 
 /**
+ * Phase C-1 (`planning/vertical-drama-production-render/plan.md` Phase C) —
+ * an OPTIONAL scrolling credits roll for ONE `assembleProductionEpisodesForSeries`
+ * call, applied UNIFORMLY as a POST-PASS over every group's own
+ * (already-concatenated, and already-BGM-mixed if `bgm` was ALSO supplied)
+ * video — run AFTER the bgm post-pass, see `runProductionEpisodeGroupJob`
+ * below. Credits are a PUBLIC-DELIVERABLE concern — they only ever attach at
+ * the PRODUCTION EPISODE level (never per Sub-Episode), mirroring `bgm`'s
+ * own "Terminology model" placement. Rendered via the pure
+ * `buildCreditsAssFile`/`buildCreditsBurnFfmpegArgs` graph builders
+ * (`verticalDramaFinalRenderGraph.ts`) — see that section's own header doc
+ * comment for the scroll-vs-end-card design decision.
+ */
+export interface ProductionEpisodeCreditsOptions {
+  /** Multi-line credits text — one name/role per line
+   *  (`z.string().min(1).max(4000)` at the router). Split into individual
+   *  roll lines by `splitCreditsRollLines`
+   *  (`verticalDramaFinalRenderGraph.ts`); interior blank lines are
+   *  preserved as intentional section spacing (e.g. between "Cast" and
+   *  "Crew"). */
+  text: string;
+}
+
+/**
  * Local, ADDITIVE extension of the shared
  * `VerticalDramaProductionEpisodeGroupState`
- * (`@shared/verticalDramaSeries/assembly.ts`) — adds the `bgm` field this
- * service persists onto a group's state (Phase B-1), mirroring exactly how
- * that shared type's own `renderOptions` field is persisted (set once at
- * "pending" time in the `groupStates` map below, then carried through
- * unchanged to "completed"/"failed" since `patchProductionEpisodeGroupState`
- * never touches either field). Kept LOCAL to this file rather than added to
- * the shared module itself — that module is outside THIS change's assigned
- * file scope for this working session (a concurrent session may be editing
- * it); every value of this WIDER local type still structurally satisfies the
- * shared one (`bgm` is only ever an ADDED optional field), so it round-trips
- * through the `productionEpisodesManifest` JSONB column and every existing
+ * (`@shared/verticalDramaSeries/assembly.ts`) — adds the `bgm` (Phase B-1)
+ * and `credits` (Phase C-1) fields this service persists onto a group's
+ * state, mirroring exactly how that shared type's own `renderOptions` field
+ * is persisted (set once at "pending" time in the `groupStates` map below,
+ * then carried through unchanged to "completed"/"failed" since
+ * `patchProductionEpisodeGroupState` never touches any of these fields).
+ * Kept LOCAL to this file rather than added to the shared module itself —
+ * that module is outside THIS change's assigned file scope for this working
+ * session (a concurrent session may be editing it); every value of this
+ * WIDER local type still structurally satisfies the shared one (`bgm`/
+ * `credits` are only ever ADDED optional fields), so it round-trips through
+ * the `productionEpisodesManifest` JSONB column and every existing
  * shared-type-typed consumer completely unchanged. A natural follow-up is to
- * fold `bgm` into the shared type directly, alongside `renderOptions`.
+ * fold `bgm`/`credits` into the shared type directly, alongside
+ * `renderOptions`.
  */
 export interface VerticalDramaProductionEpisodeGroupStateWithBgm
   extends VerticalDramaProductionEpisodeGroupState {
   bgm?: ProductionEpisodeBgmOptions;
+  credits?: ProductionEpisodeCreditsOptions;
 }
 
 /** Local mirror of `VerticalDramaProductionEpisodesManifest` whose
@@ -712,6 +754,11 @@ async function runProductionEpisodeGroupJob(args: {
    *  (every pre-existing caller) skips that pass entirely — byte-identical
    *  to before this wave. */
   bgm?: ProductionEpisodeBgmOptions;
+  /** Phase C-1 — when supplied, this group's OWN (post-BGM, if any) video is
+   *  run through an additional credits-roll burn-in ffmpeg pass before
+   *  upload. Omitted (every pre-existing caller) skips that pass entirely —
+   *  byte-identical to before this wave. */
+  credits?: ProductionEpisodeCreditsOptions;
 }): Promise<void> {
   const {
     owner,
@@ -728,6 +775,7 @@ async function runProductionEpisodeGroupJob(args: {
     audienceAgeRating,
     renderSubEpisodeWithOptionsFn,
     bgm,
+    credits,
   } = args;
 
   const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-production-ep-"));
@@ -841,6 +889,53 @@ async function runProductionEpisodeGroupJob(args: {
       finalOutputPath = bgmOutputPath;
     }
 
+    // Phase C-1 (`planning/vertical-drama-production-render/plan.md` Phase C)
+    // — credits roll, a SECOND, SELF-CONTAINED POST-PASS run AFTER the bgm
+    // post-pass above, over whatever `finalOutputPath` currently points to
+    // (the plain concat output, or the bgm-mixed output when `bgm` was ALSO
+    // supplied — "the (post-BGM, if any) Production Episode video"). Omitted
+    // `credits` (every pre-existing caller) never enters this branch —
+    // byte-identical to before this wave. Reuses the SAME
+    // `resolveVdSubtitleFontsDir()` Thai-font resolution `runAssemblyJob`
+    // itself uses for burned-in captions, and the group's own
+    // ALREADY-PROBED `durationSeconds` (never re-probed) to tail-anchor the
+    // roll — no new download/upload primitive, only the new PURE
+    // `buildCreditsAssFile`/`buildCreditsBurnFfmpegArgs` graph builders
+    // (`verticalDramaFinalRenderGraph.ts`).
+    if (credits) {
+      // Same "a failed probe must hard-fail a pass that depends on the real
+      // duration" posture as the bgm pass's own guard above — here the
+      // credits roll cannot be correctly TAIL-ANCHORED to the video's end
+      // without it.
+      if (durationSeconds == null) {
+        throw new Error(
+          "vertical_drama_production_credits_duration_probe_failed: could not determine the assembled Production Episode's duration; cannot safely tail-anchor the credits roll."
+        );
+      }
+      const fontsDir = resolveVdSubtitleFontsDir();
+      const creditsAssContent = buildCreditsAssFile(credits.text, durationSeconds, {
+        fontsDir,
+        playResX: 1080,
+        playResY: 1920,
+      });
+      const creditsAssPath = path.join(workDir, "credits.ass");
+      await fsp.writeFile(creditsAssPath, creditsAssContent, "utf8");
+
+      const creditsOutputPath = path.join(workDir, "output-credits.mp4");
+      const creditsArgs = buildCreditsBurnFfmpegArgs({
+        videoPath: finalOutputPath,
+        credits: { assPath: creditsAssPath, fontsDir },
+        output: creditsOutputPath,
+      });
+      const creditsResult = await ffmpegRunner(creditsArgs);
+      if (creditsResult.code !== 0) {
+        throw new Error(
+          `ffmpeg production-episode credits burn failed (exit ${creditsResult.code}): ${creditsResult.stderr.slice(-2000)}`
+        );
+      }
+      finalOutputPath = creditsOutputPath;
+    }
+
     const storageKey = `vertical-drama/production-episodes/${owner.seriesId}/${randomUUID()}-${filename}`;
     const { url } = await storagePutFromPath(storageKey, finalOutputPath, "video/mp4");
 
@@ -902,6 +997,17 @@ export interface AssembleProductionEpisodesForSeriesArgs {
    * ffmpeg pass, no `bgm` field on the persisted group state.
    */
   bgm?: ProductionEpisodeBgmOptions;
+  /**
+   * Phase C-1 (`planning/vertical-drama-production-render/plan.md` Phase C)
+   * — when supplied, EVERY group's own (post-BGM, if any) video is run
+   * through an additional credits-roll burn-in ffmpeg post-pass (see
+   * `runProductionEpisodeGroupJob`) before upload, and the settings are
+   * recorded on each group's persisted state (see
+   * `VerticalDramaProductionEpisodeGroupStateWithBgm`). Omitted (every
+   * pre-existing caller) preserves prior behavior exactly: no extra ffmpeg
+   * pass, no `credits` field on the persisted group state.
+   */
+  credits?: ProductionEpisodeCreditsOptions;
   /** Test injection points — mirror `runAssemblyJob`'s own convention so
    *  tests never spawn a real ffmpeg/ffprobe process. Default to the real
    *  implementations. */
@@ -928,8 +1034,8 @@ export interface AssembleProductionEpisodesForSeriesResult {
    *  `verticalDramaSeries.get` to observe that. Typed as
    *  `ProductionEpisodesManifestWithBgm` (this file's own local, WIDER
    *  mirror of the shared `VerticalDramaProductionEpisodesManifest` — see
-   *  that type's own doc comment) so a caller/test can read `.bgm` off each
-   *  group entry when this call supplied `bgm`. */
+   *  that type's own doc comment) so a caller/test can read `.bgm`/`.credits`
+   *  off each group entry when this call supplied `bgm`/`credits`. */
   manifest: ProductionEpisodesManifestWithBgm;
 }
 
@@ -965,6 +1071,7 @@ export async function assembleProductionEpisodesForSeries(
     internalBaseUrl,
     renderOptions,
     bgm,
+    credits,
   } = args;
   const ffmpegRunner = args.ffmpegRunner ?? defaultFfmpegRunner;
   const probeDurationSecondsFn = args.probeDurationSecondsFn ?? probeDurationSeconds;
@@ -1053,6 +1160,9 @@ export async function assembleProductionEpisodesForSeries(
         // `VerticalDramaProductionEpisodeGroupStateWithBgm`'s own doc
         // comment. Absent entirely when this call had no `bgm`.
         ...(bgm ? { bgm } : {}),
+        // Phase C-1 — same convention as `bgm` immediately above. Absent
+        // entirely when this call had no `credits`.
+        ...(credits ? { credits } : {}),
       }
   );
 
@@ -1112,6 +1222,7 @@ export async function assembleProductionEpisodesForSeries(
           audienceAgeRating,
           renderSubEpisodeWithOptionsFn,
           bgm,
+          credits,
         });
       } catch {
         // Defense-in-depth only — `runProductionEpisodeGroupJob` already

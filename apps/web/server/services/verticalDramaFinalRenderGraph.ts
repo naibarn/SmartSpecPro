@@ -1568,7 +1568,10 @@ function buildAudioFilterGraph(
 /* Top-level composer                                                         */
 /* -------------------------------------------------------------------------- */
 
-function buildSubtitlesFilterOption(subtitles: SubtitlesInput): string {
+/** Exported (Phase C-1) so `buildCreditsBurnFfmpegArgs` below can reuse the
+ *  EXACT same `subtitles=filename=...:fontsdir=...` option-string construction
+ *  a credits roll needs — no new escaping/formatting logic for that pass. */
+export function buildSubtitlesFilterOption(subtitles: SubtitlesInput): string {
   const parts = [`filename=${escapeFfmpegFilterPath(subtitles.assPath)}`];
   if (subtitles.fontsDir) {
     parts.push(`fontsdir=${escapeFfmpegFilterPath(subtitles.fontsDir)}`);
@@ -1904,6 +1907,310 @@ export function buildBgmMixFfmpegArgs(input: BgmMixInput): string[] {
     "aac",
     "-b:a",
     "128k",
+    "-movflags",
+    "+faststart",
+    input.output,
+  ];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Production Episode credits roll (Phase C-1,                                */
+/* `planning/vertical-drama-production-render/plan.md` Phase C) — a SEPARATE, */
+/* SELF-CONTAINED post-pass over an ALREADY-CONCATENATED (and, if Phase B-1's  */
+/* `bgm` was ALSO supplied, already BGM-mixed) Production Episode video       */
+/* (`server/services/verticalDramaProductionEpisodeAssembly.ts`'s own         */
+/* `runProductionEpisodeGroupJob`) — NOT part of the per-Sub-Episode final-    */
+/* render graph above, and DELIBERATELY NOT folded into `buildBgmMixFfmpegArgs`*/
+/* — kept as its OWN dedicated ffmpeg pass so the two independently-optional  */
+/* post-passes stay fully decoupled (a caller may request credits without     */
+/* bgm, bgm without credits, both, or neither, with zero combinatorial        */
+/* coupling between their two builders, and the already-shipped/tested BGM    */
+/* builder above is untouched by this addition). Credits are a PUBLIC-        */
+/* DELIVERABLE concern — they only ever attach at the PRODUCTION EPISODE      */
+/* level (the 4-10 min grouped/published video), never per Sub-Episode,       */
+/* mirroring `bgm`'s own "Terminology model" placement.                       */
+/*                                                                              */
+/* DESIGN DECISION — SCROLLING roll via ASS `\move`, chosen over a static     */
+/* end card: `buildCreditsAssFile` renders every credits line as ONE          */
+/* `\N`-joined `Dialogue:` event whose position is driven by a single         */
+/* `\move(x,y1,x,y2)` override tag, linearly animating the WHOLE text block   */
+/* from just below the frame to fully above it over the event's own           */
+/* [start,end) window. This is the MORE ROBUST option, not a riskier one:     */
+/* `\move` is a native, first-class ASS override tag — libass/ffmpeg          */
+/* interpolate it deterministically at render time, exactly like every other  */
+/* override tag already burned by this file (`\pos`, `\fad`, `\1a`,           */
+/* `\an`) — there is no hand-rolled per-frame animation or extra filter stage */
+/* for this module to get wrong. The one inherent approximation is the text   */
+/* block's total pixel HEIGHT (needed to compute the move's end Y so the      */
+/* block fully clears the top edge before the window ends): this pure module  */
+/* cannot query real glyph metrics, so `resolveCreditsRollGeometry` uses a    */
+/* fixed, documented per-line height constant                                 */
+/* (`VD_CREDITS_LINE_HEIGHT_MULTIPLIER`), deliberately generous so the        */
+/* worst-case failure mode is the roll finishing its exit a touch early       */
+/* (a beat of blank frame before the window ends) rather than clipping text   */
+/* off-screen.                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Input to `buildCreditsAssFile` — mirrors `AssSubtitleBuildOpts`'s own
+ *  "playRes fixed by the caller, fontsDir purely informational here" shape
+ *  (see that type's doc comment); kept as a SEPARATE type rather than reused
+ *  because a credits roll has no `fontSize` scale option (out of scope for
+ *  this phase — see `VD_CREDITS_ASS_STYLE`'s own doc comment). */
+export interface VdCreditsAssBuildOpts {
+  fontsDir?: string;
+  playResX: number;
+  playResY: number;
+}
+
+/** Fixed tail-window length (seconds) the credits roll occupies, anchored to
+ *  the END of the Production Episode — "roughly 10-12s" per spec. NOT
+ *  caller-configurable in this phase (only `credits.text` is a mutation
+ *  input — see `verticalDramaSeries.ts`'s `assembleProductionEpisodes`); a
+ *  fixed, documented constant, same posture as this module's own
+ *  `BGM_DUCK_SIDECHAIN_*` constants above. */
+export const VD_CREDITS_ROLL_WINDOW_SEC = 12;
+
+/**
+ * Fixed credits-roll ASS style — Noto Sans Thai (same allow-listed font
+ * family convention as every other style table in this file), noticeably
+ * smaller than any caption/overlay preset (many lines must be legible on
+ * screen at once mid-scroll), outline+shadow only (BorderStyle 1, no opaque
+ * box) so a long scroll never renders as a stack of disconnected boxes.
+ *
+ * Alignment 8 (top-center) is REQUIRED, not cosmetic: `resolveCreditsRollGeometry`'s
+ * `\move` math assumes the ASS anchor point tracks the TOP edge of the
+ * (multi-line) text block — changing this alignment would silently invert or
+ * break the scroll direction. `MarginV` is irrelevant here (`0`): every
+ * event's position is fully overridden by its own `\move(...)` tag, the same
+ * "`\pos()`/`\move()` replaces the style's own fixed margin" convention
+ * `VD_TEXT_OVERLAY_ASS_STYLES`'s corner-driven kinds (`watermark_text`) also
+ * rely on.
+ */
+const VD_CREDITS_ASS_STYLE: VdAssStyleSpec = {
+  name: "VdCreditsRoll",
+  fontName: "Noto Sans Thai",
+  fontSize: 42,
+  primaryColour: "&H00FFFFFF",
+  secondaryColour: "&H000000FF",
+  outlineColour: "&HA0000000",
+  backColour: "&H00000000",
+  bold: 0,
+  italic: 0,
+  borderStyle: 1,
+  outline: 2,
+  shadow: 2,
+  alignment: 8,
+  marginL: 90,
+  marginR: 90,
+  marginV: 0,
+};
+
+/** Approximate per-line pixel height for `VD_CREDITS_ASS_STYLE.fontSize`,
+ *  used ONLY to compute how far the `\N`-joined text block must travel to
+ *  fully clear the frame (see `resolveCreditsRollGeometry`) — see this
+ *  section's header doc comment ("DESIGN DECISION") for why this is a
+ *  documented approximation rather than a real glyph-metrics measurement,
+ *  and why it is deliberately generous (errs toward finishing the exit
+ *  early, never clipping). */
+const VD_CREDITS_LINE_HEIGHT_MULTIPLIER = 1.4;
+
+/**
+ * Split raw multi-line credits text into individual roll lines: normalizes
+ * CRLF/CR to `\n`, trims trailing whitespace per line, and trims LEADING/
+ * TRAILING fully-blank lines from the whole block (so the roll never starts
+ * or ends with a stretch of dead air) while PRESERVING interior blank lines
+ * verbatim — writers commonly leave a blank line between "Cast"/"Crew"
+ * sections, and that spacing is intentional content, not accidental
+ * whitespace to be collapsed.
+ */
+export function splitCreditsRollLines(rawText: string): string[] {
+  const normalized = String(rawText ?? "").replace(/\r\n?/g, "\n");
+  const lines = normalized.split("\n").map(line => line.replace(/[ \t]+$/, ""));
+  while (lines.length > 0 && lines[0]!.trim() === "") lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1]!.trim() === "") lines.pop();
+  return lines;
+}
+
+/** The credits roll's absolute [startSec,endSec) burn-in window. */
+export interface VdCreditsRollTiming {
+  startSec: number;
+  endSec: number;
+}
+
+/**
+ * Resolve the credits roll's absolute [startSec,endSec) window, TAIL-ANCHORED
+ * to the end of the video: `endSec` is always exactly `videoDurationSeconds`,
+ * and `startSec` is `VD_CREDITS_ROLL_WINDOW_SEC` seconds earlier — clamped so
+ * the window never starts before `0` (a video shorter than the window simply
+ * SHRINKS the window to the video's own full length, rather than starting
+ * before the video begins). A zero-or-negative `videoDurationSeconds`
+ * collapses to a zero-length window (`startSec === endSec`); the caller
+ * (`buildCreditsAssFile`) treats that the same as "nothing to render", same
+ * defensive posture `buildAssSubtitleFile` already takes for an empty
+ * `lines` array.
+ */
+export function resolveCreditsRollWindow(
+  videoDurationSeconds: number
+): VdCreditsRollTiming {
+  const safeDuration = Math.max(0, videoDurationSeconds);
+  const windowSec = Math.min(VD_CREDITS_ROLL_WINDOW_SEC, safeDuration);
+  return { startSec: Math.max(0, safeDuration - windowSec), endSec: safeDuration };
+}
+
+/** The `\move(x,y1,x,y2)` endpoints for the credits roll's single event. */
+export interface VdCreditsRollGeometry {
+  centerX: number;
+  startY: number;
+  endY: number;
+}
+
+/**
+ * Resolve the `\move(x,y1,x,y2)` endpoints for a `lineCount`-line credits
+ * block on a `playResX`x`playResY` canvas: horizontally centered
+ * (`centerX = playResX/2`), starting with the block's TOP edge at the
+ * frame's bottom edge (`startY = playResY` — the whole block is therefore
+ * entirely below-frame and invisible at the roll's start) and ending with
+ * the block's TOP edge above the frame by its own estimated height
+ * (`endY = -blockHeightPx` — the whole block has therefore fully cleared the
+ * top edge by the roll's end). See this section's header doc comment for why
+ * `blockHeightPx` is an approximation, and `VD_CREDITS_ASS_STYLE`'s own doc
+ * comment for why Alignment MUST stay top-center (8) for this math to hold.
+ */
+export function resolveCreditsRollGeometry(
+  lineCount: number,
+  opts: Pick<VdCreditsAssBuildOpts, "playResX" | "playResY">
+): VdCreditsRollGeometry {
+  const safeLineCount = Math.max(1, lineCount);
+  const lineHeightPx = Math.round(
+    VD_CREDITS_ASS_STYLE.fontSize * VD_CREDITS_LINE_HEIGHT_MULTIPLIER
+  );
+  const blockHeightPx = safeLineCount * lineHeightPx;
+  return {
+    centerX: Math.round(opts.playResX / 2),
+    startY: opts.playResY,
+    endY: -blockHeightPx,
+  };
+}
+
+/**
+ * Build the credits roll's single `\move`-driven `Dialogue:` event. Every raw
+ * (already-split) line is brace/newline-escaped via `escapeAssInlineText`
+ * (the SAME helper every other Dialogue builder in this file uses) and
+ * joined with literal `\N` forced line breaks — mirrors
+ * `buildAssDialogueEvent`'s own multi-line convention, just with a single
+ * `\move(...)` override instead of a speaker-name chip.
+ */
+function buildCreditsAssDialogueEvent(
+  lines: string[],
+  timing: VdCreditsRollTiming,
+  geometry: VdCreditsRollGeometry
+): string {
+  const start = assTimeStamp(timing.startSec);
+  const end = assTimeStamp(timing.endSec);
+  const moveTag = `\\move(${geometry.centerX},${geometry.startY},${geometry.centerX},${geometry.endY})`;
+  const body = lines.map(line => escapeAssInlineText(line)).join("\\N");
+  return `Dialogue: 0,${start},${end},${VD_CREDITS_ASS_STYLE.name},,0,0,0,,{${moveTag}}${body}`;
+}
+
+/**
+ * Build a full `.ass` file for the credits roll — same overall `[Script
+ * Info]`/`[V4+ Styles]`/`[Events]` shape as `buildAssSubtitleFile`, but with
+ * exactly ONE style (`VD_CREDITS_ASS_STYLE`) and AT MOST ONE `Dialogue:`
+ * event (the whole `\N`-joined block — see this section's header doc
+ * comment). Returns a header-only, ZERO-event file (a valid, harmless input
+ * to the ffmpeg `subtitles` filter — burns in nothing — same convention
+ * `buildAssSubtitleFile` already uses for `no_subtitle_style`/empty `lines`)
+ * when `creditsText` has no non-blank lines, OR when
+ * `resolveCreditsRollWindow` collapses to a zero-length window (a
+ * zero/near-zero `videoDurationSeconds`).
+ */
+export function buildCreditsAssFile(
+  creditsText: string,
+  videoDurationSeconds: number,
+  opts: VdCreditsAssBuildOpts
+): string {
+  const headerLines = [
+    "[Script Info]",
+    "ScriptType: v4.00+",
+    `PlayResX: ${opts.playResX}`,
+    `PlayResY: ${opts.playResY}`,
+    "WrapStyle: 0",
+    opts.fontsDir
+      ? `; Fonts directory (resolved by caller; not embedded): ${opts.fontsDir}`
+      : undefined,
+    "",
+    "[V4+ Styles]",
+    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+    formatAssStyleLine(VD_CREDITS_ASS_STYLE),
+  ].filter((l): l is string => l !== undefined);
+
+  const eventsHeader = [
+    "",
+    "[Events]",
+    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+  ];
+
+  const lines = splitCreditsRollLines(creditsText);
+  const timing = resolveCreditsRollWindow(videoDurationSeconds);
+  if (lines.length === 0 || timing.endSec <= timing.startSec) {
+    return [...headerLines, ...eventsHeader].join("\n") + "\n";
+  }
+
+  const geometry = resolveCreditsRollGeometry(lines.length, opts);
+  const event = buildCreditsAssDialogueEvent(lines, timing, geometry);
+  return [...headerLines, ...eventsHeader, event].join("\n") + "\n";
+}
+
+/**
+ * Input to `buildCreditsBurnFfmpegArgs`. `credits` reuses `SubtitlesInput`
+ * verbatim (`{assPath, fontsDir?}`) — a credits roll is burned in via the
+ * exact same ffmpeg `subtitles` filter as dialogue captions, just pointed at
+ * the `.ass` file `buildCreditsAssFile` produced instead of
+ * `buildAssSubtitleFile`'s.
+ */
+export interface CreditsBurnInput {
+  /** Absolute path to the INPUT video — the group's own concat output, or
+   *  its BGM-mixed output when Phase B-1's `bgm` ran first (see
+   *  `runProductionEpisodeGroupJob`'s pass ordering). Has both a video AND
+   *  an audio stream. */
+  videoPath: string;
+  credits: SubtitlesInput;
+  /** Absolute output path. */
+  output: string;
+}
+
+/**
+ * Build the ffmpeg argv for the credits burn-in pass. UNLIKE the BGM
+ * post-pass (`buildBgmMixFfmpegArgs`, `-c:v copy`), this pass necessarily
+ * RE-ENCODES video (`libx264`) — burning in subtitles/overlays is a video
+ * filter with no stream-copy equivalent (per this feature's own task spec:
+ * "the credits burn necessarily re-encodes video for that segment"; burning
+ * `subtitles=...` over the WHOLE video, rather than only its final seconds,
+ * is deliberately the simplest correct approach — the `.ass` file's own
+ * event timing is what confines the VISIBLE text to the tail window, see
+ * `resolveCreditsRollWindow`). Audio is untouched by this pass and is
+ * stream-copied (`-c:a copy`) rather than re-encoded a second time — this MAY
+ * be the input's second lossy audio pass overall if a BGM post-pass ran
+ * first and already re-encoded to AAC once, a documented, accepted
+ * quality/complexity tradeoff (this pipeline already accepts a fresh
+ * re-encode at every stage boundary, e.g. each Sub-Episode's own final render
+ * feeding straight into this Production Episode's OWN concat re-encode).
+ */
+export function buildCreditsBurnFfmpegArgs(input: CreditsBurnInput): string[] {
+  return [
+    "-y",
+    "-i",
+    input.videoPath,
+    "-vf",
+    `subtitles=${buildSubtitlesFilterOption(input.credits)}`,
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-preset",
+    "medium",
+    "-c:a",
+    "copy",
     "-movflags",
     "+faststart",
     input.output,

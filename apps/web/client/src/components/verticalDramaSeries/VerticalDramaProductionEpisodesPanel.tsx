@@ -83,6 +83,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
+import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import {
@@ -194,6 +195,25 @@ const DEFAULT_BGM_OPTIONS: ProductionBgmState = {
 };
 
 /* -------------------------------------------------------------------------- */
+/* End-credits local state — additive control: attaches an optional scrolling */
+/* credits roll to the end of the assembled Production Episode. Mirrors the   */
+/* parallel `assembleProductionEpisodes` mutation-input field                 */
+/* `credits?: { text: string }` (see `handleAssemble` below for the same      */
+/* "non-literal payload variable" structural-assignability note this file's  */
+/* header doc comment already documents for `renderOptions`/`bgm`).          */
+/* -------------------------------------------------------------------------- */
+
+interface ProductionCreditsState {
+  enabled: boolean;
+  text: string;
+}
+
+const DEFAULT_CREDITS_OPTIONS: ProductionCreditsState = {
+  enabled: false,
+  text: "",
+};
+
+/* -------------------------------------------------------------------------- */
 /* Panel                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -221,6 +241,8 @@ export function VerticalDramaProductionEpisodesPanel({
     DEFAULT_RENDER_OPTIONS,
   );
   const [bgmOptions, setBgmOptions] = useState<ProductionBgmState>(DEFAULT_BGM_OPTIONS);
+  const [creditsOptions, setCreditsOptions] =
+    useState<ProductionCreditsState>(DEFAULT_CREDITS_OPTIONS);
   const [lastResult, setLastResult] = useState<{
     groupsCreated: number;
     groupsSkipped: number;
@@ -291,6 +313,10 @@ export function VerticalDramaProductionEpisodesPanel({
   // Trimmed once and reused both to gate the assemble button below and to
   // decide whether `handleAssemble` includes `bgm` in its payload.
   const trimmedBgmUrl = bgmOptions.url.trim();
+  // Same trim-once convention for the end-credits text — reused both to gate
+  // the assemble button below and to decide whether `handleAssemble`
+  // includes `credits` in its payload.
+  const trimmedCreditsText = creditsOptions.text.trim();
 
   function handleAssemble() {
     // Built as a standalone variable (not an inline object literal in the
@@ -300,12 +326,12 @@ export function VerticalDramaProductionEpisodesPanel({
     // input type, and this same code starts actually taking effect
     // server-side with zero further client changes once the parallel
     // `renderOptions` backend increment lands (see this file's own header
-    // doc comment). `bgm` below rides the exact same mechanism: as of this
-    // panel's authoring, `assembleProductionEpisodes`'s zod input has no
-    // `bgm` field yet (a parallel backend increment); zod strips unknown
-    // keys server-side today, so sending it is a harmless no-op until that
-    // field lands, at which point BGM starts working with zero further
-    // client changes.
+    // doc comment). `bgm` and `credits` below ride the exact same mechanism:
+    // as of this panel's authoring, `assembleProductionEpisodes`'s zod input
+    // has no `bgm` or `credits` field yet (parallel backend increments); zod
+    // strips unknown keys server-side today, so sending them is a harmless
+    // no-op until those fields land, at which point BGM/credits start
+    // working with zero further client changes.
     const payload = {
       seriesId,
       groupSize,
@@ -331,6 +357,13 @@ export function VerticalDramaProductionEpisodesPanel({
             },
           }
         : {}),
+      // Omitted entirely (rather than sent with empty `text`) unless credits
+      // are toggled on AND non-empty text was entered — default behavior (no
+      // `credits` key) stays "no end-credits roll", matching every
+      // pre-existing caller.
+      ...(creditsOptions.enabled && trimmedCreditsText
+        ? { credits: { text: trimmedCreditsText } }
+        : {}),
     };
     assembleMutation.mutate(payload);
   }
@@ -340,7 +373,12 @@ export function VerticalDramaProductionEpisodesPanel({
   // instead of sending an empty `url` (see `handleAssemble` above); the BGM
   // section itself also surfaces this as an inline hint next to the field.
   const bgmUrlMissing = bgmOptions.enabled && trimmedBgmUrl.length === 0;
-  const assembleDisabled = controlsDisabled || bgmUrlMissing;
+  // Same gate for credits: toggled on but no text was entered yet — block
+  // the mutate call instead of sending empty `text` (see `handleAssemble`
+  // above); the credits section itself also surfaces this as an inline hint
+  // next to the field.
+  const creditsMissing = creditsOptions.enabled && trimmedCreditsText.length === 0;
+  const assembleDisabled = controlsDisabled || bgmUrlMissing || creditsMissing;
 
   if (detailQuery.isLoading) {
     return (
@@ -419,6 +457,13 @@ export function VerticalDramaProductionEpisodesPanel({
               lang={lang}
               value={bgmOptions}
               onChange={setBgmOptions}
+              disabled={controlsDisabled}
+            />
+
+            <VerticalDramaProductionCreditsSection
+              lang={lang}
+              value={creditsOptions}
+              onChange={setCreditsOptions}
               disabled={controlsDisabled}
             />
 
@@ -768,6 +813,108 @@ function VerticalDramaProductionBgmSection({
                 : "Lowers music when there's dialogue or clip audio."}
             </p>
           </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* End-credits section — sits alongside `VerticalDramaProductionBgmSection`   */
+/* above (same local `value`/`onChange`/`disabled` prop shape, same          */
+/* card/label/checkbox styling) so it reads as a natural continuation of the */
+/* render-options/BGM sections rather than a bolted-on control.              */
+/* `handleAssemble` (`VerticalDramaProductionEpisodesPanel` above) only      */
+/* sends `credits` in the mutate payload when `value.enabled` is true AND    */
+/* the text is non-empty after trimming — this section mirrors that same    */
+/* gate as an inline hint next to the textarea so the user sees why the      */
+/* assemble button is disabled instead of a silently-ignored empty `text`.   */
+/* -------------------------------------------------------------------------- */
+
+const PRODUCTION_CREDITS_MAX_LENGTH = 4000;
+
+function VerticalDramaProductionCreditsSection({
+  lang,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  lang: VerticalDramaLang;
+  value: ProductionCreditsState;
+  onChange: (next: ProductionCreditsState) => void;
+  disabled?: boolean;
+}) {
+  function emit(patch: Partial<ProductionCreditsState>) {
+    onChange({ ...value, ...patch });
+  }
+
+  const trimmedText = value.text.trim();
+  const textMissing = value.enabled && trimmedText.length === 0;
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={lang === "th" ? "เครดิต / ทีมงาน" : "Credits"}
+      data-testid="vd-production-credits-section"
+    >
+      <div>
+        <h3 className="text-sm font-medium">
+          {lang === "th" ? "เครดิต / ทีมงาน (Credits)" : "Credits"}
+        </h3>
+        <p className="text-[11px] text-muted-foreground">
+          {lang === "th"
+            ? "แสดงเป็นเครดิตเลื่อนช่วงท้ายวิดีโอ Production Episode"
+            : "Shown as a scrolling credits roll at the end of the Production Episode."}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="vd-production-credits-enabled"
+          checked={value.enabled}
+          disabled={disabled}
+          onCheckedChange={(checked) => emit({ enabled: checked === true })}
+          data-testid="vd-production-credits-enabled"
+        />
+        <label htmlFor="vd-production-credits-enabled" className="text-sm">
+          {lang === "th" ? "ใส่เครดิตท้ายตอน" : "Add end credits"}
+        </label>
+      </div>
+
+      {value.enabled ? (
+        <div className="space-y-1.5 pl-6">
+          <label
+            htmlFor="vd-production-credits-text"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            {lang === "th" ? "เครดิต (บรรทัดละ 1 รายการ)" : "Credits (one line each)"}
+          </label>
+          <Textarea
+            id="vd-production-credits-text"
+            value={value.text}
+            disabled={disabled}
+            rows={5}
+            maxLength={PRODUCTION_CREDITS_MAX_LENGTH}
+            placeholder={
+              lang === "th" ? "กำกับ: ...\nนักพากย์: ..." : "Director: ...\nVoice cast: ..."
+            }
+            onChange={(e) => emit({ text: e.target.value })}
+            data-testid="vd-production-credits-text"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            {value.text.length}/{PRODUCTION_CREDITS_MAX_LENGTH}
+          </p>
+          {textMissing ? (
+            <p
+              className="text-xs font-medium text-destructive"
+              role="alert"
+              data-testid="vd-production-credits-text-required-hint"
+            >
+              {lang === "th"
+                ? "กรอกข้อความเครดิตก่อนสร้าง Production Episodes"
+                : "Enter credits text before assembling Production Episodes."}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </section>

@@ -103,6 +103,7 @@ import {
   productionEpisodeFilename,
   resolveSubEpisodesForProductionAssembly,
   type ProductionEpisodeBgmOptions,
+  type ProductionEpisodeCreditsOptions,
   type ProductionEpisodeRenderOptions,
   type ProductionEpisodeSourceSubEpisode,
   type ProductionEpisodesManifestWithBgm,
@@ -788,6 +789,197 @@ describe("assembleProductionEpisodesForSeries — Phase B-1 (bgm)", () => {
     expect(finalManifest.episodes[0].status).toBe("failed");
     expect(finalManifest.episodes[0].error).toMatch(
       /vertical_drama_production_bgm_duration_probe_failed/
+    );
+  });
+});
+
+/**
+ * Phase C-1 (`planning/vertical-drama-production-render/plan.md` Phase C) —
+ * credits roll, a POST-PASS run AFTER the bgm post-pass (if any). Covers
+ * mutation-input threading (`credits` flowing from
+ * `assembleProductionEpisodesForSeries` into `runProductionEpisodeGroupJob`'s
+ * final ffmpeg invocation), group-state persistence (`credits` recorded on
+ * the group state at "pending" time and carried through unchanged to
+ * "completed"/"failed", mirroring the existing `bgm` coverage above), and the
+ * pass ORDERING (credits burns onto the bgm-mixed output when `bgm` was ALSO
+ * supplied, not the raw concat output). The pure ffmpeg/`.ass`-args builders
+ * themselves (`buildCreditsAssFile`/`buildCreditsBurnFfmpegArgs` — timing,
+ * geometry, escaping) are covered separately in
+ * `verticalDramaFinalRenderGraph.test.ts`; this file only asserts that the
+ * SERVICE actually invokes them as an additional ffmpeg call and uploads its
+ * output.
+ */
+describe("assembleProductionEpisodesForSeries — Phase C-1 (credits)", () => {
+  const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
+  const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
+  const fakeProbeDurationSeconds = vi.fn(async () => 42);
+
+  beforeEach(() => {
+    fakeFfmpegRunner.mockClear();
+    fakeProbeDurationSeconds.mockClear();
+  });
+
+  function seedCompiledEpisodes(episodeNumbers: number[]) {
+    dbState.episodes = episodeNumbers.map(n => ({
+      episodeNumber: n,
+      assemblyManifest: {
+        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
+      },
+    }));
+  }
+
+  const credits: ProductionEpisodeCreditsOptions = {
+    text: "Jane Doe — Writer\nJohn Smith — Director",
+  };
+
+  const bgm: ProductionEpisodeBgmOptions = {
+    url: "/api/storage/files/track.mp3",
+    volumePercent: 35,
+    duckUnderVideoAudio: true,
+  };
+
+  it("does not run an extra ffmpeg pass, and records no credits on the group state, when credits is omitted (default, unchanged)", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+    });
+    expect(result.manifest.episodes[0].credits).toBeUndefined();
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no credits pass
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].credits).toBeUndefined();
+  });
+
+  it("runs a second credits-burn ffmpeg pass after the concat, uploads ONLY its output, and records credits on the group state (pending AND completed)", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      credits,
+    });
+    // Recorded synchronously onto the "pending" group state, before the
+    // background concat/credits-burn chain has necessarily run at all.
+    expect(result.manifest.episodes[0].credits).toEqual(credits);
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then credits burn
+    const creditsArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
+    expect(creditsArgs.join(" ")).toContain("subtitles=");
+    expect(creditsArgs.join(" ")).not.toContain("-stream_loop"); // never the bgm pass
+    // Burns onto the RAW concat output (no bgm was supplied in this test).
+    expect(creditsArgs[2]).toMatch(/\/output\.mp4$/);
+
+    // The duration probe runs ONCE (against the concat output) — the
+    // credits pass reuses that same value rather than re-probing.
+    expect(fakeProbeDurationSeconds).toHaveBeenCalledTimes(1);
+
+    // Only the FINAL (credits-burned) file is uploaded.
+    expect(storagePutFromPath).toHaveBeenCalledTimes(1);
+    const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
+    expect(sourcePath).toMatch(/output-credits\.mp4$/);
+
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].videoUrl).toMatch(/^\/api\/storage\/files\//);
+    expect(finalManifest.episodes[0].credits).toEqual(credits);
+  });
+
+  it("burns credits onto the BGM-mixed output (not the raw concat output) when both bgm and credits are supplied — three passes, in order", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      bgm,
+      credits,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(3); // concat, bgm mix, credits burn
+    const bgmArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
+    expect(bgmArgs.join(" ")).toContain("sidechaincompress");
+    const creditsArgs = fakeFfmpegRunner.mock.calls[2]![0] as string[];
+    expect(creditsArgs.join(" ")).toContain("subtitles=");
+    // The credits pass' OWN input is the bgm pass' OUTPUT, not the plain
+    // concat output — i.e. it runs over the "(post-BGM, if any)" video.
+    expect(creditsArgs[2]).toMatch(/\/output-bgm\.mp4$/);
+
+    // Only the LAST (credits-burned-on-top-of-bgm) file is uploaded.
+    expect(storagePutFromPath).toHaveBeenCalledTimes(1);
+    const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
+    expect(sourcePath).toMatch(/output-credits\.mp4$/);
+
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].bgm).toEqual(bgm);
+    expect(finalManifest.episodes[0].credits).toEqual(credits);
+  });
+
+  it("marks the group failed (without uploading) when the credits-burn ffmpeg pass itself exits non-zero", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+    let call = 0;
+    const runner = vi.fn(async () => {
+      call += 1;
+      return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "credits boom" };
+    });
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: runner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      credits,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(storagePutFromPath).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("failed");
+    expect(finalManifest.episodes[0].error).toMatch(
+      /ffmpeg production-episode credits burn failed/
+    );
+  });
+
+  it("marks the group failed (without attempting the credits pass) when the concat's own duration probe fails", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+    const probeFails = vi.fn(async () => undefined);
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: probeFails,
+      credits,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only; credits pass never attempted
+    expect(storagePutFromPath).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("failed");
+    expect(finalManifest.episodes[0].error).toMatch(
+      /vertical_drama_production_credits_duration_probe_failed/
     );
   });
 });
