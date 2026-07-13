@@ -18,6 +18,7 @@ import {
   getStaticFallbackModels,
   getStaticModelById,
   deriveVerticalDramaCapabilities,
+  isGrokVideoFamily,
   resolveVerticalDramaCapabilities,
 } from "../modelRegistry";
 
@@ -88,6 +89,39 @@ describe("Vertical Drama capability metadata (Phase 0.1/0.2)", () => {
     expect(model.supportsStartFrame).toBe(true);
     expect(model.maxReferenceImages).toBe(1);
     expect(model.verticalDramaReady).toBe(true);
+    expect(model.nativeAudioDialogue).toBe(true);
+    expect(model.supportsNativeAudio).toBe(true);
+  });
+});
+
+describe("Grok video family native-audio invariant", () => {
+  it.each([
+    ["higgsfield/grok_video", { providerModelId: "grok_video" }],
+    ["higgsfield/grok_video_v15", { mcp: { providerModelId: "grok_video_v15" } }],
+    ["grok-imagine/text-to-video", {}],
+    ["grok-imagine/image-to-video", {}],
+    ["grok-imagine-video-1-5-preview", {}],
+    ["grok-video-3", {}],
+    ["magnific-mcp/grok-video-next", { providerModelId: "grok-video-next" }],
+    ["future-provider/video", { mcp: { providerModelId: "grok_video_future" } }],
+  ])("classifies %s as a Grok video", (modelId, configJson) => {
+    expect(isGrokVideoFamily(modelId, { type: "video", configJson })).toBe(true);
+    const caps = resolveVerticalDramaCapabilities(modelId, {
+      type: "video",
+      aspectRatios: ["9:16"],
+      configJson: { ...configJson, hasAudio: false, nativeAudio: false },
+    });
+    expect(caps.nativeAudioDialogue).toBe(true);
+    expect(caps.supportsNativeAudio).toBe(true);
+  });
+
+  it.each([
+    ["higgsfield/grok_image", "image"],
+    ["grok-imagine/text-to-image", "image"],
+    ["grok-imagine/upscale", "image"],
+    ["future-provider/video", "video"],
+  ] as const)("does not misclassify %s (%s)", (modelId, type) => {
+    expect(isGrokVideoFamily(modelId, { type })).toBe(false);
   });
 });
 
@@ -254,7 +288,6 @@ describe("supportsNativeAudio (task #36 — optional NATIVE AUDIO DIRECTION prom
       "sora-2",
       "kling-2.6",
       "veo_3_1-fast",
-      "grok-video-3",
     ]) {
       expect(findVideo(id).supportsNativeAudio).not.toBe(true);
     }
@@ -324,6 +357,19 @@ describe("resolveVerticalDramaCapabilities", () => {
       aspectRatios: ["auto", "16:9", "9:16"],
       configJson: getStaticModelById("veo-3-1")?.configJson,
     });
+    expect(caps.supportsNativeAudio).toBe(true);
+  });
+
+  it("repairs a DB-only Higgsfield Grok row whose persisted audio metadata is missing", () => {
+    const caps = resolveVerticalDramaCapabilities("higgsfield/grok_video", {
+      type: "video",
+      aspectRatios: ["9:16"],
+      configJson: {
+        providerModelId: "grok_video",
+        mcp: { providerModelId: "grok_video" },
+      },
+    });
+    expect(caps.nativeAudioDialogue).toBe(true);
     expect(caps.supportsNativeAudio).toBe(true);
   });
 });
