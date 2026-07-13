@@ -5,7 +5,7 @@
   "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/029-sub-episode-canonical-shot-readiness/implementation",
   "git_root": "/home/dev/projects/SmartSpecPro",
   "commit_style": "conventional",
-  "test_command": "uv run pytest",
+  "test_command": "cd apps/web && npm test -- shared/verticalDramaSeries/__tests__/assemblyReadiness.test.ts client/src/components/verticalDramaSeries/__tests__/VerticalDramaStoryboardPanel.speakerSubShots.test.tsx server/services/__tests__/verticalDramaEpisodeVideoAssembly.test.ts server/routers/__tests__/verticalDramaEpisodes.voiceChain.test.ts",
   "sections": [
     "section-01-shared-canonical-readiness",
     "section-02-ui-server-integration"
@@ -14,6 +14,10 @@
     "section-01-shared-canonical-readiness": {
       "status": "complete",
       "commit_hash": "44aca96dc"
+    },
+    "section-02-ui-server-integration": {
+      "status": "complete",
+      "commit_hash": "300552dd5"
     }
   },
   "pre_commit": {
