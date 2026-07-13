@@ -277,6 +277,36 @@ export type VerticalDramaProductionEpisodeGroupState = {
   assembledAt?: string;
   /** Present only when `status === "failed"`. */
   error?: string;
+  /**
+   * Render-options LEVEL (plan.md "Render-options LEVEL" section, user
+   * correction 2026-07-13) — the STYLING options this group was assembled
+   * WITH, mirroring `assembleEpisodeVideo`'s own render-options input fields
+   * (`verticalDramaEpisodes.ts`). Recorded here purely for UI display of
+   * "what styling was this Production Episode rendered with" — persisted
+   * onto the group state at "pending" time by
+   * `assembleProductionEpisodesForSeries`
+   * (`server/services/verticalDramaProductionEpisodeAssembly.ts`) and
+   * carried through unchanged to "completed"/"failed" (that service's
+   * per-group patch never touches this field). Absent when the group was
+   * assembled with no `renderOptions` (D′-1 default behavior: plain concat
+   * of each Sub-Episode's EXISTING compiled video, unchanged, no re-render).
+   *
+   * Deliberately loosely typed here (plain `string`/a small literal union),
+   * NOT the server's strict `CaptionPresetId`/`SubtitleFontSizeId` enums —
+   * this module stays dependency-free (no server-service imports, since it
+   * is shared with the client). See
+   * `server/services/verticalDramaProductionEpisodeAssembly.ts`'s own
+   * `ProductionEpisodeRenderOptions` for the STRICT type that actually
+   * drives rendering; a value of that stricter type always structurally
+   * satisfies this looser one.
+   */
+  renderOptions?: {
+    subtitlePreset?: string;
+    subtitleFontSize?: "small" | "medium" | "large" | "xlarge";
+    showAgeBadge?: boolean;
+    includeDialogueAudio?: boolean;
+    loudnessNormalize?: boolean;
+  };
 };
 
 /**

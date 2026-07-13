@@ -8,13 +8,37 @@
  * `storagePutFromPath` + a stubbed `fetch` + an injected fake ffmpeg
  * runner/duration prober (mirrors `verticalDramaEpisodeVideoAssembly.test.ts`'s
  * own mocking convention — no real ffmpeg/ffprobe process is spawned).
+ *
+ * Phase D′-2 (Render-options LEVEL, `renderOptions` on
+ * `assembleProductionEpisodesForSeries`) additionally covers the
+ * per-Sub-Episode render step via an INJECTED fake
+ * `renderSubEpisodeWithOptionsFn` (mirrors `ffmpegRunner`'s own DI
+ * convention) — the REAL `renderSubEpisodeWithOptions` (which drives the
+ * real `runAssemblyJob`) is intentionally never exercised here, since this
+ * file's minimal generic `db` mock below only models the TWO query shapes
+ * D′-1 itself needs (`verticalDramaEpisodes` sub-episode rows,
+ * `verticalDramaSeries.productionEpisodesManifest`/`bible`) — not the
+ * `verticalDramaEpisodes.assemblyManifest` re-read
+ * `renderSubEpisodeWithOptions` itself would need. Direct unit coverage of
+ * `renderSubEpisodeWithOptions`'s own render-feed construction is already
+ * provided by `resolveEpisodeDialogueAudioAndSubtitlesRunInputs`'s own tests
+ * (`verticalDramaEpisodeVideoAssembly.test.ts`), which it reuses verbatim.
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const dbState = {
-  episodes: [] as Array<{ episodeNumber: number; assemblyManifest: unknown }>,
+  episodes: [] as Array<{
+    episodeNumber: number;
+    assemblyManifest: unknown;
+    id?: number;
+    motionPromptPack?: unknown;
+    dialogueAudioPlan?: unknown;
+  }>,
   productionEpisodesManifest: null as unknown,
+  /** Series `bible` — only ever read by `loadProductionSeriesAudienceAgeRating`
+   *  when a test's `renderOptions.showAgeBadge` is `true`. */
+  bible: null as unknown,
 };
 
 vi.mock("../../db", () => {
@@ -25,9 +49,14 @@ vi.mock("../../db", () => {
     // Only the Sub-Episodes query (`verticalDramaEpisodes`) ends in
     // `.orderBy(...)` in this service — safe to resolve unconditionally.
     orderBy: vi.fn(async () => dbState.episodes),
-    // Only the series `productionEpisodesManifest` load ends in `.limit(1)`.
+    // The series `productionEpisodesManifest`/`bible` loads both end in
+    // `.limit(1)` — a single fixed superset shape serves both query
+    // intents (each only ever destructures the ONE key it asked for).
     limit: vi.fn(async () => [
-      { productionEpisodesManifest: dbState.productionEpisodesManifest },
+      {
+        productionEpisodesManifest: dbState.productionEpisodesManifest,
+        bible: dbState.bible,
+      },
     ]),
     update: vi.fn(() => api),
     set: vi.fn((patch: any) => {
@@ -47,6 +76,15 @@ vi.mock("../../storage", () => ({
   })),
 }));
 
+// Render-options LEVEL — `resolveProductionVoiceChainFlag` reads this
+// SERVICE directly (never a raw `db`/`getDb` call — see that function's own
+// doc comment), so it is mocked directly here too, same convention
+// `chatMemoryFlagIntegration.test.ts` already establishes for this exact
+// function.
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn(async () => ({ verticalDramaSeriesVoiceChain: false })),
+}));
+
 // Avoid a real network fetch in `downloadClipToFile` during the orchestrator tests.
 vi.stubGlobal(
   "fetch",
@@ -64,15 +102,22 @@ import {
   findSubEpisodesMissingCompiledVideo,
   productionEpisodeFilename,
   resolveSubEpisodesForProductionAssembly,
+  type ProductionEpisodeRenderOptions,
   type ProductionEpisodeSourceSubEpisode,
+  type RenderSubEpisodeWithOptionsArgs,
+  type RenderSubEpisodeWithOptionsResult,
 } from "../verticalDramaProductionEpisodeAssembly";
 import { storagePutFromPath } from "../../storage";
+import { getTenantFeatureFlags } from "../tenantFeatureFlagService";
+import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
 import type { VerticalDramaProductionEpisodesManifest } from "@shared/verticalDramaSeries/assembly";
 
 beforeEach(() => {
   dbState.episodes = [];
   dbState.productionEpisodesManifest = null;
+  dbState.bible = null;
   vi.clearAllMocks();
+  vi.mocked(getTenantFeatureFlags).mockResolvedValue({ ...FEATURE_FLAG_DEFAULTS });
 });
 
 /** Poll-until-settled helper — mirrors `verticalDramaEpisodeVideoAssembly.test.ts`'s
@@ -418,5 +463,182 @@ describe("assembleProductionEpisodesForSeries (mocked ffmpeg + db + storage)", (
 
     await waitForCondition(allGroupsSettled);
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOptions)", () => {
+  const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
+  const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
+  const fakeProbeDurationSeconds = vi.fn(async () => 42);
+
+  beforeEach(() => {
+    fakeFfmpegRunner.mockClear();
+    fakeProbeDurationSeconds.mockClear();
+  });
+
+  /**
+   * Seeds sub-episodes with the `id`/`motionPromptPack`/`dialogueAudioPlan`
+   * fields a renderOptions-mode render step reads — these placeholder
+   * values are never actually interpreted here (the render step itself is
+   * always the INJECTED fake `renderSubEpisodeWithOptionsFn` below, never
+   * the real `renderSubEpisodeWithOptions`), so their exact shape doesn't
+   * matter beyond existing.
+   */
+  function seedRenderableEpisodes(episodeNumbers: number[]) {
+    dbState.episodes = episodeNumbers.map(n => ({
+      episodeNumber: n,
+      id: n,
+      assemblyManifest: {
+        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
+      },
+      motionPromptPack: { clips: [{ clipNumber: 1 }] },
+      dialogueAudioPlan: null,
+    }));
+  }
+
+  it("does not invoke the per-Sub-Episode render function when renderOptions is omitted (D′-1 default, unchanged)", async () => {
+    seedRenderableEpisodes([1, 2, 3]);
+    const renderFn = vi.fn(
+      async (
+        _args: RenderSubEpisodeWithOptionsArgs
+      ): Promise<RenderSubEpisodeWithOptionsResult> => ({
+        videoUrl: "/api/storage/files/should-not-be-called.mp4",
+      })
+    );
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      renderSubEpisodeWithOptionsFn: renderFn,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(renderFn).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].renderOptions).toBeUndefined();
+  });
+
+  it("renders every Sub-Episode in a group WITH the given renderOptions before concatenating, and records renderOptions on the group state (pending AND completed)", async () => {
+    seedRenderableEpisodes([1, 2, 3]);
+    const calls: RenderSubEpisodeWithOptionsArgs[] = [];
+    const renderFn = vi.fn(
+      async (
+        args: RenderSubEpisodeWithOptionsArgs
+      ): Promise<RenderSubEpisodeWithOptionsResult> => {
+        calls.push(args);
+        return {
+          videoUrl: `/api/storage/files/rendered-${args.owner.episodeId}.mp4`,
+          durationSeconds: 30,
+        };
+      }
+    );
+
+    const renderOptions: ProductionEpisodeRenderOptions = {
+      subtitlePreset: "classic_box",
+      subtitleFontSize: "large",
+      showAgeBadge: false,
+      includeDialogueAudio: false,
+      loudnessNormalize: true,
+    };
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      renderSubEpisodeWithOptionsFn: renderFn,
+      renderOptions,
+    });
+
+    // Persisted synchronously onto the "pending" group state, before the
+    // background render/concat chain has necessarily run at all.
+    expect(result.manifest.episodes[0].renderOptions).toEqual(renderOptions);
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(renderFn).toHaveBeenCalledTimes(3);
+    expect(calls.map(c => c.owner.episodeId)).toEqual([1, 2, 3]);
+    for (const call of calls) {
+      expect(call.renderOptions).toEqual(renderOptions);
+      expect(call.voiceChainEnabled).toBe(false);
+      expect(call.audienceAgeRating).toBeUndefined();
+    }
+
+    // The group's own concat used the RENDERED urls (not the pre-existing
+    // ones) — one ffmpeg invocation for the whole group's concat, on top of
+    // the 3 per-Sub-Episode render calls above.
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1);
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].renderOptions).toEqual(renderOptions);
+  });
+
+  it("threads the voice-chain tenant flag and lazily resolves the series audience age rating only when showAgeBadge is requested", async () => {
+    seedRenderableEpisodes([1]);
+    dbState.bible = { audienceAgeRating: "13plus" };
+    vi.mocked(getTenantFeatureFlags).mockResolvedValue({
+      ...FEATURE_FLAG_DEFAULTS,
+      verticalDramaSeriesVoiceChain: true,
+    });
+    const calls: RenderSubEpisodeWithOptionsArgs[] = [];
+    const renderFn = vi.fn(
+      async (
+        args: RenderSubEpisodeWithOptionsArgs
+      ): Promise<RenderSubEpisodeWithOptionsResult> => {
+        calls.push(args);
+        return { videoUrl: `/api/storage/files/rendered-${args.owner.episodeId}.mp4` };
+      }
+    );
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      renderSubEpisodeWithOptionsFn: renderFn,
+      renderOptions: { includeDialogueAudio: true, showAgeBadge: true },
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(renderFn).toHaveBeenCalledTimes(1);
+    expect(calls[0].voiceChainEnabled).toBe(true);
+    expect(calls[0].audienceAgeRating).toBe("13plus");
+  });
+
+  it("marks the whole group failed (without concatenating) when a per-Sub-Episode render fails", async () => {
+    seedRenderableEpisodes([1, 2]);
+    const renderFn = vi.fn(
+      async (
+        args: RenderSubEpisodeWithOptionsArgs
+      ): Promise<RenderSubEpisodeWithOptionsResult> => {
+        if (args.owner.episodeId === 2) throw new Error("boom: render failed");
+        return { videoUrl: `/api/storage/files/rendered-${args.owner.episodeId}.mp4` };
+      }
+    );
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      renderSubEpisodeWithOptionsFn: renderFn,
+      renderOptions: { subtitlePreset: "none" },
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("failed");
+    expect(finalManifest.episodes[0].error).toMatch(/boom: render failed/);
   });
 });

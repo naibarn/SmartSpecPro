@@ -68,11 +68,36 @@ import { debugError } from "../_core/logger";
 import {
   buildConcatFfmpegArgs,
   buildConcatListFileContent,
+  compiledVideoFilename,
   defaultFfmpegRunner,
   downloadClipToFile,
+  extractClipSourcesFromMotionPromptPack,
   probeDurationSeconds,
+  resolveClipsForAssembly,
+  resolveEpisodeDialogueAudioAndSubtitlesRunInputs,
+  runAssemblyJob,
+  type AssembleEpisodeVideoOwner,
   type FfmpegRunner,
 } from "./verticalDramaEpisodeVideoAssembly";
+// Render-options LEVEL (plan.md "Render-options LEVEL", user correction
+// 2026-07-13) — `CaptionPresetId`/`SubtitleFontSizeId` back
+// `ProductionEpisodeRenderOptions` below. Pure, side-effect-free sibling
+// service (only imports `zod` + `@shared/hyperframes/runtimeApiSchemas` —
+// no `../storage`, no ffmpeg spawn, no DB), so a normal static import here
+// carries none of `verticalDramaEpisodeVideoAssembly.ts`'s own "heavy,
+// lazily-imported-by-the-router" posture — this whole SERVICE module is
+// already lazily imported by the router (see `verticalDramaSeries.ts`'s own
+// `assembleProductionEpisodes` doc comment), so nothing downstream is at risk
+// either way.
+import type { CaptionPresetId, SubtitleFontSizeId } from "./verticalDramaFinalRenderGraph";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import {
+  resolveAudienceAgeRating,
+  type AudienceAgeRating,
+} from "@shared/verticalDramaSeries/audienceAgeRating";
+import type { VerticalDramaMotionPromptPack } from "@shared/verticalDramaSeries";
+import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
+import type { VdDialogueTimelineClip } from "@shared/verticalDramaSeries/dialogueAudioTimeline";
 import type {
   VerticalDramaProductionEpisodeGroupState,
   VerticalDramaProductionEpisodesManifest,
@@ -94,6 +119,43 @@ export interface ProductionEpisodeOwner {
 export interface ProductionEpisodeSourceSubEpisode {
   episodeNumber: number;
   videoUrl?: string | null;
+}
+
+/**
+ * Render-options LEVEL (plan.md "Render-options LEVEL" section, user
+ * correction 2026-07-13) — the SAME styling fields
+ * `verticalDramaEpisodes.assembleEpisodeVideo` accepts
+ * (`subtitlePreset`/`subtitleFontSize`/`showAgeBadge`/`includeDialogueAudio`/
+ * `loudnessNormalize`), reused here so a Production Episode's styling is
+ * configured ONCE and applied UNIFORMLY across every Sub-Episode in the
+ * group, instead of per Sub-Episode. STRICT server-side type (unlike
+ * `VerticalDramaProductionEpisodeGroupState.renderOptions` in
+ * `@shared/verticalDramaSeries/assembly.ts`, which is deliberately loosely
+ * typed since that module is dependency-free/shared with the client) — a
+ * value of THIS type always structurally satisfies that looser one.
+ */
+export interface ProductionEpisodeRenderOptions {
+  subtitlePreset?: CaptionPresetId | "none";
+  subtitleFontSize?: SubtitleFontSizeId;
+  showAgeBadge?: boolean;
+  includeDialogueAudio?: boolean;
+  loudnessNormalize?: boolean;
+}
+
+/**
+ * A Sub-Episode as LOADED FROM THE DB for a real assembly run — everything
+ * `ProductionEpisodeSourceSubEpisode` has, PLUS the raw fields needed to
+ * freshly re-render it under Render-options LEVEL (`renderSubEpisodeWithOptions`
+ * below). `chunkSubEpisodesIntoGroups`/`resolveSubEpisodesForProductionAssembly`
+ * are generic over `T extends ProductionEpisodeSourceSubEpisode`, so this
+ * richer shape flows through them unchanged (no changes needed to either
+ * pure helper, or to their existing unit tests, which construct the plainer
+ * base shape directly).
+ */
+interface ProductionEpisodeSourceSubEpisodeRow extends ProductionEpisodeSourceSubEpisode {
+  episodeId: number;
+  motionPromptPack: VerticalDramaMotionPromptPack | null;
+  dialogueAudioPlan: VerticalDramaDialogueAudioPlan | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -327,6 +389,209 @@ async function patchProductionEpisodeGroupState(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Render-options LEVEL — per-Sub-Episode render (plan.md "Render-options    */
+/* LEVEL", user correction 2026-07-13). Reuses `runAssemblyJob` and its      */
+/* input resolution `resolveEpisodeDialogueAudioAndSubtitlesRunInputs`       */
+/* (both from `verticalDramaEpisodeVideoAssembly.ts`) VERBATIM — no new      */
+/* ffmpeg/subtitle logic here, only the same "gather this episode's own raw  */
+/* clips -> resolve dialogue-audio/subtitle/age-badge feed -> render" wiring */
+/* `verticalDramaEpisodes.assembleEpisodeVideo`'s own handler already does   */
+/* for a single episode.                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Resolve the `verticalDramaSeriesVoiceChain` tenant flag — small, deliberate
+ * duplication of `verticalDramaEpisodes.ts`'s own
+ * `resolveVerticalDramaVoiceChainFlag` (a 2-line tenant-flag read via the
+ * shared `getTenantFeatureFlags` SERVICE, safe to import here). This file
+ * must never import a ROUTER (see this file's own header doc comment), so
+ * this tiny read is reimplemented locally rather than shared — the SAME
+ * "small duplication, not a shared import" call `verticalDramaSeries.ts`'s
+ * `assembleSeasonVideos` already makes for this exact flag.
+ */
+async function resolveProductionVoiceChainFlag(tenantId: string): Promise<boolean> {
+  const flags = await getTenantFeatureFlags(tenantId);
+  return flags?.verticalDramaSeriesVoiceChain === true;
+}
+
+/**
+ * Series-level audience age rating — mirrors `verticalDramaEpisodes.ts`'s own
+ * `loadSeriesAudienceAgeRating` (identical "read `bible` for a caller-owned
+ * series -> defaulted tier" query), reimplemented locally for the same
+ * service-must-never-import-a-router reason. Only ever called when
+ * `renderOptions.showAgeBadge` is `true` (see call site in
+ * `assembleProductionEpisodesForSeries` below) — a call with no age badge
+ * requested pays zero extra DB cost, mirroring that function's own doc
+ * comment.
+ */
+async function loadProductionSeriesAudienceAgeRating(
+  owner: ProductionEpisodeOwner
+): Promise<AudienceAgeRating> {
+  const [row] = await db
+    .select({ bible: verticalDramaSeries.bible })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, owner.seriesId),
+        eq(verticalDramaSeries.tenantId, owner.tenantId),
+        eq(verticalDramaSeries.userId, owner.userId)
+      )
+    )
+    .limit(1);
+  const bible = (row?.bible as Record<string, unknown> | null) ?? null;
+  return resolveAudienceAgeRating(bible?.audienceAgeRating);
+}
+
+export interface RenderSubEpisodeWithOptionsArgs {
+  owner: AssembleEpisodeVideoOwner;
+  motionPromptPack: VerticalDramaMotionPromptPack | null;
+  dialogueAudioPlan: VerticalDramaDialogueAudioPlan | null;
+  internalBaseUrl: string;
+  filename: string;
+  /** Reuses the SAME top-level `allowPartial` flag the caller passed to
+   *  `assembleProductionEpisodesForSeries` — one consistent knob for both
+   *  "partial GROUP membership" (D′-1) and "partial CLIPS within one
+   *  Sub-Episode's own re-render" (this function), rather than inventing a
+   *  second option. */
+  allowPartial?: boolean;
+  renderOptions: ProductionEpisodeRenderOptions;
+  voiceChainEnabled: boolean;
+  audienceAgeRating?: AudienceAgeRating;
+  ffmpegRunner: FfmpegRunner;
+  probeDurationSecondsFn: (filePath: string) => Promise<number | undefined>;
+}
+
+export interface RenderSubEpisodeWithOptionsResult {
+  videoUrl: string;
+  durationSeconds?: number;
+}
+
+/** Test/DI injection point type for `renderSubEpisodeWithOptions` — mirrors
+ *  `FfmpegRunner`'s own "named function type, swappable in tests" convention. */
+export type RenderSubEpisodeWithOptionsFn = (
+  args: RenderSubEpisodeWithOptionsArgs
+) => Promise<RenderSubEpisodeWithOptionsResult>;
+
+/**
+ * Freshly render ONE Sub-Episode's OWN compiled video with the caller's
+ * UNIFIED styling options, reusing the EXACT SAME machinery
+ * `verticalDramaEpisodes.assembleEpisodeVideo` uses for its own single-
+ * episode render: `extractClipSourcesFromMotionPromptPack` +
+ * `resolveClipsForAssembly` gather this Sub-Episode's own raw clips, then
+ * `resolveEpisodeDialogueAudioAndSubtitlesRunInputs` builds the dialogue-
+ * audio/subtitle/age-badge render feed exactly as that handler's own doc
+ * comment describes (including the age-badge overlay), then `runAssemblyJob`
+ * itself — the SAME function a single-episode render's `submitAssemblyJob`
+ * fires in the background — is called and AWAITED directly here.
+ *
+ * This is a "direct synchronous reuse of the pure render pipeline" (this
+ * feature's plan doc's preferred choice over a submit-then-poll fallback):
+ * safe to await directly because this function only ever runs INSIDE the
+ * Production Episode assembly's OWN background job chain
+ * (`runProductionEpisodeGroupJob`), which already has no caller left waiting
+ * on an immediate HTTP response — there is no "return a jobId now" contract
+ * to preserve here, unlike `assembleEpisodeVideo`'s own mutation handler.
+ *
+ * `runAssemblyJob` never THROWS on failure — it catches internally and
+ * persists a `"failed"` `assemblyManifest.compiledVideo` state on the
+ * Sub-Episode's own row instead (see that function's own doc comment). This
+ * function re-reads that freshly persisted state afterward (the SAME
+ * defensive `extractSubEpisodeCompiledVideoUrl` read this file already uses
+ * for the D′-1 "reuse existing compiled video" path) to learn whether the
+ * render actually succeeded, and THROWS here if it did not — surfacing the
+ * failure to `runProductionEpisodeGroupJob`'s own try/catch, which marks the
+ * WHOLE Production Episode group `"failed"`. A group is all-or-nothing: a
+ * Production Episode silently missing one Sub-Episode would be a WRONG
+ * publishable artifact, so there is no per-member partial-group state.
+ *
+ * KNOWN, DOCUMENTED SIDE EFFECT (not a bug): this OVERWRITES the
+ * Sub-Episode's OWN `assemblyManifest.compiledVideo` with the freshly
+ * Production-styled render, replacing whatever plain/individual-preview
+ * render it had before. This is the accepted MVP behavior for this wave
+ * (plan.md's "Render-options LEVEL" section describes the Sub-Episode page's
+ * own render as becoming an internal PREVIEW only, with a follow-up wave to
+ * relocate/simplify those Phase-A controls) — reusing the render machinery
+ * verbatim, as directed, necessarily reuses its one persistence target too.
+ */
+export async function renderSubEpisodeWithOptions(
+  args: RenderSubEpisodeWithOptionsArgs
+): Promise<RenderSubEpisodeWithOptionsResult> {
+  const clipSources = extractClipSourcesFromMotionPromptPack(args.motionPromptPack);
+  if (clipSources.length === 0) {
+    throw new Error(
+      `vertical_drama_production_subepisode_no_clips: sub-episode ${args.owner.episodeId} has no video clips to render.`
+    );
+  }
+  const resolved = resolveClipsForAssembly(clipSources, { allowPartial: args.allowPartial });
+
+  const motionClips: VdDialogueTimelineClip[] = (args.motionPromptPack?.clips ?? []).map(c => ({
+    clipNumber: c.clipNumber,
+    sourceShotNumbers: c.sourceShotNumbers,
+    durationSeconds: c.durationSeconds,
+  }));
+
+  const dialogueRunInputs = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+    plan: args.dialogueAudioPlan,
+    motionClips,
+    includedClipNumbers: resolved.ordered.map(c => c.clipNumber),
+    includeDialogueAudio:
+      args.voiceChainEnabled && args.renderOptions.includeDialogueAudio === true,
+    loudnessNormalize: args.renderOptions.loudnessNormalize === true,
+    subtitlePreset: args.renderOptions.subtitlePreset,
+    subtitleFontSize: args.renderOptions.subtitleFontSize,
+    showAgeBadge: args.renderOptions.showAgeBadge === true,
+    audienceAgeRating: args.audienceAgeRating,
+  });
+
+  const jobId = randomUUID();
+  await runAssemblyJob({
+    owner: args.owner,
+    jobId,
+    clips: resolved.ordered,
+    internalBaseUrl: args.internalBaseUrl,
+    filename: args.filename,
+    ffmpegRunner: args.ffmpegRunner,
+    probeDurationSecondsFn: args.probeDurationSecondsFn,
+    ...(dialogueRunInputs.dialogueAudio ? { dialogueAudio: dialogueRunInputs.dialogueAudio } : {}),
+    ...(dialogueRunInputs.subtitles ? { subtitles: dialogueRunInputs.subtitles } : {}),
+  });
+
+  const [freshRow] = await db
+    .select({ assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+    .from(verticalDramaEpisodes)
+    .where(
+      and(
+        eq(verticalDramaEpisodes.id, args.owner.episodeId),
+        eq(verticalDramaEpisodes.tenantId, args.owner.tenantId),
+        eq(verticalDramaEpisodes.userId, args.owner.userId),
+        eq(verticalDramaEpisodes.seriesId, args.owner.seriesId)
+      )
+    )
+    .limit(1);
+
+  const videoUrl = extractSubEpisodeCompiledVideoUrl(freshRow?.assemblyManifest);
+  if (!videoUrl) {
+    throw new Error(
+      `vertical_drama_production_subepisode_render_failed: sub-episode ${args.owner.episodeId} render did not produce a compiled video.`
+    );
+  }
+
+  const compiledVideo =
+    freshRow?.assemblyManifest && typeof freshRow.assemblyManifest === "object"
+      ? (freshRow.assemblyManifest as Record<string, unknown>).compiledVideo
+      : undefined;
+  const durationSeconds =
+    compiledVideo && typeof compiledVideo === "object"
+      ? (compiledVideo as Record<string, unknown>).durationSeconds
+      : undefined;
+
+  return {
+    videoUrl,
+    durationSeconds: typeof durationSeconds === "number" ? durationSeconds : undefined,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* One group's concat job — reuses the shot-clip concat machinery verbatim    */
 /* (`downloadClipToFile` / `buildConcatListFileContent` /                    */
 /* `buildConcatFfmpegArgs` / `storagePutFromPath`, all imported above — no    */
@@ -336,25 +601,78 @@ async function patchProductionEpisodeGroupState(
 async function runProductionEpisodeGroupJob(args: {
   owner: ProductionEpisodeOwner;
   groupIndex: number;
-  /** Ordered compiled Sub-Episode video URLs for this ONE group. */
-  videoUrls: string[];
+  /** This group's members, in playback order. */
+  members: ProductionEpisodeSourceSubEpisodeRow[];
   internalBaseUrl: string;
   filename: string;
   ffmpegRunner: FfmpegRunner;
   probeDurationSecondsFn: (filePath: string) => Promise<number | undefined>;
+  seriesTitle?: string;
+  allowPartial?: boolean;
+  /** Render-options LEVEL — when supplied, EVERY member is freshly
+   *  re-rendered WITH these SAME styling options (via
+   *  `renderSubEpisodeWithOptionsFn`) before this group's own concat step
+   *  runs. Omitted (D′-1 default) uses each member's EXISTING compiled
+   *  video verbatim, unchanged. */
+  renderOptions?: ProductionEpisodeRenderOptions;
+  voiceChainEnabled: boolean;
+  audienceAgeRating?: AudienceAgeRating;
+  renderSubEpisodeWithOptionsFn: RenderSubEpisodeWithOptionsFn;
 }): Promise<void> {
   const {
     owner,
     groupIndex,
-    videoUrls,
+    members,
     internalBaseUrl,
     filename,
     ffmpegRunner,
     probeDurationSecondsFn,
+    seriesTitle,
+    allowPartial,
+    renderOptions,
+    voiceChainEnabled,
+    audienceAgeRating,
+    renderSubEpisodeWithOptionsFn,
   } = args;
 
   const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-production-ep-"));
   try {
+    // Render-options LEVEL — every member is freshly re-rendered WITH the
+    // SAME unified styling before this group's own concat step runs, so
+    // every Sub-Episode in this Production Episode has identical subtitle/
+    // badge/dialogue-audio/loudness treatment. Sequential (never parallel),
+    // matching every other ffmpeg-invoking loop in this codebase's
+    // single-host resource budget. A failure on ANY member propagates out of
+    // this whole `try` block (caught below), marking the WHOLE group
+    // `"failed"` — see `renderSubEpisodeWithOptions`'s own doc comment for
+    // why a group is all-or-nothing rather than silently dropping one member.
+    let videoUrls: string[];
+    if (renderOptions) {
+      videoUrls = [];
+      for (const member of members) {
+        const rendered = await renderSubEpisodeWithOptionsFn({
+          owner: { ...owner, episodeId: member.episodeId },
+          motionPromptPack: member.motionPromptPack,
+          dialogueAudioPlan: member.dialogueAudioPlan,
+          internalBaseUrl,
+          filename: compiledVideoFilename({
+            seriesId: owner.seriesId,
+            episodeNumber: member.episodeNumber,
+            seriesTitle,
+          }),
+          allowPartial,
+          renderOptions,
+          voiceChainEnabled,
+          audienceAgeRating,
+          ffmpegRunner,
+          probeDurationSecondsFn,
+        });
+        videoUrls.push(rendered.videoUrl);
+      }
+    } else {
+      videoUrls = members.map(m => m.videoUrl as string);
+    }
+
     const inputPaths: string[] = [];
     for (let i = 0; i < videoUrls.length; i += 1) {
       const dest = path.join(workDir, `sub-ep-${String(i).padStart(3, "0")}.mp4`);
@@ -415,11 +733,29 @@ export interface AssembleProductionEpisodesForSeriesArgs {
   allowPartial?: boolean;
   internalBaseUrl: string;
   seriesTitle?: string;
+  /**
+   * Render-options LEVEL (plan.md "Render-options LEVEL" section, user
+   * correction 2026-07-13) — when supplied, EVERY Sub-Episode in EVERY group
+   * is freshly re-rendered with these SAME styling options before that
+   * group's own concat step, so the whole Production Episode has uniform
+   * subtitle/badge/dialogue-audio/loudness styling. Omitted (every
+   * pre-existing caller) preserves D′-1 behavior exactly: each group's
+   * concat uses the Sub-Episodes' EXISTING compiled videos as-is, no
+   * re-render. See `ProductionEpisodeRenderOptions`'s own doc comment.
+   */
+  renderOptions?: ProductionEpisodeRenderOptions;
   /** Test injection points — mirror `runAssemblyJob`'s own convention so
    *  tests never spawn a real ffmpeg/ffprobe process. Default to the real
    *  implementations. */
   ffmpegRunner?: FfmpegRunner;
   probeDurationSecondsFn?: (filePath: string) => Promise<number | undefined>;
+  /** Test injection point for the per-Sub-Episode render step — mirrors
+   *  `ffmpegRunner`/`probeDurationSecondsFn`'s own convention. Defaults to
+   *  the real `renderSubEpisodeWithOptions` (see that function's own doc
+   *  comment for why a direct synchronous reuse of `runAssemblyJob` was
+   *  chosen over a submit-then-poll fallback). Only ever invoked when
+   *  `renderOptions` is supplied. */
+  renderSubEpisodeWithOptionsFn?: RenderSubEpisodeWithOptionsFn;
 }
 
 export interface AssembleProductionEpisodesForSeriesResult {
@@ -440,7 +776,7 @@ export interface AssembleProductionEpisodesForSeriesResult {
 interface PlannedProductionEpisodeGroup {
   index: number;
   subEpisodeNumbers: number[];
-  videoUrls: string[];
+  members: ProductionEpisodeSourceSubEpisodeRow[];
   /** Non-null when an existing COMPLETED group can be reused verbatim. */
   reuse: VerticalDramaProductionEpisodeGroupState | null;
 }
@@ -458,15 +794,25 @@ interface PlannedProductionEpisodeGroup {
 export async function assembleProductionEpisodesForSeries(
   args: AssembleProductionEpisodesForSeriesArgs
 ): Promise<AssembleProductionEpisodesForSeriesResult> {
-  const { tenantId, userId, seriesId, groupSize, allowPartial, internalBaseUrl } = args;
+  const { tenantId, userId, seriesId, groupSize, allowPartial, internalBaseUrl, renderOptions } =
+    args;
   const ffmpegRunner = args.ffmpegRunner ?? defaultFfmpegRunner;
   const probeDurationSecondsFn = args.probeDurationSecondsFn ?? probeDurationSeconds;
+  const renderSubEpisodeWithOptionsFn =
+    args.renderSubEpisodeWithOptionsFn ?? renderSubEpisodeWithOptions;
   const owner: ProductionEpisodeOwner = { tenantId, userId, seriesId };
 
   const episodeRows = await db
     .select({
+      id: verticalDramaEpisodes.id,
       episodeNumber: verticalDramaEpisodes.episodeNumber,
       assemblyManifest: verticalDramaEpisodes.assemblyManifest,
+      // Render-options LEVEL — only ever READ by `renderSubEpisodeWithOptions`
+      // when `renderOptions` is supplied (see below); selected unconditionally
+      // here since Drizzle has no per-call conditional column selection and
+      // this is the SAME single query D′-1 already runs (no extra round trip).
+      motionPromptPack: verticalDramaEpisodes.motionPromptPack,
+      dialogueAudioPlan: verticalDramaEpisodes.dialogueAudioPlan,
     })
     .from(verticalDramaEpisodes)
     .where(
@@ -484,9 +830,12 @@ export async function assembleProductionEpisodesForSeries(
     );
   }
 
-  const subEpisodes: ProductionEpisodeSourceSubEpisode[] = episodeRows.map(row => ({
+  const subEpisodes: ProductionEpisodeSourceSubEpisodeRow[] = episodeRows.map((row: (typeof episodeRows)[number]) => ({
     episodeNumber: row.episodeNumber,
     videoUrl: extractSubEpisodeCompiledVideoUrl(row.assemblyManifest),
+    episodeId: row.id,
+    motionPromptPack: row.motionPromptPack as VerticalDramaMotionPromptPack | null,
+    dialogueAudioPlan: row.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null,
   }));
 
   const { usable } = resolveSubEpisodesForProductionAssembly(subEpisodes, { allowPartial });
@@ -510,7 +859,7 @@ export async function assembleProductionEpisodesForSeries(
     return {
       index,
       subEpisodeNumbers,
-      videoUrls: group.map(e => e.videoUrl as string),
+      members: group,
       reuse,
     };
   });
@@ -522,6 +871,13 @@ export async function assembleProductionEpisodesForSeries(
         groupSize,
         subEpisodeNumbers: p.subEpisodeNumbers,
         status: "pending",
+        // Recorded onto the group state (pending AND, since the per-group
+        // patch below never touches this field, still present once
+        // completed/failed) purely for UI display of "what styling was this
+        // Production Episode rendered with" — see
+        // `VerticalDramaProductionEpisodeGroupState.renderOptions`'s own doc
+        // comment. Absent entirely when this call had no `renderOptions`.
+        ...(renderOptions ? { renderOptions } : {}),
       }
   );
 
@@ -543,6 +899,22 @@ export async function assembleProductionEpisodesForSeries(
   // `runProductionEpisodeGroupJob`, never thrown back to this function's
   // (already-returned) caller.
   void (async () => {
+    // Render-options LEVEL — resolved ONCE for the whole call (not per group/
+    // per Sub-Episode), mirroring `assembleEpisodeVideo`'s own handler:
+    // `voiceChainEnabled` is always resolved up front when rendering is
+    // requested at all; `audienceAgeRating` is resolved LAZILY, only when
+    // `showAgeBadge` is actually requested, so a render that never asks for
+    // the badge pays zero extra DB cost (see `loadProductionSeriesAudienceAgeRating`'s
+    // own doc comment).
+    let voiceChainEnabled = false;
+    let audienceAgeRating: AudienceAgeRating | undefined;
+    if (renderOptions) {
+      voiceChainEnabled = await resolveProductionVoiceChainFlag(tenantId);
+      if (renderOptions.showAgeBadge === true) {
+        audienceAgeRating = await loadProductionSeriesAudienceAgeRating(owner);
+      }
+    }
+
     for (const group of groupsToRun) {
       const filename = productionEpisodeFilename({
         seriesId,
@@ -553,11 +925,17 @@ export async function assembleProductionEpisodesForSeries(
         await runProductionEpisodeGroupJob({
           owner,
           groupIndex: group.index,
-          videoUrls: group.videoUrls,
+          members: group.members,
           internalBaseUrl,
           filename,
           ffmpegRunner,
           probeDurationSecondsFn,
+          seriesTitle: args.seriesTitle,
+          allowPartial,
+          renderOptions,
+          voiceChainEnabled,
+          audienceAgeRating,
+          renderSubEpisodeWithOptionsFn,
         });
       } catch {
         // Defense-in-depth only — `runProductionEpisodeGroupJob` already
