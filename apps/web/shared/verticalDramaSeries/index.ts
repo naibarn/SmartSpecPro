@@ -15,6 +15,7 @@ export * from "./storyboardLocations";
 export * from "./contactSheets";
 export * from "./providerRouting";
 export * from "./assembly";
+export * from "./assemblyReadiness";
 export * from "./storyboardHandoff";
 export * from "./artifacts";
 export * from "./targetAudienceRegion";
