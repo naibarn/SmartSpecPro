@@ -11,7 +11,7 @@
  */
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, queryOptions } from "@tanstack/react-query";
 import {
   FEATURE_FLAG_DEFAULTS,
   type TenantFeatureFlagKey,
@@ -26,8 +26,59 @@ interface TenantCurrentResponse {
 
 async function fetchTenantCurrent(): Promise<TenantCurrentResponse> {
   const res = await fetch("/api/tenant/current");
-  if (!res.ok) return {};
+  if (!res.ok) {
+    // Throw instead of returning `{}` so a transient outage (e.g. a 502 from
+    // nginx while smartspec-web.service restarts) surfaces as a retryable
+    // react-query error rather than a fake-successful empty response. A
+    // fake "successful" `{}` would resolve every flag straight to
+    // FEATURE_FLAG_DEFAULTS, which is fail-closed for flags such as
+    // verticalDramaSeries — incorrectly showing the "not available" denial
+    // during a routine restart instead of recovering automatically.
+    throw new Error(`tenant/current ${res.status}`);
+  }
   return res.json();
+}
+
+/**
+ * Shared react-query options for the `["tenant", "current"]` query, reused
+ * by every hook below so they observe one cached query with identical
+ * staleness/retry behavior. Retries generously (up to 10 attempts, capped
+ * exponential backoff) so a transient backend outage resolves on its own —
+ * without this, a single failed request mid-restart would otherwise pin the
+ * query in an errored state until the user manually reloads.
+ */
+const TENANT_CURRENT_QUERY_OPTIONS = queryOptions({
+  queryKey: ["tenant", "current"],
+  queryFn: fetchTenantCurrent,
+  staleTime: 60_000, // 1 minute
+  gcTime: 5 * 60_000,
+  retry: (failureCount: number) => failureCount < 10,
+  retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 5000),
+});
+
+/**
+ * Returns the resolved enabled/disabled state of a Claw feature flag along
+ * with whether the underlying tenant query has definitively resolved
+ * (`isResolved`).
+ *
+ * Callers that must not show a fail-closed "not available" denial while the
+ * flag's true state is still unknown (query loading, or the backend is
+ * briefly unreachable) should gate on `isResolved` before trusting
+ * `enabled === false`.
+ */
+export function useTenantFeatureFlagStatus(flag: TenantFeatureFlagKey): {
+  enabled: boolean;
+  isResolved: boolean;
+} {
+  const { data, isSuccess } = useQuery(TENANT_CURRENT_QUERY_OPTIONS);
+
+  const storedFlags = data?.tenant?.featureFlags;
+  const enabled =
+    !storedFlags || typeof storedFlags[flag] !== "boolean"
+      ? FEATURE_FLAG_DEFAULTS[flag]
+      : storedFlags[flag];
+
+  return { enabled, isResolved: isSuccess };
 }
 
 /**
@@ -36,20 +87,7 @@ async function fetchTenantCurrent(): Promise<TenantCurrentResponse> {
  * Uses FEATURE_FLAG_DEFAULTS as fallback when the tenant has no override.
  */
 export function useTenantFeatureFlag(flag: TenantFeatureFlagKey): boolean {
-  const { data } = useQuery({
-    queryKey: ["tenant", "current"],
-    queryFn: fetchTenantCurrent,
-    staleTime: 60_000, // 1 minute
-    gcTime: 5 * 60_000,
-  });
-
-  const storedFlags = data?.tenant?.featureFlags;
-
-  if (!storedFlags || typeof storedFlags[flag] !== "boolean") {
-    return FEATURE_FLAG_DEFAULTS[flag];
-  }
-
-  return storedFlags[flag];
+  return useTenantFeatureFlagStatus(flag).enabled;
 }
 
 /**
@@ -58,12 +96,7 @@ export function useTenantFeatureFlag(flag: TenantFeatureFlagKey): boolean {
  * Each flag falls back to FEATURE_FLAG_DEFAULTS when not set.
  */
 export function useTenantFeatureFlags(): Record<TenantFeatureFlagKey, boolean> {
-  const { data } = useQuery({
-    queryKey: ["tenant", "current"],
-    queryFn: fetchTenantCurrent,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-  });
+  const { data } = useQuery(TENANT_CURRENT_QUERY_OPTIONS);
 
   const storedFlags = data?.tenant?.featureFlags;
 

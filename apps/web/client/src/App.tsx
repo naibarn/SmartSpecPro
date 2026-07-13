@@ -34,7 +34,7 @@ import { RouteLoadingSkeleton } from "@/components/RouteLoadingSkeleton";
 import { useLanguageSync } from "@/hooks/useLanguageSync";
 import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 import { trpc } from "@/lib/trpc";
-import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
+import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
 import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
 import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerformanceOverlay";
 
@@ -296,9 +296,21 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
  * renders an announced (role="alert") text notice rather than silently 404-ing,
  * satisfying the section-03 accessibility acceptance ("feature-denied states are
  * announced with text"). Must be nested inside <RequireAuth>.
+ *
+ * The tenant flag query must DEFINITIVELY resolve (`isResolved`) before the
+ * denial renders — otherwise a still-loading query, or a transient backend
+ * outage (e.g. a 502 while smartspec-web.service restarts), would resolve
+ * to the fail-closed default and flash this denial even though the tenant
+ * genuinely has the flag enabled. While unresolved, show the same fallback
+ * used for lazy route chunks (<RouteLoadingSkeleton />) instead.
  */
 function RequireVerticalDramaSeries({ children }: { children: React.ReactNode }) {
-  const enabled = useTenantFeatureFlag("verticalDramaSeries");
+  const { enabled, isResolved } = useTenantFeatureFlagStatus(
+    "verticalDramaSeries",
+  );
+  if (!isResolved) {
+    return <RouteLoadingSkeleton />;
+  }
   if (!enabled) {
     return (
       <main className="min-h-screen bg-background text-foreground">
@@ -327,9 +339,20 @@ function RequireVerticalDramaSeries({ children }: { children: React.ReactNode })
  * 404-ing. Must be nested inside <RequireAuth>. Per-studio flags
  * (F133C/F133-motion) are enforced separately, inside the pages themselves
  * (they gate individual create actions/menu entries, not the whole route).
+ *
+ * Also mirrors `RequireVerticalDramaSeries`'s resolve-before-deny guard: the
+ * denial only renders once the tenant flag query has DEFINITIVELY resolved
+ * (`isResolved`), so a still-loading query or a transient backend outage
+ * (e.g. a restart-time 502) shows the shared route-loading fallback instead
+ * of flashing a false "not available" denial.
  */
 function RequireVideoIntelligence({ children }: { children: React.ReactNode }) {
-  const enabled = useTenantFeatureFlag("videoIntelligencePlatformEnabled");
+  const { enabled, isResolved } = useTenantFeatureFlagStatus(
+    "videoIntelligencePlatformEnabled",
+  );
+  if (!isResolved) {
+    return <RouteLoadingSkeleton />;
+  }
   if (!enabled) {
     return (
       <main className="min-h-screen bg-background text-foreground">
