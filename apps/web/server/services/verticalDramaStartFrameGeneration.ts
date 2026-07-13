@@ -175,6 +175,7 @@ export interface StartFrameRenderPlanProjection {
     negativePrompt: string;
     requiredCharacterRefs: string[];
     productReferenceAssetIds: string[];
+    canonicalShotSummary?: string;
     /** See `VerticalDramaStartFramePlan.frames[].productRefsCustomized` in `@shared/verticalDramaSeries`. */
     productRefsCustomized?: boolean;
   }>;
@@ -213,6 +214,8 @@ export function projectStartFramePlan(
    * reintroduce the same bug one stage later.
    */
   shotCharacterIdsByShotNumber?: Map<number, string[]>,
+  /** Exact active-Overview shot summary used as the skill's canonical visual beat. */
+  canonicalShotSummaryByShotNumber?: Map<number, string>,
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -248,6 +251,9 @@ export function projectStartFramePlan(
           negativePrompt: r.negative_prompt ?? "",
           requiredCharacterRefs,
           productReferenceAssetIds: [],
+          ...(canonicalShotSummaryByShotNumber?.get(r.shot_number)
+            ? { canonicalShotSummary: canonicalShotSummaryByShotNumber.get(r.shot_number) }
+            : {}),
         };
       }),
   };
@@ -272,6 +278,8 @@ export interface GenerateStartFrameRenderPlanParams {
     cameraSetup: string;
     characterIds: string[];
     durationSeconds: number;
+    /** Active Overview shot summary; the skill must prefer it over stale storyboard prose. */
+    canonicalShotSummary?: string;
     /**
      * Phase 1 of `planning/polished-toasting-gadget.md` (location visual
      * bible) — this shot's location/setting fact, resolved by
@@ -349,9 +357,12 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
               : ""
           }`
         : "";
+      const canonicalSource = s.canonicalShotSummary
+        ? ` | CANONICAL SHOT SOURCE (must follow): ${s.canonicalShotSummary}`
+        : "";
       return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${s.cameraSetup} | characters: ${
         s.characterIds.length ? s.characterIds.join(", ") : "(none)"
-      }${locationSuffix}`;
+      }${locationSuffix}${canonicalSource}`;
     })
     .join("\n");
 
@@ -484,10 +495,16 @@ export async function generateStartFrameRenderPlan(
   const shotCharacterIdsByShotNumber = new Map(
     params.storyboardShots.map((s) => [s.shotNumber, s.characterIds]),
   );
+  const canonicalShotSummaryByShotNumber = new Map(
+    params.storyboardShots
+      .filter((s) => Boolean(s.canonicalShotSummary?.trim()))
+      .map((s) => [s.shotNumber, s.canonicalShotSummary!.trim()]),
+  );
   const plan = projectStartFramePlan(
     validatedData,
     params.selectedImageModelId ?? "dry-run-image-model",
     shotCharacterIdsByShotNumber,
+    canonicalShotSummaryByShotNumber,
   );
 
   return { plan, raw: validatedData, creditsUsed, model };
@@ -643,12 +660,14 @@ export interface GenerateStartFrameShotPromptParams {
   episodeId: number;
   shotNumber: number;
   /**
-   * The user's free-text repair/adjustment instruction (Zod-validated
-   * non-empty by the router) — an ADDITIONAL directive layered on top of
-   * full mandatory-rule regeneration, never a scoped-down patch. See
-   * skill.md's "Repair instruction handling" section.
+   * The user's optional free-text repair/adjustment instruction (trimmed and
+   * length-limited by the router) — an ADDITIONAL directive layered on top of
+   * full mandatory-rule regeneration, never a scoped-down patch. The latest
+   * Overview summary may be supplied instead when the workspace is refreshing
+   * a stale materialized prompt. See skill.md's "Repair instruction handling"
+   * section.
    */
-  instruction: string;
+  instruction?: string;
   /**
    * The shot's existing `startFramePlan.frames[].imagePrompt` (already
    * defensively stripped of any stale identity-lock suffix by the caller,
@@ -658,6 +677,8 @@ export interface GenerateStartFrameShotPromptParams {
    */
   currentPrompt: string;
   currentNegativePrompt: string;
+  /** Latest Overview shot summary; when present it supersedes stale prompt scene facts. */
+  canonicalShotSummary?: string;
   /** Character reference image manifest — see `GenerateStartFrameShotPromptCharacterManifestEntry`. */
   characterReferenceManifest: GenerateStartFrameShotPromptCharacterManifestEntry[];
   /**
@@ -724,7 +745,10 @@ export function buildStartFrameShotPromptUserPrompt(
     `shot_number: ${params.shotNumber}`,
     `current_prompt: ${params.currentPrompt}`,
     `current_negative_prompt: ${params.currentNegativePrompt || "(none)"}`,
-    `repair_instruction: ${params.instruction}`,
+    `repair_instruction: ${params.instruction?.trim() || "(none)"}`,
+    params.canonicalShotSummary?.trim()
+      ? `canonical_shot_summary (authoritative Overview source): ${params.canonicalShotSummary.trim()}`
+      : null,
     manifestLines
       ? `character_reference_manifest:\n${manifestLines}`
       : `character_reference_manifest: (none)`,

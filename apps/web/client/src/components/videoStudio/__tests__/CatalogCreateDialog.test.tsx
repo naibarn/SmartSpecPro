@@ -12,6 +12,20 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Astryx's Dialog renders a native <dialog> element and calls showModal()/
+// close() on it. jsdom does not implement HTMLDialogElement's showModal/close
+// (see @astryxdesign/core's own Dialog.test.tsx, which mocks the same way) —
+// without this, every test below fails with "dialog.showModal is not a
+// function" before it can assert anything about the rendered UI.
+beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = vi.fn(function (this: HTMLDialogElement) {
+    this.setAttribute("open", "");
+  });
+  HTMLDialogElement.prototype.close = vi.fn(function (this: HTMLDialogElement) {
+    this.removeAttribute("open");
+  });
+});
+
 const listProductsQueryMock = vi.fn();
 const createMutateMock = vi.fn();
 

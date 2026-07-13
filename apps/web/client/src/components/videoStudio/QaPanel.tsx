@@ -10,21 +10,27 @@
  *     section's authoritative instructions) — it enqueues, polls
  *     (resume-on-mount + >=2s interval), and shows a clear "not yet
  *     available" notice rather than crashing or pretending it succeeded.
+ *
+ * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
+ * components directly, which `AppPage.tsx`'s docstring says should never
+ * happen outside that one file. This is a deliberate, explicit,
+ * twice-confirmed user decision to migrate Video Studio off shadcn/ui onto
+ * native Astryx components (see
+ * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
+ * violation of that rule.
  */
 import { Plus, RefreshCcw, Sparkles, Trash2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge, type BadgeVariant } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { IconButton } from "@astryxdesign/core/IconButton";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Text } from "@astryxdesign/core/Text";
+import { TextInput } from "@astryxdesign/core/TextInput";
 import { trpc } from "@/lib/trpc";
 import type { ClaimRecord, VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
 import { NotWiredJobCard } from "./NotWiredJobCard";
@@ -33,11 +39,11 @@ import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCo
 
 const CLAIM_STATUSES: ClaimRecord["status"][] = ["approved", "needs_review", "unsupported", "prohibited"];
 
-const CLAIM_STATUS_BADGE: Record<ClaimRecord["status"], "default" | "secondary" | "destructive" | "outline"> = {
-  approved: "default",
-  needs_review: "outline",
-  unsupported: "secondary",
-  prohibited: "destructive",
+const CLAIM_STATUS_BADGE: Record<ClaimRecord["status"], BadgeVariant> = {
+  approved: "success",
+  needs_review: "warning",
+  unsupported: "neutral",
+  prohibited: "error",
 };
 
 export function QaPanel({
@@ -101,95 +107,82 @@ export function QaPanel({
         onRun={() => applyQualityRepairs.mutate({ projectId })}
       />
 
-      <Card className="border-border/60">
-        <CardHeader>
-          <CardTitle className="text-base">
-            {pickCopy(lang, { th: "การอ้างสิทธิ์สินค้า", en: "Product claims" })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+      <Card>
+        <VStack gap={3}>
+          <Heading level={4}>{pickCopy(lang, { th: "การอ้างสิทธิ์สินค้า", en: "Product claims" })}</Heading>
+
           {document.claims.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+            <Text type="body" color="secondary">
               {pickCopy(lang, { th: "ยังไม่มีข้อความอ้างสิทธิ์", en: "No claims yet." })}
-            </p>
+            </Text>
           ) : null}
+
           {document.claims.map((claim, index) => (
-            <div key={index} className="flex flex-col gap-2 rounded-lg border border-border/60 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <Badge variant={CLAIM_STATUS_BADGE[claim.status]}>{claim.status}</Badge>
-                <Button variant="ghost" size="icon" onClick={() => removeClaim(index)} aria-label="remove claim">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="grid gap-1.5">
-                <Label>{pickCopy(lang, { th: "ข้อความอ้างสิทธิ์", en: "Claim text" })}</Label>
-                <Input value={claim.claim} onChange={(e) => updateClaim(index, { claim: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-1.5">
-                  <Label>{pickCopy(lang, { th: "แหล่งที่มา", en: "Source" })}</Label>
-                  <Input value={claim.source} onChange={(e) => updateClaim(index, { source: e.target.value })} />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label>{pickCopy(lang, { th: "สถานะ", en: "Status" })}</Label>
-                  <Select
+            <Card key={index} variant="muted" padding={3}>
+              <VStack gap={2}>
+                <HStack justify="between" align="center" gap={2}>
+                  <Badge variant={CLAIM_STATUS_BADGE[claim.status]} label={claim.status} />
+                  <IconButton
+                    variant="ghost"
+                    size="sm"
+                    icon={<Trash2 className="h-4 w-4" />}
+                    label="remove claim"
+                    onClick={() => removeClaim(index)}
+                  />
+                </HStack>
+                <TextInput
+                  label={pickCopy(lang, { th: "ข้อความอ้างสิทธิ์", en: "Claim text" })}
+                  value={claim.claim}
+                  onChange={(value) => updateClaim(index, { claim: value })}
+                />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <TextInput
+                    label={pickCopy(lang, { th: "แหล่งที่มา", en: "Source" })}
+                    value={claim.source}
+                    onChange={(value) => updateClaim(index, { source: value })}
+                  />
+                  <Selector
+                    label={pickCopy(lang, { th: "สถานะ", en: "Status" })}
+                    options={CLAIM_STATUSES}
                     value={claim.status}
-                    onValueChange={(value) => updateClaim(index, { status: value as ClaimRecord["status"] })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CLAIM_STATUSES.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => updateClaim(index, { status: value as ClaimRecord["status"] })}
+                  />
                 </div>
-              </div>
-            </div>
+              </VStack>
+            </Card>
           ))}
-          <Button variant="outline" className="self-start gap-2" onClick={addClaim}>
-            <Plus className="h-4 w-4" />
-            {pickCopy(lang, { th: "เพิ่มข้อความอ้างสิทธิ์", en: "Add claim" })}
-          </Button>
-        </CardContent>
+
+          <Button
+            variant="secondary"
+            icon={<Plus className="h-4 w-4" />}
+            label={pickCopy(lang, { th: "เพิ่มข้อความอ้างสิทธิ์", en: "Add claim" })}
+            onClick={addClaim}
+            className="self-start"
+          />
+        </VStack>
       </Card>
 
-      <Card className="border-border/60">
-        <CardHeader>
-          <CardTitle className="text-base">
-            {pickCopy(lang, { th: "เกณฑ์คุณภาพ", en: "QA target" })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-3">
-          <div className="grid gap-1.5">
-            <Label>{pickCopy(lang, { th: "คะแนนเป้าหมาย", en: "Target score" })}</Label>
-            <Input
-              type="number"
+      <Card>
+        <VStack gap={3}>
+          <Heading level={4}>{pickCopy(lang, { th: "เกณฑ์คุณภาพ", en: "QA target" })}</Heading>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <NumberInput
+              label={pickCopy(lang, { th: "คะแนนเป้าหมาย", en: "Target score" })}
               min={0}
               max={10}
               value={document.qa.targetScore}
-              onChange={(e) =>
-                onChange({ ...document, qa: { ...document.qa, targetScore: Number(e.target.value) || 0 } })
-              }
+              onChange={(value) => onChange({ ...document, qa: { ...document.qa, targetScore: value } })}
             />
-          </div>
-          <div className="grid gap-1.5">
-            <Label>{pickCopy(lang, { th: "จำนวนรอบสูงสุด", en: "Max loops" })}</Label>
-            <Input
-              type="number"
+            <NumberInput
+              label={pickCopy(lang, { th: "จำนวนรอบสูงสุด", en: "Max loops" })}
               min={0}
               max={20}
+              isIntegerOnly
               value={document.qa.maxLoops}
-              onChange={(e) =>
-                onChange({ ...document, qa: { ...document.qa, maxLoops: Number(e.target.value) || 0 } })
-              }
+              onChange={(value) => onChange({ ...document, qa: { ...document.qa, maxLoops: value } })}
             />
           </div>
-        </CardContent>
+        </VStack>
       </Card>
     </div>
   );

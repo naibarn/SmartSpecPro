@@ -115,7 +115,7 @@ export const VD_STAGE_LABELS: Record<
   { en: string; th: string }
 > = {
   normalize_series_input: { en: "Normalize input", th: "จัดรูปแบบข้อมูล" },
-  plan_episode_script: { en: "Episode script", th: "บทตอน" },
+  plan_episode_script: { en: "Sub-episode script", th: "บทตอนย่อย" },
   update_character_visual_bible: {
     en: "Character visual bible",
     th: "ไบเบิลตัวละคร",
@@ -148,7 +148,10 @@ export const VD_STAGE_LABELS: Record<
     en: "Render video clips",
     th: "เรนเดอร์คลิปวิดีโอ",
   },
-  assemble_episode_manifest: { en: "Assemble episode", th: "ประกอบตอน" },
+  assemble_episode_manifest: {
+    en: "Assemble Sub-episode",
+    th: "ประกอบตอนย่อย",
+  },
   summarize_episode_to_series_memory: {
     en: "Update series memory",
     th: "อัปเดตความจำซีรีส์",
@@ -202,15 +205,15 @@ export const VD_COPY = {
     generateRealScriptConfirmWarning:
       "This uses real AI generation and spends credits.",
     generateRealScriptConfirmNote:
-      "Continue only if you want the actual episode script, not the free placeholder.",
+      "Continue only if you want the actual Sub-episode script, not the free placeholder.",
     regenerateStage: "Regenerate (delete old)",
     regenerateConfirm:
       "Deletes the current output and creates new — cannot be undone.",
     regenerateConfirmButton: "Delete & regenerate",
     regenerating: "Regenerating…",
-    generateEpisode: "Generate this episode (paid)",
+    generateEpisode: "Generate this Sub-episode (paid)",
     generateEpisodeExplain:
-      "One click generates the script, syncs character data, checks references, and builds the 9-shot storyboard.",
+      "One click generates the Sub-episode script, syncs character data, checks references, and builds the 9-shot storyboard.",
     generateEpisodeConfirmNote:
       "This runs the full setup in one go — script + storyboard generation, real AI, spends credits.",
     generateEpisodeConfirmButton: "Generate",
@@ -255,12 +258,12 @@ export const VD_COPY = {
     repairRunning: "Repair running…",
     repairResult: "Repair result",
     newArtifact: "New artifact/version",
-    createEpisode: "Create episode",
-    noEpisode: "No episode yet",
-    readOnlyCompleted: "Completed episode (read-only)",
+    createEpisode: "Create Sub-episode",
+    noEpisode: "No Sub-episode yet",
+    readOnlyCompleted: "Completed Sub-episode (read-only)",
     dryRunNote: "Dry run: no paid generation.",
     filterKind: "Filter by kind",
-    filterEpisode: "Episode #",
+    filterEpisode: "Sub-episode #",
     all: "All",
     advancedPipelineDetail: "Advanced — view all pipeline stages & run history",
 
@@ -362,7 +365,7 @@ export const VD_COPY = {
 
     /* ---- Quality review card (Phase 3B.5) ---- */
     qualityReview: "Quality review (AI)",
-    runQualityReview: "Check episode quality (AI)",
+    runQualityReview: "Check Sub-episode quality (AI)",
     runningQualityReview: "Reviewing…",
     qualityReviewCostNote:
       "Cheap, LLM-only check — run this before spending credits on images/video.",
@@ -384,7 +387,7 @@ export const VD_COPY = {
     qualityApplyConfirmCountTemplate: "Will apply {n} suggested fixes.",
     qualityApplyCostNote:
       "Real AI repair calls — spends credits on each affected stage (script and/or storyboard).",
-    qualityApplySuccess: "Fixes applied — episode re-reviewed.",
+    qualityApplySuccess: "Fixes applied — Sub-episode re-reviewed.",
     qualityApplySuccessNoReReview:
       "Fixes applied, but the re-review could not run.",
     qualityApplyStaleNotice:
@@ -398,16 +401,17 @@ export const VD_COPY = {
     summarizeMemoryButton: "Summarize into series memory (AI)",
     summarizeMemoryRunning: "Summarizing…",
     summarizeMemoryNeedsScript:
-      "Episode needs a generated script and storyboard first.",
+      "Sub-episode needs a generated script and storyboard first.",
     summarizeMemoryCostNote:
-      "Extracts canonical facts, hooks, character/relationship changes, and continuity risks from this episode into durable series memory used by future episodes.",
+      "Extracts canonical facts, hooks, character/relationship changes, and continuity risks from this Sub-episode into durable series memory used by future Sub-episodes.",
     summarizeMemoryAlready:
-      "This episode was already summarized into series memory.",
+      "This Sub-episode was already summarized into series memory.",
     summarizeMemoryReSummarize: "Re-summarize",
     summarizeMemoryReSummarizeConfirm:
-      "Re-summarizing appends a fresh set of memory events for this episode. The prior summary is kept in history, not deleted. Continue?",
+      "Re-summarizing appends a fresh set of memory events for this Sub-episode. The prior summary is kept in history, not deleted. Continue?",
     summarizeMemorySuccess: "Memory saved: {count} events",
-    summarizeMemoryFailed: "Failed to summarize episode into series memory.",
+    summarizeMemoryFailed:
+      "Failed to summarize Sub-episode into series memory.",
 
     /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ---- */
     resolutionLabel: "Resolution",
@@ -445,7 +449,7 @@ export const VD_COPY = {
     generateShotVideoPromptFailed: "Failed to generate the video prompt.",
     usedVisionNote: "Analyzed from the actual image",
     generateVideoPromptPackWholeEpisode:
-      "Generate video prompts for the whole episode",
+      "Generate video prompts for the whole Sub-episode",
 
     /* ---- Regenerate clip dialogue (2026-07-07 unusable-dialogue fix) ---- */
     regenerateClipDialogue: "Generate new dialogue (AI)",
@@ -471,8 +475,8 @@ export const VD_COPY = {
     download: "Download",
 
     /* ---- Whole-episode compiled video (2026-07-06 download + assembly upgrade) ---- */
-    compiledVideoTitle: "Full-episode video",
-    compiledVideoAssemble: "Assemble full episode video",
+    compiledVideoTitle: "Compiled Sub-episode video",
+    compiledVideoAssemble: "Assemble full Sub-episode video",
     compiledVideoReassemble: "Re-assemble",
     compiledVideoReassembleConfirm:
       "This replaces the current compiled video and cannot be undone.",
@@ -480,14 +484,14 @@ export const VD_COPY = {
     compiledVideoMissingWarning:
       "Missing clips: {list} — generate those clips first, or assemble with only the completed clips.",
     compiledVideoAssemblePartial: "Assemble with completed clips only",
-    compiledVideoProcessing: "Assembling the full episode video…",
-    compiledVideoFailed: "Failed to assemble the full episode video.",
+    compiledVideoProcessing: "Assembling the full Sub-episode video…",
+    compiledVideoFailed: "Failed to assemble the full Sub-episode video.",
     compiledVideoRetry: "Retry",
     compiledVideoDurationLabel: "sec",
     compiledVideoPartialBadge: "Partial ({n} clips)",
     compiledVideoAssembleFailedToast: "Failed to start assembly.",
     compiledVideoAssembleStartedToast:
-      "Started assembling the full episode video.",
+      "Started assembling the full Sub-episode video.",
 
     /* ---- Ad Banner Overlay — per-episode banner selection (F131W, task
        #30-A2, plan.md §6 episode side) ---- */
@@ -521,9 +525,10 @@ export const VD_COPY = {
     videoPromptLanguageSaved: "Language settings saved.",
 
     /* ---- Native audio direction toggle (task #36, added 2026-07-09) ---- */
-    nativeAudioToggleLabel: "Include SFX & ambient sound cues in video prompts (entire episode)",
+    nativeAudioToggleLabel:
+      "Include SFX & ambient sound cues in video prompts (entire Sub-episode)",
     nativeAudioToggleHint:
-      "When enabled, 'Generate Video Prompt' integrates SFX & ambient soundscape cues directly inside every shot's prompt across the episode.",
+      "When enabled, 'Generate Video Prompt' integrates SFX & ambient soundscape cues directly inside every shot's prompt across the Sub-episode.",
     nativeAudioDirectionChipLabel: "AUDIO:",
 
     /* ---- Product reference image picker (2026-07-06 product tie-in upgrade) ---- */
@@ -551,7 +556,7 @@ export const VD_COPY = {
     densityShotOverLengthTemplate:
       "Won't fit — {est}s of speech in a {duration}s clip",
     densityUnderfilledBlockingMessage:
-      "Dialogue is still too thin — repair the whole episode script first",
+      "Dialogue is still too thin — repair the whole Sub-episode script first",
     densityShotLabelTemplate: "Shot {n}",
     densityNoSilenceGapLabel: "No long silence",
     // Owner-reported fix (2026-07-08) — shown only once the shot-chip list
@@ -575,7 +580,7 @@ export const VD_COPY = {
     dialogueIssueUnknownFallback: "Dialogue issue",
 
     /* ---- Production Wizard (section-12, 2026-07-07 production-grade upgrade) ---- */
-    repairWholeEpisodeScript: "Repair the whole episode script",
+    repairWholeEpisodeScript: "Repair the whole Sub-episode script",
     repairThisShotOnly: "Repair only this shot",
     generateRealVideoCta: "Generate the real video",
     wizardNextUpLabel: "Next up",
@@ -592,12 +597,13 @@ export const VD_COPY = {
     wizardStatusBlockedLabel: "Blocked",
     wizardPaidConfirmTitle: "This spends credits",
     wizardPaidConfirmNote: "Confirm to continue with real AI generation.",
-    wizardRepairDialogueWholeEpisode: "Repair the whole dialogue plan",
+    wizardRepairDialogueWholeEpisode:
+      "Repair the whole Sub-episode dialogue plan",
     wizardGenerateMissingStartFrames: "Generate missing start frames",
     wizardGenerateDialoguePlan: "Generate dialogue/audio plan",
-    wizardGenerateScript: "Generate episode script",
+    wizardGenerateScript: "Generate Sub-episode script",
     wizardGenerateStoryboard: "Generate storyboard",
-    wizardAssembleEpisode: "Assemble the episode video",
+    wizardAssembleEpisode: "Assemble the Sub-episode video",
     wizardCompleteSeriesSetup: "Complete series setup",
     wizardNoActionLabel: "Nothing to do",
     wizardEvidenceTitle: "Evidence",
@@ -609,7 +615,7 @@ export const VD_COPY = {
     // `vdWizardScriptCoverageEvidence`). Reworded 2026-07-08 W9-B
     // plain-language sweep (dropped "per-beat"/"density tracking" jargon).
     wizardScriptNoDialogueDataMessage:
-      "This is an older script without detailed dialogue data yet — generate a new episode script to see accurate dialogue numbers.",
+      "This is an older Sub-episode script without detailed dialogue data yet — generate a new Sub-episode script to see accurate dialogue numbers.",
 
     /* ---- Criteria transparency (2026-07-08 wave — owner-facing "why did
        this step pass/fail, what does it check" upgrade) ---- */
@@ -703,12 +709,12 @@ export const VD_COPY = {
     tieInFatigueOk: "Placement frequency is within limits",
     tieInFatigueFail: "Placement is too frequent right now",
     tieInApplyRecommendationsCta: "Apply the recommendations",
-    tieInDeferCta: "Defer the product to the next episode",
-    tieInDeferConfirmTitle: "Defer this episode's product placement?",
+    tieInDeferCta: "Defer the product to the next Sub-episode",
+    tieInDeferConfirmTitle: "Defer this Sub-episode's product placement?",
     tieInDeferConfirmExplain:
-      "Removes the product placement from this episode and records the deferral in history. This episode will no longer carry the tie-in.",
+      "Removes the product placement from this Sub-episode and records the deferral in history. This Sub-episode will no longer carry the tie-in.",
     tieInBlockedHint:
-      "This episode is below the tie-in naturalness floor — repair, remove, or defer the tie-in before generating.",
+      "This Sub-episode is below the tie-in naturalness floor — repair, remove, or defer the tie-in before generating.",
     tieInScheduleAtRiskNote:
       "Deferring this placement means the series may miss its tie-in schedule target.",
     tieInDeferring: "Deferring…",
@@ -720,13 +726,13 @@ export const VD_COPY = {
      *  yet) renders none of these lines; see `getEpisodeDetail`'s
      *  `seasonTieInPlacement` field. ---- */
     tieInSeasonPlanPlannedText:
-      "Per the season plan: this episode has a product.",
+      "Per the season plan: this Sub-episode has a product.",
     tieInSeasonPlanMovedFromTemplate:
-      "Per the season plan: this episode has a product (moved from episode {fromEpisode}).",
+      "Per the season plan: this Sub-episode has a product (moved from Sub-episode {fromEpisode}).",
     tieInSeasonPlanNotPlannedText:
-      "Per the season plan: this episode has no product.",
+      "Per the season plan: this Sub-episode has no product.",
     tieInDeferProposalCreatedTemplate:
-      "Created a proposal to move to episode {episode} — awaiting approval on the Overview page.",
+      "Created a proposal to move to Sub-episode {episode} — awaiting approval on the Overview page.",
     tieInDeferProposalViewCta: "View on Overview",
 
     /* ---- Whole-episode dialogue TTS batch (W12-B, voice chain wave) ---- */
@@ -756,7 +762,7 @@ export const VD_COPY = {
      *  `getEpisodeBreakdownStatus`'s `"beyond_plan"` warning banner.
      *  Mirrors `dialogueAudioMissingCastTitle`/`Link`'s shape exactly. ---- */
     episodeBeyondPlanTitle:
-      "This episode is outside the current season plan (plan covers {count} episode(s))",
+      "This Sub-episode is outside the current story plan (plan covers {count} Sub-episode(s))",
     episodeBeyondPlanBody:
       "Extend the season plan on the Overview page first so the script, deep drafts, and QC can reference the story outline.",
     episodeBeyondPlanLink: "Go to Overview to extend the season plan",
@@ -784,29 +790,30 @@ export const VD_COPY = {
       "Ad banners excluded from this render",
     adBannerExclusionUnknownReasonFallback: "Excluded from this render",
     finalRenderStartedSummaryTemplate:
-      "Started assembling the full episode video — {subtitleLines} subtitle line(s), {audioSegments} audio segment(s)",
+      "Started assembling the full Sub-episode video — {subtitleLines} subtitle line(s), {audioSegments} audio segment(s)",
     finalRenderExcludedAdBannersToastTemplate:
       "Skipped {n} ad banner(s): {list}",
     seasonRenderButton: "Render whole season",
     seasonRenderDialogTitle: "Render whole season",
     seasonRenderDialogExplainer:
-      "Episodes render one at a time, in order. Episodes that aren't ready are skipped (ad banners are only available for single-episode renders in this version).",
+      "Sub-episodes render one at a time, in order. Sub-episodes that aren't ready are skipped (ad banners are only available for single-Sub-episode renders in this version).",
     seasonRenderDialogConfirm: "Start season render",
-    seasonRenderSubmittedSummaryTemplate: "Queued {n} episode(s): {episodes}",
-    seasonRenderSkippedSummaryTemplate: "Skipped {n} episode(s)",
-    seasonRenderNoneSubmittedToast: "No episodes were ready to render.",
+    seasonRenderSubmittedSummaryTemplate:
+      "Queued {n} Sub-episode(s): {episodes}",
+    seasonRenderSkippedSummaryTemplate: "Skipped {n} Sub-episode(s)",
+    seasonRenderNoneSubmittedToast: "No Sub-episodes were ready to render.",
     seasonRenderStartedToast: "Started the season render.",
     seasonRenderFailedToast: "Failed to start the season render.",
 
     /* ---- Episode Plan panel (planning/`polished-toasting-gadget.md` Part
        A2) — read-only ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง reference card,
        replaces the Production Wizard mount. ---- */
-    episodePlanPanelTitle: "Episode plan",
-    episodePlanWorkingTitleLabel: "Episode title",
+    episodePlanPanelTitle: "Sub-episode plan",
+    episodePlanWorkingTitleLabel: "Sub-episode title",
     episodePlanLoglineLabel: "Logline",
     episodePlanKeyBeatsLabel: "Key beats",
     episodePlanCliffhangerLabel: "Cliffhanger",
-    episodePlanEmptyState: "This episode has no drafted story plan yet.",
+    episodePlanEmptyState: "This Sub-episode has no drafted story plan yet.",
 
     /* ---- Per-shot character/variant reference picker (planning/vertical-
        drama-twin-variant-completeness/plan.md, W6 frontend) — distinct from
@@ -822,8 +829,7 @@ export const VD_COPY = {
     shotCharacterRefPickerTwinBadge: "twin of {name}",
     shotCharacterRefPickerUnknownSectionTitle:
       "Keys not found in the character roster (removable)",
-    shotCharacterRefPickerNoCharacters:
-      "This series has no characters yet.",
+    shotCharacterRefPickerNoCharacters: "This series has no characters yet.",
     shotCharacterRefPickerSave: "Save",
     shotCharacterRefPickerSelectedCount: "{n} selected",
     shotCharacterRefPickerSaved: "This shot's character reference(s) updated.",
@@ -845,14 +851,14 @@ export const VD_COPY = {
     generatingRealScript: "กำลังสร้าง…",
     generateRealScriptConfirmWarning: "การทำงานนี้ใช้ AI จริงและใช้เครดิต",
     generateRealScriptConfirmNote:
-      "ดำเนินการต่อเฉพาะเมื่อต้องการบทตอนจริง ไม่ใช่ placeholder ฟรี",
+      "ดำเนินการต่อเฉพาะเมื่อต้องการบทตอนย่อยจริง ไม่ใช่ placeholder ฟรี",
     regenerateStage: "สร้างใหม่ (ลบชุดเดิม)",
     regenerateConfirm: "จะลบผลลัพธ์ปัจจุบันและสร้างใหม่ — ย้อนกลับไม่ได้",
     regenerateConfirmButton: "ลบและสร้างใหม่",
     regenerating: "กำลังสร้างใหม่…",
-    generateEpisode: "สร้างตอนนี้ (มีค่าใช้จ่าย)",
+    generateEpisode: "สร้างตอนย่อยนี้ (มีค่าใช้จ่าย)",
     generateEpisodeExplain:
-      "กดครั้งเดียว ระบบจะสร้างบท ซิงก์ข้อมูลตัวละคร ตรวจภาพอ้างอิง และสร้างสตอรีบอร์ด 9 ช็อตให้ครบ",
+      "กดครั้งเดียว ระบบจะสร้างบทตอนย่อย ซิงก์ข้อมูลตัวละคร ตรวจภาพอ้างอิง และสร้างสตอรีบอร์ด 9 ช็อตให้ครบ",
     generateEpisodeConfirmNote:
       "จะรันขั้นตอนทั้งหมดในครั้งเดียว — สร้างบท + สตอรีบอร์ด ใช้ AI จริง มีค่าใช้จ่าย",
     generateEpisodeConfirmButton: "สร้างเลย",
@@ -897,12 +903,12 @@ export const VD_COPY = {
     repairRunning: "กำลังซ่อม…",
     repairResult: "ผลการซ่อม",
     newArtifact: "อาร์ติแฟกต์/เวอร์ชันใหม่",
-    createEpisode: "สร้างตอน",
-    noEpisode: "ยังไม่มีตอน",
-    readOnlyCompleted: "ตอนที่เสร็จแล้ว (อ่านอย่างเดียว)",
+    createEpisode: "สร้างตอนย่อย",
+    noEpisode: "ยังไม่มีตอนย่อย",
+    readOnlyCompleted: "ตอนย่อยที่เสร็จแล้ว (อ่านอย่างเดียว)",
     dryRunNote: "โหมดทดสอบ: ไม่มีการสร้างที่มีค่าใช้จ่าย",
     filterKind: "กรองตามชนิด",
-    filterEpisode: "ตอนที่",
+    filterEpisode: "ตอนย่อยที่",
     all: "ทั้งหมด",
     advancedPipelineDetail:
       "ขั้นสูง — ดูทุกขั้นตอนของ pipeline และประวัติการรัน",
@@ -1004,8 +1010,8 @@ export const VD_COPY = {
     generateVideoPromptPackNeedsStoryboard: "ต้องมีสตอรีบอร์ดก่อน",
 
     /* ---- Quality review card (Phase 3B.5) ---- */
-    qualityReview: "ตรวจคุณภาพเรื่อง (AI)",
-    runQualityReview: "ตรวจคุณภาพเรื่อง (AI)",
+    qualityReview: "ตรวจคุณภาพตอนย่อย (AI)",
+    runQualityReview: "ตรวจคุณภาพตอนย่อย (AI)",
     runningQualityReview: "กำลังตรวจสอบ…",
     qualityReviewCostNote:
       "ตรวจสอบด้วย AI ราคาถูก — ควรทำก่อนใช้เครดิตสร้างภาพ/วิดีโอ",
@@ -1026,7 +1032,7 @@ export const VD_COPY = {
     qualityApplyConfirmCountTemplate: "จะปรับตามคำแนะนำ {n} รายการ",
     qualityApplyCostNote:
       "เป็นการเรียก AI จริงเพื่อแก้ไข — มีค่าใช้จ่ายในแต่ละส่วนที่ได้รับผลกระทบ (บทและ/หรือสตอรีบอร์ด)",
-    qualityApplySuccess: "ปรับแก้เรียบร้อย — ตรวจคุณภาพซ้ำแล้ว",
+    qualityApplySuccess: "ปรับแก้เรียบร้อย — ตรวจคุณภาพตอนย่อยซ้ำแล้ว",
     qualityApplySuccessNoReReview: "ปรับแก้เรียบร้อย แต่ตรวจคุณภาพซ้ำไม่สำเร็จ",
     qualityApplyStaleNotice:
       "หมายเหตุ: ขั้นตอนถัดไปกลายเป็นข้อมูลเก่าแล้ว — ควรสร้าง prompt ภาพ/วิดีโอของช็อตที่เกี่ยวข้องใหม่",
@@ -1039,15 +1045,16 @@ export const VD_COPY = {
     summarizeMemory: "สรุปความจำเข้าซีรีย์ (AI)",
     summarizeMemoryButton: "สรุปความจำเข้าซีรีย์ (AI)",
     summarizeMemoryRunning: "กำลังสรุป…",
-    summarizeMemoryNeedsScript: "ตอนนี้ต้องมีบทและสตอรี่บอร์ดที่สร้างแล้วก่อน",
+    summarizeMemoryNeedsScript:
+      "ตอนย่อยนี้ต้องมีบทและสตอรี่บอร์ดที่สร้างแล้วก่อน",
     summarizeMemoryCostNote:
-      "ดึงข้อเท็จจริงหลัก ปมค้าง การเปลี่ยนแปลงของตัวละคร/ความสัมพันธ์ และความเสี่ยงด้านความต่อเนื่องจากตอนนี้ เข้าสู่ความจำถาวรของซีรีย์ เพื่อใช้กับตอนถัดไป",
-    summarizeMemoryAlready: "ตอนนี้ถูกสรุปเข้าความจำซีรีย์แล้ว",
+      "ดึงข้อเท็จจริงหลัก ปมค้าง การเปลี่ยนแปลงของตัวละคร/ความสัมพันธ์ และความเสี่ยงด้านความต่อเนื่องจากตอนย่อยนี้ เข้าสู่ความจำถาวรของซีรีย์ เพื่อใช้กับตอนย่อยถัดไป",
+    summarizeMemoryAlready: "ตอนย่อยนี้ถูกสรุปเข้าความจำซีรีย์แล้ว",
     summarizeMemoryReSummarize: "สรุปใหม่",
     summarizeMemoryReSummarizeConfirm:
-      "การสรุปใหม่จะเพิ่มชุดเหตุการณ์ความจำใหม่สำหรับตอนนี้ สรุปเดิมจะยังถูกเก็บไว้ในประวัติ ไม่ถูกลบ ต้องการดำเนินการต่อหรือไม่?",
+      "การสรุปใหม่จะเพิ่มชุดเหตุการณ์ความจำใหม่สำหรับตอนย่อยนี้ สรุปเดิมจะยังถูกเก็บไว้ในประวัติ ไม่ถูกลบ ต้องการดำเนินการต่อหรือไม่?",
     summarizeMemorySuccess: "บันทึกความจำแล้ว: {count} รายการ",
-    summarizeMemoryFailed: "สรุปความจำเข้าซีรีย์ไม่สำเร็จ",
+    summarizeMemoryFailed: "สรุปตอนย่อยเข้าความจำซีรีย์ไม่สำเร็จ",
 
     /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ---- */
     resolutionLabel: "ความละเอียด",
@@ -1095,7 +1102,7 @@ export const VD_COPY = {
       "อัปเดตพรอมต์วิดีโอให้ตรงบทใหม่ไหม?",
     regenerateClipDialogueUpdatePromptAction: "อัปเดตพรอมต์วิดีโอ",
     dialogueOriginScriptHint: "ดึงจากบท — ตรวจความเป็นธรรมชาติก่อนใช้",
-    generateVideoPromptPackWholeEpisode: "สร้างพรอมต์วิดีโอทั้งตอน",
+    generateVideoPromptPackWholeEpisode: "สร้างพรอมต์วิดีโอทั้งตอนย่อย",
 
     /* ---- Completed video-clip player (2026-07-06 fix — completed video
        renders were never persisted/shown; only a transient toast) ---- */
@@ -1106,8 +1113,8 @@ export const VD_COPY = {
     download: "ดาวน์โหลด",
 
     /* ---- Whole-episode compiled video (2026-07-06 download + assembly upgrade) ---- */
-    compiledVideoTitle: "วิดีโอรวมทั้งตอน",
-    compiledVideoAssemble: "ประกอบวิดีโอทั้งตอน",
+    compiledVideoTitle: "วิดีโอรวม Sub-episode",
+    compiledVideoAssemble: "ประกอบวิดีโอรวม Sub-episode",
     compiledVideoReassemble: "ประกอบใหม่",
     compiledVideoReassembleConfirm:
       "การทำนี้จะแทนที่วิดีโอรวมที่มีอยู่ และย้อนกลับไม่ได้",
@@ -1115,13 +1122,13 @@ export const VD_COPY = {
     compiledVideoMissingWarning:
       "ยังไม่มีคลิป: {list} — สร้างคลิปเหล่านี้ก่อน หรือประกอบเฉพาะช็อตที่เสร็จแล้ว",
     compiledVideoAssemblePartial: "ประกอบเฉพาะช็อตที่เสร็จแล้ว",
-    compiledVideoProcessing: "กำลังประกอบวิดีโอทั้งตอน…",
-    compiledVideoFailed: "ประกอบวิดีโอทั้งตอนไม่สำเร็จ",
+    compiledVideoProcessing: "กำลังประกอบวิดีโอรวม Sub-episode…",
+    compiledVideoFailed: "ประกอบวิดีโอรวม Sub-episode ไม่สำเร็จ",
     compiledVideoRetry: "ลองใหม่",
     compiledVideoDurationLabel: "วิ",
     compiledVideoPartialBadge: "บางส่วน ({n} คลิป)",
     compiledVideoAssembleFailedToast: "เริ่มการประกอบวิดีโอไม่สำเร็จ",
-    compiledVideoAssembleStartedToast: "เริ่มประกอบวิดีโอทั้งตอนแล้ว",
+    compiledVideoAssembleStartedToast: "เริ่มประกอบวิดีโอรวม Sub-episode แล้ว",
 
     /* ---- Ad Banner Overlay — per-episode banner selection (F131W, task
        #30-A2, plan.md §6 episode side) ---- */
@@ -1154,9 +1161,10 @@ export const VD_COPY = {
     videoPromptLanguageSaved: "บันทึกการตั้งค่าภาษาแล้ว",
 
     /* ---- Native audio direction toggle (task #36, added 2026-07-09) ---- */
-    nativeAudioToggleLabel: "รวมเสียงประกอบในพรอมต์วิดีโอทั้งตอน (SFX + บรรยากาศ)",
+    nativeAudioToggleLabel:
+      "รวมเสียงประกอบในพรอมต์วิดีโอทั้งตอนย่อย (SFX + บรรยากาศ)",
     nativeAudioToggleHint:
-      "เมื่อเปิดใช้งาน ปุ่ม 'สร้างพรอมต์วีดีโอ' จะรวมคำสั่งเสียงประกอบ (SFX/บรรยากาศ) เข้าไปในพรอมต์วิดีโอของทุกช็อตในตอนทันที ไม่ต้องตั้งค่าทีละช็อต",
+      "เมื่อเปิดใช้งาน ปุ่ม 'สร้างพรอมต์วีดีโอ' จะรวมคำสั่งเสียงประกอบ (SFX/บรรยากาศ) เข้าไปในพรอมต์วิดีโอของทุกช็อตในตอนย่อยทันที ไม่ต้องตั้งค่าทีละช็อต",
     nativeAudioDirectionChipLabel: "เสียง:",
 
     /* ---- Product reference image picker (2026-07-06 product tie-in upgrade) ---- */
@@ -1182,7 +1190,7 @@ export const VD_COPY = {
     densitySilenceGapBadgeTemplate: "ช็อตนี้เงียบเกิน {n} วิ",
     densityShotOverLengthTemplate:
       "ยาวเกินช็อต — พูด {est} วิ ในช็อต {duration} วิ",
-    densityUnderfilledBlockingMessage: "บทยังบางเกินไป — ซ่อมบททั้งตอนก่อน",
+    densityUnderfilledBlockingMessage: "บทยังบางเกินไป — ซ่อมบททั้งตอนย่อยก่อน",
     densityShotLabelTemplate: "ช็อต {n}",
     densityNoSilenceGapLabel: "ไม่มีช่วงเงียบยาว",
     densityShotChipsScrollHint: "เลื่อนดูช็อตเพิ่มเติม",
@@ -1193,7 +1201,7 @@ export const VD_COPY = {
     dialogueIssueUnknownFallback: "บทพูดมีปัญหา",
 
     /* ---- Production Wizard (section-12, 2026-07-07 production-grade upgrade) ---- */
-    repairWholeEpisodeScript: "ซ่อมบททั้งตอน",
+    repairWholeEpisodeScript: "ซ่อมบททั้งตอนย่อย",
     repairThisShotOnly: "ซ่อมเฉพาะช็อตนี้",
     generateRealVideoCta: "สร้างวิดีโอจริง",
     wizardNextUpLabel: "ขั้นต่อไป",
@@ -1210,12 +1218,12 @@ export const VD_COPY = {
     wizardStatusBlockedLabel: "ติดขัด",
     wizardPaidConfirmTitle: "การทำงานนี้ใช้เครดิต",
     wizardPaidConfirmNote: "กดยืนยันเพื่อดำเนินการด้วย AI จริง",
-    wizardRepairDialogueWholeEpisode: "ซ่อมแผนบทพูดทั้งตอน",
+    wizardRepairDialogueWholeEpisode: "ซ่อมแผนบทพูดทั้งตอนย่อย",
     wizardGenerateMissingStartFrames: "สร้างเฟรมเริ่มต้นที่ยังขาด",
     wizardGenerateDialoguePlan: "สร้างแผนบทพูด/เสียง",
-    wizardGenerateScript: "สร้างบทตอน",
+    wizardGenerateScript: "สร้างบทตอนย่อย",
     wizardGenerateStoryboard: "สร้างสตอรีบอร์ด",
-    wizardAssembleEpisode: "ประกอบตอนวิดีโอ",
+    wizardAssembleEpisode: "ประกอบวิดีโอตอนย่อย",
     wizardCompleteSeriesSetup: "ตั้งค่าซีรีส์ให้ครบ",
     wizardNoActionLabel: "ไม่มีขั้นตอนต้องทำ",
     wizardEvidenceTitle: "ข้อมูลประกอบ",
@@ -1225,7 +1233,7 @@ export const VD_COPY = {
     // ความหนาแน่น" jargon (embedded-beat data / density-measurement
     // system), same meaning in plain words.
     wizardScriptNoDialogueDataMessage:
-      "บทนี้เป็นบทเก่าที่ยังไม่มีข้อมูลบทพูดละเอียดพอ — สร้างบทตอนใหม่เพื่อดูตัวเลขบทพูดที่แม่นยำ",
+      "บทนี้เป็นบทเก่าที่ยังไม่มีข้อมูลบทพูดละเอียดพอ — สร้างบทตอนย่อยใหม่เพื่อดูตัวเลขบทพูดที่แม่นยำ",
 
     /* ---- Criteria transparency (2026-07-08 wave — "ทำไมขั้นนี้ถึงผ่าน/ไม่ผ่าน
        เกณฑ์คืออะไร" ให้เจ้าของงานตรวจสอบได้เอง) ---- */
@@ -1319,12 +1327,12 @@ export const VD_COPY = {
     tieInFatigueOk: "ความถี่การฝังสินค้ายังปกติ",
     tieInFatigueFail: "ฝังสินค้าถี่เกินไปในช่วงนี้",
     tieInApplyRecommendationsCta: "ปรับตามคำแนะนำ",
-    tieInDeferCta: "เลื่อนสินค้าไปตอนถัดไป",
-    tieInDeferConfirmTitle: "เลื่อนตำแหน่งสินค้าของตอนนี้หรือไม่?",
+    tieInDeferCta: "เลื่อนสินค้าไปตอนย่อยถัดไป",
+    tieInDeferConfirmTitle: "เลื่อนตำแหน่งสินค้าของตอนย่อยนี้หรือไม่?",
     tieInDeferConfirmExplain:
-      "จะลบตำแหน่งสินค้าออกจากตอนนี้ และบันทึกการเลื่อนไว้ในประวัติ — ตอนนี้จะไม่มีการฝังสินค้าอีก",
+      "จะลบตำแหน่งสินค้าออกจากตอนย่อยนี้ และบันทึกการเลื่อนไว้ในประวัติ — ตอนย่อยนี้จะไม่มีการฝังสินค้าอีก",
     tieInBlockedHint:
-      "ตอนนี้ยังต่ำกว่าเกณฑ์ความเป็นธรรมชาติของการฝังสินค้า — ปรับ ลบ หรือเลื่อนสินค้าออกก่อนสร้างสื่อ",
+      "ตอนย่อยนี้ยังต่ำกว่าเกณฑ์ความเป็นธรรมชาติของการฝังสินค้า — ปรับ ลบ หรือเลื่อนสินค้าออกก่อนสร้างสื่อ",
     tieInScheduleAtRiskNote:
       "การเลื่อนครั้งนี้อาจทำให้ซีรีส์พลาดเป้าตารางการฝังสินค้า",
     tieInDeferring: "กำลังเลื่อน…",
@@ -1332,18 +1340,18 @@ export const VD_COPY = {
 
     /* ---- Season-plan tie-in status line + real-proposal defer toast
      *  (task #31, spec §7.7.2/§7.7.3, added 2026-07-09) ---- */
-    tieInSeasonPlanPlannedText: "ตามแผนซีซั่น: ตอนนี้มีสินค้า",
+    tieInSeasonPlanPlannedText: "ตามแผนซีซั่น: ตอนย่อยนี้มีสินค้า",
     tieInSeasonPlanMovedFromTemplate:
-      "ตามแผนซีซั่น: ตอนนี้มีสินค้า (ย้ายมาจากตอนที่ {fromEpisode})",
-    tieInSeasonPlanNotPlannedText: "ตอนนี้ไม่มีสินค้าตามแผน",
+      "ตามแผนซีซั่น: ตอนย่อยนี้มีสินค้า (ย้ายมาจากตอนย่อยที่ {fromEpisode})",
+    tieInSeasonPlanNotPlannedText: "ตอนย่อยนี้ไม่มีสินค้าตามแผน",
     tieInDeferProposalCreatedTemplate:
-      "สร้างข้อเสนอย้ายไปตอนที่ {episode} แล้ว — รออนุมัติที่หน้าภาพรวม",
+      "สร้างข้อเสนอย้ายไปตอนย่อยที่ {episode} แล้ว — รออนุมัติที่หน้าภาพรวม",
     tieInDeferProposalViewCta: "ดูที่หน้าภาพรวม",
 
     /* ---- Whole-episode dialogue TTS batch (W12-B, voice chain wave) ---- */
     dialogueAudioSummaryTemplate: "เสียงพูด: {ready}/{total} บรรทัด",
     dialogueAudioGenerateBatchCta:
-      "สร้างเสียงพูดทั้งตอน (มีค่าใช้จ่าย ≈ ตามจำนวนบรรทัดที่ยังไม่มีเสียง)",
+      "สร้างเสียงพูดทั้งตอนย่อย (มีค่าใช้จ่าย ≈ ตามจำนวนบรรทัดที่ยังไม่มีเสียง)",
     dialogueAudioGenerateBatchConfirmTitle: "การทำงานนี้ใช้เครดิต",
     dialogueAudioGenerateBatchConfirmBody:
       "จะสร้างเสียงพูดให้ทุกบรรทัดที่ยังไม่มีเสียง บรรทัดที่มีเสียงอยู่แล้วจะถูกข้าม",
@@ -1367,7 +1375,7 @@ export const VD_COPY = {
      *  `getEpisodeBreakdownStatus`'s `"beyond_plan"` warning banner.
      *  Mirrors `dialogueAudioMissingCastTitle`/`Link`'s shape exactly. ---- */
     episodeBeyondPlanTitle:
-      "ตอนนี้อยู่นอกแผนซีซั่นปัจจุบัน (แผนมี {count} ตอน)",
+      "ตอนย่อยนี้อยู่นอกโครงสร้างเรื่องปัจจุบัน (แผนมี {count} ตอนย่อย)",
     episodeBeyondPlanBody:
       "ขยายแผนซีซั่นที่หน้าภาพรวมก่อน เพื่อให้บท/ร่างละเอียด/QC อ้างอิงโครงเรื่องได้",
     episodeBeyondPlanLink: "ไปที่หน้าภาพรวมเพื่อขยายแผนซีซั่น",
@@ -1385,36 +1393,38 @@ export const VD_COPY = {
      *  copy immediately above verbatim. ---- */
     finalRenderSubtitleFontSizeLabel: "ขนาดตัวอักษรซับไตเติล",
     finalRenderShowAgeBadgeLabel: "แสดง badge อายุผู้ชม",
-    finalRenderShowAgeBadgeHelp: "ติดป้ายเรตอายุมุมวิดีโอ (จากที่ตั้งไว้ในซีรีย์)",
+    finalRenderShowAgeBadgeHelp:
+      "ติดป้ายเรตอายุมุมวิดีโอ (จากที่ตั้งไว้ในซีรีย์)",
     finalRenderResultTitle: "ผลการเรนเดอร์ล่าสุด",
     finalRenderResultSubtitleLinesTemplate: "ฝังซับไตเติล {n} บรรทัด",
     finalRenderResultAudioSegmentsTemplate: "รวมเสียงพูด {n} ช่วง",
-    finalRenderResultExcludedBannersTitle: "แบนเนอร์ที่ถูกข้ามจากการเรนเดอร์นี้",
+    finalRenderResultExcludedBannersTitle:
+      "แบนเนอร์ที่ถูกข้ามจากการเรนเดอร์นี้",
     adBannerExclusionUnknownReasonFallback: "ถูกข้ามจากการเรนเดอร์นี้",
     finalRenderStartedSummaryTemplate:
-      "เริ่มประกอบวิดีโอทั้งตอนแล้ว — ซับไตเติล {subtitleLines} บรรทัด, เสียงพูด {audioSegments} ช่วง",
+      "เริ่มประกอบวิดีโอรวมตอนย่อยแล้ว — ซับไตเติล {subtitleLines} บรรทัด, เสียงพูด {audioSegments} ช่วง",
     finalRenderExcludedAdBannersToastTemplate:
       "ข้ามแบนเนอร์ {n} รายการ: {list}",
     seasonRenderButton: "เรนเดอร์ทั้งซีซั่น",
     seasonRenderDialogTitle: "เรนเดอร์ทั้งซีซั่น",
     seasonRenderDialogExplainer:
-      "ระบบจะเรนเดอร์ทีละตอนตามลำดับ ตอนที่ไม่พร้อมจะถูกข้าม (แบนเนอร์ใช้ได้เฉพาะการเรนเดอร์รายตอนในเวอร์ชันนี้)",
+      "ระบบจะเรนเดอร์ทีละตอนย่อยตามลำดับ ตอนย่อยที่ไม่พร้อมจะถูกข้าม (แบนเนอร์ใช้ได้เฉพาะการเรนเดอร์รายตอนย่อยในเวอร์ชันนี้)",
     seasonRenderDialogConfirm: "เริ่มเรนเดอร์ทั้งซีซั่น",
-    seasonRenderSubmittedSummaryTemplate: "คิวแล้ว {n} ตอน: {episodes}",
-    seasonRenderSkippedSummaryTemplate: "ข้าม {n} ตอน",
-    seasonRenderNoneSubmittedToast: "ไม่มีตอนไหนพร้อมเรนเดอร์",
+    seasonRenderSubmittedSummaryTemplate: "คิวแล้ว {n} ตอนย่อย: {episodes}",
+    seasonRenderSkippedSummaryTemplate: "ข้าม {n} ตอนย่อย",
+    seasonRenderNoneSubmittedToast: "ไม่มีตอนย่อยไหนพร้อมเรนเดอร์",
     seasonRenderStartedToast: "เริ่มเรนเดอร์ทั้งซีซั่นแล้ว",
     seasonRenderFailedToast: "เริ่มเรนเดอร์ทั้งซีซั่นไม่สำเร็จ",
 
     /* ---- Episode Plan panel (planning/`polished-toasting-gadget.md` Part
        A2) — read-only ชื่อตอน/เรื่องย่อ/จุดดำเนินเรื่อง/จุดค้าง reference card,
        replaces the Production Wizard mount. ---- */
-    episodePlanPanelTitle: "แผนเนื้อเรื่องของตอน",
-    episodePlanWorkingTitleLabel: "ชื่อตอน",
+    episodePlanPanelTitle: "แผนเนื้อเรื่องของตอนย่อย",
+    episodePlanWorkingTitleLabel: "ชื่อตอนย่อย",
     episodePlanLoglineLabel: "เรื่องย่อ",
     episodePlanKeyBeatsLabel: "จุดดำเนินเรื่อง",
     episodePlanCliffhangerLabel: "จุดค้าง",
-    episodePlanEmptyState: "ยังไม่มีแผนเนื้อเรื่องของตอนนี้",
+    episodePlanEmptyState: "ยังไม่มีแผนเนื้อเรื่องของตอนย่อยนี้",
 
     /* ---- Per-shot character/variant reference picker (planning/vertical-
        drama-twin-variant-completeness/plan.md, W6 frontend) ---- */
@@ -1529,8 +1539,8 @@ export const VD_DIALOGUE_ISSUE_LABELS: Record<
     th: "บทพูดสั้นเกินไปสำหรับช็อตนี้",
   },
   VD_DIALOGUE_EPISODE_UNDERFILLED: {
-    en: "Episode dialogue is too sparse",
-    th: "บทพูดทั้งตอนน้อยเกินไป",
+    en: "Sub-episode dialogue is too sparse",
+    th: "บทพูดทั้งตอนย่อยน้อยเกินไป",
   },
   // 2026-07-08/W9-A landed this code for real (spec §14.1 rule 6b) —
   // shares its exact wording with the density meter's own dedicated
@@ -1581,7 +1591,7 @@ export const VD_WIZARD_STEP_LABELS: Record<
   { en: string; th: string }
 > = {
   series_setup: { en: "Series setup", th: "ตั้งค่าซีรีส์" },
-  episode_script: { en: "Episode script", th: "บทตอน" },
+  episode_script: { en: "Sub-episode script", th: "บทตอนย่อย" },
   storyboard_shots: { en: "Storyboard", th: "สตอรีบอร์ด" },
   script_qc: { en: "Script quality QC", th: "ตรวจคุณภาพบท" },
   start_frames: { en: "Start frames", th: "เฟรมเริ่มต้น" },
@@ -1590,7 +1600,7 @@ export const VD_WIZARD_STEP_LABELS: Record<
   video_prompts: { en: "Video prompts", th: "พรอมต์วิดีโอ" },
   shot_repair: { en: "Shot repair", th: "ซ่อมช็อต" },
   video_clips: { en: "Video clips", th: "คลิปวิดีโอ" },
-  final_episode: { en: "Final episode", th: "ประกอบตอนจบ" },
+  final_episode: { en: "Final Sub-episode", th: "ประกอบตอนย่อยจบ" },
 };
 
 export function vdWizardStepLabel(
@@ -1689,7 +1699,7 @@ export const VD_WIZARD_PRIMARY_ACTION_LABELS: Record<
     en: "Complete series setup",
     th: "ตั้งค่าซีรีส์ให้ครบ",
   },
-  generate_script: { en: "Generate episode script", th: "สร้างบทตอน" },
+  generate_script: { en: "Generate Sub-episode script", th: "สร้างบทตอนย่อย" },
   run_quality_review: { en: "Run quality review", th: "ตรวจคุณภาพเรื่อง" },
   run_quality_improve_loop: { en: "Auto-improve", th: "ปรับอัตโนมัติ" },
   generate_storyboard: { en: "Generate storyboard", th: "สร้างสตอรีบอร์ด" },
@@ -1702,19 +1712,22 @@ export const VD_WIZARD_PRIMARY_ACTION_LABELS: Record<
     th: "สร้างแผนบทพูด/เสียง",
   },
   repair_dialogue: {
-    en: "Repair the whole dialogue plan",
-    th: "ซ่อมแผนบทพูดทั้งตอน",
+    en: "Repair the whole Sub-episode dialogue plan",
+    th: "ซ่อมแผนบทพูดทั้งตอนย่อย",
   },
   generate_video_prompts: {
-    en: "Generate video prompts for the whole episode",
-    th: "สร้างพรอมต์วิดีโอทั้งตอน",
+    en: "Generate video prompts for the whole Sub-episode",
+    th: "สร้างพรอมต์วิดีโอทั้งตอนย่อย",
   },
   repair_shots: { en: "Repair only this shot", th: "ซ่อมเฉพาะช็อตนี้" },
   generate_video_clips: {
     en: "Generate the real video",
     th: "สร้างวิดีโอจริง",
   },
-  assemble_episode: { en: "Assemble the episode video", th: "ประกอบตอนวิดีโอ" },
+  assemble_episode: {
+    en: "Assemble the Sub-episode video",
+    th: "ประกอบวิดีโอตอนย่อย",
+  },
   none: { en: "", th: "" },
 };
 
@@ -1738,8 +1751,8 @@ export const VD_WIZARD_REASON_LABELS: Record<
   { en: string; th: string }
 > = {
   VD_WIZARD_SCRIPT_MISSING: {
-    en: "The episode script has not been generated yet.",
-    th: "ยังไม่ได้สร้างบทตอน",
+    en: "The Sub-episode script has not been generated yet.",
+    th: "ยังไม่ได้สร้างบทตอนย่อย",
   },
   VD_WIZARD_SCRIPT_UNDERFILLED: {
     en: "The script has too little dialogue for the target duration.",
@@ -1801,13 +1814,13 @@ export const VD_WIZARD_REASON_LABELS: Record<
     th: "ยังมีคลิปวิดีโอที่ยังไม่เสร็จ",
   },
   VD_WIZARD_ASSEMBLY_BLOCKED: {
-    en: "The episode is not ready to assemble yet.",
+    en: "The Sub-episode is not ready to assemble yet.",
     // 2026-07-08 W9-B plain-language sweep — the old "ตอนนี้ยังไม่พร้อม
     // ประกอบ" reads ambiguously (ตอนนี้ = "right now", not "this episode",
     // on first read). Rewritten to reuse the SAME "ประกอบตอนวิดีโอ" phrase
     // the assemble_episode CTA already uses (single source of truth, zero
     // ambiguity).
-    th: "ยังไม่พร้อมประกอบตอนวิดีโอ",
+    th: "ยังไม่พร้อมประกอบวิดีโอตอนย่อย",
   },
 };
 
@@ -1880,8 +1893,8 @@ export const VD_WIZARD_CRITERION_LABELS: Record<
     th: "ตั้งค่าซีรีส์ครบถ้วน",
   },
   script_exists: {
-    en: "Episode script has been generated",
-    th: "สร้างบทตอนแล้ว",
+    en: "Sub-episode script has been generated",
+    th: "สร้างบทตอนย่อยแล้ว",
   },
   coverage_at_least_minimum: {
     en: "Dialogue clears the minimum floor",
@@ -1895,7 +1908,7 @@ export const VD_WIZARD_CRITERION_LABELS: Record<
   // specified Thai label verbatim.
   story_structure_complete: {
     en: "Story is complete (hook, beats, cliffhanger)",
-    th: "เนื้อเรื่องครบ (จุดเปิดเรื่อง บีตเรื่อง จุดค้างท้ายตอน)",
+    th: "เนื้อเรื่องครบ (จุดเปิดเรื่อง บีตเรื่อง จุดค้างท้ายตอนย่อย)",
   },
   shots_9: {
     en: "Storyboard has the required 9 shots",
@@ -1956,8 +1969,8 @@ export const VD_WIZARD_CRITERION_LABELS: Record<
     th: "กำหนดแนวทางเสียง/คำบรรยายแล้ว",
   },
   final_assembly_completed: {
-    en: "Episode has been assembled",
-    th: "ประกอบตอนแล้ว",
+    en: "Sub-episode has been assembled",
+    th: "ประกอบตอนย่อยแล้ว",
   },
 
   // 2026-07-08/W9-A landed these 7 content-completeness ids for real (spec
@@ -2194,7 +2207,7 @@ export const VD_WIZARD_EVIDENCE_LABELS: Record<
   },
   episode_script_not_started: {
     en: { label: "Script", value: "Not started" },
-    th: { label: "บทตอน", value: "ยังไม่เริ่ม" },
+    th: { label: "บทตอนย่อย", value: "ยังไม่เริ่ม" },
   },
   // Acceptance-review fix #4 (2026-07-08, dormant leak) — the
   // `episode_script` speech-coverage row's flags-off fallback (no real
@@ -2228,12 +2241,12 @@ export const VD_WIZARD_EVIDENCE_LABELS: Record<
     },
   },
   storyboard_needs_script_fix: {
-    en: { label: "Episode script", value: "Underfilled" },
-    th: { label: "บทตอน", value: "บทพูดน้อยเกินไป" },
+    en: { label: "Sub-episode script", value: "Underfilled" },
+    th: { label: "บทตอนย่อย", value: "บทพูดน้อยเกินไป" },
   },
   storyboard_needs_script: {
-    en: { label: "Episode script", value: "Missing" },
-    th: { label: "บทตอน", value: "ยังไม่มี" },
+    en: { label: "Sub-episode script", value: "Missing" },
+    th: { label: "บทตอนย่อย", value: "ยังไม่มี" },
   },
   storyboard_generated: {
     en: { label: "Storyboard", value: "9 shots generated" },
@@ -2288,12 +2301,12 @@ export const VD_WIZARD_EVIDENCE_LABELS: Record<
     th: { label: "แผนบทพูด", value: "ต้องมีก่อน" },
   },
   dialogue_qc_episode_coverage: {
-    en: { label: "Episode speech coverage", value: "{n} sec" },
-    th: { label: "ความครอบคลุมบทพูดทั้งตอน", value: "{n} วิ" },
+    en: { label: "Sub-episode speech coverage", value: "{n} sec" },
+    th: { label: "ความครอบคลุมบทพูดทั้งตอนย่อย", value: "{n} วิ" },
   },
   dialogue_qc_episode_coverage_unavailable: {
-    en: { label: "Episode speech coverage", value: "Not available" },
-    th: { label: "ความครอบคลุมบทพูดทั้งตอน", value: "ยังไม่มีข้อมูล" },
+    en: { label: "Sub-episode speech coverage", value: "Not available" },
+    th: { label: "ความครอบคลุมบทพูดทั้งตอนย่อย", value: "ยังไม่มีข้อมูล" },
   },
   dialogue_qc_blocking_count: {
     en: { label: "Blocking dialogue issues", value: "{n}" },
@@ -2341,7 +2354,7 @@ export const VD_WIZARD_EVIDENCE_LABELS: Record<
       value: "Clip durations do not match the duration profile",
     },
     th: {
-      label: "ความพร้อมประกอบตอน",
+      label: "ความพร้อมประกอบตอนย่อย",
       value: "ความยาวคลิปไม่ตรงตามแผนความยาว",
     },
   },
@@ -2351,17 +2364,17 @@ export const VD_WIZARD_EVIDENCE_LABELS: Record<
       value: "Audio/subtitle strategy unresolved",
     },
     th: {
-      label: "ความพร้อมประกอบตอน",
+      label: "ความพร้อมประกอบตอนย่อย",
       value: "ยังไม่ได้กำหนดแนวทางเสียง/คำบรรยาย",
     },
   },
   final_episode_completed: {
     en: { label: "Assembly", value: "Completed" },
-    th: { label: "การประกอบตอน", value: "เสร็จแล้ว" },
+    th: { label: "การประกอบตอนย่อย", value: "เสร็จแล้ว" },
   },
   final_episode_ready_to_assemble: {
     en: { label: "Assembly", value: "Ready to assemble" },
-    th: { label: "การประกอบตอน", value: "พร้อมประกอบ" },
+    th: { label: "การประกอบตอนย่อย", value: "พร้อมประกอบ" },
   },
 };
 
@@ -2485,10 +2498,9 @@ export type VdFinalRenderSubtitlePresetValue =
   | "none";
 
 /** Stable render order for the picker — insertion order of the labels map above. */
-export const VD_FINAL_RENDER_SUBTITLE_PRESET_IDS =
-  Object.keys(
-    VD_FINAL_RENDER_SUBTITLE_PRESET_LABELS
-  ) as VdFinalRenderSubtitlePresetId[];
+export const VD_FINAL_RENDER_SUBTITLE_PRESET_IDS = Object.keys(
+  VD_FINAL_RENDER_SUBTITLE_PRESET_LABELS
+) as VdFinalRenderSubtitlePresetId[];
 
 export function vdFinalRenderSubtitlePresetLabel(
   id: VdFinalRenderSubtitlePresetId,
@@ -2596,7 +2608,9 @@ export function vdSeasonRenderSkipReasonLabel(
   }
   if (
     reason ===
-    "No video clips exist for this episode yet — generate the video motion prompt pack and render clips first."
+      "No video clips exist for this Sub-episode yet — generate the video motion prompt pack and render clips first." ||
+    reason ===
+      "No video clips exist for this episode yet — generate the video motion prompt pack and render clips first."
   ) {
     return locale === "th"
       ? "ยังไม่มีคลิปวิดีโอ — ต้องสร้างชุดพรอมป์วิดีโอและเรนเดอร์คลิปก่อน"

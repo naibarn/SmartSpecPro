@@ -168,7 +168,86 @@ export interface CompiledVideoState {
 
 export interface MissingClip {
   clipNumber: number;
+  parentShotNumber?: number;
   sourceShotNumbers?: number[];
+}
+
+/**
+ * Durable video-task patch written by the episode page after a render/upload.
+ * Kept separate from the whole motion-prompt-pack shape so concurrent clip
+ * completions can merge one task without replacing sibling clips.
+ */
+export type VerticalDramaVideoTaskPatch = NonNullable<
+  VerticalDramaMotionPromptPack["clips"][number]["videoTask"]
+>;
+
+/**
+ * Merge one clip's task state into the FRESH motion-prompt-pack snapshot.
+ *
+ * The caller must obtain the fresh snapshot while holding the episode row lock
+ * before calling this helper. The previous client path built a whole-pack
+ * update from React query state, so two clips completing together could each
+ * overwrite the other clip's `videoTask`. This helper is intentionally pure so
+ * the merge contract is testable independently from the transaction.
+ */
+export function mergeVideoTaskIntoMotionPromptPack(
+  pack: VerticalDramaMotionPromptPack | null | undefined,
+  clipNumber: number,
+  videoTask: VerticalDramaVideoTaskPatch | null,
+  sourceShotNumber?: number,
+  durationSeconds = 8,
+  selectedVideoModelId = ""
+): VerticalDramaMotionPromptPack | null {
+  if (!pack) {
+    if (!videoTask || sourceShotNumber == null) return null;
+    return {
+      selectedVideoModelId,
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [
+        {
+          clipNumber,
+          sourceShotNumbers: [sourceShotNumber],
+          prompt: "",
+          durationSeconds,
+          videoTask,
+        },
+      ],
+      warnings: [],
+    };
+  }
+
+  const existingIndex = pack.clips.findIndex(
+    clip => clip.clipNumber === clipNumber
+  );
+  if (existingIndex !== -1) {
+    const clips = pack.clips.slice();
+    if (videoTask) {
+      clips[existingIndex] = { ...clips[existingIndex], videoTask };
+    } else {
+      const { videoTask: _dropped, ...withoutVideoTask } = clips[existingIndex];
+      clips[existingIndex] = withoutVideoTask;
+    }
+    return { ...pack, clips };
+  }
+
+  // Clearing a task for a clip that does not exist is a no-op. This prevents a
+  // late failed poll from creating a phantom clip in the pack.
+  if (!videoTask || sourceShotNumber == null) return pack;
+
+  return {
+    ...pack,
+    clips: [
+      ...pack.clips,
+      {
+        clipNumber,
+        sourceShotNumbers: [sourceShotNumber],
+        prompt: "",
+        durationSeconds,
+        videoTask,
+      },
+    ],
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -184,24 +263,34 @@ export function findMissingClips(clips: EpisodeClipSource[]): MissingClip[] {
     .slice()
     .sort(compareClipSourceOrder)
     .filter(c => !c.videoUrl || !c.videoUrl.trim())
-    .map(c => ({ clipNumber: c.clipNumber }));
+    .map(c => ({
+      clipNumber: c.clipNumber,
+      parentShotNumber: c.parentShotNumber,
+      sourceShotNumbers: c.sourceShotNumbers,
+    }));
 }
 
 /**
  * Collapse a list of missing CLIP numbers down to their human-readable
  * PARENT SHOT numbers, for the `resolveClipsForAssembly` error message below.
- * A split sub-shot's `clipNumber` is `parentShotNumber * 100 + subShotNumber`
- * (e.g. shot 3's 2nd sub-shot is `302` — see `extractClipSourcesFromMotionPromptPack`'s
- * own doc comment) — `n >= 100` collapses to `Math.floor(n / 100)`; an
- * unsplit shot's `clipNumber` IS its shot number already (`n < 100`) and
- * passes through unchanged. Multiple missing sub-shots of the same parent
- * shot collapse to ONE entry (`Set`-deduplicated); the result is sorted
- * ascending so the message always reads shot numbers in story order,
- * regardless of the input clip-number order.
+ * A split sub-shot carries `parentShotNumber`/`sourceShotNumbers`, so those
+ * explicit fields are preferred. The numeric `parentShotNumber * 100 +
+ * subShotNumber` convention remains only a legacy fallback for old rows that
+ * lack the metadata. Multiple missing sub-shots of the same parent shot
+ * collapse to ONE entry (`Set`-deduplicated); the result is sorted ascending
+ * so the message always reads shot numbers in story order, regardless of the
+ * input clip-number order.
  */
 export function deriveMissingShotNumbers(missing: MissingClip[]): number[] {
   const shotNumbers = new Set<number>(
-    missing.map(m => (m.clipNumber >= 100 ? Math.floor(m.clipNumber / 100) : m.clipNumber))
+    missing.map(
+      m =>
+        m.parentShotNumber ??
+        m.sourceShotNumbers?.[0] ??
+        (m.clipNumber >= 100
+          ? Math.floor(m.clipNumber / 100)
+          : m.clipNumber)
+    )
   );
   return Array.from(shotNumbers).sort((a, b) => a - b);
 }

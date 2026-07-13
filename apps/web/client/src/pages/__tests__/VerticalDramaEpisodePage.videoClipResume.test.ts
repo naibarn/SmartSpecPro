@@ -60,6 +60,17 @@ describe("shouldResumeVideoClipPoll", () => {
     ).toBe(false);
   });
 
+  it("does not treat a whitespace-only URL as a completed render", () => {
+    expect(
+      shouldResumeVideoClipPoll(
+        { pendingTaskId: "task-123", videoUrl: "   " },
+        1,
+        new Set(),
+        new Set()
+      )
+    ).toBe(true);
+  });
+
   it("does NOT resume a clip already resumed this session (avoids duplicate polls on refetch)", () => {
     expect(
       shouldResumeVideoClipPoll(

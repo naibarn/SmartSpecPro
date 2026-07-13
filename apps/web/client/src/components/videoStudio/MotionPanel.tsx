@@ -9,21 +9,24 @@
  * per-template bespoke form — the ~10 builders each take different
  * `Record<string, unknown>` shapes with no client-safe schema exported for
  * form-generation this phase, only a server-side Zod `paramsSchema`).
+ *
+ * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
+ * components directly, which `AppPage.tsx`'s docstring says should never
+ * happen outside that one file. This is a deliberate, explicit,
+ * twice-confirmed user decision to migrate Video Studio off shadcn/ui onto
+ * native Astryx components (see
+ * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
+ * violation of that rule.
  */
 import { useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { Selector } from "@astryxdesign/core/Selector";
+import { TextArea } from "@astryxdesign/core/TextArea";
+
 import { trpc } from "@/lib/trpc";
 import type { VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
 import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
@@ -82,7 +85,7 @@ export function MotionPanel({
   }
 
   return (
-    <div className="flex flex-col gap-4" data-testid="video-studio-motion-panel">
+    <VStack gap={4} data-testid="video-studio-motion-panel">
       {document.scenes.map((scene) => {
         const templateId = scene.visual.kind === "template" ? scene.visual.templateId : NO_TEMPLATE_VALUE;
         const meta = templates.find((t) => t.id === templateId);
@@ -91,68 +94,53 @@ export function MotionPanel({
           (scene.visual.kind === "template" ? JSON.stringify(scene.visual.params ?? {}, null, 2) : "{}");
 
         return (
-          <Card
-            key={scene.sceneId}
-            className="border-border/60"
-            data-testid={`video-studio-motion-scene-${scene.sceneId}`}
-          >
-            <CardHeader>
-              <CardTitle className="text-base">{scene.sceneId}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <div className="grid gap-1.5">
-                <Label>{pickCopy(lang, { th: "เทมเพลตโมชัน", en: "Motion template" })}</Label>
-                <Select
-                  value={templateId}
-                  onValueChange={(value) =>
-                    setSceneTemplate(scene.sceneId, value === NO_TEMPLATE_VALUE ? null : value)
-                  }
-                >
-                  <SelectTrigger data-testid={`video-studio-motion-select-${scene.sceneId}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_TEMPLATE_VALUE}>
-                      {pickCopy(lang, { th: "ไม่ใช้เทมเพลต (ว่าง)", en: "No template (blank)" })}
-                    </SelectItem>
-                    {templates.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.id}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <Card key={scene.sceneId} data-testid={`video-studio-motion-scene-${scene.sceneId}`}>
+            <VStack gap={3}>
+              <Heading level={4}>{scene.sceneId}</Heading>
+
+              <Selector
+                label={pickCopy(lang, { th: "เทมเพลตโมชัน", en: "Motion template" })}
+                options={[
+                  {
+                    value: NO_TEMPLATE_VALUE,
+                    label: pickCopy(lang, { th: "ไม่ใช้เทมเพลต (ว่าง)", en: "No template (blank)" }),
+                  },
+                  ...templates.map((template) => ({ value: template.id, label: template.id })),
+                ]}
+                value={templateId}
+                onChange={(value) =>
+                  setSceneTemplate(scene.sceneId, value === NO_TEMPLATE_VALUE ? null : value)
+                }
+                data-testid={`video-studio-motion-select-${scene.sceneId}`}
+              />
+
               {meta ? (
-                <div className="flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+                <HStack gap={1.5} wrap="wrap">
                   {meta.categories.map((category) => (
-                    <Badge key={category} variant="outline">
-                      {category}
-                    </Badge>
+                    <Badge key={category} variant="neutral" label={category} />
                   ))}
-                  <Badge variant="secondary">
-                    {meta.minDurationMs}-{meta.maxDurationMs}ms
-                  </Badge>
-                </div>
+                  <Badge variant="info" label={`${meta.minDurationMs}-${meta.maxDurationMs}ms`} />
+                </HStack>
               ) : null}
+
               {scene.visual.kind === "template" ? (
-                <div className="grid gap-1.5">
-                  <Label>{pickCopy(lang, { th: "พารามิเตอร์ (JSON)", en: "Params (JSON)" })}</Label>
-                  <Textarea
-                    className="font-mono text-xs"
-                    rows={4}
-                    value={paramsText}
-                    onChange={(e) => setSceneParams(scene.sceneId, e.target.value)}
-                  />
-                  {paramsError[scene.sceneId] ? (
-                    <p className="text-xs text-destructive">{paramsError[scene.sceneId]}</p>
-                  ) : null}
-                </div>
+                <TextArea
+                  label={pickCopy(lang, { th: "พารามิเตอร์ (JSON)", en: "Params (JSON)" })}
+                  rows={4}
+                  value={paramsText}
+                  onChange={(value) => setSceneParams(scene.sceneId, value)}
+                  className="font-mono text-xs"
+                  status={
+                    paramsError[scene.sceneId]
+                      ? { type: "error", message: paramsError[scene.sceneId]! }
+                      : undefined
+                  }
+                />
               ) : null}
-            </CardContent>
+            </VStack>
           </Card>
         );
       })}
-    </div>
+    </VStack>
   );
 }

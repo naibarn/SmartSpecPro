@@ -9,7 +9,16 @@
 
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ImageIcon, Loader2, Maximize2, Minimize2, Search, Sparkles, Wand2, X } from "lucide-react";
+import {
+  ImageIcon,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Search,
+  Sparkles,
+  Wand2,
+  X,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,7 +63,13 @@ import {
   type AudienceAgeRating,
 } from "@shared/verticalDramaSeries/audienceAgeRating";
 import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
-import { mixWeightLabel, pickCopy, verticalDramaCopy, visualStyleLabel, wizardSteps } from "./verticalDramaCopy";
+import {
+  mixWeightLabel,
+  pickCopy,
+  verticalDramaCopy,
+  visualStyleLabel,
+  wizardSteps,
+} from "./verticalDramaCopy";
 
 interface WizardState {
   title: string;
@@ -166,66 +181,76 @@ export function CreateSeriesWizard({
   const [mixPresetIds, setMixPresetIds] = useState<string[]>([]);
   const [mixCategories, setMixCategories] = useState<string[]>([]);
   const [mixBusinessContext, setMixBusinessContext] = useState("");
-  const [mixPrimarySelectionId, setMixPrimarySelectionId] = useState<string | undefined>();
+  const [mixPrimarySelectionId, setMixPrimarySelectionId] = useState<
+    string | undefined
+  >();
   // Preset Mix v2 (spec §8.2.2.C.1, section-15) — sparse map, missing entries
   // default to DEFAULT_MIX_WEIGHT at read time; intentionally NOT cleared when
   // a preset is deselected, so re-selecting it remembers the user's prior
   // adjustment instead of silently resetting it.
-  const [mixWeights, setMixWeights] = useState<Record<string, VerticalDramaPresetMixWeight>>({});
+  const [mixWeights, setMixWeights] = useState<
+    Record<string, VerticalDramaPresetMixWeight>
+  >({});
   const [productSearch, setProductSearch] = useState("");
 
-  const presetsQuery = trpc.verticalDramaSeries.listGenrePresets.useQuery({ locale: lang });
+  const presetsQuery = trpc.verticalDramaSeries.listGenrePresets.useQuery({
+    locale: lang,
+  });
   const presets = presetsQuery.data?.presets ?? [];
   const presetCategories = useMemo(
-    () => Array.from(new Set(presets.map((p) => p.category))),
-    [presets],
+    () => Array.from(new Set(presets.map(p => p.category))),
+    [presets]
   );
   const productsQuery = trpc.marketplaceCapture.listProducts.useQuery(
     { query: productSearch || undefined, limit: 20 },
-    { enabled: form.productTieInEnabled },
+    { enabled: form.productTieInEnabled }
   );
   const products = productsQuery.data ?? [];
 
-  const synthesizePresetMutation = trpc.verticalDramaSeries.synthesizeGenrePreset.useMutation({
-    onSuccess: () => {
-      toast.success(
-        lang === "th"
-          ? "AI ผสมแนวเรื่องเป็น draft ให้แล้ว"
-          : "AI created a mixed preset draft",
-      );
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(
-        err?.message ||
-          (lang === "th"
-            ? "ผสมแนวเรื่องไม่สำเร็จ ลองลดจำนวนแนวหรือใส่บริบทให้ชัดขึ้น"
-            : "Could not mix these story flavors. Try fewer flavors or clearer context."),
-      );
-    },
-  });
+  const synthesizePresetMutation =
+    trpc.verticalDramaSeries.synthesizeGenrePreset.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "AI ผสมแนวเรื่องเป็น draft ให้แล้ว"
+            : "AI created a mixed preset draft"
+        );
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? "ผสมแนวเรื่องไม่สำเร็จ ลองลดจำนวนแนวหรือใส่บริบทให้ชัดขึ้น"
+              : "Could not mix these story flavors. Try fewer flavors or clearer context.")
+        );
+      },
+    });
 
-  const generateStoryMutation = trpc.verticalDramaSeries.generateStoryBible.useMutation({
-    onSuccess: (data: { creditsUsed: number }) => {
-      toast.success(
-        lang === "th"
-          ? `สร้างเนื้อเรื่องเต็มแล้ว (ใช้ ${data.creditsUsed} เครดิต)`
-          : `Full story generated (${data.creditsUsed} credits used)`,
-      );
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(
-        err?.message ||
-          (lang === "th"
-            ? "สร้างเนื้อเรื่องเต็มไม่สำเร็จ — ลองใหม่ได้จากหน้าซีรีย์"
-            : "Full story generation failed — retry from the series page"),
-      );
-    },
-  });
+  const generateStoryMutation =
+    trpc.verticalDramaSeries.generateStoryBible.useMutation({
+      onSuccess: (data: { creditsUsed: number }) => {
+        toast.success(
+          lang === "th"
+            ? `สร้างเนื้อเรื่องเต็มแล้ว (ใช้ ${data.creditsUsed} เครดิต)`
+            : `Full story generated (${data.creditsUsed} credits used)`
+        );
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? "สร้างเนื้อเรื่องเต็มไม่สำเร็จ — ลองใหม่ได้จากหน้าซีรีย์"
+              : "Full story generation failed — retry from the series page")
+        );
+      },
+    });
 
   const createMutation = trpc.verticalDramaSeries.create.useMutation({
     onSuccess: (data: { series: { id: string } }) => {
       toast.success(
-        lang === "th" ? "สร้างโครงซีรีย์แล้ว (โหมดวางแผน)" : "Series shell created (planning mode)",
+        lang === "th"
+          ? "สร้างโครงซีรีย์แล้ว (โหมดวางแผน)"
+          : "Series shell created (planning mode)"
       );
       const seriesId = data.series.id;
       setForm(INITIAL_WIZARD);
@@ -238,15 +263,20 @@ export function CreateSeriesWizard({
       generateStoryMutation.mutate({ seriesId });
     },
     onError: (err: { message?: string }) => {
-      toast.error(err?.message || (lang === "th" ? "สร้างไม่สำเร็จ" : "Create failed"));
+      toast.error(
+        err?.message || (lang === "th" ? "สร้างไม่สำเร็จ" : "Create failed")
+      );
     },
   });
 
   const set = <K extends keyof WizardState>(key: K, value: WizardState[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm(prev => ({ ...prev, [key]: value }));
 
   function applyPreset(preset: (typeof presets)[number]) {
-    set("genre", clampToCreateSeriesLimit(preset.title, "genre") ?? preset.title);
+    set(
+      "genre",
+      clampToCreateSeriesLimit(preset.title, "genre") ?? preset.title
+    );
     set("logline", preset.logline);
     set("mainPlot", preset.mainPlot);
     set("seasonArc", preset.seasonArc);
@@ -254,7 +284,9 @@ export function CreateSeriesWizard({
     set("cliffhangerStyle", preset.cliffhangerStyle);
     set(
       "characters",
-      preset.characters.map((c) => `${c.name} — ${c.role}: ${c.description}`).join("\n"),
+      preset.characters
+        .map(c => `${c.name} — ${c.role}: ${c.description}`)
+        .join("\n")
     );
     set("visualBible", preset.visualBible);
     // Spec §8.2.2.A flow-through rule (section-15) — remembered so `create`
@@ -267,12 +299,12 @@ export function CreateSeriesWizard({
     toast.success(
       lang === "th"
         ? `นำ Preset "${preset.title}" มาใช้แล้ว — แก้ไขต่อได้ทุกแท็บ`
-        : `Applied preset "${preset.title}" — edit any tab freely`,
+        : `Applied preset "${preset.title}" — edit any tab freely`
     );
   }
 
   function applyPresetDraft(draft: SynthesizedGenrePresetDraft) {
-    setForm((prev) => ({
+    setForm(prev => ({
       ...prev,
       title: prev.title.trim() ? prev.title : draft.title,
       genre: clampToCreateSeriesLimit(draft.title, "genre") ?? draft.title,
@@ -281,7 +313,9 @@ export function CreateSeriesWizard({
       seasonArc: draft.seasonArc,
       tone: clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone,
       cliffhangerStyle: draft.cliffhangerStyle,
-      characters: draft.characters.map((c) => `${c.name} — ${c.role}: ${c.description}`).join("\n"),
+      characters: draft.characters
+        .map(c => `${c.name} — ${c.role}: ${c.description}`)
+        .join("\n"),
       visualBible: draft.visualBible,
       // An AI-mixed draft is not itself a single stored preset row — clear
       // any single-preset `appliedPresetId` a prior "Use this preset" click
@@ -295,18 +329,22 @@ export function CreateSeriesWizard({
     toast.success(
       lang === "th"
         ? "ใช้ draft นี้แล้ว — แก้ไขต่อได้ทุกแท็บ"
-        : "Draft applied — edit any tab freely",
+        : "Draft applied — edit any tab freely"
     );
   }
 
   function toggleMixPreset(id: string) {
-    setMixPresetIds((prev) => {
+    setMixPresetIds(prev => {
       if (prev.includes(id)) {
         if (mixPrimarySelectionId === id) setMixPrimarySelectionId(undefined);
-        return prev.filter((value) => value !== id);
+        return prev.filter(value => value !== id);
       }
       if (prev.length >= 5) {
-        toast.info(lang === "th" ? "เลือก preset ได้สูงสุด 5 รายการ" : "Choose up to 5 presets");
+        toast.info(
+          lang === "th"
+            ? "เลือก preset ได้สูงสุด 5 รายการ"
+            : "Choose up to 5 presets"
+        );
         return prev;
       }
       return [...prev, id];
@@ -314,19 +352,24 @@ export function CreateSeriesWizard({
   }
 
   function toggleMixCategory(category: string) {
-    setMixCategories((prev) => {
-      if (prev.includes(category)) return prev.filter((value) => value !== category);
+    setMixCategories(prev => {
+      if (prev.includes(category))
+        return prev.filter(value => value !== category);
       return [...prev, category];
     });
   }
 
   function setMixWeight(id: string, weight: VerticalDramaPresetMixWeight) {
-    setMixWeights((prev) => ({ ...prev, [id]: weight }));
+    setMixWeights(prev => ({ ...prev, [id]: weight }));
   }
 
   function handleSynthesizePreset() {
     if (mixPresetIds.length < 2) {
-      toast.error(lang === "th" ? "เลือกอย่างน้อย 2 preset ก่อนให้ AI ผสม" : "Choose at least 2 presets first");
+      toast.error(
+        lang === "th"
+          ? "เลือกอย่างน้อย 2 preset ก่อนให้ AI ผสม"
+          : "Choose at least 2 presets first"
+      );
       return;
     }
     synthesizePresetMutation.mutate({
@@ -343,7 +386,7 @@ export function CreateSeriesWizard({
       // tenant's `verticalDramaSeriesPresetMixV2` flag is on and only then
       // reads this field (flag-off requests ignore it, byte-identical v1
       // behavior). Missing weights default to DEFAULT_MIX_WEIGHT.
-      selections: mixPresetIds.map((id) => ({
+      selections: mixPresetIds.map(id => ({
         presetId: id,
         weight: mixWeights[id] ?? DEFAULT_MIX_WEIGHT,
       })),
@@ -374,13 +417,14 @@ export function CreateSeriesWizard({
     ];
   }, [form]);
 
-  // Hard requirement to actually create the series (title + episode count) —
+  // Hard requirement to actually create the series (title + Sub-episode count) —
   // this only gates the final Create action, never tab navigation.
-  const createValid = form.title.trim().length > 0 && Number(form.targetEpisodeCount) > 0;
+  const createValid =
+    form.title.trim().length > 0 && Number(form.targetEpisodeCount) > 0;
   const createBlockedReason = !createValid
     ? lang === "th"
-      ? "กรุณากรอกชื่อซีรีย์และจำนวนตอนที่ถูกต้องในแท็บ 'ตั้งค่าพื้นฐาน'"
-      : "Enter a series title and a valid episode count in the 'Basic setup' tab"
+      ? "กรุณากรอกชื่อซีรีย์และจำนวนตอนย่อยที่ถูกต้องในแท็บ 'ตั้งค่าพื้นฐาน'"
+      : "Enter a series title and a valid Sub-episode count in the 'Basic setup' tab"
     : "";
 
   const isLast = stepIndex === wizardSteps.length - 1;
@@ -393,7 +437,8 @@ export function CreateSeriesWizard({
       genre: form.genre.trim() || undefined,
       tone: form.tone.trim() || undefined,
       targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
-      defaultEpisodeDurationSeconds: Number(form.targetDurationSeconds) || undefined,
+      defaultEpisodeDurationSeconds:
+        Number(form.targetDurationSeconds) || undefined,
       bible:
         // Widened (previously `characters`/`locations`-only input silently
         // dropped the whole `bible` object, losing both drafts): a user who
@@ -423,7 +468,10 @@ export function CreateSeriesWizard({
             productId: form.productId || undefined,
             productSource: form.productId ? "marketplace" : "manual",
             forbiddenClaims: form.forbiddenClaims
-              ? form.forbiddenClaims.split(",").map((s) => s.trim()).filter(Boolean)
+              ? form.forbiddenClaims
+                  .split(",")
+                  .map(s => s.trim())
+                  .filter(Boolean)
               : [],
           }
         : undefined,
@@ -452,8 +500,12 @@ export function CreateSeriesWizard({
       <DialogContent className="flex h-[92dvh] max-h-[96dvh] !w-[96vw] !max-w-[96vw] flex-col gap-0 overflow-hidden p-0 sm:h-[90dvh] sm:min-h-[28rem] sm:min-w-[24rem] sm:resize md:!w-[94vw] md:!max-w-[94vw] lg:!w-[92vw] lg:!max-w-[92vw] xl:!w-[90vw] xl:!max-w-[90vw] 2xl:!w-[88vw] 2xl:!max-w-[120rem]">
         <div className="shrink-0 border-b p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{pickCopy(lang, verticalDramaCopy.createSeries)}</DialogTitle>
-            <DialogDescription>{pickCopy(lang, verticalDramaCopy.planningOnly)}</DialogDescription>
+            <DialogTitle>
+              {pickCopy(lang, verticalDramaCopy.createSeries)}
+            </DialogTitle>
+            <DialogDescription>
+              {pickCopy(lang, verticalDramaCopy.planningOnly)}
+            </DialogDescription>
           </DialogHeader>
 
           {/* Stepper — every step is always clickable; the dot shows completion, not access. */}
@@ -468,7 +520,7 @@ export function CreateSeriesWizard({
                     "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
                     i === stepIndex
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-accent",
+                      : "bg-muted text-muted-foreground hover:bg-accent"
                   )}
                 >
                   {i + 1}. {pickCopy(lang, step)}
@@ -479,7 +531,7 @@ export function CreateSeriesWizard({
                         ? "bg-emerald-500"
                         : i === stepIndex
                           ? "bg-primary-foreground/60"
-                          : "bg-amber-500",
+                          : "bg-amber-500"
                     )}
                     aria-hidden="true"
                   />
@@ -527,8 +579,10 @@ export function CreateSeriesWizard({
             {stepIndex > 0 && (
               <Button
                 variant="outline"
-                onClick={() => setStepIndex((i) => Math.max(0, i - 1))}
-                disabled={createMutation.isPending || generateStoryMutation.isPending}
+                onClick={() => setStepIndex(i => Math.max(0, i - 1))}
+                disabled={
+                  createMutation.isPending || generateStoryMutation.isPending
+                }
               >
                 {pickCopy(lang, verticalDramaCopy.back)}
               </Button>
@@ -543,11 +597,19 @@ export function CreateSeriesWizard({
             {isLast ? (
               <Button
                 onClick={handleCreate}
-                disabled={createMutation.isPending || generateStoryMutation.isPending || !createValid}
+                disabled={
+                  createMutation.isPending ||
+                  generateStoryMutation.isPending ||
+                  !createValid
+                }
                 className="gap-2"
               >
-                {(createMutation.isPending || generateStoryMutation.isPending) && (
-                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                {(createMutation.isPending ||
+                  generateStoryMutation.isPending) && (
+                  <Loader2
+                    className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
                 )}
                 {createMutation.isPending
                   ? lang === "th"
@@ -563,7 +625,9 @@ export function CreateSeriesWizard({
               </Button>
             ) : (
               <Button
-                onClick={() => setStepIndex((i) => Math.min(wizardSteps.length - 1, i + 1))}
+                onClick={() =>
+                  setStepIndex(i => Math.min(wizardSteps.length - 1, i + 1))
+                }
               >
                 {lang === "th" ? "ถัดไป" : "Next"}
               </Button>
@@ -642,7 +706,9 @@ interface SynthesizedGenrePresetDraftV2 extends SynthesizedGenrePresetDraftBase 
   visualIdentity?: VerticalDramaPresetVisualIdentity;
 }
 
-type SynthesizedGenrePresetDraft = SynthesizedGenrePresetDraftV1 | SynthesizedGenrePresetDraftV2;
+type SynthesizedGenrePresetDraft =
+  | SynthesizedGenrePresetDraftV1
+  | SynthesizedGenrePresetDraftV2;
 
 interface MarketplaceProductOption {
   id: string;
@@ -724,7 +790,10 @@ function WizardStep({
             <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
+                  <Sparkles
+                    className="h-4 w-4 text-primary"
+                    aria-hidden="true"
+                  />
                   {th ? "คลัง Preset แนวเรื่อง" : "Story preset library"}
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
@@ -738,7 +807,7 @@ function WizardStep({
                 variant="ghost"
                 size="sm"
                 className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-                onClick={() => setPresetListExpanded((v) => !v)}
+                onClick={() => setPresetListExpanded(v => !v)}
                 aria-expanded={presetListExpanded}
               >
                 {presetListExpanded ? (
@@ -746,7 +815,13 @@ function WizardStep({
                 ) : (
                   <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
                 )}
-                {presetListExpanded ? (th ? "ย่อรายการ" : "Collapse") : (th ? "ขยายรายการ" : "Expand")}
+                {presetListExpanded
+                  ? th
+                    ? "ย่อรายการ"
+                    : "Collapse"
+                  : th
+                    ? "ขยายรายการ"
+                    : "Expand"}
               </Button>
             </div>
             <MixAndMatchPresetPanel
@@ -781,24 +856,46 @@ function WizardStep({
 
           <div className="rounded-xl border bg-background p-4 shadow-sm">
             <div className="mb-4">
-              <p className="text-sm font-semibold">{th ? "ข้อมูลพื้นฐาน" : "Basic setup"}</p>
+              <p className="text-sm font-semibold">
+                {th ? "ข้อมูลพื้นฐาน" : "Basic setup"}
+              </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {th ? "เลือก preset ก่อน แล้วค่อยปรับข้อมูลสำคัญด้านนี้" : "Pick a preset first, then refine the essentials here."}
+                {th
+                  ? "เลือก preset ก่อน แล้วค่อยปรับข้อมูลสำคัญด้านนี้"
+                  : "Pick a preset first, then refine the essentials here."}
               </p>
             </div>
             <div className="grid gap-4">
               <Field label={th ? "ชื่อซีรีย์ *" : "Series title *"}>
-                <Input value={form.title} onChange={(e) => set("title", e.target.value)} autoFocus />
+                <Input
+                  value={form.title}
+                  onChange={e => set("title", e.target.value)}
+                  autoFocus
+                />
               </Field>
               <Field label={th ? "แนวเรื่อง" : "Genre"}>
-                <Input value={form.genre} onChange={(e) => set("genre", e.target.value)} />
+                <Input
+                  value={form.genre}
+                  onChange={e => set("genre", e.target.value)}
+                />
               </Field>
-              <Field label={th ? "จำนวนตอนเป้าหมาย" : "Target episode count"}>
+              <Field
+                label={
+                  th
+                    ? "จำนวนตอนย่อย (Sub-episode) ในโครงสร้างเรื่อง"
+                    : "Planned Sub-episodes in story structure"
+                }
+                helperText={
+                  th
+                    ? "ใช้กำหนดจำนวนตอนย่อยสำหรับวางโครงเรื่องและผลิตวิดีโอสั้น ไม่ใช่จำนวน Public EP ที่เผยแพร่จริง Public EP จะถูกรวมจากตอนย่อยภายหลัง"
+                    : "Sets the number of Sub-episodes used for story planning and short-video production. This is not the number of Public Episodes; Public Episodes are grouped later."
+                }
+              >
                 <Input
                   type="number"
                   min={1}
                   value={form.targetEpisodeCount}
-                  onChange={(e) => set("targetEpisodeCount", e.target.value)}
+                  onChange={e => set("targetEpisodeCount", e.target.value)}
                 />
               </Field>
               <Field
@@ -811,13 +908,15 @@ function WizardStep({
               >
                 <Select
                   value={form.audienceAgeRating}
-                  onValueChange={(v) => set("audienceAgeRating", v as AudienceAgeRating)}
+                  onValueChange={v =>
+                    set("audienceAgeRating", v as AudienceAgeRating)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="max-h-[min(60vh,24rem)]">
-                    {AUDIENCE_AGE_RATINGS.map((r) => (
+                    {AUDIENCE_AGE_RATINGS.map(r => (
                       <SelectItem key={r} value={r}>
                         {AUDIENCE_AGE_RATING_LABELS[r][th ? "th" : "en"]}
                       </SelectItem>
@@ -826,7 +925,11 @@ function WizardStep({
                 </Select>
               </Field>
               <Field
-                label={th ? "โจทย์เรื่องที่อยากได้ (ไม่บังคับ)" : "Story premise you want (optional)"}
+                label={
+                  th
+                    ? "โจทย์เรื่องที่อยากได้ (ไม่บังคับ)"
+                    : "Story premise you want (optional)"
+                }
                 helperText={
                   th
                     ? "ถ้าระบุ ระบบจะใช้โจทย์ของคุณเป็นแกนเรื่องหลัก แล้วนำ preset ที่เลือก (1–5 แบบ) มาผสมเพื่อเสริมความเข้มข้นและความร่วมสมัย"
@@ -835,17 +938,24 @@ function WizardStep({
               >
                 <Textarea
                   value={form.userPremise}
-                  onChange={(e) => {
+                  onChange={e => {
                     // Hard length cap only while typing (no trim here — trimming
                     // on every keystroke would eat trailing spaces the user is
                     // still mid-word on, breaking normal typing). Full
                     // trim + word-boundary clamp runs on blur below.
                     const raw = e.target.value;
                     const limit = CREATE_SERIES_FIELD_LIMITS.userPremise;
-                    set("userPremise", raw.length > limit ? raw.slice(0, limit) : raw);
+                    set(
+                      "userPremise",
+                      raw.length > limit ? raw.slice(0, limit) : raw
+                    );
                   }}
-                  onBlur={(e) =>
-                    set("userPremise", clampToCreateSeriesLimit(e.target.value, "userPremise") ?? "")
+                  onBlur={e =>
+                    set(
+                      "userPremise",
+                      clampToCreateSeriesLimit(e.target.value, "userPremise") ??
+                        ""
+                    )
                   }
                   rows={4}
                   maxLength={CREATE_SERIES_FIELD_LIMITS.userPremise}
@@ -857,19 +967,25 @@ function WizardStep({
                 />
               </Field>
               <Field label={th ? "เรื่องย่อ (logline)" : "Logline"}>
-                <Textarea value={form.logline} onChange={(e) => set("logline", e.target.value)} rows={3} />
+                <Textarea
+                  value={form.logline}
+                  onChange={e => set("logline", e.target.value)}
+                  rows={3}
+                />
               </Field>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                 <Field label={th ? "ภาษา" : "Language"}>
                   <Select
                     value={form.locale}
-                    onValueChange={(v) => set("locale", v as VerticalDramaSeriesLocale)}
+                    onValueChange={v =>
+                      set("locale", v as VerticalDramaSeriesLocale)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-[min(60vh,24rem)]">
-                      {VERTICAL_DRAMA_SERIES_LOCALES.map((code) => (
+                      {VERTICAL_DRAMA_SERIES_LOCALES.map(code => (
                         <SelectItem key={code} value={code}>
                           {VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[code]}
                         </SelectItem>
@@ -877,12 +993,16 @@ function WizardStep({
                     </SelectContent>
                   </Select>
                 </Field>
-                <Field label={th ? "ความยาวต่อตอน (วินาที)" : "Target duration (sec)"}>
+                <Field
+                  label={
+                    th ? "ความยาวต่อตอน (วินาที)" : "Target duration (sec)"
+                  }
+                >
                   <Input
                     type="number"
                     min={1}
                     value={form.targetDurationSeconds}
-                    onChange={(e) => set("targetDurationSeconds", e.target.value)}
+                    onChange={e => set("targetDurationSeconds", e.target.value)}
                   />
                 </Field>
               </div>
@@ -894,19 +1014,32 @@ function WizardStep({
       return (
         <div className="grid gap-4">
           <Field label={th ? "โครงเรื่องหลัก" : "Main plot"}>
-            <Textarea value={form.mainPlot} onChange={(e) => set("mainPlot", e.target.value)} rows={3} />
+            <Textarea
+              value={form.mainPlot}
+              onChange={e => set("mainPlot", e.target.value)}
+              rows={3}
+            />
           </Field>
           <Field label={th ? "โครงซีซัน" : "Season arc"}>
-            <Textarea value={form.seasonArc} onChange={(e) => set("seasonArc", e.target.value)} rows={2} />
+            <Textarea
+              value={form.seasonArc}
+              onChange={e => set("seasonArc", e.target.value)}
+              rows={2}
+            />
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={th ? "โทน" : "Tone"}>
-              <Input value={form.tone} onChange={(e) => set("tone", e.target.value)} />
+              <Input
+                value={form.tone}
+                onChange={e => set("tone", e.target.value)}
+              />
             </Field>
-            <Field label={th ? "สไตล์ตอนจบค้าง (cliffhanger)" : "Cliffhanger style"}>
+            <Field
+              label={th ? "สไตล์ตอนจบค้าง (cliffhanger)" : "Cliffhanger style"}
+            >
               <Input
                 value={form.cliffhangerStyle}
-                onChange={(e) => set("cliffhangerStyle", e.target.value)}
+                onChange={e => set("cliffhangerStyle", e.target.value)}
               />
             </Field>
           </div>
@@ -915,20 +1048,40 @@ function WizardStep({
     case 2:
       return (
         <div className="grid gap-4">
-          <Field label={th ? "ตัวละคร / บทบาท / ความสัมพันธ์ (หนึ่งบรรทัดต่อหนึ่งตัว)" : "Characters / roles / relationships (one per line)"}>
-            <Textarea value={form.characters} onChange={(e) => set("characters", e.target.value)} rows={6} />
+          <Field
+            label={
+              th
+                ? "ตัวละคร / บทบาท / ความสัมพันธ์ (หนึ่งบรรทัดต่อหนึ่งตัว)"
+                : "Characters / roles / relationships (one per line)"
+            }
+          >
+            <Textarea
+              value={form.characters}
+              onChange={e => set("characters", e.target.value)}
+              rows={6}
+            />
             {/* F132F (spec 132 §7.3, added 2026-07-09) — this freeform textarea
                 stays exactly as-is pre-generation; detailed voice/personality
                 profiles are generated automatically afterward and editable in
                 the character stock panel, not here. */}
             <p className="mt-1.5 text-xs text-muted-foreground">
               {th
-                ? "โปรไฟล์เสียงพูด/บุคลิกโดยละเอียดของแต่ละตัวละครจะถูกสร้างอัตโนมัติหลังจากสร้างซีรีส์ และแก้ไขได้ภายหลังในแท็บ \"ตัวละคร\""
+                ? 'โปรไฟล์เสียงพูด/บุคลิกโดยละเอียดของแต่ละตัวละครจะถูกสร้างอัตโนมัติหลังจากสร้างซีรีส์ และแก้ไขได้ภายหลังในแท็บ "ตัวละคร"'
                 : "Detailed voice/personality profiles for each character are generated automatically after the series is created, and can be edited afterward in the Characters tab."}
             </p>
           </Field>
-          <Field label={th ? "สถานที่ / ฉากหลัก (หนึ่งบรรทัดต่อหนึ่งที่)" : "Locations / settings (one per line)"}>
-            <Textarea value={form.locations} onChange={(e) => set("locations", e.target.value)} rows={6} />
+          <Field
+            label={
+              th
+                ? "สถานที่ / ฉากหลัก (หนึ่งบรรทัดต่อหนึ่งที่)"
+                : "Locations / settings (one per line)"
+            }
+          >
+            <Textarea
+              value={form.locations}
+              onChange={e => set("locations", e.target.value)}
+              rows={6}
+            />
             {/* Location Visual Bible wizard seed (dedicated series tab
                 companion) — same "freeform now, refined later" convention as
                 the characters field above: this draft is bulk-seeded into the
@@ -944,8 +1097,18 @@ function WizardStep({
       );
     case 3:
       return (
-        <Field label={th ? "วิชวลไบเบิล / สไตล์ภาพ (ร่าง)" : "Visual bible / style notes (draft)"}>
-          <Textarea value={form.visualBible} onChange={(e) => set("visualBible", e.target.value)} rows={6} />
+        <Field
+          label={
+            th
+              ? "วิชวลไบเบิล / สไตล์ภาพ (ร่าง)"
+              : "Visual bible / style notes (draft)"
+          }
+        >
+          <Textarea
+            value={form.visualBible}
+            onChange={e => set("visualBible", e.target.value)}
+            rows={6}
+          />
         </Field>
       );
     case 4:
@@ -955,9 +1118,11 @@ function WizardStep({
             <input
               type="checkbox"
               checked={form.productTieInEnabled}
-              onChange={(e) => set("productTieInEnabled", e.target.checked)}
+              onChange={e => set("productTieInEnabled", e.target.checked)}
             />
-            {th ? "เปิดใช้สินค้าผูกเรื่อง (Product tie-in)" : "Enable product tie-in"}
+            {th
+              ? "เปิดใช้สินค้าผูกเรื่อง (Product tie-in)"
+              : "Enable product tie-in"}
           </label>
           {form.productTieInEnabled && (
             <>
@@ -971,13 +1136,20 @@ function WizardStep({
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <ImageIcon className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+                      <ImageIcon
+                        className="h-5 w-5 text-muted-foreground"
+                        aria-hidden="true"
+                      />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{form.productName}</p>
+                    <p className="truncate text-sm font-medium">
+                      {form.productName}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      {th ? "สินค้าจากคลังสินค้า" : "Linked from saved products"}
+                      {th
+                        ? "สินค้าจากคลังสินค้า"
+                        : "Linked from saved products"}
                     </p>
                   </div>
                   <Button
@@ -989,7 +1161,9 @@ function WizardStep({
                       set("productId", undefined);
                       set("productImageUrl", undefined);
                     }}
-                    aria-label={th ? "ยกเลิกการเลือกสินค้า" : "Clear selected product"}
+                    aria-label={
+                      th ? "ยกเลิกการเลือกสินค้า" : "Clear selected product"
+                    }
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </Button>
@@ -1003,31 +1177,42 @@ function WizardStep({
                     />
                     <Input
                       value={productSearch}
-                      onChange={(e) => onProductSearchChange(e.target.value)}
-                      placeholder={th ? "ค้นหาสินค้าที่บันทึกไว้..." : "Search saved products..."}
+                      onChange={e => onProductSearchChange(e.target.value)}
+                      placeholder={
+                        th
+                          ? "ค้นหาสินค้าที่บันทึกไว้..."
+                          : "Search saved products..."
+                      }
                       className="pl-9"
                     />
                   </div>
                   {productsLoading ? (
-                    <p className="text-xs text-muted-foreground">{th ? "กำลังโหลด…" : "Loading…"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {th ? "กำลังโหลด…" : "Loading…"}
+                    </p>
                   ) : products.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      {th ? "ไม่พบสินค้าที่บันทึกไว้" : "No saved products found"}
+                      {th
+                        ? "ไม่พบสินค้าที่บันทึกไว้"
+                        : "No saved products found"}
                     </p>
                   ) : (
                     <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-                      {products.map((product) => (
+                      {products.map(product => (
                         <button
                           key={product.id}
                           type="button"
                           onClick={() => {
                             set("productId", product.id);
                             set("productName", product.productName);
-                            set("productImageUrl", product.imageUrl ?? undefined);
+                            set(
+                              "productImageUrl",
+                              product.imageUrl ?? undefined
+                            );
                           }}
                           className={cn(
                             "flex items-center gap-2 rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           )}
                         >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
@@ -1038,13 +1223,20 @@ function WizardStep({
                                 className="h-full w-full object-cover"
                               />
                             ) : (
-                              <ImageIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                              <ImageIcon
+                                className="h-4 w-4 text-muted-foreground"
+                                aria-hidden="true"
+                              />
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{product.productName}</p>
+                            <p className="truncate font-medium">
+                              {product.productName}
+                            </p>
                             <p className="mt-0.5 truncate text-muted-foreground">
-                              {[product.priceCurrent, product.currency].filter(Boolean).join(" ") || "-"}
+                              {[product.priceCurrent, product.currency]
+                                .filter(Boolean)
+                                .join(" ") || "-"}
                               {product.platform ? ` · ${product.platform}` : ""}
                             </p>
                           </div>
@@ -1054,13 +1246,28 @@ function WizardStep({
                   )}
                 </div>
               )}
-              <Field label={th ? "หรือกรอกชื่อสินค้าเอง" : "Or enter a product name manually"}>
-                <Input value={form.productName} onChange={(e) => set("productName", e.target.value)} />
+              <Field
+                label={
+                  th
+                    ? "หรือกรอกชื่อสินค้าเอง"
+                    : "Or enter a product name manually"
+                }
+              >
+                <Input
+                  value={form.productName}
+                  onChange={e => set("productName", e.target.value)}
+                />
               </Field>
-              <Field label={th ? "ข้อความต้องห้าม (คั่นด้วยจุลภาค)" : "Forbidden claims (comma-separated)"}>
+              <Field
+                label={
+                  th
+                    ? "ข้อความต้องห้าม (คั่นด้วยจุลภาค)"
+                    : "Forbidden claims (comma-separated)"
+                }
+              >
                 <Input
                   value={form.forbiddenClaims}
-                  onChange={(e) => set("forbiddenClaims", e.target.value)}
+                  onChange={e => set("forbiddenClaims", e.target.value)}
                 />
               </Field>
             </>
@@ -1077,17 +1284,25 @@ function WizardStep({
               : "Review before creating: confirming creates a series shell only (dry-run). No paid generation is triggered."}
           </p>
           <ReviewRow label={th ? "ชื่อ" : "Title"} value={form.title || "-"} />
-          <ReviewRow label={th ? "แนวเรื่อง" : "Genre"} value={form.genre || "-"} />
           <ReviewRow
-            label={th ? "จำนวนตอน" : "Episodes"}
+            label={th ? "แนวเรื่อง" : "Genre"}
+            value={form.genre || "-"}
+          />
+          <ReviewRow
+            label={th ? "ตอนย่อยในโครงสร้างเรื่อง" : "Planned Sub-episodes"}
             value={form.targetEpisodeCount || "-"}
           />
           <ReviewRow
             label={th ? "ภาษา" : "Language"}
-            value={VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[form.locale] ?? form.locale}
+            value={
+              VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[form.locale] ??
+              form.locale
+            }
           />
           <div className="flex items-center justify-between gap-4 border-b py-1.5 last:border-b-0">
-            <span className="text-muted-foreground">{th ? "สินค้าผูกเรื่อง" : "Product tie-in"}</span>
+            <span className="text-muted-foreground">
+              {th ? "สินค้าผูกเรื่อง" : "Product tie-in"}
+            </span>
             <span className="flex items-center gap-2 font-medium">
               {form.productTieInEnabled && form.productImageUrl && (
                 <img
@@ -1128,18 +1343,24 @@ function PresetCard({
       className={cn(
         "rounded-md border bg-background p-2.5 text-left text-xs transition-colors hover:border-primary hover:bg-accent",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        selected && "border-primary bg-primary/5",
+        selected && "border-primary bg-primary/5"
       )}
     >
       <div className="flex items-center gap-1.5">
         <p className="font-medium">{preset.title}</p>
         {preset.scope === "private" && (
-          <Badge variant="secondary" className="px-1.5 py-0 text-[10px] leading-4">
+          <Badge
+            variant="secondary"
+            className="px-1.5 py-0 text-[10px] leading-4"
+          >
             {th ? "ของฉัน" : "Mine"}
           </Badge>
         )}
         {selected && (
-          <Badge variant="outline" className="px-1.5 py-0 text-[10px] leading-4">
+          <Badge
+            variant="outline"
+            className="px-1.5 py-0 text-[10px] leading-4"
+          >
             {th ? "เลือกแล้ว" : "Selected"}
           </Badge>
         )}
@@ -1147,13 +1368,20 @@ function PresetCard({
       <p className="mt-0.5 text-[10px] text-muted-foreground/80">
         {genrePresetCategoryLabel(preset.category, lang)}
       </p>
-      <p className="mt-0.5 line-clamp-2 text-muted-foreground">{preset.logline}</p>
+      <p className="mt-0.5 line-clamp-2 text-muted-foreground">
+        {preset.logline}
+      </p>
       {preset.visualIdentityJson && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
-          <Badge variant="outline" className="px-1.5 py-0 text-[10px] leading-4">
+          <Badge
+            variant="outline"
+            className="px-1.5 py-0 text-[10px] leading-4"
+          >
             {visualStyleLabel(lang, preset.visualIdentityJson.styleName)}
           </Badge>
-          <VisualIdentityPaletteSwatches palette={preset.visualIdentityJson.palette} />
+          <VisualIdentityPaletteSwatches
+            palette={preset.visualIdentityJson.palette}
+          />
         </div>
       )}
     </button>
@@ -1172,7 +1400,7 @@ function PresetCard({
 function VisualIdentityPaletteSwatches({ palette }: { palette: string[] }) {
   return (
     <>
-      {palette.slice(0, 6).map((color) => (
+      {palette.slice(0, 6).map(color => (
         <span
           key={color}
           className="inline-flex items-center gap-1 rounded-md border bg-background px-1.5 py-0 text-[10px] leading-4 text-muted-foreground"
@@ -1245,44 +1473,62 @@ function MixAndMatchPresetPanel({
   const canGenerate = selectionCount >= 2 && selectionCount <= 5 && !loading;
   const selectedPresetIdSet = new Set(selectedPresetIds);
   const searchQuery = presetSearch.trim().toLowerCase();
-  const categoryCounts = presets.reduce<Record<string, number>>((acc, preset) => {
-    acc[preset.category] = (acc[preset.category] ?? 0) + 1;
-    return acc;
-  }, {});
-  const filteredPresets = presets.filter((preset) => {
+  const categoryCounts = presets.reduce<Record<string, number>>(
+    (acc, preset) => {
+      acc[preset.category] = (acc[preset.category] ?? 0) + 1;
+      return acc;
+    },
+    {}
+  );
+  const filteredPresets = presets.filter(preset => {
     if (selectedPresetIdSet.has(preset.id)) return true;
-    const matchesCategory = selectedCategories.length > 0 && selectedCategories.includes(preset.category);
+    const matchesCategory =
+      selectedCategories.length > 0 &&
+      selectedCategories.includes(preset.category);
     const matchesSearch =
       !searchQuery ||
       preset.title.toLowerCase().includes(searchQuery) ||
       preset.category.toLowerCase().includes(searchQuery) ||
-      genrePresetCategoryLabel(preset.category, lang).toLowerCase().includes(searchQuery);
+      genrePresetCategoryLabel(preset.category, lang)
+        .toLowerCase()
+        .includes(searchQuery);
     return matchesCategory && matchesSearch;
   });
   const primaryOptions = [
-    ...selectedPresetIds.map((id) => {
-      const preset = presets.find((item) => item.id === id);
+    ...selectedPresetIds.map(id => {
+      const preset = presets.find(item => item.id === id);
       return { id, label: preset?.title ?? id };
     }),
   ];
   const selectedSinglePreset =
-    selectionCount === 1 ? presets.find((preset) => preset.id === selectedPresetIds[0]) : undefined;
-  const presetTitleById = presets.reduce<Record<string, string>>((acc, preset) => {
-    acc[preset.id] = preset.title;
-    return acc;
-  }, {});
+    selectionCount === 1
+      ? presets.find(preset => preset.id === selectedPresetIds[0])
+      : undefined;
+  const presetTitleById = presets.reduce<Record<string, string>>(
+    (acc, preset) => {
+      acc[preset.id] = preset.title;
+      return acc;
+    },
+    {}
+  );
 
   // Preset Mix v2 (spec §8.2.2.C.1, section-15) — the weight sliders' scroll
   // target for the blend report's "adjust weights" CTA below.
   const weightsSectionRef = useRef<HTMLDivElement>(null);
   const scrollToWeights = () =>
-    weightsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    weightsSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
         <div className="flex items-start gap-2">
-          <Wand2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <Wand2
+            className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+            aria-hidden="true"
+          />
           <div>
             <p className="text-sm font-medium">
               {th ? "เลือก Preset ได้ 1-5 แบบ" : "Choose 1-5 presets"}
@@ -1293,7 +1539,10 @@ function MixAndMatchPresetPanel({
                 : "Choose 1 preset to use it directly, or choose 2-5 presets for AI to mix into one draft."}
             </p>
             {hasUserPremise && (
-              <Badge variant="secondary" className="mt-1.5 whitespace-normal text-left text-[11px] leading-4">
+              <Badge
+                variant="secondary"
+                className="mt-1.5 whitespace-normal text-left text-[11px] leading-4"
+              >
                 {th
                   ? "ใช้โจทย์ของคุณเป็นแกนหลัก — preset ที่เลือกจะเป็นตัวเสริม"
                   : "Your premise is the spine — selected presets add supporting flavor"}
@@ -1305,18 +1554,22 @@ function MixAndMatchPresetPanel({
 
       <div className="grid gap-2">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-medium">{th ? "เลือกหมวดแนวเรื่อง" : "Choose categories"}</p>
+          <p className="text-xs font-medium">
+            {th ? "เลือกหมวดแนวเรื่อง" : "Choose categories"}
+          </p>
           <p className="text-[11px] text-muted-foreground">
-            {th ? `${selectedCategories.length} หมวดที่ใช้กรอง` : `${selectedCategories.length} filter categories`}
+            {th
+              ? `${selectedCategories.length} หมวดที่ใช้กรอง`
+              : `${selectedCategories.length} filter categories`}
           </p>
         </div>
         <div
           className={cn(
             "grid grid-cols-2 gap-1.5 overflow-y-auto rounded-lg border bg-background p-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5",
-            expanded ? "max-h-[18rem]" : "max-h-[14rem]",
+            expanded ? "max-h-[18rem]" : "max-h-[14rem]"
           )}
         >
-          {categories.map((category) => {
+          {categories.map(category => {
             const selected = selectedCategories.includes(category);
             const count = categoryCounts[category] ?? 0;
             return (
@@ -1329,11 +1582,13 @@ function MixAndMatchPresetPanel({
                   "min-h-8 rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   selected
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-accent",
+                    : "bg-background hover:bg-accent"
                 )}
               >
                 {genrePresetCategoryLabel(category, lang)}
-                {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
+                {count > 0 && (
+                  <span className="ml-1 opacity-70">({count})</span>
+                )}
               </button>
             );
           })}
@@ -1348,14 +1603,20 @@ function MixAndMatchPresetPanel({
           />
           <Input
             value={presetSearch}
-            onChange={(e) => onPresetSearchChange(e.target.value)}
-            placeholder={th ? "ค้นหา preset ในหมวดที่เลือก…" : "Search presets in selected categories…"}
+            onChange={e => onPresetSearchChange(e.target.value)}
+            placeholder={
+              th
+                ? "ค้นหา preset ในหมวดที่เลือก…"
+                : "Search presets in selected categories…"
+            }
             className="pl-9"
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-medium">
-            {th ? "เลือก preset ในหมวดที่เลือก" : "Choose presets from selected categories"}
+            {th
+              ? "เลือก preset ในหมวดที่เลือก"
+              : "Choose presets from selected categories"}
           </p>
           <p className="text-[11px] text-muted-foreground">
             {selectedCategories.length > 0
@@ -1370,7 +1631,9 @@ function MixAndMatchPresetPanel({
         <div
           className={cn(
             "grid auto-rows-min grid-cols-1 gap-2 overflow-y-auto rounded-lg border bg-background/80 p-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4",
-            expanded ? "min-h-[16rem] max-h-[34vh]" : "min-h-[12rem] max-h-[26vh]",
+            expanded
+              ? "min-h-[16rem] max-h-[34vh]"
+              : "min-h-[12rem] max-h-[26vh]"
           )}
         >
           {presetsLoading ? (
@@ -1378,7 +1641,7 @@ function MixAndMatchPresetPanel({
               {th ? "กำลังโหลด preset…" : "Loading presets..."}
             </div>
           ) : filteredPresets.length > 0 ? (
-            filteredPresets.map((preset) => (
+            filteredPresets.map(preset => (
               <PresetCard
                 key={preset.id}
                 preset={preset}
@@ -1398,24 +1661,38 @@ function MixAndMatchPresetPanel({
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field label={th ? "ธุรกิจ/ร้าน/บริการที่อยากผูกเรื่อง" : "Business, shop, or service context"}>
+        <Field
+          label={
+            th
+              ? "ธุรกิจ/ร้าน/บริการที่อยากผูกเรื่อง"
+              : "Business, shop, or service context"
+          }
+        >
           <Input
             value={businessContext}
-            onChange={(e) => onBusinessContextChange(e.target.value)}
-            placeholder={th ? "เช่น ร้านก๋วยเตี๋ยว, คาเฟ่ในชุมชน" : "e.g. noodle shop, neighborhood cafe"}
+            onChange={e => onBusinessContextChange(e.target.value)}
+            placeholder={
+              th
+                ? "เช่น ร้านก๋วยเตี๋ยว, คาเฟ่ในชุมชน"
+                : "e.g. noodle shop, neighborhood cafe"
+            }
           />
         </Field>
         <Field label={th ? "แนวหลัก (ไม่บังคับ)" : "Primary flavor (optional)"}>
           <Select
             value={primarySelectionId ?? "auto"}
-            onValueChange={(value) => onPrimarySelectionIdChange(value === "auto" ? undefined : value)}
+            onValueChange={value =>
+              onPrimarySelectionIdChange(value === "auto" ? undefined : value)
+            }
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-[min(50vh,20rem)]">
-              <SelectItem value="auto">{th ? "ให้ AI เลือกให้" : "Let AI choose"}</SelectItem>
-              {primaryOptions.map((option) => (
+              <SelectItem value="auto">
+                {th ? "ให้ AI เลือกให้" : "Let AI choose"}
+              </SelectItem>
+              {primaryOptions.map(option => (
                 <SelectItem key={option.id} value={option.id}>
                   {option.label}
                 </SelectItem>
@@ -1431,24 +1708,35 @@ function MixAndMatchPresetPanel({
           `selections` is unconditional (see `handleSynthesizePreset`) — the
           server decides whether the tenant's flag is on. */}
       {selectionCount >= 2 && (
-        <div ref={weightsSectionRef} className="grid gap-2 rounded-lg border bg-background p-3">
-          <p className="text-xs font-medium">{pickCopy(lang, verticalDramaCopy.mixWeightSectionTitle)}</p>
+        <div
+          ref={weightsSectionRef}
+          className="grid gap-2 rounded-lg border bg-background p-3"
+        >
+          <p className="text-xs font-medium">
+            {pickCopy(lang, verticalDramaCopy.mixWeightSectionTitle)}
+          </p>
           <div className="grid gap-3">
-            {selectedPresetIds.map((id) => {
+            {selectedPresetIds.map(id => {
               const weight = weights[id] ?? DEFAULT_MIX_WEIGHT;
               const presetTitle = presetTitleById[id] ?? id;
               return (
                 <div key={id} className="grid gap-1">
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="min-w-0 truncate font-medium">{presetTitle}</span>
-                    <span className="shrink-0 text-muted-foreground">{mixWeightLabel(lang, weight)}</span>
+                    <span className="min-w-0 truncate font-medium">
+                      {presetTitle}
+                    </span>
+                    <span className="shrink-0 text-muted-foreground">
+                      {mixWeightLabel(lang, weight)}
+                    </span>
                   </div>
                   <Slider
                     value={[weight]}
                     min={1}
                     max={5}
                     step={1}
-                    onValueChange={([value]) => onWeightChange(id, clampMixWeight(value))}
+                    onValueChange={([value]) =>
+                      onWeightChange(id, clampMixWeight(value))
+                    }
                     aria-label={`${presetTitle} — ${mixWeightLabel(lang, weight)}`}
                     className="py-3"
                   />
@@ -1468,7 +1756,9 @@ function MixAndMatchPresetPanel({
         {canApplySingle ? (
           <Button
             type="button"
-            onClick={() => selectedSinglePreset && onApplySinglePreset(selectedSinglePreset)}
+            onClick={() =>
+              selectedSinglePreset && onApplySinglePreset(selectedSinglePreset)
+            }
             disabled={!selectedSinglePreset}
             className="gap-2"
           >
@@ -1476,16 +1766,26 @@ function MixAndMatchPresetPanel({
             {th ? "ใช้ Preset นี้" : "Use this preset"}
           </Button>
         ) : (
-        <Button type="button" onClick={onGenerate} disabled={!canGenerate} className="gap-2">
-          {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
-          {loading
-            ? th
-              ? "AI กำลังจัดรสชาติเรื่องให้เข้ากัน..."
-              : "AI is mixing the story flavors..."
-            : th
-              ? "ให้ AI ผสมเป็น Preset"
-              : "Mix into a preset"}
-        </Button>
+          <Button
+            type="button"
+            onClick={onGenerate}
+            disabled={!canGenerate}
+            className="gap-2"
+          >
+            {loading && (
+              <Loader2
+                className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            )}
+            {loading
+              ? th
+                ? "AI กำลังจัดรสชาติเรื่องให้เข้ากัน..."
+                : "AI is mixing the story flavors..."
+              : th
+                ? "ให้ AI ผสมเป็น Preset"
+                : "Mix into a preset"}
+          </Button>
         )}
       </div>
 
@@ -1502,15 +1802,21 @@ function MixAndMatchPresetPanel({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-semibold">{draft.title}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{draft.logline}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {draft.logline}
+              </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <Badge variant="secondary">{genrePresetCategoryLabel(draft.category, lang)}</Badge>
+                <Badge variant="secondary">
+                  {genrePresetCategoryLabel(draft.category, lang)}
+                </Badge>
                 <Badge variant="outline">
                   {draft.characters.length} {th ? "ตัวละคร" : "characters"}
                 </Badge>
               </div>
               {draft.mixRecipe?.rationale && (
-                <p className="mt-2 text-xs text-muted-foreground">{draft.mixRecipe.rationale}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {draft.mixRecipe.rationale}
+                </p>
               )}
               {draft.contract_version === 2 && draft.visualIdentity && (
                 <div className="mt-2">
@@ -1518,16 +1824,28 @@ function MixAndMatchPresetPanel({
                     {visualStyleLabel(lang, draft.visualIdentity.styleName)}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-1">
-                    <VisualIdentityPaletteSwatches palette={draft.visualIdentity.palette} />
+                    <VisualIdentityPaletteSwatches
+                      palette={draft.visualIdentity.palette}
+                    />
                   </div>
                 </div>
               )}
             </div>
             <div className="flex shrink-0 gap-2">
-              <Button type="button" size="sm" onClick={() => onApplyDraft(draft)}>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onApplyDraft(draft)}
+              >
                 {th ? "ใช้ draft นี้" : "Use this draft"}
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={onGenerate} disabled={loading}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onGenerate}
+                disabled={loading}
+              >
                 {th ? "ปรับใหม่" : "Try again"}
               </Button>
             </div>
@@ -1565,9 +1883,13 @@ function Field({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+      <Label className="text-xs font-medium text-muted-foreground">
+        {label}
+      </Label>
       {children}
-      {helperText && <p className="text-[11px] text-muted-foreground">{helperText}</p>}
+      {helperText && (
+        <p className="text-[11px] text-muted-foreground">{helperText}</p>
+      )}
     </div>
   );
 }

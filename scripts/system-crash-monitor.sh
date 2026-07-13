@@ -9,12 +9,23 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_DIR="${PROJECT_ROOT}/logs/system-watch"
 DAILY_LOG="${LOG_DIR}/system-watch-$(date +%Y-%m-%d).log"
 ALERT_LOG="${LOG_DIR}/alerts.log"
+CGROUP_STATE_FILE="${LOG_DIR}/cgroup-memory-events.state"
+ALERT_DEDUP_FILE="${LOG_DIR}/alert-dedup.state"
 RESTART_THRESHOLD="${CRASH_MONITOR_RESTART_THRESHOLD:-2}"
 RAM_WARN_PCT="${CRASH_MONITOR_RAM_WARN_PCT:-70}"
 RAM_CRIT_PCT="${CRASH_MONITOR_RAM_CRIT_PCT:-85}"
+SWAP_WARN_PCT="${CRASH_MONITOR_SWAP_WARN_PCT:-40}"
+SWAP_CRIT_PCT="${CRASH_MONITOR_SWAP_CRIT_PCT:-70}"
+MEM_AVAILABLE_WARN_MB="${CRASH_MONITOR_MEM_AVAILABLE_WARN_MB:-4096}"
+MEM_AVAILABLE_CRIT_MB="${CRASH_MONITOR_MEM_AVAILABLE_CRIT_MB:-2048}"
+MEM_PSI_CRIT_AVG10="${CRASH_MONITOR_MEM_PSI_CRIT_AVG10:-5}"
 WEBHOOK_URL="${ALERT_WEBHOOK_URL:-${SLACK_WEBHOOK_URL:-${DISCORD_WEBHOOK_URL:-}}}"
 
 mkdir -p "${LOG_DIR}"
+
+# Cron runs every minute; a slow journal query must not overlap the next run.
+exec 9>"${LOG_DIR}/.monitor.lock"
+flock -n 9 || exit 0
 
 timestamp="$(date '+%Y-%m-%d %T %z')"
 
@@ -52,6 +63,55 @@ EOF
         "${WEBHOOK_URL}" > /dev/null 2>&1 || true
 }
 
+# Suppress identical alert classes for 15 minutes. Dynamic values remain in
+# the daily log, while webhooks/alert.log only receive actionable transitions.
+should_emit_alert() {
+    local alert="$1" key now previous
+    key="$(printf '%s\n' "${alert}" | awk '{print $1 "|" $2}')"
+    now="$(date +%s)"
+    touch "${ALERT_DEDUP_FILE}"
+    previous="$(awk -F '\t' -v k="${key}" '$1 == k {print $2}' "${ALERT_DEDUP_FILE}" | tail -1)"
+    if [ -n "${previous}" ] && [ $((now - previous)) -lt 900 ]; then
+        return 1
+    fi
+    awk -F '\t' -v k="${key}" '$1 != k' "${ALERT_DEDUP_FILE}" > "${ALERT_DEDUP_FILE}.tmp" 2>/dev/null || true
+    printf '%s\t%s\n' "${key}" "${now}" >> "${ALERT_DEDUP_FILE}.tmp"
+    mv "${ALERT_DEDUP_FILE}.tmp" "${ALERT_DEDUP_FILE}"
+    return 0
+}
+
+# Detect service-local throttling/OOM even when host free memory is healthy.
+# Values are cumulative in cgroup v2, so alert only on a positive delta.
+record_cgroup_memory_events() {
+    local cgroup path high oom_kill previous_high previous_oom
+    mkdir -p "${LOG_DIR}"
+    touch "${CGROUP_STATE_FILE}"
+
+    while IFS='|' read -r cgroup path; do
+        [ -r "${path}" ] || continue
+        high="$(awk '$1 == "high" {print $2}' "${path}")"
+        oom_kill="$(awk '$1 == "oom_kill" {print $2}' "${path}")"
+        previous_high="$(awk -v s="${cgroup}" '$1 == s {print $2}' "${CGROUP_STATE_FILE}")"
+        previous_oom="$(awk -v s="${cgroup}" '$1 == s {print $3}' "${CGROUP_STATE_FILE}")"
+
+        if [ -n "${previous_high}" ] && [ "${high:-0}" -gt "${previous_high:-0}" ]; then
+            alerts+=("WARNING cgroup_memory_throttle cgroup=${cgroup} high_events_delta=$((high - previous_high))")
+        fi
+        if [ -n "${previous_oom}" ] && [ "${oom_kill:-0}" -gt "${previous_oom:-0}" ]; then
+            alerts+=("CRITICAL cgroup_oom_kill cgroup=${cgroup} oom_kill_delta=$((oom_kill - previous_oom))")
+        fi
+
+        awk -v s="${cgroup}" '$1 != s' "${CGROUP_STATE_FILE}" > "${CGROUP_STATE_FILE}.tmp" 2>/dev/null || true
+        printf '%s %s %s\n' "${cgroup}" "${high:-0}" "${oom_kill:-0}" >> "${CGROUP_STATE_FILE}.tmp"
+        mv "${CGROUP_STATE_FILE}.tmp" "${CGROUP_STATE_FILE}"
+    done <<'CGROUPS'
+smartspec-web.service|/sys/fs/cgroup/system.slice/smartspec-web.service/memory.events
+smartspec-backend.service|/sys/fs/cgroup/system.slice/smartspec-backend.service/memory.events
+system-smartspec-agent.slice|/sys/fs/cgroup/system.slice/system-smartspec.slice/system-smartspec-agent.slice/memory.events
+system.slice|/sys/fs/cgroup/system.slice/memory.events
+CGROUPS
+}
+
 # ---------------------------------------------------------------------------
 # Main logic — wrapped so any unexpected error is caught and logged
 # ---------------------------------------------------------------------------
@@ -63,15 +123,10 @@ main() {
     # Count "Started SmartAIHub" events in the last 10 minutes across
     # all smartspec-*.service units.
     # ------------------------------------------------------------------
-    local restart_output
-    restart_output="$(sudo journalctl -u 'smartspec-*.service' \
-        --since '10 minutes ago' --no-pager -q 2>/dev/null || true)"
-
     for service in smartspec-web smartspec-backend; do
         local count
-        count="$(echo "${restart_output}" | grep -c "Started SmartAIHub" 2>/dev/null || echo 0)"
-        # Per-service count: grep the service name too
-        count="$(echo "${restart_output}" | grep "${service}" | grep -c "Started SmartAIHub" 2>/dev/null || echo 0)"
+        count="$(sudo journalctl -u "${service}.service" --since '10 minutes ago' --no-pager -q 2>/dev/null | grep -c "Started SmartAIHub" || true)"
+        count="${count:-0}"
 
         if [ "${count}" -gt "${RESTART_THRESHOLD}" ]; then
             alerts+=("CRITICAL restart_loop service=${service} restarts_10m=${count} threshold=${RESTART_THRESHOLD}")
@@ -96,12 +151,41 @@ main() {
         fi
     fi
 
+    # Used memory includes filesystem cache and is not sufficient to detect
+    # reclaim/swap thrashing. Track available memory, swap and PSI as well.
+    local mem_available swap_total swap_used swap_pct mem_psi_avg10
+    mem_available="$(free -m | awk '/^Mem:/ {print $7}')"
+    swap_total="$(free -m | awk '/^Swap:/ {print $2}')"
+    swap_used="$(free -m | awk '/^Swap:/ {print $3}')"
+    swap_pct=0
+    if [ -n "${swap_total}" ] && [ "${swap_total}" -gt 0 ]; then
+        swap_pct=$(( (swap_used * 100) / swap_total ))
+    fi
+    mem_psi_avg10="$(awk '/^some / {for (i=1; i<=NF; i++) if ($i ~ /^avg10=/) {sub("avg10=", "", $i); print $i}}' /proc/pressure/memory 2>/dev/null || echo 0)"
+
+    if [ -n "${mem_available}" ] && [ "${mem_available}" -lt "${MEM_AVAILABLE_CRIT_MB}" ]; then
+        alerts+=("CRITICAL low_memory_available available_mb=${mem_available} threshold_mb=${MEM_AVAILABLE_CRIT_MB}")
+    elif [ -n "${mem_available}" ] && [ "${mem_available}" -lt "${MEM_AVAILABLE_WARN_MB}" ]; then
+        alerts+=("WARNING low_memory_available available_mb=${mem_available} threshold_mb=${MEM_AVAILABLE_WARN_MB}")
+    fi
+    if [ "${swap_pct}" -ge "${SWAP_CRIT_PCT}" ]; then
+        alerts+=("CRITICAL swap_pressure swap_pct=${swap_pct} used_mb=${swap_used} total_mb=${swap_total}")
+    elif [ "${swap_pct}" -ge "${SWAP_WARN_PCT}" ]; then
+        alerts+=("WARNING swap_pressure swap_pct=${swap_pct} used_mb=${swap_used} total_mb=${swap_total}")
+    fi
+    if awk -v value="${mem_psi_avg10:-0}" -v threshold="${MEM_PSI_CRIT_AVG10}" 'BEGIN { exit !(value >= threshold) }'; then
+        alerts+=("CRITICAL memory_psi some_avg10=${mem_psi_avg10} threshold=${MEM_PSI_CRIT_AVG10}")
+    fi
+
+    record_cgroup_memory_events
+
     # ------------------------------------------------------------------
     # 3. Write to daily log
     # ------------------------------------------------------------------
     {
         echo "===== ${timestamp} ====="
         echo "ram_pct=${mem_pct:-?} used_mb=${mem_used:-?} total_mb=${mem_total:-?}"
+        echo "available_mb=${mem_available:-?} swap_pct=${swap_pct:-?} swap_used_mb=${swap_used:-?} memory_psi_some_avg10=${mem_psi_avg10:-?}"
         if [ "${#alerts[@]}" -eq 0 ]; then
             echo "alerts=none"
         else
@@ -125,8 +209,10 @@ main() {
 
         # Only alert on CRITICAL or WARNING (skip INFO restarts to avoid noise)
         if [ "${level}" = "CRITICAL" ] || [ "${level}" = "WARN" ]; then
-            send_webhook "${alert}" "${level}"
-            echo "[${level}] ${alert}" >> "${ALERT_LOG}"
+            if should_emit_alert "${alert}"; then
+                send_webhook "${alert}" "${level}"
+                echo "[${level}] ${alert}" >> "${ALERT_LOG}"
+            fi
         fi
     done
 

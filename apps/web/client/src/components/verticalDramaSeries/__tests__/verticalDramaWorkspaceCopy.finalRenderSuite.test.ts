@@ -60,7 +60,7 @@ describe("Final Render Suite copy (task #21 phase B)", () => {
     );
     expect(vdCopy("th").seasonRenderButton).toBe("เรนเดอร์ทั้งซีซั่น");
     expect(vdCopy("th").seasonRenderDialogExplainer).toBe(
-      "ระบบจะเรนเดอร์ทีละตอนตามลำดับ ตอนที่ไม่พร้อมจะถูกข้าม (แบนเนอร์ใช้ได้เฉพาะการเรนเดอร์รายตอนในเวอร์ชันนี้)"
+      "ระบบจะเรนเดอร์ทีละตอนย่อยตามลำดับ ตอนย่อยที่ไม่พร้อมจะถูกข้าม (แบนเนอร์ใช้ได้เฉพาะการเรนเดอร์รายตอนย่อยในเวอร์ชันนี้)"
     );
   });
 
@@ -70,14 +70,14 @@ describe("Final Render Suite copy (task #21 phase B)", () => {
         subtitleLines: 12,
         audioSegments: 4,
       })
-    ).toBe("เริ่มประกอบวิดีโอทั้งตอนแล้ว — ซับไตเติล 12 บรรทัด, เสียงพูด 4 ช่วง");
+    ).toBe("เริ่มประกอบวิดีโอรวมตอนย่อยแล้ว — ซับไตเติล 12 บรรทัด, เสียงพูด 4 ช่วง");
     expect(
       vdCopyWithParams(vdCopy("en").finalRenderStartedSummaryTemplate, {
         subtitleLines: 12,
         audioSegments: 4,
       })
     ).toBe(
-      "Started assembling the full episode video — 12 subtitle line(s), 4 audio segment(s)"
+      "Started assembling the full Sub-episode video — 12 subtitle line(s), 4 audio segment(s)"
     );
   });
 
@@ -87,12 +87,12 @@ describe("Final Render Suite copy (task #21 phase B)", () => {
         n: 3,
         episodes: "1, 2, 3",
       })
-    ).toBe("คิวแล้ว 3 ตอน: 1, 2, 3");
+    ).toBe("คิวแล้ว 3 ตอนย่อย: 1, 2, 3");
     expect(
       vdCopyWithParams(vdCopy("en").seasonRenderSkippedSummaryTemplate, {
         n: 2,
       })
-    ).toBe("Skipped 2 episode(s)");
+    ).toBe("Skipped 2 Sub-episode(s)");
   });
 
   describe("VD_FINAL_RENDER_SUBTITLE_PRESET_IDS + vdFinalRenderSubtitlePresetLabel", () => {
@@ -184,7 +184,7 @@ describe("Final Render Suite copy (task #21 phase B)", () => {
     it("maps the no-clips-at-all precondition message to a short Thai label", () => {
       expect(
         vdSeasonRenderSkipReasonLabel(
-          "No video clips exist for this episode yet — generate the video motion prompt pack and render clips first.",
+          "No video clips exist for this Sub-episode yet — generate the video motion prompt pack and render clips first.",
           "th"
         )
       ).toBe("ยังไม่มีคลิปวิดีโอ — ต้องสร้างชุดพรอมป์วิดีโอและเรนเดอร์คลิปก่อน");

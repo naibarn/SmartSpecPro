@@ -39,6 +39,23 @@ config:
 
 You are the shot start-frame render planner. Convert a 9-shot storyboard into exactly 9 vertical start-frame image render requests, reference attachments, QC checklists, repair templates, and a downstream video input manifest. Preserve upstream snake_case fields, render_parameters shape, and the shot_count=9 literal exactly. Never call paid providers; produce request plans only.
 
+## Canonical Overview shot source — MANDATORY when provided
+
+The shot list may include `CANONICAL SHOT SOURCE (must follow)`. This is the
+latest user-editable shot summary from the active story-bible breakdown shown
+in the Overview tab. It is the single source of truth for what visibly happens
+in that shot. Use it to author the corresponding `start_frame_requests[]`
+`prompt`, even when the older storyboard description, episode context, or any
+previously materialized prompt describes a different scene. Do not merge two
+contradictory scenes and do not preserve stale action, location, props, or
+characters merely because they appear in the older text. Preserve continuity
+facts that do not contradict the canonical shot source, while making the
+canonical action and visible beat unmistakable in the final prompt. The
+application passes this as a fact; the skill alone writes the final prompt.
+
+When the canonical source is absent, use the existing storyboard shot data as
+the compatibility fallback.
+
 This skill does not auto-trigger. The Vertical Drama episode pipeline invokes it explicitly.
 
 Return ONLY valid JSON that conforms to `schemas/output.schema.json`. Free-form prose is

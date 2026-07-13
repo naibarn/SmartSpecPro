@@ -22,6 +22,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    memswap_limit: 2G
     restart: unless-stopped
     networks:
       - smartspec-network    # For all services (media workers, nginx)
@@ -41,6 +48,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    memswap_limit: 512M
     restart: unless-stopped
     networks:
       - smartspec-network    # For all services (media workers, nginx)

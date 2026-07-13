@@ -4,22 +4,26 @@
  * (`trpc.videoProjects.exportCaptions`, downloaded as a file — same
  * Blob->object-URL->anchor-click convention used elsewhere in this app,
  * e.g. `FinanceReports.tsx`).
+ *
+ * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
+ * components directly, which `AppPage.tsx`'s docstring says should never
+ * happen outside that one file. This is a deliberate, explicit,
+ * twice-confirmed user decision to migrate Video Studio off shadcn/ui onto
+ * native Astryx components (see
+ * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
+ * violation of that rule.
  */
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Switch } from "@astryxdesign/core/Switch";
+import { TextInput } from "@astryxdesign/core/TextInput";
+
 import { trpc } from "@/lib/trpc";
 import type { CaptionPresetId, VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
 import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
@@ -73,70 +77,60 @@ export function CaptionsPanel({
   }
 
   return (
-    <div className="flex flex-col gap-4" data-testid="video-studio-captions-panel">
-      <Card className="border-border/60">
-        <CardHeader>
-          <CardTitle className="text-base">
-            {pickCopy(lang, { th: "การตั้งค่าคำบรรยาย", en: "Caption settings" })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <div className="grid gap-1.5">
-            <Label>{pickCopy(lang, { th: "รูปแบบคำบรรยาย", en: "Caption preset" })}</Label>
-            <Select
-              value={document.captions.presetId}
-              onValueChange={(value) =>
-                onChange({
-                  ...document,
-                  captions: { ...document.captions, presetId: value as CaptionPresetId },
-                })
-              }
-            >
-              <SelectTrigger data-testid="video-studio-caption-preset-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CAPTION_PRESETS.map((preset) => (
-                  <SelectItem key={preset} value={preset}>
-                    {preset}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2">
-            <Label htmlFor="video-studio-caption-burn-in">
-              {pickCopy(lang, { th: "เผาคำบรรยายลงวิดีโอ", en: "Burn captions into video" })}
-            </Label>
+    <VStack gap={4} data-testid="video-studio-captions-panel">
+      <Card>
+        <VStack gap={3}>
+          <Heading level={4}>{pickCopy(lang, { th: "การตั้งค่าคำบรรยาย", en: "Caption settings" })}</Heading>
+
+          <Selector
+            label={pickCopy(lang, { th: "รูปแบบคำบรรยาย", en: "Caption preset" })}
+            options={CAPTION_PRESETS}
+            value={document.captions.presetId}
+            onChange={(value) =>
+              onChange({
+                ...document,
+                captions: { ...document.captions, presetId: value as CaptionPresetId },
+              })
+            }
+            data-testid="video-studio-caption-preset-select"
+          />
+
+          <Card variant="muted" padding={2}>
             <Switch
-              id="video-studio-caption-burn-in"
-              checked={document.captions.burnIn}
-              onCheckedChange={(checked) =>
+              label={pickCopy(lang, { th: "เผาคำบรรยายลงวิดีโอ", en: "Burn captions into video" })}
+              value={document.captions.burnIn}
+              onChange={(checked) =>
                 onChange({ ...document, captions: { ...document.captions, burnIn: checked } })
               }
             />
-          </div>
-          <div className="grid gap-1.5">
-            <Label>{pickCopy(lang, { th: "ภาษาคำบรรยาย", en: "Caption language" })}</Label>
-            <Input
-              value={document.captions.language}
-              onChange={(e) =>
-                onChange({ ...document, captions: { ...document.captions, language: e.target.value } })
-              }
+          </Card>
+
+          <TextInput
+            label={pickCopy(lang, { th: "ภาษาคำบรรยาย", en: "Caption language" })}
+            value={document.captions.language}
+            onChange={(value) =>
+              onChange({ ...document, captions: { ...document.captions, language: value } })
+            }
+          />
+
+          <HStack gap={2} wrap="wrap">
+            <Button
+              type="button"
+              variant="secondary"
+              icon={<Download className="h-4 w-4" aria-hidden="true" />}
+              label={pickCopy(lang, videoStudioCopy.exportSrt)}
+              onClick={() => exportFormat("srt")}
             />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => exportFormat("srt")}>
-              <Download className="h-4 w-4" />
-              {pickCopy(lang, videoStudioCopy.exportSrt)}
-            </Button>
-            <Button variant="outline" className="gap-2" onClick={() => exportFormat("vtt")}>
-              <Download className="h-4 w-4" />
-              {pickCopy(lang, videoStudioCopy.exportVtt)}
-            </Button>
-          </div>
-        </CardContent>
+            <Button
+              type="button"
+              variant="secondary"
+              icon={<Download className="h-4 w-4" aria-hidden="true" />}
+              label={pickCopy(lang, videoStudioCopy.exportVtt)}
+              onClick={() => exportFormat("vtt")}
+            />
+          </HStack>
+        </VStack>
       </Card>
-    </div>
+    </VStack>
   );
 }

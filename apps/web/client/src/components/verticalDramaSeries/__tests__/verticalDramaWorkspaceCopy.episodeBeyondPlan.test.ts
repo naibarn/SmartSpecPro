@@ -32,7 +32,7 @@ describe("Episode-beyond-plan banner copy (task #26)", () => {
       "ขยายแผนซีซั่นที่หน้าภาพรวมก่อน เพื่อให้บท/ร่างละเอียด/QC อ้างอิงโครงเรื่องได้"
     );
     expect(vdCopy("th").episodeBeyondPlanTitle).toBe(
-      "ตอนนี้อยู่นอกแผนซีซั่นปัจจุบัน (แผนมี {count} ตอน)"
+      "ตอนย่อยนี้อยู่นอกโครงสร้างเรื่องปัจจุบัน (แผนมี {count} ตอนย่อย)"
     );
   });
 
@@ -40,7 +40,9 @@ describe("Episode-beyond-plan banner copy (task #26)", () => {
     const text = vdCopyWithParams(vdCopy("th").episodeBeyondPlanTitle, {
       count: 10,
     });
-    expect(text).toBe("ตอนนี้อยู่นอกแผนซีซั่นปัจจุบัน (แผนมี 10 ตอน)");
+    expect(text).toBe(
+      "ตอนย่อยนี้อยู่นอกโครงสร้างเรื่องปัจจุบัน (แผนมี 10 ตอนย่อย)"
+    );
   });
 
   it("interpolates the planned-episode-count title template correctly (English)", () => {
@@ -48,7 +50,7 @@ describe("Episode-beyond-plan banner copy (task #26)", () => {
       count: 10,
     });
     expect(text).toBe(
-      "This episode is outside the current season plan (plan covers 10 episode(s))"
+      "This Sub-episode is outside the current story plan (plan covers 10 Sub-episode(s))"
     );
   });
 });

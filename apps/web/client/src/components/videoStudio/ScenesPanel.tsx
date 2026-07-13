@@ -5,14 +5,24 @@
  * structure to justify two panels — documented UI simplification).
  * Add/remove scenes, edit timing + narration text. Visual/motion template
  * assignment lives in `MotionPanel` (a separate concern).
+ *
+ * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
+ * components directly, which `AppPage.tsx`'s docstring says should never
+ * happen outside that one file. This is a deliberate, explicit,
+ * twice-confirmed user decision to migrate Video Studio off shadcn/ui onto
+ * native Astryx components (see
+ * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
+ * violation of that rule.
  */
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { IconButton } from "@astryxdesign/core/IconButton";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { TextArea } from "@astryxdesign/core/TextArea";
 import { trpc } from "@/lib/trpc";
 import type { Scene, VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
 import { NotWiredJobCard } from "./NotWiredJobCard";
@@ -87,56 +97,50 @@ export function ScenesPanel({
         onRun={() => runScenePlan.mutate({ projectId })}
       />
       {document.scenes.map((scene, index) => (
-        <Card
-          key={scene.sceneId}
-          className="border-border/60"
-          data-testid={`video-studio-scene-${scene.sceneId}`}
-        >
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="text-base">{scene.sceneId}</CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={pickCopy(lang, videoStudioCopy.removeScene)}
-              disabled={document.scenes.length <= 1}
-              onClick={() => removeScene(index)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label>{pickCopy(lang, { th: "เริ่มที่ (มิลลิวินาที)", en: "Start (ms)" })}</Label>
-                <Input
-                  type="number"
-                  value={scene.startMs}
-                  onChange={(e) => updateScene(index, { startMs: Number(e.target.value) || 0 })}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label>{pickCopy(lang, { th: "สิ้นสุดที่ (มิลลิวินาที)", en: "End (ms)" })}</Label>
-                <Input
-                  type="number"
-                  value={scene.endMs}
-                  onChange={(e) => updateScene(index, { endMs: Number(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-            <div className="grid gap-1.5">
-              <Label>{pickCopy(lang, { th: "บทบรรยาย", en: "Narration" })}</Label>
-              <Textarea
-                value={scene.narration ?? ""}
-                onChange={(e) => updateScene(index, { narration: e.target.value || null })}
+        <Card key={scene.sceneId} data-testid={`video-studio-scene-${scene.sceneId}`}>
+          <VStack gap={3}>
+            <HStack justify="between" align="center" gap={2}>
+              <Heading level={4}>{scene.sceneId}</Heading>
+              <IconButton
+                variant="ghost"
+                size="sm"
+                icon={<Trash2 className="h-4 w-4" />}
+                label={pickCopy(lang, videoStudioCopy.removeScene)}
+                isDisabled={document.scenes.length <= 1}
+                onClick={() => removeScene(index)}
+              />
+            </HStack>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <NumberInput
+                label={pickCopy(lang, { th: "เริ่มที่ (มิลลิวินาที)", en: "Start (ms)" })}
+                isIntegerOnly
+                min={0}
+                value={scene.startMs}
+                onChange={(value) => updateScene(index, { startMs: value })}
+              />
+              <NumberInput
+                label={pickCopy(lang, { th: "สิ้นสุดที่ (มิลลิวินาที)", en: "End (ms)" })}
+                isIntegerOnly
+                min={0}
+                value={scene.endMs}
+                onChange={(value) => updateScene(index, { endMs: value })}
               />
             </div>
-          </CardContent>
+            <TextArea
+              label={pickCopy(lang, { th: "บทบรรยาย", en: "Narration" })}
+              value={scene.narration ?? ""}
+              onChange={(value) => updateScene(index, { narration: value || null })}
+            />
+          </VStack>
         </Card>
       ))}
-      <Button variant="outline" className="self-start gap-2" onClick={addScene}>
-        <Plus className="h-4 w-4" />
-        {pickCopy(lang, videoStudioCopy.addScene)}
-      </Button>
+      <Button
+        variant="secondary"
+        icon={<Plus className="h-4 w-4" />}
+        label={pickCopy(lang, videoStudioCopy.addScene)}
+        onClick={addScene}
+        className="self-start"
+      />
     </div>
   );
 }

@@ -34,6 +34,11 @@ KillMode=control-group
 KillSignal=SIGTERM
 TimeoutStopSec=30s
 
+# Keep backend/MCP children bounded so host access and infrastructure survive.
+MemoryHigh=1536M
+MemoryMax=2G
+MemorySwapMax=0
+
 # Resource limits for MCP stdio processes
 LimitNOFILE=65536
 LimitNPROC=4096

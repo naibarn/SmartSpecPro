@@ -41,19 +41,25 @@ import type { VerticalDramaLineSpeakabilityViolationKind } from "@shared/vertica
  */
 describe("deepStoryDraftsGeneratedSuccessText", () => {
   it("renders the exact Copy Contract string in Thai", () => {
-    expect(deepStoryDraftsGeneratedSuccessText("th", 5)).toBe("ร่างแล้ว 5 ตอน");
+    expect(deepStoryDraftsGeneratedSuccessText("th", 5)).toBe(
+      "ร่างแล้ว 5 ตอนย่อย"
+    );
   });
 
   it("renders an English equivalent with correct pluralization", () => {
-    expect(deepStoryDraftsGeneratedSuccessText("en", 1)).toBe("Drafted 1 episode");
-    expect(deepStoryDraftsGeneratedSuccessText("en", 5)).toBe("Drafted 5 episodes");
+    expect(deepStoryDraftsGeneratedSuccessText("en", 1)).toBe(
+      "Drafted 1 Sub-episode"
+    );
+    expect(deepStoryDraftsGeneratedSuccessText("en", 5)).toBe(
+      "Drafted 5 Sub-episodes"
+    );
   });
 });
 
 describe("deepStoryDraftsPartialWarningText", () => {
   it("renders the exact Copy Contract string in Thai", () => {
     expect(deepStoryDraftsPartialWarningText("th", 7)).toBe(
-      "ร่างสำเร็จบางส่วน (ถึงตอนที่ 7) — กดขยายเพื่อทำต่อ",
+      "ร่างสำเร็จบางส่วน (ถึงตอนย่อยที่ 7) — กดขยายเพื่อทำต่อ"
     );
   });
 });
@@ -61,14 +67,22 @@ describe("deepStoryDraftsPartialWarningText", () => {
 describe("deepStoryDraftsSummaryText", () => {
   it("renders the exact Copy Contract string in Thai", () => {
     expect(
-      deepStoryDraftsSummaryText("th", { episodesWithDrafts: 3, totalEpisodes: 10, horizonEndEpisode: 3 }),
-    ).toBe("ร่างละเอียดแล้ว 3/10 ตอน (ถึงตอนที่ 3)");
+      deepStoryDraftsSummaryText("th", {
+        episodesWithDrafts: 3,
+        totalEpisodes: 10,
+        horizonEndEpisode: 3,
+      })
+    ).toBe("ร่างละเอียดแล้ว 3/10 ตอนย่อย (ถึงตอนย่อยที่ 3)");
   });
 
   it("omits the premium marker when `premium` is absent (byte-identical to before W11-B)", () => {
     expect(
-      deepStoryDraftsSummaryText("th", { episodesWithDrafts: 5, totalEpisodes: 10, horizonEndEpisode: 5 }),
-    ).toBe("ร่างละเอียดแล้ว 5/10 ตอน (ถึงตอนที่ 5)");
+      deepStoryDraftsSummaryText("th", {
+        episodesWithDrafts: 5,
+        totalEpisodes: 10,
+        horizonEndEpisode: 5,
+      })
+    ).toBe("ร่างละเอียดแล้ว 5/10 ตอนย่อย (ถึงตอนย่อยที่ 5)");
   });
 
   it("appends '· โหมดพรีเมียม' when `premium` is true", () => {
@@ -78,8 +92,8 @@ describe("deepStoryDraftsSummaryText", () => {
         totalEpisodes: 10,
         horizonEndEpisode: 5,
         premium: true,
-      }),
-    ).toBe("ร่างละเอียดแล้ว 5/10 ตอน (ถึงตอนที่ 5) · โหมดพรีเมียม");
+      })
+    ).toBe("ร่างละเอียดแล้ว 5/10 ตอนย่อย (ถึงตอนย่อยที่ 5) · โหมดพรีเมียม");
   });
 
   it("appends the English premium marker equivalent", () => {
@@ -89,14 +103,18 @@ describe("deepStoryDraftsSummaryText", () => {
         totalEpisodes: 10,
         horizonEndEpisode: 5,
         premium: true,
-      }),
-    ).toBe("Drafted in detail: 5/10 episodes (through episode 5) · Premium mode");
+      })
+    ).toBe(
+      "Drafted in detail: 5/10 Sub-episodes (through Sub-episode 5) · Premium mode"
+    );
   });
 });
 
 describe("deepStoryDraftsHorizonCountText / deepStoryDraftsCallRoundsText", () => {
   it("renders the exact Copy Contract strings in Thai", () => {
-    expect(deepStoryDraftsHorizonCountText("th", 10)).toBe("จำนวนตอนที่จะร่าง: 10 ตอน");
+    expect(deepStoryDraftsHorizonCountText("th", 10)).toBe(
+      "จำนวนตอนย่อยที่จะร่าง: 10 ตอนย่อย"
+    );
     expect(deepStoryDraftsCallRoundsText("th", 2)).toBe("จำนวนรอบเรียก: 2 รอบ");
   });
 });
@@ -108,8 +126,10 @@ describe("deepStoryDraftsFormatProfileChipText (task #23)", () => {
         tier: "ultra_short",
         nameTh: "ซีรีส์สั้นมาก",
         perEpisodeHookRule: { hookWithinSeconds: 3 },
-      }),
-    ).toBe("โปรไฟล์ความยาว: ซีรีส์สั้นมาก — ทุกตอนเปิดด้วย hook ใน 3 วิ / เนื้อแน่นไม่มีตอนเติม");
+      })
+    ).toBe(
+      "โปรไฟล์ความยาว: ซีรีส์สั้นมาก — ทุกตอนย่อยเปิดด้วย hook ใน 3 วิ / เนื้อแน่นไม่มีตอนเติม"
+    );
   });
 
   it("renders the short-tier Thai string with its own name/seconds", () => {
@@ -118,8 +138,10 @@ describe("deepStoryDraftsFormatProfileChipText (task #23)", () => {
         tier: "short",
         nameTh: "ซีรีส์สั้น",
         perEpisodeHookRule: { hookWithinSeconds: 5 },
-      }),
-    ).toBe("โปรไฟล์ความยาว: ซีรีส์สั้น — ทุกตอนเปิดด้วย hook ใน 5 วิ / เนื้อแน่นไม่มีตอนเติม");
+      })
+    ).toBe(
+      "โปรไฟล์ความยาว: ซีรีส์สั้น — ทุกตอนย่อยเปิดด้วย hook ใน 5 วิ / เนื้อแน่นไม่มีตอนเติม"
+    );
   });
 
   it("renders an English variant deriving the tier name from `tier`, not a nameTh string", () => {
@@ -137,54 +159,68 @@ describe("deepStoryDraftsFormatProfileChipText (task #23)", () => {
 describe("deepStoryDraftsShotSummaryLabel", () => {
   it("renders the exact 'ช็อต N — {summary}' Copy Contract shape", () => {
     expect(deepStoryDraftsShotSummaryLabel("th", 3, "นางเอกเดินเข้าบ้าน")).toBe(
-      "ช็อต 3 — นางเอกเดินเข้าบ้าน",
+      "ช็อต 3 — นางเอกเดินเข้าบ้าน"
     );
   });
 });
 
 describe("deepStoryDraftsDialogueLineText", () => {
   it("renders the exact '{speaker}: {line}' template, matching the wizard's own", () => {
-    expect(deepStoryDraftsDialogueLineText("th", "นางเอก", "ฉันจะไม่ยอมแพ้")).toBe(
-      "นางเอก: ฉันจะไม่ยอมแพ้",
-    );
+    expect(
+      deepStoryDraftsDialogueLineText("th", "นางเอก", "ฉันจะไม่ยอมแพ้")
+    ).toBe("นางเอก: ฉันจะไม่ยอมแพ้");
   });
 });
 
 describe("deepStoryDraftsCliffhangerText", () => {
   it("renders the exact 'จุดค้าง: {line}' Copy Contract shape", () => {
-    expect(deepStoryDraftsCliffhangerText("th", "ประตูเปิดออกช้าๆ")).toBe("จุดค้าง: ประตูเปิดออกช้าๆ");
+    expect(deepStoryDraftsCliffhangerText("th", "ประตูเปิดออกช้าๆ")).toBe(
+      "จุดค้าง: ประตูเปิดออกช้าๆ"
+    );
   });
 });
 
 describe("deepStoryDraftsSpeechSecondsBadgeText", () => {
   it("renders the exact 'บทพูดรวม {n} วิ' Copy Contract shape, rounded", () => {
-    expect(deepStoryDraftsSpeechSecondsBadgeText("th", 12.6)).toBe("บทพูดรวม 13 วิ");
+    expect(deepStoryDraftsSpeechSecondsBadgeText("th", 12.6)).toBe(
+      "บทพูดรวม 13 วิ"
+    );
   });
 });
 
 describe("deepStoryDraftsSilenceIntentCopy / deepStoryDraftsSilenceIntentLabel", () => {
   it("has a bilingual entry for every canonical silence-intent code", () => {
     for (const intent of VERTICAL_DRAMA_SILENCE_INTENTS) {
-      expect(deepStoryDraftsSilenceIntentCopy[intent].th.length).toBeGreaterThan(0);
-      expect(deepStoryDraftsSilenceIntentCopy[intent].en.length).toBeGreaterThan(0);
+      expect(
+        deepStoryDraftsSilenceIntentCopy[intent].th.length
+      ).toBeGreaterThan(0);
+      expect(
+        deepStoryDraftsSilenceIntentCopy[intent].en.length
+      ).toBeGreaterThan(0);
     }
   });
 
   it("looks up a known intent in the requested language", () => {
     expect(deepStoryDraftsSilenceIntentLabel("th", "establishing")).toBe(
-      deepStoryDraftsSilenceIntentCopy.establishing.th,
+      deepStoryDraftsSilenceIntentCopy.establishing.th
     );
     expect(deepStoryDraftsSilenceIntentLabel("en", "establishing")).toBe(
-      deepStoryDraftsSilenceIntentCopy.establishing.en,
+      deepStoryDraftsSilenceIntentCopy.establishing.en
     );
   });
 });
 
 describe("deepStoryDraftsShotViewerToggle / badges", () => {
   it("matches the exact literal Copy Contract strings", () => {
-    expect(verticalDramaCopy.deepStoryDraftsShotViewerToggle.th).toBe("ดูร่าง 9 ช็อต + บทพูด");
-    expect(verticalDramaCopy.deepStoryDraftsDialogueCompleteBadge.th).toBe("✓ บทพูดครบทุกช็อต");
-    expect(verticalDramaCopy.deepStoryDraftsSpeakableBadge.th).toBe("✓ อ่านออกเสียงได้");
+    expect(verticalDramaCopy.deepStoryDraftsShotViewerToggle.th).toBe(
+      "ดูร่าง 9 ช็อต + บทพูด"
+    );
+    expect(verticalDramaCopy.deepStoryDraftsDialogueCompleteBadge.th).toBe(
+      "✓ บทพูดครบทุกช็อต"
+    );
+    expect(verticalDramaCopy.deepStoryDraftsSpeakableBadge.th).toBe(
+      "✓ อ่านออกเสียงได้"
+    );
   });
 });
 
@@ -198,13 +234,17 @@ describe("deepStoryDraftsShotViewerToggle / badges", () => {
  */
 describe("deepStoryDraftsExtendCtaText", () => {
   it("renders the exact 'ขยายร่างอีก {n} ตอน' Copy Contract shape", () => {
-    expect(deepStoryDraftsExtendCtaText("th", 5)).toBe("ขยายร่างอีก 5 ตอน");
-    expect(deepStoryDraftsExtendCtaText("th", 1)).toBe("ขยายร่างอีก 1 ตอน");
+    expect(deepStoryDraftsExtendCtaText("th", 5)).toBe("ขยายร่างอีก 5 ตอนย่อย");
+    expect(deepStoryDraftsExtendCtaText("th", 1)).toBe("ขยายร่างอีก 1 ตอนย่อย");
   });
 
   it("renders an English equivalent with correct pluralization", () => {
-    expect(deepStoryDraftsExtendCtaText("en", 1)).toBe("Extend draft by 1 more episode");
-    expect(deepStoryDraftsExtendCtaText("en", 5)).toBe("Extend draft by 5 more episodes");
+    expect(deepStoryDraftsExtendCtaText("en", 1)).toBe(
+      "Extend draft by 1 more Sub-episode"
+    );
+    expect(deepStoryDraftsExtendCtaText("en", 5)).toBe(
+      "Extend draft by 5 more Sub-episodes"
+    );
   });
 });
 
@@ -236,37 +276,43 @@ describe("Consolidated primary action copy", () => {
 
   it("matches the exact literal Copy Contract strings (Thai)", () => {
     expect(verticalDramaCopy.deepStoryDraftsGenerateFullCta.th).toBe(
-      "สร้างเนื้อเรื่องเต็ม + ร่างละเอียดทุกตอน",
+      "สร้างเนื้อเรื่องเต็ม + ร่างละเอียดทุกตอนย่อย"
     );
     expect(verticalDramaCopy.deepStoryDraftsUpdateCta.th).toBe(
-      "อัปเดตเนื้อเรื่องละเอียดทุกตอน (9 ช็อต + บทพูด)",
+      "อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย (9 ช็อต + บทพูด)"
     );
     expect(verticalDramaCopy.deepStoryDraftsScopeKeepLabel.th).toBe(
-      "เก็บโครงเรื่องเดิม แล้วเติม/อัปเดตร่างละเอียด",
+      "เก็บโครงเรื่องเดิม แล้วเติม/อัปเดตร่างละเอียด"
     );
     expect(verticalDramaCopy.deepStoryDraftsScopeRewriteLabel.th).toBe(
-      "คิดโครงเรื่องใหม่ทั้งหมด แล้วร่างละเอียดต่อ",
+      "คิดโครงเรื่องใหม่ทั้งหมด แล้วร่างละเอียดต่อ"
     );
     expect(verticalDramaCopy.deepStoryDraftsScopeRewriteHint.th).toBe(
-      "เริ่มคิดเรื่องใหม่ทั้งหมด ของเดิมถูกแทนที่ (ร่างเก่ายังย้อนดูได้)",
+      "เริ่มคิดเรื่องใหม่ทั้งหมด ของเดิมถูกแทนที่ (ร่างเก่ายังย้อนดูได้)"
     );
-    expect(verticalDramaCopy.deepStoryDraftsChainStoryProgress.th).toBe("กำลังคิดโครงเรื่องใหม่…");
-    expect(verticalDramaCopy.deepStoryDraftsChainDeepProgress.th).toBe("กำลังร่างละเอียด…");
+    expect(verticalDramaCopy.deepStoryDraftsChainStoryProgress.th).toBe(
+      "กำลังคิดโครงเรื่องใหม่…"
+    );
+    expect(verticalDramaCopy.deepStoryDraftsChainDeepProgress.th).toBe(
+      "กำลังร่างละเอียด…"
+    );
   });
 });
 
 describe("deepStoryDraftsScopeKeepHintText", () => {
   it("interpolates the real episode count rather than a hardcoded example number", () => {
     expect(deepStoryDraftsScopeKeepHintText("th", 10)).toBe(
-      "โครง 10 ตอนยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอน",
+      "โครง 10 ตอนย่อยยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอนย่อย"
     );
     expect(deepStoryDraftsScopeKeepHintText("th", 6)).toBe(
-      "โครง 6 ตอนยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอน",
+      "โครง 6 ตอนย่อยยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอนย่อย"
     );
   });
 
   it("renders a non-empty English equivalent", () => {
-    expect(deepStoryDraftsScopeKeepHintText("en", 10).length).toBeGreaterThan(0);
+    expect(deepStoryDraftsScopeKeepHintText("en", 10).length).toBeGreaterThan(
+      0
+    );
   });
 });
 
@@ -294,15 +340,19 @@ describe("Premium mode-picker copy (W11-B)", () => {
   });
 
   it("matches the literal 'มาตรฐาน (เร็ว ประหยัด)' / 'คิดหลายรอบ (พรีเมียม)' Copy Contract labels", () => {
-    expect(verticalDramaCopy.deepStoryDraftsModeStandardLabel.th).toBe("มาตรฐาน (เร็ว ประหยัด)");
-    expect(verticalDramaCopy.deepStoryDraftsModePremiumLabel.th).toBe("คิดหลายรอบ (พรีเมียม)");
+    expect(verticalDramaCopy.deepStoryDraftsModeStandardLabel.th).toBe(
+      "มาตรฐาน (เร็ว ประหยัด)"
+    );
+    expect(verticalDramaCopy.deepStoryDraftsModePremiumLabel.th).toBe(
+      "คิดหลายรอบ (พรีเมียม)"
+    );
   });
 });
 
 describe("deepStoryDraftsModePremiumHintText", () => {
   it("renders the exact 'แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~{n} ครั้งเรียก)' Copy Contract shape", () => {
     expect(deepStoryDraftsModePremiumHintText("th", 8)).toBe(
-      "แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~8 ครั้งเรียก)",
+      "แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~8 ครั้งเรียก)"
     );
   });
 
@@ -336,7 +386,9 @@ describe("deepStoryDraftsScorecardOverallBadgeText", () => {
   });
 
   it("renders a non-empty English equivalent", () => {
-    expect(deepStoryDraftsScorecardOverallBadgeText("en", 4).length).toBeGreaterThan(0);
+    expect(
+      deepStoryDraftsScorecardOverallBadgeText("en", 4).length
+    ).toBeGreaterThan(0);
   });
 });
 
@@ -356,8 +408,12 @@ describe("PREMIUM_DRAFT_SCORE_DIMENSIONS / deepStoryDraftsPremiumDimensionCopy",
 
   it("has a non-empty bilingual label for every dimension", () => {
     for (const dimension of PREMIUM_DRAFT_SCORE_DIMENSIONS) {
-      expect(deepStoryDraftsPremiumDimensionCopy[dimension].th.length).toBeGreaterThan(0);
-      expect(deepStoryDraftsPremiumDimensionCopy[dimension].en.length).toBeGreaterThan(0);
+      expect(
+        deepStoryDraftsPremiumDimensionCopy[dimension].th.length
+      ).toBeGreaterThan(0);
+      expect(
+        deepStoryDraftsPremiumDimensionCopy[dimension].en.length
+      ).toBeGreaterThan(0);
     }
   });
 
@@ -368,23 +424,25 @@ describe("PREMIUM_DRAFT_SCORE_DIMENSIONS / deepStoryDraftsPremiumDimensionCopy",
 
 describe("deepStoryDraftsPremiumDimensionLabel", () => {
   it("looks up a known dimension in the requested language", () => {
-    expect(deepStoryDraftsPremiumDimensionLabel("th", "pacing")).toBe("จังหวะเรื่อง");
+    expect(deepStoryDraftsPremiumDimensionLabel("th", "pacing")).toBe(
+      "จังหวะเรื่อง"
+    );
     expect(deepStoryDraftsPremiumDimensionLabel("en", "pacing")).toBe(
-      deepStoryDraftsPremiumDimensionCopy.pacing.en,
+      deepStoryDraftsPremiumDimensionCopy.pacing.en
     );
   });
 
   it("falls back to the raw code for an unknown dimension, never throws", () => {
-    expect(deepStoryDraftsPremiumDimensionLabel("th", "not_a_real_dimension")).toBe(
-      "not_a_real_dimension",
-    );
+    expect(
+      deepStoryDraftsPremiumDimensionLabel("th", "not_a_real_dimension")
+    ).toBe("not_a_real_dimension");
   });
 });
 
 describe("deepStoryDraftsScorecardBelowFloorDimText", () => {
   it("renders the exact 'จุดที่ยังต่ำ: จังหวะเรื่อง 2/5' Copy Contract example", () => {
     expect(deepStoryDraftsScorecardBelowFloorDimText("th", "pacing", 2)).toBe(
-      "จุดที่ยังต่ำ: จังหวะเรื่อง 2/5",
+      "จุดที่ยังต่ำ: จังหวะเรื่อง 2/5"
     );
   });
 
@@ -429,21 +487,27 @@ describe("Manual dialogue edit copy (W10.5)", () => {
 
   it("matches the exact literal Copy Contract strings from the task brief (Thai)", () => {
     expect(verticalDramaCopy.manualDialogueEditCta.th).toBe("แก้บทพูด");
-    expect(verticalDramaCopy.manualDialogueEditDeliveryPlaceholder.th).toBe("อารมณ์/วิธีพูด");
-    expect(verticalDramaCopy.manualDialogueEditApplyCleaned.th).toBe("ใช้เวอร์ชันที่แก้ให้");
+    expect(verticalDramaCopy.manualDialogueEditDeliveryPlaceholder.th).toBe(
+      "อารมณ์/วิธีพูด"
+    );
+    expect(verticalDramaCopy.manualDialogueEditApplyCleaned.th).toBe(
+      "ใช้เวอร์ชันที่แก้ให้"
+    );
     expect(verticalDramaCopy.manualDialogueEditEditedBadge.th).toBe("แก้แล้ว");
     expect(verticalDramaCopy.manualDialogueEditAlreadyCreatedHint.th).toBe(
-      "ตอนนี้ถูกสร้างแล้ว — บทที่แก้จะถูกใช้เมื่อสร้าง/เกลี่ยบทของตอนนั้นอีกครั้ง",
+      "ตอนย่อยนี้ถูกสร้างแล้ว — บทที่แก้จะถูกใช้เมื่อสร้าง/เกลี่ยบทของตอนย่อยนั้นอีกครั้ง"
     );
     expect(verticalDramaCopy.manualDialogueEditSilenceRemovedInfo.th).toBe(
-      "นำป้ายช็อตภาพล้วนออก เพราะมีบทพูดแล้ว",
+      "นำป้ายช็อตภาพล้วนออก เพราะมีบทพูดแล้ว"
     );
   });
 });
 
 describe("manualDialogueEditSavedSuccessText", () => {
   it("renders the exact 'บันทึกบทช็อต {n} แล้ว' Copy Contract shape", () => {
-    expect(manualDialogueEditSavedSuccessText("th", 3)).toBe("บันทึกบทช็อต 3 แล้ว");
+    expect(manualDialogueEditSavedSuccessText("th", 3)).toBe(
+      "บันทึกบทช็อต 3 แล้ว"
+    );
   });
 
   it("renders a non-empty English equivalent carrying the shot number", () => {
@@ -456,23 +520,25 @@ describe("manualDialogueEditSavedSuccessText", () => {
 describe("manualDialogueEditSavedWithWarningsText", () => {
   it("renders the exact 'บันทึกแล้ว แต่ยังมี {k} จุดที่อ่านออกเสียงยาก' Copy Contract shape", () => {
     expect(manualDialogueEditSavedWithWarningsText("th", 2)).toBe(
-      "บันทึกแล้ว แต่ยังมี 2 จุดที่อ่านออกเสียงยาก",
+      "บันทึกแล้ว แต่ยังมี 2 จุดที่อ่านออกเสียงยาก"
     );
   });
 
   it("renders an English equivalent with correct pluralization", () => {
     expect(manualDialogueEditSavedWithWarningsText("en", 1)).toBe(
-      "Saved, but 1 spot is still hard to read aloud",
+      "Saved, but 1 spot is still hard to read aloud"
     );
     expect(manualDialogueEditSavedWithWarningsText("en", 2)).toBe(
-      "Saved, but 2 spots are still hard to read aloud",
+      "Saved, but 2 spots are still hard to read aloud"
     );
   });
 });
 
 describe("manualDialogueEditLiveSpeechSecondsText", () => {
   it("renders the exact 'บทพูดรวม {live} วิ (เป้า {target} วิ)' Copy Contract shape, both rounded", () => {
-    expect(manualDialogueEditLiveSpeechSecondsText("th", 12.6, 5.44)).toBe("บทพูดรวม 13 วิ (เป้า 5 วิ)");
+    expect(manualDialogueEditLiveSpeechSecondsText("th", 12.6, 5.44)).toBe(
+      "บทพูดรวม 13 วิ (เป้า 5 วิ)"
+    );
   });
 
   it("renders a non-empty English equivalent carrying both numbers", () => {
@@ -505,22 +571,28 @@ describe("manualDialogueEditViolationCopy / manualDialogueEditViolationLabel", (
 
   it("has a non-empty bilingual entry for every violation kind", () => {
     for (const kind of kinds) {
-      expect(manualDialogueEditViolationCopy[kind].th.length).toBeGreaterThan(0);
-      expect(manualDialogueEditViolationCopy[kind].en.length).toBeGreaterThan(0);
+      expect(manualDialogueEditViolationCopy[kind].th.length).toBeGreaterThan(
+        0
+      );
+      expect(manualDialogueEditViolationCopy[kind].en.length).toBeGreaterThan(
+        0
+      );
     }
   });
 
   it("looks up a known violation kind in the requested language", () => {
     expect(manualDialogueEditViolationLabel("th", "wrapping_quotes")).toBe(
-      manualDialogueEditViolationCopy.wrapping_quotes.th,
+      manualDialogueEditViolationCopy.wrapping_quotes.th
     );
     expect(manualDialogueEditViolationLabel("en", "wrapping_quotes")).toBe(
-      manualDialogueEditViolationCopy.wrapping_quotes.en,
+      manualDialogueEditViolationCopy.wrapping_quotes.en
     );
   });
 
   it("falls back to the raw code for an unknown kind, never throws", () => {
-    expect(manualDialogueEditViolationLabel("th", "not_a_real_kind")).toBe("not_a_real_kind");
+    expect(manualDialogueEditViolationLabel("th", "not_a_real_kind")).toBe(
+      "not_a_real_kind"
+    );
   });
 });
 
@@ -540,37 +612,66 @@ describe("storyJobProgressText", () => {
   });
 
   it("renders 'รอบเรียก {i}/{n} · {phase}' when chunkIndex/chunkCount are both present", () => {
-    expect(storyJobProgressText("th", { phase: "draft", chunkIndex: 2, chunkCount: 4 })).toBe(
-      "รอบเรียก 2/4 · กำลังร่าง",
-    );
-    expect(storyJobProgressText("en", { phase: "review", chunkIndex: 1, chunkCount: 3 })).toBe(
-      "Call 1/3 · Reviewing",
-    );
+    expect(
+      storyJobProgressText("th", {
+        phase: "draft",
+        chunkIndex: 2,
+        chunkCount: 4,
+      })
+    ).toBe("รอบเรียก 2/4 · กำลังร่าง");
+    expect(
+      storyJobProgressText("en", {
+        phase: "review",
+        chunkIndex: 1,
+        chunkCount: 3,
+      })
+    ).toBe("Call 1/3 · Reviewing");
   });
 
   it("omits the round prefix when chunkIndex or chunkCount is absent (not chunk-scoped, e.g. the premium season sweep)", () => {
-    expect(storyJobProgressText("th", { phase: "outline" })).toBe("กำลังคิดโครง");
-    expect(storyJobProgressText("th", { phase: "outline", chunkIndex: 1 })).toBe("กำลังคิดโครง");
+    expect(storyJobProgressText("th", { phase: "outline" })).toBe(
+      "กำลังคิดโครง"
+    );
+    expect(
+      storyJobProgressText("th", { phase: "outline", chunkIndex: 1 })
+    ).toBe("กำลังคิดโครง");
   });
 
   it("renders the whole-season critique's single-call phase verbatim", () => {
-    expect(storyJobProgressText("th", { phase: "reading" })).toBe("กำลังอ่านทั้งซีซั่น…");
-    expect(storyJobProgressText("en", { phase: "reading" })).toBe("Reading the whole season…");
+    expect(storyJobProgressText("th", { phase: "reading" })).toBe(
+      "กำลังอ่านทั้งซีซั่น…"
+    );
+    expect(storyJobProgressText("en", { phase: "reading" })).toBe(
+      "Reading the whole season…"
+    );
   });
 
-  it("'fix' phase names the affected episode numbers, ascending, comma-joined: 'กำลังซ่อมตอน {eps}'", () => {
-    expect(storyJobProgressText("th", { phase: "fix", episodesDone: [5, 2, 9] })).toBe("กำลังซ่อมตอน 2, 5, 9");
-    expect(storyJobProgressText("en", { phase: "fix", episodesDone: [3] })).toBe("Fixing episode 3");
+  it("'fix' phase names the affected Sub-episode numbers, ascending, comma-joined", () => {
+    expect(
+      storyJobProgressText("th", { phase: "fix", episodesDone: [5, 2, 9] })
+    ).toBe("กำลังซ่อมตอนย่อย 2, 5, 9");
+    expect(
+      storyJobProgressText("en", { phase: "fix", episodesDone: [3] })
+    ).toBe("Fixing Sub-episode 3");
   });
 
   it("'fix' phase falls back to the bare prefix when episodesDone is absent/empty", () => {
-    expect(storyJobProgressText("th", { phase: "fix" })).toBe("กำลังซ่อมตอน");
-    expect(storyJobProgressText("th", { phase: "fix", episodesDone: [] })).toBe("กำลังซ่อมตอน");
+    expect(storyJobProgressText("th", { phase: "fix" })).toBe(
+      "กำลังซ่อมตอนย่อย"
+    );
+    expect(storyJobProgressText("th", { phase: "fix", episodesDone: [] })).toBe(
+      "กำลังซ่อมตอนย่อย"
+    );
   });
 
   it("'fix' phase combines the round prefix WITH the episode list when both are present (applySeasonCritique's own chunked shape)", () => {
-    expect(storyJobProgressText("th", { phase: "fix", chunkIndex: 1, chunkCount: 2, episodesDone: [3, 4] })).toBe(
-      "รอบเรียก 1/2 · กำลังซ่อมตอน 3, 4",
-    );
+    expect(
+      storyJobProgressText("th", {
+        phase: "fix",
+        chunkIndex: 1,
+        chunkCount: 2,
+        episodesDone: [3, 4],
+      })
+    ).toBe("รอบเรียก 1/2 · กำลังซ่อมตอนย่อย 3, 4");
   });
 });

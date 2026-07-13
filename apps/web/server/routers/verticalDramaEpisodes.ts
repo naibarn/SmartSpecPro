@@ -319,6 +319,7 @@ import {
 } from "../services/verticalDramaSeriesMemory";
 import {
   extractClipSourcesFromMotionPromptPack,
+  mergeVideoTaskIntoMotionPromptPack,
   resolveClipsForAssembly,
   submitAssemblyJob,
   compiledVideoFilename,
@@ -332,6 +333,7 @@ import {
   // for the same cross-router-reuse reason.
   resolveEpisodeTextOverlayRunInputs,
   type EpisodeClipSource,
+  type VerticalDramaVideoTaskPatch,
   type RunAssemblyJobBannerInput,
   type RunAssemblyJobSubtitlesInput,
   type RunAssemblyJobTextOverlayEventInput,
@@ -6670,6 +6672,98 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Persist one generated/uploaded clip task without writing a stale whole
+   * `motionPromptPack` snapshot.
+   *
+   * Video clips finish independently. The old client called
+   * `updateEpisodeDraft({ motionPromptPack: ... })` for every completion; two
+   * completions based on the same React-query snapshot could therefore erase
+   * each other. This mutation locks and re-reads the episode row, merges only
+   * the requested clip, and commits the result atomically.
+   */
+  persistVideoClipTask: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        clipNumber: z.number().int().positive(),
+        sourceShotNumber: z.number().int().positive().optional(),
+        durationSeconds: z.number().positive().max(3600).optional(),
+        selectedVideoModelId: z.string().trim().max(255).optional(),
+        videoTask: z
+          .union([
+            z.object({ pendingTaskId: z.string().min(1) }),
+            z.object({
+              videoUrl: z.string().min(1),
+              mediaTaskId: z.string().min(1).optional(),
+              source: z.enum(["generated", "upload"]).optional(),
+            }),
+          ])
+          .nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const owner: EpisodeRunOwner = {
+        tenantId,
+        userId: ctx.user.id,
+        seriesId: parseId(input.seriesId, "series id"),
+        episodeId: parseId(input.episodeId, "episode id"),
+      };
+
+      // Ownership check happens before the transaction so a cross-tenant or
+      // cross-user request cannot use the row lock as an existence oracle.
+      await loadOwnedEpisode(owner);
+
+      const persisted = await db.transaction(async tx => {
+        const [freshRow] = await tx
+          .select({
+            motionPromptPack: verticalDramaEpisodes.motionPromptPack,
+          })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, owner.episodeId),
+              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodes.userId, owner.userId),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+            )
+          )
+          .for("update")
+          .limit(1);
+
+        const freshPack =
+          (freshRow?.motionPromptPack as VerticalDramaMotionPromptPack | null) ??
+          null;
+        const updatedPack = mergeVideoTaskIntoMotionPromptPack(
+          freshPack,
+          input.clipNumber,
+          input.videoTask as VerticalDramaVideoTaskPatch | null,
+          input.sourceShotNumber,
+          input.durationSeconds ?? 8,
+          input.selectedVideoModelId ?? ""
+        );
+
+        if (!updatedPack) return false;
+
+        await tx
+          .update(verticalDramaEpisodes)
+          .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, owner.episodeId),
+              eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+              eq(verticalDramaEpisodes.userId, owner.userId),
+              eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+            )
+          );
+        return true;
+      });
+
+      return { persisted, clipNumber: input.clipNumber };
+    }),
+
+  /**
    * List an episode's approval checkpoints (read-only), newest first, optionally
    * filtered by state. The workspace approval bar resolves the pending
    * checkpoint id for a stage from this. Ownership-scoped.
@@ -10361,6 +10455,11 @@ export const verticalDramaEpisodesRouter = router({
               // Series provenance tag — see generateStartFrameImage's comment.
               __vd_series_id: String(seriesId),
               __vd_episode_id: String(episodeId),
+              // Clip-level provenance is required because speaker-aware shot
+              // splitting can produce several clips for one source shot
+              // (301/302/303). It lets media history/recovery map a completed
+              // task back to the exact persisted motion-pack entry.
+              __vd_clip_number: String(input.clipNumber),
             },
             publicUrl: ctx.publicUrl ?? undefined,
             ...(transportMetadata ? { transportMetadata } : {}),
@@ -13489,7 +13588,7 @@ export const verticalDramaEpisodesRouter = router({
           message:
             err instanceof Error
               ? err.message
-              : "Episode video assembly precondition failed",
+              : "Sub-episode video assembly precondition failed",
         });
       }
 

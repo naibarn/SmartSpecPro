@@ -1650,7 +1650,8 @@ export const verticalDramaCharactersRouter = router({
     .input(
       seriesScope.extend({
         characterId: z.string().min(1),
-        // Free-text framing/pose/crop/mood hint for THIS generation only
+        // Free-text visual brief (framing/pose/crop/mood/outfit/setting/etc.)
+        // for THIS generation only
         // (vertical-drama-character-custom-instruction plan) — threaded
         // straight through to `generateCharacterVisualPrompts` as a raw fact;
         // see that function's `customInstruction` doc comment. This is the

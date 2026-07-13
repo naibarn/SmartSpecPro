@@ -1262,11 +1262,15 @@ const PERSISTED_INTERNAL_EXTRA_PARAM_KEYS = new Set([
   "__vd_series_id",
   "__vd_episode_id",
   "__vd_character_id",
-  // Vertical Drama shot-image provenance tags (2026-07-06, orphaned-task
-  // recovery groundwork) — additive bookkeeping only, not provider-facing.
-  // Not yet consumed by any recovery/filter feature; a future feature can
-  // read these back to reconcile tasks the client never observed complete.
+  // Vertical Drama shot/image provenance tags (2026-07-06) — additive
+  // bookkeeping only, not provider-facing. They are read by project-scoped
+  // history/recovery paths and never sent as provider prompt semantics.
   "__vd_shot_number",
+  // Vertical Drama video-clip provenance (2026-07-13) — identifies the exact
+  // motion-prompt-pack clip for durable completion reconciliation. This is
+  // distinct from `__vd_shot_number` because a speaker-aware shot can have
+  // multiple clips (301/302/303) for one source shot.
+  "__vd_clip_number",
   "__vd_purpose",
 ]);
 

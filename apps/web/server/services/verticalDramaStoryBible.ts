@@ -458,7 +458,8 @@ const draftScorecardSchema = z
     // judge payloads, but optional while reading persisted scorecards so
     // older drafts can still be parsed and updated in-place by critique apply.
     clarity: premiumScoreDimensionsShape.clarity.optional(),
-    character_consistency: premiumScoreDimensionsShape.character_consistency.optional(),
+    character_consistency:
+      premiumScoreDimensionsShape.character_consistency.optional(),
     evidence_payoff: premiumScoreDimensionsShape.evidence_payoff.optional(),
     threat_escalation: premiumScoreDimensionsShape.threat_escalation.optional(),
     ...premiumTieInNaturalnessShape,
@@ -668,7 +669,7 @@ function summarizeValidationIssues(issues: unknown): string | null {
   }
   return maybeIssues
     .slice(0, 8)
-    .map((issue) => {
+    .map(issue => {
       if (!issue || typeof issue !== "object") {
         return "unknown validation issue";
       }
@@ -1085,6 +1086,7 @@ interface GenerateStoryBibleParams {
   locale: VerticalDramaSeriesLocale;
   genre?: string | null;
   tone?: string | null;
+  /** Legacy field name; this value is the planned Sub-episode count. */
   targetEpisodeCount: number;
   bible: Record<string, unknown>;
   /**
@@ -1176,9 +1178,9 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     "Every story beat, character, and plot element you generate MUST honor the AUDIENCE AGE RATING (HARD CONSTRAINT) block given in the user message below — treat it as a non-negotiable content boundary, exactly like the JSON response shape.",
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
     responseShape,
-    `"episodeBreakdown" must contain exactly ${params.targetEpisodeCount} entries, numbered 1..${params.targetEpisodeCount} in order, each with 3-5 short keyBeats.`,
+    `"episodeBreakdown" must contain exactly ${params.targetEpisodeCount} Sub-episode entries, numbered 1..${params.targetEpisodeCount} in order, each with 3-5 short keyBeats.`,
     speechBudgetEnabled
-      ? `Each episode is a fixed ${episodeDurationSeconds}-second episode that must carry AT LEAST ${minEpisodeSpeechSeconds} seconds of spoken dialogue (the platform's minimum speech-coverage floor) — plan enough plot/conflict per episode to genuinely fill that budget instead of padding a thin episode afterward. Each entry in "episodeBreakdown" must ALSO include a "contentBudget" object: {"beatCount": number (5-7 story beats), "estimatedSpeechSeconds": number (this episode's planned total spoken-dialogue seconds, >= ${minEpisodeSpeechSeconds}), "conflictLevel": integer 1-5 (this episode's position on the SEASON'S escalation curve — start low in early episodes and rise toward 5 near the finale; never flat across the season), "reversalTarget": integer (at least 2 reversals planned for this episode), "arcThreads": string[] (season threads this episode advances)}.`
+      ? `Each Sub-episode is a fixed ${episodeDurationSeconds}-second short video that must carry AT LEAST ${minEpisodeSpeechSeconds} seconds of spoken dialogue (the platform's minimum speech-coverage floor) — plan enough plot/conflict per Sub-episode to genuinely fill that budget instead of padding a thin Sub-episode afterward. Each entry in "episodeBreakdown" must ALSO include a "contentBudget" object: {"beatCount": number (5-7 story beats), "estimatedSpeechSeconds": number (this Sub-episode's planned total spoken-dialogue seconds, >= ${minEpisodeSpeechSeconds}), "conflictLevel": integer 1-5 (this Sub-episode's position on the SEASON'S escalation curve — start low in early Sub-episodes and rise toward 5 near the finale; never flat across the season), "reversalTarget": integer (at least 2 reversals planned for this Sub-episode), "arcThreads": string[] (season threads this Sub-episode advances)}.`
       : null,
     // `vertical-drama-skill-first-architecture` plan, Phase 4 item 2 —
     // replaces `evaluatePremiseCoverage`'s deterministic token-overlap
@@ -1217,7 +1219,7 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     `Series title: ${params.title}`,
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
-    `Target episode count: ${params.targetEpisodeCount}`,
+    `Target Sub-episode count (story structure, not Public Episode count): ${params.targetEpisodeCount}`,
     `Existing bible (from the creator's wizard input): ${JSON.stringify(params.bible)}`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -1259,9 +1261,8 @@ export async function generateStoryBible(
 
   // Lazy import — see the doc comment near this file's top import block for
   // why this cannot be a static top-level import.
-  const { resolveQualityLargeContextModelId } = await import(
-    "./verticalDramaImproveScript"
-  );
+  const { resolveQualityLargeContextModelId } =
+    await import("./verticalDramaImproveScript");
   const model = await resolveVerticalDramaSeriesModel(
     params.seriesId,
     resolveQualityLargeContextModelId
@@ -1648,7 +1649,9 @@ export function computeDeepDraftChunkSizes(episodeCount: number): number[] {
   return chunks;
 }
 
-export function computePremiumDeepDraftChunkSizes(episodeCount: number): number[] {
+export function computePremiumDeepDraftChunkSizes(
+  episodeCount: number
+): number[] {
   if (episodeCount <= 0) return [];
   const chunks: number[] = [];
   let remaining = Math.floor(episodeCount);
@@ -1886,7 +1889,7 @@ export function buildDeepDraftMissingEpisodesRetryInstruction(
   missingEpisodeNumbers: number[]
 ): string {
   const list = missingEpisodeNumbers.join(", ");
-  return `Your previous response was missing required episode(s): ${list}. Return the COMPLETE response again, covering EVERY requested episode from this chunk — this time make absolutely sure episode(s) ${list} are included, each with a full ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot draft, exactly like every other episode.`;
+  return `Your previous response was missing required Sub-episode(s): ${list}. Return the COMPLETE response again, covering EVERY requested Sub-episode from this chunk — this time make absolutely sure Sub-episode(s) ${list} are included, each with a full ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot draft, exactly like every other Sub-episode.`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2153,7 +2156,7 @@ function buildTieInDraftSystemBlock(
       ? context.forbiddenClaims.join("; ")
       : "(none specified)";
   return [
-    `PRODUCT TIE-IN (season plan): this season has a planned product tie-in for "${context.productName}"${context.productCategory ? ` (category: ${context.productCategory})` : ""}. Each episode's data below states "productTieIn.planned" true or false for THAT episode — follow it exactly, this is a season-level planning decision, not yours to make.`,
+    `PRODUCT TIE-IN (season plan): this season has a planned product tie-in for "${context.productName}"${context.productCategory ? ` (category: ${context.productCategory})` : ""}. Each Sub-episode's data below states "productTieIn.planned" true or false for THAT Sub-episode — follow it exactly, this is a season-level planning decision, not yours to make.`,
     `For a "planned": true episode: weave the product naturally into exactly ONE shot's beat, like real TV-drama product placement — it must serve that scene's story beat (never unrealistically resolve the main conflict, never read like an advertisement/ad-speak). NEVER use any of these forbidden claims, verbatim or in spirit: ${forbidden}. Mark that ONE shot's "tie_in" as {"has_product_moment": true, "benefit_line": "<short natural in-scene benefit line the dialogue or visual can carry>"}; every OTHER shot in that episode must omit "tie_in" (or set "has_product_moment": false).`,
     `For a "planned": false episode: do NOT introduce, mention, or visually feature the product at all this episode — every shot omits "tie_in" (or sets "has_product_moment": false).`,
   ].join("\n");
@@ -2224,7 +2227,9 @@ function sceneContractShotShapeSuffix(enabled: boolean | undefined): string {
  * `null` (renders nothing) when `enabled` is falsy — byte-identical to
  * before F132C.
  */
-function buildSceneContractPromptBlock(enabled: boolean | undefined): string | null {
+function buildSceneContractPromptBlock(
+  enabled: boolean | undefined
+): string | null {
   if (!enabled) return null;
   return [
     getVerticalDramaQualityCriteriaBundle().sceneContractRequirements,
@@ -2248,7 +2253,9 @@ function buildSceneContractPromptBlock(enabled: boolean | undefined): string | n
 function appendDeepDraftPremiseCoverageWarning(
   warnings: VdDeepDraftWarning[],
   userPremise: string | undefined,
-  draftedItems: Array<Pick<DeepDraftedEpisodeItem, "shotDrafts" | "cliffhanger_line">>,
+  draftedItems: Array<
+    Pick<DeepDraftedEpisodeItem, "shotDrafts" | "cliffhanger_line">
+  >,
   openThreads: string[]
 ): VdDeepDraftWarning[] {
   const trimmed = userPremise?.trim();
@@ -2276,7 +2283,11 @@ function appendDeepDraftPremiseCoverageWarning(
 
   return [
     ...warnings,
-    { episodeNumber: 0, shotNumber: 0, reason: "premise_coverage_low" as const },
+    {
+      episodeNumber: 0,
+      shotNumber: 0,
+      reason: "premise_coverage_low" as const,
+    },
   ];
 }
 
@@ -2294,7 +2305,10 @@ function appendDeepDraftPremiseCoverageWarning(
  * is absent — byte-identical to before this feature existed.
  */
 export function reconcileTieInDraftMarking(
-  draftedItems: Array<{ episodeNumber: number; shotDrafts: VdDeepDraftShotDraft[] }>,
+  draftedItems: Array<{
+    episodeNumber: number;
+    shotDrafts: VdDeepDraftShotDraft[];
+  }>,
   context: VdTieInDraftContext | undefined
 ): { warnings: VdDeepDraftWarning[]; mismatchCount: number } {
   if (!context) return { warnings: [], mismatchCount: 0 };
@@ -2408,7 +2422,7 @@ function buildDeepDraftPrompts(params: {
   const systemPrompt = [
     renderCriteriaVersionMarker(),
     "You are a vertical-drama (short-form mobile drama series) shot-dialogue writer.",
-    `For EACH episode listed below, write a draft of EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) with speakable dialogue that fills that shot's speech budget.`,
+    `For EACH Sub-episode listed below, write a draft of EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) with speakable dialogue that fills that shot's speech budget.`,
     langInstruction,
     // Series-level audience age rating (Phase 1) — firm, unconditional
     // instruction; the actual constraint block is rendered in the user
@@ -2431,7 +2445,7 @@ function buildDeepDraftPrompts(params: {
     buildSceneContractPromptBlock(params.sceneContractsEnabled),
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
     `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}], "open_threads": string[]}`,
-    `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts".`,
+    `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts".`,
     '"open_threads" must be the UPDATED list of unresolved plot threads/hooks after these episodes: carry forward every thread you were given that is still open, add any new thread you introduce, and drop any thread you fully resolve.',
   ]
     .filter(Boolean)
@@ -2454,8 +2468,16 @@ function buildDeepDraftPrompts(params: {
     logline: ep.logline,
     keyBeats: ep.keyBeats,
     contentBudget: ep.contentBudget ?? null,
-    ...(buildTieInDraftEpisodePayloadField(params.tieInDraftContext, ep.episodeNumber)
-      ? { productTieIn: buildTieInDraftEpisodePayloadField(params.tieInDraftContext, ep.episodeNumber) }
+    ...(buildTieInDraftEpisodePayloadField(
+      params.tieInDraftContext,
+      ep.episodeNumber
+    )
+      ? {
+          productTieIn: buildTieInDraftEpisodePayloadField(
+            params.tieInDraftContext,
+            ep.episodeNumber
+          ),
+        }
       : {}),
   }));
 
@@ -3229,7 +3251,9 @@ export function estimatePremiumDeepDraftCalls(chunkCount: number): number {
 }
 
 /** `Record<dimension, score>` shape shared by judge/re-judge scores AND the persisted scorecard — used for floor checks, feedback text, and scorecard construction. Persisted legacy scorecards may omit newer v3 dimensions. */
-type PremiumScoreLike = Partial<Record<VdPremiumDraftScoreDimension, number>> & {
+type PremiumScoreLike = Partial<
+  Record<VdPremiumDraftScoreDimension, number>
+> & {
   overall: number;
   /** Task #22 — see `premiumTieInNaturalnessShape`'s own doc comment; present ONLY for a placed episode's score. */
   tie_in_naturalness?: number;
@@ -3714,9 +3738,12 @@ const DRAMATURGY_CRITIC_SKILL_FOLDER_PATH = path.join(
 let cachedDramaturgyCriticSystemPrompt: string | null = null;
 
 function loadDramaturgyCriticSkillSystemPrompt(): string {
-  if (cachedDramaturgyCriticSystemPrompt) return cachedDramaturgyCriticSystemPrompt;
+  if (cachedDramaturgyCriticSystemPrompt)
+    return cachedDramaturgyCriticSystemPrompt;
 
-  for (const dir of resolveSkillDirCandidates(DRAMATURGY_CRITIC_SKILL_FOLDER_PATH)) {
+  for (const dir of resolveSkillDirCandidates(
+    DRAMATURGY_CRITIC_SKILL_FOLDER_PATH
+  )) {
     const manifestPath = resolveSkillManifestPath(dir);
     if (manifestPath && fs.existsSync(manifestPath)) {
       const raw = fs.readFileSync(manifestPath, "utf-8");
@@ -3746,7 +3773,7 @@ const VD_NATURAL_THAI_DIALOGUE_RULES = [
   "NATURAL THAI DIALOGUE RULES (hard requirement): write Thai dialogue like real people speaking in a tense short drama, not translated prose, textbook Thai, or summary text.",
   "Match pronouns and particles to each character's age, status, relationship, and emotional state; use ครับ/ค่ะ/นะ/สิ/เถอะ/วะ/เว้ย only when that speaker would naturally say it, and keep each character's voice consistent.",
   "Prefer short spoken clauses, implied meaning, interruptions, and emotion under pressure. Avoid stiff phrases, formal report language, repeated abstract nouns, and lines that explain the plot out loud.",
-  "Good Thai dialogue: \"แม่ไม่ต้องพูดแล้ว หนูเห็นเองกับตา\" / \"ถ้าเขารู้ เราจบกันคืนนี้\". Bad Thai dialogue: \"ฉันรู้สึกถึงความยุติธรรมและสิทธิ์ของครอบครัว\" / \"ข้อมูลนี้ทำให้สถานการณ์เปลี่ยนแปลงอย่างมีนัยสำคัญ\".",
+  'Good Thai dialogue: "แม่ไม่ต้องพูดแล้ว หนูเห็นเองกับตา" / "ถ้าเขารู้ เราจบกันคืนนี้". Bad Thai dialogue: "ฉันรู้สึกถึงความยุติธรรมและสิทธิ์ของครอบครัว" / "ข้อมูลนี้ทำให้สถานการณ์เปลี่ยนแปลงอย่างมีนัยสำคัญ".',
 ].join(" ");
 
 /**
@@ -3774,7 +3801,9 @@ const VD_PREMIUM_NO_SILENCE_INTENT_WITH_DIALOGUE_RULE =
  * see that skill.md's Mode 2 section, which intentionally never mentions
  * `tie_in_naturalness` in its own static rubric for exactly this reason.
  */
-function buildTieInJudgeInstruction(hasAnyPlacedEpisode: boolean): string | null {
+function buildTieInJudgeInstruction(
+  hasAnyPlacedEpisode: boolean
+): string | null {
   if (!hasAnyPlacedEpisode) return null;
   return 'Additionally, for any episode digest marked "hasPlannedTieIn": true, ALSO score "tie_in_naturalness" 1-5 (1 = reads like a forced advertisement, 5 = reads like real, organic product placement) — omit this field entirely for an episode NOT marked "hasPlannedTieIn": true.';
 }
@@ -3938,19 +3967,19 @@ function buildPremiumRevisePrompts(params: {
 
   const systemPrompt = [
     "You are a vertical-drama (short-form mobile drama series) shot-dialogue REVISER.",
-    `For EACH episode listed below, REVISE its existing ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot draft to address the specific feedback given for that episode — keep everything that already works, change only what the feedback calls out. The revised draft must still have EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) and must NOT change the episode's workingTitle/logline/keyBeats.`,
+    `For EACH Sub-episode listed below, REVISE its existing ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot draft to address the specific feedback given for that Sub-episode — keep everything that already works, change only what the feedback calls out. The revised draft must still have EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) and must NOT change the Sub-episode's workingTitle/logline/keyBeats.`,
     langInstruction,
     params.locale === "th" ? VD_NATURAL_THAI_DIALOGUE_RULES : null,
     VD_PREMIUM_SPEAKABILITY_RULES,
     VD_PREMIUM_NO_SILENCE_INTENT_WITH_DIALOGUE_RULE,
-    'Each episode\'s "currentStructure" (when given) is its already-recorded antagonist_tactics/character_decisions/protagonist_stake/world_rules/price_paid — carry each forward UNCHANGED in your revised entry unless the feedback specifically calls for updating that one, in which case update ONLY that field.',
+    'Each Sub-episode\'s "currentStructure" (when given) is its already-recorded antagonist_tactics/character_decisions/protagonist_stake/world_rules/price_paid — carry each forward UNCHANGED in your revised entry unless the feedback specifically calls for updating that one, in which case update ONLY that field.',
     buildTieInDraftSystemBlock(params.tieInDraftContext),
     params.tieInDraftContext
       ? 'If an episode\'s "currentDraft" already has a shot marked "tie_in.has_product_moment": true and the feedback does not ask you to change the product placement, KEEP that SAME shot marked (refine it — e.g. making it feel more organic — only if the feedback calls for that) — do not move the placement to a different shot or drop it.'
       : null,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
     `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}]}`,
-    `"episodeBreakdown" must contain exactly ${params.episodes.length} entries — one per episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts".`,
+    `"episodeBreakdown" must contain exactly ${params.episodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts".`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -3977,8 +4006,16 @@ function buildPremiumRevisePrompts(params: {
       })),
     },
     currentStructure: e.currentStructure ?? null,
-    ...(buildTieInDraftEpisodePayloadField(params.tieInDraftContext, e.sourceItem.episodeNumber)
-      ? { productTieIn: buildTieInDraftEpisodePayloadField(params.tieInDraftContext, e.sourceItem.episodeNumber) }
+    ...(buildTieInDraftEpisodePayloadField(
+      params.tieInDraftContext,
+      e.sourceItem.episodeNumber
+    )
+      ? {
+          productTieIn: buildTieInDraftEpisodePayloadField(
+            params.tieInDraftContext,
+            e.sourceItem.episodeNumber
+          ),
+        }
       : {}),
   }));
 
@@ -4518,7 +4555,10 @@ async function runPremiumChunk(
       );
       const newScorecard = score
         ? scoreToScorecard(score, round)
-        : worstCasePremiumScorecard(round, isEpisodeTieInPlaced(revisedEp.episodeNumber));
+        : worstCasePremiumScorecard(
+            round,
+            isEpisodeTieInPlaced(revisedEp.episodeNumber)
+          );
       if (newScorecard.overall < prior.draftScorecard.overall) {
         continue; // REGRESSION GUARD — keep the prior episode version.
       }
@@ -5795,7 +5835,7 @@ export function analyzeSeasonDramaturgy(
       findings.push({
         kind: "key_character_late_intro",
         evidenceEpisodes: [firstAppearance],
-        detail: `${character.name} ปรากฏตัวมีน้ำหนักครั้งแรกในตอนที่ ${firstAppearance} จาก ${totalEpisodes} ตอน (ช้ากว่าเกณฑ์ตอนที่ ${effectiveLateIntroThreshold})`,
+        detail: `${character.name} ปรากฏตัวมีน้ำหนักครั้งแรกในตอนย่อยที่ ${firstAppearance} จาก ${totalEpisodes} ตอนย่อย (ช้ากว่าเกณฑ์ตอนย่อยที่ ${effectiveLateIntroThreshold})`,
       });
     }
 
@@ -5808,13 +5848,14 @@ export function analyzeSeasonDramaturgy(
     // for an absent/"standard"-tier profile.
     const agencyFires = useProfileThresholds
       ? speakingEpisodes.length > 0 &&
-        decisionsBeforeFinale < profile!.dramaturgy.agencyMinDecisionsBeforeFinale
+        decisionsBeforeFinale <
+          profile!.dramaturgy.agencyMinDecisionsBeforeFinale
       : speakingEpisodes.length > 0 && totalDecisions === 0;
     if (agencyFires) {
       findings.push({
         kind: "character_agency_zero_decisions",
         evidenceEpisodes: speakingEpisodes,
-        detail: `${character.name} ปรากฏตัว ${speakingEpisodes.length} ตอน แต่ไม่เคยมีการตัดสินใจของตัวเองเลยตลอดซีซั่น`,
+        detail: `${character.name} ปรากฏตัว ${speakingEpisodes.length} ตอนย่อย แต่ไม่เคยมีการตัดสินใจของตัวเองเลยตลอดซีซั่น`,
       });
     }
   }
@@ -5877,7 +5918,7 @@ export function analyzeSeasonDramaturgy(
             findings.push({
               kind: "antagonist_tactic_repetition",
               evidenceEpisodes: evidence,
-              detail: `ตัวร้ายใช้กลวิธี "${tag}" ซ้ำติดต่อกัน ${evidence.length} ตอน (ตอนที่ ${runStart}-${runEnd})`,
+              detail: `ตัวร้ายใช้กลวิธี "${tag}" ซ้ำติดต่อกัน ${evidence.length} ตอนย่อย (ตอนย่อยที่ ${runStart}-${runEnd})`,
             });
           }
           runStart = null;
@@ -5934,7 +5975,7 @@ export function analyzeSeasonDramaturgy(
       findings.push({
         kind: "finale_no_price_paid",
         evidenceEpisodes: [finaleEpisodeNumber],
-        detail: `ตอนจบ (ตอนที่ ${finaleEpisodeNumber}) ไม่มีการระบุ "ราคาที่ต้องจ่าย" ของการคลี่คลายเรื่อง`,
+        detail: `ตอนจบ (ตอนย่อยที่ ${finaleEpisodeNumber}) ไม่มีการระบุ "ราคาที่ต้องจ่าย" ของการคลี่คลายเรื่อง`,
       });
     }
   }
@@ -5960,7 +6001,7 @@ export function analyzeSeasonDramaturgy(
         findings.push({
           kind: "world_rules_undefined",
           evidenceEpisodes: [...episodesWithRuleWords].sort((a, b) => a - b),
-          detail: `บทพูดพูดถึงกติกา/พลังของโลกเรื่องนี้ใน ${episodesWithRuleWords.size} ตอน แต่ยังไม่เคยกำหนด world_rules ให้ชัดเจน`,
+          detail: `บทพูดพูดถึงกติกา/พลังของโลกเรื่องนี้ใน ${episodesWithRuleWords.size} ตอนย่อย แต่ยังไม่เคยกำหนด world_rules ให้ชัดเจน`,
         });
       }
     }
@@ -5990,7 +6031,7 @@ export function analyzeSeasonDramaturgy(
       findings.push({
         kind: "tie_in_distribution",
         evidenceEpisodes: evidence,
-        detail: `ตอนที่วางแผนใส่สินค้าอยู่ติดกันเกินไป (ตอนที่ ${evidence.join(", ")}) ควรกระจายให้ห่างกันมากกว่านี้ตามแผนการกระจายสินค้าของซีซั่น`,
+        detail: `ตอนย่อยที่วางแผนใส่สินค้าอยู่ติดกันเกินไป (ตอนย่อยที่ ${evidence.join(", ")}) ควรกระจายให้ห่างกันมากกว่านี้ตามแผนการกระจายสินค้าของซีซั่น`,
       });
     }
 
@@ -6013,7 +6054,7 @@ export function analyzeSeasonDramaturgy(
       findings.push({
         kind: "tie_in_distribution",
         evidenceEpisodes: evidence,
-        detail: `ตอนที่ ${evidence.join(", ")} มีแผนใส่สินค้าตามแผนซีซั่น แต่ร่างช็อตยังไม่ได้ระบุช็อตที่มีสินค้าอย่างชัดเจน`,
+        detail: `ตอนย่อยที่ ${evidence.join(", ")} มีแผนใส่สินค้าตามแผนซีซั่น แต่ร่างช็อตยังไม่ได้ระบุช็อตที่มีสินค้าอย่างชัดเจน`,
       });
     }
   }
@@ -6122,4 +6163,3 @@ export function readItemLastAppliedCritiqueRound(
     .lastAppliedCritiqueRound;
   return typeof raw === "string" && raw.trim().length > 0 ? raw : undefined;
 }
-

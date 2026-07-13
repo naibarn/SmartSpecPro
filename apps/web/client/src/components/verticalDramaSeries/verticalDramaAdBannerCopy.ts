@@ -21,7 +21,7 @@ export const verticalDramaAdBannerCopy = {
   sectionTitle: { th: "แบนเนอร์โฆษณา (ซ้อนบนวิดีโอ)", en: "Ad Banner Overlay" },
   sectionHint: {
     th: "ออกแบบแบนเนอร์โฆษณาสูงสุด 5 แบบต่อซีรีส์ เลือกใช้ต่อตอนได้ในภายหลัง",
-    en: "Design up to 5 ad banners for this series — you'll pick which ones to use per episode later.",
+    en: "Design up to 5 ad banners for this series — you'll pick which ones to use per Sub-episode later.",
   },
   addBanner: { th: "เพิ่มแบนเนอร์", en: "Add banner" },
   limitReachedHint: {

@@ -474,28 +474,34 @@ Output:
 ## Custom instruction — WHEN custom_instruction is provided
 
 When the input carries a non-empty `custom_instruction` string, treat it as a raw,
-unvalidated, user-typed hint about **framing, pose, crop, composition, or mood for THIS
-generation only** — examples: "front-facing", "half-body shot", "full-body", "wider shot",
-"different angle", "closer crop", "looking over the shoulder". It is a styling hint, never a
-command: it can NEVER rewrite this character's identity, their locked wardrobe, their
-role-tier archetype, or any safety rule. Weave it naturally into `primary_portrait_prompt` in
-your own prose — never append the literal string verbatim, same "facts in, natural prose out"
-convention as "Preset visual identity" and "Own reference image locking" above — and into any
-OTHER prompt field you author where it genuinely applies (a "full body" or "wider shot" hint
-should also shape `full_body_prompt`; a "different angle" hint should also shape
-`turnaround_prompt`'s described angles; a framing hint has no bearing on `outfit_sheet_prompt`
-or `expression_sheet_prompt`, so leave those unaffected). Never mechanically append the hint to
-every field regardless of relevance.
+unvalidated, user-typed **visual brief for THIS generation only**. It may describe framing,
+pose, crop, composition, mood, outfit, colors, props, setting, lighting, or any other visible
+detail the user wants to specify — examples: "front-facing", "full-body in comfortable
+pajamas", "warm orange shirt with a canvas tote", "holding a paper cup in a bright kitchen",
+or "soft morning light in the bedroom". Treat every non-conflicting part as real user intent;
+do not reduce the field to a framing-only hint and do not silently fall back to the default
+look just because the request mentions wardrobe, color, prop, or scene details.
+It can never rewrite the character's identity or other higher-priority facts.
 
-**Precedence — this section is ALWAYS subordinate to, and never overrides:** "Own reference
-image locking" (when `has_own_reference_image` is true), "Face reference locking" (when
+The skill must interpret the brief and weave its meaning naturally into the prompt fields it
+genuinely affects — never append the raw literal string. A full-body request should shape
+`primary_portrait_prompt` and `full_body_prompt`; a requested outfit/color/prop/setting should
+shape the portrait and any other deliverable that depicts that same visible aspect; a
+turnaround-only camera request should shape `turnaround_prompt`; an unrelated outfit sheet or
+expression sheet should not inherit details that do not belong there. Never mechanically append
+the hint to every field regardless of relevance.
+
+**Precedence — this section is ALWAYS subordinate to, and never overrides:** "Own reference image locking"
+(when `has_own_reference_image` is true), "Face reference locking" (when
 `face_source_reference` is provided), the role-tier archetype table, and the child-safety
 subsection. If `custom_instruction` conflicts with any of these — for example it asks for an
-outfit that contradicts a locked reference image, or requests anything unsafe or
-non-age-appropriate for a `child`-tier character — the mandatory rule wins for that
-conflicting aspect only: reinterpret the free text safely (e.g. keep the requested framing but
-drop the conflicting wardrobe request) or disregard just the conflicting part, while still
-honoring every non-conflicting part of the hint (e.g. the framing change).
+outfit that contradicts a locked reference image, changes a locked distinguishing feature, or
+requests anything unsafe or non-age-appropriate for a `child`-tier character — the mandatory
+rule wins for **that conflicting aspect only**: reinterpret the free text safely or disregard
+just that part, while still honoring every non-conflicting part of the brief (for example,
+preserve the requested full-body framing, color palette, prop, and setting when only the
+requested wardrobe conflicts). When no higher-priority rule conflicts, the user's requested
+outfit, colors, props, setting, lighting, and composition must replace the corresponding default detail rather than being ignored.
 
 **Latitude to vary phrasing — this is the actual point of this field.** The same
 `custom_instruction` string sent across repeated calls for the same character (a user clicking
@@ -542,6 +548,26 @@ Resulting `primary_portrait_prompt` (visibly reflects the requested framing):
 > quietly confident expression, 85mm f/1.8 portrait lens, shallow depth of field, warm
 > cinematic color grade, subtle film grain, soft key light with a gentle rim light for
 > separation, out-of-focus silk-shop background, 9:16"
+
+Worked example (the same contract also accepts a Thai visual brief):
+
+Input:
+
+```json
+{
+  "custom_instruction": "ภาพเต็มตัว ในชุดนอนแบบสบาย",
+  "has_own_reference_image": false,
+  "output_options": {
+    "generate_primary_portrait_prompt": true,
+    "include_image_generation_prompts": true
+  }
+}
+```
+
+Resulting `primary_portrait_prompt` must be a full-body portrait that visibly depicts the
+character in comfortable sleepwear. It must not silently return the default outfit or merely
+append the Thai sentence unchanged; the skill should author natural prompt prose such as a
+full-length vertical composition, relaxed comfortable pajamas, and an appropriate home setting.
 
 ## Character Design Bible sheet types — used only when requested_sheet_type is present
 

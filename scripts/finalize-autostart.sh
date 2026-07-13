@@ -60,6 +60,34 @@ log_step "Reloading systemd daemon..."
 systemctl daemon-reload
 log_info "✓ Systemd reloaded"
 
+# Persist the host memory policy used by the bounded service/container stack.
+# This is intentionally a small, scoped sysctl file; it does not flush caches
+# or alter any database/storage setting.
+SYSCTL_SOURCE="$SCRIPT_DIR/../ops/sysctl/99-smartspec-memory.conf"
+if [ -f "$SYSCTL_SOURCE" ]; then
+    log_step "Applying host memory policy..."
+    install -m 0644 "$SYSCTL_SOURCE" /etc/sysctl.d/99-smartspec-memory.conf
+    /sbin/sysctl --load=/etc/sysctl.d/99-smartspec-memory.conf
+    log_info "✓ Host memory policy applied"
+fi
+
+USER_SLICE_SOURCE="$SCRIPT_DIR/../systemd/user-1000.slice.d/50-smartspec-memory.conf"
+if [ -f "$USER_SLICE_SOURCE" ]; then
+    log_step "Applying user workload memory boundary..."
+    install -d -m 0755 /etc/systemd/system/user-1000.slice.d
+    install -m 0644 "$USER_SLICE_SOURCE" /etc/systemd/system/user-1000.slice.d/50-smartspec-memory.conf
+    systemctl daemon-reload
+    log_info "✓ User workload memory boundary installed"
+fi
+
+AGENT_SLICE_SOURCE="$SCRIPT_DIR/../systemd/system-smartspec-agent.slice"
+if [ -f "$AGENT_SLICE_SOURCE" ]; then
+    log_step "Applying bounded agent workload slice..."
+    install -m 0644 "$AGENT_SLICE_SOURCE" /etc/systemd/system/system-smartspec-agent.slice
+    systemctl daemon-reload
+    log_info "✓ Bounded agent workload slice installed"
+fi
+
 # Step 4: Check if services are enabled
 log_step "Verifying services are enabled..."
 if ! systemctl is-enabled --quiet smartspec-infra.service; then

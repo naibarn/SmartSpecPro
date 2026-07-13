@@ -960,7 +960,7 @@ describe("VerticalDramaDeepStoryDraftEpisodeDetail", () => {
       );
       openEditor(1);
       expect(screen.getByTestId("vd-deep-story-draft-edit-already-created-1-1")).toHaveTextContent(
-        "ตอนนี้ถูกสร้างแล้ว",
+        "ตอนย่อยนี้ถูกสร้างแล้ว",
       );
     });
 

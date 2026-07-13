@@ -67,6 +67,7 @@ import {
   compiledVideoFilename,
   extractClipSourcesFromMotionPromptPack,
   findMissingClips,
+  mergeVideoTaskIntoMotionPromptPack,
   getJobStatus,
   resolveClipsForAssembly,
   resolveEpisodeDialogueAudioAndSubtitlesRunInputs,
@@ -144,6 +145,26 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     expect(findMissingClips(clips).map(m => m.clipNumber)).toEqual([2, 3]);
   });
 
+  it("reports a missing split clip by its explicit parent shot", () => {
+    expect(() =>
+      resolveClipsForAssembly([
+        {
+          clipNumber: 301,
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          sourceShotNumbers: [3],
+        },
+        {
+          clipNumber: 302,
+          parentShotNumber: 3,
+          subShotNumber: 2,
+          sourceShotNumbers: [3],
+          videoUrl: "/302.mp4",
+        },
+      ])
+    ).toThrowError(/shot\(s\) 3/);
+  });
+
   it("throws with the missing clip list when clips are incomplete and allowPartial is not set", () => {
     const clips: EpisodeClipSource[] = [
       ...complete,
@@ -177,6 +198,48 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     const { ordered, missing } = resolveClipsForAssembly(complete);
     expect(ordered).toHaveLength(3);
     expect(missing).toEqual([]);
+  });
+});
+
+describe("mergeVideoTaskIntoMotionPromptPack", () => {
+  it("merges sibling clip completions without dropping the first task", () => {
+    const pack: any = {
+      clips: [
+        {
+          clipNumber: 301,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 1,
+        },
+        {
+          clipNumber: 302,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 2,
+        },
+      ],
+      warnings: [],
+    };
+
+    const withFirstCompletion = mergeVideoTaskIntoMotionPromptPack(
+      pack,
+      301,
+      { videoUrl: "/301.mp4", mediaTaskId: "task-301" }
+    );
+    const withBothCompletions = mergeVideoTaskIntoMotionPromptPack(
+      withFirstCompletion,
+      302,
+      { videoUrl: "/302.mp4", mediaTaskId: "task-302" }
+    );
+
+    expect(
+      withBothCompletions?.clips.map(clip => clip.videoTask?.videoUrl)
+    ).toEqual(["/301.mp4", "/302.mp4"]);
+  });
+
+  it("does not create a phantom clip when a late failed poll clears an unknown id", () => {
+    const pack: any = { clips: [{ clipNumber: 1 }], warnings: [] };
+    expect(mergeVideoTaskIntoMotionPromptPack(pack, 301, null)).toBe(pack);
   });
 });
 

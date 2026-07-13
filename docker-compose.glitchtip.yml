@@ -40,6 +40,7 @@ services:
           memory: 1G
         reservations:
           memory: 256M
+    memswap_limit: 1G
 
   glitchtip-worker:
     image: glitchtip/glitchtip:latest
@@ -57,9 +58,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
         reservations:
           memory: 128M
+    # The worker crossed 512 MiB and was OOM-killed. Keep it bounded, but
+    # leave enough resident headroom for Celery and the scheduler together.
+    memswap_limit: 1G
 
 networks:
   smartspec-network:

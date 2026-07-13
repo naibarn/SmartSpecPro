@@ -33,8 +33,8 @@ const storyboardPanelWithOneShot = {
 const previewFixture: VerticalDramaTextOverlayPreviewView = {
   endCard: { text: "ปมค้างจากเรื่อง", source: "cliffhanger" },
   openerRecap: { text: "", source: "none" },
-  titleBumper: { primary: "รักนี้ต้องลุ้น", secondary: "EP 1" },
-  episodeIndicator: { label: "EP 1/10" },
+  titleBumper: { primary: "รักนี้ต้องลุ้น", secondary: "SUB-EP 1" },
+  episodeIndicator: { label: "SUB-EP 1/10" },
   characterIntroCards: [
     { characterKey: "char-a", shotNumber: 1, name: "มาลี", role: "นางเอก" },
   ],
@@ -108,9 +108,10 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
       />
     );
     fireEvent.click(screen.getByTestId("vd-text-overlay-end-card-toggle"));
-    expect(
-      screen.getByTestId("vd-text-overlay-end-card-text")
-    ).toHaveAttribute("placeholder", "ปมค้างจากเรื่อง");
+    expect(screen.getByTestId("vd-text-overlay-end-card-text")).toHaveAttribute(
+      "placeholder",
+      "ปมค้างจากเรื่อง"
+    );
     expect(screen.getByTestId("vd-text-overlay-end-card")).toHaveTextContent(
       "จากปมค้างท้ายตอน"
     );
@@ -137,8 +138,11 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
 
     fireEvent.click(screen.getByTestId("vd-text-overlay-end-card-revert"));
     expect(
-      (screen.getByTestId("vd-text-overlay-end-card-text") as HTMLTextAreaElement)
-        .value
+      (
+        screen.getByTestId(
+          "vd-text-overlay-end-card-text"
+        ) as HTMLTextAreaElement
+      ).value
     ).toBe("");
     expect(
       screen.getByTestId("vd-text-overlay-end-card-autofill")
@@ -185,12 +189,18 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
       />
     );
     expect(
-      (screen.getByTestId("vd-text-overlay-end-card-text") as HTMLTextAreaElement)
-        .value
+      (
+        screen.getByTestId(
+          "vd-text-overlay-end-card-text"
+        ) as HTMLTextAreaElement
+      ).value
     ).toBe("ข้อความที่บันทึกไว้");
     expect(
-      (screen.getByTestId("vd-text-overlay-end-card-duration") as HTMLInputElement)
-        .value
+      (
+        screen.getByTestId(
+          "vd-text-overlay-end-card-duration"
+        ) as HTMLInputElement
+      ).value
     ).toBe("4");
     expect(
       screen.getByTestId("vd-text-overlay-end-card-follow-line")
@@ -206,12 +216,10 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
         textOverlayPlanPanel={{ plan: null, preview: previewFixture }}
       />
     );
-    fireEvent.click(
-      screen.getByTestId("vd-text-overlay-opener-recap-toggle")
-    );
+    fireEvent.click(screen.getByTestId("vd-text-overlay-opener-recap-toggle"));
     expect(
       screen.getByTestId("vd-text-overlay-opener-recap")
-    ).toHaveTextContent("None (episode 1 has no recap)");
+    ).toHaveTextContent("None (Sub-episode 1 has no recap)");
   });
 
   it("title bumper: shows a live preview combining the series title with the manual override text", () => {
@@ -226,18 +234,17 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
     fireEvent.click(screen.getByTestId("vd-text-overlay-title-bumper-toggle"));
     expect(
       screen.getByTestId("vd-text-overlay-title-bumper")
-    ).toHaveTextContent("Preview: รักนี้ต้องลุ้น / EP 1");
+    ).toHaveTextContent("Preview: รักนี้ต้องลุ้น / SUB-EP 1");
 
-    fireEvent.change(
-      screen.getByTestId("vd-text-overlay-title-bumper-text"),
-      { target: { value: "ตอนพิเศษ" } }
-    );
+    fireEvent.change(screen.getByTestId("vd-text-overlay-title-bumper-text"), {
+      target: { value: "ตอนพิเศษ" },
+    });
     expect(
       screen.getByTestId("vd-text-overlay-title-bumper")
     ).toHaveTextContent("Preview: รักนี้ต้องลุ้น / ตอนพิเศษ");
   });
 
-  it("episode indicator: shows the derived EP N/total preview label", () => {
+  it("episode indicator: shows the derived Sub-episode N/total preview label", () => {
     render(
       <VerticalDramaEpisodeWorkspace
         episode={baseEpisode}
@@ -251,7 +258,7 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
     );
     expect(
       screen.getByTestId("vd-text-overlay-episode-indicator")
-    ).toHaveTextContent("Preview: EP 1/10");
+    ).toHaveTextContent("Preview: SUB-EP 1/10");
   });
 
   it("character intro: lists every preview character with name/role/shot once toggled on", () => {
@@ -310,7 +317,9 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
     const cardRows = screen.getAllByTestId(/^vd-text-overlay-card-text-/);
     expect(cardRows).toHaveLength(1);
 
-    const removeButtons = screen.getAllByTestId(/^vd-text-overlay-card-remove-/);
+    const removeButtons = screen.getAllByTestId(
+      /^vd-text-overlay-card-remove-/
+    );
     fireEvent.click(removeButtons[0]!);
     expect(screen.getByText(/No mid-episode cards yet/)).toBeInTheDocument();
   });
@@ -343,9 +352,9 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
         textOverlayPlanPanel={{ plan: null, preview: previewFixture }}
       />
     );
-    expect(
-      screen.getByTestId("vd-text-overlay-preview")
-    ).toHaveTextContent("No text overlays are enabled yet");
+    expect(screen.getByTestId("vd-text-overlay-preview")).toHaveTextContent(
+      "No text overlays are enabled yet"
+    );
   });
 
   it("save button calls onSave with the current draft plan", () => {
@@ -382,9 +391,9 @@ describe("VerticalDramaEpisodeWorkspace — Text Overlay Suite section (F131AB, 
         }}
       />
     );
-    expect(
-      screen.getByTestId("vd-text-overlay-save-error")
-    ).toHaveTextContent("VD_TEXT_OVERLAY_END_CARD_DURATION_OUT_OF_RANGE");
+    expect(screen.getByTestId("vd-text-overlay-save-error")).toHaveTextContent(
+      "VD_TEXT_OVERLAY_END_CARD_DURATION_OUT_OF_RANGE"
+    );
   });
 
   it("disables the save button while saving", () => {

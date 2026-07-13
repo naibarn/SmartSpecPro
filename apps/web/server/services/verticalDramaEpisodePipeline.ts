@@ -2326,7 +2326,7 @@ export class VerticalDramaEpisodePipeline {
     // never reached this stage. Dynamic `import()` — see
     // `resolveEpisodeDraftHydration`'s doc comment above for why a static
     // VALUE import of `verticalDramaStoryBible.ts` is avoided in this file.
-    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+    const { getActiveBreakdown, readItemCliffhangerLine, readItemShotDrafts } = await import(
       "./verticalDramaStoryBible"
     );
     const matchingBreakdown = getActiveBreakdown(bible).find(
@@ -2723,7 +2723,7 @@ export class VerticalDramaEpisodePipeline {
     // scene-setting plan context, resolved from the ALREADY-loaded `bible`
     // above (no extra DB round trip). `undefined` when the active breakdown
     // has no matching item for this episode yet.
-    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+    const { getActiveBreakdown, readItemCliffhangerLine, readItemShotDrafts } = await import(
       "./verticalDramaStoryBible"
     );
     const episodePlanItem = getActiveBreakdown(bible).find(
@@ -2741,6 +2741,13 @@ export class VerticalDramaEpisodePipeline {
           }
         )
       : undefined;
+    const canonicalShotSummaryByShotNumber = new Map<number, string>(
+      (episodePlanItem ? readItemShotDrafts(episodePlanItem) ?? [] : [])
+        .filter((shot): shot is VdDeepDraftShotDraft =>
+          typeof shot.summary === "string" && shot.summary.trim().length > 0
+        )
+        .map(shot => [shot.shot_number, shot.summary.trim()] as const),
+    );
 
     // Character identity descriptors (2026-07-07 non-human-character-
     // vanishing fix) — `name`/`role` + the stored `data.description` (e.g.
@@ -2875,6 +2882,7 @@ export class VerticalDramaEpisodePipeline {
               ? (s.characterIds as string[])
               : [];
         const shotNumber = Number(s.shotNumber ?? s.shot_number ?? 0);
+        const canonicalShotSummary = canonicalShotSummaryByShotNumber.get(shotNumber);
         // Location fact for this shot (Phase 1 text grounding + Phase 2/D
         // reference-image awareness, 2026-07-13). `hasReferenceImage` now
         // reflects the real roster (`locationKeysWithApprovedImage` above)
@@ -2894,6 +2902,7 @@ export class VerticalDramaEpisodePipeline {
           cameraSetup,
           characterIds,
           durationSeconds: Number(s.durationSeconds ?? s.duration_seconds ?? 0),
+          ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
           ...(locationGroup
             ? {
                 location: {

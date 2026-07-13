@@ -33,6 +33,94 @@ function baseProps(overrides: Record<string, unknown> = {}) {
 }
 
 describe("VerticalDramaStoryboardPanel — speaker-aware sub-shots (regression guard)", () => {
+  it("prefers the latest Overview shot draft over stale storyboard visual text", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          storyboard: {
+            shots: [
+              {
+                shot_number: 4,
+                visual_description:
+                  "medium close-up ลุงสมพรข้างชั้นหนังสือ",
+              },
+            ],
+          },
+          startFramePlan: {
+            frames: [{ shotNumber: 4, imagePrompt: "stale prompt" }],
+          },
+          canonicalShotDrafts: [
+            {
+              shotNumber: 4,
+              summary:
+                "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+            },
+          ],
+        }) as any)}
+      />
+    );
+
+    expect(
+      screen.getByText(
+        "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ"
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("medium close-up ลุงสมพรข้างชั้นหนังสือ")
+    ).not.toBeInTheDocument();
+  });
+
+  it("reports real missing split clips and blocks full assembly until complete", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          storyboard: {
+            shots: [
+              { shot_number: 1, visual_description: "shot 1" },
+              { shot_number: 3, visual_description: "shot 3" },
+              { shot_number: 4, visual_description: "shot 4" },
+            ],
+          },
+          startFramePlan: {
+            frames: [
+              { shotNumber: 1, imagePrompt: "frame 1" },
+              { shotNumber: 3, imagePrompt: "frame 3" },
+              { shotNumber: 4, imagePrompt: "frame 4" },
+            ],
+          },
+          motionPromptPack: {
+            clips: [
+              { clipNumber: 1, sourceShotNumbers: [1], videoTask: { videoUrl: "/1.mp4" } },
+              {
+                clipNumber: 301,
+                sourceShotNumbers: [3],
+                parentShotNumber: 3,
+                subShotNumber: 1,
+              },
+              {
+                clipNumber: 302,
+                sourceShotNumbers: [3],
+                parentShotNumber: 3,
+                subShotNumber: 2,
+                videoTask: { videoUrl: "/302.mp4" },
+              },
+              { clipNumber: 4, sourceShotNumbers: [4], videoTask: { videoUrl: "/4.mp4" } },
+            ],
+          },
+          compiledVideo: null,
+          totalClipCount: 4,
+          readyClipNumbers: [1, 302, 4],
+          onAssembleCompiledVideo: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    expect(screen.getByText(/ยังไม่มีคลิป: 3/)).toBeInTheDocument();
+    expect(screen.queryByText(/ยังไม่มีคลิป: 3, 4/)).not.toBeInTheDocument();
+    expect(screen.getByTestId("vd-compiled-video-assemble")).toBeDisabled();
+    expect(screen.getByTestId("vd-compiled-video-assemble-partial")).toBeEnabled();
+  });
+
   it("a shot with exactly one clip renders exactly one video-prompt box, plain title, unchanged from before this feature", () => {
     render(
       <VerticalDramaStoryboardPanel

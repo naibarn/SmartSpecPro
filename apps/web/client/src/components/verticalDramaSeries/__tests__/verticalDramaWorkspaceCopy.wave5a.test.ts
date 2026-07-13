@@ -78,7 +78,7 @@ describe("vdWizardStepLabel / vdWizardStatusLabel / vdWizardPrimaryActionLabel",
 
   it("returns the Copy Contract verbatim primary-action labels where pinned", () => {
     expect(vdWizardPrimaryActionLabel("generate_video_prompts", "th")).toBe(
-      "สร้างพรอมต์วิดีโอทั้งตอน"
+      "สร้างพรอมต์วิดีโอทั้งตอนย่อย"
     );
     expect(vdWizardPrimaryActionLabel("repair_shots", "th")).toBe(
       "ซ่อมเฉพาะช็อตนี้"
@@ -156,7 +156,7 @@ describe("vdWizardScriptCoverageEvidence (2026-07-08 fix)", () => {
     // 2026-07-08 W9-B plain-language sweep reworded this sentence (dropped
     // "ฝังบีต"/"ระบบวัดความหนาแน่น" jargon) — same meaning, plainer words.
     expect(vdWizardScriptCoverageEvidence(scriptCoverage, "th").value).toBe(
-      "บทนี้เป็นบทเก่าที่ยังไม่มีข้อมูลบทพูดละเอียดพอ — สร้างบทตอนใหม่เพื่อดูตัวเลขบทพูดที่แม่นยำ"
+      "บทนี้เป็นบทเก่าที่ยังไม่มีข้อมูลบทพูดละเอียดพอ — สร้างบทตอนย่อยใหม่เพื่อดูตัวเลขบทพูดที่แม่นยำ"
     );
     expect(vdWizardScriptCoverageEvidence(scriptCoverage, "en").value).toBe(
       vdCopy("en").wizardScriptNoDialogueDataMessage

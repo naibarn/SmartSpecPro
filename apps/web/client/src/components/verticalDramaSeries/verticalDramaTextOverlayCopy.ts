@@ -26,42 +26,44 @@ export const VD_TEXT_OVERLAY_COPY = {
     // Shared source labels
     sourceLabel: "ที่มา",
     sourceManual: "พิมพ์เอง",
-    sourceCliffhanger: "จากปมค้างท้ายตอน",
+    sourceCliffhanger: "จากปมค้างท้ายตอนย่อย",
     sourceHook: "จากปมที่ยังไม่คลี่คลาย",
     sourceFallback: "ข้อความเริ่มต้น",
-    sourceSummary: "จากสรุปตอนก่อนหน้า",
-    sourceNone: "ไม่มี (ตอนแรกไม่มีความเดิม)",
+    sourceSummary: "จากสรุปตอนย่อยก่อนหน้า",
+    sourceNone: "ไม่มี (ตอนย่อยแรกไม่มีความเดิม)",
     revertToAutoButton: "คืนค่าอัตโนมัติ",
     autoFillButton: "เติมข้อความอัตโนมัติ",
 
     // End card teaser
-    endCardTitle: "ข้อความท้ายตอน (กระตุ้นติดตาม)",
-    endCardEnableLabel: "แสดงข้อความท้ายตอน",
+    endCardTitle: "ข้อความท้ายตอนย่อย (กระตุ้นติดตาม)",
+    endCardEnableLabel: "แสดงข้อความท้ายตอนย่อย",
     endCardTextLabel: "ข้อความ",
     endCardTextPlaceholder: "เว้นว่างเพื่อใช้ข้อความอัตโนมัติ…",
     endCardDurationLabel: "ระยะเวลา (วินาที)",
-    endCardShowFollowLineLabel: "แสดงบรรทัด \"กดติดตาม\"",
+    endCardShowFollowLineLabel: 'แสดงบรรทัด "กดติดตาม"',
     endCardStyleVariantLabel: "รูปแบบ",
     endCardStyleCenterCard: "กลางจอ",
     endCardStyleLowerBand: "แถบล่าง",
 
     // Opener recap
-    openerRecapTitle: "ความเดิมตอนที่แล้ว",
-    openerRecapEnableLabel: "แสดงความเดิมตอนที่แล้ว",
+    openerRecapTitle: "ความเดิมตอนย่อยที่แล้ว",
+    openerRecapEnableLabel: "แสดงความเดิมตอนย่อยที่แล้ว",
     openerRecapTextLabel: "ข้อความ",
-    openerRecapTextPlaceholder: "เว้นว่างเพื่อใช้สรุปอัตโนมัติจากตอนก่อนหน้า…",
+    openerRecapTextPlaceholder:
+      "เว้นว่างเพื่อใช้สรุปอัตโนมัติจากตอนย่อยก่อนหน้า…",
     openerRecapDurationLabel: "ระยะเวลา (วินาที)",
-    openerRecapEpisode1Note: "ตอนที่ 1 ไม่มีความเดิมตอนที่แล้ว",
+    openerRecapEpisode1Note: "ตอนย่อยที่ 1 ไม่มีความเดิมตอนย่อยที่แล้ว",
 
     // Title bumper
     titleBumperTitle: "ป้ายชื่อเรื่องเปิดคลิป",
-    titleBumperEnableLabel: "แสดงชื่อเรื่อง + ชื่อตอนตอนเปิดคลิป",
-    titleBumperTextLabel: "ข้อความชื่อตอน (ไม่บังคับ — เว้นว่างเพื่อสร้างอัตโนมัติ)",
+    titleBumperEnableLabel: "แสดงชื่อเรื่อง + ชื่อตอนย่อยตอนเปิดคลิป",
+    titleBumperTextLabel:
+      "ข้อความชื่อตอนย่อย (ไม่บังคับ — เว้นว่างเพื่อสร้างอัตโนมัติ)",
     titleBumperPreviewTemplate: "ตัวอย่าง: {primary} / {secondary}",
 
     // Episode indicator
-    episodeIndicatorTitle: "เลขตอนมุมจอ",
-    episodeIndicatorEnableLabel: "แสดงเลขตอนจาง ๆ ตลอดคลิป",
+    episodeIndicatorTitle: "เลข Sub-episode มุมจอ",
+    episodeIndicatorEnableLabel: "แสดงเลข Sub-episode จาง ๆ ตลอดคลิป",
     episodeIndicatorPositionLabel: "ตำแหน่ง",
     episodeIndicatorPositionTopRight: "มุมขวาบน",
     episodeIndicatorPositionTopLeft: "มุมซ้ายบน",
@@ -71,15 +73,16 @@ export const VD_TEXT_OVERLAY_COPY = {
     characterIntroTitle: "ป้ายแนะนำตัวละคร",
     characterIntroEnableLabel: "แสดงชื่อ+บทบาทตอนตัวละครโผล่ครั้งแรก",
     characterIntroPreviewTitle: "ตัวละครที่จะมีป้ายแนะนำ",
-    characterIntroPreviewEmpty: "ยังไม่พบตัวละครในช็อต (ต้องมีแผนภาพเริ่มช็อตก่อน)",
+    characterIntroPreviewEmpty:
+      "ยังไม่พบตัวละครในช็อต (ต้องมีแผนภาพเริ่มช็อตก่อน)",
     characterIntroShotLabel: "ช็อต {shot}",
 
     // Mid-episode cards
-    cardsTitle: "การ์ดข้อความกลางตอน",
+    cardsTitle: "การ์ดข้อความกลางตอนย่อย",
     cardsDescription:
       "ป้ายเวลา/สถานที่ หรือข้อความกระตุ้นกลางเรื่อง — ผูกกับช็อตที่เลือก",
     cardsAddButton: "เพิ่มการ์ด",
-    cardsEmptyState: "ยังไม่มีการ์ดกลางตอน กด \"เพิ่มการ์ด\" เพื่อเริ่ม",
+    cardsEmptyState: 'ยังไม่มีการ์ดกลางตอนย่อย กด "เพิ่มการ์ด" เพื่อเริ่ม',
     cardKindLabel: "ชนิด",
     cardKindTimeSetting: "ป้ายเวลา/สถานที่",
     cardKindNarrativeHook: "ข้อความกระตุ้น",
@@ -88,12 +91,13 @@ export const VD_TEXT_OVERLAY_COPY = {
     cardAnchorShotLabel: "ช็อตที่",
     cardAnchorOffsetLabel: "ช่วงเวลาในช็อต (วินาที)",
     cardTextLabel: "ข้อความ",
-    cardTextPlaceholder: "เช่น \"ย้อนเวลาไปปี 1980\"",
+    cardTextPlaceholder: 'เช่น "ย้อนเวลาไปปี 1980"',
     cardDurationLabel: "ระยะเวลา (วินาที)",
     cardEnabledLabel: "เปิดใช้การ์ดนี้",
     cardRemoveButton: "ลบ",
-    cardTooManyConcurrentWarning: "มีการ์ดซ้อนเวลากันเกิน 2 ใบในช่วงนี้ — อาจอ่านไม่ทัน",
-    cardTooManyTotalError: "เพิ่มการ์ดได้สูงสุด {n} ใบต่อตอน",
+    cardTooManyConcurrentWarning:
+      "มีการ์ดซ้อนเวลากันเกิน 2 ใบในช่วงนี้ — อาจอ่านไม่ทัน",
+    cardTooManyTotalError: "เพิ่มการ์ดได้สูงสุด {n} ใบต่อตอนย่อย",
 
     // Preview block
     previewTitle: "ตัวอย่างข้อความที่จะแสดง",
@@ -107,7 +111,7 @@ export const VD_TEXT_OVERLAY_COPY = {
     // Series watermark card
     watermarkCardTitle: "ลายน้ำซีรีส์",
     watermarkCardDescription:
-      "ลายน้ำผูกกับทั้งซีรีส์ (ไม่ใช่รายตอน) แสดงในทุกตอนที่เรนเดอร์",
+      "ลายน้ำผูกกับทั้งซีรีส์ (ไม่ใช่รายตอนย่อย) แสดงในทุกตอนย่อยที่เรนเดอร์",
     watermarkEnableLabel: "เปิดใช้ลายน้ำ",
     watermarkTypeLabel: "ชนิดลายน้ำ",
     watermarkTypeText: "ข้อความ",
@@ -145,11 +149,11 @@ export const VD_TEXT_OVERLAY_COPY = {
 
     sourceLabel: "Source",
     sourceManual: "Manual",
-    sourceCliffhanger: "From the episode's cliffhanger",
+    sourceCliffhanger: "From the Sub-episode's cliffhanger",
     sourceHook: "From an unresolved story hook",
     sourceFallback: "Default text",
-    sourceSummary: "From the previous episode's summary",
-    sourceNone: "None (episode 1 has no recap)",
+    sourceSummary: "From the previous Sub-episode's summary",
+    sourceNone: "None (Sub-episode 1 has no recap)",
     revertToAutoButton: "Revert to automatic",
     autoFillButton: "Auto-fill text",
 
@@ -158,40 +162,45 @@ export const VD_TEXT_OVERLAY_COPY = {
     endCardTextLabel: "Text",
     endCardTextPlaceholder: "Leave blank to use the auto-derived text…",
     endCardDurationLabel: "Duration (sec)",
-    endCardShowFollowLineLabel: "Show \"follow now\" line",
+    endCardShowFollowLineLabel: 'Show "follow now" line',
     endCardStyleVariantLabel: "Style",
     endCardStyleCenterCard: "Center card",
     endCardStyleLowerBand: "Lower band",
 
     openerRecapTitle: "Previously on…",
-    openerRecapEnableLabel: "Show \"previously on\" recap",
+    openerRecapEnableLabel: 'Show "previously on" recap',
     openerRecapTextLabel: "Text",
-    openerRecapTextPlaceholder: "Leave blank to auto-summarize the previous episode…",
+    openerRecapTextPlaceholder:
+      "Leave blank to auto-summarize the previous Sub-episode…",
     openerRecapDurationLabel: "Duration (sec)",
-    openerRecapEpisode1Note: "Episode 1 has no recap",
+    openerRecapEpisode1Note: "Sub-episode 1 has no recap",
 
     titleBumperTitle: "Opening title card",
-    titleBumperEnableLabel: "Show series + episode title at the start",
-    titleBumperTextLabel: "Episode title text (optional — leave blank to auto-derive)",
+    titleBumperEnableLabel: "Show series + Sub-episode title at the start",
+    titleBumperTextLabel:
+      "Sub-episode title text (optional — leave blank to auto-derive)",
     titleBumperPreviewTemplate: "Preview: {primary} / {secondary}",
 
-    episodeIndicatorTitle: "Episode indicator",
-    episodeIndicatorEnableLabel: "Show a faint episode counter throughout",
+    episodeIndicatorTitle: "Sub-episode indicator",
+    episodeIndicatorEnableLabel: "Show a faint Sub-episode counter throughout",
     episodeIndicatorPositionLabel: "Position",
     episodeIndicatorPositionTopRight: "Top right",
     episodeIndicatorPositionTopLeft: "Top left",
     episodeIndicatorPreviewTemplate: "Preview: {label}",
 
     characterIntroTitle: "Character intro cards",
-    characterIntroEnableLabel: "Show name + role on each character's first appearance",
+    characterIntroEnableLabel:
+      "Show name + role on each character's first appearance",
     characterIntroPreviewTitle: "Characters that will get an intro card",
-    characterIntroPreviewEmpty: "No characters found in any shot yet (needs a start-frame plan first)",
+    characterIntroPreviewEmpty:
+      "No characters found in any shot yet (needs a start-frame plan first)",
     characterIntroShotLabel: "Shot {shot}",
 
-    cardsTitle: "Mid-episode cards",
-    cardsDescription: "Time/place stamps or narrative-hook text, anchored to a chosen shot",
+    cardsTitle: "Mid-Sub-episode cards",
+    cardsDescription:
+      "Time/place stamps or narrative-hook text, anchored to a chosen shot",
     cardsAddButton: "Add card",
-    cardsEmptyState: "No mid-episode cards yet — click \"Add card\" to start",
+    cardsEmptyState: 'No mid-episode cards yet — click "Add card" to start',
     cardKindLabel: "Kind",
     cardKindTimeSetting: "Time / place stamp",
     cardKindNarrativeHook: "Narrative hook",
@@ -200,12 +209,13 @@ export const VD_TEXT_OVERLAY_COPY = {
     cardAnchorShotLabel: "Shot #",
     cardAnchorOffsetLabel: "Offset within shot (sec)",
     cardTextLabel: "Text",
-    cardTextPlaceholder: "e.g. \"1980, ten years earlier\"",
+    cardTextPlaceholder: 'e.g. "1980, ten years earlier"',
     cardDurationLabel: "Duration (sec)",
     cardEnabledLabel: "Enable this card",
     cardRemoveButton: "Remove",
-    cardTooManyConcurrentWarning: "More than 2 cards overlap around this time — may be hard to read",
-    cardTooManyTotalError: "You can add at most {n} cards per episode",
+    cardTooManyConcurrentWarning:
+      "More than 2 cards overlap around this time — may be hard to read",
+    cardTooManyTotalError: "You can add at most {n} cards per Sub-episode",
 
     previewTitle: "Text overlay preview",
     previewEmpty: "No text overlays are enabled yet",
@@ -216,7 +226,7 @@ export const VD_TEXT_OVERLAY_COPY = {
 
     watermarkCardTitle: "Series watermark",
     watermarkCardDescription:
-      "The watermark is attached to the whole series (not per-episode) and appears in every rendered episode",
+      "The watermark is attached to the whole series (not per Sub-episode) and appears in every rendered Sub-episode",
     watermarkEnableLabel: "Enable watermark",
     watermarkTypeLabel: "Watermark type",
     watermarkTypeText: "Text",
@@ -238,9 +248,10 @@ export const VD_TEXT_OVERLAY_COPY = {
     watermarkSaveButton: "Save watermark",
     watermarkSaving: "Saving…",
     watermarkCornerClashNote:
-      "The watermark shares a corner with the episode indicator — it will auto-move to a bottom corner at render time",
+      "The watermark shares a corner with the Sub-episode indicator — it will auto-move to a bottom corner at render time",
 
-    batchApplyTextOverlaysLabel: "Apply each episode's own text overlay plan",
+    batchApplyTextOverlaysLabel:
+      "Apply each Sub-episode's own text overlay plan",
     batchApplyWatermarkLabel: "Include the series watermark",
   },
 } as const;

@@ -140,12 +140,13 @@ export function VerticalDramaSettingsTab({
   const [, setLocation] = useLocation();
   const [titleInput, setTitleInput] = useState(title);
   const [statusInput, setStatusInput] = useState<VerticalDramaSeriesStatus>(
-    (status as VerticalDramaSeriesStatus) ?? "draft",
+    (status as VerticalDramaSeriesStatus) ?? "draft"
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const bibleRegion = normalizeTargetAudienceRegion(
-    (bible as { targetAudienceRegion?: unknown } | null | undefined)?.targetAudienceRegion,
+    (bible as { targetAudienceRegion?: unknown } | null | undefined)
+      ?.targetAudienceRegion
   );
   const [regionInput, setRegionInput] =
     useState<VerticalDramaTargetAudienceRegion>(bibleRegion);
@@ -156,11 +157,14 @@ export function VerticalDramaSettingsTab({
   // defensively from the raw jsonb prop; `typeof === "string"` doubles as
   // the "absent/null = automatic" normalization (undefined, null, or any
   // non-string all fall through to `null`).
-  const llmPolicyObj = (llmModelPolicy ?? null) as VerticalDramaSeriesLlmModelPolicy | null;
+  const llmPolicyObj = (llmModelPolicy ??
+    null) as VerticalDramaSeriesLlmModelPolicy | null;
   const defaultModelIdFromProps =
-    typeof llmPolicyObj?.defaultModelId === "string" ? llmPolicyObj.defaultModelId : null;
+    typeof llmPolicyObj?.defaultModelId === "string"
+      ? llmPolicyObj.defaultModelId
+      : null;
   const [defaultModelInput, setDefaultModelInput] = useState<string | null>(
-    defaultModelIdFromProps,
+    defaultModelIdFromProps
   );
 
   // Keep local form state in sync when the parent series data changes
@@ -195,7 +199,7 @@ export function VerticalDramaSettingsTab({
         scalePct: 10,
         marginPx: 32,
       },
-    [watermark],
+    [watermark]
   );
   const [watermarkDraft, setWatermarkDraft] =
     useState<VdSeriesWatermarkConfig>(parsedWatermark);
@@ -206,14 +210,17 @@ export function VerticalDramaSettingsTab({
 
   const utils = trpc.useUtils();
   const updateMutation = trpc.verticalDramaSeries.updateSeries.useMutation();
-  const regionMutation = trpc.verticalDramaSeries.setSeriesTargetAudienceRegion.useMutation();
+  const regionMutation =
+    trpc.verticalDramaSeries.setSeriesTargetAudienceRegion.useMutation();
   // Manual LLM model override (added 2026-07-11, collapsed to a single
   // series-wide dropdown 2026-07-11) — eligible model list for the dropdown
   // below, and the dedicated mutation that persists it onto
   // `llmModelPolicy`.
-  const planningModelsQuery = trpc.verticalDramaSeries.listQualityPlanningModels.useQuery();
+  const planningModelsQuery =
+    trpc.verticalDramaSeries.listQualityPlanningModels.useQuery();
   const planningModels = planningModelsQuery.data ?? [];
-  const llmModelPolicyMutation = trpc.verticalDramaSeries.setSeriesLlmModelPolicy.useMutation();
+  const llmModelPolicyMutation =
+    trpc.verticalDramaSeries.setSeriesLlmModelPolicy.useMutation();
   const updateWatermarkMutation =
     trpc.verticalDramaSeries.updateSeriesWatermark.useMutation({
       onSuccess: () => {
@@ -221,10 +228,12 @@ export function VerticalDramaSettingsTab({
         void utils.verticalDramaSeries.get.invalidate();
         onSaved?.();
       },
-      onError: (err) => {
+      onError: err => {
         toast.error(
           err.message ||
-            (lang === "th" ? "บันทึกลายน้ำไม่สำเร็จ" : "Failed to save watermark"),
+            (lang === "th"
+              ? "บันทึกลายน้ำไม่สำเร็จ"
+              : "Failed to save watermark")
         );
       },
     });
@@ -233,7 +242,9 @@ export function VerticalDramaSettingsTab({
   const regionDirty = regionInput !== bibleRegion;
   const llmModelPolicyDirty = defaultModelInput !== defaultModelIdFromProps;
   const isSaving =
-    updateMutation.isPending || regionMutation.isPending || llmModelPolicyMutation.isPending;
+    updateMutation.isPending ||
+    regionMutation.isPending ||
+    llmModelPolicyMutation.isPending;
 
   const handleSave = async () => {
     try {
@@ -246,7 +257,10 @@ export function VerticalDramaSettingsTab({
       ];
       if (regionDirty) {
         mutations.push(
-          regionMutation.mutateAsync({ seriesId, targetAudienceRegion: regionInput }),
+          regionMutation.mutateAsync({
+            seriesId,
+            targetAudienceRegion: regionInput,
+          })
         );
       }
       if (llmModelPolicyDirty) {
@@ -257,7 +271,7 @@ export function VerticalDramaSettingsTab({
           llmModelPolicyMutation.mutateAsync({
             seriesId,
             defaultModelId: defaultModelInput,
-          }),
+          })
         );
       }
       await Promise.all(mutations);
@@ -266,32 +280,51 @@ export function VerticalDramaSettingsTab({
       onSaved?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : undefined;
-      toast.error(message || (lang === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save settings"));
+      toast.error(
+        message ||
+          (lang === "th" ? "บันทึกไม่สำเร็จ" : "Failed to save settings")
+      );
     }
   };
 
   const b = (bible ?? {}) as SeriesOriginBible;
   const notSet = lang === "th" ? "ไม่ได้ระบุ" : "Not set";
-  const originFields: Array<{ label: { th: string; en: string }; value: string | number | null | undefined }> = [
+  const originFields: Array<{
+    label: { th: string; en: string };
+    value: string | number | null | undefined;
+  }> = [
     { label: { th: "แนวเรื่อง", en: "Genre" }, value: genre },
     { label: { th: "โทนเรื่อง", en: "Tone" }, value: tone },
-    { label: { th: "กลุ่มเป้าหมาย", en: "Target audience" }, value: targetAudience },
-    { label: { th: "จำนวนตอนเป้าหมาย", en: "Target episode count" }, value: targetEpisodeCount },
     {
-      label: { th: "ความยาวต่อตอน (วินาที)", en: "Default episode duration (sec)" },
+      label: { th: "กลุ่มเป้าหมาย", en: "Target audience" },
+      value: targetAudience,
+    },
+    {
+      label: { th: "จำนวนตอนย่อยที่วางแผน", en: "Planned Sub-episode count" },
+      value: targetEpisodeCount,
+    },
+    {
+      label: {
+        th: "ความยาวต่อตอนย่อย (วินาที)",
+        en: "Default Sub-episode duration (sec)",
+      },
       value: defaultEpisodeDurationSeconds,
     },
     {
       label: { th: "ภาษา", en: "Locale" },
       value: locale
-        ? (VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[locale as VerticalDramaSeriesLocale] ??
-          locale)
+        ? (VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[
+            locale as VerticalDramaSeriesLocale
+          ] ?? locale)
         : locale,
     },
     { label: { th: "โลจไลน์", en: "Logline" }, value: b.logline },
     { label: { th: "โครงเรื่องหลัก", en: "Main plot" }, value: b.mainPlot },
     { label: { th: "สไตล์ภาพ", en: "Visual style" }, value: b.visualStyle },
-    { label: { th: "สไตล์ปมค้างตอนจบ", en: "Cliffhanger style" }, value: b.cliffhangerStyle },
+    {
+      label: { th: "สไตล์ปมค้างตอนจบ", en: "Cliffhanger style" },
+      value: b.cliffhangerStyle,
+    },
   ];
 
   return (
@@ -303,13 +336,15 @@ export function VerticalDramaSettingsTab({
           </CardTitle>
         </CardHeader>
         <CardContent className="grid max-w-2xl gap-3 sm:grid-cols-2">
-          {originFields.map((field) => (
+          {originFields.map(field => (
             <div key={field.label.en} className="grid gap-1">
               <span className="text-xs font-medium text-muted-foreground">
                 {pickCopy(lang, field.label)}
               </span>
               <span className="text-sm">
-                {field.value === null || field.value === undefined || field.value === ""
+                {field.value === null ||
+                field.value === undefined ||
+                field.value === ""
                   ? notSet
                   : String(field.value)}
               </span>
@@ -332,13 +367,16 @@ export function VerticalDramaSettingsTab({
           )}
 
           <div className="grid gap-1.5">
-            <Label htmlFor="series-settings-title" className="text-xs font-medium text-muted-foreground">
+            <Label
+              htmlFor="series-settings-title"
+              className="text-xs font-medium text-muted-foreground"
+            >
               {lang === "th" ? "ชื่อซีรีย์" : "Series title"}
             </Label>
             <Input
               id="series-settings-title"
               value={titleInput}
-              onChange={(e) => setTitleInput(e.target.value)}
+              onChange={e => setTitleInput(e.target.value)}
               disabled={readOnly || isSaving}
             />
           </div>
@@ -349,14 +387,16 @@ export function VerticalDramaSettingsTab({
             </Label>
             <Select
               value={statusInput}
-              onValueChange={(v) => setStatusInput(v as VerticalDramaSeriesStatus)}
+              onValueChange={v =>
+                setStatusInput(v as VerticalDramaSeriesStatus)
+              }
               disabled={readOnly || isSaving}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
+                {STATUS_OPTIONS.map(opt => (
                   <SelectItem key={opt} value={opt}>
                     {pickCopy(lang, seriesStatusCopy[opt])}
                   </SelectItem>
@@ -367,18 +407,22 @@ export function VerticalDramaSettingsTab({
 
           <div className="grid gap-1.5">
             <Label className="text-xs font-medium text-muted-foreground">
-              {lang === "th" ? "กลุ่มผู้ชมเป้าหมาย (ภูมิภาค)" : "Target audience (region)"}
+              {lang === "th"
+                ? "กลุ่มผู้ชมเป้าหมาย (ภูมิภาค)"
+                : "Target audience (region)"}
             </Label>
             <Select
               value={regionInput}
-              onValueChange={(v) => setRegionInput(v as VerticalDramaTargetAudienceRegion)}
+              onValueChange={v =>
+                setRegionInput(v as VerticalDramaTargetAudienceRegion)
+              }
               disabled={readOnly || isSaving}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS.map((opt) => (
+                {VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS.map(opt => (
                   <SelectItem key={opt} value={opt}>
                     {lang === "th"
                       ? VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH[opt]
@@ -402,7 +446,7 @@ export function VerticalDramaSettingsTab({
             </Label>
             <Select
               value={defaultModelInput ?? AUTOMATIC_LLM_MODEL_VALUE}
-              onValueChange={(v) =>
+              onValueChange={v =>
                 setDefaultModelInput(v === AUTOMATIC_LLM_MODEL_VALUE ? null : v)
               }
               disabled={readOnly || isSaving}
@@ -416,7 +460,7 @@ export function VerticalDramaSettingsTab({
                     ? "อัตโนมัติ (เลือกโมเดลที่ดีที่สุดให้อัตโนมัติ)"
                     : "Automatic (best model auto-selected)"}
                 </SelectItem>
-                {planningModels.map((model) => (
+                {planningModels.map(model => (
                   <SelectItem key={model.modelId} value={model.modelId}>
                     {model.label}
                   </SelectItem>
@@ -465,7 +509,10 @@ export function VerticalDramaSettingsTab({
           onChange={setWatermarkDraft}
           saving={updateWatermarkMutation.isPending}
           onSave={() =>
-            updateWatermarkMutation.mutate({ seriesId, watermark: watermarkDraft })
+            updateWatermarkMutation.mutate({
+              seriesId,
+              watermark: watermarkDraft,
+            })
           }
         />
       ) : null}
@@ -557,7 +604,7 @@ function VerticalDramaSeriesWatermarkCard({
           <div className="flex items-center gap-2">
             <Switch
               checked={draft.enabled}
-              onCheckedChange={(next) => patch({ enabled: Boolean(next) })}
+              onCheckedChange={next => patch({ enabled: Boolean(next) })}
               disabled={readOnly}
               data-testid="vd-watermark-enabled-toggle"
             />
@@ -574,9 +621,7 @@ function VerticalDramaSeriesWatermarkCard({
                 </Label>
                 <Select
                   value={draft.type}
-                  onValueChange={(v) =>
-                    patch({ type: v as "text" | "image" })
-                  }
+                  onValueChange={v => patch({ type: v as "text" | "image" })}
                   disabled={readOnly}
                 >
                   <SelectTrigger data-testid="vd-watermark-type">
@@ -584,7 +629,9 @@ function VerticalDramaSeriesWatermarkCard({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="text">{t.watermarkTypeText}</SelectItem>
-                    <SelectItem value="image">{t.watermarkTypeImage}</SelectItem>
+                    <SelectItem value="image">
+                      {t.watermarkTypeImage}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -597,7 +644,7 @@ function VerticalDramaSeriesWatermarkCard({
                   <Input
                     value={draft.text ?? ""}
                     placeholder={t.watermarkTextPlaceholder}
-                    onChange={(e) => patch({ text: e.target.value })}
+                    onChange={e => patch({ text: e.target.value })}
                     disabled={readOnly}
                     data-testid="vd-watermark-text"
                   />
@@ -610,7 +657,7 @@ function VerticalDramaSeriesWatermarkCard({
                   <Input
                     value={draft.imageUrl ?? ""}
                     placeholder="https://…/logo.png"
-                    onChange={(e) => patch({ imageUrl: e.target.value })}
+                    onChange={e => patch({ imageUrl: e.target.value })}
                     disabled={readOnly}
                     data-testid="vd-watermark-image-url"
                   />
@@ -623,7 +670,7 @@ function VerticalDramaSeriesWatermarkCard({
                 </Label>
                 <Select
                   value={draft.position}
-                  onValueChange={(v) =>
+                  onValueChange={v =>
                     patch({ position: v as VdWatermarkPosition })
                   }
                   disabled={readOnly}
@@ -632,7 +679,7 @@ function VerticalDramaSeriesWatermarkCard({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {VD_WATERMARK_POSITIONS.map((pos) => (
+                    {VD_WATERMARK_POSITIONS.map(pos => (
                       <SelectItem key={pos} value={pos}>
                         {pos === "top_left"
                           ? t.watermarkPositionTopLeft
@@ -661,7 +708,9 @@ function VerticalDramaSeriesWatermarkCard({
                   max={0.8}
                   step={0.05}
                   value={[draft.opacity]}
-                  onValueChange={([v]) => patch({ opacity: v ?? draft.opacity })}
+                  onValueChange={([v]) =>
+                    patch({ opacity: v ?? draft.opacity })
+                  }
                   disabled={readOnly}
                   data-testid="vd-watermark-opacity"
                 />
@@ -681,7 +730,9 @@ function VerticalDramaSeriesWatermarkCard({
                   max={20}
                   step={1}
                   value={[draft.scalePct]}
-                  onValueChange={([v]) => patch({ scalePct: v ?? draft.scalePct })}
+                  onValueChange={([v]) =>
+                    patch({ scalePct: v ?? draft.scalePct })
+                  }
                   disabled={readOnly}
                   data-testid="vd-watermark-scale"
                 />
@@ -697,9 +748,7 @@ function VerticalDramaSeriesWatermarkCard({
                   max={200}
                   className="w-24"
                   value={draft.marginPx}
-                  onChange={(e) =>
-                    patch({ marginPx: Number(e.target.value) })
-                  }
+                  onChange={e => patch({ marginPx: Number(e.target.value) })}
                   disabled={readOnly}
                   data-testid="vd-watermark-margin"
                 />

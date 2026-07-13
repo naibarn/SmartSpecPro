@@ -5,20 +5,27 @@
  *     `content` — the first document a fresh project needs before any other
  *     stage panel has anything to operate on (`document` is `null` until
  *     the first `saveDocument` call).
+ *
+ * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
+ * components directly, which `AppPage.tsx`'s docstring says should never
+ * happen outside that one file. This is a deliberate, explicit,
+ * twice-confirmed user decision to migrate Video Studio off shadcn/ui onto
+ * native Astryx components (see
+ * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
+ * violation of that rule.
  */
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Grid, GridSpan } from "@astryxdesign/core/Grid";
+import { Heading } from "@astryxdesign/core/Heading";
+import { VStack } from "@astryxdesign/core/Layout";
+import { NumberInput } from "@astryxdesign/core/NumberInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { Text } from "@astryxdesign/core/Text";
+import { TextInput } from "@astryxdesign/core/TextInput";
+
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
@@ -31,6 +38,13 @@ interface VideoProjectRowLike {
   studioType: string;
   brief: unknown;
 }
+
+const PLATFORM_PRESET_OPTIONS = [
+  { value: "tiktok_9_16", label: "TikTok (9:16)" },
+  { value: "reels_9_16", label: "Reels (9:16)" },
+  { value: "youtube_16_9", label: "YouTube (16:9)" },
+  { value: "square_1_1", label: "Square (1:1)" },
+];
 
 export function BriefPanel({
   lang,
@@ -63,170 +77,135 @@ export function BriefPanel({
   });
 
   return (
-    <div className="flex flex-col gap-4" data-testid="video-studio-brief-panel">
-      <Card className="border-border/60">
-        <CardHeader>
-          <CardTitle className="text-base">
-            {pickCopy(lang, { th: "โจทย์โปรเจกต์", en: "Project brief" })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="video-studio-brief-topic">
-              {pickCopy(lang, { th: "หัวข้อ", en: "Topic" })}
-            </Label>
-            <Input
-              id="video-studio-brief-topic"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="video-studio-brief-audience">
-              {pickCopy(lang, { th: "กลุ่มเป้าหมาย", en: "Audience" })}
-            </Label>
-            <Input
-              id="video-studio-brief-audience"
-              value={audience}
-              onChange={(e) => setAudience(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="video-studio-brief-notes">
-              {pickCopy(lang, { th: "หมายเหตุ", en: "Notes" })}
-            </Label>
-            <Input
-              id="video-studio-brief-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
+    <VStack gap={4} data-testid="video-studio-brief-panel">
+      <Card>
+        <VStack gap={3}>
+          <Heading level={4}>{pickCopy(lang, { th: "โจทย์โปรเจกต์", en: "Project brief" })}</Heading>
+
+          <TextInput
+            label={pickCopy(lang, { th: "หัวข้อ", en: "Topic" })}
+            value={topic}
+            onChange={(value) => setTopic(value)}
+          />
+          <TextInput
+            label={pickCopy(lang, { th: "กลุ่มเป้าหมาย", en: "Audience" })}
+            value={audience}
+            onChange={(value) => setAudience(value)}
+          />
+          <TextInput
+            label={pickCopy(lang, { th: "หมายเหตุ", en: "Notes" })}
+            value={notes}
+            onChange={(value) => setNotes(value)}
+          />
+
           <Button
-            className="self-start"
-            disabled={updateBrief.isPending}
+            type="button"
+            variant="primary"
+            label={pickCopy(lang, videoStudioCopy.save)}
+            isDisabled={updateBrief.isPending}
+            isLoading={updateBrief.isPending}
             onClick={() =>
               updateBrief.mutate({
                 projectId: project.id,
                 brief: { ...(project.brief as Record<string, unknown> | null), topic, audience, notes },
               })
             }
-          >
-            {pickCopy(lang, videoStudioCopy.save)}
-          </Button>
-        </CardContent>
+            className="self-start"
+          />
+        </VStack>
       </Card>
 
       {document ? (
-        <Card className="border-border/60">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {pickCopy(lang, { th: "รูปแบบวิดีโอ", en: "Video format" })}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="grid gap-1.5">
-              <Label>{pickCopy(lang, { th: "ความกว้าง", en: "Width" })}</Label>
-              <Input
-                type="number"
+        <Card>
+          <VStack gap={3}>
+            <Heading level={4}>{pickCopy(lang, { th: "รูปแบบวิดีโอ", en: "Video format" })}</Heading>
+
+            {/* Responsive fix: was a bare `grid grid-cols-2 sm:grid-cols-4`
+                (2-column jump straight to 4 on mobile squeezed number
+                inputs). Astryx `Grid` with `minWidth` auto-fits the column
+                count to available width instead of a hard breakpoint
+                jump. */}
+            <Grid columns={{ minWidth: 140, max: 4 }} gap={3}>
+              <NumberInput
+                label={pickCopy(lang, { th: "ความกว้าง", en: "Width" })}
                 value={document.format.width}
-                onChange={(e) =>
+                onChange={(value) =>
                   onDocumentChange({
                     ...document,
-                    format: { ...document.format, width: Number(e.target.value) || document.format.width },
+                    format: { ...document.format, width: value },
                   })
                 }
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>{pickCopy(lang, { th: "ความสูง", en: "Height" })}</Label>
-              <Input
-                type="number"
+              <NumberInput
+                label={pickCopy(lang, { th: "ความสูง", en: "Height" })}
                 value={document.format.height}
-                onChange={(e) =>
+                onChange={(value) =>
                   onDocumentChange({
                     ...document,
-                    format: { ...document.format, height: Number(e.target.value) || document.format.height },
+                    format: { ...document.format, height: value },
                   })
                 }
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>FPS</Label>
-              <Input
-                type="number"
+              <NumberInput
+                label="FPS"
                 value={document.format.fps}
-                onChange={(e) =>
+                onChange={(value) =>
                   onDocumentChange({
                     ...document,
-                    format: { ...document.format, fps: Number(e.target.value) || document.format.fps },
+                    format: { ...document.format, fps: value },
                   })
                 }
               />
-            </div>
-            <div className="grid gap-1.5">
-              <Label>{pickCopy(lang, { th: "ความยาว (มิลลิวินาที)", en: "Duration (ms)" })}</Label>
-              <Input
-                type="number"
+              <NumberInput
+                label={pickCopy(lang, { th: "ความยาว (มิลลิวินาที)", en: "Duration (ms)" })}
                 value={document.format.durationMs}
-                onChange={(e) =>
+                onChange={(value) =>
                   onDocumentChange({
                     ...document,
-                    format: {
-                      ...document.format,
-                      durationMs: Number(e.target.value) || document.format.durationMs,
-                    },
+                    format: { ...document.format, durationMs: value },
                   })
                 }
               />
-            </div>
-            <div className="col-span-2 grid gap-1.5 sm:col-span-4">
-              <Label>{pickCopy(lang, { th: "ภาษา", en: "Language" })}</Label>
-              <Input
-                value={document.content.language}
-                onChange={(e) =>
-                  onDocumentChange({
-                    ...document,
-                    content: { ...document.content, language: e.target.value },
-                  })
-                }
-              />
-            </div>
-          </CardContent>
+              <GridSpan columns="full">
+                <TextInput
+                  label={pickCopy(lang, { th: "ภาษา", en: "Language" })}
+                  value={document.content.language}
+                  onChange={(value) =>
+                    onDocumentChange({
+                      ...document,
+                      content: { ...document.content, language: value },
+                    })
+                  }
+                />
+              </GridSpan>
+            </Grid>
+          </VStack>
         </Card>
       ) : (
-        <Card className="border-border/60">
-          <CardHeader>
-            <CardTitle className="text-base">
-              {pickCopy(lang, { th: "เริ่มต้นโปรเจกต์", en: "Initialize project" })}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <p className="text-sm text-muted-foreground">
+        <Card>
+          <VStack gap={3}>
+            <Heading level={4}>{pickCopy(lang, { th: "เริ่มต้นโปรเจกต์", en: "Initialize project" })}</Heading>
+
+            <Text type="body" color="secondary">
               {pickCopy(lang, {
                 th: "โปรเจกต์นี้ยังไม่มีเอกสารวิดีโอ เลือกอัตราส่วนภาพเพื่อเริ่มต้น",
                 en: "This project has no video document yet. Pick an aspect ratio to get started.",
               })}
-            </p>
-            <div className="grid gap-1.5">
-              <Label>{pickCopy(lang, { th: "อัตราส่วนภาพ", en: "Aspect ratio" })}</Label>
-              <Select
-                value={platformPreset}
-                onValueChange={(value) => setPlatformPreset(value as typeof platformPreset)}
-              >
-                <SelectTrigger data-testid="video-studio-init-platform-preset">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tiktok_9_16">TikTok (9:16)</SelectItem>
-                  <SelectItem value="reels_9_16">Reels (9:16)</SelectItem>
-                  <SelectItem value="youtube_16_9">YouTube (16:9)</SelectItem>
-                  <SelectItem value="square_1_1">Square (1:1)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            </Text>
+
+            <Selector
+              label={pickCopy(lang, { th: "อัตราส่วนภาพ", en: "Aspect ratio" })}
+              options={PLATFORM_PRESET_OPTIONS}
+              value={platformPreset}
+              onChange={(value) => setPlatformPreset(value as typeof platformPreset)}
+              data-testid="video-studio-init-platform-preset"
+            />
+
             <Button
+              type="button"
+              variant="primary"
               data-testid="video-studio-init-document-button"
-              className="self-start"
+              label={pickCopy(lang, { th: "สร้างเอกสารวิดีโอ", en: "Create video document" })}
               onClick={() =>
                 onDocumentInitialized(
                   createDefaultDocument({
@@ -236,12 +215,11 @@ export function BriefPanel({
                   }),
                 )
               }
-            >
-              {pickCopy(lang, { th: "สร้างเอกสารวิดีโอ", en: "Create video document" })}
-            </Button>
-          </CardContent>
+              className="self-start"
+            />
+          </VStack>
         </Card>
       )}
-    </div>
+    </VStack>
   );
 }

@@ -65,8 +65,8 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
-    "@astryxdesign/core": "^0.1.2",
-    "@astryxdesign/theme-neutral": "^0.1.2",
+    "@astryxdesign/core": "^0.1.4",
+    "@astryxdesign/theme-neutral": "^0.1.4",
     "@aws-sdk/client-s3": "^3.1053.0",
     "@aws-sdk/s3-request-presigner": "^3.1053.0",
     "@codemirror/lang-css": "^6.3.1",
@@ -231,7 +231,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@astryxdesign/cli": "^0.1.2",
+    "@astryxdesign/cli": "^0.1.4",
     "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/typography": "^0.5.15",

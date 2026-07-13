@@ -400,8 +400,39 @@ describe("getEpisodeDetail — episodeDraftAvailable (W10-B)", () => {
       .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
       .mockReturnValueOnce(selectChain([])) // loadLatestQualityReview
       .mockReturnValueOnce(selectChain([{ bible: { breakdownVersions: [] } }])); // resolveEpisodeDraftAvailable
+    mockDb.select.mockReturnValueOnce(
+      selectChain([
+        {
+          bible: {
+            breakdownVersions: [],
+            episodeBreakdown: [
+              {
+                episodeNumber: 3,
+                workingTitle: "ตอนที่ 3",
+                logline: "เรื่องย่อ",
+                keyBeats: [],
+                shotDrafts: [
+                  {
+                    shot_number: 4,
+                    summary:
+                      "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+                    dialogue_lines: [],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ])
+    ); // resolveEpisodePlanForEpisode
     mockGetActiveBreakdown.mockReturnValue([{ episodeNumber: 3 }]);
-    mockReadItemShotDrafts.mockReturnValue([{ shot_number: 1, summary: "s", dialogue_lines: [] }]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 4,
+        summary: "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+        dialogue_lines: [],
+      },
+    ]);
 
     const result = await router.getEpisodeDetail({
       ctx: ctx(),
@@ -410,6 +441,12 @@ describe("getEpisodeDetail — episodeDraftAvailable (W10-B)", () => {
 
     expect(result.episodeDraftAvailable).toBe(true);
     expect(result.flags.deepStoryDrafts).toBe(true);
+    expect(result.episodePlan?.shotDrafts).toEqual([
+      {
+        shotNumber: 4,
+        summary: "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+      },
+    ]);
   });
 
   it("is false when the flag is on but the episode's active breakdown item has no shotDrafts", async () => {

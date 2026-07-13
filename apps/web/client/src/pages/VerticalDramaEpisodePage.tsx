@@ -177,7 +177,7 @@ export function shouldResumeVideoClipPoll(
   currentlyPollingClips: ReadonlySet<number>
 ): boolean {
   if (!videoTask?.pendingTaskId) return false;
-  if (videoTask.videoUrl) return false;
+  if (videoTask.videoUrl?.trim()) return false;
   if (alreadyResumedClips.has(clipNumber)) return false;
   if (currentlyPollingClips.has(clipNumber)) return false;
   return true;
@@ -3031,20 +3031,21 @@ function EpisodeWorkspaceShell({
    *  for resume-polling — prevents re-triggering on every `getEpisodeDetail`
    *  refetch, same convention as `resumedAngleGridShotsRef`. */
   const resumedVideoClipsRef = useRef<Set<number>>(new Set());
+  // A provider/MCP video can legitimately take much longer than the old
+  // five-minute client poll window. Keep the task marker durable and wait up
+  // to 30 minutes before surfacing a timeout to the user.
+  const VIDEO_CLIP_POLL_MAX_ATTEMPTS = 720;
 
-  /** Persists `videoTask` onto the matching `motionPromptPack.clips[]` entry
-   *  via the existing free `updateEpisodeDraft` JSONB-patch flow — same
-   *  convention as `persistAngleGrid`. `null` clears the field entirely.
-   *  `sourceShotNumber` (2026-07-07 upload-video-per-shot fix): when no
-   *  clip with this `clipNumber` exists yet (upload button is now shown on
-   *  every shot, even before a video prompt has ever been generated for
-   *  it), creates a minimal clip
-   *  `{clipNumber, sourceShotNumbers: [sourceShotNumber], prompt: "", durationSeconds}`
-   *  — or a minimal pack when `motionPromptPack` is entirely absent — using
-   *  the exact same convention as `generateShotVideoPrompt`'s (router)
-   *  "no matching clip"/"no pack" branches, so this never silently drops the
-   *  upload. */
-  function persistVideoTask(
+  /** Dedicated atomic persistence for one clip's task state. The server
+   *  re-reads/locks the fresh motion pack before merging, so simultaneous
+   *  clip completions cannot overwrite sibling `videoTask` values. `null`
+   *  clears the field entirely. `sourceShotNumber` keeps the existing upload
+   *  behavior that can create a minimal clip when no prompt-pack entry exists.
+   */
+  const persistVideoClipTaskMutation =
+    trpc.verticalDramaEpisodes.persistVideoClipTask.useMutation();
+
+  async function persistVideoTask(
     clipNumber: number,
     videoTask:
       | { pendingTaskId: string }
@@ -3056,7 +3057,6 @@ function EpisodeWorkspaceShell({
       | null,
     sourceShotNumber?: number
   ) {
-    const pack = episodeDetailQuery.data?.motionPromptPack;
     const storyboardShot = (
       episodeDetailQuery.data?.storyboard as
         | VerticalDramaStoryboardView
@@ -3066,45 +3066,14 @@ function EpisodeWorkspaceShell({
       s => (s.shot_number ?? -1) === (sourceShotNumber ?? clipNumber)
     );
 
-    if (!pack) {
-      if (!videoTask || !sourceShotNumber) return;
-      updateEpisodeDraftMutation.mutate({
-        seriesId,
-        episodeId,
-        motionPromptPack: {
-          selectedVideoModelId,
-          // `getEpisodeDetail` doesn't return the episode's
-          // `durationProfileId` column to the client (only the router,
-          // which reads `row.durationProfileId` directly, has it) — mirror
-          // the router's own literal default for this minimal-pack case.
-          durationProfileId: "vertical_drama_60s_9_frames_8_clips",
-          motionMode: "first_frame_to_video",
-          clips: [
-            {
-              clipNumber,
-              sourceShotNumbers: [sourceShotNumber],
-              prompt: "",
-              durationSeconds: storyboardShot?.duration_seconds ?? 8,
-              videoTask,
-            },
-          ],
-          warnings: [],
-        },
-      });
-      return;
-    }
-
-    const updatedClips = buildUpdatedClipsForVideoTask(
-      (pack.clips ?? []) as unknown as MinimalVideoTaskClip[],
-      clipNumber,
-      videoTask,
-      sourceShotNumber,
-      storyboardShot?.duration_seconds ?? 8
-    );
-    updateEpisodeDraftMutation.mutate({
+    await persistVideoClipTaskMutation.mutateAsync({
       seriesId,
       episodeId,
-      motionPromptPack: { ...pack, clips: updatedClips as typeof pack.clips },
+      clipNumber,
+      sourceShotNumber,
+      durationSeconds: storyboardShot?.duration_seconds ?? 8,
+      selectedVideoModelId,
+      videoTask,
     });
   }
 
@@ -3114,12 +3083,12 @@ function EpisodeWorkspaceShell({
    *  dropped). `source: "generated"` always overwrites a prior
    *  self-uploaded clip (2026-07-07 upload-video-per-shot upgrade) — "สร้าง
    *  ใหม่"/regen is still the AI path and replaces whatever was there. */
-  function resolveCompletedVideoClipTask(
+  async function resolveCompletedVideoClipTask(
     clipNumber: number,
     resultUrl: string,
     taskId: string
   ) {
-    persistVideoTask(clipNumber, {
+    await persistVideoTask(clipNumber, {
       videoUrl: resultUrl,
       mediaTaskId: taskId,
       source: "generated",
@@ -3131,7 +3100,11 @@ function EpisodeWorkspaceShell({
     videoClipPollInFlightRef.current.add(clipNumber);
     setPollingVideoClips(prev => new Set(prev).add(clipNumber));
     try {
-      for (let attempt = 0; attempt < 120; attempt++) {
+      for (
+        let attempt = 0;
+        attempt < VIDEO_CLIP_POLL_MAX_ATTEMPTS;
+        attempt++
+      ) {
         const task = await utils.media.getTask.fetch({ taskId });
         const status = (task as { status?: string } | null)?.status;
         if (status === "completed") {
@@ -3142,13 +3115,13 @@ function EpisodeWorkspaceShell({
                 ? "สร้างวิดีโอสำเร็จแต่ไม่พบ URL ผลลัพธ์"
                 : "Video generation completed but no result URL."
             );
-            persistVideoTask(clipNumber, null);
+            await persistVideoTask(clipNumber, null);
             return;
           }
           toast.success(
             lang === "th" ? "สร้างวิดีโอคลิปสำเร็จ" : "Video clip generated."
           );
-          resolveCompletedVideoClipTask(clipNumber, resultUrl, taskId);
+          await resolveCompletedVideoClipTask(clipNumber, resultUrl, taskId);
           return;
         }
         if (status === "failed") {
@@ -3159,7 +3132,7 @@ function EpisodeWorkspaceShell({
               ? `สร้างวิดีโอล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`
               : `Video generation failed${errorMessage ? `: ${errorMessage}` : ""}`
           );
-          persistVideoTask(clipNumber, null);
+          await persistVideoTask(clipNumber, null);
           return;
         }
         await new Promise(resolve => setTimeout(resolve, 2500));
@@ -3186,7 +3159,7 @@ function EpisodeWorkspaceShell({
    *  this shot's clip video. Uploads via the existing large-file multipart
    *  route (`/api/media-jobs/upload`, same one Media Studio/Storyboard
    *  Review use), then persists `{ videoUrl, source: "upload" }` onto the
-   *  clip's `videoTask` via the existing free `persistVideoTask` flow (which
+   *  clip's `videoTask` via the dedicated atomic `persistVideoTask` flow (which
    *  creates a minimal clip/pack first when `clipNumber` has no existing
    *  match) — the player, download, and whole-episode assembly all pick it
    *  up the same way they do a generated clip. */
@@ -3200,7 +3173,7 @@ function EpisodeWorkspaceShell({
       const resolver = videoUploadResolverRef.current!;
       const { promise } = resolver.uploadAsset(file);
       const { uri } = await promise;
-      persistVideoTask(
+      await persistVideoTask(
         clipNumber,
         { videoUrl: uri, source: "upload" },
         sourceShotNumber
@@ -3238,8 +3211,22 @@ function EpisodeWorkspaceShell({
         // page reloads/navigates away before this poll observes completion,
         // the resume-on-load effect below can pick the task back up instead
         // of the result being silently lost forever (2026-07-06 fix).
-        persistVideoTask(variables.clipNumber, { pendingTaskId: data.taskId });
-        void pollVideoClipTask(data.taskId, variables.clipNumber);
+        // The completion poll starts only after this durable pending marker
+        // is committed. Otherwise a very fast task could finish first and a
+        // late pending write could overwrite its completed URL.
+        void persistVideoTask(variables.clipNumber, {
+          pendingTaskId: data.taskId,
+        })
+          .then(() => pollVideoClipTask(data.taskId, variables.clipNumber))
+          .catch(err =>
+            toast.error(
+              err instanceof Error
+                ? err.message
+                : lang === "th"
+                  ? "บันทึกสถานะวิดีโอไม่สำเร็จ"
+                  : "Failed to save video task state."
+            )
+          );
       },
       onError: err => toast.error(err.message),
     });
@@ -3617,9 +3604,11 @@ function EpisodeWorkspaceShell({
     episodeDetailQuery.data?.motionPromptPack?.clips ?? [];
   const totalClipCount = motionPromptClips.length;
   const readyClipNumbers = motionPromptClips
-    .filter(c =>
-      Boolean((c.videoTask as { videoUrl?: string } | undefined)?.videoUrl)
-    )
+    .filter(c => {
+      const videoUrl = (c.videoTask as { videoUrl?: string } | undefined)
+        ?.videoUrl;
+      return typeof videoUrl === "string" && videoUrl.trim().length > 0;
+    })
     .map(c => c.clipNumber);
 
   /** W12-B voice chain wave — the Dialogue/Audio panel's `batch` prop, built
@@ -4429,6 +4418,8 @@ function EpisodeWorkspaceShell({
               | VerticalDramaMotionPromptPackView
               | null
               | undefined,
+            canonicalShotDrafts:
+              episodeDetailQuery.data?.episodePlan?.shotDrafts,
             assetUrls: episodeDetailQuery.data?.assetUrls as
               | VerticalDramaAssetUrlMap
               | undefined,

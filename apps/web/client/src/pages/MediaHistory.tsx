@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { rateLimitBackoffMs } from "@/lib/rateLimitBackoff";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1370,6 +1371,12 @@ export default function MediaHistory() {
   // Mutation for fetching task result from provider
   const fetchResultMutation = trpc.media.fetchTaskResult.useMutation();
 
+  // Epoch-ms until which background polling is paused after hitting a 429
+  // rate-limit. Continuing to poll through the limit only deepens the window,
+  // so the poller respects the server-provided Retry-After (via the shared
+  // rateLimitBackoff helper) before trying again.
+  const pollRateLimitedUntilRef = useRef(0);
+
   // Mutation for deleting a task
   const deleteTaskMutation = trpc.media.deleteTask.useMutation({
     onSuccess: () => {
@@ -2174,7 +2181,8 @@ export default function MediaHistory() {
     const tick = async () => {
       if (
         document.visibilityState !== "visible" ||
-        fetchResultMutation.isPending
+        fetchResultMutation.isPending ||
+        Date.now() < pollRateLimitedUntilRef.current
       )
         return;
       const nextTask = tasks.find(
@@ -2190,6 +2198,12 @@ export default function MediaHistory() {
           await refetch();
         }
       } catch (error) {
+        // A 429 means we're polling faster than the server allows. Pause for
+        // the server-advised Retry-After window instead of retrying next tick.
+        const backoffMs = rateLimitBackoffMs(error);
+        if (backoffMs > 0) {
+          pollRateLimitedUntilRef.current = Date.now() + backoffMs;
+        }
         console.error("Background fetch task result failed:", error);
       }
     };

@@ -5,23 +5,36 @@
  * fail-closed gated: hidden when their studio-specific flag is off, even
  * though the master F133A route guard (`RequireVideoIntelligence` in
  * `App.tsx`) already covers the page itself.
+ *
+ * INTENTIONAL EXCEPTION: this file imports `@astryxdesign/core/*` components
+ * directly below the `<AppPage>` shell. `AppPage.tsx`'s docstring states it
+ * is "intentionally the ONLY app file... that imports @astryxdesign
+ * directly" — Video Studio is a deliberate, explicit, twice-confirmed
+ * user-directed exception to that rule (see
+ * `planning/video-studio-astryx-migration/plan.md`). Do not treat this as
+ * an accidental violation, and do not copy this pattern into other pages
+ * without the same explicit sign-off.
  */
 import { useState } from "react";
-import { Link } from "wouter";
 import { Clapperboard, Plus, Search, ShoppingBag } from "lucide-react";
 
 import { AppPage, type AppPageState } from "@/components/AppPage";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { CatalogCreateDialog } from "@/components/videoStudio/CatalogCreateDialog";
 import { MotionCreateDialog } from "@/components/videoStudio/MotionCreateDialog";
 import { pickCopy, useVideoStudioLang, videoStudioCopy } from "@/components/videoStudio/videoStudioCopy";
+
+import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { ClickableCard } from "@astryxdesign/core/ClickableCard";
+import { Grid } from "@astryxdesign/core/Grid";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { Skeleton } from "@astryxdesign/core/Skeleton";
+import { Text } from "@astryxdesign/core/Text";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { ToggleButton, ToggleButtonGroup } from "@astryxdesign/core/ToggleButton";
 
 type StudioTypeFilter = "all" | "catalog" | "motion" | "content" | "review_remix" | "imported";
 
@@ -89,29 +102,26 @@ export default function VideoStudioListPage() {
         : "ready";
 
   const createActions = (
-    <div className="flex flex-wrap gap-2">
+    <HStack gap={2} align="center" wrap="wrap">
       {catalogStudioEnabled ? (
         <Button
           data-testid="video-studio-new-from-product"
-          className="gap-2"
+          variant="primary"
+          icon={<ShoppingBag className="h-4 w-4" aria-hidden="true" />}
+          label={pickCopy(lang, videoStudioCopy.newFromProduct)}
           onClick={() => setCatalogDialogOpen(true)}
-        >
-          <ShoppingBag className="h-4 w-4" aria-hidden="true" />
-          {pickCopy(lang, videoStudioCopy.newFromProduct)}
-        </Button>
+        />
       ) : null}
       {motionStudioEnabled ? (
         <Button
           data-testid="video-studio-new-blank-project"
-          variant="outline"
-          className="gap-2"
+          variant="secondary"
+          icon={<Plus className="h-4 w-4" aria-hidden="true" />}
+          label={pickCopy(lang, videoStudioCopy.newBlankProject)}
           onClick={() => setMotionDialogOpen(true)}
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          {pickCopy(lang, videoStudioCopy.newBlankProject)}
-        </Button>
+        />
       ) : null}
-    </div>
+    </HStack>
   );
 
   return (
@@ -125,46 +135,41 @@ export default function VideoStudioListPage() {
         ]}
         actions={createActions}
         toolbar={
-          <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/30 p-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={pickCopy(lang, videoStudioCopy.searchPlaceholder)}
-                aria-label={pickCopy(lang, videoStudioCopy.searchPlaceholder)}
-                className="bg-background pl-9"
-              />
+          <Card variant="muted" padding={3}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="min-w-0 flex-1">
+                <TextInput
+                  label={pickCopy(lang, videoStudioCopy.searchPlaceholder)}
+                  isLabelHidden
+                  value={search}
+                  onChange={(value) => setSearch(value)}
+                  placeholder={pickCopy(lang, videoStudioCopy.searchPlaceholder)}
+                  startIcon={<Search className="h-4 w-4" aria-hidden="true" />}
+                  width="100%"
+                />
+              </div>
+              <ToggleButtonGroup
+                type="single"
+                label="studio type filter"
+                value={studioTypeFilter}
+                onChange={(value) => {
+                  // ToggleButtonGroup (single) allows deselecting the active
+                  // button (value -> null). The original hand-rolled filter
+                  // pills had no deselect concept — clicking the active pill
+                  // was a no-op. Preserve that behavior by ignoring null.
+                  if (value) setStudioTypeFilter(value as StudioTypeFilter);
+                }}
+              >
+                {STUDIO_TYPE_FILTERS.map((studioType) => {
+                  const label =
+                    studioType === "all"
+                      ? pickCopy(lang, videoStudioCopy.allStudioTypes)
+                      : pickCopy(lang, videoStudioCopy[STUDIO_TYPE_LABEL_KEY[studioType]]);
+                  return <ToggleButton key={studioType} value={studioType} size="sm" label={label} />;
+                })}
+              </ToggleButtonGroup>
             </div>
-            <div role="group" aria-label="studio type filter" className="flex flex-wrap gap-1.5">
-              {STUDIO_TYPE_FILTERS.map((studioType) => {
-                const active = studioTypeFilter === studioType;
-                const label =
-                  studioType === "all"
-                    ? pickCopy(lang, videoStudioCopy.allStudioTypes)
-                    : pickCopy(lang, videoStudioCopy[STUDIO_TYPE_LABEL_KEY[studioType]]);
-                return (
-                  <button
-                    key={studioType}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setStudioTypeFilter(studioType)}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-                      active
-                        ? "border-primary bg-primary text-primary-foreground shadow-xs"
-                        : "border-input bg-background text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-accent-foreground",
-                    )}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          </Card>
         }
         state={pageState}
         loadingSkeleton={<ProjectListSkeleton />}
@@ -184,13 +189,11 @@ export default function VideoStudioListPage() {
           actions: createActions,
         }}
       >
-        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Grid columns={{ minWidth: 280, max: 3 }} gap={4}>
           {filtered.map((project) => (
-            <li key={project.id}>
-              <ProjectCard lang={lang} project={project} />
-            </li>
+            <ProjectCard key={project.id} lang={lang} project={project} />
           ))}
-        </ul>
+        </Grid>
       </AppPage>
 
       <CatalogCreateDialog lang={lang} open={catalogDialogOpen} onOpenChange={setCatalogDialogOpen} />
@@ -202,46 +205,44 @@ export default function VideoStudioListPage() {
 function ProjectCard({ lang, project }: { lang: "th" | "en"; project: VideoProjectListItem }) {
   const StudioIcon = project.studioType === "catalog" ? ShoppingBag : Clapperboard;
   return (
-    <Link href={`/video-studio/${project.id}`}>
-      <Card className="h-full cursor-pointer border-border/60 transition-all hover:border-primary/40 hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="truncate text-base">{project.name}</CardTitle>
-            <Badge variant="outline">{project.status}</Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <StudioIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span>
-              {project.studioType === "catalog"
-                ? pickCopy(lang, videoStudioCopy.studioTypeCatalog)
-                : project.studioType === "motion"
-                  ? pickCopy(lang, videoStudioCopy.studioTypeMotion)
-                  : project.studioType}
-            </span>
-          </div>
-          <div>{formatRelative(project.updatedAt, lang)}</div>
-        </CardContent>
-      </Card>
-    </Link>
+    <ClickableCard label={project.name} href={`/video-studio/${project.id}`} height="100%">
+      <VStack gap={2}>
+        <HStack justify="between" align="start" gap={2}>
+          <Text type="body" weight="bold" maxLines={1}>
+            {project.name}
+          </Text>
+          <Badge variant="neutral" label={project.status} />
+        </HStack>
+        <HStack gap={1.5} align="center">
+          <StudioIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <Text type="supporting" color="secondary">
+            {project.studioType === "catalog"
+              ? pickCopy(lang, videoStudioCopy.studioTypeCatalog)
+              : project.studioType === "motion"
+                ? pickCopy(lang, videoStudioCopy.studioTypeMotion)
+                : project.studioType}
+          </Text>
+        </HStack>
+        <Text type="supporting" color="secondary">
+          {formatRelative(project.updatedAt, lang)}
+        </Text>
+      </VStack>
+    </ClickableCard>
   );
 }
 
 function ProjectListSkeleton() {
   return (
-    <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-live="polite">
+    <Grid columns={{ minWidth: 280, max: 3 }} gap={4} aria-busy="true" aria-live="polite">
       {Array.from({ length: 6 }).map((_, i) => (
-        <li key={i}>
-          <Card className="h-32 border-border/60">
-            <CardContent className="flex h-full flex-col gap-3 p-4">
-              <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="mt-auto h-4 w-1/3" />
-            </CardContent>
-          </Card>
-        </li>
+        <Card key={i} height={128} padding={4}>
+          <VStack gap={3} height="100%" justify="between">
+            <Skeleton width="66%" height={20} index={i * 3} />
+            <Skeleton width="50%" height={16} index={i * 3 + 1} />
+            <Skeleton width="33%" height={16} index={i * 3 + 2} />
+          </VStack>
+        </Card>
       ))}
-    </ul>
+    </Grid>
   );
 }

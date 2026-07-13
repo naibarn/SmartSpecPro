@@ -6,16 +6,22 @@
  * `saveDocument` with `baseRevision`). A `CONFLICT` response (stale
  * `baseRevision`) NEVER silently overwrites — it shows a banner and only
  * reloads the server's copy when the user explicitly clicks Reload.
+ *
+ * INTENTIONAL EXCEPTION: this file imports `@astryxdesign/core/*` components
+ * directly below the `<AppPage>` shell. `AppPage.tsx`'s docstring states it
+ * is "intentionally the ONLY app file... that imports @astryxdesign
+ * directly" — Video Studio is a deliberate, explicit, twice-confirmed
+ * user-directed exception to that rule (see
+ * `planning/video-studio-astryx-migration/plan.md`). Do not treat this as
+ * an accidental violation, and do not copy this pattern into other pages
+ * without the same explicit sign-off.
  */
 import { useEffect, useState } from "react";
 import { useRoute } from "wouter";
-import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppPage, type AppPageState } from "@/components/AppPage";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { BriefPanel } from "@/components/videoStudio/BriefPanel";
 import { CaptionsPanel } from "@/components/videoStudio/CaptionsPanel";
@@ -27,6 +33,12 @@ import { ScenesPanel } from "@/components/videoStudio/ScenesPanel";
 import { StageRail, type VideoStudioStage } from "@/components/videoStudio/StageRail";
 import { pickCopy, useVideoStudioLang, videoStudioCopy } from "@/components/videoStudio/videoStudioCopy";
 import type { VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
+
+import { Badge } from "@astryxdesign/core/Badge";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@astryxdesign/core/Button";
+import { IconButton } from "@astryxdesign/core/IconButton";
+import { VStack } from "@astryxdesign/core/Layout";
 
 export default function VideoStudioWorkspacePage() {
   const [, params] = useRoute("/video-studio/:id");
@@ -104,26 +116,29 @@ export default function VideoStudioWorkspacePage() {
         { label: project?.name ?? "..." },
       ]}
       actions={
-        <div className="flex items-center gap-2">
-          <Button
+        <>
+          {/*
+           * No wrapping div here on purpose: AppPage's own header already
+           * wraps `actions` in an Astryx HStack with `wrap="wrap"`, so the
+           * back button and Save button wrap onto their own line on narrow
+           * viewports instead of overflowing/cramping (the previous
+           * shadcn-based row had zero responsive handling at all).
+           */}
+          <IconButton
+            icon={<ArrowLeft className="h-4 w-4" aria-hidden="true" />}
+            label={pickCopy(lang, { th: "ย้อนกลับ", en: "Back" })}
             variant="ghost"
-            size="icon"
-            asChild
-            aria-label={pickCopy(lang, { th: "ย้อนกลับ", en: "Back" })}
-          >
-            <Link href="/video-studio">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+            href="/video-studio"
+          />
           <Button
             data-testid="video-studio-save-document"
-            disabled={!hasUnsavedChanges || saveDocument.isPending || !draftDocument}
+            label={hasUnsavedChanges ? pickCopy(lang, videoStudioCopy.save) : pickCopy(lang, videoStudioCopy.saved)}
+            variant="primary"
+            isDisabled={!hasUnsavedChanges || saveDocument.isPending || !draftDocument}
+            isLoading={saveDocument.isPending}
             onClick={handleSave}
-          >
-            {saveDocument.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {hasUnsavedChanges ? pickCopy(lang, videoStudioCopy.save) : pickCopy(lang, videoStudioCopy.saved)}
-          </Button>
-        </div>
+          />
+        </>
       }
       toolbar={
         project ? (
@@ -138,28 +153,30 @@ export default function VideoStudioWorkspacePage() {
       }}
     >
       {project ? (
-        <div className="flex flex-col gap-4">
+        <VStack gap={4}>
           {conflictBanner ? (
-            <Alert variant="destructive" data-testid="video-studio-conflict-banner">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>{pickCopy(lang, videoStudioCopy.conflictTitle)}</AlertTitle>
-              <AlertDescription className="flex flex-col gap-2">
-                <span>{pickCopy(lang, videoStudioCopy.conflictBody)}</span>
-                <Button variant="outline" size="sm" className="self-start" onClick={handleReload}>
-                  {pickCopy(lang, videoStudioCopy.reload)}
-                </Button>
-              </AlertDescription>
-            </Alert>
+            <Banner
+              data-testid="video-studio-conflict-banner"
+              status="error"
+              title={pickCopy(lang, videoStudioCopy.conflictTitle)}
+              description={pickCopy(lang, videoStudioCopy.conflictBody)}
+              endContent={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  label={pickCopy(lang, videoStudioCopy.reload)}
+                  onClick={handleReload}
+                />
+              }
+            />
           ) : null}
 
           {hasUnsavedChanges && !conflictBanner ? (
-            <p
-              className="flex items-center gap-1.5 text-xs text-muted-foreground"
+            <Badge
               data-testid="video-studio-unsaved-indicator"
-            >
-              <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
-              {pickCopy(lang, videoStudioCopy.unsavedChanges)}
-            </p>
+              variant="warning"
+              label={pickCopy(lang, videoStudioCopy.unsavedChanges)}
+            />
           ) : null}
 
           {stage === "brief" ? (
@@ -173,15 +190,13 @@ export default function VideoStudioWorkspacePage() {
           ) : null}
 
           {stage !== "brief" && !draftDocument ? (
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>
-                {pickCopy(lang, {
-                  th: "ยังไม่มีเอกสารวิดีโอ กรุณาเริ่มต้นในขั้นตอนโจทย์ก่อน",
-                  en: "No video document yet — initialize it in the Brief stage first.",
-                })}
-              </AlertTitle>
-            </Alert>
+            <Banner
+              status="warning"
+              title={pickCopy(lang, {
+                th: "ยังไม่มีเอกสารวิดีโอ กรุณาเริ่มต้นในขั้นตอนโจทย์ก่อน",
+                en: "No video document yet — initialize it in the Brief stage first.",
+              })}
+            />
           ) : null}
 
           {stage === "scenes" && draftDocument ? (
@@ -225,7 +240,7 @@ export default function VideoStudioWorkspacePage() {
           {stage === "render" ? (
             <RenderPanel lang={lang} projectId={projectId} hasUnsavedChanges={hasUnsavedChanges} />
           ) : null}
-        </div>
+        </VStack>
       ) : null}
     </AppPage>
   );

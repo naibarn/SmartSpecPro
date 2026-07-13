@@ -5,8 +5,16 @@
  * mode still needs unwired stages visible per the task's authoritative
  * instructions) — this component never hides a stage, it only marks the
  * current one.
+ *
+ * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
+ * components directly, which `AppPage.tsx`'s docstring says should never
+ * happen outside that one file. This is a deliberate, explicit,
+ * twice-confirmed user decision to migrate Video Studio off shadcn/ui onto
+ * native Astryx components (see
+ * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
+ * violation of that rule.
  */
-import { cn } from "@/lib/utils";
+import { Button } from "@astryxdesign/core/Button";
 import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
 
 export const VIDEO_STUDIO_STAGES = [
@@ -49,21 +57,16 @@ export function StageRail({
       {VIDEO_STUDIO_STAGES.map((stage) => {
         const isActive = stage === active;
         return (
-          <button
+          <Button
             key={stage}
             type="button"
+            size="sm"
+            variant={isActive ? "primary" : "secondary"}
             data-testid={`video-studio-stage-${stage}`}
             aria-current={isActive ? "step" : undefined}
+            label={pickCopy(lang, videoStudioCopy[STAGE_LABEL_KEY[stage]])}
             onClick={() => onSelect(stage)}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
-              isActive
-                ? "border-primary bg-primary text-primary-foreground shadow-xs"
-                : "border-input bg-background text-muted-foreground hover:border-primary/40 hover:bg-accent hover:text-accent-foreground",
-            )}
-          >
-            {pickCopy(lang, videoStudioCopy[STAGE_LABEL_KEY[stage]])}
-          </button>
+          />
         );
       })}
     </nav>

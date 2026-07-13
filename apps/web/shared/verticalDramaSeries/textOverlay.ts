@@ -56,7 +56,10 @@ export function defaultCardStyleVariantForKind(
   return kind === "time_setting" ? "time_setting" : "narrative_hook";
 }
 
-export const VD_END_CARD_STYLE_VARIANTS = ["center_card", "lower_band"] as const;
+export const VD_END_CARD_STYLE_VARIANTS = [
+  "center_card",
+  "lower_band",
+] as const;
 export type VdEndCardStyleVariant = (typeof VD_END_CARD_STYLE_VARIANTS)[number];
 
 export const VD_WATERMARK_POSITIONS = [
@@ -67,7 +70,10 @@ export const VD_WATERMARK_POSITIONS = [
 ] as const;
 export type VdWatermarkPosition = (typeof VD_WATERMARK_POSITIONS)[number];
 
-export const VD_EPISODE_INDICATOR_POSITIONS = ["top_right", "top_left"] as const;
+export const VD_EPISODE_INDICATOR_POSITIONS = [
+  "top_right",
+  "top_left",
+] as const;
 export type VdEpisodeIndicatorPosition =
   (typeof VD_EPISODE_INDICATOR_POSITIONS)[number];
 
@@ -75,9 +81,21 @@ export const VD_WATERMARK_TYPES = ["text", "image"] as const;
 export type VdWatermarkType = (typeof VD_WATERMARK_TYPES)[number];
 
 /** Duration bounds (seconds), per plan.md's inline shape comments. */
-export const VD_END_CARD_DURATION_BOUNDS = { min: 2, max: 5, default: 3 } as const;
-export const VD_OPENER_RECAP_DURATION_BOUNDS = { min: 3, max: 5, default: 4 } as const;
-export const VD_CARD_DURATION_BOUNDS = { min: 1.5, max: 5, default: 2.5 } as const;
+export const VD_END_CARD_DURATION_BOUNDS = {
+  min: 2,
+  max: 5,
+  default: 3,
+} as const;
+export const VD_OPENER_RECAP_DURATION_BOUNDS = {
+  min: 3,
+  max: 5,
+  default: 4,
+} as const;
+export const VD_CARD_DURATION_BOUNDS = {
+  min: 1.5,
+  max: 5,
+  default: 2.5,
+} as const;
 export const VD_TITLE_BUMPER_DURATION_SECONDS = 1.2 as const;
 export const VD_CHARACTER_INTRO_DURATION_SECONDS = 2.5 as const;
 /** ">2 การ์ดพร้อมกัน = เตือน" — a THIRD concurrent card triggers the warning. */
@@ -86,8 +104,16 @@ export const VD_CARD_MAX_CONCURRENT = 2 as const;
 export const VD_TEXT_CLAMP_MAX_THAI_CHARS = 90 as const;
 export const VD_OPENER_TEXT_CLAMP_MAX_CHARS = 160 as const;
 
-export const VD_WATERMARK_OPACITY_BOUNDS = { min: 0.2, max: 0.8, default: 0.45 } as const;
-export const VD_WATERMARK_SCALE_PCT_BOUNDS = { min: 5, max: 20, default: 10 } as const;
+export const VD_WATERMARK_OPACITY_BOUNDS = {
+  min: 0.2,
+  max: 0.8,
+  default: 0.45,
+} as const;
+export const VD_WATERMARK_SCALE_PCT_BOUNDS = {
+  min: 5,
+  max: 20,
+  default: 10,
+} as const;
 export const VD_WATERMARK_MARGIN_PX_DEFAULT = 32 as const;
 
 /* -------------------------------------------------------------------------- */
@@ -176,7 +202,10 @@ export const vdTextOverlayPlanSchema = z.object({
   titleBumper: vdTitleBumperConfigSchema.optional(),
   episodeIndicator: vdEpisodeIndicatorConfigSchema.optional(),
   characterIntroCards: vdCharacterIntroCardsConfigSchema.optional(),
-  cards: z.array(vdTextOverlayCardSchema).max(VD_TEXT_OVERLAY_MAX_CARDS).optional(),
+  cards: z
+    .array(vdTextOverlayCardSchema)
+    .max(VD_TEXT_OVERLAY_MAX_CARDS)
+    .optional(),
 });
 export type VdTextOverlayPlan = z.infer<typeof vdTextOverlayPlanSchema>;
 
@@ -217,9 +246,16 @@ export const vdSeriesWatermarkConfigSchema = z.object({
     .min(VD_WATERMARK_SCALE_PCT_BOUNDS.min)
     .max(VD_WATERMARK_SCALE_PCT_BOUNDS.max)
     .default(VD_WATERMARK_SCALE_PCT_BOUNDS.default),
-  marginPx: z.number().int().min(0).max(200).default(VD_WATERMARK_MARGIN_PX_DEFAULT),
+  marginPx: z
+    .number()
+    .int()
+    .min(0)
+    .max(200)
+    .default(VD_WATERMARK_MARGIN_PX_DEFAULT),
 });
-export type VdSeriesWatermarkConfig = z.infer<typeof vdSeriesWatermarkConfigSchema>;
+export type VdSeriesWatermarkConfig = z.infer<
+  typeof vdSeriesWatermarkConfigSchema
+>;
 
 /** Mirrors `parseTextOverlayPlan` — never throws. */
 export function parseSeriesWatermarkConfig(
@@ -253,7 +289,9 @@ export function clampVdOverlayText(
   const truncated = truncatedChars.join("");
   const lastSpace = truncated.lastIndexOf(" ");
   const cut =
-    lastSpace > Math.floor(maxChars * 0.5) ? truncated.slice(0, lastSpace) : truncated;
+    lastSpace > Math.floor(maxChars * 0.5)
+      ? truncated.slice(0, lastSpace)
+      : truncated;
   return `${cut.trimEnd()}…`;
 }
 
@@ -265,14 +303,18 @@ export const VD_END_CARD_FALLBACK_TEXT_TH = "ติดตามตอนต่�
 /** End card's optional smaller "follow line" (plan.md `showFollowLine`, default `true`). */
 export const VD_END_CARD_FOLLOW_LINE_TH = "กดติดตามเพื่อไม่พลาดตอนต่อไป";
 /** Opener recap's fixed header line (plan.md 'มีหัว "ความเดิม…"'). */
-export const VD_OPENER_RECAP_HEADER_TH = "ความเดิมตอนที่แล้ว";
+export const VD_OPENER_RECAP_HEADER_TH = "ความเดิมตอนย่อยที่แล้ว";
 
 export interface VdResolvedOverlayText<TSource extends string> {
   text: string;
   source: TSource;
 }
 
-export type VdEndCardTextSource = "manual" | "cliffhanger" | "hook" | "fallback";
+export type VdEndCardTextSource =
+  | "manual"
+  | "cliffhanger"
+  | "hook"
+  | "fallback";
 
 /**
  * Priority: manual > `cliffhanger_line` (active breakdown item) > first
@@ -291,13 +333,18 @@ export function resolveEndCardText(params: {
   if (manual) return { text: clampVdOverlayText(manual), source: "manual" };
 
   const cliffhanger = params.cliffhangerLine?.trim();
-  if (cliffhanger) return { text: clampVdOverlayText(cliffhanger), source: "cliffhanger" };
+  if (cliffhanger)
+    return { text: clampVdOverlayText(cliffhanger), source: "cliffhanger" };
 
-  const hook = (params.unresolvedHooks ?? []).find(h => h && h.trim().length > 0);
+  const hook = (params.unresolvedHooks ?? []).find(
+    h => h && h.trim().length > 0
+  );
   if (hook) return { text: clampVdOverlayText(hook.trim()), source: "hook" };
 
   return {
-    text: clampVdOverlayText(params.fallbackText?.trim() || VD_END_CARD_FALLBACK_TEXT_TH),
+    text: clampVdOverlayText(
+      params.fallbackText?.trim() || VD_END_CARD_FALLBACK_TEXT_TH
+    ),
     source: "fallback",
   };
 }
@@ -305,8 +352,8 @@ export function resolveEndCardText(params: {
 export type VdOpenerRecapTextSource = "manual" | "summary" | "none";
 
 /**
- * Priority: manual > prior episode's `episode_summary` memory event >
- * none (episode 1 never has a recap — plan.md "ตอนที่ 1 ไม่มี recap"). Pure —
+ * Priority: manual > prior Sub-episode's `episode_summary` memory event >
+ * none (Sub-episode 1 never has a recap — plan.md "ตอนย่อยที่ 1 ไม่มี recap"). Pure —
  * the caller resolves `priorEpisodeSummary` from the memory bundle.
  */
 export function resolveOpenerRecapText(params: {
@@ -342,7 +389,7 @@ export interface VdTitleBumperLines {
   secondary: string;
 }
 
-/** "ชื่อซีรีส์ + 'EP N: ชื่อตอน'" (plan.md แหล่งข้อความอัตโนมัติ). */
+/** "ชื่อซีรีส์ + 'SUB-EP N: ชื่อตอนย่อย'" (plan.md แหล่งข้อความอัตโนมัติ). */
 export function deriveTitleBumperLines(params: {
   seriesTitle: string;
   episodeNumber: number;
@@ -350,19 +397,19 @@ export function deriveTitleBumperLines(params: {
 }): VdTitleBumperLines {
   const episodeTitle = params.episodeTitle?.trim();
   const secondary = episodeTitle
-    ? `EP ${params.episodeNumber}: ${episodeTitle}`
-    : `EP ${params.episodeNumber}`;
+    ? `SUB-EP ${params.episodeNumber}: ${episodeTitle}`
+    : `SUB-EP ${params.episodeNumber}`;
   return { primary: params.seriesTitle.trim() || "—", secondary };
 }
 
-/** "EP N/รวม" from `targetEpisodeCount` (plan.md แหล่งข้อความอัตโนมัติ). */
+/** "SUB-EP N/รวม" from the planned Sub-episode count (legacy `targetEpisodeCount`). */
 export function deriveEpisodeIndicatorLabel(
   episodeNumber: number,
   targetEpisodeCount?: number | null
 ): string {
   return targetEpisodeCount && targetEpisodeCount > 0
-    ? `EP ${episodeNumber}/${targetEpisodeCount}`
-    : `EP ${episodeNumber}`;
+    ? `SUB-EP ${episodeNumber}/${targetEpisodeCount}`
+    : `SUB-EP ${episodeNumber}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -446,12 +493,16 @@ export function resolveOpeningSequenceWindows(
 ): { titleBumper?: VdOverlayWindow; openerRecap?: VdOverlayWindow } {
   const bumperEnabled = plan.titleBumper?.enabled === true;
   const bumperEnd = bumperEnabled ? VD_TITLE_BUMPER_DURATION_SECONDS : 0;
-  const result: { titleBumper?: VdOverlayWindow; openerRecap?: VdOverlayWindow } = {};
+  const result: {
+    titleBumper?: VdOverlayWindow;
+    openerRecap?: VdOverlayWindow;
+  } = {};
   if (bumperEnabled) {
     result.titleBumper = { startSec: 0, endSec: bumperEnd };
   }
   if (plan.openerRecap?.enabled) {
-    const dur = plan.openerRecap.durationSec ?? VD_OPENER_RECAP_DURATION_BOUNDS.default;
+    const dur =
+      plan.openerRecap.durationSec ?? VD_OPENER_RECAP_DURATION_BOUNDS.default;
     result.openerRecap = { startSec: bumperEnd, endSec: bumperEnd + dur };
   }
   return result;
@@ -527,7 +578,10 @@ export function validateTextOverlayPlan(
 
   if (plan.endCard?.enabled) {
     const dur = plan.endCard.durationSec ?? VD_END_CARD_DURATION_BOUNDS.default;
-    if (dur < VD_END_CARD_DURATION_BOUNDS.min || dur > VD_END_CARD_DURATION_BOUNDS.max) {
+    if (
+      dur < VD_END_CARD_DURATION_BOUNDS.min ||
+      dur > VD_END_CARD_DURATION_BOUNDS.max
+    ) {
       issues.push({
         code: "VD_TEXT_OVERLAY_END_CARD_DURATION_OUT_OF_RANGE",
         severity: "error",
@@ -537,7 +591,8 @@ export function validateTextOverlayPlan(
   }
 
   if (plan.openerRecap?.enabled) {
-    const dur = plan.openerRecap.durationSec ?? VD_OPENER_RECAP_DURATION_BOUNDS.default;
+    const dur =
+      plan.openerRecap.durationSec ?? VD_OPENER_RECAP_DURATION_BOUNDS.default;
     if (
       dur < VD_OPENER_RECAP_DURATION_BOUNDS.min ||
       dur > VD_OPENER_RECAP_DURATION_BOUNDS.max
@@ -561,7 +616,10 @@ export function validateTextOverlayPlan(
 
   const enabledCards = allCards.filter(c => c.enabled);
   for (const card of enabledCards) {
-    if (card.durationSec < VD_CARD_DURATION_BOUNDS.min || card.durationSec > VD_CARD_DURATION_BOUNDS.max) {
+    if (
+      card.durationSec < VD_CARD_DURATION_BOUNDS.min ||
+      card.durationSec > VD_CARD_DURATION_BOUNDS.max
+    ) {
       issues.push({
         code: "VD_TEXT_OVERLAY_CARD_DURATION_OUT_OF_RANGE",
         severity: "error",
@@ -614,7 +672,9 @@ export function validateTextOverlayPlan(
     const opening = resolveOpeningSequenceWindows(plan);
     if (opening.openerRecap) {
       const overlapsOpener = fullscreenWindows.some(
-        w => w.startSec < opening.openerRecap!.endSec && opening.openerRecap!.startSec < w.endSec
+        w =>
+          w.startSec < opening.openerRecap!.endSec &&
+          opening.openerRecap!.startSec < w.endSec
       );
       if (overlapsOpener) {
         issues.push({
@@ -626,13 +686,15 @@ export function validateTextOverlayPlan(
       }
     }
     if (plan.endCard?.enabled && opts.estimatedVideoDurationSeconds != null) {
-      const dur = plan.endCard.durationSec ?? VD_END_CARD_DURATION_BOUNDS.default;
+      const dur =
+        plan.endCard.durationSec ?? VD_END_CARD_DURATION_BOUNDS.default;
       const endCardWindow: VdOverlayWindow = {
         startSec: Math.max(0, opts.estimatedVideoDurationSeconds - dur),
         endSec: opts.estimatedVideoDurationSeconds,
       };
       const overlapsEndCard = fullscreenWindows.some(
-        w => w.startSec < endCardWindow.endSec && endCardWindow.startSec < w.endSec
+        w =>
+          w.startSec < endCardWindow.endSec && endCardWindow.startSec < w.endSec
       );
       if (overlapsEndCard) {
         issues.push({

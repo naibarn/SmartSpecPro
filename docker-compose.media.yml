@@ -58,7 +58,7 @@ services:
       resources:
         limits:
           cpus: '2.0'
-          memory: 3G
+          memory: 2G
         reservations:
           cpus: '0.5'
           memory: 512M
@@ -69,6 +69,7 @@ services:
       start_period: 60s
       retries: 3
     restart: unless-stopped
+    memswap_limit: 2G
     networks:
       - smartspec-network
       - opensandbox-network
@@ -109,7 +110,7 @@ services:
       resources:
         limits:
           cpus: '4.0'
-          memory: 8G
+          memory: 5G
         reservations:
           cpus: '1.0'
           memory: 2G
@@ -120,6 +121,7 @@ services:
       start_period: 60s
       retries: 3
     restart: unless-stopped
+    memswap_limit: 5G
     networks:
       - smartspec-network
       - opensandbox-network
@@ -155,7 +157,7 @@ services:
       resources:
         limits:
           cpus: '2.0'
-          memory: 3G
+          memory: 1G
         reservations:
           cpus: '0.5'
           memory: 512M
@@ -166,6 +168,7 @@ services:
       start_period: 60s
       retries: 3
     restart: unless-stopped
+    memswap_limit: 1G
     networks:
       - smartspec-network
 
@@ -199,7 +202,7 @@ services:
       resources:
         limits:
           cpus: '3.0'
-          memory: 6G
+          memory: 3G
         reservations:
           cpus: '0.5'
           memory: 1G
@@ -210,6 +213,7 @@ services:
       start_period: 60s
       retries: 3
     restart: unless-stopped
+    memswap_limit: 3G
     networks:
       - smartspec-network
 
@@ -247,7 +251,7 @@ services:
       resources:
         limits:
           cpus: '2.0'
-          memory: 4G
+          memory: 2G
         reservations:
           cpus: '0.5'
           memory: 512M
@@ -258,6 +262,7 @@ services:
       start_period: 60s
       retries: 3
     restart: unless-stopped
+    memswap_limit: 2G
     networks:
       - smartspec-network
       - opensandbox-network
@@ -285,6 +290,8 @@ services:
       resources:
         limits:
           cpus: '0.5'
+          # Beat retains the full scheduler state in memory. 512 MiB was
+          # observed to OOM at ~516 MiB resident, so leave bounded headroom.
           memory: 1G
         reservations:
           memory: 256M
@@ -295,6 +302,7 @@ services:
       start_period: 30s
       retries: 3
     restart: unless-stopped
+    memswap_limit: 1G
     networks:
       - smartspec-network
 

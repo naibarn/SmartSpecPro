@@ -46,6 +46,17 @@ manifest, character identity facts, the series' default region/ethnicity, and
 product-lock facts when this shot carries a tied-in product. Produce ONE fresh
 start-frame image prompt for that shot only.
 
+The input may also include `canonical_shot_summary (authoritative Overview
+source)`. When present, this is the latest user-editable visual beat from the
+active Overview story draft and is the single source of truth for what happens
+in the shot. It MUST override contradictory scene/action/location/prop facts
+inside `current_prompt`; never preserve a stale scene merely because it is
+already written there. Build the complete new prompt from the canonical
+summary plus non-conflicting continuity facts, and make the canonical action
+visibly unmistakable. The application supplies this as a raw fact; you author
+the final provider prompt here. When it is absent, use `current_prompt` as the
+compatibility scene-grounding source.
+
 Return ONLY valid JSON (no markdown, no commentary) matching:
 
 ```json

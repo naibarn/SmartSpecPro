@@ -219,7 +219,7 @@
     },
     "custom_instruction": {
       "type": "string",
-      "description": "Raw, unvalidated, user-typed free-text hint about framing/pose/crop/composition/mood for THIS generation only (e.g. 'front-facing', 'half-body shot', 'full-body', 'wider shot', 'different angle') — ground truth the skill cannot invent, never a pre-authored instruction. Woven naturally into primary_portrait_prompt and any other prompt field it genuinely relates to, per skill.md's 'Custom instruction' section. ALWAYS subordinate to identity-lock/reference-lock/role-tier/child-safety rules; never overrides them. Absent = legacy/default behavior, unchanged."
+      "description": "Raw, unvalidated, user-typed free-text visual brief for THIS generation only. It may describe framing, pose, crop, composition, mood, outfit, colors, props, setting, lighting, or other visible details — ground truth the skill cannot invent, never a pre-authored instruction. Woven naturally into the prompt fields it genuinely affects, per skill.md's 'Custom instruction' section. ALWAYS subordinate to identity-lock/reference-lock/role-tier/child-safety rules; only conflicting aspects are dropped or safely reinterpreted. Absent = legacy/default behavior, unchanged."
     },
     "character_design_context": {
       "type": "object",

@@ -462,6 +462,13 @@ export type VerticalDramaStartFramePlan = {
     requiredCharacterRefs: string[];
     productReferenceAssetIds: string[];
     /**
+     * Additive canonical story-bible snapshot used to author this frame's
+     * prompt. When present, it is the exact Overview shot summary that the
+     * start-frame skill consumed; absent means this frame predates canonical
+     * source tracking and keeps the legacy fallback behavior.
+     */
+    canonicalShotSummary?: string;
+    /**
      * Additive (2026-07-06 product-reference picker) — true once the user has
      * EXPLICITLY set/edited this shot's `productReferenceAssetIds` via the
      * storyboard panel's "เปลี่ยนภาพสินค้า" picker. Distinguishes "user chose

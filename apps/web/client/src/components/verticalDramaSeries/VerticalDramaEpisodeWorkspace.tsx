@@ -346,6 +346,8 @@ export interface VerticalDramaStoryboardPanelData {
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
   motionPromptPack?: VerticalDramaMotionPromptPackView | null;
+  /** Latest active Overview shot summaries; preferred over stale storyboard text. */
+  canonicalShotDrafts?: Array<{ shotNumber: number; summary: string }>;
   assetUrls?: VerticalDramaAssetUrlMap;
   loading?: boolean;
   error?: string | null;
@@ -1023,7 +1025,7 @@ export function VerticalDramaEpisodeWorkspace({
           act on yet and added no value to the primary view. */}
       <section className="flex items-center justify-between rounded-lg border p-3">
         <h2 className="text-sm font-medium">
-          {episode.title || `Episode ${episode.episodeNumber}`}
+          {episode.title || `Sub-episode ${episode.episodeNumber}`}
         </h2>
         <div className="flex items-center gap-2">
           {storyboardReviewId ? (
@@ -1123,6 +1125,7 @@ export function VerticalDramaEpisodeWorkspace({
           storyboard={storyboardPanel?.storyboard}
           startFramePlan={storyboardPanel?.startFramePlan}
           motionPromptPack={storyboardPanel?.motionPromptPack}
+          canonicalShotDrafts={storyboardPanel?.canonicalShotDrafts}
           assetUrls={storyboardPanel?.assetUrls}
           loading={storyboardPanel?.loading}
           error={storyboardPanel?.error}
@@ -1828,6 +1831,7 @@ export function VerticalDramaEpisodeWorkspace({
                         storyboard={storyboardPanel?.storyboard}
                         startFramePlan={storyboardPanel?.startFramePlan}
                         motionPromptPack={storyboardPanel?.motionPromptPack}
+                        canonicalShotDrafts={storyboardPanel?.canonicalShotDrafts}
                         assetUrls={storyboardPanel?.assetUrls}
                         loading={storyboardPanel?.loading}
                         error={storyboardPanel?.error}

@@ -182,12 +182,12 @@ export function VerticalDramaSeriesMemoryTab({
   const productTieInUsage = byKind("product_tie_in_usage");
 
   // One shared explanatory line — WHEN memory data appears — appended after
-  // each section's short empty label, so a series with no episodes approved
+  // each section's short empty label, so a series with no Sub-episodes approved
   // yet doesn't read as broken.
   const whenItAppearsHint =
     lang === "th"
-      ? "จะบันทึกอัตโนมัติเมื่อทำ pipeline ครบและอนุมัติขั้นสรุปความจำ (ขั้นสุดท้าย) ของแต่ละตอน หรือกดปุ่ม \"สรุปความจำเข้าซีรีย์\" ในหน้าตอน"
-      : "Recorded automatically once you complete the pipeline and approve the final \"summarize to series memory\" checkpoint for an episode — or click the \"Summarize into series memory\" button on the episode page.";
+      ? "จะบันทึกอัตโนมัติเมื่อทำ pipeline ครบและอนุมัติขั้นสรุปความจำ (ขั้นสุดท้าย) ของแต่ละตอนย่อย หรือกดปุ่ม \"สรุปความจำเข้าซีรีย์\" ในหน้าตอนย่อย"
+      : "Recorded automatically once you complete the pipeline and approve the final \"summarize to series memory\" checkpoint for a Sub-episode — or click the \"Summarize into series memory\" button on the Sub-episode page.";
 
   return (
     <div className="grid gap-4">
@@ -211,9 +211,9 @@ export function VerticalDramaSeriesMemoryTab({
 
       <MemorySection
         icon={ScrollText}
-        title={lang === "th" ? "สรุปแต่ละตอน" : "Episode summaries"}
+        title={lang === "th" ? "สรุปแต่ละตอนย่อย" : "Sub-episode summaries"}
         emptyLabel={
-          (lang === "th" ? "ยังไม่มีสรุปตอน" : "No episode summaries yet.") +
+          (lang === "th" ? "ยังไม่มีสรุปตอนย่อย" : "No Sub-episode summaries yet.") +
           " " +
           whenItAppearsHint
         }
@@ -561,7 +561,7 @@ function MemorySection({
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {new Date(ev.createdAt).toLocaleString(lang === "th" ? "th-TH" : "en-US")}
-                  {ev.episodeId ? ` · ${lang === "th" ? "ตอน" : "Episode"} ${ev.episodeId}` : ""}
+                  {ev.episodeId ? ` · ${lang === "th" ? "ตอนย่อย" : "Sub-episode"} ${ev.episodeId}` : ""}
                 </p>
               </li>
             ))}

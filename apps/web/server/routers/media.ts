@@ -103,6 +103,20 @@ import { getSecurityPinVersion } from "../services/securityPinService";
 import { getPolicyDayKey, getProtectedSurfaceScopes } from "../services/protectedSurfaceTokenService";
 import { DEFAULT_AGE_SAFETY_POLICY } from "../../shared/ageSafetyPolicy";
 
+/**
+ * Parse an HTTP `Retry-After` header value into a positive number of seconds.
+ * Supports the delta-seconds form (e.g. "60"); the HTTP-date form is rare for
+ * our Python RateLimitMiddleware (which emits delta-seconds) and is treated as
+ * absent. Returns undefined when missing or unparseable. Clamped to a sane
+ * ceiling so a misbehaving upstream can't freeze polling for minutes.
+ */
+function parseRetryAfterSeconds(headerValue: string | null | undefined): number | undefined {
+  if (!headerValue) return undefined;
+  const seconds = Number(headerValue.trim());
+  if (!Number.isFinite(seconds) || seconds <= 0) return undefined;
+  return Math.min(Math.ceil(seconds), 300);
+}
+
 const extraParamsSchema = z
   .record(z.any())
   .optional()
@@ -3784,11 +3798,27 @@ export const mediaRouter = router({
         if (!response.ok) {
           const error = await response.json().catch(() => ({ detail: "Unknown error" }));
           const msg = error.detail || `Admin list tasks failed: ${response.status}`;
+          // 429 is a transient per-user rate-limit from the Python
+          // RateLimitMiddleware, not a system fault. Map it to
+          // TOO_MANY_REQUESTS so the client classifies it as a user-class
+          // error: this both suppresses the recurring "system error" toast and
+          // stops shouldRetryQuery from retrying it 4x (which would only
+          // amplify the rate-limit storm). See fetchTaskResult for the same
+          // rationale.
           const code = response.status === 401 ? "UNAUTHORIZED"
             : response.status === 403 ? "FORBIDDEN"
             : response.status === 404 ? "NOT_FOUND"
+            : response.status === 429 ? "TOO_MANY_REQUESTS"
             : "INTERNAL_SERVER_ERROR";
-          throw new TRPCError({ code, message: msg });
+          const retryAfterSeconds =
+            response.status === 429
+              ? parseRetryAfterSeconds(response.headers.get("retry-after"))
+              : undefined;
+          throw new TRPCError({
+            code,
+            message: msg,
+            ...(retryAfterSeconds != null ? { cause: { retryAfterSeconds } } : {}),
+          });
         }
 
         return await response.json();
@@ -3880,23 +3910,36 @@ export const mediaRouter = router({
         if (!response.ok) {
           const error = await response.json().catch(() => ({ detail: "Unknown error" }));
           const message = error.detail || `Fetch result failed: ${response.status}`;
-          // Preserve the upstream HTTP status. The most common non-ok case here
-          // is a transient/expected 404 "Task ... not found" — the task row is
-          // not yet queryable (creation race) while the generation itself is
-          // still in flight and self-resolves on the next poll. Collapsing that
-          // into INTERNAL_SERVER_ERROR makes the client-side systemErrorMonitor
-          // escalate it into a scary "report this bug" notification even though
-          // nothing is actually broken. Map the status so a not-found is a
-          // user/not-found class error (silently handled per call site) and only
-          // genuine 5xx/unknown failures reach the system-error escalation.
+          // Preserve the upstream HTTP status. The two most common non-ok cases
+          // here are both transient/expected and self-resolve on the next poll:
+          //   - 404 "Task ... not found": the task row is not yet queryable
+          //     (creation race) while the generation is still in flight.
+          //   - 429 "Too many requests": the background poller (MediaHistory
+          //     fires one fetch every ~15s across many pending tasks) trips the
+          //     Python per-user RateLimitMiddleware. The next tick succeeds.
+          // Collapsing either into INTERNAL_SERVER_ERROR makes the client-side
+          // systemErrorMonitor classify it as a "system" fault and escalate it
+          // into a recurring, scary "report this bug" notification even though
+          // nothing is actually broken. Map the status so not-found and
+          // rate-limit are user-class errors (silently handled per call site)
+          // and only genuine 5xx/unknown failures reach the system-error
+          // escalation.
+          const retryAfterSeconds =
+            response.status === 429
+              ? parseRetryAfterSeconds(response.headers.get("retry-after"))
+              : undefined;
           throw new TRPCError({
             code:
               response.status === 400 ? "BAD_REQUEST"
               : response.status === 401 ? "UNAUTHORIZED"
               : response.status === 403 ? "FORBIDDEN"
               : response.status === 404 ? "NOT_FOUND"
+              : response.status === 429 ? "TOO_MANY_REQUESTS"
               : "INTERNAL_SERVER_ERROR",
             message,
+            // Propagate the upstream Retry-After (seconds) so the client can
+            // back off precisely; errorFormatter surfaces it as data.retryAfter.
+            ...(retryAfterSeconds != null ? { cause: { retryAfterSeconds } } : {}),
           });
         }
 

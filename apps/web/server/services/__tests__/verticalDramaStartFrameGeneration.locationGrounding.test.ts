@@ -63,6 +63,29 @@ function baseShotParams(
 /* -------------------------------------------------------------------------- */
 
 describe("buildStartFrameRenderPlanUserPrompt — location grounding (Phase 1 location visual bible)", () => {
+  it("passes the latest Overview shot summary as an authoritative skill input", () => {
+    const prompt = buildStartFrameRenderPlanUserPrompt(
+      baseParams({
+        storyboardShots: [
+          {
+            shotNumber: 4,
+            description: "stale bookstore scene",
+            cameraSetup: "medium shot",
+            characterIds: ["char-1"],
+            durationSeconds: 6,
+            canonicalShotSummary:
+              "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+          },
+        ],
+      }),
+    );
+
+    expect(prompt).toContain("CANONICAL SHOT SOURCE (must follow)");
+    expect(prompt).toContain(
+      "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+    );
+  });
+
   it("byte-identical: a shot's line is exactly the pre-existing format when location is absent (regression guard)", () => {
     const prompt = buildStartFrameRenderPlanUserPrompt(
       baseParams({
@@ -196,6 +219,20 @@ describe("buildStartFrameRenderPlanUserPrompt — location grounding (Phase 1 lo
 /* -------------------------------------------------------------------------- */
 
 describe("buildStartFrameShotPromptUserPrompt — location grounding (Phase 1 location visual bible)", () => {
+  it("passes the latest Overview shot summary to the single-shot skill", () => {
+    const prompt = buildStartFrameShotPromptUserPrompt(
+      baseShotParams({
+        canonicalShotSummary:
+          "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+      }),
+    );
+
+    expect(prompt).toContain("canonical_shot_summary (authoritative Overview source)");
+    expect(prompt).toContain(
+      "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+    );
+  });
+
   it("byte-identical: no 'location:' line at all when location is absent (regression guard)", () => {
     const prompt = buildStartFrameShotPromptUserPrompt(baseShotParams());
     expect(prompt).not.toContain("location:");

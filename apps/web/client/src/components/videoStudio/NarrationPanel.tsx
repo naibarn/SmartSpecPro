@@ -3,13 +3,25 @@
  * synchronously in the mutation itself (TTS synthesis for a handful of
  * scenes — documented in `routers/videoProjects.ts`), so this is a plain
  * mutation button + result summary, not a job-polling flow.
+ *
+ * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
+ * components directly, which `AppPage.tsx`'s docstring says should never
+ * happen outside that one file. This is a deliberate, explicit,
+ * twice-confirmed user decision to migrate Video Studio off shadcn/ui onto
+ * native Astryx components (see
+ * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
+ * violation of that rule.
  */
 import { Volume2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { HStack, VStack } from "@astryxdesign/core/Layout";
+import { Text } from "@astryxdesign/core/Text";
+
 import { trpc } from "@/lib/trpc";
 import type { VideoProjectDocument } from "@shared/videoIntelligence/projectSchemas";
 import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
@@ -41,48 +53,47 @@ export function NarrationPanel({
   const narratableScenes = document.scenes.filter((scene) => (scene.narration ?? "").trim().length > 0);
 
   return (
-    <div className="flex flex-col gap-4" data-testid="video-studio-narration-panel">
-      <Card className="border-border/60">
-        <CardHeader>
-          <CardTitle className="text-base">
-            {pickCopy(lang, { th: "สังเคราะห์เสียงบรรยาย", en: "Synthesize narration" })}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <p className="text-sm text-muted-foreground">
+    <VStack gap={4} data-testid="video-studio-narration-panel">
+      <Card>
+        <VStack gap={3}>
+          <Heading level={4}>{pickCopy(lang, { th: "สังเคราะห์เสียงบรรยาย", en: "Synthesize narration" })}</Heading>
+
+          <Text type="body" color="secondary">
             {pickCopy(lang, {
               th: `พบ ${narratableScenes.length} ฉากที่มีบทบรรยาย จะสร้างเสียงพูดและคำบรรยายอัตโนมัติ`,
               en: `${narratableScenes.length} scene(s) have narration text; TTS + auto captions will be generated.`,
             })}
-          </p>
+          </Text>
+
           <Button
-            className="self-start gap-2"
-            disabled={runNarration.isPending || narratableScenes.length === 0}
+            type="button"
+            variant="primary"
+            icon={<Volume2 className="h-4 w-4" aria-hidden="true" />}
+            label={pickCopy(lang, videoStudioCopy.runNarration)}
+            isDisabled={runNarration.isPending || narratableScenes.length === 0}
+            isLoading={runNarration.isPending}
             onClick={() => runNarration.mutate({ projectId })}
-          >
-            <Volume2 className="h-4 w-4" />
-            {pickCopy(lang, videoStudioCopy.runNarration)}
-          </Button>
-        </CardContent>
+            className="self-start"
+          />
+        </VStack>
       </Card>
 
-      <div className="flex flex-col gap-2">
+      <VStack gap={2}>
         {document.scenes.map((scene) => (
-          <div
-            key={scene.sceneId}
-            className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2 text-sm"
-          >
-            <span>{scene.sceneId}</span>
-            {scene.narrationAudioAssetId ? (
-              <Badge variant="default">{pickCopy(lang, { th: "มีเสียงแล้ว", en: "Narrated" })}</Badge>
-            ) : (scene.narration ?? "").trim().length > 0 ? (
-              <Badge variant="outline">{pickCopy(lang, { th: "รอสังเคราะห์เสียง", en: "Pending" })}</Badge>
-            ) : (
-              <Badge variant="secondary">{pickCopy(lang, { th: "ไม่มีบทบรรยาย", en: "No narration" })}</Badge>
-            )}
-          </div>
+          <Card key={scene.sceneId} variant="muted" padding={2}>
+            <HStack justify="between" align="center">
+              <Text type="body">{scene.sceneId}</Text>
+              {scene.narrationAudioAssetId ? (
+                <Badge variant="success" label={pickCopy(lang, { th: "มีเสียงแล้ว", en: "Narrated" })} />
+              ) : (scene.narration ?? "").trim().length > 0 ? (
+                <Badge variant="warning" label={pickCopy(lang, { th: "รอสังเคราะห์เสียง", en: "Pending" })} />
+              ) : (
+                <Badge variant="neutral" label={pickCopy(lang, { th: "ไม่มีบทบรรยาย", en: "No narration" })} />
+              )}
+            </HStack>
+          </Card>
         ))}
-      </div>
-    </div>
+      </VStack>
+    </VStack>
   );
 }

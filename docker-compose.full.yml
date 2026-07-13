@@ -53,6 +53,7 @@ services:
           memory: 2G
         reservations:
           memory: 512M
+    memswap_limit: 2G
     networks:
       - data
 
@@ -79,6 +80,7 @@ services:
           memory: 512M
         reservations:
           memory: 128M
+    memswap_limit: 512M
     networks:
       - data
 
@@ -102,6 +104,7 @@ services:
           memory: 1G
         reservations:
           memory: 256M
+    memswap_limit: 1G
     networks:
       - data
 
@@ -146,6 +149,7 @@ services:
           memory: 2G
         reservations:
           memory: 512M
+    memswap_limit: 2G
     networks:
       - backend
       - data
@@ -201,6 +205,7 @@ services:
           memory: 2G
         reservations:
           memory: 512M
+    memswap_limit: 2G
     networks:
       - frontend
       - backend
@@ -236,6 +241,7 @@ services:
           memory: 1G
         reservations:
           memory: 256M
+    memswap_limit: 1G
     networks:
       - frontend
       - backend
@@ -269,6 +275,7 @@ services:
           memory: 1G
         reservations:
           memory: 256M
+    memswap_limit: 1G
     networks:
       - frontend
       - backend
@@ -291,6 +298,7 @@ services:
           memory: 1G
         reservations:
           memory: 256M
+    memswap_limit: 1G
     networks:
       - backend
 

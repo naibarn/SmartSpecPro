@@ -337,6 +337,27 @@ describe("generateStartFrameRenderPlan", () => {
 });
 
 describe("projectStartFramePlan", () => {
+  it("persists the canonical Overview shot summary on the projected frame", () => {
+    const raw = {
+      render_plan_summary: {},
+      start_frame_requests: [validRequest(4)],
+      plain_text_render_plan: "text",
+      downstream_video_input_manifest: {},
+    };
+    const plan = projectStartFramePlan(
+      raw as any,
+      "fallback-model",
+      undefined,
+      new Map([
+        [4, "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ"],
+      ]),
+    );
+
+    expect(plan.frames[0]?.canonicalShotSummary).toBe(
+      "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+    );
+  });
+
   it("sorts frames by shot number and falls back to the provided image model id when summary lacks one", () => {
     const raw = {
       render_plan_summary: {},

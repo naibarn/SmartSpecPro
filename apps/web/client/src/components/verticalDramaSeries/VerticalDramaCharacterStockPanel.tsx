@@ -102,6 +102,18 @@ import {
 const VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY =
   "smartspec_vd_character_image_model";
 
+/**
+ * Character image providers can legitimately take longer than the old
+ * five-minute browser window (especially MCP-backed models). Keep polling
+ * bounded, but give the task the same 30-minute SLA the user sees in Media
+ * History before declaring that the page cannot finalize it.
+ */
+export const VD_CHARACTER_IMAGE_POLL_INTERVAL_MS = 2500;
+export const VD_CHARACTER_IMAGE_POLL_TIMEOUT_MS = 30 * 60 * 1000;
+export const VD_CHARACTER_IMAGE_POLL_MAX_ATTEMPTS = Math.ceil(
+  VD_CHARACTER_IMAGE_POLL_TIMEOUT_MS / VD_CHARACTER_IMAGE_POLL_INTERVAL_MS
+);
+
 /** Shared MCP-connection localStorage key — same key
  *  `VerticalDramaEpisodePage.tsx` reads/writes, so a connection picked on
  *  either surface carries over automatically. */
@@ -1110,9 +1122,11 @@ export function VerticalDramaCharacterStockPanel({
   const [referenceOverrideByCharacter, setReferenceOverrideByCharacter] =
     useState<Record<string, string>>({});
 
-  /** Optional free-text hint (framing/pose/crop, e.g. "หน้าตรง"/"ภาพเต็มตัว")
-   *  sent alongside the `previewCharacterPrompt` call as a raw
-   *  `customInstruction` fact — lets the LLM vary repeated portrait
+  /** Optional free-text visual brief (framing/pose/crop/outfit/setting, e.g.
+   *  "หน้าตรง"/"ภาพเต็มตัว ในชุดนอนแบบสบาย") sent alongside the
+   *  `previewCharacterPrompt` call as a raw `customInstruction` fact — lets
+   *  the LLM honor user-specified visible details instead of returning the
+   *  same default portrait
    *  generations instead of producing near-identical prompts every click
    *  (planning/vertical-drama-character-custom-instruction/plan.md). Keyed
    *  by characterId, same rationale and lifecycle as
@@ -1626,7 +1640,11 @@ export function VerticalDramaCharacterStockPanel({
     const key = pollingCharacterKey(characterId, role);
     setPollingCharacters(prev => new Set(prev).add(key));
     try {
-      for (let attempt = 0; attempt < 120; attempt++) {
+      for (
+        let attempt = 0;
+        attempt < VD_CHARACTER_IMAGE_POLL_MAX_ATTEMPTS;
+        attempt++
+      ) {
         const task = await utils.media.getTask.fetch({ taskId });
         const status = (task as { status?: string } | null)?.status;
         if (status === "completed") {
@@ -1637,21 +1655,33 @@ export function VerticalDramaCharacterStockPanel({
             );
             return;
           }
-          const resolved = await cardResolveMutation.mutateAsync({
-            seriesId,
-            source: "url",
-            url: resultUrl,
-            mimeType: guessImageMimeTypeFromUrl(resultUrl),
-          });
-          await linkMutation.mutateAsync({
-            seriesId,
-            characterId,
-            mediaAssetId: resolved.mediaAssetId,
-            assetType: "character_reference",
-            role,
-            source: "generated",
-            ...(metadata ? { metadata } : {}),
-          });
+          let resolved: { mediaAssetId: string };
+          try {
+            resolved = await cardResolveMutation.mutateAsync({
+              seriesId,
+              source: "url",
+              url: resultUrl,
+              mimeType: guessImageMimeTypeFromUrl(resultUrl),
+            });
+            await linkMutation.mutateAsync({
+              seriesId,
+              characterId,
+              mediaAssetId: resolved.mediaAssetId,
+              assetType: "character_reference",
+              role,
+              source: "generated",
+              ...(metadata ? { metadata } : {}),
+            });
+          } catch (err) {
+            toast.error(
+              t(
+                lang,
+                `สร้างภาพเสร็จแล้ว แต่ซิงก์เข้าตัวละครไม่สำเร็จ${err instanceof Error ? `: ${err.message}` : ""} ตรวจสอบ Media History แล้วลองใหม่`,
+                `Image generation finished, but syncing it to the character failed${err instanceof Error ? `: ${err.message}` : ""}. Check Media History and retry.`
+              )
+            );
+            return;
+          }
           const setCache =
             role === "primary_portrait"
               ? setGeneratedImageUrls
@@ -1696,7 +1726,9 @@ export function VerticalDramaCharacterStockPanel({
           );
           return;
         }
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        await new Promise(resolve =>
+          setTimeout(resolve, VD_CHARACTER_IMAGE_POLL_INTERVAL_MS)
+        );
       }
       toast.error(
         t(lang, "สร้างภาพใช้เวลานานเกินไป ลองตรวจสอบภายหลัง", "Generation is taking too long — check back later.")

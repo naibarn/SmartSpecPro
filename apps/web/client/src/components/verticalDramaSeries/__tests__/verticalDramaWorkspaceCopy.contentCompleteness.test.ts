@@ -66,9 +66,11 @@ describe("vdWizardCriterionLabel — new content-completeness criterion ids (202
     expect(VD_WIZARD_CRITERION_LABELS.shots_9.th).toBe(
       "สตอรีบอร์ดมีครบ 9 ช็อต"
     );
-    expect(VD_WIZARD_CRITERION_LABELS.script_exists.th).toBe("สร้างบทตอนแล้ว");
+    expect(VD_WIZARD_CRITERION_LABELS.script_exists.th).toBe(
+      "สร้างบทตอนย่อยแล้ว"
+    );
     expect(VD_WIZARD_CRITERION_LABELS.final_assembly_completed.th).toBe(
-      "ประกอบตอนแล้ว"
+      "ประกอบตอนย่อยแล้ว"
     );
   });
 
@@ -223,7 +225,7 @@ describe("2026-07-08 W9-B plain-language sweep — jargon removed, Copy Contract
   it("VD_WIZARD_ASSEMBLY_BLOCKED no longer opens with the ambiguous 'ตอนนี้' (reads as 'right now', not 'this episode')", () => {
     const label = vdWizardReasonLabel("VD_WIZARD_ASSEMBLY_BLOCKED", "th");
     expect(label.startsWith("ตอนนี้")).toBe(false);
-    expect(label).toBe("ยังไม่พร้อมประกอบตอนวิดีโอ");
+    expect(label).toBe("ยังไม่พร้อมประกอบวิดีโอตอนย่อย");
     // Reuses the SAME phrase the assemble_episode CTA already uses.
     expect(label).toContain(vdCopy("th").wizardAssembleEpisode);
   });
@@ -241,7 +243,7 @@ describe("2026-07-08 W9-B plain-language sweep — jargon removed, Copy Contract
     expect(t.wizardStatusNeedsRepairLabel).toBe("ต้องซ่อมก่อน");
     expect(t.wizardStatusPassedLabel).toBe("ผ่านแล้ว");
     expect(t.wizardCreditChipLabel).toBe("ใช้เครดิต");
-    expect(t.repairWholeEpisodeScript).toBe("ซ่อมบททั้งตอน");
+    expect(t.repairWholeEpisodeScript).toBe("ซ่อมบททั้งตอนย่อย");
     expect(t.repairThisShotOnly).toBe("ซ่อมเฉพาะช็อตนี้");
     expect(t.generateRealVideoCta).toBe("สร้างวิดีโอจริง");
   });
@@ -279,20 +281,29 @@ describe("Per-shot dialogue preview copy (2026-07-08 W9-B, owner directive)", ()
 describe("2026-07-08 acceptance-review fixes — copy layer", () => {
   it("fix #1 (HIGH false-positive): story_structure_complete renders the exact task-specified Thai label", () => {
     expect(vdWizardCriterionLabel("story_structure_complete", "th")).toBe(
-      "เนื้อเรื่องครบ (จุดเปิดเรื่อง บีตเรื่อง จุดค้างท้ายตอน)"
+      "เนื้อเรื่องครบ (จุดเปิดเรื่อง บีตเรื่อง จุดค้างท้ายตอนย่อย)"
     );
-    expect(vdWizardCriterionLabel("story_structure_complete", "en").length).toBeGreaterThan(0);
+    expect(
+      vdWizardCriterionLabel("story_structure_complete", "en").length
+    ).toBeGreaterThan(0);
   });
 
   it("fix #3 (MEDIUM): dialogue_no_warning_issues renders the exact task-specified Thai label", () => {
     expect(vdWizardCriterionLabel("dialogue_no_warning_issues", "th")).toBe(
       "ไม่มีคำเตือนเรื่องบทพูดค้างอยู่"
     );
-    expect(vdWizardCriterionLabel("dialogue_no_warning_issues", "en").length).toBeGreaterThan(0);
+    expect(
+      vdWizardCriterionLabel("dialogue_no_warning_issues", "en").length
+    ).toBeGreaterThan(0);
   });
 
   it("fix #4 (dormant leak): every script_speech_coverage_* evidenceId renders real Thai text, never the raw coverageStatus enum string", () => {
-    const rawEnumValues = ["in_range", "underfilled_warning", "underfilled_error", "no_dialogue_data"];
+    const rawEnumValues = [
+      "in_range",
+      "underfilled_warning",
+      "underfilled_error",
+      "no_dialogue_data",
+    ];
     const ids = [
       "script_speech_coverage_in_range",
       "script_speech_coverage_underfilled_warning",
@@ -308,14 +319,23 @@ describe("2026-07-08 acceptance-review fixes — copy layer", () => {
     }
     // The no_dialogue_data evidence value is the SAME single source of
     // truth the "with coverageDetail" rendering path already uses.
-    expect(vdWizardEvidenceIdValue("script_speech_coverage_no_dialogue_data", undefined, "th").value).toBe(
-      vdCopy("th").wizardScriptNoDialogueDataMessage
-    );
+    expect(
+      vdWizardEvidenceIdValue(
+        "script_speech_coverage_no_dialogue_data",
+        undefined,
+        "th"
+      ).value
+    ).toBe(vdCopy("th").wizardScriptNoDialogueDataMessage);
   });
 
   it("fix #6 (LOW): VD_WIZARD_SCRIPT_QUALITY_NOT_REVIEWED renders the exact task-specified Thai string, distinct from VD_WIZARD_SCRIPT_QUALITY_BELOW_FLOOR", () => {
-    const notReviewed = vdWizardReasonLabel("VD_WIZARD_SCRIPT_QUALITY_NOT_REVIEWED", "th");
+    const notReviewed = vdWizardReasonLabel(
+      "VD_WIZARD_SCRIPT_QUALITY_NOT_REVIEWED",
+      "th"
+    );
     expect(notReviewed).toBe("ยังไม่ได้ตรวจคุณภาพบท — ตรวจก่อนสร้างภาพ");
-    expect(notReviewed).not.toBe(vdWizardReasonLabel("VD_WIZARD_SCRIPT_QUALITY_BELOW_FLOOR", "th"));
+    expect(notReviewed).not.toBe(
+      vdWizardReasonLabel("VD_WIZARD_SCRIPT_QUALITY_BELOW_FLOOR", "th")
+    );
   });
 });

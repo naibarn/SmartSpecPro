@@ -775,6 +775,8 @@ interface VerticalDramaStoryboardPanelProps {
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
   motionPromptPack?: VerticalDramaMotionPromptPackView | null;
+  /** Latest active Overview shot summaries; preferred over stale storyboard text. */
+  canonicalShotDrafts?: Array<{ shotNumber: number; summary: string }>;
   assetUrls?: VerticalDramaAssetUrlMap;
   /** Every series character's current approved portrait, keyed by character
    *  key — joined per-shot against `shot.required_character_refs` so each
@@ -1214,9 +1216,8 @@ interface VerticalDramaStoryboardPanelProps {
   /** True while the submit mutation itself is in flight (distinct from the
    *  server-side job, which is reflected by `compiledVideo.status`). */
   assemblingCompiledVideo?: boolean;
-  /** Every clip number 1..N that this episode's motion prompt pack defines,
-   *  used to compute the "{ready}/{total} clips" hint and the missing-clip
-   *  list — independent of `compiledVideo` itself. */
+  /** Number of clips in the persisted motion prompt pack, used for the
+   *  "{ready}/{total} clips" hint — independent of `compiledVideo` itself. */
   totalClipCount?: number;
   /** Clip numbers that already have a completed `videoTask.videoUrl`. */
   readyClipNumbers?: number[];
@@ -1309,6 +1310,7 @@ export function VerticalDramaStoryboardPanel({
   storyboard,
   startFramePlan,
   motionPromptPack,
+  canonicalShotDrafts = [],
   assetUrls = {},
   characterPortraits = {},
   episodeLocations = [],
@@ -1913,6 +1915,11 @@ export function VerticalDramaStoryboardPanel({
   }
 
   const summary = storyboard?.storyboard_summary;
+  const canonicalShotSummaryByShot = new Map(
+    canonicalShotDrafts
+      .filter(draft => draft.summary.trim().length > 0)
+      .map(draft => [draft.shotNumber, draft.summary.trim()] as const)
+  );
   const frameByShot = new Map<number, VerticalDramaStartFramePlanFrame>();
   for (const frame of startFramePlan?.frames ?? []) {
     if (typeof frame?.shotNumber === "number")
@@ -3439,7 +3446,10 @@ export function VerticalDramaStoryboardPanel({
                     ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {shot.visual_description || shot.action || "—"}
+                    {canonicalShotSummaryByShot.get(shotNumber) ||
+                      shot.visual_description ||
+                      shot.action ||
+                      "—"}
                   </p>
                   {shot.camera?.shot_type ? (
                     <p className="text-xs text-muted-foreground">
@@ -4733,13 +4743,22 @@ export function VerticalDramaStoryboardPanel({
                   .replace("{total}", String(totalClipCount))}
               </p>
               {(() => {
-                const missing =
-                  totalClipCount > 0
-                    ? Array.from(
-                        { length: totalClipCount },
-                        (_, i) => i + 1
-                      ).filter(n => !readyClipNumbers.includes(n))
-                    : [];
+                // Do not assume clip numbers are 1..N: speaker-aware
+                // splitting uses ids such as 301/302 for shot 3. Derive the
+                // warning from the actual persisted clips, then collapse a
+                // missing sub-shot to its human-facing parent shot number.
+                const missing = Array.from(
+                  new Set(
+                    (motionPromptPack?.clips ?? [])
+                      .filter(clip => !readyClipNumbers.includes(clip.clipNumber))
+                      .map(
+                        clip =>
+                          clip.parentShotNumber ??
+                          clip.sourceShotNumbers?.[0] ??
+                          clip.clipNumber
+                      )
+                  )
+                ).sort((a, b) => a - b);
                 if (missing.length === 0) return null;
                 return (
                   <p className="text-xs text-amber-700 dark:text-amber-400">
@@ -4757,7 +4776,9 @@ export function VerticalDramaStoryboardPanel({
                   className="gap-1.5"
                   onClick={() => onAssembleCompiledVideo()}
                   disabled={
-                    assemblingCompiledVideo || readyClipNumbers.length === 0
+                    assemblingCompiledVideo ||
+                    readyClipNumbers.length === 0 ||
+                    readyClipNumbers.length < totalClipCount
                   }
                   data-testid="vd-compiled-video-assemble"
                 >
@@ -5400,7 +5421,7 @@ function VerticalDramaLocationsBibleCard({
     <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/20 p-3">
       <h4 className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
         <MapPin aria-hidden="true" className="h-3.5 w-3.5" />
-        {t(locale, "สถานที่ในตอนนี้", "Locations in this episode")}
+        {t(locale, "สถานที่ในตอนย่อยนี้", "Locations in this Sub-episode")}
       </h4>
       <div className="flex flex-col gap-2">
         {distinctLocations.map((group, index) => {

@@ -65,7 +65,7 @@ export function VerticalDramaEpisodePlanPanel({
 
   return (
     <section
-      aria-label="Episode plan"
+      aria-label="Sub-episode plan"
       className={cn("rounded-lg border border-border p-4 text-sm", className)}
       data-testid="vd-episode-plan-panel"
     >

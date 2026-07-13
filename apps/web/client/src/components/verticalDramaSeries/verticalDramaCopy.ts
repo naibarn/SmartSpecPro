@@ -24,7 +24,10 @@ export function useVerticalDramaLang(): VerticalDramaLang {
 }
 
 /** Pick a bilingual string for the active language. */
-export function pickCopy<T>(lang: VerticalDramaLang, value: { th: T; en: T }): T {
+export function pickCopy<T>(
+  lang: VerticalDramaLang,
+  value: { th: T; en: T }
+): T {
   return lang === "th" ? value.th : value.en;
 }
 
@@ -51,7 +54,10 @@ export const verticalDramaRoutes = {
 
 export const verticalDramaCopy = {
   menuTitle: { th: "ซีรีย์แนวตั้ง", en: "Vertical Drama Series" },
-  createSeries: { th: "สร้างซีรีย์แนวตั้ง", en: "Create Vertical Drama Series" },
+  createSeries: {
+    th: "สร้างซีรีย์แนวตั้ง",
+    en: "Create Vertical Drama Series",
+  },
   planningOnly: {
     th: "โหมดวางแผน — ยังไม่มีการสร้างสื่อที่มีค่าใช้จ่าย",
     en: "Planning mode — no paid generation is triggered",
@@ -74,17 +80,20 @@ export const verticalDramaCopy = {
     th: "ซีรีย์แนวตั้งยังไม่เปิดใช้งานสำหรับบัญชีของคุณ",
     en: "Vertical Drama Series is not enabled for your account.",
   },
-  nextEpisode: { th: "ตอนถัดไป", en: "Next episode" },
+  nextEpisode: { th: "ตอนย่อยถัดไป", en: "Next Sub-episode" },
   lastEdited: { th: "แก้ไขล่าสุด", en: "Last edited" },
   missingApproval: { th: "รออนุมัติ", en: "Awaiting approval" },
   productTieIn: { th: "มีสินค้าผูกเรื่อง", en: "Product tie-in" },
-  episodes: { th: "ตอน", en: "Episodes" },
+  episodes: { th: "ตอนย่อย", en: "Sub-episodes" },
   open: { th: "เปิด", en: "Open" },
   back: { th: "ย้อนกลับ", en: "Back" },
   seriesCrumb: { th: "ซีรีย์", en: "Series" },
-  episodeCrumb: { th: "ตอน", en: "Episode" },
+  episodeCrumb: { th: "ตอนย่อย", en: "Sub-episode" },
   storyboardReviewCrumb: { th: "ตรวจสตอรี่บอร์ด", en: "Storyboard Review" },
-  runDetailTitle: { th: "รายละเอียดรอบการทำงาน (อ่านอย่างเดียว)", en: "Run detail (read-only)" },
+  runDetailTitle: {
+    th: "รายละเอียดรอบการทำงาน (อ่านอย่างเดียว)",
+    en: "Run detail (read-only)",
+  },
   archived: { th: "เก็บถาวร", en: "Archived" },
   readOnly: { th: "อ่านอย่างเดียว", en: "Read-only" },
   backToDashboard: { th: "กลับแดชบอร์ด", en: "Dashboard" },
@@ -96,7 +105,10 @@ export const verticalDramaCopy = {
   sidebarEmpty: { th: "ไม่พบโปรเจกต์ที่ตรงกัน", en: "No matching projects" },
   sidebarError: { th: "โหลดรายการไม่สำเร็จ", en: "Failed to load projects" },
   saveAsPreset: { th: "บันทึกเป็น Preset", en: "Save as preset" },
-  saveAsPresetDialogTitle: { th: "บันทึกซีรีย์นี้เป็น Preset", en: "Save this series as a preset" },
+  saveAsPresetDialogTitle: {
+    th: "บันทึกซีรีย์นี้เป็น Preset",
+    en: "Save this series as a preset",
+  },
   saveAsPresetDialogBody: {
     th: "แนวเรื่อง เรื่องย่อ โครงเรื่อง และตัวละครของซีรีย์นี้จะถูกบันทึกเป็น preset ให้เลือกใช้ตอนสร้างซีรีย์ใหม่",
     en: "This series' genre, logline, plot, and characters will be saved as a preset you can pick when creating a new series.",
@@ -108,20 +120,32 @@ export const verticalDramaCopy = {
     en: "Admin only — leave unchecked and this preset stays private to your account only.",
   },
   saveAsPresetSuccess: { th: "บันทึก Preset แล้ว", en: "Preset saved" },
-  saveAsPresetError: { th: "บันทึก Preset ไม่สำเร็จ", en: "Failed to save preset" },
+  saveAsPresetError: {
+    th: "บันทึก Preset ไม่สำเร็จ",
+    en: "Failed to save preset",
+  },
   dangerZoneTitle: { th: "โซนอันตราย", en: "Danger zone" },
   deleteSeries: { th: "ลบโปรเจกต์ซีรีย์", en: "Delete series project" },
   deleteSeriesBody: {
     th: "ลบถาวร: ตอนทั้งหมด สตอรีบอร์ด ตัวละคร ความจำซีรีย์ และการตั้งค่า — ไฟล์ภาพ/วิดีโอในคลังสื่อจะไม่ถูกลบ",
-    en: "Permanently deletes all episodes, storyboards, characters, series memory, and settings — image/video files in your media library are not deleted.",
+    en: "Permanently deletes all Sub-episodes, storyboards, characters, series memory, and settings — image/video files in your media library are not deleted.",
   },
-  deleteSeriesDialogTitle: { th: "ยืนยันการลบซีรีย์นี้", en: "Confirm deleting this series" },
+  deleteSeriesDialogTitle: {
+    th: "ยืนยันการลบซีรีย์นี้",
+    en: "Confirm deleting this series",
+  },
   deleteSeriesDialogBody: {
     th: "การลบนี้ย้อนกลับไม่ได้ พิมพ์ชื่อซีรีย์ด้านล่างให้ตรงกันทุกตัวอักษรเพื่อยืนยัน",
     en: "This cannot be undone. Type the series name below exactly to confirm.",
   },
-  deleteSeriesConfirmLabel: { th: "พิมพ์ชื่อซีรีย์เพื่อยืนยัน", en: "Type the series name to confirm" },
-  deleteSeriesConfirmButton: { th: "ลบซีรีย์ถาวร", en: "Permanently delete series" },
+  deleteSeriesConfirmLabel: {
+    th: "พิมพ์ชื่อซีรีย์เพื่อยืนยัน",
+    en: "Type the series name to confirm",
+  },
+  deleteSeriesConfirmButton: {
+    th: "ลบซีรีย์ถาวร",
+    en: "Permanently delete series",
+  },
   deleteSeriesCancel: { th: "ยกเลิก", en: "Cancel" },
   deleteSeriesSuccess: { th: "ลบซีรีย์แล้ว", en: "Series deleted" },
   deleteSeriesError: { th: "ลบซีรีย์ไม่สำเร็จ", en: "Failed to delete series" },
@@ -158,41 +182,59 @@ export const verticalDramaCopy = {
   /* Arc re-plan review card (§7.7.3, section-13) — Memory tab surface,     */
   /* mirrors the retcon proposal review card in VerticalDramaSeriesMemoryTab.*/
   /* ---------------------------------------------------------------------- */
-  arcReplanCardTitle: { th: "ข้อเสนอปรับแผนซีซั่น", en: "Arc re-plan proposals" },
+  arcReplanCardTitle: {
+    th: "ข้อเสนอปรับแผนซีซั่น",
+    en: "Arc re-plan proposals",
+  },
   arcReplanEmpty: {
-    th: "ยังไม่มีข้อเสนอปรับแผนซีซั่น — ระบบจะเสนอโดยอัตโนมัติเมื่อตอนที่อนุมัติแล้วใช้เนื้อเรื่องเกินแผนที่วางไว้",
-    en: "No arc re-plan proposals yet — the system proposes one automatically when an approved episode drifts from the planned season arc.",
+    th: "ยังไม่มีข้อเสนอปรับแผนซีซั่น — ระบบจะเสนอโดยอัตโนมัติเมื่อตอนย่อยที่อนุมัติแล้วใช้เนื้อเรื่องเกินแผนที่วางไว้",
+    en: "No arc re-plan proposals yet — the system proposes one automatically when an approved Sub-episode drifts from the planned season arc.",
   },
   arcReplanKicker: {
-    th: "ตอนนี้ใช้เนื้อเรื่องล่วงหน้า — เสนอปรับแผนซีซั่น",
-    en: "This episode used story material ahead of plan — a season re-plan is proposed",
+    th: "ตอนย่อยนี้ใช้เนื้อเรื่องล่วงหน้า — เสนอปรับแผนซีซั่น",
+    en: "This Sub-episode used story material ahead of plan — a season re-plan is proposed",
   },
-  arcReplanTriggeredBy: { th: "เกิดจากตอนที่", en: "Triggered by episode" },
+  arcReplanTriggeredBy: {
+    th: "เกิดจากตอนย่อยที่",
+    en: "Triggered by Sub-episode",
+  },
   arcReplanDriftReasonsLabel: { th: "สาเหตุที่ตรวจพบ", en: "Detected reasons" },
   arcReplanAffectedEpisodesLabel: {
-    th: "ตอนที่ได้รับผลกระทบ (ยังไม่ผลิต)",
-    en: "Affected episodes (not yet produced)",
+    th: "ตอนย่อยที่ได้รับผลกระทบ (ยังไม่ผลิต)",
+    en: "Affected Sub-episodes (not yet produced)",
   },
   arcReplanRationaleLabel: { th: "เหตุผลประกอบ", en: "Rationale" },
   arcReplanOldPlanLabel: { th: "แผนเดิม", en: "Old plan" },
   arcReplanNewPlanLabel: { th: "แผนใหม่", en: "New plan" },
   arcReplanNoOldPlan: {
-    th: "ยังไม่มีแผนเดิมสำหรับตอนนี้",
-    en: "No prior plan exists for this episode yet",
+    th: "ยังไม่มีแผนเดิมสำหรับตอนย่อยนี้",
+    en: "No prior plan exists for this Sub-episode yet",
   },
   arcReplanKeyBeatsLabel: { th: "บีตหลัก", en: "Key beats" },
   arcReplanApprove: { th: "อนุมัติแผนใหม่", en: "Approve new plan" },
   arcReplanReject: { th: "คงแผนเดิม", en: "Keep current plan" },
   arcReplanApproveSuccess: {
-    th: "อนุมัติแผนใหม่แล้ว — ซีซั่นใช้แผนใหม่ตั้งแต่ตอนถัดไป",
-    en: "New plan approved — the season now follows the new plan from the next episode onward",
+    th: "อนุมัติแผนใหม่แล้ว — ซีซั่นใช้แผนใหม่ตั้งแต่ตอนย่อยถัดไป",
+    en: "New plan approved — the season now follows the new plan from the next Sub-episode onward",
   },
-  arcReplanApproveError: { th: "อนุมัติแผนใหม่ไม่สำเร็จ", en: "Failed to approve the new plan" },
+  arcReplanApproveError: {
+    th: "อนุมัติแผนใหม่ไม่สำเร็จ",
+    en: "Failed to approve the new plan",
+  },
   arcReplanRejectSuccess: { th: "คงแผนเดิมแล้ว", en: "Kept the current plan" },
-  arcReplanRejectError: { th: "คงแผนเดิมไม่สำเร็จ", en: "Failed to keep the current plan" },
+  arcReplanRejectError: {
+    th: "คงแผนเดิมไม่สำเร็จ",
+    en: "Failed to keep the current plan",
+  },
   arcReplanPendingBadge: { th: "รอดำเนินการ", en: "Pending" },
-  arcReplanApprovedBadge: { th: "อนุมัติแล้ว — แผนใหม่มีผลแล้ว", en: "Approved — new plan is active" },
-  arcReplanRejectedBadge: { th: "ปฏิเสธแล้ว — คงแผนเดิม", en: "Rejected — current plan stands" },
+  arcReplanApprovedBadge: {
+    th: "อนุมัติแล้ว — แผนใหม่มีผลแล้ว",
+    en: "Approved — new plan is active",
+  },
+  arcReplanRejectedBadge: {
+    th: "ปฏิเสธแล้ว — คงแผนเดิม",
+    en: "Rejected — current plan stands",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* Arc re-plan — tie-in-deferred branch (task #31, spec §7.7.3, added      */
@@ -202,8 +244,14 @@ export const verticalDramaCopy = {
   /* full old/new breakdown diff (every OTHER field is guard-enforced        */
   /* identical — see `findArcReplanTieInGuardViolations`).                   */
   /* ---------------------------------------------------------------------- */
-  arcReplanTieInGainsPlacement: { th: "ได้รับตำแหน่งสินค้า", en: "Gains the product placement" },
-  arcReplanTieInLosesPlacement: { th: "เสียตำแหน่งสินค้า (ย้ายออก)", en: "Loses the product placement (moved out)" },
+  arcReplanTieInGainsPlacement: {
+    th: "ได้รับตำแหน่งสินค้า",
+    en: "Gains the product placement",
+  },
+  arcReplanTieInLosesPlacement: {
+    th: "เสียตำแหน่งสินค้า (ย้ายออก)",
+    en: "Loses the product placement (moved out)",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* Deep story drafts (W10-C, spec F131T) — series-detail Overview surface: */
@@ -217,8 +265,8 @@ export const verticalDramaCopy = {
     en: "Generating detailed drafts… (may take multiple rounds)",
   },
   deepStoryDraftsConfirmTitle: {
-    th: "ยืนยันสร้างเนื้อเรื่องละเอียดทุกตอน",
-    en: "Confirm generating a detailed story for every episode",
+    th: "ยืนยันสร้างเนื้อเรื่องละเอียดทุกตอนย่อย",
+    en: "Confirm generating a detailed story for every Sub-episode",
   },
   deepStoryDraftsConfirmCreditsWarning: {
     th: "หักเครดิตตามจริงต่อรอบ — ระบบจะคำนวณและหักเครดิตจริงหลังแต่ละรอบเรียกเสร็จสิ้น",
@@ -231,7 +279,10 @@ export const verticalDramaCopy = {
     en: "Failed to generate detailed drafts",
   },
   deepStoryDraftsExtending: { th: "กำลังขยายร่าง…", en: "Extending draft…" },
-  deepStoryDraftsExtendError: { th: "ขยายร่างไม่สำเร็จ", en: "Failed to extend the draft" },
+  deepStoryDraftsExtendError: {
+    th: "ขยายร่างไม่สำเร็จ",
+    en: "Failed to extend the draft",
+  },
   // Feature 132 §4.4 (F132A) — read-only premise preview + edit-affordance
   // link in the Deep Story Drafts panel.
   deepStoryDraftsPremisePreviewLabel: {
@@ -256,22 +307,46 @@ export const verticalDramaCopy = {
   storyJobRoundLabel: { th: "รอบเรียก", en: "Call" },
   storyJobPhaseOutline: { th: "กำลังคิดโครง", en: "Outlining" },
   /** Feature 132 §5 (F132B, ledgers-and-story-state) — the `ledger_plan` job phase, runs after "outline"/before per-episode "draft". */
-  storyJobPhaseLedger: { th: "กำลังจัดทำบัญชีความต่อเนื่อง…", en: "Planning continuity ledgers…" },
+  storyJobPhaseLedger: {
+    th: "กำลังจัดทำบัญชีความต่อเนื่อง…",
+    en: "Planning continuity ledgers…",
+  },
   storyJobPhaseDraft: { th: "กำลังร่าง", en: "Drafting" },
   storyJobPhaseReview: { th: "กำลังตรวจ", en: "Reviewing" },
-  storyJobPhaseFixPrefix: { th: "กำลังซ่อมตอน", en: "Fixing episode" },
-  storyJobPhaseReading: { th: "กำลังอ่านทั้งซีซั่น…", en: "Reading the whole season…" },
+  storyJobPhaseFixPrefix: { th: "กำลังซ่อมตอนย่อย", en: "Fixing Sub-episode" },
+  storyJobPhaseReading: {
+    th: "กำลังอ่านทั้งซีซั่น…",
+    en: "Reading the whole season…",
+  },
   storyJobTimeoutError: {
     th: "ใช้เวลานานเกินไป ลองตรวจสอบภายหลัง",
     en: "Taking too long — check back later.",
   },
 
-  deepStoryDraftsShotViewerToggle: { th: "ดูร่าง 9 ช็อต + บทพูด", en: "View the 9-shot + dialogue draft" },
-  deepStoryDraftsDialogueCompleteBadge: { th: "✓ บทพูดครบทุกช็อต", en: "✓ Dialogue in every shot" },
-  deepStoryDraftsSpeakableBadge: { th: "✓ อ่านออกเสียงได้", en: "✓ All lines are speakable" },
-  deepStoryDraftsCoverageOk: { th: "ครอบคลุมตามเป้า", en: "coverage on target" },
-  deepStoryDraftsCoverageWarning: { th: "ครอบคลุมต่ำกว่าเป้า", en: "coverage below target" },
-  deepStoryDraftsCoverageError: { th: "ครอบคลุมต่ำกว่าเป้ามาก", en: "coverage well below target" },
+  deepStoryDraftsShotViewerToggle: {
+    th: "ดูร่าง 9 ช็อต + บทพูด",
+    en: "View the 9-shot + dialogue draft",
+  },
+  deepStoryDraftsDialogueCompleteBadge: {
+    th: "✓ บทพูดครบทุกช็อต",
+    en: "✓ Dialogue in every shot",
+  },
+  deepStoryDraftsSpeakableBadge: {
+    th: "✓ อ่านออกเสียงได้",
+    en: "✓ All lines are speakable",
+  },
+  deepStoryDraftsCoverageOk: {
+    th: "ครอบคลุมตามเป้า",
+    en: "coverage on target",
+  },
+  deepStoryDraftsCoverageWarning: {
+    th: "ครอบคลุมต่ำกว่าเป้า",
+    en: "coverage below target",
+  },
+  deepStoryDraftsCoverageError: {
+    th: "ครอบคลุมต่ำกว่าเป้ามาก",
+    en: "coverage well below target",
+  },
   deepStoryDraftsCompletenessGroupLabel: {
     th: "สถานะความครบถ้วนของบทพูด",
     en: "Dialogue completeness status",
@@ -286,14 +361,17 @@ export const verticalDramaCopy = {
   /* plan already exists) plus these two chain-phase progress labels.        */
   /* ---------------------------------------------------------------------- */
   deepStoryDraftsGenerateFullCta: {
-    th: "สร้างเนื้อเรื่องเต็ม + ร่างละเอียดทุกตอน",
-    en: "Generate full story + detailed drafts for every episode",
+    th: "สร้างเนื้อเรื่องเต็ม + ร่างละเอียดทุกตอนย่อย",
+    en: "Generate full story + detailed drafts for every Sub-episode",
   },
   deepStoryDraftsUpdateCta: {
-    th: "อัปเดตเนื้อเรื่องละเอียดทุกตอน (9 ช็อต + บทพูด)",
-    en: "Update detailed story for every episode (9 shots + dialogue)",
+    th: "อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย (9 ช็อต + บทพูด)",
+    en: "Update detailed story for every Sub-episode (9 shots + dialogue)",
   },
-  deepStoryDraftsScopeGroupLabel: { th: "ขอบเขตการสร้าง", en: "Generation scope" },
+  deepStoryDraftsScopeGroupLabel: {
+    th: "ขอบเขตการสร้าง",
+    en: "Generation scope",
+  },
   deepStoryDraftsScopeKeepLabel: {
     th: "เก็บโครงเรื่องเดิม แล้วเติม/อัปเดตร่างละเอียด",
     en: "Keep the current plot, then fill in/update the detailed drafts",
@@ -306,8 +384,14 @@ export const verticalDramaCopy = {
     th: "เริ่มคิดเรื่องใหม่ทั้งหมด ของเดิมถูกแทนที่ (ร่างเก่ายังย้อนดูได้)",
     en: "Starts the plot over completely — the old one is replaced (previous drafts are still viewable in version history).",
   },
-  deepStoryDraftsChainStoryProgress: { th: "กำลังคิดโครงเรื่องใหม่…", en: "Rewriting the plot…" },
-  deepStoryDraftsChainDeepProgress: { th: "กำลังร่างละเอียด…", en: "Drafting details…" },
+  deepStoryDraftsChainStoryProgress: {
+    th: "กำลังคิดโครงเรื่องใหม่…",
+    en: "Rewriting the plot…",
+  },
+  deepStoryDraftsChainDeepProgress: {
+    th: "กำลังร่างละเอียด…",
+    en: "Drafting details…",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* Premium multi-round drafts (W11-B, added 2026-07-08) — the quality-mode */
@@ -318,19 +402,34 @@ export const verticalDramaCopy = {
   /* `deepDraftSummary.premium`) is actually present — additive, byte-        */
   /* identical when absent (spec: "standard mode + absent fields untouched"). */
   /* ---------------------------------------------------------------------- */
-  deepStoryDraftsModeGroupLabel: { th: "โหมดคุณภาพการร่าง", en: "Draft quality mode" },
-  deepStoryDraftsModeStandardLabel: { th: "มาตรฐาน (เร็ว ประหยัด)", en: "Standard (fast, economical)" },
-  deepStoryDraftsModeStandardHint: {
-    th: "ร่างรอบเดียวต่อชุดตอน ไม่มีการตรวจซ้ำหรือซ่อมอัตโนมัติ",
-    en: "Drafts once per chunk of episodes — no re-checking or auto-repair.",
+  deepStoryDraftsModeGroupLabel: {
+    th: "โหมดคุณภาพการร่าง",
+    en: "Draft quality mode",
   },
-  deepStoryDraftsModePremiumLabel: { th: "คิดหลายรอบ (พรีเมียม)", en: "Multi-round thinking (premium)" },
+  deepStoryDraftsModeStandardLabel: {
+    th: "มาตรฐาน (เร็ว ประหยัด)",
+    en: "Standard (fast, economical)",
+  },
+  deepStoryDraftsModeStandardHint: {
+    th: "ร่างรอบเดียวต่อชุดตอนย่อย ไม่มีการตรวจซ้ำหรือซ่อมอัตโนมัติ",
+    en: "Drafts once per chunk of Sub-episodes — no re-checking or auto-repair.",
+  },
+  deepStoryDraftsModePremiumLabel: {
+    th: "คิดหลายรอบ (พรีเมียม)",
+    en: "Multi-round thinking (premium)",
+  },
   deepStoryDraftsExtendPremiumCheckboxLabel: {
     th: "ใช้โหมดพรีเมียมสำหรับการขยายนี้",
     en: "Use premium mode for this extension",
   },
-  deepStoryDraftsSummaryPremiumSuffix: { th: "· โหมดพรีเมียม", en: "· Premium mode" },
-  deepStoryDraftsScorecardBelowFloorToggle: { th: "จุดที่ยังต่ำกว่าเกณฑ์", en: "Points still below the floor" },
+  deepStoryDraftsSummaryPremiumSuffix: {
+    th: "· โหมดพรีเมียม",
+    en: "· Premium mode",
+  },
+  deepStoryDraftsScorecardBelowFloorToggle: {
+    th: "จุดที่ยังต่ำกว่าเกณฑ์",
+    en: "Points still below the floor",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* Manual dialogue edits (W10.5, added 2026-07-08) — inline per-shot       */
@@ -349,21 +448,36 @@ export const verticalDramaCopy = {
     en: "Maximum of 8 lines reached",
   },
   manualDialogueEditRemoveLine: { th: "ลบบรรทัดนี้", en: "Remove this line" },
-  manualDialogueEditSpeakerLabel: { th: "ผู้พูด (ถ้ามี)", en: "Speaker (optional)" },
+  manualDialogueEditSpeakerLabel: {
+    th: "ผู้พูด (ถ้ามี)",
+    en: "Speaker (optional)",
+  },
   manualDialogueEditLineLabel: { th: "บทพูด", en: "Line" },
-  manualDialogueEditDeliveryPlaceholder: { th: "อารมณ์/วิธีพูด", en: "Delivery/emotion" },
-  manualDialogueEditLineRequired: { th: "บทพูดห้ามว่าง", en: "The line cannot be empty" },
-  manualDialogueEditApplyCleaned: { th: "ใช้เวอร์ชันที่แก้ให้", en: "Use the cleaned version" },
+  manualDialogueEditDeliveryPlaceholder: {
+    th: "อารมณ์/วิธีพูด",
+    en: "Delivery/emotion",
+  },
+  manualDialogueEditLineRequired: {
+    th: "บทพูดห้ามว่าง",
+    en: "The line cannot be empty",
+  },
+  manualDialogueEditApplyCleaned: {
+    th: "ใช้เวอร์ชันที่แก้ให้",
+    en: "Use the cleaned version",
+  },
   manualDialogueEditEditedBadge: { th: "แก้แล้ว", en: "Edited" },
   manualDialogueEditAlreadyCreatedHint: {
-    th: "ตอนนี้ถูกสร้างแล้ว — บทที่แก้จะถูกใช้เมื่อสร้าง/เกลี่ยบทของตอนนั้นอีกครั้ง",
-    en: "This episode has already been created — the edited line will be used the next time this episode's script is generated/reconciled.",
+    th: "ตอนย่อยนี้ถูกสร้างแล้ว — บทที่แก้จะถูกใช้เมื่อสร้าง/เกลี่ยบทของตอนย่อยนั้นอีกครั้ง",
+    en: "This Sub-episode has already been created — the edited line will be used the next time this Sub-episode's script is generated/reconciled.",
   },
   manualDialogueEditSilenceRemovedInfo: {
     th: "นำป้ายช็อตภาพล้วนออก เพราะมีบทพูดแล้ว",
     en: "Removed the visual-only shot tag, since it now has dialogue",
   },
-  manualDialogueEditSaveError: { th: "แก้ไขบทพูดไม่สำเร็จ", en: "Failed to edit the dialogue" },
+  manualDialogueEditSaveError: {
+    th: "แก้ไขบทพูดไม่สำเร็จ",
+    en: "Failed to edit the dialogue",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — replaces the old   */
@@ -374,7 +488,10 @@ export const verticalDramaCopy = {
   /* `VerticalDramaDeepStoryDraftsActions`, renders nothing until           */
   /* `hasDrafts` is true. No new flag.                                      */
   /* ---------------------------------------------------------------------- */
-  improveScriptRequestLabel: { th: "สิ่งที่ต้องการให้ปรับปรุง", en: "What to improve" },
+  improveScriptRequestLabel: {
+    th: "สิ่งที่ต้องการให้ปรับปรุง",
+    en: "What to improve",
+  },
   improveScriptEditCta: { th: "แก้ไข", en: "Edit" },
   improveScriptSaveCta: { th: "บันทึก", en: "Save" },
   improveScriptCancelCta: { th: "ยกเลิก", en: "Cancel" },
@@ -382,18 +499,39 @@ export const verticalDramaCopy = {
     th: "ปรับปรุงบทละครให้มีความสมบูรณ์",
     en: "Improve the script to make it more complete",
   },
-  improveScriptRunning: { th: "กำลังปรับปรุงบทละคร…", en: "Improving the script…" },
-  improveScriptError: { th: "ปรับปรุงบทละครไม่สำเร็จ", en: "Failed to improve the script" },
+  improveScriptRunning: {
+    th: "กำลังปรับปรุงบทละคร…",
+    en: "Improving the script…",
+  },
+  improveScriptError: {
+    th: "ปรับปรุงบทละครไม่สำเร็จ",
+    en: "Failed to improve the script",
+  },
   improveScriptNeedsReviewHeading: {
     th: "ผลลัพธ์นี้ยังไม่ผ่านการตรวจสอบ ไม่สามารถยืนยันได้ — กรุณาตรวจสอบเหตุผลด้านล่าง",
     en: "This result did not pass verification and cannot be confirmed — please review the reasons below",
   },
-  improveScriptRawTextToggle: { th: "ดูสคริปต์แบบข้อความดิบ", en: "View raw script text" },
-  improveScriptScoreSummaryLabel: { th: "สรุปคะแนนจาก AI", en: "AI score summary" },
-  improveScriptConfirmCta: { th: "ยืนยันการปรับปรุง", en: "Confirm the improvement" },
-  improveScriptConfirmError: { th: "ยืนยันการปรับปรุงไม่สำเร็จ", en: "Failed to confirm the improvement" },
+  improveScriptRawTextToggle: {
+    th: "ดูสคริปต์แบบข้อความดิบ",
+    en: "View raw script text",
+  },
+  improveScriptScoreSummaryLabel: {
+    th: "สรุปคะแนนจาก AI",
+    en: "AI score summary",
+  },
+  improveScriptConfirmCta: {
+    th: "ยืนยันการปรับปรุง",
+    en: "Confirm the improvement",
+  },
+  improveScriptConfirmError: {
+    th: "ยืนยันการปรับปรุงไม่สำเร็จ",
+    en: "Failed to confirm the improvement",
+  },
   improveScriptDiscardCta: { th: "ทิ้งผลลัพธ์นี้", en: "Discard this result" },
-  improveScriptDiscardError: { th: "ทิ้งผลลัพธ์ไม่สำเร็จ", en: "Failed to discard this result" },
+  improveScriptDiscardError: {
+    th: "ทิ้งผลลัพธ์ไม่สำเร็จ",
+    en: "Failed to discard this result",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* Voice casting (W12-B, spec feature 131 §14/§7.4, voice chain wave) —    */
@@ -408,9 +546,18 @@ export const verticalDramaCopy = {
   voiceCastingSelectCta: { th: "เลือกเสียง", en: "Choose voice" },
   voiceCastingClearCta: { th: "ล้างเสียง", en: "Clear voice" },
   voiceCastingClearing: { th: "กำลังล้างเสียง…", en: "Clearing…" },
-  voiceCastingPreviewCta: { th: "ฟังตัวอย่าง (มีค่าใช้จ่าย)", en: "Preview voice (paid)" },
-  voiceCastingPreviewing: { th: "กำลังสร้างตัวอย่าง…", en: "Generating preview…" },
-  voiceCastingPreviewConfirmTitle: { th: "การฟังตัวอย่างนี้ใช้เครดิต", en: "This preview spends credits" },
+  voiceCastingPreviewCta: {
+    th: "ฟังตัวอย่าง (มีค่าใช้จ่าย)",
+    en: "Preview voice (paid)",
+  },
+  voiceCastingPreviewing: {
+    th: "กำลังสร้างตัวอย่าง…",
+    en: "Generating preview…",
+  },
+  voiceCastingPreviewConfirmTitle: {
+    th: "การฟังตัวอย่างนี้ใช้เครดิต",
+    en: "This preview spends credits",
+  },
   voiceCastingPreviewConfirmBody: {
     th: "ระบบจะสร้างคลิปเสียงตัวอย่างสั้น ๆ จากเสียงที่กำหนดไว้ของตัวละครนี้",
     en: "Generates a short sample audio clip using this character's currently cast voice.",
@@ -419,16 +566,31 @@ export const verticalDramaCopy = {
     th: "ยังไม่ได้กำหนดเสียงให้ตัวละครนี้ — เลือกเสียงก่อนฟังตัวอย่าง",
     en: "This character has no voice cast yet — choose a voice before previewing.",
   },
-  voiceCastingDialogTitle: { th: "เลือกเสียงตัวละคร", en: "Choose a character voice" },
+  voiceCastingDialogTitle: {
+    th: "เลือกเสียงตัวละคร",
+    en: "Choose a character voice",
+  },
   voiceCastingSearchPlaceholder: { th: "ค้นหาเสียง…", en: "Search voices…" },
-  voiceCastingSearchAriaLabel: { th: "ค้นหาเสียงจากรายการ", en: "Search the voice catalog" },
-  voiceCastingLoading: { th: "กำลังโหลดรายการเสียง…", en: "Loading voice catalog…" },
-  voiceCastingNoResults: { th: "ไม่พบเสียงที่ตรงกับคำค้นหา", en: "No voices match your search" },
+  voiceCastingSearchAriaLabel: {
+    th: "ค้นหาเสียงจากรายการ",
+    en: "Search the voice catalog",
+  },
+  voiceCastingLoading: {
+    th: "กำลังโหลดรายการเสียง…",
+    en: "Loading voice catalog…",
+  },
+  voiceCastingNoResults: {
+    th: "ไม่พบเสียงที่ตรงกับคำค้นหา",
+    en: "No voices match your search",
+  },
   voiceCastingEmptyCatalog: {
     th: "ยังไม่มีเสียงให้เลือก — ตรวจสอบว่ามีโมเดลสร้างเสียงที่เปิดใช้งานอยู่",
     en: "No voices available yet — check that an audio model is enabled.",
   },
-  voiceCastingUnknownLanguageGroup: { th: "ไม่ระบุภาษา", en: "Unspecified language" },
+  voiceCastingUnknownLanguageGroup: {
+    th: "ไม่ระบุภาษา",
+    en: "Unspecified language",
+  },
   voiceCastingCastSuccess: { th: "กำหนดเสียงแล้ว", en: "Voice cast" },
   voiceCastingClearSuccess: { th: "ล้างเสียงแล้ว", en: "Voice cleared" },
   voiceCastingCurrentlyCast: { th: "เสียงที่กำหนดไว้", en: "Currently cast" },
@@ -450,7 +612,10 @@ export const verticalDramaCopy = {
     th: "แนะนำจากโปรไฟล์เสียงพูด",
     en: "Suggest from speech profile",
   },
-  voiceCastingSaveStyleHintsCta: { th: "บันทึกคำแนะนำสไตล์", en: "Save style hints" },
+  voiceCastingSaveStyleHintsCta: {
+    th: "บันทึกคำแนะนำสไตล์",
+    en: "Save style hints",
+  },
   voiceCastingStyleHintsRequiresCastVoice: {
     th: "ต้องกำหนดเสียงให้ตัวละครนี้ก่อนจึงจะบันทึกคำแนะนำสไตล์ได้",
     en: "Cast a voice for this character before style hints can be saved.",
@@ -463,7 +628,10 @@ export const verticalDramaCopy = {
  * Formatted deterministically (UTC `YYYY-MM-DD HH:mm`) rather than
  * `toLocaleString` so the string is stable across test environments/locales.
  */
-export function voiceCastingLockedAtText(lang: VerticalDramaLang, lockedAtIso: string): string {
+export function voiceCastingLockedAtText(
+  lang: VerticalDramaLang,
+  lockedAtIso: string
+): string {
   const formatted = formatUtcMinutes(lockedAtIso);
   if (!formatted) return "";
   return lang === "th" ? `ล็อกเมื่อ ${formatted}` : `Locked at ${formatted}`;
@@ -479,7 +647,7 @@ export function voiceCastingLockedAtText(lang: VerticalDramaLang, lockedAtIso: s
  */
 export function voiceCastingPreviewCreditCostText(
   lang: VerticalDramaLang,
-  creditCost: number,
+  creditCost: number
 ): string {
   return lang === "th"
     ? `ใช้ไป ${creditCost} เครดิต`
@@ -523,7 +691,11 @@ export const wizardSteps: Array<{ id: string; th: string; en: string }> = [
   { id: "story", th: "โครงเรื่อง", en: "Story setup" },
   { id: "characters", th: "ตัวละคร & ฉาก", en: "Characters & Locations" },
   { id: "bible", th: "วิชวลไบเบิล", en: "Visual bible" },
-  { id: "product", th: "สินค้าผูกเรื่อง (ไม่บังคับ)", en: "Product tie-in (optional)" },
+  {
+    id: "product",
+    th: "สินค้าผูกเรื่อง (ไม่บังคับ)",
+    en: "Product tie-in (optional)",
+  },
   { id: "review", th: "ตรวจสอบและสร้าง", en: "Review" },
 ];
 
@@ -534,13 +706,24 @@ export const wizardSteps: Array<{ id: string; th: string; en: string }> = [
 /* -------------------------------------------------------------------------- */
 
 /** Copy Contract: "น้ำหนักการผสม {n}/5". */
-export function mixWeightLabel(lang: VerticalDramaLang, weight: number): string {
+export function mixWeightLabel(
+  lang: VerticalDramaLang,
+  weight: number
+): string {
   return lang === "th" ? `น้ำหนักการผสม ${weight}/5` : `Mix weight ${weight}/5`;
 }
 
 /** Copy Contract: "สิ่งที่ preset นี้เพิ่มเข้ามา: {elements}". */
-export function blendContributionSummary(lang: VerticalDramaLang, elements: string[]): string {
-  const joined = elements.length > 0 ? elements.join(", ") : lang === "th" ? "(ไม่มี)" : "(none)";
+export function blendContributionSummary(
+  lang: VerticalDramaLang,
+  elements: string[]
+): string {
+  const joined =
+    elements.length > 0
+      ? elements.join(", ")
+      : lang === "th"
+        ? "(ไม่มี)"
+        : "(none)";
   return lang === "th"
     ? `สิ่งที่ preset นี้เพิ่มเข้ามา: ${joined}`
     : `What this preset contributed: ${joined}`;
@@ -551,7 +734,7 @@ export function underBlendedWarningText(
   lang: VerticalDramaLang,
   title: string,
   coverage: number,
-  floor: number,
+  floor: number
 ): string {
   return lang === "th"
     ? `preset '${title}' ยังไม่ถูกผสมจริง (ครอบคลุม ${coverage}/${floor} ด้าน) — เพิ่มน้ำหนักหรือเลือกใหม่`
@@ -559,12 +742,20 @@ export function underBlendedWarningText(
 }
 
 /** Copy Contract: "สไตล์ภาพ: {styleName}". */
-export function visualStyleLabel(lang: VerticalDramaLang, styleName: string): string {
-  return lang === "th" ? `สไตล์ภาพ: ${styleName}` : `Visual style: ${styleName}`;
+export function visualStyleLabel(
+  lang: VerticalDramaLang,
+  styleName: string
+): string {
+  return lang === "th"
+    ? `สไตล์ภาพ: ${styleName}`
+    : `Visual style: ${styleName}`;
 }
 
 /** Bilingual display labels for the 8 Mix-and-Match v2 blend facets (spec §8.2.2.C). */
-export const blendFacetCopy: Record<VerticalDramaBlendFacet, { th: string; en: string }> = {
+export const blendFacetCopy: Record<
+  VerticalDramaBlendFacet,
+  { th: string; en: string }
+> = {
   story_spine: { th: "โครงเรื่องหลัก", en: "Story spine" },
   situations: { th: "สถานการณ์ในเรื่อง", en: "Situations" },
   characters: { th: "ตัวละคร", en: "Characters" },
@@ -586,8 +777,8 @@ export const arcDriftReasonCopy: Record<
   { th: string; en: string }
 > = {
   VD_ARC_BEATS_CONSUMED_EARLY: {
-    th: "ตอนนี้ใช้บีตเนื้อเรื่องที่วางแผนไว้สำหรับตอนถัดไปล่วงหน้า",
-    en: "This episode used story beats planned for a later episode",
+    th: "ตอนย่อยนี้ใช้บีตเนื้อเรื่องที่วางแผนไว้สำหรับตอนย่อยถัดไปล่วงหน้า",
+    en: "This Sub-episode used story beats planned for a later Sub-episode",
   },
   VD_ARC_HOOK_RESOLVED_EARLY: {
     th: "ปมค้างถูกคลี่คลายเร็วกว่าแผนที่วางไว้",
@@ -598,24 +789,27 @@ export const arcDriftReasonCopy: Record<
     en: "A new hook was introduced outside the plan",
   },
   VD_ARC_CONTENT_BUDGET_EXCEEDED: {
-    th: "เนื้อหา/บทพูดของตอนนี้เกินงบที่วางแผนไว้มาก",
-    en: "This episode's content/speech significantly exceeded its planned budget",
+    th: "เนื้อหา/บทพูดของตอนย่อยนี้เกินงบที่วางแผนไว้มาก",
+    en: "This Sub-episode's content/speech significantly exceeded its planned budget",
   },
   VD_ARC_ESCALATION_ORDER_BROKEN: {
-    th: "ระดับความเข้มข้นของตอนนี้แซงหน้าแผนของตอนถัดไปแล้ว",
-    en: "This episode's intensity already exceeds a later episode's planned curve",
+    th: "ระดับความเข้มข้นของตอนย่อยนี้แซงหน้าแผนของตอนย่อยถัดไปแล้ว",
+    en: "This Sub-episode's intensity already exceeds a later Sub-episode's planned curve",
   },
   // Task #31 (added 2026-07-09) — DELIBERATE (user-triggered defer), not a
   // detected drift — see this code's own doc comment in
   // `VERTICAL_DRAMA_ARC_DRIFT_REASON_CODES` (contentBudget.ts).
   VD_ARC_TIE_IN_DEFERRED: {
-    th: "ย้ายตำแหน่งสินค้าไปตอนอื่นตามคำขอเลื่อนสินค้า",
-    en: "Product placement moved to another episode by a defer request",
+    th: "ย้ายตำแหน่งสินค้าไปตอนย่อยอื่นตามคำขอเลื่อนสินค้า",
+    en: "Product placement moved to another Sub-episode by a defer request",
   },
 };
 
 /** Defensive lookup — unknown/future codes fall back to the raw code (never throws). */
-export function arcDriftReasonLabel(lang: VerticalDramaLang, code: string): string {
+export function arcDriftReasonLabel(
+  lang: VerticalDramaLang,
+  code: string
+): string {
   const entry = arcDriftReasonCopy[code as VerticalDramaArcDriftReasonCode];
   return entry ? entry[lang] : code;
 }
@@ -628,7 +822,7 @@ export function arcDriftReasonLabel(lang: VerticalDramaLang, code: string): stri
 export function tieInReplanMoveKickerText(
   lang: VerticalDramaLang,
   fromEpisodeNumber: number,
-  toEpisodeNumber: number,
+  toEpisodeNumber: number
 ): string {
   return lang === "th"
     ? `ข้อเสนอย้ายสินค้า: ตอน ${fromEpisodeNumber} → ตอน ${toEpisodeNumber}`
@@ -642,18 +836,24 @@ export function tieInReplanMoveKickerText(
 /* Mix v2 functions above.                                                   */
 /* -------------------------------------------------------------------------- */
 
-/** Copy Contract: "ร่างแล้ว {n} ตอน". */
-export function deepStoryDraftsGeneratedSuccessText(lang: VerticalDramaLang, episodeCount: number): string {
+/** Copy Contract: "ร่างแล้ว {n} ตอนย่อย". */
+export function deepStoryDraftsGeneratedSuccessText(
+  lang: VerticalDramaLang,
+  episodeCount: number
+): string {
   return lang === "th"
-    ? `ร่างแล้ว ${episodeCount} ตอน`
-    : `Drafted ${episodeCount} episode${episodeCount === 1 ? "" : "s"}`;
+    ? `ร่างแล้ว ${episodeCount} ตอนย่อย`
+    : `Drafted ${episodeCount} Sub-episode${episodeCount === 1 ? "" : "s"}`;
 }
 
-/** Copy Contract: "ร่างสำเร็จบางส่วน (ถึงตอนที่ {horizonEndEpisode}) — กดขยายเพื่อทำต่อ". */
-export function deepStoryDraftsPartialWarningText(lang: VerticalDramaLang, horizonEndEpisode: number): string {
+/** Copy Contract: "ร่างสำเร็จบางส่วน (ถึงตอนย่อยที่ {horizonEndEpisode}) — กดขยายเพื่อทำต่อ". */
+export function deepStoryDraftsPartialWarningText(
+  lang: VerticalDramaLang,
+  horizonEndEpisode: number
+): string {
   return lang === "th"
-    ? `ร่างสำเร็จบางส่วน (ถึงตอนที่ ${horizonEndEpisode}) — กดขยายเพื่อทำต่อ`
-    : `Partially drafted (through episode ${horizonEndEpisode}) — press extend to continue`;
+    ? `ร่างสำเร็จบางส่วน (ถึงตอนย่อยที่ ${horizonEndEpisode}) — กดขยายเพื่อทำต่อ`
+    : `Partially drafted (through Sub-episode ${horizonEndEpisode}) — press extend to continue`;
 }
 
 /**
@@ -670,27 +870,35 @@ export function deepStoryDraftsSummaryText(
     totalEpisodes: number;
     horizonEndEpisode: number;
     premium?: true;
-  },
+  }
 ): string {
   const base =
     lang === "th"
-      ? `ร่างละเอียดแล้ว ${summary.episodesWithDrafts}/${summary.totalEpisodes} ตอน (ถึงตอนที่ ${summary.horizonEndEpisode})`
-      : `Drafted in detail: ${summary.episodesWithDrafts}/${summary.totalEpisodes} episodes (through episode ${summary.horizonEndEpisode})`;
+      ? `ร่างละเอียดแล้ว ${summary.episodesWithDrafts}/${summary.totalEpisodes} ตอนย่อย (ถึงตอนย่อยที่ ${summary.horizonEndEpisode})`
+      : `Drafted in detail: ${summary.episodesWithDrafts}/${summary.totalEpisodes} Sub-episodes (through Sub-episode ${summary.horizonEndEpisode})`;
   return summary.premium
     ? `${base} ${pickCopy(lang, verticalDramaCopy.deepStoryDraftsSummaryPremiumSuffix)}`
     : base;
 }
 
-/** Copy Contract: "จำนวนตอนที่จะร่าง: {horizon} ตอน". */
-export function deepStoryDraftsHorizonCountText(lang: VerticalDramaLang, horizonEpisodes: number): string {
+/** Copy Contract: "จำนวนตอนย่อยที่จะร่าง: {horizon} ตอนย่อย". */
+export function deepStoryDraftsHorizonCountText(
+  lang: VerticalDramaLang,
+  horizonEpisodes: number
+): string {
   return lang === "th"
-    ? `จำนวนตอนที่จะร่าง: ${horizonEpisodes} ตอน`
-    : `Episodes to draft: ${horizonEpisodes}`;
+    ? `จำนวนตอนย่อยที่จะร่าง: ${horizonEpisodes} ตอนย่อย`
+    : `Sub-episodes to draft: ${horizonEpisodes}`;
 }
 
 /** Copy Contract: "จำนวนรอบเรียก: {rounds} รอบ". */
-export function deepStoryDraftsCallRoundsText(lang: VerticalDramaLang, callRounds: number): string {
-  return lang === "th" ? `จำนวนรอบเรียก: ${callRounds} รอบ` : `Number of calls: ${callRounds}`;
+export function deepStoryDraftsCallRoundsText(
+  lang: VerticalDramaLang,
+  callRounds: number
+): string {
+  return lang === "th"
+    ? `จำนวนรอบเรียก: ${callRounds} รอบ`
+    : `Number of calls: ${callRounds}`;
 }
 
 /**
@@ -711,14 +919,15 @@ export function deepStoryDraftsFormatProfileChipText(
     tier: "ultra_short" | "short" | "standard";
     nameTh: string;
     perEpisodeHookRule: { hookWithinSeconds: number };
-  },
+  }
 ): string {
   const seconds = profile.perEpisodeHookRule.hookWithinSeconds;
   if (lang === "th") {
-    return `โปรไฟล์ความยาว: ${profile.nameTh} — ทุกตอนเปิดด้วย hook ใน ${seconds} วิ / เนื้อแน่นไม่มีตอนเติม`;
+    return `โปรไฟล์ความยาว: ${profile.nameTh} — ทุกตอนย่อยเปิดด้วย hook ใน ${seconds} วิ / เนื้อแน่นไม่มีตอนเติม`;
   }
-  const nameEn = profile.tier === "ultra_short" ? "ultra-short series" : "short series";
-  return `Length profile: ${nameEn} — every episode opens with a hook within ${seconds}s / dense content, no filler episodes`;
+  const nameEn =
+    profile.tier === "ultra_short" ? "ultra-short series" : "short series";
+  return `Length profile: ${nameEn} — every Sub-episode opens with a hook within ${seconds}s / dense content, no filler Sub-episodes`;
 }
 
 /**
@@ -731,39 +940,52 @@ export function deepStoryDraftsFormatProfileChipText(
  * horizonEndEpisode)`, so this function only ever renders the real number of
  * episodes THIS click will draft.
  */
-export function deepStoryDraftsExtendCtaText(lang: VerticalDramaLang, count: number): string {
+export function deepStoryDraftsExtendCtaText(
+  lang: VerticalDramaLang,
+  count: number
+): string {
   return lang === "th"
-    ? `ขยายร่างอีก ${count} ตอน`
-    : `Extend draft by ${count} more episode${count === 1 ? "" : "s"}`;
+    ? `ขยายร่างอีก ${count} ตอนย่อย`
+    : `Extend draft by ${count} more Sub-episode${count === 1 ? "" : "s"}`;
 }
 
 /** Copy Contract: "ช็อต {n} — {summary}". */
 export function deepStoryDraftsShotSummaryLabel(
   lang: VerticalDramaLang,
   shotNumber: number,
-  summary: string,
+  summary: string
 ): string {
-  return lang === "th" ? `ช็อต ${shotNumber} — ${summary}` : `Shot ${shotNumber} — ${summary}`;
+  return lang === "th"
+    ? `ช็อต ${shotNumber} — ${summary}`
+    : `Shot ${shotNumber} — ${summary}`;
 }
 
 /** Copy Contract: "{speaker}: {line}" — mirrors the wizard's own dialogue-viewer template exactly. */
 export function deepStoryDraftsDialogueLineText(
   _lang: VerticalDramaLang,
   speaker: string,
-  line: string,
+  line: string
 ): string {
   return `${speaker}: ${line}`;
 }
 
 /** Copy Contract: "จุดค้าง: {line}". */
-export function deepStoryDraftsCliffhangerText(lang: VerticalDramaLang, line: string): string {
+export function deepStoryDraftsCliffhangerText(
+  lang: VerticalDramaLang,
+  line: string
+): string {
   return lang === "th" ? `จุดค้าง: ${line}` : `Cliffhanger: ${line}`;
 }
 
 /** Copy Contract: "บทพูดรวม {n} วิ". */
-export function deepStoryDraftsSpeechSecondsBadgeText(lang: VerticalDramaLang, seconds: number): string {
+export function deepStoryDraftsSpeechSecondsBadgeText(
+  lang: VerticalDramaLang,
+  seconds: number
+): string {
   const rounded = Math.round(seconds);
-  return lang === "th" ? `บทพูดรวม ${rounded} วิ` : `Total dialogue ${rounded}s`;
+  return lang === "th"
+    ? `บทพูดรวม ${rounded} วิ`
+    : `Total dialogue ${rounded}s`;
 }
 
 /**
@@ -772,14 +994,20 @@ export function deepStoryDraftsSpeechSecondsBadgeText(lang: VerticalDramaLang, s
  * static string) so the episode count always matches the real series instead
  * of a hardcoded example number.
  */
-export function deepStoryDraftsScopeKeepHintText(lang: VerticalDramaLang, totalEpisodes: number): string {
+export function deepStoryDraftsScopeKeepHintText(
+  lang: VerticalDramaLang,
+  totalEpisodes: number
+): string {
   return lang === "th"
-    ? `โครง ${totalEpisodes} ตอนยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอน`
-    : `The ${totalEpisodes}-episode plot stays the same — detailed drafts are added/updated for every episode.`;
+    ? `โครง ${totalEpisodes} ตอนย่อยยังเหมือนเดิม เพิ่มบทละเอียดให้ทุกตอนย่อย`
+    : `The ${totalEpisodes}-Sub-episode plot stays the same — detailed drafts are added/updated for every Sub-episode.`;
 }
 
 /** Bilingual labels for the 4 canonical silence-intent codes (spec §7.7.2 Layer 3). */
-export const deepStoryDraftsSilenceIntentCopy: Record<VerticalDramaSilenceIntent, { th: string; en: string }> = {
+export const deepStoryDraftsSilenceIntentCopy: Record<
+  VerticalDramaSilenceIntent,
+  { th: string; en: string }
+> = {
   dramatic_pause: {
     th: "ช็อตเงียบเชิงดราม่า (ไม่มีบทพูดโดยตั้งใจ)",
     en: "Dramatic pause (intentionally silent)",
@@ -801,7 +1029,7 @@ export const deepStoryDraftsSilenceIntentCopy: Record<VerticalDramaSilenceIntent
 /** Defensive lookup mirroring `arcDriftReasonLabel` — unknown values fall back to the raw code. */
 export function deepStoryDraftsSilenceIntentLabel(
   lang: VerticalDramaLang,
-  intent: VerticalDramaSilenceIntent,
+  intent: VerticalDramaSilenceIntent
 ): string {
   const entry = deepStoryDraftsSilenceIntentCopy[intent];
   return entry ? entry[lang] : intent;
@@ -833,7 +1061,8 @@ export const PREMIUM_DRAFT_SCORE_DIMENSIONS = [
   "season_cohesion",
 ] as const;
 
-export type VerticalDramaPremiumDraftScoreDimension = (typeof PREMIUM_DRAFT_SCORE_DIMENSIONS)[number];
+export type VerticalDramaPremiumDraftScoreDimension =
+  (typeof PREMIUM_DRAFT_SCORE_DIMENSIONS)[number];
 
 /** Bilingual labels for the 8 premium-draft judged dimensions (spec W11-A/W11-B). */
 export const deepStoryDraftsPremiumDimensionCopy: Record<
@@ -843,16 +1072,28 @@ export const deepStoryDraftsPremiumDimensionCopy: Record<
   hook_strength: { th: "แรงดึงดูดของฮุคเปิดเรื่อง", en: "Hook strength" },
   reversal_sharpness: { th: "ความคมของจุดพลิกผัน", en: "Reversal sharpness" },
   emotion_variety: { th: "ความหลากหลายทางอารมณ์", en: "Emotional variety" },
-  dialogue_naturalness: { th: "ความเป็นธรรมชาติของบทพูด", en: "Dialogue naturalness" },
+  dialogue_naturalness: {
+    th: "ความเป็นธรรมชาติของบทพูด",
+    en: "Dialogue naturalness",
+  },
   pacing: { th: "จังหวะเรื่อง", en: "Pacing" },
   cliffhanger_strength: { th: "ความแรงของจุดค้าง", en: "Cliffhanger strength" },
-  continuity_with_recap: { th: "ความต่อเนื่องกับเนื้อเรื่องเดิม", en: "Continuity with recap" },
+  continuity_with_recap: {
+    th: "ความต่อเนื่องกับเนื้อเรื่องเดิม",
+    en: "Continuity with recap",
+  },
   season_cohesion: { th: "ความกลมกลืนกับภาพรวมซีซั่น", en: "Season cohesion" },
 };
 
 /** Defensive lookup mirroring `arcDriftReasonLabel`/`deepStoryDraftsSilenceIntentLabel` — unknown values fall back to the raw code, never throws. */
-export function deepStoryDraftsPremiumDimensionLabel(lang: VerticalDramaLang, dimension: string): string {
-  const entry = deepStoryDraftsPremiumDimensionCopy[dimension as VerticalDramaPremiumDraftScoreDimension];
+export function deepStoryDraftsPremiumDimensionLabel(
+  lang: VerticalDramaLang,
+  dimension: string
+): string {
+  const entry =
+    deepStoryDraftsPremiumDimensionCopy[
+      dimension as VerticalDramaPremiumDraftScoreDimension
+    ];
   return entry ? entry[lang] : dimension;
 }
 
@@ -864,7 +1105,10 @@ export function formatPremiumDraftScore(score: number): string {
 }
 
 /** Copy Contract: "คะแนน {overall}/5" — the premium-draft scorecard's header badge. */
-export function deepStoryDraftsScorecardOverallBadgeText(lang: VerticalDramaLang, overall: number): string {
+export function deepStoryDraftsScorecardOverallBadgeText(
+  lang: VerticalDramaLang,
+  overall: number
+): string {
   const formatted = formatPremiumDraftScore(overall);
   return lang === "th" ? `คะแนน ${formatted}/5` : `Score ${formatted}/5`;
 }
@@ -873,15 +1117,20 @@ export function deepStoryDraftsScorecardOverallBadgeText(lang: VerticalDramaLang
 export function deepStoryDraftsScorecardBelowFloorDimText(
   lang: VerticalDramaLang,
   dimension: VerticalDramaPremiumDraftScoreDimension,
-  score: number,
+  score: number
 ): string {
   const label = deepStoryDraftsPremiumDimensionLabel(lang, dimension);
   const formatted = formatPremiumDraftScore(score);
-  return lang === "th" ? `จุดที่ยังต่ำ: ${label} ${formatted}/5` : `Still below floor: ${label} ${formatted}/5`;
+  return lang === "th"
+    ? `จุดที่ยังต่ำ: ${label} ${formatted}/5`
+    : `Still below floor: ${label} ${formatted}/5`;
 }
 
 /** Copy Contract: "แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~{callEstimate} ครั้งเรียก)" — premium mode's one-line hint in the confirm dialog's mode picker (call estimate mirrors the server's `estimatePremiumDeepDraftCalls`, DISPLAY MATH ONLY). */
-export function deepStoryDraftsModePremiumHintText(lang: VerticalDramaLang, callEstimate: number): string {
+export function deepStoryDraftsModePremiumHintText(
+  lang: VerticalDramaLang,
+  callEstimate: number
+): string {
   return lang === "th"
     ? `แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~${callEstimate} ครั้งเรียก)`
     : `Writes 3 different takes, checks each one, and auto-repairs weak spots (~${callEstimate} calls)`;
@@ -893,14 +1142,19 @@ export function deepStoryDraftsModePremiumHintText(lang: VerticalDramaLang, call
 /* -------------------------------------------------------------------------- */
 
 /** Copy Contract: "บันทึกบทช็อต {n} แล้ว". */
-export function manualDialogueEditSavedSuccessText(lang: VerticalDramaLang, shotNumber: number): string {
-  return lang === "th" ? `บันทึกบทช็อต ${shotNumber} แล้ว` : `Saved shot ${shotNumber}'s dialogue`;
+export function manualDialogueEditSavedSuccessText(
+  lang: VerticalDramaLang,
+  shotNumber: number
+): string {
+  return lang === "th"
+    ? `บันทึกบทช็อต ${shotNumber} แล้ว`
+    : `Saved shot ${shotNumber}'s dialogue`;
 }
 
 /** Copy Contract: "บันทึกแล้ว แต่ยังมี {k} จุดที่อ่านออกเสียงยาก". */
 export function manualDialogueEditSavedWithWarningsText(
   lang: VerticalDramaLang,
-  warningCount: number,
+  warningCount: number
 ): string {
   return lang === "th"
     ? `บันทึกแล้ว แต่ยังมี ${warningCount} จุดที่อ่านออกเสียงยาก`
@@ -918,7 +1172,7 @@ export function manualDialogueEditSavedWithWarningsText(
 export function manualDialogueEditLiveSpeechSecondsText(
   lang: VerticalDramaLang,
   liveSeconds: number,
-  targetSeconds: number,
+  targetSeconds: number
 ): string {
   const live = Math.round(liveSeconds);
   const target = Math.round(targetSeconds);
@@ -928,7 +1182,10 @@ export function manualDialogueEditLiveSpeechSecondsText(
 }
 
 /** Copy Contract: "บรรทัดที่ {n}" — the accessible group label wrapping each editable line's speaker/line/delivery fields (disambiguates the per-row "remove"/field labels for screen-reader users without needing a per-field interpolated label). */
-export function manualDialogueEditLineGroupLabel(lang: VerticalDramaLang, lineNumber: number): string {
+export function manualDialogueEditLineGroupLabel(
+  lang: VerticalDramaLang,
+  lineNumber: number
+): string {
   return lang === "th" ? `บรรทัดที่ ${lineNumber}` : `Line ${lineNumber}`;
 }
 
@@ -937,14 +1194,23 @@ export const manualDialogueEditViolationCopy: Record<
   VerticalDramaLineSpeakabilityViolationKind,
   { th: string; en: string }
 > = {
-  wrapping_quotes: { th: "มีเครื่องหมายคำพูดครอบทั้งประโยค", en: "Wrapped in quote marks" },
+  wrapping_quotes: {
+    th: "มีเครื่องหมายคำพูดครอบทั้งประโยค",
+    en: "Wrapped in quote marks",
+  },
   parenthetical_stage_direction: {
     th: "มีวงเล็บกำกับการแสดง",
     en: "Contains a parenthetical stage direction",
   },
-  unspeakable_symbol: { th: "มีสัญลักษณ์ที่พูดออกเสียงไม่ได้", en: "Contains an unspeakable symbol" },
+  unspeakable_symbol: {
+    th: "มีสัญลักษณ์ที่พูดออกเสียงไม่ได้",
+    en: "Contains an unspeakable symbol",
+  },
   em_dash: { th: "มีเครื่องหมายขีดยาว (—)", en: "Contains an em dash" },
-  ellipsis_run: { th: "มีจุดไข่ปลาซ้ำหลายจุด", en: "Contains a repeated ellipsis" },
+  ellipsis_run: {
+    th: "มีจุดไข่ปลาซ้ำหลายจุด",
+    en: "Contains a repeated ellipsis",
+  },
   emoji: { th: "มีอิโมจิ", en: "Contains an emoji" },
   nonverbal_line: {
     th: "เป็นเสียงที่ไม่ใช่คำพูด ควรใช้ป้ายช็อตภาพล้วนแทน",
@@ -962,8 +1228,14 @@ export const manualDialogueEditViolationCopy: Record<
 };
 
 /** Defensive lookup mirroring `arcDriftReasonLabel`/`deepStoryDraftsSilenceIntentLabel` — unknown violation kinds fall back to the raw code, never throws. */
-export function manualDialogueEditViolationLabel(lang: VerticalDramaLang, kind: string): string {
-  const entry = manualDialogueEditViolationCopy[kind as VerticalDramaLineSpeakabilityViolationKind];
+export function manualDialogueEditViolationLabel(
+  lang: VerticalDramaLang,
+  kind: string
+): string {
+  const entry =
+    manualDialogueEditViolationCopy[
+      kind as VerticalDramaLineSpeakabilityViolationKind
+    ];
   return entry ? entry[lang] : kind;
 }
 
@@ -982,7 +1254,7 @@ export const IMPROVE_SCRIPT_DEFAULT_REQUEST_TEXT =
 export function improveScriptRoundProgressText(
   lang: VerticalDramaLang,
   round: number,
-  maxRounds: number,
+  maxRounds: number
 ): string {
   return lang === "th"
     ? `กำลังปรับปรุง... (รอบ ${round}/${maxRounds})`
@@ -1004,11 +1276,11 @@ export function improveScriptEpisodeRoundProgressText(
   episodeIndex: number,
   episodeCount: number,
   round: number,
-  maxRounds: number,
+  maxRounds: number
 ): string {
   return lang === "th"
-    ? `กำลังปรับปรุงตอนที่ ${episodeIndex}/${episodeCount}... (รอบ ${round}/${maxRounds})`
-    : `Improving episode ${episodeIndex}/${episodeCount}... (round ${round}/${maxRounds})`;
+    ? `กำลังปรับปรุงตอนย่อยที่ ${episodeIndex}/${episodeCount}... (รอบ ${round}/${maxRounds})`
+    : `Improving Sub-episode ${episodeIndex}/${episodeCount}... (round ${round}/${maxRounds})`;
 }
 
 /**
@@ -1028,18 +1300,21 @@ export function improveScriptEpisodeAttemptRoundProgressText(
   attemptIndex: number,
   attemptCount: number,
   round: number,
-  maxRounds: number,
+  maxRounds: number
 ): string {
   return lang === "th"
-    ? `กำลังปรับปรุงตอนที่ ${episodeIndex}/${episodeCount} (ครั้งที่ ${attemptIndex}/${attemptCount})... (รอบ ${round}/${maxRounds})`
-    : `Improving episode ${episodeIndex}/${episodeCount} (attempt ${attemptIndex}/${attemptCount})... (round ${round}/${maxRounds})`;
+    ? `กำลังปรับปรุงตอนย่อยที่ ${episodeIndex}/${episodeCount} (ครั้งที่ ${attemptIndex}/${attemptCount})... (รอบ ${round}/${maxRounds})`
+    : `Improving Sub-episode ${episodeIndex}/${episodeCount} (attempt ${attemptIndex}/${attemptCount})... (round ${round}/${maxRounds})`;
 }
 
 /** Copy Contract: "ปรับปรุงแล้ว {n} ตอน" — the confirm success toast (same phrasing the removed apply-critique flow used). */
-export function improveScriptConfirmSuccessText(lang: VerticalDramaLang, updatedCount: number): string {
+export function improveScriptConfirmSuccessText(
+  lang: VerticalDramaLang,
+  updatedCount: number
+): string {
   return lang === "th"
-    ? `ปรับปรุงแล้ว ${updatedCount} ตอน`
-    : `Updated ${updatedCount} episode${updatedCount === 1 ? "" : "s"}`;
+    ? `ปรับปรุงแล้ว ${updatedCount} ตอนย่อย`
+    : `Updated ${updatedCount} Sub-episode${updatedCount === 1 ? "" : "s"}`;
 }
 
 /**
@@ -1052,10 +1327,13 @@ export function improveScriptConfirmSuccessText(lang: VerticalDramaLang, updated
  * structure as that block, just worded as informational rather than
  * blocking, and with the count of affected episodes interpolated in.
  */
-export function improveScriptPartialFailureHeadingText(lang: VerticalDramaLang, failedCount: number): string {
+export function improveScriptPartialFailureHeadingText(
+  lang: VerticalDramaLang,
+  failedCount: number
+): string {
   return lang === "th"
-    ? `${failedCount} ตอนไม่ผ่านการตรวจสอบ ใช้เนื้อหาเดิมสำหรับตอนเหล่านี้ ตอนอื่นยังยืนยันได้ตามปกติ`
-    : `${failedCount} episode${failedCount === 1 ? "" : "s"} failed verification — kept the original content for ${
+    ? `${failedCount} ตอนย่อยไม่ผ่านการตรวจสอบ ใช้เนื้อหาเดิมสำหรับตอนย่อยเหล่านี้ ตอนย่อยอื่นยังยืนยันได้ตามปกติ`
+    : `${failedCount} Sub-episode${failedCount === 1 ? "" : "s"} failed verification — kept the original content for ${
         failedCount === 1 ? "it" : "those"
       }; the rest can still be confirmed normally`;
 }
@@ -1064,10 +1342,15 @@ export function improveScriptPartialFailureHeadingText(lang: VerticalDramaLang, 
 export function improveScriptPartialFailureEpisodeReasonText(
   lang: VerticalDramaLang,
   episodeNumber: number,
-  reasons: readonly string[],
+  reasons: readonly string[]
 ): string {
-  const episodeLabel = lang === "th" ? `ตอนที่ ${episodeNumber}` : `Episode ${episodeNumber}`;
-  return reasons.length > 0 ? `${episodeLabel}: ${reasons.join(", ")}` : episodeLabel;
+  const episodeLabel =
+    lang === "th"
+      ? `ตอนย่อยที่ ${episodeNumber}`
+      : `Sub-episode ${episodeNumber}`;
+  return reasons.length > 0
+    ? `${episodeLabel}: ${reasons.join(", ")}`
+    : episodeLabel;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1083,7 +1366,10 @@ export interface VerticalDramaStoryJobProgressCopyInput {
 }
 
 /** Copy Contract: "กำลังซ่อมตอน {eps}" — episode numbers ascending, comma-joined; falls back to the bare prefix when no episode numbers are known yet. */
-function storyJobPhaseFixText(lang: VerticalDramaLang, episodesDone: number[] | undefined): string {
+function storyJobPhaseFixText(
+  lang: VerticalDramaLang,
+  episodesDone: number[] | undefined
+): string {
   const prefix = pickCopy(lang, verticalDramaCopy.storyJobPhaseFixPrefix);
   if (!episodesDone || episodesDone.length === 0) return prefix;
   const list = [...episodesDone].sort((a, b) => a - b).join(", ");
@@ -1091,7 +1377,11 @@ function storyJobPhaseFixText(lang: VerticalDramaLang, episodesDone: number[] | 
 }
 
 /** Copy Contract: "รอบเรียก {i}/{n}". */
-function storyJobRoundText(lang: VerticalDramaLang, chunkIndex: number, chunkCount: number): string {
+function storyJobRoundText(
+  lang: VerticalDramaLang,
+  chunkIndex: number,
+  chunkCount: number
+): string {
   return `${pickCopy(lang, verticalDramaCopy.storyJobRoundLabel)} ${chunkIndex}/${chunkCount}`;
 }
 
@@ -1106,7 +1396,7 @@ function storyJobRoundText(lang: VerticalDramaLang, chunkIndex: number, chunkCou
  */
 export function storyJobProgressText(
   lang: VerticalDramaLang,
-  progress: VerticalDramaStoryJobProgressCopyInput | null | undefined,
+  progress: VerticalDramaStoryJobProgressCopyInput | null | undefined
 ): string {
   if (!progress) return pickCopy(lang, verticalDramaCopy.storyJobQueued);
 

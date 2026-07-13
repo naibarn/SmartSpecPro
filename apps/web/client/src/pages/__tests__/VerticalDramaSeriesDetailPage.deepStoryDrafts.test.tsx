@@ -374,7 +374,7 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
       );
       fireEvent.click(screen.getByTestId("vd-deep-story-draft-edit-cta-1-1"));
       expect(screen.getByTestId("vd-deep-story-draft-edit-already-created-1-1")).toHaveTextContent(
-        "ตอนนี้ถูกสร้างแล้ว",
+        "ตอนย่อยนี้ถูกสร้างแล้ว",
       );
     });
 
@@ -508,7 +508,7 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
         />,
       );
       expect(screen.getByTestId("vd-deep-story-drafts-summary")).toBeInTheDocument();
-      expect(screen.getByText("ร่างละเอียดแล้ว 1/10 ตอน (ถึงตอนที่ 1)")).toBeInTheDocument();
+      expect(screen.getByText("ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1)")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })).toBeInTheDocument();
     });
   });
@@ -591,7 +591,7 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
           deepDraftSummary={{ horizonEndEpisode: 1, episodesWithDrafts: 1, totalEpisodes: 10, premium: true }}
         />,
       );
-      expect(screen.getByText("ร่างละเอียดแล้ว 1/10 ตอน (ถึงตอนที่ 1) · โหมดพรีเมียม")).toBeInTheDocument();
+      expect(screen.getByText("ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1) · โหมดพรีเมียม")).toBeInTheDocument();
     });
 
     it("flag on — the summary banner omits the premium marker when deepDraftSummary.premium is absent (byte-identical)", () => {
@@ -608,7 +608,7 @@ describe("StoryBibleOverviewCard — deep story drafts (W10-C, F131T)", () => {
       // scenario (canExtend is true), which a page-wide text search would
       // false-match on the shared "โหมดพรีเมียม" substring.
       expect(screen.getByTestId("vd-deep-story-drafts-summary")).toHaveTextContent(
-        "ร่างละเอียดแล้ว 1/10 ตอน (ถึงตอนที่ 1)",
+        "ร่างละเอียดแล้ว 1/10 ตอนย่อย (ถึงตอนย่อยที่ 1)",
       );
       expect(screen.getByTestId("vd-deep-story-drafts-summary")).not.toHaveTextContent("โหมดพรีเมียม");
     });

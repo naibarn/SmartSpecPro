@@ -4,11 +4,23 @@
  * used by `runScenePlanStage`, `runQualityReview`, `applyQualityRepairs`.
  * Never hides the action button; always shows a clear, specific notice
  * when the job comes back `failed` with a `VI_*_NOT_WIRED` error.
+ *
+ * NOTE — Astryx exception: this file imports `@astryxdesign/core/*`
+ * components directly, which `AppPage.tsx`'s docstring says should never
+ * happen outside that one file. This is a deliberate, explicit,
+ * twice-confirmed user decision to migrate Video Studio off shadcn/ui onto
+ * native Astryx components (see
+ * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
+ * violation of that rule. It also closes this file's hardcoded
+ * `amber-500`/`amber-300` "not wired" notice gap by mapping it to Astryx's
+ * theme-aware `Banner status="warning"` instead.
  */
-import { AlertTriangle, Loader2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/Layout";
 import { pickCopy, videoStudioCopy, type VideoStudioLang } from "./videoStudioCopy";
 
 interface JobStatusLike {
@@ -36,60 +48,58 @@ export function NotWiredJobCard({
   disabled?: boolean;
   onRun: () => void;
 }) {
+  const isBusy = jobStatus?.status === "running" || jobStatus?.status === "queued";
+
   return (
-    <Card className="border-border/60">
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <Card>
+      <VStack gap={3}>
+        <Heading level={4}>{title}</Heading>
+
         <Button
-          className="self-start gap-2"
+          type="button"
+          variant="secondary"
           data-testid={testId}
-          disabled={disabled || jobStatus?.status === "running" || jobStatus?.status === "queued"}
+          label={buttonLabel}
+          icon={icon}
+          isDisabled={disabled}
+          isLoading={isBusy}
           onClick={onRun}
-        >
-          {jobStatus?.status === "running" || jobStatus?.status === "queued" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            icon
-          )}
-          {buttonLabel}
-        </Button>
+          className="self-start"
+        />
 
         {jobStatus?.status === "failed" ? (
-          <div
-            role="status"
+          <Banner
+            status="warning"
             data-testid={`${testId}-not-wired-notice`}
-            className="flex items-start gap-2 rounded-lg border border-amber-300/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200"
-          >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="font-medium">{pickCopy(lang, videoStudioCopy.notWiredTitle)}</p>
-              <p className="mt-1 text-xs opacity-90">{pickCopy(lang, videoStudioCopy.notWiredBody)}</p>
-              {jobStatus.error ? (
-                <p className="mt-2 break-words font-mono text-xs opacity-75">
-                  {/* FE03 (LOW, pre-merge security gate): only render the raw
-                      job error verbatim when it is one of our own greppable
-                      `VI_*` codes (mirrors RenderPanel.tsx's `VI_*` handling
-                      for its own error surface) — any other value (e.g.
-                      arbitrary text a worker/job pipeline reported) falls back
-                      to a generic message instead of being echoed verbatim. */}
-                  {jobStatus.error.startsWith("VI_")
-                    ? jobStatus.error
-                    : pickCopy(lang, videoStudioCopy.jobErrorGeneric)}
-                </p>
-              ) : null}
-            </div>
-          </div>
+            title={pickCopy(lang, videoStudioCopy.notWiredTitle)}
+            description={
+              <VStack gap={1}>
+                <span>{pickCopy(lang, videoStudioCopy.notWiredBody)}</span>
+                {jobStatus.error ? (
+                  <span className="break-words font-mono text-xs opacity-75">
+                    {/* FE03 (LOW, pre-merge security gate): only render the raw
+                        job error verbatim when it is one of our own greppable
+                        `VI_*` codes (mirrors RenderPanel.tsx's `VI_*` handling
+                        for its own error surface) — any other value (e.g.
+                        arbitrary text a worker/job pipeline reported) falls back
+                        to a generic message instead of being echoed verbatim. */}
+                    {jobStatus.error.startsWith("VI_")
+                      ? jobStatus.error
+                      : pickCopy(lang, videoStudioCopy.jobErrorGeneric)}
+                  </span>
+                ) : null}
+              </VStack>
+            }
+          />
         ) : null}
 
-        {jobStatus?.status === "queued" || jobStatus?.status === "running" ? (
-          <div className="text-sm text-muted-foreground" data-testid={`${testId}-progress`}>
+        {isBusy ? (
+          <Text type="body" color="secondary" data-testid={`${testId}-progress`}>
             {pickCopy(lang, { th: "กำลังประมวลผล...", en: "Processing..." })}
-            {jobStatus.progress?.stage ? ` (${jobStatus.progress.stage})` : ""}
-          </div>
+            {jobStatus?.progress?.stage ? ` (${jobStatus.progress.stage})` : ""}
+          </Text>
         ) : null}
-      </CardContent>
+      </VStack>
     </Card>
   );
 }

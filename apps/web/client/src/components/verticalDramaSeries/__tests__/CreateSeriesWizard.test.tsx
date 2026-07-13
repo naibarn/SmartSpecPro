@@ -17,7 +17,10 @@ vi.mock("@/lib/trpc", () => ({
     verticalDramaSeries: {
       listGenrePresets: { useQuery: () => mockListGenrePresetsQuery() },
       synthesizeGenrePreset: {
-        useMutation: (opts: { onSuccess?: (data: unknown) => void; onError?: (err: unknown) => void }) => ({
+        useMutation: (opts: {
+          onSuccess?: (data: unknown) => void;
+          onError?: (err: unknown) => void;
+        }) => ({
           mutate: (input: unknown) => {
             mockSynthesizeMutate(input);
             opts?.onSuccess?.(mockSynthesizeMutationState.data);
@@ -99,7 +102,14 @@ const presetTwo = {
 };
 
 function renderWizard() {
-  return render(<CreateSeriesWizard open lang="th" onOpenChange={() => {}} onCreated={() => {}} />);
+  return render(
+    <CreateSeriesWizard
+      open
+      lang="th"
+      onOpenChange={() => {}}
+      onCreated={() => {}}
+    />
+  );
 }
 
 function selectCategoryAndPresets(ids: string[]) {
@@ -110,11 +120,43 @@ function selectCategoryAndPresets(ids: string[]) {
   }
 }
 
+describe("CreateSeriesWizard — Sub-episode terminology", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockListGenrePresetsQuery.mockReturnValue({
+      data: { presets: [presetOne, presetTwo] },
+      isLoading: false,
+    });
+    mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+  });
+
+  it("explains that the planned count is for Sub-episodes and keeps that meaning in Review", () => {
+    renderWizard();
+
+    expect(
+      screen.getByText("จำนวนตอนย่อย (Sub-episode) ในโครงสร้างเรื่อง")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "ใช้กำหนดจำนวนตอนย่อยสำหรับวางโครงเรื่องและผลิตวิดีโอสั้น ไม่ใช่จำนวน Public EP ที่เผยแพร่จริง Public EP จะถูกรวมจากตอนย่อยภายหลัง"
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    expect(screen.getByText("ตอนย่อยในโครงสร้างเรื่อง")).toBeInTheDocument();
+    expect(screen.getByText("10")).toBeInTheDocument();
+  });
+});
+
 describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity chips)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSynthesizeMutationState = { data: undefined, isPending: false };
-    mockListGenrePresetsQuery.mockReturnValue({ data: { presets: [presetOne, presetTwo] }, isLoading: false });
+    mockListGenrePresetsQuery.mockReturnValue({
+      data: { presets: [presetOne, presetTwo] },
+      isLoading: false,
+    });
     mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
   });
 
@@ -122,7 +164,9 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     renderWizard();
     fireEvent.click(screen.getByRole("button", { name: /sci_fi_mecha/ }));
 
-    expect(screen.getByText("สไตล์ภาพ: Neon Bio-Jungle Tech")).toBeInTheDocument();
+    expect(
+      screen.getByText("สไตล์ภาพ: Neon Bio-Jungle Tech")
+    ).toBeInTheDocument();
     expect(screen.getByText("Teal")).toBeInTheDocument();
   });
 
@@ -156,7 +200,9 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
   it("sends `selections` (v2) alongside legacy `selectedPresetIds` when generating a mix", () => {
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
-    fireEvent.click(screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ })
+    );
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -165,7 +211,7 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
           { presetId: "1", weight: 3 },
           { presetId: "2", weight: 3 },
         ],
-      }),
+      })
     );
   });
 
@@ -193,7 +239,12 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
           blendReport: {
             contractVersion: 2,
             facets: [
-              { facet: "story_spine", contributions: [{ presetId: "1", element: "spine element", kept: true }] },
+              {
+                facet: "story_spine",
+                contributions: [
+                  { presetId: "1", element: "spine element", kept: true },
+                ],
+              },
             ],
             contributionCoverage: { "1": 2, "2": 1 },
             minFacetsPerPreset: 2,
@@ -219,8 +270,12 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     renderWizard();
 
     expect(screen.getByTestId("vd-blend-report-panel")).toBeInTheDocument();
-    expect(screen.getByText("สไตล์ภาพ: Blended Neon Style")).toBeInTheDocument();
-    expect(screen.getByText(/preset 'Preset Two' ยังไม่ถูกผสมจริง/)).toBeInTheDocument();
+    expect(
+      screen.getByText("สไตล์ภาพ: Blended Neon Style")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/preset 'Preset Two' ยังไม่ถูกผสมจริง/)
+    ).toBeInTheDocument();
   });
 
   it("renders no blend-report chrome for a v1 (flag-off) draft response — shipped Mix and Match UI unchanged", () => {
@@ -237,7 +292,11 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
           cliffhangerStyle: "v1 cliff",
           characters: [{ name: "D", role: "Lead", description: "desc" }],
           visualBible: "v1 visual bible",
-          mixRecipe: { primaryFlavor: "1", supportingFlavors: ["2"], rationale: "v1 rationale" },
+          mixRecipe: {
+            primaryFlavor: "1",
+            supportingFlavors: ["2"],
+            rationale: "v1 rationale",
+          },
           warnings: [],
         },
         creditsUsed: 3,
@@ -249,24 +308,30 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     selectCategoryAndPresets(["1", "2"]);
 
     expect(screen.getByText("V1 Draft")).toBeInTheDocument();
-    expect(screen.queryByTestId("vd-blend-report-panel")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("vd-blend-report-panel")
+    ).not.toBeInTheDocument();
   });
 
   it("remembers appliedPresetId when a single preset is applied directly, and forwards it to create", () => {
     renderWizard();
 
     const titleLabel = screen.getByText("ชื่อซีรีย์ *");
-    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    const titleInput = titleLabel
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "My Series" } });
 
     selectCategoryAndPresets(["1"]);
     fireEvent.click(screen.getByRole("button", { name: /ใช้ Preset นี้/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "My Series", appliedPresetId: "1" }),
+      expect.objectContaining({ title: "My Series", appliedPresetId: "1" })
     );
   });
 
@@ -294,7 +359,9 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     renderWizard();
 
     const titleLabel = screen.getByText("ชื่อซีรีย์ *");
-    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    const titleInput = titleLabel
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "My Series 2" } });
 
     // First apply a SINGLE preset directly (sets appliedPresetId = "1")...
@@ -305,10 +372,15 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "My Series 2", appliedPresetId: undefined }),
+      expect.objectContaining({
+        title: "My Series 2",
+        appliedPresetId: undefined,
+      })
     );
   });
 });
@@ -321,13 +393,18 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSynthesizeMutationState = { data: undefined, isPending: false };
-    mockListGenrePresetsQuery.mockReturnValue({ data: { presets: [presetOne, presetTwo] }, isLoading: false });
+    mockListGenrePresetsQuery.mockReturnValue({
+      data: { presets: [presetOne, presetTwo] },
+      isLoading: false,
+    });
     mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
   });
 
   function getPremiseTextarea(): HTMLTextAreaElement {
     const label = screen.getByText(/โจทย์เรื่องที่อยากได้/);
-    return label.closest("div")?.querySelector("textarea") as HTMLTextAreaElement;
+    return label
+      .closest("div")
+      ?.querySelector("textarea") as HTMLTextAreaElement;
   }
 
   it("typing into the premise textarea updates form state and is clamped at 2,000 chars", () => {
@@ -341,28 +418,38 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
   it("handleCreate sends userPremise as a top-level field, omitted (undefined) when the textarea is empty", () => {
     renderWizard();
     const titleLabel = screen.getByText("ชื่อซีรีย์ *");
-    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    const titleInput = titleLabel
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Premise-less Series" } });
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ userPremise: undefined }),
+      expect.objectContaining({ userPremise: undefined })
     );
   });
 
   it("handleCreate sends the trimmed userPremise as a top-level field (sibling of bible, not nested)", () => {
     renderWizard();
     const titleLabel = screen.getByText("ชื่อซีรีย์ *");
-    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    const titleInput = titleLabel
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "Premise Series" } });
 
     const textarea = getPremiseTextarea();
-    fireEvent.change(textarea, { target: { value: "  ตำรวจสาวสืบคดีฆาตกรรม  " } });
+    fireEvent.change(textarea, {
+      target: { value: "  ตำรวจสาวสืบคดีฆาตกรรม  " },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
 
     const call = mockCreateMutate.mock.calls[0][0];
     expect(call.userPremise).toBe("ตำรวจสาวสืบคดีฆาตกรรม");
@@ -375,7 +462,9 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.change(textarea, { target: { value: "นักสืบไล่ล่าคดีปริศนา" } });
 
     selectCategoryAndPresets(["1", "2"]);
-    fireEvent.click(screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ })
+    );
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -384,24 +473,28 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
           { presetId: "1", weight: 3 },
           { presetId: "2", weight: 3 },
         ],
-      }),
+      })
     );
   });
 
   it("handleSynthesizePreset omits (undefined) userPremise when the textarea is empty", () => {
     renderWizard();
     selectCategoryAndPresets(["1", "2"]);
-    fireEvent.click(screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ })
+    );
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ userPremise: undefined }),
+      expect.objectContaining({ userPremise: undefined })
     );
   });
 
   it("no-clobber: applying a single preset never touches form.userPremise", () => {
     renderWizard();
     const titleLabel = screen.getByText("ชื่อซีรีย์ *");
-    const titleInput = titleLabel.closest("div")?.querySelector("input") as HTMLInputElement;
+    const titleInput = titleLabel
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
     fireEvent.change(titleInput, { target: { value: "No Clobber Series" } });
 
     const textarea = getPremiseTextarea();
@@ -411,10 +504,12 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.click(screen.getByRole("button", { name: /ใช้ Preset นี้/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ userPremise: "รักษาโจทย์เดิมไว้เสมอ" }),
+      expect.objectContaining({ userPremise: "รักษาโจทย์เดิมไว้เสมอ" })
     );
   });
 
@@ -446,16 +541,20 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
-    fireEvent.click(screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ userPremise: "โจทย์นี้ต้องไม่หาย" }),
+      expect.objectContaining({ userPremise: "โจทย์นี้ต้องไม่หาย" })
     );
   });
 
   it("shows the premise-primary badge in the mix panel only when a premise is present", () => {
     renderWizard();
-    expect(screen.queryByText(/ใช้โจทย์ของคุณเป็นแกนหลัก/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/ใช้โจทย์ของคุณเป็นแกนหลัก/)
+    ).not.toBeInTheDocument();
 
     const textarea = getPremiseTextarea();
     fireEvent.change(textarea, { target: { value: "มีโจทย์แล้ว" } });

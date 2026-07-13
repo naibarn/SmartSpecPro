@@ -14,7 +14,14 @@
  * here as well would produce a double header.
  */
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link, useLocation } from "wouter";
 import {
   AlertTriangle,
@@ -51,12 +58,15 @@ interface VerticalDramaShellContextValue {
   openCreateWizard: () => void;
 }
 
-const VerticalDramaShellContext = createContext<VerticalDramaShellContextValue | null>(null);
+const VerticalDramaShellContext =
+  createContext<VerticalDramaShellContextValue | null>(null);
 
 export function useVerticalDramaShell(): VerticalDramaShellContextValue {
   const ctx = useContext(VerticalDramaShellContext);
   if (!ctx) {
-    throw new Error("useVerticalDramaShell must be used within a VerticalDramaShell");
+    throw new Error(
+      "useVerticalDramaShell must be used within a VerticalDramaShell"
+    );
   }
   return ctx;
 }
@@ -119,13 +129,13 @@ export function VerticalDramaShell({
 
   const listQuery = trpc.verticalDramaSeries.list.useQuery(
     { search: search.trim() || undefined },
-    { staleTime: 30_000 },
+    { staleTime: 30_000 }
   );
   const series = (listQuery.data?.series ?? []) as SidebarSeriesItem[];
 
   const contextValue = useMemo<VerticalDramaShellContextValue>(
     () => ({ openCreateWizard: () => setWizardOpen(true) }),
-    [],
+    []
   );
 
   function handleSelectSeries(seriesId: string) {
@@ -159,13 +169,24 @@ export function VerticalDramaShell({
             />
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={pickCopy(lang, verticalDramaCopy.sidebarSearchPlaceholder)}
-              aria-label={pickCopy(lang, verticalDramaCopy.sidebarSearchPlaceholder)}
+              onChange={e => setSearch(e.target.value)}
+              placeholder={pickCopy(
+                lang,
+                verticalDramaCopy.sidebarSearchPlaceholder
+              )}
+              aria-label={pickCopy(
+                lang,
+                verticalDramaCopy.sidebarSearchPlaceholder
+              )}
               className="h-9 bg-white pl-9"
             />
           </div>
-          <Button type="button" size="sm" className="shrink-0 gap-1.5" onClick={() => setWizardOpen(true)}>
+          <Button
+            type="button"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            onClick={() => setWizardOpen(true)}
+          >
             <Plus className="h-4 w-4" aria-hidden="true" />
             {pickCopy(lang, verticalDramaCopy.sidebarNewSeries)}
           </Button>
@@ -175,10 +196,15 @@ export function VerticalDramaShell({
       <div className="min-h-0 flex-1 basis-0 overflow-y-auto overscroll-contain">
         <div className="space-y-1.5 p-2">
           {listQuery.isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
+            Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            ))
           ) : listQuery.isError ? (
             <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
-              <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden="true" />
+              <AlertTriangle
+                className="h-4 w-4 text-destructive"
+                aria-hidden="true"
+              />
               {pickCopy(lang, verticalDramaCopy.sidebarError)}
             </div>
           ) : series.length === 0 ? (
@@ -186,11 +212,15 @@ export function VerticalDramaShell({
               {pickCopy(lang, verticalDramaCopy.sidebarEmpty)}
             </div>
           ) : (
-            series.map((item) => {
+            series.map(item => {
               const isSelected = item.id === currentSeriesId;
               const statusLabel =
-                seriesStatusCopy[item.status as VerticalDramaSeriesStatus] != null
-                  ? pickCopy(lang, seriesStatusCopy[item.status as VerticalDramaSeriesStatus])
+                seriesStatusCopy[item.status as VerticalDramaSeriesStatus] !=
+                null
+                  ? pickCopy(
+                      lang,
+                      seriesStatusCopy[item.status as VerticalDramaSeriesStatus]
+                    )
                   : item.status;
               return (
                 <button
@@ -199,7 +229,9 @@ export function VerticalDramaShell({
                   onClick={() => handleSelectSeries(item.id)}
                   className={cn(
                     "flex w-full items-start gap-2 rounded-lg border p-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    isSelected ? "border-cyan-300 bg-cyan-50" : "border-transparent bg-white hover:bg-slate-50",
+                    isSelected
+                      ? "border-cyan-300 bg-cyan-50"
+                      : "border-transparent bg-white hover:bg-slate-50"
                   )}
                 >
                   {item.thumbnailUrl ? (
@@ -214,24 +246,36 @@ export function VerticalDramaShell({
                       aria-hidden="true"
                       className="flex h-10 w-7 shrink-0 items-center justify-center rounded bg-slate-100"
                     >
-                      <Clapperboard className="h-3.5 w-3.5 text-slate-300" aria-hidden="true" />
+                      <Clapperboard
+                        className="h-3.5 w-3.5 text-slate-300"
+                        aria-hidden="true"
+                      />
                     </div>
                   )}
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
                     <span className="flex items-center gap-2">
                       <span
-                        className={cn("h-2 w-2 shrink-0 rounded-full", statusDotClass(item.status))}
+                        className={cn(
+                          "h-2 w-2 shrink-0 rounded-full",
+                          statusDotClass(item.status)
+                        )}
                         aria-hidden="true"
                       />
-                      <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{item.title}</span>
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-900">
+                        {item.title}
+                      </span>
                       {item.pendingApprovalCount > 0 && (
-                        <Badge variant="destructive" className="shrink-0 px-1.5 py-0 text-[10px]">
+                        <Badge
+                          variant="destructive"
+                          className="shrink-0 px-1.5 py-0 text-[10px]"
+                        >
                           {item.pendingApprovalCount}
                         </Badge>
                       )}
                     </span>
                     <span className="truncate pl-4 text-xs text-muted-foreground">
-                      {statusLabel} · EP {item.nextEpisodeNumber}/{item.episodeCount}
+                      {statusLabel} · SUB-EP {item.nextEpisodeNumber}/
+                      {item.episodeCount}
                     </span>
                   </span>
                 </button>
@@ -248,10 +292,18 @@ export function VerticalDramaShell({
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
         <header className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
           <div className="mx-auto flex w-full max-w-none items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-            <Button asChild type="button" variant="ghost" size="sm" className="shrink-0 gap-1.5">
+            <Button
+              asChild
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="shrink-0 gap-1.5"
+            >
               <Link href="/dashboard">
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                <span className="hidden sm:inline">{pickCopy(lang, verticalDramaCopy.backToDashboard)}</span>
+                <span className="hidden sm:inline">
+                  {pickCopy(lang, verticalDramaCopy.backToDashboard)}
+                </span>
               </Link>
             </Button>
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border bg-primary/10 text-primary">
@@ -268,7 +320,7 @@ export function VerticalDramaShell({
               size="sm"
               variant="outline"
               className="shrink-0 gap-1.5 xl:hidden"
-              onClick={() => setIsMobilePanelOpen((v) => !v)}
+              onClick={() => setIsMobilePanelOpen(v => !v)}
               aria-expanded={isMobilePanelOpen}
             >
               <Menu className="h-4 w-4" aria-hidden="true" />
@@ -283,7 +335,7 @@ export function VerticalDramaShell({
               "grid grid-cols-1 gap-4",
               isSidebarCollapsed
                 ? "xl:grid-cols-[3.25rem_minmax(0,1fr)]"
-                : "xl:grid-cols-[18rem_minmax(0,1fr)] 2xl:grid-cols-[20rem_minmax(0,1fr)]",
+                : "xl:grid-cols-[18rem_minmax(0,1fr)] 2xl:grid-cols-[20rem_minmax(0,1fr)]"
             )}
           >
             {/* Tablet-portrait / mobile: collapsible strip above the main content, never an overlay */}
@@ -324,7 +376,7 @@ export function VerticalDramaShell({
         open={wizardOpen}
         lang={lang}
         onOpenChange={setWizardOpen}
-        onCreated={(seriesId) => {
+        onCreated={seriesId => {
           setWizardOpen(false);
           void listQuery.refetch();
           setLocation(verticalDramaRoutes.seriesDetail(seriesId));

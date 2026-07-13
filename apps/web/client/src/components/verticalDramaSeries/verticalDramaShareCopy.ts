@@ -27,7 +27,7 @@ export function useVerticalDramaShareLang(): VerticalDramaShareLang {
 /** Pick a bilingual string for the active language — mirrors `verticalDramaCopy.ts`'s `pickCopy` exactly. */
 export function pickCopy<T>(
   lang: VerticalDramaShareLang,
-  value: { th: T; en: T },
+  value: { th: T; en: T }
 ): T {
   return lang === "th" ? value.th : value.en;
 }
@@ -42,7 +42,8 @@ export function pickCopy<T>(
  * `VerticalDramaSharedSeriesPage.tsx`). Verified in sync by
  * `VerticalDramaSharedSeriesPage.test.tsx`.
  */
-export const SHARE_LINK_GENERIC_ERROR_MESSAGE = "ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว";
+export const SHARE_LINK_GENERIC_ERROR_MESSAGE =
+  "ลิงก์ไม่ถูกต้องหรือหมดอายุแล้ว";
 
 export const verticalDramaShareCopy = {
   /* ---- Owner side: VerticalDramaSeriesShareDialog ---- */
@@ -58,7 +59,10 @@ export const verticalDramaShareCopy = {
   createButton: { th: "สร้างลิงก์", en: "Create link" },
   creatingButton: { th: "กำลังสร้าง…", en: "Creating…" },
   createSuccessToast: { th: "สร้างลิงก์แชร์สำเร็จ", en: "Share link created" },
-  createErrorFallback: { th: "สร้างลิงก์ไม่สำเร็จ", en: "Failed to create share link" },
+  createErrorFallback: {
+    th: "สร้างลิงก์ไม่สำเร็จ",
+    en: "Failed to create share link",
+  },
   capReachedHint: {
     th: "มีลิงก์ที่ใช้งานอยู่ครบ 5 ลิงก์แล้ว — เพิกถอนลิงก์เก่าก่อนสร้างใหม่",
     en: "You already have 5 active links — revoke one before creating another.",
@@ -89,13 +93,22 @@ export const verticalDramaShareCopy = {
   revokeConfirmButton: { th: "ยืนยันเพิกถอน", en: "Confirm revoke" },
   revokeCancel: { th: "ยกเลิก", en: "Cancel" },
   revokeSuccessToast: { th: "เพิกถอนลิงก์แล้ว", en: "Link revoked" },
-  revokeErrorFallback: { th: "เพิกถอนลิงก์ไม่สำเร็จ", en: "Failed to revoke link" },
+  revokeErrorFallback: {
+    th: "เพิกถอนลิงก์ไม่สำเร็จ",
+    en: "Failed to revoke link",
+  },
   closeButton: { th: "ปิด", en: "Close" },
 
   /* ---- Public viewer: VerticalDramaSharedSeriesPage ---- */
-  viewerBanner: { th: "มุมมองผู้เยี่ยมชม — อ่านอย่างเดียว", en: "Visitor view — read only" },
+  viewerBanner: {
+    th: "มุมมองผู้เยี่ยมชม — อ่านอย่างเดียว",
+    en: "Visitor view — read only",
+  },
   viewerLoading: { th: "กำลังโหลด…", en: "Loading…" },
-  notFoundTitle: { th: SHARE_LINK_GENERIC_ERROR_MESSAGE, en: "This link is invalid or has expired" },
+  notFoundTitle: {
+    th: SHARE_LINK_GENERIC_ERROR_MESSAGE,
+    en: "This link is invalid or has expired",
+  },
   notFoundBody: {
     th: "ตรวจสอบลิงก์อีกครั้ง หรือขอลิงก์ใหม่จากเจ้าของซีรีส์",
     en: "Double-check the link, or ask the series owner for a new one.",
@@ -104,13 +117,19 @@ export const verticalDramaShareCopy = {
   loglineLabel: { th: "โลกไลน์", en: "Logline" },
   mainPlotLabel: { th: "โครงเรื่องหลัก", en: "Main plot" },
   seasonArcLabel: { th: "เส้นเรื่องซีซั่น", en: "Season arc" },
-  episodeCountLabel: { th: "จำนวนตอนที่วางแผน", en: "Planned episodes" },
-  episodesTitle: { th: "รายการตอน", en: "Episodes" },
-  episodesEmpty: { th: "ยังไม่มีตอน", en: "No episodes yet" },
-  episodeFallbackTitle: { th: "ตอนที่", en: "Episode" },
+  episodeCountLabel: {
+    th: "จำนวนตอนย่อยที่วางแผน",
+    en: "Planned Sub-episode count",
+  },
+  episodesTitle: { th: "รายการตอนย่อย", en: "Sub-episodes" },
+  episodesEmpty: { th: "ยังไม่มีตอนย่อย", en: "No Sub-episodes yet" },
+  episodeFallbackTitle: { th: "ตอนย่อยที่", en: "Sub-episode" },
   episodeStatusDraft: { th: "ร่าง", en: "Draft" },
   episodeStatusScripted: { th: "มีบท", en: "Scripted" },
   episodeStatusVideo: { th: "มีวิดีโอ", en: "Video" },
   dialogueExpandLabel: { th: "ดูบทพูด", en: "View dialogue" },
-  dialogueEmpty: { th: "ยังไม่มีบทพูดสำหรับตอนนี้", en: "No dialogue yet for this episode" },
+  dialogueEmpty: {
+    th: "ยังไม่มีบทพูดสำหรับตอนย่อยนี้",
+    en: "No dialogue yet for this Sub-episode",
+  },
 } as const;

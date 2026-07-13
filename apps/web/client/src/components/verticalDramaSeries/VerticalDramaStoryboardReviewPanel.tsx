@@ -181,17 +181,17 @@ export interface VerticalDramaStoryboardReviewPanelProps {
 const COPY = {
   panelTitle: { th: "รีวิวสตอรีบอร์ด (ซีรีย์แนวตั้ง)", en: "Storyboard Review (Vertical Drama)" },
   crumbSeries: { th: "ซีรีย์", en: "Series" },
-  crumbEpisode: { th: "ตอน", en: "Episode" },
+  crumbEpisode: { th: "ตอนย่อย", en: "Sub-episode" },
   crumbReview: { th: "รีวิวสตอรีบอร์ด", en: "Storyboard Review" },
   back: { th: "กลับไปที่เวิร์กสเปซซีรีย์", en: "Back to series workspace" },
   loading: { th: "กำลังโหลดข้อมูลรีวิว…", en: "Loading review metadata…" },
   errorTitle: { th: "โหลดข้อมูลไม่สำเร็จ", en: "Failed to load" },
   emptyTitle: { th: "ไม่พบข้อมูลซีรีย์แนวตั้ง", en: "No vertical-drama metadata" },
   emptyBody: {
-    th: "รีวิวนี้ไม่มีข้อมูลลิเนจของซีรีย์แนวตั้ง — เปิดใหม่จากตอนที่อนุมัติแล้วเพื่อกู้คืน",
-    en: "This review has no vertical-drama lineage — re-open it from the approved episode to recover.",
+    th: "รีวิวนี้ไม่มีข้อมูลลิเนจของซีรีย์แนวตั้ง — เปิดใหม่จากตอนย่อยที่อนุมัติแล้วเพื่อกู้คืน",
+    en: "This review has no vertical-drama lineage — re-open it from the approved Sub-episode to recover.",
   },
-  episodeSummary: { th: "สรุปตอน", en: "Episode summary" },
+  episodeSummary: { th: "สรุปตอนย่อย", en: "Sub-episode summary" },
   motionMode: { th: "โหมดการเคลื่อนไหว", en: "Motion mode" },
   voiceCasting: { th: "การแคสต์เสียง", en: "Voice casting" },
   subtitleSafeArea: { th: "พื้นที่ปลอดภัยของซับไตเติล", en: "Subtitle safe-area" },
@@ -501,7 +501,7 @@ export function VerticalDramaStoryboardReviewPanel({
     <section className={cn("space-y-6", className)} aria-label={t(COPY.panelTitle)}>
       {/* Breadcrumb + back link */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <nav aria-label="Series › Episode › Storyboard Review" className="flex items-center text-sm text-muted-foreground">
+        <nav aria-label="Series › Sub-episode › Storyboard Review" className="flex items-center text-sm text-muted-foreground">
           <ol className="flex flex-wrap items-center gap-1">
             <li className="flex items-center gap-1">
               {routes ? (

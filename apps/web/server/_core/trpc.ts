@@ -15,11 +15,26 @@ const t = initTRPC.context<TrpcContext>().create({
     // traces, env, or internal paths) — only the id is added.
     const traceId = getTraceId() ?? ctx?.req?.requestId ?? null;
 
+    // Surface a Retry-After hint (in seconds) for rate-limit (429) errors so
+    // the client can back off precisely instead of hammering. Call sites that
+    // map an upstream 429 (e.g. media.fetchTaskResult / media.listAllTasks)
+    // attach it via `new TRPCError({ cause: { retryAfterSeconds } })`; tRPC
+    // copies plain-object cause fields onto error.cause, so we read it back
+    // here and expose only the number. Absent/invalid → field omitted.
+    const cause = error.cause as { retryAfterSeconds?: unknown } | undefined;
+    const retryAfter =
+      typeof cause?.retryAfterSeconds === "number"
+      && Number.isFinite(cause.retryAfterSeconds)
+      && cause.retryAfterSeconds > 0
+        ? cause.retryAfterSeconds
+        : undefined;
+
     return {
       ...shape,
       data: {
         ...shape.data,
         traceId,
+        ...(retryAfter != null ? { retryAfter } : {}),
       },
     };
   },
