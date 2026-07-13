@@ -13,6 +13,7 @@
 import { describe, expect, it } from "vitest";
 import { buildConcatFfmpegArgs } from "../verticalDramaEpisodeVideoAssembly";
 import {
+  buildAssBurnFfmpegArgs,
   buildAssSubtitleFile,
   buildBannerInputArgs,
   buildBgmMixFfmpegArgs,
@@ -20,6 +21,7 @@ import {
   buildCreditsAssFile,
   buildCreditsBurnFfmpegArgs,
   buildFinalRenderFfmpegArgs,
+  buildProductionOverlaysAssFile,
   buildSubtitlesFilterOption,
   buildWatermarkInputArgs,
   escapeFfmpegFilterPath,
@@ -30,7 +32,9 @@ import {
   splitCreditsRollLines,
   validateResolvedBanners,
   VD_CREDITS_ROLL_WINDOW_SEC,
+  VD_PRODUCTION_OVERLAY_MAX_COUNT,
   VD_TEXT_OVERLAY_ASS_KINDS,
+  type ProductionEpisodeOverlayItem,
   type ResolvedBanner,
   type ResolvedWatermarkImage,
   type VdTextOverlayAssEvent,
@@ -1378,5 +1382,251 @@ describe("buildCreditsBurnFfmpegArgs", () => {
   it("ends with the output path as the final argv element", () => {
     const args = buildCreditsBurnFfmpegArgs(BASE_INPUT);
     expect(args[args.length - 1]).toBe("/tmp/production-episode-credits.mp4");
+  });
+});
+
+/**
+ * Phase C-2 (`planning/vertical-drama-production-render/plan.md` Phase C,
+ * "overlays generalization") — the Production Episode timed text overlays
+ * `.ass` builder, plus the general N-pass `.ass` burn-in argv builder used to
+ * fold it with the Phase C-1 credits pass. Pure string/array assertions only,
+ * same convention as every other describe block in this file.
+ */
+describe("buildProductionOverlaysAssFile", () => {
+  const OPTS = { playResX: 1080, playResY: 1920 };
+
+  it("emits the mapped style line ONLY for styles actually used by a surviving overlay", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 5, durationSeconds: 3, text: "Hello", style: "lower_third" }],
+      100,
+      OPTS
+    );
+    expect(ass).toContain(
+      "Style: VdProdOverlayLowerThird,Noto Sans Thai,52,&H00FFFFFF,&H000000FF,&H80000000,&HA0000000,1,0,0,0,100,100,0,0,3,2,0,2,90,90,230,1"
+    );
+    expect(ass).not.toContain("VdProdOverlayCentered");
+    expect(ass).not.toContain("VdProdOverlayTopBar");
+  });
+
+  it("emits the mapped style lines for top_bar and centered too", () => {
+    const topBar = buildProductionOverlaysAssFile(
+      [{ atSeconds: 1, durationSeconds: 2, text: "A", style: "top_bar" }],
+      100,
+      OPTS
+    );
+    expect(topBar).toContain(
+      "Style: VdProdOverlayTopBar,Noto Sans Thai,50,&H00FFFFFF,&H000000FF,&H80000000,&HA0000000,1,0,0,0,100,100,0,0,3,2,0,8,90,90,130,1"
+    );
+
+    const centered = buildProductionOverlaysAssFile(
+      [{ atSeconds: 1, durationSeconds: 2, text: "B", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(centered).toContain(
+      "Style: VdProdOverlayCentered,Noto Sans Thai,56,&H00FFFFFF,&H000000FF,&H80000000,&HA0000000,1,0,0,0,100,100,0,0,3,2,0,5,90,90,160,1"
+    );
+  });
+
+  it("builds one Dialogue event per overlay, Start=atSeconds, End=atSeconds+durationSeconds", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 5, durationSeconds: 3, text: "Hello", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(ass).toContain(
+      "Dialogue: 0,0:00:05.00,0:00:08.00,VdProdOverlayCentered,,0,0,0,,Hello"
+    );
+    expect(ass.match(/Dialogue:/g)?.length).toBe(1);
+  });
+
+  it("clamps End to the video's own duration when atSeconds+durationSeconds would exceed it", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 95, durationSeconds: 10, text: "Near the end", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(ass).toContain(
+      "Dialogue: 0,0:01:35.00,0:01:40.00,VdProdOverlayCentered,,0,0,0,,Near the end"
+    );
+  });
+
+  it("skips an overlay whose atSeconds is AT the video's own duration", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 100, durationSeconds: 3, text: "Too late", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(ass).not.toContain("Dialogue:");
+  });
+
+  it("skips an overlay whose atSeconds is AFTER the video's own duration", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 150, durationSeconds: 3, text: "Way too late", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(ass).not.toContain("Dialogue:");
+  });
+
+  it("skips an overlay whose text is blank after trimming", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 5, durationSeconds: 3, text: "   ", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(ass).not.toContain("Dialogue:");
+  });
+
+  it("escapes braces and newlines the same way every other Dialogue builder in this file does", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 1, durationSeconds: 2, text: "Say {hi}\nnow", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(ass).toContain("Say ｛hi｝\\Nnow");
+  });
+
+  it("sorts events by atSeconds regardless of input order", () => {
+    // NB: overlay texts deliberately avoid substrings that also occur in the
+    // ASS header (e.g. "Second" collides with the "SecondaryColour" Format
+    // field), so indexOf() locates the Dialogue events, not the header.
+    const overlays: ProductionEpisodeOverlayItem[] = [
+      { atSeconds: 10, durationSeconds: 2, text: "OverlayLater", style: "centered" },
+      { atSeconds: 2, durationSeconds: 2, text: "OverlayFirst", style: "centered" },
+    ];
+    const ass = buildProductionOverlaysAssFile(overlays, 100, OPTS);
+    expect(ass.indexOf("OverlayFirst")).toBeGreaterThan(-1);
+    expect(ass.indexOf("OverlayLater")).toBeGreaterThan(-1);
+    expect(ass.indexOf("OverlayFirst")).toBeLessThan(ass.indexOf("OverlayLater"));
+  });
+
+  it("returns a header-only file (no Dialogue events, no Style lines) for an EMPTY overlays array", () => {
+    const ass = buildProductionOverlaysAssFile([], 100, OPTS);
+    expect(ass).toContain("[Script Info]");
+    expect(ass).toContain("[Events]");
+    expect(ass).not.toContain("Dialogue:");
+    // Line-anchored so the "WrapStyle:" header field does not count as a
+    // "Style:" definition line (there must be no real `Style:` line).
+    expect(ass).not.toMatch(/^Style:/m);
+  });
+
+  it("omitting overlays is the same as an empty array — no Dialogue events", () => {
+    const withEmpty = buildProductionOverlaysAssFile([], 100, OPTS);
+    expect(withEmpty).not.toContain("Dialogue:");
+  });
+
+  it("records fontsDir as an informational comment line, same convention as buildAssSubtitleFile/buildCreditsAssFile", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 1, durationSeconds: 2, text: "A", style: "centered" }],
+      100,
+      { ...OPTS, fontsDir: "/opt/fonts/thai" }
+    );
+    expect(ass).toContain(
+      "; Fonts directory (resolved by caller; not embedded): /opt/fonts/thai"
+    );
+  });
+
+  it("emits PlayResX/PlayResY/WrapStyle header fields", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: 1, durationSeconds: 2, text: "A", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(ass).toContain("PlayResX: 1080");
+    expect(ass).toContain("PlayResY: 1920");
+    expect(ass).toContain("WrapStyle: 0");
+  });
+
+  it("clamps a defensively-negative atSeconds to 0 rather than producing an invalid timestamp", () => {
+    const ass = buildProductionOverlaysAssFile(
+      [{ atSeconds: -5, durationSeconds: 3, text: "Clamped", style: "centered" }],
+      100,
+      OPTS
+    );
+    expect(ass).toContain(
+      "Dialogue: 0,0:00:00.00,0:00:03.00,VdProdOverlayCentered,,0,0,0,,Clamped"
+    );
+  });
+});
+
+describe("buildAssBurnFfmpegArgs", () => {
+  it("chains a SINGLE pass as one subtitles= filter — same argv shape as buildCreditsBurnFfmpegArgs", () => {
+    const args = buildAssBurnFfmpegArgs({
+      videoPath: "/tmp/production-episode.mp4",
+      passes: [{ assPath: "/tmp/overlays.ass" }],
+      output: "/tmp/production-episode-overlays.mp4",
+    });
+    expect(args.slice(0, 3)).toEqual(["-y", "-i", "/tmp/production-episode.mp4"]);
+    const vfIndex = args.indexOf("-vf");
+    expect(vfIndex).toBeGreaterThan(-1);
+    expect(args[vfIndex + 1]).toBe("subtitles=filename='/tmp/overlays.ass'");
+    expect(args).not.toContain("-filter_complex");
+
+    // Same shape buildCreditsBurnFfmpegArgs would produce for an equivalent
+    // single-pass input.
+    const creditsShape = buildCreditsBurnFfmpegArgs({
+      videoPath: "/tmp/production-episode.mp4",
+      credits: { assPath: "/tmp/overlays.ass" },
+      output: "/tmp/production-episode-overlays.mp4",
+    });
+    expect(args).toEqual(creditsShape);
+  });
+
+  it("chains TWO passes as comma-joined subtitles= filters inside ONE -vf value (one re-encode)", () => {
+    const args = buildAssBurnFfmpegArgs({
+      videoPath: "/tmp/production-episode.mp4",
+      passes: [
+        { assPath: "/tmp/overlays.ass" },
+        { assPath: "/tmp/credits.ass", fontsDir: "/opt/fonts/thai" },
+      ],
+      output: "/tmp/production-episode-combined.mp4",
+    });
+    const vfIndex = args.indexOf("-vf");
+    expect(args[vfIndex + 1]).toBe(
+      "subtitles=filename='/tmp/overlays.ass',subtitles=filename='/tmp/credits.ass':fontsdir='/opt/fonts/thai'"
+    );
+    // Exactly ONE -i (single re-encode over one input) and ONE -vf.
+    expect(args.filter(a => a === "-i").length).toBe(1);
+    expect(args.filter(a => a === "-vf").length).toBe(1);
+  });
+
+  it("reuses the EXACT SAME subtitles= option string buildSubtitlesFilterOption produces for each pass", () => {
+    const pass = { assPath: "/tmp/credits.ass", fontsDir: "/opt/fonts/thai" };
+    const args = buildAssBurnFfmpegArgs({
+      videoPath: "/tmp/in.mp4",
+      passes: [pass],
+      output: "/tmp/out.mp4",
+    });
+    const vfIndex = args.indexOf("-vf");
+    expect(args[vfIndex + 1]).toBe(`subtitles=${buildSubtitlesFilterOption(pass)}`);
+  });
+
+  it("RE-ENCODES video (libx264) but stream-copies audio (-c:a copy)", () => {
+    const args = buildAssBurnFfmpegArgs({
+      videoPath: "/tmp/in.mp4",
+      passes: [{ assPath: "/tmp/a.ass" }],
+      output: "/tmp/out.mp4",
+    });
+    const cvIndex = args.indexOf("-c:v");
+    expect(args[cvIndex + 1]).toBe("libx264");
+    const caIndex = args.indexOf("-c:a");
+    expect(args[caIndex + 1]).toBe("copy");
+  });
+
+  it("ends with the output path as the final argv element", () => {
+    const args = buildAssBurnFfmpegArgs({
+      videoPath: "/tmp/in.mp4",
+      passes: [{ assPath: "/tmp/a.ass" }],
+      output: "/tmp/out.mp4",
+    });
+    expect(args[args.length - 1]).toBe("/tmp/out.mp4");
+  });
+});
+
+describe("VD_PRODUCTION_OVERLAY_MAX_COUNT", () => {
+  it("is a positive, finite sanity cap", () => {
+    expect(VD_PRODUCTION_OVERLAY_MAX_COUNT).toBeGreaterThan(0);
+    expect(Number.isFinite(VD_PRODUCTION_OVERLAY_MAX_COUNT)).toBe(true);
   });
 });

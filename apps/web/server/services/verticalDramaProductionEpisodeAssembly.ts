@@ -80,6 +80,21 @@
  * `credits` (every pre-existing caller) is byte-identical to before this
  * wave: no extra ffmpeg pass. `credits` is persisted onto each group's state
  * the SAME way `bgm` is (see `VerticalDramaProductionEpisodeGroupStateWithBgm`).
+ *
+ * Phase C-2 (this same plan.md Phase C, "overlays generalization") adds a
+ * THIRD, independently-optional post-pass — an UNLIMITED (caller-capped),
+ * caller-authored list of ad-hoc timed text overlays
+ * (`{atSeconds, durationSeconds, text, style}`), also attached at the
+ * PRODUCTION EPISODE level. When BOTH `overlays` and `credits` are supplied
+ * for the SAME call, `runProductionEpisodeGroupJob` FOLDS them into ONE
+ * additional ffmpeg re-encode (chaining two `subtitles=` filter stages via
+ * the new `buildAssBurnFfmpegArgs`) instead of two sequential re-encodes; a
+ * call with `credits` but no `overlays` keeps using the ORIGINAL,
+ * UNTOUCHED `buildCreditsBurnFfmpegArgs` call from Phase C-1. Omitted
+ * `overlays` (and an EMPTY array — every pre-existing caller) is
+ * byte-identical to before this wave: no extra ffmpeg pass. `overlays` is
+ * persisted onto each group's state the SAME way `bgm`/`credits` are (see
+ * `VerticalDramaProductionEpisodeGroupStateWithBgm`).
  */
 
 import { randomUUID } from "crypto";
@@ -112,22 +127,27 @@ import {
 // `ProductionEpisodeRenderOptions` below. Phase B-1
 // (`planning/vertical-drama-production-render/plan.md` Phase B) additionally
 // imports the pure `buildBgmMixFfmpegArgs` graph builder for the BGM-mix
-// post-pass, and Phase C-1 (Phase C) the pure `buildCreditsAssFile`/
-// `buildCreditsBurnFfmpegArgs` graph builders for the credits-roll post-pass
-// (both `runProductionEpisodeGroupJob` below). All are from a pure,
-// side-effect-free sibling service (only imports `zod` +
-// `@shared/hyperframes/runtimeApiSchemas` + `@shared/verticalDramaSeries/adBannerPresets`
-// — no `../storage`, no ffmpeg spawn, no DB), so a normal static import here
-// carries none of `verticalDramaEpisodeVideoAssembly.ts`'s own "heavy,
-// lazily-imported-by-the-router" posture — this whole SERVICE module is
-// already lazily imported by the router (see `verticalDramaSeries.ts`'s own
-// `assembleProductionEpisodes` doc comment), so nothing downstream is at risk
-// either way.
+// post-pass, Phase C-1 (Phase C) the pure `buildCreditsAssFile`/
+// `buildCreditsBurnFfmpegArgs` graph builders for the credits-roll post-pass,
+// and Phase C-2 (this same plan.md Phase C, "overlays generalization") the
+// pure `buildProductionOverlaysAssFile`/`buildAssBurnFfmpegArgs` graph
+// builders for the timed-overlays post-pass (all `runProductionEpisodeGroupJob`
+// below). All are from a pure, side-effect-free sibling service (only
+// imports `zod` + `@shared/hyperframes/runtimeApiSchemas` +
+// `@shared/verticalDramaSeries/adBannerPresets` — no `../storage`, no ffmpeg
+// spawn, no DB), so a normal static import here carries none of
+// `verticalDramaEpisodeVideoAssembly.ts`'s own "heavy, lazily-imported-by-the-
+// router" posture — this whole SERVICE module is already lazily imported by
+// the router (see `verticalDramaSeries.ts`'s own `assembleProductionEpisodes`
+// doc comment), so nothing downstream is at risk either way.
 import {
+  buildAssBurnFfmpegArgs,
   buildBgmMixFfmpegArgs,
   buildCreditsAssFile,
   buildCreditsBurnFfmpegArgs,
+  buildProductionOverlaysAssFile,
   type CaptionPresetId,
+  type ProductionEpisodeOverlayItem,
   type SubtitleFontSizeId,
 } from "./verticalDramaFinalRenderGraph";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
@@ -247,16 +267,18 @@ export interface ProductionEpisodeCreditsOptions {
  * that module is outside THIS change's assigned file scope for this working
  * session (a concurrent session may be editing it); every value of this
  * WIDER local type still structurally satisfies the shared one (`bgm`/
- * `credits` are only ever ADDED optional fields), so it round-trips through
- * the `productionEpisodesManifest` JSONB column and every existing
- * shared-type-typed consumer completely unchanged. A natural follow-up is to
- * fold `bgm`/`credits` into the shared type directly, alongside
- * `renderOptions`.
+ * `credits`/`overlays` are only ever ADDED optional fields), so it
+ * round-trips through the `productionEpisodesManifest` JSONB column and
+ * every existing shared-type-typed consumer completely unchanged. A natural
+ * follow-up is to fold `bgm`/`credits`/`overlays` into the shared type
+ * directly, alongside `renderOptions`.
  */
 export interface VerticalDramaProductionEpisodeGroupStateWithBgm
   extends VerticalDramaProductionEpisodeGroupState {
   bgm?: ProductionEpisodeBgmOptions;
   credits?: ProductionEpisodeCreditsOptions;
+  /** Phase C-2 — see this file's own header doc comment. */
+  overlays?: ProductionEpisodeOverlayItem[];
 }
 
 /** Local mirror of `VerticalDramaProductionEpisodesManifest` whose
@@ -759,6 +781,14 @@ async function runProductionEpisodeGroupJob(args: {
    *  upload. Omitted (every pre-existing caller) skips that pass entirely —
    *  byte-identical to before this wave. */
   credits?: ProductionEpisodeCreditsOptions;
+  /** Phase C-2 — an UNLIMITED (caller-capped), caller-authored list of
+   *  ad-hoc timed text overlays, burned onto this group's OWN (post-BGM, if
+   *  any) video. FOLDED into the SAME ffmpeg pass as `credits` (one
+   *  re-encode) when BOTH are supplied for this call — see this function's
+   *  own credits/overlays post-pass block below. Omitted (or an EMPTY array
+   *  — every pre-existing caller) skips this pass entirely — byte-identical
+   *  to before this wave. */
+  overlays?: ProductionEpisodeOverlayItem[];
 }): Promise<void> {
   const {
     owner,
@@ -776,6 +806,7 @@ async function runProductionEpisodeGroupJob(args: {
     renderSubEpisodeWithOptionsFn,
     bgm,
     credits,
+    overlays,
   } = args;
 
   const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-production-ep-"));
@@ -893,20 +924,76 @@ async function runProductionEpisodeGroupJob(args: {
     // — credits roll, a SECOND, SELF-CONTAINED POST-PASS run AFTER the bgm
     // post-pass above, over whatever `finalOutputPath` currently points to
     // (the plain concat output, or the bgm-mixed output when `bgm` was ALSO
-    // supplied — "the (post-BGM, if any) Production Episode video"). Omitted
-    // `credits` (every pre-existing caller) never enters this branch —
-    // byte-identical to before this wave. Reuses the SAME
+    // supplied — "the (post-BGM, if any) Production Episode video"). Phase
+    // C-2 (this same plan.md Phase C, "overlays generalization") adds a
+    // SIBLING, independently-optional post-pass — an UNLIMITED, caller-
+    // authored list of ad-hoc timed text overlays — run at the SAME point in
+    // the chain. When BOTH `overlays` and `credits` are supplied for the SAME
+    // call, they are FOLDED into ONE additional ffmpeg re-encode (via the
+    // general `buildAssBurnFfmpegArgs`, chaining two `subtitles=` filter
+    // stages in one `-vf` value) rather than two sequential re-encodes — see
+    // `verticalDramaFinalRenderGraph.ts`'s own "Burn-pass folding" doc
+    // comment. Omitted `overlays` (and an EMPTY array — every pre-existing
+    // caller) never enters either of the two NEW branches below — the
+    // credits-ONLY branch is the ORIGINAL, UNTOUCHED Phase C-1 code (byte-
+    // identical to before this wave), so a call with `credits` but no
+    // `overlays` is unaffected by this addition. Every branch reuses the SAME
     // `resolveVdSubtitleFontsDir()` Thai-font resolution `runAssemblyJob`
     // itself uses for burned-in captions, and the group's own
-    // ALREADY-PROBED `durationSeconds` (never re-probed) to tail-anchor the
-    // roll — no new download/upload primitive, only the new PURE
-    // `buildCreditsAssFile`/`buildCreditsBurnFfmpegArgs` graph builders
-    // (`verticalDramaFinalRenderGraph.ts`).
-    if (credits) {
-      // Same "a failed probe must hard-fail a pass that depends on the real
-      // duration" posture as the bgm pass's own guard above — here the
-      // credits roll cannot be correctly TAIL-ANCHORED to the video's end
-      // without it.
+    // ALREADY-PROBED `durationSeconds` (never re-probed).
+    const overlaysToRender = overlays && overlays.length > 0 ? overlays : null;
+
+    if (overlaysToRender && credits) {
+      // BOTH overlays AND credits supplied — fold into ONE re-encode.
+      if (durationSeconds == null) {
+        throw new Error(
+          "vertical_drama_production_overlays_credits_duration_probe_failed: could not determine the assembled Production Episode's duration; cannot safely burn the timed overlays/credits roll."
+        );
+      }
+      const fontsDir = resolveVdSubtitleFontsDir();
+
+      const overlaysAssContent = buildProductionOverlaysAssFile(
+        overlaysToRender,
+        durationSeconds,
+        { fontsDir, playResX: 1080, playResY: 1920 }
+      );
+      const overlaysAssPath = path.join(workDir, "overlays.ass");
+      await fsp.writeFile(overlaysAssPath, overlaysAssContent, "utf8");
+
+      const creditsAssContent = buildCreditsAssFile(credits.text, durationSeconds, {
+        fontsDir,
+        playResX: 1080,
+        playResY: 1920,
+      });
+      const creditsAssPath = path.join(workDir, "credits.ass");
+      await fsp.writeFile(creditsAssPath, creditsAssContent, "utf8");
+
+      const combinedOutputPath = path.join(workDir, "output-overlays-credits.mp4");
+      const combinedArgs = buildAssBurnFfmpegArgs({
+        videoPath: finalOutputPath,
+        // Overlays first, credits last — the tail-anchored credits roll
+        // reads as the final "polish" stage over whatever the timed
+        // overlays already burned in; order has no functional effect
+        // (the two `.ass` files' own event windows don't have to avoid
+        // each other), only a documented, deterministic convention.
+        passes: [
+          { assPath: overlaysAssPath, fontsDir },
+          { assPath: creditsAssPath, fontsDir },
+        ],
+        output: combinedOutputPath,
+      });
+      const combinedResult = await ffmpegRunner(combinedArgs);
+      if (combinedResult.code !== 0) {
+        throw new Error(
+          `ffmpeg production-episode overlays/credits burn failed (exit ${combinedResult.code}): ${combinedResult.stderr.slice(-2000)}`
+        );
+      }
+      finalOutputPath = combinedOutputPath;
+    } else if (credits) {
+      // Credits ONLY — Phase C-1's ORIGINAL code, unchanged. Same "a failed
+      // probe must hard-fail a pass that depends on the real duration"
+      // posture as the bgm pass's own guard above — here the credits roll
+      // cannot be correctly TAIL-ANCHORED to the video's end without it.
       if (durationSeconds == null) {
         throw new Error(
           "vertical_drama_production_credits_duration_probe_failed: could not determine the assembled Production Episode's duration; cannot safely tail-anchor the credits roll."
@@ -934,6 +1021,35 @@ async function runProductionEpisodeGroupJob(args: {
         );
       }
       finalOutputPath = creditsOutputPath;
+    } else if (overlaysToRender) {
+      // Overlays ONLY (Phase C-2, new).
+      if (durationSeconds == null) {
+        throw new Error(
+          "vertical_drama_production_overlays_duration_probe_failed: could not determine the assembled Production Episode's duration; cannot safely render the timed text overlays."
+        );
+      }
+      const fontsDir = resolveVdSubtitleFontsDir();
+      const overlaysAssContent = buildProductionOverlaysAssFile(
+        overlaysToRender,
+        durationSeconds,
+        { fontsDir, playResX: 1080, playResY: 1920 }
+      );
+      const overlaysAssPath = path.join(workDir, "overlays.ass");
+      await fsp.writeFile(overlaysAssPath, overlaysAssContent, "utf8");
+
+      const overlaysOutputPath = path.join(workDir, "output-overlays.mp4");
+      const overlaysArgs = buildAssBurnFfmpegArgs({
+        videoPath: finalOutputPath,
+        passes: [{ assPath: overlaysAssPath, fontsDir }],
+        output: overlaysOutputPath,
+      });
+      const overlaysResult = await ffmpegRunner(overlaysArgs);
+      if (overlaysResult.code !== 0) {
+        throw new Error(
+          `ffmpeg production-episode overlays burn failed (exit ${overlaysResult.code}): ${overlaysResult.stderr.slice(-2000)}`
+        );
+      }
+      finalOutputPath = overlaysOutputPath;
     }
 
     const storageKey = `vertical-drama/production-episodes/${owner.seriesId}/${randomUUID()}-${filename}`;
@@ -1008,6 +1124,18 @@ export interface AssembleProductionEpisodesForSeriesArgs {
    * pass, no `credits` field on the persisted group state.
    */
   credits?: ProductionEpisodeCreditsOptions;
+  /**
+   * Phase C-2 (`planning/vertical-drama-production-render/plan.md` Phase C,
+   * "overlays generalization") — when supplied (non-empty), EVERY group's
+   * own (post-BGM, if any) video is run through an additional timed-text-
+   * overlays burn-in ffmpeg post-pass (see `runProductionEpisodeGroupJob`),
+   * FOLDED into the SAME ffmpeg call as `credits` when both are supplied for
+   * this call, and the list is recorded on each group's persisted state (see
+   * `VerticalDramaProductionEpisodeGroupStateWithBgm`). Omitted (or an EMPTY
+   * array — every pre-existing caller) preserves prior behavior exactly: no
+   * extra ffmpeg pass, no `overlays` field on the persisted group state.
+   */
+  overlays?: ProductionEpisodeOverlayItem[];
   /** Test injection points — mirror `runAssemblyJob`'s own convention so
    *  tests never spawn a real ffmpeg/ffprobe process. Default to the real
    *  implementations. */
@@ -1072,6 +1200,7 @@ export async function assembleProductionEpisodesForSeries(
     renderOptions,
     bgm,
     credits,
+    overlays,
   } = args;
   const ffmpegRunner = args.ffmpegRunner ?? defaultFfmpegRunner;
   const probeDurationSecondsFn = args.probeDurationSecondsFn ?? probeDurationSeconds;
@@ -1163,6 +1292,11 @@ export async function assembleProductionEpisodesForSeries(
         // Phase C-1 — same convention as `bgm` immediately above. Absent
         // entirely when this call had no `credits`.
         ...(credits ? { credits } : {}),
+        // Phase C-2 — same convention as `bgm`/`credits` immediately above,
+        // EXCEPT an overlays array must ALSO check `.length > 0` (unlike a
+        // singular options object, an EMPTY array is still truthy in JS) —
+        // absent entirely when this call had no `overlays`, OR an empty one.
+        ...(overlays && overlays.length > 0 ? { overlays } : {}),
       }
   );
 
@@ -1223,6 +1357,7 @@ export async function assembleProductionEpisodesForSeries(
           renderSubEpisodeWithOptionsFn,
           bgm,
           credits,
+          overlays,
         });
       } catch {
         // Defense-in-depth only — `runProductionEpisodeGroupJob` already

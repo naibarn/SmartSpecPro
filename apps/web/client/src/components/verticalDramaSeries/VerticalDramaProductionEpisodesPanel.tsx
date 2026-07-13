@@ -66,6 +66,7 @@ import {
   Download,
   Expand,
   Loader2,
+  Trash2,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -214,6 +215,64 @@ const DEFAULT_CREDITS_OPTIONS: ProductionCreditsState = {
 };
 
 /* -------------------------------------------------------------------------- */
+/* Timed text overlays local state — additive control: attaches any number of */
+/* time-stamped text overlays to the assembled Production Episode. Mirrors    */
+/* the parallel `assembleProductionEpisodes` mutation-input field             */
+/* `overlays?: Array<{ atSeconds, durationSeconds?, text, style? }>` (see     */
+/* `handleAssemble` below for the same "non-literal payload variable"         */
+/* structural-assignability note this file's header doc comment already      */
+/* documents for `renderOptions`/`bgm`/`credits`) — as of this section's      */
+/* authoring, `assembleProductionEpisodes`'s zod input has no `overlays`      */
+/* field yet (a parallel backend increment); zod strips unknown keys          */
+/* server-side today, so sending it is a harmless no-op until that field      */
+/* lands, at which point overlays start working with zero further client      */
+/* changes. This panel does not expose a `durationSeconds` control (not part  */
+/* of this row's field set) — every row omitted it, which the backend         */
+/* field's own optionality already tolerates.                                 */
+/* -------------------------------------------------------------------------- */
+
+type ProductionOverlayStyle = "lower_third" | "top_bar" | "centered";
+
+interface ProductionOverlayRow {
+  /** Locally-generated stable id (never sent to the server) — used as the
+   *  React list key and to target add/update/remove by row rather than by
+   *  array index, avoiding input-focus loss when a row in the middle of the
+   *  list is removed. Same generation shape as
+   *  `VerticalDramaEpisodeWorkspace.tsx`'s own per-row `addCard`
+   *  (`card-${Date.now()}-${random}`). */
+  id: string;
+  atSeconds: number;
+  text: string;
+  style: ProductionOverlayStyle;
+}
+
+interface ProductionOverlaysState {
+  enabled: boolean;
+  rows: ProductionOverlayRow[];
+}
+
+const DEFAULT_OVERLAYS_OPTIONS: ProductionOverlaysState = {
+  enabled: false,
+  rows: [],
+};
+
+const PRODUCTION_OVERLAYS_MAX_ROWS = 50;
+const PRODUCTION_OVERLAY_TEXT_MAX_LENGTH = 300;
+
+function makeProductionOverlayRowId(): string {
+  return `overlay-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function newProductionOverlayRow(): ProductionOverlayRow {
+  return {
+    id: makeProductionOverlayRowId(),
+    atSeconds: 0,
+    text: "",
+    style: "lower_third",
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Panel                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -243,6 +302,8 @@ export function VerticalDramaProductionEpisodesPanel({
   const [bgmOptions, setBgmOptions] = useState<ProductionBgmState>(DEFAULT_BGM_OPTIONS);
   const [creditsOptions, setCreditsOptions] =
     useState<ProductionCreditsState>(DEFAULT_CREDITS_OPTIONS);
+  const [overlaysOptions, setOverlaysOptions] =
+    useState<ProductionOverlaysState>(DEFAULT_OVERLAYS_OPTIONS);
   const [lastResult, setLastResult] = useState<{
     groupsCreated: number;
     groupsSkipped: number;
@@ -317,6 +378,19 @@ export function VerticalDramaProductionEpisodesPanel({
   // the assemble button below and to decide whether `handleAssemble`
   // includes `credits` in its payload.
   const trimmedCreditsText = creditsOptions.text.trim();
+  // Filtered + mapped once and reused solely to decide whether
+  // `handleAssemble` includes `overlays` in its payload. Unlike
+  // `trimmedBgmUrl`/`trimmedCreditsText` above, this is NOT used to gate the
+  // assemble button (see `assembleDisabled` below, which intentionally does
+  // not factor in overlays) — rows with empty trimmed text are simply
+  // dropped rather than treated as a validation error.
+  const validOverlayRows = overlaysOptions.rows
+    .filter((row) => row.text.trim().length > 0)
+    .map((row) => ({
+      atSeconds: Number.isFinite(row.atSeconds) ? Math.max(0, row.atSeconds) : 0,
+      text: row.text.trim(),
+      style: row.style,
+    }));
 
   function handleAssemble() {
     // Built as a standalone variable (not an inline object literal in the
@@ -331,7 +405,8 @@ export function VerticalDramaProductionEpisodesPanel({
     // has no `bgm` or `credits` field yet (parallel backend increments); zod
     // strips unknown keys server-side today, so sending them is a harmless
     // no-op until those fields land, at which point BGM/credits start
-    // working with zero further client changes.
+    // working with zero further client changes. `overlays` below rides the
+    // exact same mechanism (see its own local-state doc comment above).
     const payload = {
       seriesId,
       groupSize,
@@ -363,6 +438,14 @@ export function VerticalDramaProductionEpisodesPanel({
       // pre-existing caller.
       ...(creditsOptions.enabled && trimmedCreditsText
         ? { credits: { text: trimmedCreditsText } }
+        : {}),
+      // Omitted entirely unless overlays are toggled on AND at least one row
+      // has non-empty trimmed text — rows with empty text are simply
+      // dropped (see `validOverlayRows` above); default behavior (no
+      // `overlays` key) stays "no timed overlays", matching every
+      // pre-existing caller.
+      ...(overlaysOptions.enabled && validOverlayRows.length > 0
+        ? { overlays: validOverlayRows }
         : {}),
     };
     assembleMutation.mutate(payload);
@@ -464,6 +547,13 @@ export function VerticalDramaProductionEpisodesPanel({
               lang={lang}
               value={creditsOptions}
               onChange={setCreditsOptions}
+              disabled={controlsDisabled}
+            />
+
+            <VerticalDramaProductionOverlaysSection
+              lang={lang}
+              value={overlaysOptions}
+              onChange={setOverlaysOptions}
               disabled={controlsDisabled}
             />
 
@@ -915,6 +1005,198 @@ function VerticalDramaProductionCreditsSection({
                 : "Enter credits text before assembling Production Episodes."}
             </p>
           ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Timed text overlays section — sits alongside                              */
+/* `VerticalDramaProductionCreditsSection` above (same local                 */
+/* `value`/`onChange`/`disabled` prop shape, same card/label/checkbox        */
+/* styling) so it reads as a natural continuation of the render-options/     */
+/* BGM/credits sections rather than a bolted-on control. Unlike those        */
+/* sections, `handleAssemble` (`VerticalDramaProductionEpisodesPanel` above) */
+/* never blocks the assemble button over this section's contents — rows      */
+/* with empty trimmed text are simply dropped from the payload (see          */
+/* `validOverlayRows` above), so there is no "required" hint here the way    */
+/* BGM/credits have one.                                                     */
+/* -------------------------------------------------------------------------- */
+
+function VerticalDramaProductionOverlaysSection({
+  lang,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  lang: VerticalDramaLang;
+  value: ProductionOverlaysState;
+  onChange: (next: ProductionOverlaysState) => void;
+  disabled?: boolean;
+}) {
+  function emit(patch: Partial<ProductionOverlaysState>) {
+    onChange({ ...value, ...patch });
+  }
+
+  function updateRow(id: string, patch: Partial<ProductionOverlayRow>) {
+    emit({
+      rows: value.rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
+    });
+  }
+
+  function addRow() {
+    if (value.rows.length >= PRODUCTION_OVERLAYS_MAX_ROWS) return;
+    emit({ rows: [...value.rows, newProductionOverlayRow()] });
+  }
+
+  function removeRow(id: string) {
+    emit({ rows: value.rows.filter((row) => row.id !== id) });
+  }
+
+  const canAddRow = value.rows.length < PRODUCTION_OVERLAYS_MAX_ROWS;
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={lang === "th" ? "ข้อความซ้อนตามเวลา" : "Timed text overlays"}
+      data-testid="vd-production-overlays-section"
+    >
+      <div>
+        <h3 className="text-sm font-medium">
+          {lang === "th" ? "ข้อความซ้อน (Timed overlays)" : "Timed text overlays"}
+        </h3>
+        <p className="text-[11px] text-muted-foreground">
+          {lang === "th"
+            ? "เพิ่มข้อความซ้อนตามเวลาที่กำหนดเอง ซ้อนทับวิดีโอ Production Episode ที่ประกอบขึ้น"
+            : "Adds timed text overlays burned into the assembled Production Episode at the seconds you choose."}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="vd-production-overlays-enabled"
+          checked={value.enabled}
+          disabled={disabled}
+          onCheckedChange={(checked) => emit({ enabled: checked === true })}
+          data-testid="vd-production-overlays-enabled"
+        />
+        <label htmlFor="vd-production-overlays-enabled" className="text-sm">
+          {lang === "th" ? "ใส่ข้อความซ้อนตามเวลา" : "Add timed overlays"}
+        </label>
+      </div>
+
+      {value.enabled ? (
+        <div
+          className="space-y-2 rounded-md border p-2 pl-6"
+          data-testid="vd-production-overlay-rows"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              {lang === "th"
+                ? `รายการ (${value.rows.length}/${PRODUCTION_OVERLAYS_MAX_ROWS})`
+                : `Rows (${value.rows.length}/${PRODUCTION_OVERLAYS_MAX_ROWS})`}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={disabled || !canAddRow}
+              onClick={addRow}
+              data-testid="vd-production-overlay-add"
+            >
+              {lang === "th" ? "+ เพิ่มข้อความ" : "+ Add overlay"}
+            </Button>
+          </div>
+
+          {value.rows.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              {lang === "th"
+                ? "ยังไม่มีข้อความซ้อน — กด “+ เพิ่มข้อความ” เพื่อเริ่มต้น"
+                : "No overlays yet — click “+ Add overlay” to start."}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {value.rows.map((row, index) => (
+                <div
+                  key={row.id}
+                  className="space-y-2 rounded-md border p-2"
+                  data-testid={`vd-production-overlay-row-${index}`}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      {lang === "th" ? "วินาที" : "At (sec)"}
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        className="h-8 w-20"
+                        value={row.atSeconds}
+                        disabled={disabled}
+                        onChange={(e) =>
+                          updateRow(row.id, { atSeconds: Number(e.target.value) })
+                        }
+                        data-testid={`vd-production-overlay-at-${index}`}
+                      />
+                    </label>
+                    <label className="flex min-w-[160px] flex-1 items-center gap-1 text-[11px] text-muted-foreground">
+                      {lang === "th" ? "ข้อความ" : "Text"}
+                      <Input
+                        type="text"
+                        className="h-8 flex-1"
+                        maxLength={PRODUCTION_OVERLAY_TEXT_MAX_LENGTH}
+                        value={row.text}
+                        disabled={disabled}
+                        placeholder={lang === "th" ? "ข้อความที่จะซ้อน" : "Overlay text"}
+                        onChange={(e) => updateRow(row.id, { text: e.target.value })}
+                        data-testid={`vd-production-overlay-text-${index}`}
+                      />
+                    </label>
+                    <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      {lang === "th" ? "รูปแบบ" : "Style"}
+                      <Select
+                        value={row.style}
+                        disabled={disabled}
+                        onValueChange={(v) =>
+                          updateRow(row.id, { style: v as ProductionOverlayStyle })
+                        }
+                      >
+                        <SelectTrigger
+                          className="h-8 w-[140px]"
+                          data-testid={`vd-production-overlay-style-${index}`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="lower_third">
+                            {lang === "th" ? "แถบล่าง" : "Lower third"}
+                          </SelectItem>
+                          <SelectItem value="top_bar">
+                            {lang === "th" ? "แถบบน" : "Top bar"}
+                          </SelectItem>
+                          <SelectItem value="centered">
+                            {lang === "th" ? "กลางจอ" : "Centered"}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      disabled={disabled}
+                      onClick={() => removeRow(row.id)}
+                      aria-label={lang === "th" ? "ลบข้อความซ้อนนี้" : "Remove this overlay"}
+                      data-testid={`vd-production-overlay-remove-${index}`}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
     </section>

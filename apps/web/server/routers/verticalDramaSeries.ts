@@ -396,14 +396,23 @@ import { HyperframesFinalCompositeSubtitlePresetSchema } from "@shared/hyperfram
  * `renderOptions.subtitleFontSize` zod enum below, reusing the EXACT SAME
  * source-of-truth array `assembleEpisodeVideo`'s own inline
  * `subtitleFontSize` enum uses (`verticalDramaEpisodes.ts`), instead of
- * retyping the 4 literal values a second time. Safe as a normal top-level
- * VALUE import (unlike the sibling `verticalDramaEpisodeVideoAssembly.ts`
- * type-only import block above): `verticalDramaFinalRenderGraph.ts` only
- * imports `zod` + `@shared/hyperframes/runtimeApiSchemas` — no `../storage`,
- * no ffmpeg spawn, no DB — so it carries none of that module's "breaks every
- * sibling test's narrow `vi.mock` graph" risk.
+ * retyping the 4 literal values a second time. Phase C-2
+ * (`planning/vertical-drama-production-render/plan.md` Phase C, "overlays
+ * generalization") additionally imports `VD_PRODUCTION_OVERLAY_STYLES`/
+ * `VD_PRODUCTION_OVERLAY_MAX_COUNT`, backing `overlays[].style`'s zod enum
+ * and the `overlays` array's own `.max()` cap below, same reuse-the-single-
+ * source-of-truth rationale. Safe as a normal top-level VALUE import (unlike
+ * the sibling `verticalDramaEpisodeVideoAssembly.ts` type-only import block
+ * above): `verticalDramaFinalRenderGraph.ts` only imports `zod` +
+ * `@shared/hyperframes/runtimeApiSchemas` — no `../storage`, no ffmpeg spawn,
+ * no DB — so it carries none of that module's "breaks every sibling test's
+ * narrow `vi.mock` graph" risk.
  */
-import { SUBTITLE_FONT_SIZE_IDS } from "../services/verticalDramaFinalRenderGraph";
+import {
+  SUBTITLE_FONT_SIZE_IDS,
+  VD_PRODUCTION_OVERLAY_MAX_COUNT,
+  VD_PRODUCTION_OVERLAY_STYLES,
+} from "../services/verticalDramaFinalRenderGraph";
 // Task #34 (Text Overlay Suite) — pure/DB-free data model + derivation
 // helpers, same safe-static-import posture as `adBannerPresets.ts` above.
 import {
@@ -5350,6 +5359,16 @@ export const verticalDramaSeriesRouter = router({
    * `assembleProductionEpisodesForSeries`'s own doc comments
    * (`server/services/verticalDramaProductionEpisodeAssembly.ts`) for how
    * this threads into a per-Sub-Episode re-render.
+   *
+   * Phase C-2 (`planning/vertical-drama-production-render/plan.md` Phase C,
+   * "overlays generalization"): `overlays` carries an UNLIMITED (capped at
+   * `VD_PRODUCTION_OVERLAY_MAX_COUNT`), caller-authored list of ad-hoc timed
+   * text overlays (`{atSeconds, durationSeconds, text, style}`), burned in
+   * (folded with `credits` into ONE re-encode when both are supplied — see
+   * `runProductionEpisodeGroupJob`'s own doc comment) AFTER the bgm post-pass
+   * (if any). Omitted (or an empty array — every pre-existing caller)
+   * preserves prior behavior exactly. See
+   * `assembleProductionEpisodesForSeries`'s own `overlays` doc comment.
    */
   assembleProductionEpisodes: verticalDramaProcedure
     .input(
@@ -5398,6 +5417,30 @@ export const verticalDramaSeriesRouter = router({
             text: z.string().min(1).max(4000),
           })
           .optional(),
+        // Phase C-2 (`planning/vertical-drama-production-render/plan.md`
+        // Phase C, "overlays generalization") — an UNLIMITED (capped),
+        // caller-authored list of ad-hoc timed text overlays, attached at the
+        // PRODUCTION EPISODE level (never per Sub-Episode), burned in as a
+        // post-pass alongside credits (folded into ONE re-encode when BOTH
+        // are supplied — see `runProductionEpisodeGroupJob`'s own doc
+        // comment). `style` reuses none of this codebase's existing preset/
+        // position enums (see `verticalDramaFinalRenderGraph.ts`'s own "Style
+        // enum decision" doc comment) — a small dedicated
+        // `VD_PRODUCTION_OVERLAY_STYLES` enum instead. Omitted entirely (or
+        // an EMPTY array) preserves prior behavior exactly (no overlays
+        // pass) — see `assembleProductionEpisodesForSeries`'s own `overlays`
+        // doc comment.
+        overlays: z
+          .array(
+            z.object({
+              atSeconds: z.number().min(0).max(3600),
+              durationSeconds: z.number().min(1).max(30).default(3),
+              text: z.string().min(1).max(300),
+              style: z.enum(VD_PRODUCTION_OVERLAY_STYLES).default("centered"),
+            })
+          )
+          .max(VD_PRODUCTION_OVERLAY_MAX_COUNT)
+          .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -5442,6 +5485,7 @@ export const verticalDramaSeriesRouter = router({
           renderOptions: input.renderOptions,
           bgm: input.bgm,
           credits: input.credits,
+          overlays: input.overlays,
         });
         return {
           groupsCreated: result.groupsCreated,

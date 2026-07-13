@@ -2216,3 +2216,303 @@ export function buildCreditsBurnFfmpegArgs(input: CreditsBurnInput): string[] {
     input.output,
   ];
 }
+
+/* -------------------------------------------------------------------------- */
+/* Production Episode timed text overlays (Phase C-2,                        */
+/* `planning/vertical-drama-production-render/plan.md` Phase C, "overlays    */
+/* generalization") — an UNLIMITED-length (caller-capped), user-authored list */
+/* of ad-hoc timed text overlays: `{atSeconds, durationSeconds, text, style}`, */
+/* attached ONCE at the whole Production Episode level (never per            */
+/* Sub-Episode), mirroring `bgm`/`credits`'s own "Terminology model"          */
+/* placement (`server/services/verticalDramaProductionEpisodeAssembly.ts`'s   */
+/* own header doc comment). This is a DIFFERENT feature from the Text        */
+/* Overlay Suite above (task #34, `VD_TEXT_OVERLAY_ASS_KINDS`): that suite's  */
+/* 9 kinds are DB-derived/auto-text and attach PER Sub-Episode; this is a     */
+/* flat, caller-authored list attached once per Production Episode, closer   */
+/* to the plan.md gap-table's literal "unlimited timed text, absolute-sec,   */
+/* any style" requirement (row 2, previously only PARTIALLY met by the       */
+/* Sub-Episode-level suite's capped-24/shot-anchored/2-style cards).          */
+/*                                                                             */
+/* Style enum decision: neither the 10 `CaptionPresetId` subtitle presets     */
+/* (per-speaker-caption box/font/karaoke treatments — wrong semantic fit for  */
+/* a freeform, non-dialogue text list) nor any position enum in               */
+/* `@shared/verticalDramaSeries/textOverlay.ts` (`VD_WATERMARK_POSITIONS`/    */
+/* `VD_EPISODE_INDICATOR_POSITIONS` are CORNER-only; `VD_END_CARD_STYLE_VARIANTS`*/
+/* has only 2 values, `center_card`/`lower_band`) covers this feature's "3    */
+/* simple, always-on-screen positions" need cleanly — so a small LOCAL enum   */
+/* (`VdProductionOverlayStyle`) is defined instead, same "one dedicated style */
+/* table per feature" convention as `VD_CAPTION_PRESET_ASS_STYLES`/           */
+/* `VD_TEXT_OVERLAY_ASS_STYLES`/`VD_CREDITS_ASS_STYLE` above. Each style is a  */
+/* STATIC position (no per-instance corner/margin choice, unlike              */
+/* `watermark_text`/`episode_indicator` above), so it is expressed via the    */
+/* style's own baked `Alignment`/`Margin*` fields — no inline `\pos`/`\an`    */
+/* override tag is needed per event, the SAME convention `time_setting`/      */
+/* `narrative_hook`/`title_bumper` above already use for their own fixed      */
+/* positions ("reuse alignment like the existing overlay events").           */
+/*                                                                             */
+/* Burn-pass folding: `runProductionEpisodeGroupJob` burns this pass ALONGSIDE */
+/* the Phase C-1 credits pass (when BOTH are supplied) via the general        */
+/* `buildAssBurnFfmpegArgs` below — chaining `subtitles=...,subtitles=...` as */
+/* TWO stages inside ONE `-vf` value burns both `.ass` files in a SINGLE      */
+/* re-encode, rather than merging their independently-generated ass TEXT into */
+/* one document (each keeps its own self-contained `[Script Info]`/          */
+/* `[V4+ Styles]` header, so no ass-text-merging logic is needed anywhere).   */
+/* `buildCreditsBurnFfmpegArgs` above is left COMPLETELY UNTOUCHED for the    */
+/* credits-ONLY call site (zero regression risk to its existing tests/       */
+/* callers) — `buildAssBurnFfmpegArgs` is an ADDITIVE sibling, used only for  */
+/* the overlays-only and overlays+credits-combined cases (see                */
+/* `runProductionEpisodeGroupJob`'s own doc comment).                         */
+/* -------------------------------------------------------------------------- */
+
+/** The 3 fixed Production Episode overlay positions. See this section's own
+ *  header doc comment ("Style enum decision") for why neither the subtitle
+ *  presets nor any existing Text Overlay Suite position enum was reused. */
+export const VD_PRODUCTION_OVERLAY_STYLES = [
+  "lower_third",
+  "top_bar",
+  "centered",
+] as const;
+export type VdProductionOverlayStyle = (typeof VD_PRODUCTION_OVERLAY_STYLES)[number];
+
+/** Max `overlays` array length (router-enforced) — bounds the generated
+ *  `.ass` file / burn-in cost for an "unlimited" list, same "caller-capped,
+ *  not truly infinite" posture as `VD_AD_BANNER_MAX_PER_SERIES`/
+ *  `VD_TEXT_OVERLAY_MAX_CARDS` elsewhere in this feature area. */
+export const VD_PRODUCTION_OVERLAY_MAX_COUNT = 50 as const;
+
+/**
+ * Style table for the 3 Production Episode overlay positions — Noto Sans
+ * Thai (same allow-listed font convention as every other style table in this
+ * file), bold white text on a semi-opaque black box (BorderStyle 3) for
+ * legibility over ARBITRARY footage (this feature has no per-series color
+ * theming input, unlike some Text Overlay Suite kinds), positioned clear of
+ * the existing caption safe zones on the fixed 1080x1920 canvas:
+ *  - `lower_third`: bottom-center band, ABOVE the standard caption/lower-third
+ *    `MarginV` range (170-300) `VD_CAPTION_PRESET_ASS_STYLES`/
+ *    `character_intro` above already use, so a caption burned at the
+ *    Render-options LEVEL Sub-Episode render and this Production-Episode-
+ *    level overlay do not visually collide by default.
+ *  - `top_bar`: top-center band, same `MarginV` as `time_setting` above.
+ *  - `centered`: middle-center (Alignment 5) — `MarginV` is UNUSED for
+ *    vertically-centered alignments (4/5/6) per the ASS spec, same
+ *    "filled in but ignored" convention `end_card`/`title_bumper`/
+ *    `narrative_hook` above already rely on.
+ */
+const VD_PRODUCTION_OVERLAY_ASS_STYLES: Record<VdProductionOverlayStyle, VdAssStyleSpec> = {
+  lower_third: {
+    name: "VdProdOverlayLowerThird",
+    fontName: "Noto Sans Thai",
+    fontSize: 52,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80000000",
+    backColour: "&HA0000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 2,
+    shadow: 0,
+    alignment: 2,
+    marginL: 90,
+    marginR: 90,
+    marginV: 230,
+  },
+  top_bar: {
+    name: "VdProdOverlayTopBar",
+    fontName: "Noto Sans Thai",
+    fontSize: 50,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80000000",
+    backColour: "&HA0000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 2,
+    shadow: 0,
+    alignment: 8,
+    marginL: 90,
+    marginR: 90,
+    marginV: 130,
+  },
+  centered: {
+    name: "VdProdOverlayCentered",
+    fontName: "Noto Sans Thai",
+    fontSize: 56,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80000000",
+    backColour: "&HA0000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 2,
+    shadow: 0,
+    alignment: 5,
+    marginL: 90,
+    marginR: 90,
+    marginV: 160,
+  },
+};
+
+/**
+ * One resolved Production Episode timed text overlay — ALWAYS fully-defaulted
+ * by the router's zod schema before reaching this pure module (mirrors
+ * `ProductionEpisodeBgmOptions`'s own "never optional here" convention,
+ * `server/services/verticalDramaProductionEpisodeAssembly.ts`): `durationSeconds`/
+ * `style` are only optional at the mutation input (defaulted to `3`/
+ * `"centered"` respectively); every value here is concrete.
+ */
+export interface ProductionEpisodeOverlayItem {
+  /** Absolute render-timeline seconds this overlay begins at (>= 0). */
+  atSeconds: number;
+  durationSeconds: number;
+  text: string;
+  style: VdProductionOverlayStyle;
+}
+
+/** Input to `buildProductionOverlaysAssFile` — mirrors `VdCreditsAssBuildOpts`'s
+ *  own shape (fontsDir purely informational; playRes fixed by the caller);
+ *  kept as its own type (not a reused import) — same "one Opts type per
+ *  feature" convention as `AssSubtitleBuildOpts`/`VdCreditsAssBuildOpts`. */
+export interface VdProductionOverlaysAssBuildOpts {
+  fontsDir?: string;
+  playResX: number;
+  playResY: number;
+}
+
+/**
+ * Build a full `.ass` file for a Production Episode's timed text overlay
+ * list: one `Dialogue:` event per overlay, `Start=atSeconds`,
+ * `End=min(atSeconds+durationSeconds, videoDurationSeconds)`, styled via that
+ * overlay's own `style`'s baked `Alignment`/`Margin*` (see this section's
+ * header doc comment for why no inline `\pos`/`\an` override is needed).
+ *
+ * An overlay whose `atSeconds` is AT OR AFTER `videoDurationSeconds` is
+ * SKIPPED entirely (it would start outside the video's own bounds); an
+ * overlay whose window collapses to zero-or-negative length after the
+ * `videoDurationSeconds` clamp, or whose `text` is blank after trimming, is
+ * ALSO skipped — same defensive posture `buildAssSubtitleFile`'s own `lines`
+ * filter and `buildCreditsAssFile`'s own empty-text/zero-window handling
+ * already take. Events are emitted in `atSeconds` order regardless of input
+ * order (stable sort), mirroring `buildAssSubtitleFile`'s own `overlayEvents`
+ * sort.
+ *
+ * A `[V4+ Styles]` entry is emitted for every DISTINCT `style` actually used
+ * by a SURVIVING (non-skipped) overlay — not all 3 unconditionally —
+ * mirroring `buildAssSubtitleFile`'s own `overlayKindsPresent` convention.
+ * Returns a header-only, ZERO-event file (a valid, harmless input to the
+ * ffmpeg `subtitles` filter — burns in nothing) for an empty `overlays` array
+ * or when every overlay is skipped — same "nothing to render" convention
+ * every other builder in this file uses.
+ */
+export function buildProductionOverlaysAssFile(
+  overlays: ProductionEpisodeOverlayItem[],
+  videoDurationSeconds: number,
+  opts: VdProductionOverlaysAssBuildOpts
+): string {
+  const headerLines = [
+    "[Script Info]",
+    "ScriptType: v4.00+",
+    `PlayResX: ${opts.playResX}`,
+    `PlayResY: ${opts.playResY}`,
+    "WrapStyle: 0",
+    opts.fontsDir
+      ? `; Fonts directory (resolved by caller; not embedded): ${opts.fontsDir}`
+      : undefined,
+    "",
+    "[V4+ Styles]",
+    "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
+  ].filter((l): l is string => l !== undefined);
+
+  const eventsHeader = [
+    "",
+    "[Events]",
+    "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+  ];
+
+  const safeVideoDuration = Math.max(0, videoDurationSeconds);
+
+  const resolved = overlays
+    .map(overlay => {
+      const startSec = Math.max(0, overlay.atSeconds);
+      const rawEndSec = startSec + Math.max(0, overlay.durationSeconds);
+      return {
+        startSec,
+        endSec: Math.min(rawEndSec, safeVideoDuration),
+        text: overlay.text,
+        style: overlay.style,
+      };
+    })
+    .filter(
+      ov =>
+        ov.startSec < safeVideoDuration &&
+        ov.endSec > ov.startSec &&
+        ov.text.trim().length > 0
+    )
+    .sort((a, b) => a.startSec - b.startSec);
+
+  const stylesPresent = Array.from(new Set(resolved.map(ov => ov.style)));
+  for (const style of stylesPresent) {
+    headerLines.push(formatAssStyleLine(VD_PRODUCTION_OVERLAY_ASS_STYLES[style]));
+  }
+
+  const events = resolved.map(ov => {
+    const style = VD_PRODUCTION_OVERLAY_ASS_STYLES[ov.style];
+    return `Dialogue: 0,${assTimeStamp(ov.startSec)},${assTimeStamp(ov.endSec)},${style.name},,0,0,0,,${escapeAssInlineText(ov.text)}`;
+  });
+
+  return [...headerLines, ...eventsHeader, ...events].join("\n") + "\n";
+}
+
+/**
+ * Input to `buildAssBurnFfmpegArgs`. `passes` are applied IN ORDER as chained
+ * `subtitles=...` filter stages inside ONE `-vf` value — see this section's
+ * header doc comment ("Burn-pass folding") for why this achieves "burn N
+ * already-built `.ass` files in a single re-encode" without needing to merge
+ * their generated ass TEXT into one document.
+ */
+export interface AssBurnInput {
+  /** Absolute path to the INPUT video — has both a video AND an audio stream. */
+  videoPath: string;
+  /** One or more already-built `.ass` files, burned in array order. Must be
+   *  non-empty — the caller only invokes this when there is something to
+   *  burn (mirrors `buildCreditsBurnFfmpegArgs`'s own "caller decides whether
+   *  to call this at all" convention). */
+  passes: SubtitlesInput[];
+  /** Absolute output path. */
+  output: string;
+}
+
+/**
+ * Build the ffmpeg argv to burn one or more `.ass` files over a video in a
+ * SINGLE re-encode. Same re-encode/audio-passthrough posture as
+ * `buildCreditsBurnFfmpegArgs` (`libx264`/`yuv420p`/`medium` for video,
+ * `-c:a copy` for audio — burning subtitles has no stream-copy equivalent,
+ * audio is untouched by this pass) — kept as an ADDITIVE sibling function
+ * rather than a rewrite of that one (see this section's header doc comment
+ * for why the credits-only call site is intentionally left untouched).
+ */
+export function buildAssBurnFfmpegArgs(input: AssBurnInput): string[] {
+  const vf = input.passes
+    .map(pass => `subtitles=${buildSubtitlesFilterOption(pass)}`)
+    .join(",");
+  return [
+    "-y",
+    "-i",
+    input.videoPath,
+    "-vf",
+    vf,
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-preset",
+    "medium",
+    "-c:a",
+    "copy",
+    "-movflags",
+    "+faststart",
+    input.output,
+  ];
+}

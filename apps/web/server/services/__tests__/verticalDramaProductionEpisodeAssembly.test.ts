@@ -110,6 +110,12 @@ import {
   type RenderSubEpisodeWithOptionsArgs,
   type RenderSubEpisodeWithOptionsResult,
 } from "../verticalDramaProductionEpisodeAssembly";
+// Phase C-2 — `ProductionEpisodeOverlayItem` is the pure builder's own item
+// type (`verticalDramaFinalRenderGraph.ts`), reused verbatim by the SERVICE's
+// `overlays` field rather than re-declared — imported directly from its own
+// source module here, same convention `verticalDramaProductionEpisodeAssembly.ts`
+// itself already uses for `CaptionPresetId`/`SubtitleFontSizeId`.
+import type { ProductionEpisodeOverlayItem } from "../verticalDramaFinalRenderGraph";
 import { storagePutFromPath } from "../../storage";
 import { getTenantFeatureFlags } from "../tenantFeatureFlagService";
 import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
@@ -980,6 +986,320 @@ describe("assembleProductionEpisodesForSeries — Phase C-1 (credits)", () => {
     expect(finalManifest.episodes[0].status).toBe("failed");
     expect(finalManifest.episodes[0].error).toMatch(
       /vertical_drama_production_credits_duration_probe_failed/
+    );
+  });
+});
+
+/**
+ * Phase C-2 (`planning/vertical-drama-production-render/plan.md` Phase C,
+ * "overlays generalization") — an UNLIMITED (caller-capped) list of ad-hoc
+ * timed text overlays, a POST-PASS run at the SAME point in the chain as the
+ * Phase C-1 credits roll (after bgm, if any). Covers mutation-input
+ * threading (`overlays` flowing from `assembleProductionEpisodesForSeries`
+ * into `runProductionEpisodeGroupJob`'s ffmpeg invocation), group-state
+ * persistence (`overlays` recorded on the group state at "pending" time and
+ * carried through unchanged to "completed"/"failed", mirroring the existing
+ * `bgm`/`credits` coverage above), the FOLDING behavior (overlays + credits
+ * become ONE additional ffmpeg pass, not two, when both are supplied for the
+ * same call), and that the credits-ONLY code path (Phase C-1, tested above)
+ * is completely unaffected by this addition. The pure ffmpeg/`.ass`-args
+ * builders themselves (`buildProductionOverlaysAssFile`/`buildAssBurnFfmpegArgs`
+ * — timing, positioning, clamping, escaping, N-pass chaining) are covered
+ * separately in `verticalDramaFinalRenderGraph.test.ts`; this file only
+ * asserts that the SERVICE actually invokes them as an additional ffmpeg call
+ * and uploads its output.
+ */
+describe("assembleProductionEpisodesForSeries — Phase C-2 (overlays)", () => {
+  const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
+  const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
+  const fakeProbeDurationSeconds = vi.fn(async () => 42);
+
+  beforeEach(() => {
+    fakeFfmpegRunner.mockClear();
+    fakeProbeDurationSeconds.mockClear();
+  });
+
+  function seedCompiledEpisodes(episodeNumbers: number[]) {
+    dbState.episodes = episodeNumbers.map(n => ({
+      episodeNumber: n,
+      assemblyManifest: {
+        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
+      },
+    }));
+  }
+
+  const overlays: ProductionEpisodeOverlayItem[] = [
+    { atSeconds: 5, durationSeconds: 3, text: "Follow for more", style: "lower_third" },
+    { atSeconds: 20, durationSeconds: 2, text: "Plot twist!", style: "centered" },
+  ];
+
+  const credits: ProductionEpisodeCreditsOptions = {
+    text: "Jane Doe — Writer\nJohn Smith — Director",
+  };
+
+  const bgm: ProductionEpisodeBgmOptions = {
+    url: "/api/storage/files/track.mp3",
+    volumePercent: 35,
+    duckUnderVideoAudio: true,
+  };
+
+  it("does not run an extra ffmpeg pass, and records no overlays on the group state, when overlays is omitted (default, unchanged)", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+    });
+    expect(result.manifest.episodes[0].overlays).toBeUndefined();
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no overlays pass
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].overlays).toBeUndefined();
+  });
+
+  it("does not run an extra ffmpeg pass, and records no overlays on the group state, when overlays is an EMPTY array (same as omitted)", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      overlays: [],
+    });
+    expect(result.manifest.episodes[0].overlays).toBeUndefined();
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no overlays pass
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].overlays).toBeUndefined();
+  });
+
+  it("runs a second overlays-burn ffmpeg pass after the concat, uploads ONLY its output, and records overlays on the group state (pending AND completed), when overlays is supplied WITHOUT credits", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      overlays,
+    });
+    // Recorded synchronously onto the "pending" group state, before the
+    // background concat/overlays-burn chain has necessarily run at all.
+    expect(result.manifest.episodes[0].overlays).toEqual(overlays);
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then overlays burn
+    const overlaysArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
+    expect(overlaysArgs.join(" ")).toContain("subtitles=");
+    expect(overlaysArgs.join(" ")).not.toContain("-stream_loop"); // never the bgm pass
+    // Exactly ONE subtitles= stage (overlays only, no credits folded in).
+    expect(overlaysArgs.join(" ").match(/subtitles=/g)?.length).toBe(1);
+    // Burns onto the RAW concat output (no bgm was supplied in this test).
+    expect(overlaysArgs[2]).toMatch(/\/output\.mp4$/);
+
+    // The duration probe runs ONCE (against the concat output) — the
+    // overlays pass reuses that same value rather than re-probing.
+    expect(fakeProbeDurationSeconds).toHaveBeenCalledTimes(1);
+
+    // Only the FINAL (overlays-burned) file is uploaded.
+    expect(storagePutFromPath).toHaveBeenCalledTimes(1);
+    const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
+    expect(sourcePath).toMatch(/output-overlays\.mp4$/);
+
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].videoUrl).toMatch(/^\/api\/storage\/files\//);
+    expect(finalManifest.episodes[0].overlays).toEqual(overlays);
+  });
+
+  it("FOLDS overlays + credits into ONE additional ffmpeg pass (not two) when both are supplied for the same call", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      overlays,
+      credits,
+    });
+    expect(result.manifest.episodes[0].overlays).toEqual(overlays);
+    expect(result.manifest.episodes[0].credits).toEqual(credits);
+
+    await waitForCondition(allGroupsSettled);
+
+    // Concat, then ONE combined overlays+credits burn — NOT concat + overlays
+    // + credits (three passes) — this is the "one re-encode instead of two"
+    // folding behavior.
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2);
+    const combinedArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
+    // TWO chained subtitles= stages inside the SAME -vf value.
+    expect(combinedArgs.join(" ").match(/subtitles=/g)?.length).toBe(2);
+    expect(combinedArgs.filter(a => a === "-i").length).toBe(1);
+    expect(combinedArgs.filter(a => a === "-vf").length).toBe(1);
+    // Burns onto the RAW concat output (no bgm supplied in this test).
+    expect(combinedArgs[2]).toMatch(/\/output\.mp4$/);
+
+    expect(storagePutFromPath).toHaveBeenCalledTimes(1);
+    const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
+    expect(sourcePath).toMatch(/output-overlays-credits\.mp4$/);
+
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].overlays).toEqual(overlays);
+    expect(finalManifest.episodes[0].credits).toEqual(credits);
+  });
+
+  it("still uses the ORIGINAL single-pass credits-only code path (Phase C-1, untouched) when credits is supplied WITHOUT overlays", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      credits,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then credits burn only
+    const creditsArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
+    // Exactly ONE subtitles= stage (credits only — the ORIGINAL Phase C-1
+    // single-pass call, not the new N-pass buildAssBurnFfmpegArgs).
+    expect(creditsArgs.join(" ").match(/subtitles=/g)?.length).toBe(1);
+    expect(storagePutFromPath).toHaveBeenCalledTimes(1);
+    const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
+    expect(sourcePath).toMatch(/output-credits\.mp4$/);
+  });
+
+  it("burns the combined overlays+credits pass onto the BGM-mixed output (not the raw concat output) when bgm is ALSO supplied — three ffmpeg passes total, in order", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      bgm,
+      overlays,
+      credits,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(3); // concat, bgm mix, combined overlays+credits burn
+    const bgmArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
+    expect(bgmArgs.join(" ")).toContain("sidechaincompress");
+    const combinedArgs = fakeFfmpegRunner.mock.calls[2]![0] as string[];
+    expect(combinedArgs.join(" ").match(/subtitles=/g)?.length).toBe(2);
+    // The combined pass' OWN input is the bgm pass' OUTPUT, not the plain
+    // concat output — i.e. it runs over the "(post-BGM, if any)" video.
+    expect(combinedArgs[2]).toMatch(/\/output-bgm\.mp4$/);
+
+    expect(storagePutFromPath).toHaveBeenCalledTimes(1);
+    const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
+    expect(sourcePath).toMatch(/output-overlays-credits\.mp4$/);
+
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].bgm).toEqual(bgm);
+    expect(finalManifest.episodes[0].overlays).toEqual(overlays);
+    expect(finalManifest.episodes[0].credits).toEqual(credits);
+  });
+
+  it("marks the group failed (without uploading) when the overlays-only burn ffmpeg pass exits non-zero", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+    let call = 0;
+    const runner = vi.fn(async () => {
+      call += 1;
+      return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "overlays boom" };
+    });
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: runner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      overlays,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(storagePutFromPath).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("failed");
+    expect(finalManifest.episodes[0].error).toMatch(
+      /ffmpeg production-episode overlays burn failed/
+    );
+  });
+
+  it("marks the group failed (without uploading) when the COMBINED overlays+credits burn ffmpeg pass exits non-zero", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+    let call = 0;
+    const runner = vi.fn(async () => {
+      call += 1;
+      return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "combined boom" };
+    });
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: runner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      overlays,
+      credits,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(storagePutFromPath).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("failed");
+    expect(finalManifest.episodes[0].error).toMatch(
+      /ffmpeg production-episode overlays\/credits burn failed/
+    );
+  });
+
+  it("marks the group failed (without attempting the overlays pass) when the concat's own duration probe fails", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+    const probeFails = vi.fn(async () => undefined);
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: probeFails,
+      overlays,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only; overlays pass never attempted
+    expect(storagePutFromPath).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("failed");
+    expect(finalManifest.episodes[0].error).toMatch(
+      /vertical_drama_production_overlays_duration_probe_failed/
     );
   });
 });
