@@ -77,6 +77,15 @@ import type {
    * / `setSeriesLlmModelPolicy` below.
    */
   VerticalDramaSeriesLlmModelPolicy,
+  /**
+   * Production Episodes (Phase D′-1,
+   * `planning/vertical-drama-production-episodes/plan.md`) — the series'
+   * `productionEpisodesManifest` jsonb shape, read defensively off the
+   * loosely-typed column in `get` below and written by
+   * `assembleProductionEpisodesForSeries`
+   * (`server/services/verticalDramaProductionEpisodeAssembly.ts`).
+   */
+  VerticalDramaProductionEpisodesManifest,
 } from "@shared/verticalDramaSeries";
 import {
   VERTICAL_DRAMA_SERIES_LOCALES,
@@ -2618,6 +2627,16 @@ export const verticalDramaSeriesRouter = router({
           // Dramaturgy critic (W11.5) — additive, `null` when the active
           // breakdown version has never been critiqued.
           lastCritique: readActiveSeasonCritique(row.bible as Record<string, unknown> | null),
+          // Production Episodes (Phase D′-1) — additive, `null` when the
+          // series has never had a Production Episode group assembled yet.
+          // Unlike `assemblyManifest` (episode-level; carries internal
+          // render-plan data the client must never see — see `compiledVideo`
+          // below), this manifest shape is ALREADY display-safe (just
+          // index/subEpisodeNumbers/status/videoUrl/durationSeconds per
+          // group), so it is returned as-is with no extraction helper.
+          productionEpisodesManifest:
+            (row.productionEpisodesManifest as VerticalDramaProductionEpisodesManifest | null) ??
+            null,
         },
         episodes: episodes.map((e) => {
           // Destructure `assemblyManifest` OUT of the spread so the raw
@@ -4667,6 +4686,96 @@ export const verticalDramaSeriesRouter = router({
         textOverlayEventsIncluded,
         episodesWithWatermark,
       };
+    }),
+
+  /**
+   * Production Episodes (Phase D′-1, `planning/vertical-drama-production-episodes/plan.md`)
+   * — group `groupSize` (5 or 10) CONSECUTIVE Sub-Episodes' own compiled
+   * videos (`episode.assemblyManifest.compiledVideo.videoUrl`) into
+   * Production Episodes: ONE concatenated 4-10 minute video PER group — the
+   * actual publishable unit (a Sub-Episode is today's ~9-shot "ตอน"; see
+   * `memory/project_vd_episode_terminology.md`).
+   *
+   * All DB loading, precondition checking, chunking, and persistence live in
+   * `assembleProductionEpisodesForSeries`
+   * (`server/services/verticalDramaProductionEpisodeAssembly.ts`) — this
+   * handler only resolves ownership + the internal base URL and maps that
+   * service's thrown `Error` (message-prefixed `vertical_drama_production_*`)
+   * to `PRECONDITION_FAILED`, same convention as `assembleEpisodeVideo`'s own
+   * `resolveClipsForAssembly` catch (`verticalDramaEpisodes.ts`).
+   *
+   * No dedicated rate limiter here — mirrors EVERY sibling ffmpeg-assembly
+   * mutation in this codebase (`assembleSeasonVideos` above,
+   * `verticalDramaEpisodes.assembleEpisodeVideo`, `generateTrailer` below):
+   * `services/rateLimiter`'s `mediaGenerationLimiter` is reserved for actual
+   * PAID provider calls (image/video/audio/ad-banner generation), never for
+   * a local ffmpeg concat of already-rendered videos.
+   *
+   * Idempotent re-assembly: groups already completed with unchanged
+   * membership are left untouched by the service (`groupsSkipped`) — safe to
+   * call again after compiling more Sub-Episodes without re-doing finished
+   * work. Progress: the client polls `verticalDramaSeries.get`'s
+   * `productionEpisodesManifest` (this mutation does not add a separate
+   * polling endpoint), same convention as `assembleSeasonVideos`.
+   */
+  assembleProductionEpisodes: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        groupSize: z.union([z.literal(5), z.literal(10)]),
+        allowPartial: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+      }
+
+      // Ensure the caller owns it (throws NOT_FOUND otherwise).
+      const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const runtimeConfig = getCachedAppRuntimeConfig();
+      const internalBaseUrl =
+        runtimeConfig.internalNodeUrl || ctx.publicUrl || "http://localhost:3000";
+
+      // Lazy-loaded — same "narrow vi.mock sibling test" convention this
+      // file's Season Batch Render / Ad Banner Overlay import blocks
+      // document for themselves: the real values from
+      // `verticalDramaProductionEpisodeAssembly.ts` (transitively
+      // `../storage` + spawns ffmpeg, exactly like
+      // `verticalDramaEpisodeVideoAssembly.ts`) are loaded INSIDE this
+      // handler, never as a static top-level import.
+      const { assembleProductionEpisodesForSeries } = await import(
+        "../services/verticalDramaProductionEpisodeAssembly"
+      );
+
+      try {
+        const result = await assembleProductionEpisodesForSeries({
+          tenantId,
+          userId,
+          seriesId,
+          groupSize: input.groupSize,
+          allowPartial: input.allowPartial,
+          internalBaseUrl,
+          seriesTitle: seriesRow.title ?? undefined,
+        });
+        return {
+          groupsCreated: result.groupsCreated,
+          groupsSkipped: result.groupsSkipped,
+          manifest: result.manifest,
+        };
+      } catch (err) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Production Episode assembly precondition failed",
+        });
+      }
     }),
 
   /**

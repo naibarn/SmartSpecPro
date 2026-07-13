@@ -20413,6 +20413,31 @@ export const verticalDramaSeries = pgTable(
      * `verticalDramaSeriesTextOverlaySuite`, F131AB).
      */
     watermark: jsonb("watermark"),
+    /**
+     * Production Episodes (Phase D′-1,
+     * planning/vertical-drama-production-episodes/plan.md) — durable status
+     * for this series' Production Episode GROUPS
+     * (`VerticalDramaProductionEpisodesManifest`,
+     * `@shared/verticalDramaSeries/assembly.ts`). MODEL: a Sub-Episode
+     * (today's `vertical_drama_episodes` row, ~9 shots, spec's "ตอน") is
+     * compiled into one short video via `assembleEpisodeVideo`
+     * (`vertical_drama_episodes.assemblyManifest.compiledVideo.videoUrl`); a
+     * Production Episode concatenates `groupSize` (5 or 10) CONSECUTIVE
+     * Sub-Episodes' own compiled videos into ONE 4-10 minute video — the
+     * actual publishable unit. Nullable JSONB, additive; same "hand-authored
+     * migration, schema.ts catches up separately" convention as this table's
+     * sibling `watermark`/`trailer` columns above — this table lineage's
+     * `drizzle-kit generate`/`migrate` has a documented pre-existing
+     * meta-journal collision (see those columns' own doc comments), so a
+     * manual `ADD COLUMN IF NOT EXISTS` migration may be required if
+     * `pnpm db:push` fails for this column. Zero data-loss: nullable ADD
+     * COLUMN, existing rows get `productionEpisodesManifest = NULL`
+     * (client/server treat NULL as "no Production Episodes assembled yet").
+     * Read/written via `assembleProductionEpisodesForSeries`
+     * (`server/services/verticalDramaProductionEpisodeAssembly.ts`), exposed
+     * via `verticalDramaSeries.assembleProductionEpisodes` / `.get`.
+     */
+    productionEpisodesManifest: jsonb("productionEpisodesManifest"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),

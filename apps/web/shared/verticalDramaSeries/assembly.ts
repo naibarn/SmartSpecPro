@@ -236,3 +236,63 @@ export type VerticalDramaSeriesTrailerState = {
   error?: string;
   updatedAt: string;
 };
+
+/**
+ * Production Episodes (Phase D′-1,
+ * `planning/vertical-drama-production-episodes/plan.md`) — durable status
+ * for ONE Production Episode GROUP, persisted as an entry inside
+ * `VerticalDramaProductionEpisodesManifest` below (see that type's own doc
+ * comment for the whole-series shape and where it lives).
+ *
+ * MODEL: a Sub-Episode (today's `vertical_drama_episodes` row, ~9 shots, the
+ * spec's "ตอน") is compiled into one short video via
+ * `verticalDramaEpisodes.assembleEpisodeVideo`
+ * (`VerticalDramaCompiledVideoState` above,
+ * `episode.assemblyManifest.compiledVideo.videoUrl`). A Production Episode
+ * groups `groupSize` (5 or 10) CONSECUTIVE Sub-Episodes' own compiled videos
+ * into ONE concatenated 4-10 minute video — the actual publishable unit. See
+ * `server/services/verticalDramaProductionEpisodeAssembly.ts` for the
+ * chunking + concat job that produces this state (reuses the SAME
+ * download/concat/upload ffmpeg machinery `VerticalDramaCompiledVideoState`
+ * above already uses — no new ffmpeg infra for this feature).
+ */
+export type VerticalDramaProductionEpisodeGroupState = {
+  /** 0-based position of this group within `VerticalDramaProductionEpisodesManifest.episodes[]` (also its concat/playback order). */
+  index: number;
+  /** The group size this GROUP was actually assembled with. Carried per-group
+   *  (not just read off the manifest-level `groupSize`) so a group produced
+   *  by a prior call with a DIFFERENT group size is never mistaken for
+   *  still being current after the caller re-assembles with a new size. */
+  groupSize: number;
+  /** Sub-Episode `episodeNumber`s concatenated into this group, in playback
+   *  order. May be fewer than `groupSize` for a short last group, or when
+   *  assembled with `allowPartial: true` and some member had no compiled
+   *  video yet. */
+  subEpisodeNumbers: number[];
+  status: "pending" | "completed" | "failed";
+  /** Same-origin `/api/storage/...` path or absolute storage URL. Present
+   *  only when `status === "completed"`. */
+  videoUrl?: string;
+  durationSeconds?: number;
+  assembledAt?: string;
+  /** Present only when `status === "failed"`. */
+  error?: string;
+};
+
+/**
+ * Whole-series Production Episodes state — persisted onto
+ * `verticalDramaSeries.productionEpisodesManifest` (a dedicated nullable
+ * JSONB column, NOT nested under any one Sub-Episode's own
+ * `assemblyManifest`, since a Production Episode groups MULTIPLE
+ * Sub-Episodes — mirrors `VerticalDramaSeriesTrailerState`'s own "whole-series
+ * artifact gets its own series-level column" convention above).
+ * `groupSize` reflects the group size used by the MOST RECENT assemble call;
+ * individual `episodes[]` entries carry their OWN `groupSize` too (see that
+ * type's doc comment) since a re-assemble with a different group size can
+ * leave older entries stamped with the previous size until they are
+ * recomputed.
+ */
+export type VerticalDramaProductionEpisodesManifest = {
+  groupSize: 5 | 10;
+  episodes: VerticalDramaProductionEpisodeGroupState[];
+};
