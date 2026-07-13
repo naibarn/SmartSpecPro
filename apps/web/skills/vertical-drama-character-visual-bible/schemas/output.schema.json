@@ -53,6 +53,123 @@
           "visual_identity_summary": {
             "type": "string"
           },
+          "character_design_dna": {
+            "type": "object",
+            "description": "Complete selected Character DNA and concise decision evidence. The live runtime requires this field; it remains additive in this static contract for legacy package consumers.",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "design_intent",
+              "series_dna_alignment",
+              "role_tier",
+              "beauty_archetype",
+              "age_range",
+              "face_identity",
+              "body_language",
+              "recall_stack",
+              "costume_grammar",
+              "public_mask",
+              "hidden_truth",
+              "narrative_promise",
+              "attractive_contradiction",
+              "forbidden_drift",
+              "anti_clone_checks",
+              "scores",
+              "comparison_evidence"
+            ],
+            "properties": {
+              "version": { "const": 1 },
+              "design_intent": { "type": "string" },
+              "series_dna_alignment": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string" } },
+              "role_tier": {
+                "type": "string",
+                "enum": ["child", "lead_female", "lead_male", "lead", "villain_female", "villain_male", "villain", "second_lead", "support", "other"]
+              },
+              "beauty_archetype": { "type": "string" },
+              "age_range": { "type": "string" },
+              "face_identity": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["facial_geometry", "eyes_and_gaze", "brows", "nose", "lips_and_smile", "skin_and_texture", "hair", "distinctive_asymmetry"],
+                "properties": {
+                  "facial_geometry": { "type": "string" },
+                  "eyes_and_gaze": { "type": "string" },
+                  "brows": { "type": "string" },
+                  "nose": { "type": "string" },
+                  "lips_and_smile": { "type": "string" },
+                  "skin_and_texture": { "type": "string" },
+                  "hair": { "type": "string" },
+                  "distinctive_asymmetry": { "type": "string" }
+                }
+              },
+              "body_language": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["posture", "gesture_pattern", "movement_rhythm", "tension_tell"],
+                "properties": {
+                  "posture": { "type": "string" },
+                  "gesture_pattern": { "type": "string" },
+                  "movement_rhythm": { "type": "string" },
+                  "tension_tell": { "type": "string" }
+                }
+              },
+              "recall_stack": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["face", "silhouette", "color", "behavior", "emotional_hook"],
+                "properties": {
+                  "face": { "type": "string" },
+                  "silhouette": { "type": "string" },
+                  "color": { "type": "string" },
+                  "behavior": { "type": "string" },
+                  "emotional_hook": { "type": "string" }
+                }
+              },
+              "costume_grammar": { "type": "string" },
+              "public_mask": { "type": "string" },
+              "hidden_truth": { "type": "string" },
+              "narrative_promise": { "type": "string" },
+              "attractive_contradiction": { "type": "string" },
+              "forbidden_drift": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string" } },
+              "anti_clone_checks": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["distinct_facial_dimensions", "distinct_hair_dimensions", "distinct_body_language_dimensions", "signature_difference"],
+                "properties": {
+                  "distinct_facial_dimensions": { "type": "array", "minItems": 3, "uniqueItems": true, "items": { "type": "string" } },
+                  "distinct_hair_dimensions": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string" } },
+                  "distinct_body_language_dimensions": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string" } },
+                  "signature_difference": { "type": "string" }
+                }
+              },
+              "scores": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["story_fit", "screen_presence", "emotional_readability", "ensemble_contrast", "cross_series_uniqueness", "threshold_status", "rationale"],
+                "properties": {
+                  "story_fit": { "type": "number", "minimum": 0, "maximum": 10 },
+                  "screen_presence": { "type": "number", "minimum": 0, "maximum": 10 },
+                  "emotional_readability": { "type": "number", "minimum": 0, "maximum": 10 },
+                  "ensemble_contrast": { "type": "number", "minimum": 0, "maximum": 10 },
+                  "cross_series_uniqueness": { "type": "number", "minimum": 0, "maximum": 20 },
+                  "threshold_status": { "type": "string", "enum": ["pass", "redesign_required", "provisional"] },
+                  "rationale": { "type": "string" }
+                }
+              },
+              "comparison_evidence": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["candidate_direction_count", "current_cast_compared", "recent_series_compared", "prior_lead_dna_compared", "history_completeness"],
+                "properties": {
+                  "candidate_direction_count": { "const": 3 },
+                  "current_cast_compared": { "type": "integer", "minimum": 0, "maximum": 29 },
+                  "recent_series_compared": { "type": "integer", "minimum": 0, "maximum": 5 },
+                  "prior_lead_dna_compared": { "type": "integer", "minimum": 0, "maximum": 10 },
+                  "history_completeness": { "type": "string", "enum": ["structured", "partial", "none"] }
+                }
+              }
+            }
+          },
           "identity_anchors": {
             "type": "array",
             "items": {

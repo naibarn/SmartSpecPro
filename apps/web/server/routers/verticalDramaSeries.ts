@@ -217,7 +217,11 @@ import type { RunImproveScriptJobResult } from "../services/verticalDramaImprove
  * to `audit.search`'s DB-backed `errorOnly` filter.
  */
 import { auditLogger } from "../services/auditLogger";
-import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
+import {
+  hasEnoughCredits,
+  deductCredits,
+  refundCredits,
+} from "../services/creditService";
 import { renderCriteriaVersionMarker } from "../services/verticalDramaQualityCriteria";
 /**
  * Manual dialogue edits (W10.5, added 2026-07-08) — `updateEpisodeDraftDialogue`
@@ -265,7 +269,10 @@ import {
  * `verticalDramaQualityLedgerReconcile.ts` feature depends on them staying
  * intact, even though most are no longer imported HERE.
  */
-import { readActiveSeasonCritique, readBibleRefinedCharacters } from "../services/verticalDramaStoryBible";
+import {
+  readActiveSeasonCritique,
+  readBibleRefinedCharacters,
+} from "../services/verticalDramaStoryBible";
 /**
  * Premium multi-round drafts (W11-A, added 2026-07-08) — `mode` input on the
  * two deep-draft mutations below; `VerticalDramaDeepStoryDraftMode` is this
@@ -290,7 +297,10 @@ import {
   resolveSeriesThumbnailUrls,
   resolveEpisodeThumbnailUrls,
 } from "../services/verticalDramaThumbnails";
-import { submitTrailerJob, getTrailerJobStatus } from "../services/verticalDramaSeriesTrailerAssembly";
+import {
+  submitTrailerJob,
+  getTrailerJobStatus,
+} from "../services/verticalDramaSeriesTrailerAssembly";
 import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 /**
@@ -379,6 +389,21 @@ import type {
 import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 import type { VdDialogueTimelineClip } from "@shared/verticalDramaSeries/dialogueAudioTimeline";
 import { HyperframesFinalCompositeSubtitlePresetSchema } from "@shared/hyperframes/runtimeApiSchemas";
+/**
+ * Production Episodes render-options (Phase D′-2,
+ * `planning/vertical-drama-production-episodes/plan.md` "Render-options
+ * LEVEL") — `SUBTITLE_FONT_SIZE_IDS` backs `assembleProductionEpisodes`'s
+ * `renderOptions.subtitleFontSize` zod enum below, reusing the EXACT SAME
+ * source-of-truth array `assembleEpisodeVideo`'s own inline
+ * `subtitleFontSize` enum uses (`verticalDramaEpisodes.ts`), instead of
+ * retyping the 4 literal values a second time. Safe as a normal top-level
+ * VALUE import (unlike the sibling `verticalDramaEpisodeVideoAssembly.ts`
+ * type-only import block above): `verticalDramaFinalRenderGraph.ts` only
+ * imports `zod` + `@shared/hyperframes/runtimeApiSchemas` — no `../storage`,
+ * no ffmpeg spawn, no DB — so it carries none of that module's "breaks every
+ * sibling test's narrow `vi.mock` graph" risk.
+ */
+import { SUBTITLE_FONT_SIZE_IDS } from "../services/verticalDramaFinalRenderGraph";
 // Task #34 (Text Overlay Suite) — pure/DB-free data model + derivation
 // helpers, same safe-static-import posture as `adBannerPresets.ts` above.
 import {
@@ -394,7 +419,11 @@ import {
 } from "@shared/verticalDramaSeries/textOverlay";
 
 /** Per-series episode aggregate row shape (typed projection; `db.select` erases to `any`). */
-type EpisodeAggRow = { seriesId: number; maxEpisodeNumber: number; episodeCount: number };
+type EpisodeAggRow = {
+  seriesId: number;
+  maxEpisodeNumber: number;
+  episodeCount: number;
+};
 /** Per-series pending-approval aggregate row shape. */
 type ApprovalAggRow = { seriesId: number; pendingCount: number };
 /** Light episode projection returned by the Series detail query. */
@@ -461,7 +490,7 @@ type GenrePresetDto = {
  * on the canonical `verticalDramaSeries` feature flag (fail-closed).
  */
 const verticalDramaProcedure = protectedProcedure.use(
-  requireFeatureFlag("verticalDramaSeries"),
+  requireFeatureFlag("verticalDramaSeries")
 );
 
 /**
@@ -472,7 +501,7 @@ const verticalDramaProcedure = protectedProcedure.use(
  * for a feature-specific sub-flag layered on top of a surface-wide one.
  */
 const verticalDramaArcReplanProcedure = verticalDramaProcedure.use(
-  requireFeatureFlag("verticalDramaSeriesArcReplan"),
+  requireFeatureFlag("verticalDramaSeriesArcReplan")
 );
 
 /**
@@ -483,7 +512,7 @@ const verticalDramaArcReplanProcedure = verticalDramaProcedure.use(
  * `verticalDramaArcReplanProcedure` above.
  */
 const verticalDramaDeepStoryDraftsProcedure = verticalDramaProcedure.use(
-  requireFeatureFlag("verticalDramaSeriesDeepStoryDrafts"),
+  requireFeatureFlag("verticalDramaSeriesDeepStoryDrafts")
 );
 
 /**
@@ -500,7 +529,7 @@ const verticalDramaDeepStoryDraftsProcedure = verticalDramaProcedure.use(
  * lifecycle even if the flag is later turned off for that tenant.
  */
 const verticalDramaShareLinksProcedure = verticalDramaProcedure.use(
-  requireFeatureFlag("verticalDramaSeriesShareLinks"),
+  requireFeatureFlag("verticalDramaSeriesShareLinks")
 );
 
 /**
@@ -537,11 +566,15 @@ function requireTenantId(tenantId: string | null): string {
 }
 
 /** Ownership predicate reused by every query: tenant + user + id. */
-function seriesOwnershipWhere(tenantId: string, userId: number, seriesId: number) {
+function seriesOwnershipWhere(
+  tenantId: string,
+  userId: number,
+  seriesId: number
+) {
   return and(
     eq(verticalDramaSeries.id, seriesId),
     eq(verticalDramaSeries.tenantId, tenantId),
-    eq(verticalDramaSeries.userId, userId),
+    eq(verticalDramaSeries.userId, userId)
   );
 }
 
@@ -550,7 +583,11 @@ function seriesOwnershipWhere(tenantId: string, userId: number, seriesId: number
  * FORBIDDEN) is deliberate so we never disclose the existence of another
  * tenant's/user's series.
  */
-async function loadOwnedSeries(tenantId: string, userId: number, seriesId: number) {
+async function loadOwnedSeries(
+  tenantId: string,
+  userId: number,
+  seriesId: number
+) {
   const [row] = await db
     .select()
     .from(verticalDramaSeries)
@@ -572,7 +609,7 @@ async function loadOwnedSeries(tenantId: string, userId: number, seriesId: numbe
 async function loadArcReplanProposalEvent(
   tenantId: string,
   seriesId: number,
-  proposalEventId: number,
+  proposalEventId: number
 ): Promise<VerticalDramaMemoryEventRow> {
   const [row] = await db
     .select()
@@ -581,12 +618,15 @@ async function loadArcReplanProposalEvent(
       and(
         eq(verticalDramaMemoryEvents.id, proposalEventId),
         eq(verticalDramaMemoryEvents.tenantId, tenantId),
-        eq(verticalDramaMemoryEvents.seriesId, seriesId),
-      ),
+        eq(verticalDramaMemoryEvents.seriesId, seriesId)
+      )
     )
     .limit(1);
   if (!row || row.memoryKind !== "arc_replan_proposal") {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Arc re-plan proposal not found" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Arc re-plan proposal not found",
+    });
   }
   return row as VerticalDramaMemoryEventRow;
 }
@@ -604,7 +644,7 @@ async function findArcReplanDecision(
   tenantId: string,
   userId: number,
   seriesId: number,
-  proposalEventId: number,
+  proposalEventId: number
 ): Promise<"approved" | "rejected" | null> {
   const events = await verticalDramaSeriesMemoryService.listEvents({
     tenantId,
@@ -671,7 +711,7 @@ async function recordDeepStoryDraftAuditEvent(params: {
     debugError(
       "verticalDramaSeries.deepStoryDraft",
       "Failed to record deep story draft audit event",
-      error,
+      error
     );
   }
 }
@@ -693,10 +733,12 @@ function mergeDeepDraftItems(
     draftCompleteness: unknown;
     /** Premium multi-round drafts (W11-A) — absent for standard-mode results, so the conditional spread below omits the key entirely (byte-identical to pre-W11-A merged items). */
     draftScorecard?: unknown;
-  }>,
+  }>
 ): StoredEpisodeBreakdownItem[] {
-  const draftedByEpisode = new Map(draftedItems.map((item) => [item.episodeNumber, item]));
-  return existingItems.map((item) => {
+  const draftedByEpisode = new Map(
+    draftedItems.map(item => [item.episodeNumber, item])
+  );
+  return existingItems.map(item => {
     const drafted = draftedByEpisode.get(item.episodeNumber);
     if (!drafted) return item;
     return {
@@ -704,7 +746,9 @@ function mergeDeepDraftItems(
       shotDrafts: drafted.shotDrafts,
       cliffhanger_line: drafted.cliffhanger_line,
       draftCompleteness: drafted.draftCompleteness,
-      ...(drafted.draftScorecard ? { draftScorecard: drafted.draftScorecard } : {}),
+      ...(drafted.draftScorecard
+        ? { draftScorecard: drafted.draftScorecard }
+        : {}),
     } as StoredEpisodeBreakdownItem;
   });
 }
@@ -723,18 +767,29 @@ function mergeDeepDraftItems(
  * signal. Throws the exact FORBIDDEN shape the worker's own internal
  * `InsufficientCreditsError` would eventually map to.
  */
-async function ensureStoryJobCreditsAvailable(userId: number, estimate: number): Promise<void> {
+async function ensureStoryJobCreditsAvailable(
+  userId: number,
+  estimate: number
+): Promise<void> {
   const ok = await hasEnoughCredits(userId, estimate);
   if (!ok) {
-    throw new TRPCError({ code: "FORBIDDEN", message: new InsufficientCreditsError().message });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: new InsufficientCreditsError().message,
+    });
   }
 }
 
 /** Credits pre-check estimate for `generateStoryBibleDeep`/`extendStoryDraftHorizon` — mirrors `generateStoryBibleDeep`'s/`generateStoryBibleDeepPremium`'s own internal `totalEstimate` math exactly. */
-function estimateDeepDraftJobCredits(episodeCount: number, mode: VerticalDramaDeepStoryDraftMode): number {
+function estimateDeepDraftJobCredits(
+  episodeCount: number,
+  mode: VerticalDramaDeepStoryDraftMode
+): number {
   const chunkSizes = computeDeepDraftChunkSizes(episodeCount);
   const calls =
-    mode === "premium" ? estimatePremiumDeepDraftCalls(chunkSizes.length) : chunkSizes.length;
+    mode === "premium"
+      ? estimatePremiumDeepDraftCalls(chunkSizes.length)
+      : chunkSizes.length;
   return calls * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE;
 }
 
@@ -765,7 +820,8 @@ const VD_IMPROVE_SCRIPT_STRAGGLER_ATTEMPTS_ESTIMATE = 2;
 const VD_IMPROVE_SCRIPT_STRAGGLER_ROUNDS_ESTIMATE = 3;
 function estimateImproveScriptJobCredits(draftedEpisodeCount: number): number {
   return (
-    VD_IMPROVE_SCRIPT_WHOLE_BLOCK_ROUNDS_ESTIMATE * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE +
+    VD_IMPROVE_SCRIPT_WHOLE_BLOCK_ROUNDS_ESTIMATE *
+      VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE +
     Math.max(0, draftedEpisodeCount) *
       VD_IMPROVE_SCRIPT_STRAGGLER_ATTEMPTS_ESTIMATE *
       VD_IMPROVE_SCRIPT_STRAGGLER_ROUNDS_ESTIMATE *
@@ -801,7 +857,9 @@ interface StoryJobExecutorOwner {
  * closed: flag missing/unreadable → `false` → byte-identical legacy behavior
  * inside `verticalDramaStoryBible.ts` (its params are optional-additive).
  */
-async function resolveVerticalDramaFormatProfilesFlag(tenantId: string): Promise<boolean> {
+async function resolveVerticalDramaFormatProfilesFlag(
+  tenantId: string
+): Promise<boolean> {
   try {
     const flags = await getTenantFeatureFlags(tenantId);
     return flags?.verticalDramaSeriesFormatProfiles === true;
@@ -815,7 +873,9 @@ async function resolveVerticalDramaFormatProfilesFlag(tenantId: string): Promise
  * deep-draft job executors. Local fail-closed helper, matching the existing
  * per-router tenant-flag resolver pattern in this file.
  */
-async function resolveVerticalDramaQualityLedgersFlag(tenantId: string): Promise<boolean> {
+async function resolveVerticalDramaQualityLedgersFlag(
+  tenantId: string
+): Promise<boolean> {
   try {
     const flags = await getTenantFeatureFlags(tenantId);
     return flags?.verticalDramaQualityLedgers === true;
@@ -837,7 +897,9 @@ async function resolveVerticalDramaQualityLedgersFlag(tenantId: string): Promise
  * note). SAME flag key as the episodes router's resolver — this is the ONE
  * canonical tenant flag, just resolved independently per file.
  */
-async function resolveVerticalDramaTieInReplanFlag(tenantId: string): Promise<boolean> {
+async function resolveVerticalDramaTieInReplanFlag(
+  tenantId: string
+): Promise<boolean> {
   try {
     const flags = await getTenantFeatureFlags(tenantId);
     return flags?.verticalDramaSeriesTieInReplan === true;
@@ -859,13 +921,15 @@ async function planQualityLedgersForBreakdown(params: {
   totalEpisodeCount?: number | null;
   idempotencyKey?: string;
   onProgress: (progress: VerticalDramaStoryJobProgress) => void;
-}): Promise<{ ledgers: VerticalDramaQualityLedgers; creditsUsed: number } | null> {
+}): Promise<{
+  ledgers: VerticalDramaQualityLedgers;
+  creditsUsed: number;
+} | null> {
   const enabled = await resolveVerticalDramaQualityLedgersFlag(params.tenantId);
   if (!enabled) return null;
 
-  const { runVerticalDramaLedgerPlanning } = await import(
-    "../services/verticalDramaLedgerPlanner"
-  );
+  const { runVerticalDramaLedgerPlanning } =
+    await import("../services/verticalDramaLedgerPlanner");
   const result = await runVerticalDramaLedgerPlanning({
     userId: params.userId,
     tenantId: params.tenantId,
@@ -875,9 +939,12 @@ async function planQualityLedgersForBreakdown(params: {
     genre: params.genre,
     tone: params.tone,
     refinedCharacters: readBibleRefinedCharacters(params.bible),
-    worldRules: params.activeBreakdown.flatMap((item) => readItemWorldRules(item)),
+    worldRules: params.activeBreakdown.flatMap(item =>
+      readItemWorldRules(item)
+    ),
     activeBreakdown: params.activeBreakdown,
-    totalEpisodeCount: params.totalEpisodeCount ?? params.activeBreakdown.length,
+    totalEpisodeCount:
+      params.totalEpisodeCount ?? params.activeBreakdown.length,
     idempotencyKey: params.idempotencyKey
       ? `${params.idempotencyKey}:ledger_plan`
       : undefined,
@@ -899,7 +966,9 @@ async function planQualityLedgersForBreakdown(params: {
  * router's resolver — this is the ONE canonical tenant flag, just resolved
  * independently per file.
  */
-async function resolveVerticalDramaTextOverlaySuiteFlag(tenantId: string): Promise<boolean> {
+async function resolveVerticalDramaTextOverlaySuiteFlag(
+  tenantId: string
+): Promise<boolean> {
   try {
     const flags = await getTenantFeatureFlags(tenantId);
     return flags?.verticalDramaSeriesTextOverlaySuite === true;
@@ -962,13 +1031,18 @@ async function resolveTieInDraftBootstrap(params: {
   items: StoredEpisodeBreakdownItem[];
   context?: VdTieInDraftContext;
 }> {
-  const tieInReplanEnabled = await resolveVerticalDramaTieInReplanFlag(params.tenantId);
-  const rawProductTieIn = (params.productTieIn as Record<string, unknown> | null) ?? null;
+  const tieInReplanEnabled = await resolveVerticalDramaTieInReplanFlag(
+    params.tenantId
+  );
+  const rawProductTieIn =
+    (params.productTieIn as Record<string, unknown> | null) ?? null;
   if (!tieInReplanEnabled || rawProductTieIn?.enabled !== true) {
     return { items: params.items };
   }
 
-  const hasAnyPlannedTieIn = params.items.some((item) => item.tieIn !== undefined);
+  const hasAnyPlannedTieIn = params.items.some(
+    item => item.tieIn !== undefined
+  );
   const perTenCap =
     typeof rawProductTieIn.maxEpisodesWithTieInPerTenEpisodes === "number"
       ? rawProductTieIn.maxEpisodesWithTieInPerTenEpisodes
@@ -983,34 +1057,54 @@ async function resolveTieInDraftBootstrap(params: {
     ? params.items
     : (planSeasonTieInPlacements(
         params.items as unknown as VerticalDramaEpisodeBreakdownItem[],
-        { perTenCap, plannedCount: params.plannedCount },
+        { perTenCap, plannedCount: params.plannedCount }
       ) as unknown as StoredEpisodeBreakdownItem[]);
 
   const placements = workingItems
-    .filter((item): item is StoredEpisodeBreakdownItem & { tieIn: VerticalDramaEpisodeTieInPlacement } =>
-      item.tieIn !== undefined,
+    .filter(
+      (
+        item
+      ): item is StoredEpisodeBreakdownItem & {
+        tieIn: VerticalDramaEpisodeTieInPlacement;
+      } => item.tieIn !== undefined
     )
-    .map((item) => ({ episodeNumber: item.episodeNumber, placement: item.tieIn }));
+    .map(item => ({
+      episodeNumber: item.episodeNumber,
+      placement: item.tieIn,
+    }));
 
   const productName =
-    typeof rawProductTieIn.productName === "string" && rawProductTieIn.productName.trim().length > 0
+    typeof rawProductTieIn.productName === "string" &&
+    rawProductTieIn.productName.trim().length > 0
       ? rawProductTieIn.productName
       : "the product";
   const productCategory =
-    typeof rawProductTieIn.productCategory === "string" ? rawProductTieIn.productCategory : undefined;
+    typeof rawProductTieIn.productCategory === "string"
+      ? rawProductTieIn.productCategory
+      : undefined;
   // No current UI writes a `benefitFocus` key into `productTieIn` — read
   // defensively/forward-compatibly here anyway (see `VdTieInDraftContext`'s
   // own doc comment), matching how `verticalDramaEpisodePipeline.ts` already
   // reads `productDescription` even though no UI writes THAT key either.
   const benefitFocus =
-    typeof rawProductTieIn.benefitFocus === "string" ? rawProductTieIn.benefitFocus : undefined;
+    typeof rawProductTieIn.benefitFocus === "string"
+      ? rawProductTieIn.benefitFocus
+      : undefined;
   const forbiddenClaims = Array.isArray(rawProductTieIn.forbiddenClaims)
-    ? rawProductTieIn.forbiddenClaims.filter((c): c is string => typeof c === "string")
+    ? rawProductTieIn.forbiddenClaims.filter(
+        (c): c is string => typeof c === "string"
+      )
     : [];
 
   return {
     items: workingItems,
-    context: { productName, productCategory, benefitFocus, forbiddenClaims, placements },
+    context: {
+      productName,
+      productCategory,
+      benefitFocus,
+      forbiddenClaims,
+      placements,
+    },
   };
 }
 
@@ -1020,11 +1114,12 @@ export async function runGenerateStoryBibleDeepJob(
     mode?: VerticalDramaDeepStoryDraftMode;
     idempotencyKey?: string;
   },
-  onProgress: (progress: VerticalDramaStoryJobProgress) => void,
+  onProgress: (progress: VerticalDramaStoryJobProgress) => void
 ) {
   const { tenantId, userId, seriesId } = params;
   const mode: VerticalDramaDeepStoryDraftMode = params.mode ?? "standard";
-  const formatProfilesEnabled = await resolveVerticalDramaFormatProfilesFlag(tenantId);
+  const formatProfilesEnabled =
+    await resolveVerticalDramaFormatProfilesFlag(tenantId);
 
   const row = await loadOwnedSeries(tenantId, userId, seriesId);
   const bible = (row.bible as Record<string, unknown> | null) ?? {};
@@ -1032,7 +1127,8 @@ export async function runGenerateStoryBibleDeepJob(
   if (rawExistingItems.length === 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Generate the story bible first before generating deep shot drafts",
+      message:
+        "Generate the story bible first before generating deep shot drafts",
     });
   }
 
@@ -1051,19 +1147,28 @@ export async function runGenerateStoryBibleDeepJob(
   });
   const existingItems = tieInBootstrap.items;
 
-  const horizon = resolveDeepDraftHorizon(params.horizonEpisodes, row.targetEpisodeCount);
-  const episodeNumbers = new Set(Array.from({ length: horizon }, (_, i) => i + 1));
+  const horizon = resolveDeepDraftHorizon(
+    params.horizonEpisodes,
+    row.targetEpisodeCount
+  );
+  const episodeNumbers = new Set(
+    Array.from({ length: horizon }, (_, i) => i + 1)
+  );
   const episodesToDraft = existingItems
-    .filter((item) => episodeNumbers.has(item.episodeNumber))
+    .filter(item => episodeNumbers.has(item.episodeNumber))
     .sort((a, b) => a.episodeNumber - b.episodeNumber);
   if (episodesToDraft.length === 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "No planned episodes are available within the requested horizon",
+      message:
+        "No planned Sub-episodes are available within the requested horizon",
     });
   }
 
-  let ledgerPlan: { ledgers: VerticalDramaQualityLedgers; creditsUsed: number } | null = null;
+  let ledgerPlan: {
+    ledgers: VerticalDramaQualityLedgers;
+    creditsUsed: number;
+  } | null = null;
   let result;
   try {
     ledgerPlan = await planQualityLedgersForBreakdown({
@@ -1102,7 +1207,8 @@ export async function runGenerateStoryBibleDeepJob(
       // bible read already done above; the flag gate itself lives at
       // `create`/`synthesizeGenrePreset` write time (only a truthy string
       // ever gets persisted into `bible.userPremise` in the first place).
-      userPremise: typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+      userPremise:
+        typeof bible.userPremise === "string" ? bible.userPremise : undefined,
       // Series-level audience age rating (Phase 1) — same "inherit via the
       // bible read already done above" convention as `userPremise` just
       // above; always resolves to a concrete tier (defaults to the
@@ -1115,16 +1221,25 @@ export async function runGenerateStoryBibleDeepJob(
       throw new TRPCError({ code: "FORBIDDEN", message: error.message });
     }
     if (error instanceof VdSchemaValidationError) {
-      throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: error.message });
+      throw new TRPCError({
+        code: "UNPROCESSABLE_CONTENT",
+        message: error.message,
+      });
     }
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: error instanceof Error ? error.message : "Deep story draft generation failed",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Deep story draft generation failed",
     });
   }
 
   const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
-  const horizonEndEpisode = result.draftedItems.reduce((max, item) => Math.max(max, item.episodeNumber), 0);
+  const horizonEndEpisode = result.draftedItems.reduce(
+    (max, item) => Math.max(max, item.episodeNumber),
+    0
+  );
   const generatedAt = new Date().toISOString();
   const totalCreditsUsed = result.creditsUsed + (ledgerPlan?.creditsUsed ?? 0);
 
@@ -1169,10 +1284,19 @@ export async function runGenerateStoryBibleDeepJob(
   // contract, but the `&&` keeps this defensive regardless.
   if (result.partial && result.error) {
     const traceId = randomUUID().replace(/-/g, "").slice(0, 32);
-    const draftedEpisodeNumbers = new Set(result.draftedItems.map((item) => item.episodeNumber));
-    const requestedEpisodeNumbers = episodesToDraft.map((item) => item.episodeNumber);
-    const diffFailedEpisodes = requestedEpisodeNumbers.filter((ep) => !draftedEpisodeNumbers.has(ep));
-    const failedEpisodes = diffFailedEpisodes.length > 0 ? diffFailedEpisodes : result.missingEpisodes;
+    const draftedEpisodeNumbers = new Set(
+      result.draftedItems.map(item => item.episodeNumber)
+    );
+    const requestedEpisodeNumbers = episodesToDraft.map(
+      item => item.episodeNumber
+    );
+    const diffFailedEpisodes = requestedEpisodeNumbers.filter(
+      ep => !draftedEpisodeNumbers.has(ep)
+    );
+    const failedEpisodes =
+      diffFailedEpisodes.length > 0
+        ? diffFailedEpisodes
+        : result.missingEpisodes;
 
     await recordVerticalDramaSystemFailureAuditEvent({
       eventType: "vertical_drama_deep_generate_error",
@@ -1202,14 +1326,14 @@ export async function runGenerateStoryBibleDeepJob(
           `User ID: ${userId}`,
           `Tenant ID: ${tenantId}`,
           `Series ID: ${seriesId}`,
-          `ตอนที่ล้มเหลว: ${failedEpisodes.join(", ")}`,
+          `ตอนย่อยที่ล้มเหลว: ${failedEpisodes.join(", ")}`,
           `จำนวนที่ขอสร้าง: ${requestedEpisodeNumbers.length}`,
           `จำนวนที่สร้างสำเร็จ: ${result.draftedItems.length}`,
           `Error: ${result.error}`,
         ].join("\n"),
         stepsToReproduce: [
           `1. เปิดหน้า /drama-series/${seriesId}`,
-          `2. ตรวจสอบตอนที่ล้มเหลว: ${failedEpisodes.join(", ")}`,
+          `2. ตรวจสอบตอนย่อยที่ล้มเหลว: ${failedEpisodes.join(", ")}`,
           "3. ค้น log ด้วย traceId ต่อไปนี้ใน logs/audit/",
           `4. traceId: ${traceId}`,
         ].join("\n"),
@@ -1227,7 +1351,7 @@ export async function runGenerateStoryBibleDeepJob(
           traceId,
         },
       },
-      db,
+      db
     );
   }
 
@@ -1259,11 +1383,12 @@ export async function runExtendStoryDraftHorizonJob(
     mode?: VerticalDramaDeepStoryDraftMode;
     idempotencyKey?: string;
   },
-  onProgress: (progress: VerticalDramaStoryJobProgress) => void,
+  onProgress: (progress: VerticalDramaStoryJobProgress) => void
 ) {
   const { tenantId, userId, seriesId } = params;
   const mode: VerticalDramaDeepStoryDraftMode = params.mode ?? "standard";
-  const formatProfilesEnabled = await resolveVerticalDramaFormatProfilesFlag(tenantId);
+  const formatProfilesEnabled =
+    await resolveVerticalDramaFormatProfilesFlag(tenantId);
 
   const row = await loadOwnedSeries(tenantId, userId, seriesId);
   const bible = (row.bible as Record<string, unknown> | null) ?? {};
@@ -1271,7 +1396,8 @@ export async function runExtendStoryDraftHorizonJob(
   if (rawExistingItems.length === 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Generate the story bible first before extending deep shot drafts",
+      message:
+        "Generate the story bible first before extending deep shot drafts",
     });
   }
 
@@ -1293,38 +1419,52 @@ export async function runExtendStoryDraftHorizonJob(
   if (horizonStart > totalEpisodes) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "All planned episodes already have deep shot drafts",
+      message: "All planned Sub-episodes already have deep shot drafts",
     });
   }
 
-  const additionalEpisodes = params.additionalEpisodes ?? VD_DEEP_DRAFT_EXTEND_DEFAULT_EPISODES;
-  const horizonEnd = Math.min(horizonStart + additionalEpisodes - 1, totalEpisodes);
+  const additionalEpisodes =
+    params.additionalEpisodes ?? VD_DEEP_DRAFT_EXTEND_DEFAULT_EPISODES;
+  const horizonEnd = Math.min(
+    horizonStart + additionalEpisodes - 1,
+    totalEpisodes
+  );
   const episodeNumbers = new Set(
-    Array.from({ length: Math.max(0, horizonEnd - horizonStart + 1) }, (_, i) => horizonStart + i),
+    Array.from(
+      { length: Math.max(0, horizonEnd - horizonStart + 1) },
+      (_, i) => horizonStart + i
+    )
   );
   const episodesToDraft = existingItems
-    .filter((item) => episodeNumbers.has(item.episodeNumber))
+    .filter(item => episodeNumbers.has(item.episodeNumber))
     .sort((a, b) => a.episodeNumber - b.episodeNumber);
   if (episodesToDraft.length === 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "No planned episodes are available within the requested horizon",
+      message:
+        "No planned Sub-episodes are available within the requested horizon",
     });
   }
 
   // Full prior recap (owner-approved design): every episode already
   // deep-drafted before this run's horizon start.
   const recapItems: DeepDraftRecapEpisode[] = existingItems
-    .filter((item) => item.episodeNumber < horizonStart && readItemShotDrafts(item) !== null)
+    .filter(
+      item =>
+        item.episodeNumber < horizonStart && readItemShotDrafts(item) !== null
+    )
     .sort((a, b) => a.episodeNumber - b.episodeNumber)
-    .map((item) => ({
+    .map(item => ({
       episodeNumber: item.episodeNumber,
       workingTitle: item.workingTitle,
       logline: item.logline,
       cliffhangerLine: readItemCliffhangerLine(item),
     }));
 
-  let ledgerPlan: { ledgers: VerticalDramaQualityLedgers; creditsUsed: number } | null = null;
+  let ledgerPlan: {
+    ledgers: VerticalDramaQualityLedgers;
+    creditsUsed: number;
+  } | null = null;
   let result;
   try {
     ledgerPlan = await planQualityLedgersForBreakdown({
@@ -1361,7 +1501,8 @@ export async function runExtendStoryDraftHorizonJob(
       tieInDraftContext: tieInBootstrap.context,
       // Feature 132 §4.2.7 (F132A) — see `runGenerateStoryBibleDeepJob`'s
       // identical wiring; inherits the premise via the same bible read.
-      userPremise: typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+      userPremise:
+        typeof bible.userPremise === "string" ? bible.userPremise : undefined,
       // Series-level audience age rating (Phase 1) — see
       // `runGenerateStoryBibleDeepJob`'s identical wiring.
       audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
@@ -1372,18 +1513,24 @@ export async function runExtendStoryDraftHorizonJob(
       throw new TRPCError({ code: "FORBIDDEN", message: error.message });
     }
     if (error instanceof VdSchemaValidationError) {
-      throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: error.message });
+      throw new TRPCError({
+        code: "UNPROCESSABLE_CONTENT",
+        message: error.message,
+      });
     }
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
-      message: error instanceof Error ? error.message : "Deep story draft extension failed",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Deep story draft extension failed",
     });
   }
 
   const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
   const newHorizonEndEpisode = result.draftedItems.reduce(
     (max, item) => Math.max(max, item.episodeNumber),
-    priorMetadata?.horizonEndEpisode ?? 0,
+    priorMetadata?.horizonEndEpisode ?? 0
   );
   const generatedAt = new Date().toISOString();
   const totalCreditsUsed = result.creditsUsed + (ledgerPlan?.creditsUsed ?? 0);
@@ -1430,10 +1577,19 @@ export async function runExtendStoryDraftHorizonJob(
   // dedupe.
   if (result.partial && result.error) {
     const traceId = randomUUID().replace(/-/g, "").slice(0, 32);
-    const draftedEpisodeNumbers = new Set(result.draftedItems.map((item) => item.episodeNumber));
-    const requestedEpisodeNumbers = episodesToDraft.map((item) => item.episodeNumber);
-    const diffFailedEpisodes = requestedEpisodeNumbers.filter((ep) => !draftedEpisodeNumbers.has(ep));
-    const failedEpisodes = diffFailedEpisodes.length > 0 ? diffFailedEpisodes : result.missingEpisodes;
+    const draftedEpisodeNumbers = new Set(
+      result.draftedItems.map(item => item.episodeNumber)
+    );
+    const requestedEpisodeNumbers = episodesToDraft.map(
+      item => item.episodeNumber
+    );
+    const diffFailedEpisodes = requestedEpisodeNumbers.filter(
+      ep => !draftedEpisodeNumbers.has(ep)
+    );
+    const failedEpisodes =
+      diffFailedEpisodes.length > 0
+        ? diffFailedEpisodes
+        : result.missingEpisodes;
 
     await recordVerticalDramaSystemFailureAuditEvent({
       eventType: "vertical_drama_deep_generate_error",
@@ -1463,14 +1619,14 @@ export async function runExtendStoryDraftHorizonJob(
           `User ID: ${userId}`,
           `Tenant ID: ${tenantId}`,
           `Series ID: ${seriesId}`,
-          `ตอนที่ล้มเหลว: ${failedEpisodes.join(", ")}`,
+          `ตอนย่อยที่ล้มเหลว: ${failedEpisodes.join(", ")}`,
           `จำนวนที่ขอสร้าง: ${requestedEpisodeNumbers.length}`,
           `จำนวนที่สร้างสำเร็จ: ${result.draftedItems.length}`,
           `Error: ${result.error}`,
         ].join("\n"),
         stepsToReproduce: [
           `1. เปิดหน้า /drama-series/${seriesId}`,
-          `2. ตรวจสอบตอนที่ล้มเหลว: ${failedEpisodes.join(", ")}`,
+          `2. ตรวจสอบตอนย่อยที่ล้มเหลว: ${failedEpisodes.join(", ")}`,
           "3. ค้น log ด้วย traceId ต่อไปนี้ใน logs/audit/",
           `4. traceId: ${traceId}`,
         ].join("\n"),
@@ -1488,7 +1644,7 @@ export async function runExtendStoryDraftHorizonJob(
           traceId,
         },
       },
-      db,
+      db
     );
   }
 
@@ -1519,7 +1675,7 @@ export async function runExtendStoryDraftHorizonJob(
  */
 export async function runVerticalDramaStoryJobExecutor(
   payload: VerticalDramaStoryJobPayload,
-  onProgress: (progress: VerticalDramaStoryJobProgress) => void,
+  onProgress: (progress: VerticalDramaStoryJobProgress) => void
 ): Promise<unknown> {
   const owner: StoryJobExecutorOwner = {
     tenantId: payload.tenantId,
@@ -1529,25 +1685,43 @@ export async function runVerticalDramaStoryJobExecutor(
   switch (payload.kind) {
     case "deep_generate":
       return runGenerateStoryBibleDeepJob(
-        { ...owner, ...(payload.input as { horizonEpisodes?: number; mode?: VerticalDramaDeepStoryDraftMode; idempotencyKey?: string }) },
-        onProgress,
+        {
+          ...owner,
+          ...(payload.input as {
+            horizonEpisodes?: number;
+            mode?: VerticalDramaDeepStoryDraftMode;
+            idempotencyKey?: string;
+          }),
+        },
+        onProgress
       );
     case "extend":
       return runExtendStoryDraftHorizonJob(
-        { ...owner, ...(payload.input as { additionalEpisodes?: number; mode?: VerticalDramaDeepStoryDraftMode; idempotencyKey?: string }) },
-        onProgress,
+        {
+          ...owner,
+          ...(payload.input as {
+            additionalEpisodes?: number;
+            mode?: VerticalDramaDeepStoryDraftMode;
+            idempotencyKey?: string;
+          }),
+        },
+        onProgress
       );
     case "improve_script": {
       // Lazy `await import(...)` — see this file's own import block doc
       // comment on `RunImproveScriptJobResult` for why a static VALUE import
       // of anything from `verticalDramaImproveScript.ts` must be avoided here.
-      const { runImproveScriptJob } = await import("../services/verticalDramaImproveScript");
+      const { runImproveScriptJob } =
+        await import("../services/verticalDramaImproveScript");
       return runImproveScriptJob(
         {
           ...owner,
-          ...(payload.input as { userRevisionRequest: string; idempotencyKey?: string }),
+          ...(payload.input as {
+            userRevisionRequest: string;
+            idempotencyKey?: string;
+          }),
         },
-        onProgress,
+        onProgress
       );
     }
     default: {
@@ -1573,7 +1747,7 @@ export async function runVerticalDramaStoryJobExecutor(
 function loadManualDialogueEditTarget(
   bible: Record<string, unknown>,
   episodeNumber: number,
-  shotNumber: number,
+  shotNumber: number
 ): {
   activeIndex: number;
   versions: StoredBreakdownVersion[];
@@ -1583,13 +1757,19 @@ function loadManualDialogueEditTarget(
   const activeIndex = resolveActiveBreakdownVersionIndex(bible);
   const item =
     activeIndex >= 0
-      ? versions[activeIndex].items.find((candidate) => candidate.episodeNumber === episodeNumber)
+      ? versions[activeIndex].items.find(
+          candidate => candidate.episodeNumber === episodeNumber
+        )
       : undefined;
   const shotDrafts = item ? readItemShotDrafts(item) : null;
-  const shotExists = shotDrafts?.some((shot) => shot.shot_number === shotNumber) ?? false;
+  const shotExists =
+    shotDrafts?.some(shot => shot.shot_number === shotNumber) ?? false;
 
   if (activeIndex < 0 || !item || !shotDrafts || !shotExists) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "ไม่มีร่างสำหรับตอน/ช็อตนี้" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "ไม่มีร่างสำหรับตอน/ช็อตนี้",
+    });
   }
 
   return { activeIndex, versions, item };
@@ -1630,7 +1810,7 @@ async function recordManualDialogueEditAuditEvent(params: {
     debugError(
       "verticalDramaSeries.updateEpisodeDraftDialogue",
       "Failed to record manual dialogue edit audit event",
-      error,
+      error
     );
   }
 }
@@ -1677,7 +1857,7 @@ async function recordVerticalDramaSystemFailureAuditEvent(params: {
     debugError(
       "verticalDramaSeries.systemFailureAudit",
       "Failed to record api_audit_events row for a vertical drama partial system failure",
-      error,
+      error
     );
   }
   try {
@@ -1694,7 +1874,7 @@ async function recordVerticalDramaSystemFailureAuditEvent(params: {
     debugError(
       "verticalDramaSeries.systemFailureAudit",
       "Failed to write JSONL audit log entry for a vertical drama partial system failure",
-      error,
+      error
     );
   }
 }
@@ -1707,15 +1887,21 @@ async function recordVerticalDramaSystemFailureAuditEvent(params: {
  * preset -> series -> re-saved-as-preset round-trips losslessly; any line
  * that doesn't match becomes `{ name: line, role: "", description: "" }`.
  */
-function parseCharactersDraft(draft: string): Array<{ name: string; role: string; description: string }> {
+function parseCharactersDraft(
+  draft: string
+): Array<{ name: string; role: string; description: string }> {
   return draft
     .split("\n")
-    .map((line) => line.trim())
+    .map(line => line.trim())
     .filter(Boolean)
-    .map((line) => {
+    .map(line => {
       const match = line.match(/^(.+?)\s+—\s+(.+?):\s*(.*)$/);
       if (match) {
-        return { name: match[1].trim(), role: match[2].trim(), description: match[3].trim() };
+        return {
+          name: match[1].trim(),
+          role: match[2].trim(),
+          description: match[3].trim(),
+        };
       }
       return { name: line, role: "", description: "" };
     });
@@ -1732,7 +1918,11 @@ function toGenrePresetDto(row: VerticalDramaGenrePresetRow): GenrePresetDto {
     seasonArc: row.seasonArc,
     tone: row.tone,
     cliffhangerStyle: row.cliffhangerStyle,
-    characters: row.charactersJson as Array<{ name: string; role: string; description: string }>,
+    characters: row.charactersJson as Array<{
+      name: string;
+      role: string;
+      description: string;
+    }>,
     visualBible: row.visualBible,
     visualIdentityJson: row.visualIdentityJson ?? undefined,
   };
@@ -1798,20 +1988,22 @@ export async function seedCharactersFromDraft(
     name: string;
     speechProfile?: unknown;
     personality?: unknown;
-  }>,
+  }>
 ): Promise<void> {
-  const parsed = parseCharactersDraft(charactersDraft).filter((c) => c.name.trim().length > 0);
+  const parsed = parseCharactersDraft(charactersDraft).filter(
+    c => c.name.trim().length > 0
+  );
   if (parsed.length === 0) return;
 
   const profileByNormalizedName = new Map(
-    (presetCharacterProfiles ?? []).map((profile) => [
+    (presetCharacterProfiles ?? []).map(profile => [
       normalizeCharacterNameForMatch(profile.name),
       profile,
-    ]),
+    ])
   );
 
   const usedKeys = new Set<string>();
-  const rows = parsed.map((character) => {
+  const rows = parsed.map(character => {
     const base = slugifyCharacterName(character.name);
     let key = base;
     let suffix = 2;
@@ -1822,7 +2014,7 @@ export async function seedCharactersFromDraft(
     usedKeys.add(key);
 
     const matchedProfile = profileByNormalizedName.get(
-      normalizeCharacterNameForMatch(character.name),
+      normalizeCharacterNameForMatch(character.name)
     );
     const data: Record<string, unknown> = {};
     if (character.description) data.description = character.description;
@@ -1865,12 +2057,14 @@ export async function seedCharactersFromDraft(
  * `{ name: line, description: "" }`, same tolerant, never-throws fallback as
  * `parseCharactersDraft`.
  */
-function parseLocationsDraft(draft: string): Array<{ name: string; description: string }> {
+function parseLocationsDraft(
+  draft: string
+): Array<{ name: string; description: string }> {
   return draft
     .split("\n")
-    .map((line) => line.trim())
+    .map(line => line.trim())
     .filter(Boolean)
-    .map((line) => {
+    .map(line => {
       const match = line.match(/^(.+?)\s+—\s+(.*)$/);
       if (match) {
         return { name: match[1].trim(), description: match[2].trim() };
@@ -1931,14 +2125,19 @@ export async function seedLocationsFromDraft(
   tenantId: string,
   userId: number,
   seriesId: number,
-  locationsDraft: string,
+  locationsDraft: string
 ): Promise<void> {
-  const parsed = parseLocationsDraft(locationsDraft).filter((l) => l.name.trim().length > 0);
+  const parsed = parseLocationsDraft(locationsDraft).filter(
+    l => l.name.trim().length > 0
+  );
   if (parsed.length === 0) return;
 
   const usedKeys = new Set<string>();
-  const rows = parsed.map((location) => {
-    const base = slugifyLocationName(location.name).slice(0, VD_LOCATION_KEY_BASE_TRUNCATE_LENGTH);
+  const rows = parsed.map(location => {
+    const base = slugifyLocationName(location.name).slice(
+      0,
+      VD_LOCATION_KEY_BASE_TRUNCATE_LENGTH
+    );
     let key = base;
     let suffix = 2;
     while (usedKeys.has(key)) {
@@ -1973,17 +2172,19 @@ export async function seedLocationsFromDraft(
  */
 export function stampPresetVisualIdentityIntoBible(
   bible: Record<string, unknown> | null | undefined,
-  identity: VerticalDramaPresetVisualIdentity,
+  identity: VerticalDramaPresetVisualIdentity
 ): Record<string, unknown> {
   const base: Record<string, unknown> = { ...(bible ?? {}) };
 
-  const existingVisualStyle = typeof base.visualStyle === "string" ? base.visualStyle.trim() : "";
+  const existingVisualStyle =
+    typeof base.visualStyle === "string" ? base.visualStyle.trim() : "";
   const presetStyleSummary = `${identity.styleName} — palette: ${identity.palette.join(", ")}; lighting: ${identity.lighting}`;
   base.visualStyle = existingVisualStyle
     ? `${existingVisualStyle} ${presetStyleSummary}`
     : presetStyleSummary;
 
-  const existingCameraGrammar = typeof base.cameraGrammar === "string" ? base.cameraGrammar.trim() : "";
+  const existingCameraGrammar =
+    typeof base.cameraGrammar === "string" ? base.cameraGrammar.trim() : "";
   base.cameraGrammar = existingCameraGrammar
     ? `${existingCameraGrammar} ${identity.cameraGrammar}`
     : identity.cameraGrammar;
@@ -2015,12 +2216,26 @@ export const createSeriesInput = z.object({
   title: z.string().trim().min(1).max(CREATE_SERIES_FIELD_LIMITS.title),
   locale: z.enum(VERTICAL_DRAMA_SERIES_LOCALES).optional(),
   aspectRatio: z.literal("9:16").optional(),
+  /** Legacy API name; this is the planned Sub-episode count for story structure. */
   targetEpisodeCount: z.number().int().positive().max(1000).optional(),
-  defaultEpisodeDurationSeconds: z.number().int().positive().max(3600).optional(),
+  defaultEpisodeDurationSeconds: z
+    .number()
+    .int()
+    .positive()
+    .max(3600)
+    .optional(),
   genre: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.genre).optional(),
   tone: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.tone).optional(),
-  targetAudience: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.targetAudience).optional(),
-  agePolicyId: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.agePolicyId).optional(),
+  targetAudience: z
+    .string()
+    .trim()
+    .max(CREATE_SERIES_FIELD_LIMITS.targetAudience)
+    .optional(),
+  agePolicyId: z
+    .string()
+    .trim()
+    .max(CREATE_SERIES_FIELD_LIMITS.agePolicyId)
+    .optional(),
   // Wizard shell payloads — stored losslessly, validated by their own contracts.
   bible: z.record(z.string(), z.unknown()).optional(),
   memory: z.record(z.string(), z.unknown()).optional(),
@@ -2044,7 +2259,11 @@ export const createSeriesInput = z.object({
    * nested inside it) so the field-limits agreement test covers it
    * automatically. `create` merges it into `bible.userPremise` below.
    */
-  userPremise: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.userPremise).optional(),
+  userPremise: z
+    .string()
+    .trim()
+    .max(CREATE_SERIES_FIELD_LIMITS.userPremise)
+    .optional(),
   /**
    * Series-level audience age rating (Phase 1) — see
    * `@shared/verticalDramaSeries/audienceAgeRating`'s header doc comment.
@@ -2068,10 +2287,14 @@ const listSeriesInput = z
 const synthesizeGenrePresetInput = z.object({
   locale: z.enum(["th", "en"]).optional(),
   selectedPresetIds: z.array(z.string().min(1)).max(5).optional(),
-  selectedCategories: z.array(z.string().trim().min(1).max(80)).max(5).optional(),
+  selectedCategories: z
+    .array(z.string().trim().min(1).max(80))
+    .max(5)
+    .optional(),
   primarySelectionId: z.string().trim().max(100).optional(),
   businessContext: z.string().trim().max(600).optional(),
   productContext: z.string().trim().max(600).optional(),
+  /** Legacy API name; this is the planned Sub-episode count for story structure. */
   targetEpisodeCount: z.number().int().positive().max(1000).optional(),
   toneHint: z.string().trim().max(180).optional(),
   /**
@@ -2089,7 +2312,11 @@ const synthesizeGenrePresetInput = z.object({
    * `synthesizeVerticalDramaPreset[V2]` ONLY when the tenant's
    * `verticalDramaUserPremise` flag is on; forced to `undefined` otherwise.
    */
-  userPremise: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.userPremise).optional(),
+  userPremise: z
+    .string()
+    .trim()
+    .max(CREATE_SERIES_FIELD_LIMITS.userPremise)
+    .optional(),
   /** Phase 1 — same contract as `createSeriesInput.audienceAgeRating`; accepted here for forward compatibility, not yet forwarded into preset synthesis (see Phase 1 task notes). */
   audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
 });
@@ -2201,7 +2428,7 @@ async function getAdBannerMediaUserToken(ctx: {
       scopes: ["media:generate"],
       jti: `vd_ad_banner_${Date.now()}_${randomUUID()}`,
     },
-    "15m",
+    "15m"
   );
 }
 
@@ -2217,16 +2444,25 @@ async function loadOwnedAdBanner(
   tenantId: string,
   userId: number,
   seriesId: number,
-  bannerId: string,
+  bannerId: string
 ): Promise<LoadedAdBannerContext> {
   const series = await loadOwnedSeries(tenantId, userId, seriesId);
-  const rawProductTieIn = (series.productTieIn as Record<string, unknown> | null) ?? null;
+  const rawProductTieIn =
+    (series.productTieIn as Record<string, unknown> | null) ?? null;
   const banners = parseAdBannerDesigns(rawProductTieIn?.adBanners);
-  const bannerIndex = banners.findIndex((b) => b.id === bannerId);
+  const bannerIndex = banners.findIndex(b => b.id === bannerId);
   if (bannerIndex === -1) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Ad banner design not found" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Ad banner design not found",
+    });
   }
-  return { rawProductTieIn, banners, bannerIndex, banner: banners[bannerIndex] };
+  return {
+    rawProductTieIn,
+    banners,
+    bannerIndex,
+    banner: banners[bannerIndex],
+  };
 }
 
 /**
@@ -2239,7 +2475,9 @@ async function loadOwnedAdBanner(
  * source of truth for what counts as a structural violation.
  */
 function ensureAdBannerDesignsWithinLimits(banners: VdAdBannerDesign[]): void {
-  const blockingIssue = validateAdBannerDesigns(banners).find((issue) => issue.severity === "error");
+  const blockingIssue = validateAdBannerDesigns(banners).find(
+    issue => issue.severity === "error"
+  );
   if (blockingIssue) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -2254,9 +2492,12 @@ async function persistAdBannerDesigns(
   userId: number,
   seriesId: number,
   rawProductTieIn: Record<string, unknown> | null,
-  nextBanners: VdAdBannerDesign[],
+  nextBanners: VdAdBannerDesign[]
 ): Promise<void> {
-  const nextProductTieIn = { ...(rawProductTieIn ?? {}), adBanners: nextBanners };
+  const nextProductTieIn = {
+    ...(rawProductTieIn ?? {}),
+    adBanners: nextBanners,
+  };
   await db
     .update(verticalDramaSeries)
     .set({ productTieIn: nextProductTieIn, updatedAt: new Date() })
@@ -2284,14 +2525,12 @@ async function persistAdBannerDesigns(
  * above.
  */
 export function extractEpisodeCompiledVideoSummary(
-  assemblyManifest: unknown,
+  assemblyManifest: unknown
 ): { videoUrl: string; status: "completed"; durationSeconds?: number } | null {
   if (!assemblyManifest || typeof assemblyManifest !== "object") return null;
 
-  const compiledVideo = (assemblyManifest as Record<string, unknown>).compiledVideo as
-    | CompiledVideoState
-    | null
-    | undefined;
+  const compiledVideo = (assemblyManifest as Record<string, unknown>)
+    .compiledVideo as CompiledVideoState | null | undefined;
   if (!compiledVideo || typeof compiledVideo !== "object") return null;
 
   const status = compiledVideo.status;
@@ -2300,7 +2539,11 @@ export function extractEpisodeCompiledVideoSummary(
   const videoUrl = compiledVideo.videoUrl;
   if (typeof videoUrl !== "string" || videoUrl.trim().length === 0) return null;
 
-  const summary: { videoUrl: string; status: "completed"; durationSeconds?: number } = {
+  const summary: {
+    videoUrl: string;
+    status: "completed";
+    durationSeconds?: number;
+  } = {
     videoUrl,
     status: "completed",
   };
@@ -2321,251 +2564,279 @@ export const verticalDramaSeriesRouter = router({
    * the light per-series aggregates the Series List surface renders: next
    * episode number, episode count, pending-approval count, product tie-in flag.
    */
-  list: verticalDramaProcedure.input(listSeriesInput).query(async ({ ctx, input }) => {
-    const tenantId = requireTenantId(ctx.tenantId);
-    const userId = ctx.user.id;
-    const opts = input ?? {};
+  list: verticalDramaProcedure
+    .input(listSeriesInput)
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const opts = input ?? {};
 
-    const conditions = [
-      eq(verticalDramaSeries.tenantId, tenantId),
-      eq(verticalDramaSeries.userId, userId),
-    ];
-    if (opts.status) {
-      conditions.push(eq(verticalDramaSeries.status, opts.status));
-    } else if (!opts.includeArchived) {
-      conditions.push(sql`${verticalDramaSeries.status} <> 'archived'`);
-    }
-    if (opts.search) {
-      conditions.push(sql`${verticalDramaSeries.title} ILIKE ${"%" + opts.search + "%"}`);
-    }
+      const conditions = [
+        eq(verticalDramaSeries.tenantId, tenantId),
+        eq(verticalDramaSeries.userId, userId),
+      ];
+      if (opts.status) {
+        conditions.push(eq(verticalDramaSeries.status, opts.status));
+      } else if (!opts.includeArchived) {
+        conditions.push(sql`${verticalDramaSeries.status} <> 'archived'`);
+      }
+      if (opts.search) {
+        conditions.push(
+          sql`${verticalDramaSeries.title} ILIKE ${"%" + opts.search + "%"}`
+        );
+      }
 
-    const rows: VerticalDramaSeriesRow[] = await db
-      .select()
-      .from(verticalDramaSeries)
-      .where(and(...conditions))
-      .orderBy(desc(verticalDramaSeries.updatedAt))
-      .limit(opts.limit ?? 100);
+      const rows: VerticalDramaSeriesRow[] = await db
+        .select()
+        .from(verticalDramaSeries)
+        .where(and(...conditions))
+        .orderBy(desc(verticalDramaSeries.updatedAt))
+        .limit(opts.limit ?? 100);
 
-    const seriesIds = rows.map((r) => r.id);
+      const seriesIds = rows.map(r => r.id);
 
-    // Per-series episode aggregates (max episode number + count) in one query.
-    const episodeAgg: EpisodeAggRow[] =
-      seriesIds.length > 0
-        ? await db
-            .select({
-              seriesId: verticalDramaEpisodes.seriesId,
-              maxEpisodeNumber: sql<number>`COALESCE(MAX(${verticalDramaEpisodes.episodeNumber}), 0)`,
-              episodeCount: sql<number>`COUNT(*)`,
-            })
-            .from(verticalDramaEpisodes)
-            .where(
-              and(
-                eq(verticalDramaEpisodes.tenantId, tenantId),
-                eq(verticalDramaEpisodes.userId, userId),
-                inArray(verticalDramaEpisodes.seriesId, seriesIds),
-              ),
-            )
-            .groupBy(verticalDramaEpisodes.seriesId)
-        : [];
+      // Per-series episode aggregates (max episode number + count) in one query.
+      const episodeAgg: EpisodeAggRow[] =
+        seriesIds.length > 0
+          ? await db
+              .select({
+                seriesId: verticalDramaEpisodes.seriesId,
+                maxEpisodeNumber: sql<number>`COALESCE(MAX(${verticalDramaEpisodes.episodeNumber}), 0)`,
+                episodeCount: sql<number>`COUNT(*)`,
+              })
+              .from(verticalDramaEpisodes)
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  inArray(verticalDramaEpisodes.seriesId, seriesIds)
+                )
+              )
+              .groupBy(verticalDramaEpisodes.seriesId)
+          : [];
 
-    // Pending-approval counts (missing-approval badges) per series.
-    const approvalAgg: ApprovalAggRow[] =
-      seriesIds.length > 0
-        ? await db
-            .select({
-              seriesId: verticalDramaApprovalCheckpoints.seriesId,
-              pendingCount: sql<number>`COUNT(*)`,
-            })
-            .from(verticalDramaApprovalCheckpoints)
-            .where(
-              and(
-                eq(verticalDramaApprovalCheckpoints.tenantId, tenantId),
-                eq(verticalDramaApprovalCheckpoints.userId, userId),
-                inArray(verticalDramaApprovalCheckpoints.seriesId, seriesIds),
-                eq(verticalDramaApprovalCheckpoints.state, "pending"),
-              ),
-            )
-            .groupBy(verticalDramaApprovalCheckpoints.seriesId)
-        : [];
+      // Pending-approval counts (missing-approval badges) per series.
+      const approvalAgg: ApprovalAggRow[] =
+        seriesIds.length > 0
+          ? await db
+              .select({
+                seriesId: verticalDramaApprovalCheckpoints.seriesId,
+                pendingCount: sql<number>`COUNT(*)`,
+              })
+              .from(verticalDramaApprovalCheckpoints)
+              .where(
+                and(
+                  eq(verticalDramaApprovalCheckpoints.tenantId, tenantId),
+                  eq(verticalDramaApprovalCheckpoints.userId, userId),
+                  inArray(verticalDramaApprovalCheckpoints.seriesId, seriesIds),
+                  eq(verticalDramaApprovalCheckpoints.state, "pending")
+                )
+              )
+              .groupBy(verticalDramaApprovalCheckpoints.seriesId)
+          : [];
 
-    const maxBySeries = new Map(episodeAgg.map((a) => [a.seriesId, a]));
-    const pendingBySeries = new Map(approvalAgg.map((a) => [a.seriesId, Number(a.pendingCount)]));
+      const maxBySeries = new Map(episodeAgg.map(a => [a.seriesId, a]));
+      const pendingBySeries = new Map(
+        approvalAgg.map(a => [a.seriesId, Number(a.pendingCount)])
+      );
 
-    // Derived thumbnails (no schema change) — episode 1's approved shot image
-    // per series, resolved from `startFramePlan.frames[i].approvedMediaAssetId`.
-    const thumbnailBySeries = await resolveSeriesThumbnailUrls(db, {
-      tenantId,
-      userId,
-      seriesIds,
-    });
+      // Derived thumbnails (no schema change) — episode 1's approved shot image
+      // per series, resolved from `startFramePlan.frames[i].approvedMediaAssetId`.
+      const thumbnailBySeries = await resolveSeriesThumbnailUrls(db, {
+        tenantId,
+        userId,
+        seriesIds,
+      });
 
-    return {
-      series: rows.map((row) => {
-        const agg = maxBySeries.get(row.id);
-        const productTieIn = row.productTieIn as { enabled?: boolean } | null;
-        return {
-          id: String(row.id),
-          title: row.title,
-          status: row.status,
-          locale: row.locale,
-          aspectRatio: row.aspectRatio,
-          genre: row.genre,
-          tone: row.tone,
-          targetEpisodeCount: row.targetEpisodeCount,
-          episodeCount: Number(agg?.episodeCount ?? 0),
-          nextEpisodeNumber: Number(agg?.maxEpisodeNumber ?? 0) + 1,
-          pendingApprovalCount: pendingBySeries.get(row.id) ?? 0,
-          productTieInEnabled: productTieIn?.enabled === true,
-          thumbnailUrl: thumbnailBySeries.get(row.id) ?? null,
-          // Deep story drafts (W10-A) — additive, `null` when the series has
-          // no deep-drafted episodes yet.
-          deepDraftSummary: computeDeepDraftSummary(
-            row.bible as Record<string, unknown> | null,
-            row.targetEpisodeCount,
-          ),
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
-        };
-      }),
-    };
-  }),
+      return {
+        series: rows.map(row => {
+          const agg = maxBySeries.get(row.id);
+          const productTieIn = row.productTieIn as { enabled?: boolean } | null;
+          return {
+            id: String(row.id),
+            title: row.title,
+            status: row.status,
+            locale: row.locale,
+            aspectRatio: row.aspectRatio,
+            genre: row.genre,
+            tone: row.tone,
+            targetEpisodeCount: row.targetEpisodeCount,
+            episodeCount: Number(agg?.episodeCount ?? 0),
+            nextEpisodeNumber: Number(agg?.maxEpisodeNumber ?? 0) + 1,
+            pendingApprovalCount: pendingBySeries.get(row.id) ?? 0,
+            productTieInEnabled: productTieIn?.enabled === true,
+            thumbnailUrl: thumbnailBySeries.get(row.id) ?? null,
+            // Deep story drafts (W10-A) — additive, `null` when the series has
+            // no deep-drafted episodes yet.
+            deepDraftSummary: computeDeepDraftSummary(
+              row.bible as Record<string, unknown> | null,
+              row.targetEpisodeCount
+            ),
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+        }),
+      };
+    }),
 
   /**
    * Create a series SHELL in dry-run mode. This persists metadata only and
    * MUST NOT trigger any paid generation. Ownership is stamped from the
    * authenticated context (never client-supplied).
    */
-  create: verticalDramaProcedure.input(createSeriesInput).mutation(async ({ ctx, input }) => {
-    const tenantId = requireTenantId(ctx.tenantId);
-    const userId = ctx.user.id;
+  create: verticalDramaProcedure
+    .input(createSeriesInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
 
-    const [row] = await db
-      .insert(verticalDramaSeries)
-      .values({
-        tenantId,
-        userId,
-        title: input.title,
-        locale: input.locale ?? "th",
-        aspectRatio: input.aspectRatio ?? "9:16",
-        status: "draft",
-        targetEpisodeCount: input.targetEpisodeCount ?? 10,
-        defaultEpisodeDurationSeconds: input.defaultEpisodeDurationSeconds ?? 60,
-        genre: input.genre ?? null,
-        tone: input.tone ?? null,
-        targetAudience: input.targetAudience ?? null,
-        agePolicyId: input.agePolicyId ?? null,
-        // Feature 132 §4.2 (F132A) — merge the top-level `userPremise` field
-        // into `bible.userPremise` when present, preserving every other
-        // `input.bible` key untouched.
-        //
-        // Series-level audience age rating (Phase 1) — unlike `userPremise`,
-        // `audienceAgeRating` is ALWAYS merged in (it has a safe default via
-        // `resolveAudienceAgeRating`, same "always defaulted" precedent as
-        // `locale: input.locale ?? "th"` above), so `bible` is no longer
-        // ever persisted as `null` — the "no premise, no bible" branch now
-        // persists an object carrying just `audienceAgeRating`.
-        bible: {
-          ...(input.userPremise
-            ? { ...(input.bible ?? {}), userPremise: input.userPremise }
-            : input.bible ?? {}),
-          audienceAgeRating: resolveAudienceAgeRating(input.audienceAgeRating),
-        },
-        memory: input.memory ?? null,
-        productTieIn: input.productTieIn ?? null,
-        policy: input.policy ?? null,
-      })
-      .returning();
+      const [row] = await db
+        .insert(verticalDramaSeries)
+        .values({
+          tenantId,
+          userId,
+          title: input.title,
+          locale: input.locale ?? "th",
+          aspectRatio: input.aspectRatio ?? "9:16",
+          status: "draft",
+          targetEpisodeCount: input.targetEpisodeCount ?? 10,
+          defaultEpisodeDurationSeconds:
+            input.defaultEpisodeDurationSeconds ?? 60,
+          genre: input.genre ?? null,
+          tone: input.tone ?? null,
+          targetAudience: input.targetAudience ?? null,
+          agePolicyId: input.agePolicyId ?? null,
+          // Feature 132 §4.2 (F132A) — merge the top-level `userPremise` field
+          // into `bible.userPremise` when present, preserving every other
+          // `input.bible` key untouched.
+          //
+          // Series-level audience age rating (Phase 1) — unlike `userPremise`,
+          // `audienceAgeRating` is ALWAYS merged in (it has a safe default via
+          // `resolveAudienceAgeRating`, same "always defaulted" precedent as
+          // `locale: input.locale ?? "th"` above), so `bible` is no longer
+          // ever persisted as `null` — the "no premise, no bible" branch now
+          // persists an object carrying just `audienceAgeRating`.
+          bible: {
+            ...(input.userPremise
+              ? { ...(input.bible ?? {}), userPremise: input.userPremise }
+              : (input.bible ?? {})),
+            audienceAgeRating: resolveAudienceAgeRating(
+              input.audienceAgeRating
+            ),
+          },
+          memory: input.memory ?? null,
+          productTieIn: input.productTieIn ?? null,
+          policy: input.policy ?? null,
+        })
+        .returning();
 
-    // Best-effort: seed the durable character roster (`vertical_drama_characters`,
-    // read by the Series Detail Characters tab) from the wizard's freeform
-    // `bible.charactersDraft` text. Never allowed to fail series creation.
-    const charactersDraft = input.bible?.charactersDraft;
-    if (typeof charactersDraft === "string" && charactersDraft.trim().length > 0) {
-      try {
-        await seedCharactersFromDraft(tenantId, userId, Number(row.id), charactersDraft);
-      } catch (error) {
-        debugError(
-          "verticalDramaSeries.create",
-          `Failed to seed characters for series ${row.id} from charactersDraft`,
-          error,
-        );
+      // Best-effort: seed the durable character roster (`vertical_drama_characters`,
+      // read by the Series Detail Characters tab) from the wizard's freeform
+      // `bible.charactersDraft` text. Never allowed to fail series creation.
+      const charactersDraft = input.bible?.charactersDraft;
+      if (
+        typeof charactersDraft === "string" &&
+        charactersDraft.trim().length > 0
+      ) {
+        try {
+          await seedCharactersFromDraft(
+            tenantId,
+            userId,
+            Number(row.id),
+            charactersDraft
+          );
+        } catch (error) {
+          debugError(
+            "verticalDramaSeries.create",
+            `Failed to seed characters for series ${row.id} from charactersDraft`,
+            error
+          );
+        }
       }
-    }
 
-    // Best-effort: seed the durable location roster (`vertical_drama_locations`,
-    // read by the Location Visual Bible tab) from the wizard's freeform
-    // `bible.locationsDraft` text — location-side companion to the
-    // `charactersDraft` seeding above. Never allowed to fail series creation.
-    const locationsDraft = input.bible?.locationsDraft;
-    if (typeof locationsDraft === "string" && locationsDraft.trim().length > 0) {
-      try {
-        await seedLocationsFromDraft(tenantId, userId, Number(row.id), locationsDraft);
-      } catch (error) {
-        debugError(
-          "verticalDramaSeries.create",
-          `Failed to seed locations for series ${row.id} from locationsDraft`,
-          error,
-        );
+      // Best-effort: seed the durable location roster (`vertical_drama_locations`,
+      // read by the Location Visual Bible tab) from the wizard's freeform
+      // `bible.locationsDraft` text — location-side companion to the
+      // `charactersDraft` seeding above. Never allowed to fail series creation.
+      const locationsDraft = input.bible?.locationsDraft;
+      if (
+        typeof locationsDraft === "string" &&
+        locationsDraft.trim().length > 0
+      ) {
+        try {
+          await seedLocationsFromDraft(
+            tenantId,
+            userId,
+            Number(row.id),
+            locationsDraft
+          );
+        } catch (error) {
+          debugError(
+            "verticalDramaSeries.create",
+            `Failed to seed locations for series ${row.id} from locationsDraft`,
+            error
+          );
+        }
       }
-    }
 
-    // Best-effort: stamp a genre preset's structured visual identity into
-    // the series bible (spec §8.2.2 flow-through rule, section-15 change C)
-    // — additive only, never fails series creation. Only applies when the
-    // caller's tenant has `verticalDramaSeriesPresetMixV2` enabled AND the
-    // referenced preset (visibility-scoped exactly like `listGenrePresets` —
-    // global, or the caller's OWN private preset) actually carries a
-    // `visualIdentityJson`.
-    let finalRow = row;
-    if (input.appliedPresetId) {
-      try {
-        const flags = await getTenantFeatureFlags(tenantId);
-        if (flags.verticalDramaSeriesPresetMixV2 === true) {
-          const appliedPresetNumericId = Number(input.appliedPresetId);
-          if (Number.isFinite(appliedPresetNumericId)) {
-            const [presetRow] = await db
-              .select()
-              .from(verticalDramaGenrePresets)
-              .where(
-                and(
-                  eq(verticalDramaGenrePresets.id, appliedPresetNumericId),
-                  or(
-                    eq(verticalDramaGenrePresets.scope, "global"),
-                    and(
-                      eq(verticalDramaGenrePresets.scope, "private"),
-                      eq(verticalDramaGenrePresets.tenantId, tenantId),
-                      eq(verticalDramaGenrePresets.userId, userId),
-                    ),
-                  ),
-                ),
-              )
-              .limit(1);
-            const identity = presetRow?.visualIdentityJson as VerticalDramaPresetVisualIdentity | null;
-            if (identity) {
-              const stampedBible = stampPresetVisualIdentityIntoBible(
-                (row.bible as Record<string, unknown> | null) ?? null,
-                identity,
-              );
-              const [updatedRow] = await db
-                .update(verticalDramaSeries)
-                .set({ bible: stampedBible, updatedAt: new Date() })
-                .where(seriesOwnershipWhere(tenantId, userId, Number(row.id)))
-                .returning();
-              if (updatedRow) finalRow = updatedRow;
+      // Best-effort: stamp a genre preset's structured visual identity into
+      // the series bible (spec §8.2.2 flow-through rule, section-15 change C)
+      // — additive only, never fails series creation. Only applies when the
+      // caller's tenant has `verticalDramaSeriesPresetMixV2` enabled AND the
+      // referenced preset (visibility-scoped exactly like `listGenrePresets` —
+      // global, or the caller's OWN private preset) actually carries a
+      // `visualIdentityJson`.
+      let finalRow = row;
+      if (input.appliedPresetId) {
+        try {
+          const flags = await getTenantFeatureFlags(tenantId);
+          if (flags.verticalDramaSeriesPresetMixV2 === true) {
+            const appliedPresetNumericId = Number(input.appliedPresetId);
+            if (Number.isFinite(appliedPresetNumericId)) {
+              const [presetRow] = await db
+                .select()
+                .from(verticalDramaGenrePresets)
+                .where(
+                  and(
+                    eq(verticalDramaGenrePresets.id, appliedPresetNumericId),
+                    or(
+                      eq(verticalDramaGenrePresets.scope, "global"),
+                      and(
+                        eq(verticalDramaGenrePresets.scope, "private"),
+                        eq(verticalDramaGenrePresets.tenantId, tenantId),
+                        eq(verticalDramaGenrePresets.userId, userId)
+                      )
+                    )
+                  )
+                )
+                .limit(1);
+              const identity =
+                presetRow?.visualIdentityJson as VerticalDramaPresetVisualIdentity | null;
+              if (identity) {
+                const stampedBible = stampPresetVisualIdentityIntoBible(
+                  (row.bible as Record<string, unknown> | null) ?? null,
+                  identity
+                );
+                const [updatedRow] = await db
+                  .update(verticalDramaSeries)
+                  .set({ bible: stampedBible, updatedAt: new Date() })
+                  .where(seriesOwnershipWhere(tenantId, userId, Number(row.id)))
+                  .returning();
+                if (updatedRow) finalRow = updatedRow;
+              }
             }
           }
+        } catch (error) {
+          debugError(
+            "verticalDramaSeries.create",
+            `Failed to stamp preset visual identity for series ${row.id} from appliedPresetId ${input.appliedPresetId}`,
+            error
+          );
         }
-      } catch (error) {
-        debugError(
-          "verticalDramaSeries.create",
-          `Failed to stamp preset visual identity for series ${row.id} from appliedPresetId ${input.appliedPresetId}`,
-          error,
-        );
       }
-    }
 
-    return { series: { ...finalRow, id: String(finalRow.id) } };
-  }),
+      return { series: { ...finalRow, id: String(finalRow.id) } };
+    }),
 
   /**
    * Fetch a single owned series plus its episodes (light projection) for the
@@ -2578,7 +2849,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
@@ -2601,8 +2875,8 @@ export const verticalDramaSeriesRouter = router({
           and(
             eq(verticalDramaEpisodes.tenantId, tenantId),
             eq(verticalDramaEpisodes.userId, userId),
-            eq(verticalDramaEpisodes.seriesId, seriesId),
-          ),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
         )
         .orderBy(verticalDramaEpisodes.episodeNumber);
 
@@ -2611,7 +2885,7 @@ export const verticalDramaSeriesRouter = router({
       const thumbnailByEpisode = await resolveEpisodeThumbnailUrls(db, {
         tenantId,
         userId,
-        episodeIds: episodes.map((e) => e.id),
+        episodeIds: episodes.map(e => e.id),
       });
 
       return {
@@ -2622,11 +2896,13 @@ export const verticalDramaSeriesRouter = router({
           // no deep-drafted episodes yet.
           deepDraftSummary: computeDeepDraftSummary(
             row.bible as Record<string, unknown> | null,
-            row.targetEpisodeCount,
+            row.targetEpisodeCount
           ),
           // Dramaturgy critic (W11.5) — additive, `null` when the active
           // breakdown version has never been critiqued.
-          lastCritique: readActiveSeasonCritique(row.bible as Record<string, unknown> | null),
+          lastCritique: readActiveSeasonCritique(
+            row.bible as Record<string, unknown> | null
+          ),
           // Production Episodes (Phase D′-1) — additive, `null` when the
           // series has never had a Production Episode group assembled yet.
           // Unlike `assemblyManifest` (episode-level; carries internal
@@ -2638,7 +2914,7 @@ export const verticalDramaSeriesRouter = router({
             (row.productionEpisodesManifest as VerticalDramaProductionEpisodesManifest | null) ??
             null,
         },
-        episodes: episodes.map((e) => {
+        episodes: episodes.map(e => {
           // Destructure `assemblyManifest` OUT of the spread so the raw
           // jsonb manifest never reaches the client — only the compact
           // `compiledVideo` summary derived from it does.
@@ -2667,7 +2943,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Ensure the caller owns it (throws NOT_FOUND otherwise).
@@ -2688,14 +2967,17 @@ export const verticalDramaSeriesRouter = router({
         .from(verticalDramaCharacterAssets)
         .leftJoin(
           verticalDramaCharacters,
-          eq(verticalDramaCharacterAssets.characterId, verticalDramaCharacters.id),
+          eq(
+            verticalDramaCharacterAssets.characterId,
+            verticalDramaCharacters.id
+          )
         )
         .where(
           and(
             eq(verticalDramaCharacterAssets.tenantId, tenantId),
             eq(verticalDramaCharacterAssets.userId, userId),
-            eq(verticalDramaCharacterAssets.seriesId, seriesId),
-          ),
+            eq(verticalDramaCharacterAssets.seriesId, seriesId)
+          )
         )
         .orderBy(desc(verticalDramaCharacterAssets.createdAt));
 
@@ -2713,24 +2995,26 @@ export const verticalDramaSeriesRouter = router({
           and(
             eq(verticalDramaRunArtifacts.tenantId, tenantId),
             eq(verticalDramaRunArtifacts.userId, userId),
-            eq(verticalDramaRunArtifacts.seriesId, seriesId),
-          ),
+            eq(verticalDramaRunArtifacts.seriesId, seriesId)
+          )
         )
         .orderBy(desc(verticalDramaRunArtifacts.createdAt));
 
       return {
-        characterAssets: characterAssetRows.map((row) => ({
+        characterAssets: characterAssetRows.map(row => ({
           id: String(row.id),
-          characterId: row.characterId !== null ? String(row.characterId) : null,
+          characterId:
+            row.characterId !== null ? String(row.characterId) : null,
           characterName: row.characterName ?? null,
-          mediaAssetId: row.mediaAssetId !== null ? String(row.mediaAssetId) : null,
+          mediaAssetId:
+            row.mediaAssetId !== null ? String(row.mediaAssetId) : null,
           assetType: row.assetType,
           role: row.role ?? null,
           approved: row.approved,
           qcStatus: row.qcStatus,
           createdAt: row.createdAt.toISOString(),
         })),
-        runArtifacts: runArtifactRows.map((row) => ({
+        runArtifacts: runArtifactRows.map(row => ({
           id: String(row.id),
           episodeId: String(row.episodeId),
           stage: row.stage,
@@ -2766,46 +3050,56 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Ensure the caller owns it (throws NOT_FOUND otherwise).
       await loadOwnedSeries(tenantId, userId, seriesId);
 
-      const [characterAssetUrlRows, shotReferenceUrlRows, episodeRows] = await Promise.all([
-        db
-          .select({ url: mediaAssets.originalUrl })
-          .from(verticalDramaCharacterAssets)
-          .innerJoin(mediaAssets, eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id))
-          .where(
-            and(
-              eq(verticalDramaCharacterAssets.tenantId, tenantId),
-              eq(verticalDramaCharacterAssets.userId, userId),
-              eq(verticalDramaCharacterAssets.seriesId, seriesId),
+      const [characterAssetUrlRows, shotReferenceUrlRows, episodeRows] =
+        await Promise.all([
+          db
+            .select({ url: mediaAssets.originalUrl })
+            .from(verticalDramaCharacterAssets)
+            .innerJoin(
+              mediaAssets,
+              eq(verticalDramaCharacterAssets.mediaAssetId, mediaAssets.id)
+            )
+            .where(
+              and(
+                eq(verticalDramaCharacterAssets.tenantId, tenantId),
+                eq(verticalDramaCharacterAssets.userId, userId),
+                eq(verticalDramaCharacterAssets.seriesId, seriesId)
+              )
             ),
-          ),
-        db
-          .select({ url: mediaAssets.originalUrl })
-          .from(verticalDramaShotReferences)
-          .innerJoin(mediaAssets, eq(verticalDramaShotReferences.mediaAssetId, mediaAssets.id))
-          .where(
-            and(
-              eq(verticalDramaShotReferences.tenantId, tenantId),
-              eq(verticalDramaShotReferences.userId, userId),
-              eq(verticalDramaShotReferences.seriesId, seriesId),
+          db
+            .select({ url: mediaAssets.originalUrl })
+            .from(verticalDramaShotReferences)
+            .innerJoin(
+              mediaAssets,
+              eq(verticalDramaShotReferences.mediaAssetId, mediaAssets.id)
+            )
+            .where(
+              and(
+                eq(verticalDramaShotReferences.tenantId, tenantId),
+                eq(verticalDramaShotReferences.userId, userId),
+                eq(verticalDramaShotReferences.seriesId, seriesId)
+              )
             ),
-          ),
-        db
-          .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
-          .from(verticalDramaEpisodes)
-          .where(
-            and(
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId),
+          db
+            .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+            .from(verticalDramaEpisodes)
+            .where(
+              and(
+                eq(verticalDramaEpisodes.tenantId, tenantId),
+                eq(verticalDramaEpisodes.userId, userId),
+                eq(verticalDramaEpisodes.seriesId, seriesId)
+              )
             ),
-          ),
-      ]);
+        ]);
 
       const urls = new Set<string>();
       for (const row of characterAssetUrlRows) {
@@ -2844,8 +3138,8 @@ export const verticalDramaSeriesRouter = router({
             and(
               eq(mediaAssets.tenantId, tenantId),
               eq(mediaAssets.userId, userId),
-              inArray(mediaAssets.id, Array.from(approvedAssetIds)),
-            ),
+              inArray(mediaAssets.id, Array.from(approvedAssetIds))
+            )
           );
         for (const row of approvedAssetRows) {
           if (row.url) urls.add(row.url);
@@ -2874,23 +3168,28 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
-      const rawProductTieIn = (row.productTieIn as Record<string, unknown> | null) ?? null;
+      const rawProductTieIn =
+        (row.productTieIn as Record<string, unknown> | null) ?? null;
       const productImageUrl =
-        typeof rawProductTieIn?.productImageUrl === "string" && rawProductTieIn.productImageUrl
+        typeof rawProductTieIn?.productImageUrl === "string" &&
+        rawProductTieIn.productImageUrl
           ? rawProductTieIn.productImageUrl
           : undefined;
       const marketplaceCaptureId =
-        typeof rawProductTieIn?.marketplaceCaptureId === "string" && rawProductTieIn.marketplaceCaptureId
+        typeof rawProductTieIn?.marketplaceCaptureId === "string" &&
+        rawProductTieIn.marketplaceCaptureId
           ? rawProductTieIn.marketplaceCaptureId
           : undefined;
 
-      const { listAvailableProductReferenceImages } = await import(
-        "../services/verticalDramaProductTieIn"
-      );
+      const { listAvailableProductReferenceImages } =
+        await import("../services/verticalDramaProductTieIn");
       const images = await listAvailableProductReferenceImages({
         productImageUrl,
         marketplaceCaptureId,
@@ -2911,7 +3210,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Ensure the caller owns it (throws NOT_FOUND otherwise).
@@ -2938,7 +3240,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Ensure the caller owns it (throws NOT_FOUND otherwise).
@@ -2951,7 +3256,8 @@ export const verticalDramaSeriesRouter = router({
       if (input.status !== undefined) updates.status = input.status;
       if (input.bible !== undefined) updates.bible = input.bible;
       if (input.policy !== undefined) updates.policy = input.policy;
-      if (input.productTieIn !== undefined) updates.productTieIn = input.productTieIn;
+      if (input.productTieIn !== undefined)
+        updates.productTieIn = input.productTieIn;
 
       const [row] = await db
         .update(verticalDramaSeries)
@@ -2982,21 +3288,26 @@ export const verticalDramaSeriesRouter = router({
       z.object({
         seriesId: z.string().min(1),
         targetAudienceRegion: z.enum(VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       const existing = await loadOwnedSeries(tenantId, userId, seriesId);
-      const existingBible = (existing.bible as Record<string, unknown> | null) ?? {};
+      const existingBible =
+        (existing.bible as Record<string, unknown> | null) ?? {};
       const nextBible: Record<string, unknown> = {
         ...existingBible,
-        targetAudienceRegion: input.targetAudienceRegion satisfies VerticalDramaTargetAudienceRegion,
+        targetAudienceRegion:
+          input.targetAudienceRegion satisfies VerticalDramaTargetAudienceRegion,
       };
 
       const [row] = await db
@@ -3031,10 +3342,10 @@ export const verticalDramaSeriesRouter = router({
    * mirroring `multiProvider.ts`'s `listAdminModelCatalog` join.
    */
   listQualityPlanningModels: verticalDramaProcedure.query(async () => {
-    const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
-    const { selectQualityLargeContextEligibleModels } = await import(
-      "../services/verticalDramaImproveScript"
-    );
+    const { loadEnabledLlmModelRows } =
+      await import("../services/enabledLlmModels");
+    const { selectQualityLargeContextEligibleModels } =
+      await import("../services/verticalDramaImproveScript");
 
     const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
     const eligible = selectQualityLargeContextEligibleModels(rows);
@@ -3048,7 +3359,7 @@ export const verticalDramaSeriesRouter = router({
       providerName: string;
       providerDisplayName: string;
     };
-    const modelIds = eligible.map((row) => row.modelId);
+    const modelIds = eligible.map(row => row.modelId);
     const labelRows: QualityPlanningModelLabelRow[] = await db
       .select({
         modelId: modelProviderMap.modelId,
@@ -3060,14 +3371,20 @@ export const verticalDramaSeriesRouter = router({
       .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
       .where(inArray(modelProviderMap.modelId, modelIds));
     const labelByModelId = new Map<string, QualityPlanningModelLabelRow>(
-      labelRows.map((row) => [row.modelId, row]),
+      labelRows.map(row => [row.modelId, row])
     );
 
-    return eligible.map((row) => {
+    return eligible.map(row => {
       const labelRow = labelByModelId.get(row.modelId);
-      const providerLabel = labelRow?.providerDisplayName || labelRow?.providerName || row.providerName;
+      const providerLabel =
+        labelRow?.providerDisplayName ||
+        labelRow?.providerName ||
+        row.providerName;
       const modelLabel = labelRow?.modelName || row.modelId;
-      return { modelId: row.modelId, label: `${providerLabel} — ${modelLabel}` };
+      return {
+        modelId: row.modelId,
+        label: `${providerLabel} — ${modelLabel}`,
+      };
     });
   }),
 
@@ -3089,24 +3406,27 @@ export const verticalDramaSeriesRouter = router({
       z.object({
         seriesId: z.string().min(1),
         defaultModelId: z.string().min(1).nullable(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       if (input.defaultModelId !== null) {
-        const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
-        const { selectQualityLargeContextEligibleModels } = await import(
-          "../services/verticalDramaImproveScript"
-        );
+        const { loadEnabledLlmModelRows } =
+          await import("../services/enabledLlmModels");
+        const { selectQualityLargeContextEligibleModels } =
+          await import("../services/verticalDramaImproveScript");
         const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
         const eligibleModelIds = new Set(
-          selectQualityLargeContextEligibleModels(rows).map((row) => row.modelId),
+          selectQualityLargeContextEligibleModels(rows).map(row => row.modelId)
         );
         if (!eligibleModelIds.has(input.defaultModelId)) {
           throw new TRPCError({
@@ -3149,21 +3469,26 @@ export const verticalDramaSeriesRouter = router({
         seriesId: z.string().min(1),
         watermark: vdSeriesWatermarkConfigSchema,
         idempotencyKey: z.string().trim().min(1).max(128).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
-      const textOverlaySuiteEnabled = await resolveVerticalDramaTextOverlaySuiteFlag(tenantId);
+      const textOverlaySuiteEnabled =
+        await resolveVerticalDramaTextOverlaySuiteFlag(tenantId);
       if (!textOverlaySuiteEnabled) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Feature 'verticalDramaSeriesTextOverlaySuite' is not enabled for this tenant",
+          message:
+            "Feature 'verticalDramaSeriesTextOverlaySuite' is not enabled for this tenant",
         });
       }
 
@@ -3205,11 +3530,11 @@ export const verticalDramaSeriesRouter = router({
                   and(
                     eq(verticalDramaGenrePresets.scope, "private"),
                     eq(verticalDramaGenrePresets.tenantId, tenantId),
-                    eq(verticalDramaGenrePresets.userId, userId),
-                  ),
+                    eq(verticalDramaGenrePresets.userId, userId)
+                  )
                 )
-              : eq(verticalDramaGenrePresets.scope, "global"),
-          ),
+              : eq(verticalDramaGenrePresets.scope, "global")
+          )
         )
         .orderBy(asc(verticalDramaGenrePresets.sortOrder));
 
@@ -3229,9 +3554,15 @@ export const verticalDramaSeriesRouter = router({
       const locale = input.locale ?? "th";
       const tenantId = ctx.tenantId;
       const userId = ctx.user.id;
-      const selectedPresetIds = Array.from(new Set(input.selectedPresetIds ?? []));
+      const selectedPresetIds = Array.from(
+        new Set(input.selectedPresetIds ?? [])
+      );
       const selectedCategories = Array.from(
-        new Set((input.selectedCategories ?? []).map((category) => category.trim()).filter(Boolean)),
+        new Set(
+          (input.selectedCategories ?? [])
+            .map(category => category.trim())
+            .filter(Boolean)
+        )
       );
 
       // Preset Mix v2 (spec §8.2.2.C, section-15) — the ENTIRE v1 branch
@@ -3250,9 +3581,14 @@ export const verticalDramaSeriesRouter = router({
       const userPremiseEnabled = flags?.verticalDramaUserPremise === true;
 
       if (!presetMixV2Enabled) {
-        const selectedPresetNumericIds = selectedPresetIds.map((id) => Number(id));
-        if (selectedPresetNumericIds.some((id) => !Number.isFinite(id))) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid preset id" });
+        const selectedPresetNumericIds = selectedPresetIds.map(id =>
+          Number(id)
+        );
+        if (selectedPresetNumericIds.some(id => !Number.isFinite(id))) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid preset id",
+          });
         }
 
         const visibleRows: VerticalDramaGenrePresetRow[] = await db
@@ -3267,20 +3603,25 @@ export const verticalDramaSeriesRouter = router({
                     and(
                       eq(verticalDramaGenrePresets.scope, "private"),
                       eq(verticalDramaGenrePresets.tenantId, tenantId),
-                      eq(verticalDramaGenrePresets.userId, userId),
-                    ),
+                      eq(verticalDramaGenrePresets.userId, userId)
+                    )
                   )
-                : eq(verticalDramaGenrePresets.scope, "global"),
-            ),
+                : eq(verticalDramaGenrePresets.scope, "global")
+            )
           )
           .orderBy(asc(verticalDramaGenrePresets.sortOrder));
 
-        const visibleById = new Map(visibleRows.map((row) => [String(row.id), row]));
+        const visibleById = new Map(
+          visibleRows.map(row => [String(row.id), row])
+        );
         const selectedRows = selectedPresetIds
-          .map((id) => visibleById.get(id))
+          .map(id => visibleById.get(id))
           .filter((row): row is VerticalDramaGenrePresetRow => Boolean(row));
         if (selectedRows.length !== selectedPresetIds.length) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Preset not found",
+          });
         }
 
         try {
@@ -3300,17 +3641,26 @@ export const verticalDramaSeriesRouter = router({
           return result;
         } catch (error) {
           if (error instanceof PresetSynthesisInputError) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: error.message,
+            });
           }
           if (error instanceof InsufficientCreditsError) {
             throw new TRPCError({ code: "FORBIDDEN", message: error.message });
           }
           if (error instanceof VdSchemaValidationError) {
-            throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: error.message });
+            throw new TRPCError({
+              code: "UNPROCESSABLE_CONTENT",
+              message: error.message,
+            });
           }
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
-            message: error instanceof Error ? error.message : "Preset synthesis failed",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Preset synthesis failed",
           });
         }
       }
@@ -3321,13 +3671,18 @@ export const verticalDramaSeriesRouter = router({
       // lookup `listGenrePresets` uses, so a v2 weighted selection gets
       // identical NOT_FOUND/scope enforcement as a legacy id.
       const v2SelectionPresetIds = Array.from(
-        new Set((input.selections ?? []).map((selection) => selection.presetId)),
+        new Set((input.selections ?? []).map(selection => selection.presetId))
       );
-      const allPresetIds = Array.from(new Set([...selectedPresetIds, ...v2SelectionPresetIds]));
+      const allPresetIds = Array.from(
+        new Set([...selectedPresetIds, ...v2SelectionPresetIds])
+      );
 
-      const allPresetNumericIds = allPresetIds.map((id) => Number(id));
-      if (allPresetNumericIds.some((id) => !Number.isFinite(id))) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid preset id" });
+      const allPresetNumericIds = allPresetIds.map(id => Number(id));
+      if (allPresetNumericIds.some(id => !Number.isFinite(id))) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid preset id",
+        });
       }
 
       const visibleRowsV2: VerticalDramaGenrePresetRow[] = await db
@@ -3342,17 +3697,19 @@ export const verticalDramaSeriesRouter = router({
                   and(
                     eq(verticalDramaGenrePresets.scope, "private"),
                     eq(verticalDramaGenrePresets.tenantId, tenantId),
-                    eq(verticalDramaGenrePresets.userId, userId),
-                  ),
+                    eq(verticalDramaGenrePresets.userId, userId)
+                  )
                 )
-              : eq(verticalDramaGenrePresets.scope, "global"),
-          ),
+              : eq(verticalDramaGenrePresets.scope, "global")
+          )
         )
         .orderBy(asc(verticalDramaGenrePresets.sortOrder));
 
-      const visibleByIdV2 = new Map(visibleRowsV2.map((row) => [String(row.id), row]));
+      const visibleByIdV2 = new Map(
+        visibleRowsV2.map(row => [String(row.id), row])
+      );
       const allPresetRows = allPresetIds
-        .map((id) => visibleByIdV2.get(id))
+        .map(id => visibleByIdV2.get(id))
         .filter((row): row is VerticalDramaGenrePresetRow => Boolean(row));
       if (allPresetRows.length !== allPresetIds.length) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Preset not found" });
@@ -3365,9 +3722,10 @@ export const verticalDramaSeriesRouter = router({
           locale: normalizeVerticalDramaSeriesLocale(locale),
           selections: input.selections,
           selectedPresetIds,
-          selectedPresets: allPresetRows.map((row) => ({
+          selectedPresets: allPresetRows.map(row => ({
             ...toGenrePresetDto(row),
-            visualIdentityJson: row.visualIdentityJson as VerticalDramaPresetVisualIdentity | null,
+            visualIdentityJson:
+              row.visualIdentityJson as VerticalDramaPresetVisualIdentity | null,
           })),
           selectedCategories,
           primarySelectionId: input.primarySelectionId,
@@ -3386,11 +3744,15 @@ export const verticalDramaSeriesRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: error.message });
         }
         if (error instanceof VdSchemaValidationError) {
-          throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: error.message });
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message: error.message,
+          });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: error instanceof Error ? error.message : "Preset synthesis failed",
+          message:
+            error instanceof Error ? error.message : "Preset synthesis failed",
         });
       }
     }),
@@ -3409,7 +3771,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
@@ -3433,11 +3798,17 @@ export const verticalDramaSeriesRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: error.message });
         }
         if (error instanceof VdSchemaValidationError) {
-          throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: error.message });
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message: error.message,
+          });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: error instanceof Error ? error.message : "Story bible generation failed",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Story bible generation failed",
         });
       }
 
@@ -3499,14 +3870,17 @@ export const verticalDramaSeriesRouter = router({
          * `generateStoryBibleDeep`'s mode switch in the service).
          */
         mode: verticalDramaDeepStoryDraftModeSchema.optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       const mode: VerticalDramaDeepStoryDraftMode = input.mode ?? "standard";
 
@@ -3524,28 +3898,44 @@ export const verticalDramaSeriesRouter = router({
       if (existingItems.length === 0) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Generate the story bible first before generating deep shot drafts",
+          message:
+            "Generate the story bible first before generating deep shot drafts",
         });
       }
 
-      const horizon = resolveDeepDraftHorizon(input.horizonEpisodes, row.targetEpisodeCount);
-      const episodeNumbers = new Set(Array.from({ length: horizon }, (_, i) => i + 1));
-      const episodesToDraft = existingItems.filter((item) => episodeNumbers.has(item.episodeNumber));
+      const horizon = resolveDeepDraftHorizon(
+        input.horizonEpisodes,
+        row.targetEpisodeCount
+      );
+      const episodeNumbers = new Set(
+        Array.from({ length: horizon }, (_, i) => i + 1)
+      );
+      const episodesToDraft = existingItems.filter(item =>
+        episodeNumbers.has(item.episodeNumber)
+      );
       if (episodesToDraft.length === 0) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "No planned episodes are available within the requested horizon",
+          message:
+            "No planned Sub-episodes are available within the requested horizon",
         });
       }
 
-      await ensureStoryJobCreditsAvailable(userId, estimateDeepDraftJobCredits(episodesToDraft.length, mode));
+      await ensureStoryJobCreditsAvailable(
+        userId,
+        estimateDeepDraftJobCredits(episodesToDraft.length, mode)
+      );
 
       const { jobId, deduped } = await enqueueVerticalDramaStoryJob({
         kind: "deep_generate",
         seriesId,
         tenantId,
         userId,
-        input: { horizonEpisodes: input.horizonEpisodes, mode, idempotencyKey: input.idempotencyKey },
+        input: {
+          horizonEpisodes: input.horizonEpisodes,
+          mode,
+          idempotencyKey: input.idempotencyKey,
+        },
       });
       return { jobId, deduped };
     }),
@@ -3570,14 +3960,17 @@ export const verticalDramaSeriesRouter = router({
         idempotencyKey: z.string().trim().min(1).max(128).optional(),
         /** Premium multi-round drafts (W11-A) — see `generateStoryBibleDeep`'s own `mode` input doc comment above. */
         mode: verticalDramaDeepStoryDraftModeSchema.optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       const mode: VerticalDramaDeepStoryDraftMode = input.mode ?? "standard";
 
@@ -3590,7 +3983,8 @@ export const verticalDramaSeriesRouter = router({
       if (existingItems.length === 0) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Generate the story bible first before extending deep shot drafts",
+          message:
+            "Generate the story bible first before extending deep shot drafts",
         });
       }
 
@@ -3600,31 +3994,48 @@ export const verticalDramaSeriesRouter = router({
       if (horizonStart > totalEpisodes) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "All planned episodes already have deep shot drafts",
+          message: "All planned Sub-episodes already have deep shot drafts",
         });
       }
 
-      const additionalEpisodes = input.additionalEpisodes ?? VD_DEEP_DRAFT_EXTEND_DEFAULT_EPISODES;
-      const horizonEnd = Math.min(horizonStart + additionalEpisodes - 1, totalEpisodes);
-      const episodeNumbers = new Set(
-        Array.from({ length: Math.max(0, horizonEnd - horizonStart + 1) }, (_, i) => horizonStart + i),
+      const additionalEpisodes =
+        input.additionalEpisodes ?? VD_DEEP_DRAFT_EXTEND_DEFAULT_EPISODES;
+      const horizonEnd = Math.min(
+        horizonStart + additionalEpisodes - 1,
+        totalEpisodes
       );
-      const episodesToDraft = existingItems.filter((item) => episodeNumbers.has(item.episodeNumber));
+      const episodeNumbers = new Set(
+        Array.from(
+          { length: Math.max(0, horizonEnd - horizonStart + 1) },
+          (_, i) => horizonStart + i
+        )
+      );
+      const episodesToDraft = existingItems.filter(item =>
+        episodeNumbers.has(item.episodeNumber)
+      );
       if (episodesToDraft.length === 0) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "No planned episodes are available within the requested horizon",
+          message:
+            "No planned Sub-episodes are available within the requested horizon",
         });
       }
 
-      await ensureStoryJobCreditsAvailable(userId, estimateDeepDraftJobCredits(episodesToDraft.length, mode));
+      await ensureStoryJobCreditsAvailable(
+        userId,
+        estimateDeepDraftJobCredits(episodesToDraft.length, mode)
+      );
 
       const { jobId, deduped } = await enqueueVerticalDramaStoryJob({
         kind: "extend",
         seriesId,
         tenantId,
         userId,
-        input: { additionalEpisodes: input.additionalEpisodes, mode, idempotencyKey: input.idempotencyKey },
+        input: {
+          additionalEpisodes: input.additionalEpisodes,
+          mode,
+          idempotencyKey: input.idempotencyKey,
+        },
       });
       return { jobId, deduped };
     }),
@@ -3665,7 +4076,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
@@ -3673,7 +4087,7 @@ export const verticalDramaSeriesRouter = router({
       const { activeIndex, versions, item } = loadManualDialogueEditTarget(
         bible,
         input.episodeNumber,
-        input.shotNumber,
+        input.shotNumber
       );
 
       // Idempotent replay: a retried call carrying an idempotencyKey this
@@ -3684,14 +4098,19 @@ export const verticalDramaSeriesRouter = router({
       // consistent between the first call and every replay of it.
       const priorStamp = readItemManualDialogueEdit(item);
       const isReplay =
-        !!input.idempotencyKey && !!priorStamp?.appliedIdempotencyKeys?.includes(input.idempotencyKey);
+        !!input.idempotencyKey &&
+        !!priorStamp?.appliedIdempotencyKeys?.includes(input.idempotencyKey);
       if (isReplay) {
         const shotDrafts = readItemShotDrafts(item) ?? [];
-        const currentShot = shotDrafts.find((shot) => shot.shot_number === input.shotNumber);
+        const currentShot = shotDrafts.find(
+          shot => shot.shot_number === input.shotNumber
+        );
         return {
           item,
           criteriaVersionMarker: renderCriteriaVersionMarker(),
-          speakabilityWarnings: analyzeManualDialogueEditLines(currentShot?.dialogue_lines ?? []),
+          speakabilityWarnings: analyzeManualDialogueEditLines(
+            currentShot?.dialogue_lines ?? []
+          ),
           silenceIntentRemoved: false,
         };
       }
@@ -3716,13 +4135,18 @@ export const verticalDramaSeriesRouter = router({
         index === activeIndex
           ? {
               ...version,
-              items: version.items.map((existingItem) =>
-                existingItem.episodeNumber === input.episodeNumber ? editResult.item : existingItem,
+              items: version.items.map(existingItem =>
+                existingItem.episodeNumber === input.episodeNumber
+                  ? editResult.item
+                  : existingItem
               ),
             }
-          : version,
+          : version
       );
-      const nextBible: Record<string, unknown> = { ...bible, breakdownVersions: updatedVersions };
+      const nextBible: Record<string, unknown> = {
+        ...bible,
+        breakdownVersions: updatedVersions,
+      };
 
       await db
         .update(verticalDramaSeries)
@@ -3769,7 +4193,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Fail-fast sync validation — see `generateStoryBibleDeep`'s own doc
@@ -3778,18 +4205,24 @@ export const verticalDramaSeriesRouter = router({
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
       const bible = (row.bible as Record<string, unknown> | null) ?? {};
       const existingItems = getActiveBreakdown(bible);
-      const hasAnyDraftedEpisode = existingItems.some((item) => readItemShotDrafts(item) !== null);
+      const hasAnyDraftedEpisode = existingItems.some(
+        item => readItemShotDrafts(item) !== null
+      );
       if (!hasAnyDraftedEpisode) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Generate deep story drafts first before improving this script",
+          message:
+            "Generate deep story drafts first before improving this script",
         });
       }
 
       const draftedEpisodeCount = existingItems.filter(
-        (item) => readItemShotDrafts(item) !== null,
+        item => readItemShotDrafts(item) !== null
       ).length;
-      await ensureStoryJobCreditsAvailable(userId, estimateImproveScriptJobCredits(draftedEpisodeCount));
+      await ensureStoryJobCreditsAvailable(
+        userId,
+        estimateImproveScriptJobCredits(draftedEpisodeCount)
+      );
 
       const { jobId, deduped } = await enqueueVerticalDramaStoryJob({
         kind: "improve_script",
@@ -3829,13 +4262,22 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
 
-      const record = await getVerticalDramaStoryJobStatus(input.jobId, { tenantId, seriesId });
+      const record = await getVerticalDramaStoryJobStatus(input.jobId, {
+        tenantId,
+        seriesId,
+      });
       if (!record) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Story job not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story job not found",
+        });
       }
       if (record.kind !== "improve_script" || record.status !== "succeeded") {
         throw new TRPCError({
@@ -3855,10 +4297,14 @@ export const verticalDramaSeriesRouter = router({
 
       const bible = (row.bible as Record<string, unknown> | null) ?? {};
       const currentActiveBreakdownVersionId =
-        typeof (bible as { activeBreakdownVersionId?: unknown }).activeBreakdownVersionId === "string"
-          ? ((bible as { activeBreakdownVersionId?: string }).activeBreakdownVersionId as string)
+        typeof (bible as { activeBreakdownVersionId?: unknown })
+          .activeBreakdownVersionId === "string"
+          ? ((bible as { activeBreakdownVersionId?: string })
+              .activeBreakdownVersionId as string)
           : null;
-      if (currentActiveBreakdownVersionId !== result.activeBreakdownVersionIdAtRun) {
+      if (
+        currentActiveBreakdownVersionId !== result.activeBreakdownVersionIdAtRun
+      ) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "เนื้อหาเปลี่ยนไปตั้งแต่รันงานนี้ กรุณาสั่งปรับปรุงใหม่",
@@ -3866,8 +4312,12 @@ export const verticalDramaSeriesRouter = router({
       }
 
       const existingItems = getActiveBreakdown(bible);
-      const improvedByEpisode = new Map(result.improvedItems.map((item) => [item.episodeNumber, item]));
-      const mergedItems = existingItems.map((item) => improvedByEpisode.get(item.episodeNumber) ?? item);
+      const improvedByEpisode = new Map(
+        result.improvedItems.map(item => [item.episodeNumber, item])
+      );
+      const mergedItems = existingItems.map(
+        item => improvedByEpisode.get(item.episodeNumber) ?? item
+      );
 
       const nextBible = appendBreakdownVersion(bible, {
         source: "improve_script",
@@ -3886,22 +4336,30 @@ export const verticalDramaSeriesRouter = router({
       // summary showing the pre-improvement text. Only the plan fields the
       // view actually renders are overwritten; per-episode extras
       // (contentBudget, etc.) and un-improved episodes are left untouched.
-      const legacyBreakdown = (nextBible as { episodeBreakdown?: unknown }).episodeBreakdown;
+      const legacyBreakdown = (nextBible as { episodeBreakdown?: unknown })
+        .episodeBreakdown;
       if (Array.isArray(legacyBreakdown)) {
-        (nextBible as { episodeBreakdown?: unknown }).episodeBreakdown = legacyBreakdown.map((entry) => {
-          if (!entry || typeof entry !== "object") return entry;
-          const epNum = (entry as { episodeNumber?: unknown }).episodeNumber;
-          const improved = typeof epNum === "number" ? improvedByEpisode.get(epNum) : undefined;
-          if (!improved) return entry;
-          const cliffhanger = (improved as { cliffhanger_line?: unknown }).cliffhanger_line;
-          return {
-            ...(entry as Record<string, unknown>),
-            workingTitle: improved.workingTitle,
-            logline: improved.logline,
-            keyBeats: improved.keyBeats,
-            ...(cliffhanger !== undefined ? { cliffhanger_line: cliffhanger } : {}),
-          };
-        });
+        (nextBible as { episodeBreakdown?: unknown }).episodeBreakdown =
+          legacyBreakdown.map(entry => {
+            if (!entry || typeof entry !== "object") return entry;
+            const epNum = (entry as { episodeNumber?: unknown }).episodeNumber;
+            const improved =
+              typeof epNum === "number"
+                ? improvedByEpisode.get(epNum)
+                : undefined;
+            if (!improved) return entry;
+            const cliffhanger = (improved as { cliffhanger_line?: unknown })
+              .cliffhanger_line;
+            return {
+              ...(entry as Record<string, unknown>),
+              workingTitle: improved.workingTitle,
+              logline: improved.logline,
+              keyBeats: improved.keyBeats,
+              ...(cliffhanger !== undefined
+                ? { cliffhanger_line: cliffhanger }
+                : {}),
+            };
+          });
       }
 
       await db
@@ -3927,18 +4385,24 @@ export const verticalDramaSeriesRouter = router({
             // `improvedItems`-derived, NOT `expectedEpisodeNumbers` — a
             // partial success means not every expected episode actually got
             // improved (see `RunImproveScriptJobResult`'s own doc comment).
-            updatedEpisodeNumbers: result.improvedItems.map((item) => item.episodeNumber),
+            updatedEpisodeNumbers: result.improvedItems.map(
+              item => item.episodeNumber
+            ),
           },
         });
       } catch (error) {
         debugError(
           "verticalDramaSeries.confirmImproveScript",
           "Failed to record improve-script confirm audit event",
-          error,
+          error
         );
       }
 
-      return { updatedEpisodeNumbers: result.improvedItems.map((item) => item.episodeNumber) };
+      return {
+        updatedEpisodeNumbers: result.improvedItems.map(
+          item => item.episodeNumber
+        ),
+      };
     }),
 
   /**
@@ -3957,7 +4421,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       await loadOwnedSeries(tenantId, userId, seriesId);
       return { ok: true };
@@ -3981,13 +4448,22 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       await loadOwnedSeries(tenantId, userId, seriesId);
 
-      const record = await getVerticalDramaStoryJobStatus(input.jobId, { tenantId, seriesId });
+      const record = await getVerticalDramaStoryJobStatus(input.jobId, {
+        tenantId,
+        seriesId,
+      });
       if (!record) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Story job not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Story job not found",
+        });
       }
 
       return {
@@ -3995,7 +4471,8 @@ export const verticalDramaSeriesRouter = router({
         status: record.status,
         progress: record.progress,
         result: record.status === "succeeded" ? record.result : undefined,
-        error: record.status === "failed" ? (record.error ?? undefined) : undefined,
+        error:
+          record.status === "failed" ? (record.error ?? undefined) : undefined,
       };
     }),
 
@@ -4014,13 +4491,24 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       await loadOwnedSeries(tenantId, userId, seriesId);
 
-      const record = await getActiveVerticalDramaStoryJob({ tenantId, seriesId });
+      const record = await getActiveVerticalDramaStoryJob({
+        tenantId,
+        seriesId,
+      });
       if (!record) return null;
-      return { jobId: record.jobId, kind: record.kind, status: record.status, progress: record.progress };
+      return {
+        jobId: record.jobId,
+        kind: record.kind,
+        status: record.status,
+        progress: record.progress,
+      };
     }),
 
   /**
@@ -4037,19 +4525,23 @@ export const verticalDramaSeriesRouter = router({
         seriesId: z.string().min(1),
         title: z.string().trim().min(1).max(150),
         publishGlobally: z.boolean().optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
       const bible = (row.bible as Record<string, unknown> | null) ?? {};
-      const charactersDraft = typeof bible.charactersDraft === "string" ? bible.charactersDraft : "";
+      const charactersDraft =
+        typeof bible.charactersDraft === "string" ? bible.charactersDraft : "";
 
       const isAdmin = ctx.user.role === "admin";
       const publishGlobally = Boolean(input.publishGlobally) && isAdmin;
@@ -4058,7 +4550,9 @@ export const verticalDramaSeriesRouter = router({
         .insert(verticalDramaGenrePresets)
         .values({
           title: input.title,
-          category: row.genre?.trim() || input.title.toLowerCase().replace(/\s+/g, "-").slice(0, 60),
+          category:
+            row.genre?.trim() ||
+            input.title.toLowerCase().replace(/\s+/g, "-").slice(0, 60),
           // Genre presets only support th/en (preset browsing follows the UI
           // language, not the series' own content locale) — clamp any of the
           // wider series locales down to the closer of the two.
@@ -4078,7 +4572,11 @@ export const verticalDramaSeriesRouter = router({
         .returning();
 
       return {
-        preset: { id: String(created.id), title: created.title, scope: created.scope },
+        preset: {
+          id: String(created.id),
+          title: created.title,
+          scope: created.scope,
+        },
       };
     }),
 
@@ -4111,14 +4609,17 @@ export const verticalDramaSeriesRouter = router({
       z.object({
         seriesId: z.string().min(1),
         confirmName: z.string().min(1),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Ensure the caller owns it (throws NOT_FOUND otherwise — never
@@ -4132,7 +4633,7 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
-      const counts = await db.transaction(async (tx) => {
+      const counts = await db.transaction(async tx => {
         const [
           [episodesAgg],
           [charactersAgg],
@@ -4148,43 +4649,93 @@ export const verticalDramaSeriesRouter = router({
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaEpisodes)
-            .where(and(eq(verticalDramaEpisodes.tenantId, tenantId), eq(verticalDramaEpisodes.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaEpisodes.tenantId, tenantId),
+                eq(verticalDramaEpisodes.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaCharacters)
-            .where(and(eq(verticalDramaCharacters.tenantId, tenantId), eq(verticalDramaCharacters.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaCharacters.tenantId, tenantId),
+                eq(verticalDramaCharacters.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaCharacterAssets)
-            .where(and(eq(verticalDramaCharacterAssets.tenantId, tenantId), eq(verticalDramaCharacterAssets.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaCharacterAssets.tenantId, tenantId),
+                eq(verticalDramaCharacterAssets.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaShotReferences)
-            .where(and(eq(verticalDramaShotReferences.tenantId, tenantId), eq(verticalDramaShotReferences.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaShotReferences.tenantId, tenantId),
+                eq(verticalDramaShotReferences.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaEpisodeRuns)
-            .where(and(eq(verticalDramaEpisodeRuns.tenantId, tenantId), eq(verticalDramaEpisodeRuns.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaEpisodeRuns.tenantId, tenantId),
+                eq(verticalDramaEpisodeRuns.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaRunArtifacts)
-            .where(and(eq(verticalDramaRunArtifacts.tenantId, tenantId), eq(verticalDramaRunArtifacts.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaRunArtifacts.tenantId, tenantId),
+                eq(verticalDramaRunArtifacts.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaApprovalCheckpoints)
-            .where(and(eq(verticalDramaApprovalCheckpoints.tenantId, tenantId), eq(verticalDramaApprovalCheckpoints.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaApprovalCheckpoints.tenantId, tenantId),
+                eq(verticalDramaApprovalCheckpoints.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaMemoryEvents)
-            .where(and(eq(verticalDramaMemoryEvents.tenantId, tenantId), eq(verticalDramaMemoryEvents.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaMemoryEvents.tenantId, tenantId),
+                eq(verticalDramaMemoryEvents.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaMemorySnapshots)
-            .where(and(eq(verticalDramaMemorySnapshots.tenantId, tenantId), eq(verticalDramaMemorySnapshots.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaMemorySnapshots.tenantId, tenantId),
+                eq(verticalDramaMemorySnapshots.seriesId, seriesId)
+              )
+            ),
           tx
             .select({ count: sql<number>`COUNT(*)` })
             .from(verticalDramaQcReports)
-            .where(and(eq(verticalDramaQcReports.tenantId, tenantId), eq(verticalDramaQcReports.seriesId, seriesId))),
+            .where(
+              and(
+                eq(verticalDramaQcReports.tenantId, tenantId),
+                eq(verticalDramaQcReports.seriesId, seriesId)
+              )
+            ),
         ]);
 
         const episodesDeleted = Number(episodesAgg?.count ?? 0);
@@ -4193,7 +4744,9 @@ export const verticalDramaSeriesRouter = router({
         const shotReferencesDeleted = Number(shotReferencesAgg?.count ?? 0);
         const episodeRunsDeleted = Number(episodeRunsAgg?.count ?? 0);
         const runArtifactsDeleted = Number(runArtifactsAgg?.count ?? 0);
-        const approvalCheckpointsDeleted = Number(approvalCheckpointsAgg?.count ?? 0);
+        const approvalCheckpointsDeleted = Number(
+          approvalCheckpointsAgg?.count ?? 0
+        );
         const memoryEventsDeleted = Number(memoryEventsAgg?.count ?? 0);
         const memorySnapshotsDeleted = Number(memorySnapshotsAgg?.count ?? 0);
         const qcReportsDeleted = Number(qcReportsAgg?.count ?? 0);
@@ -4245,24 +4798,33 @@ export const verticalDramaSeriesRouter = router({
         audioUrls: z.array(z.string().min(1)).min(1).max(12),
         audioDurationSeconds: z.number().positive().optional(),
         idempotencyKey: z.string().trim().min(1).max(128),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Ensure the caller owns it (throws NOT_FOUND otherwise).
       const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
 
-      const existingTrailer = seriesRow.trailer as VerticalDramaSeriesTrailerState | null;
+      const existingTrailer =
+        seriesRow.trailer as VerticalDramaSeriesTrailerState | null;
       if (existingTrailer?.status === "processing" && existingTrailer.jobId) {
         const liveJob = getTrailerJobStatus(existingTrailer.jobId);
         if (liveJob && liveJob.status === "processing") {
-          return { jobId: existingTrailer.jobId, imageCount: 0, videoClipCount: 0, resumed: true };
+          return {
+            jobId: existingTrailer.jobId,
+            imageCount: 0,
+            videoClipCount: 0,
+            resumed: true,
+          };
         }
       }
 
@@ -4277,13 +4839,16 @@ export const verticalDramaSeriesRouter = router({
           and(
             eq(verticalDramaEpisodes.tenantId, tenantId),
             eq(verticalDramaEpisodes.userId, userId),
-            eq(verticalDramaEpisodes.seriesId, seriesId),
-          ),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
         )
         .orderBy(asc(verticalDramaEpisodes.episodeNumber));
 
       const isUsableUrl = (url: string | undefined | null): url is string =>
-        !!url && (/^https?:\/\//i.test(url) || url.startsWith("/api/storage") || url.startsWith("/uploads"));
+        !!url &&
+        (/^https?:\/\//i.test(url) ||
+          url.startsWith("/api/storage") ||
+          url.startsWith("/uploads"));
 
       // --- Images: episode 1 first (all of its approved/angle-grid images),
       // then a sample from the other episodes, in episode order. ---
@@ -4313,8 +4878,8 @@ export const verticalDramaSeriesRouter = router({
             and(
               eq(mediaAssets.tenantId, tenantId),
               eq(mediaAssets.userId, userId),
-              inArray(mediaAssets.id, Array.from(approvedAssetIds)),
-            ),
+              inArray(mediaAssets.id, Array.from(approvedAssetIds))
+            )
           );
         for (const row of assetRows) {
           if (row.url) assetUrlById.set(row.id, row.url);
@@ -4324,13 +4889,20 @@ export const verticalDramaSeriesRouter = router({
       for (const row of episodeRows) {
         const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
         const isEpisodeOne = row.episodeNumber === 1;
-        const bucket = isEpisodeOne ? episodeOneImageUrls : otherEpisodeImageUrls;
+        const bucket = isEpisodeOne
+          ? episodeOneImageUrls
+          : otherEpisodeImageUrls;
         for (const frame of plan?.frames ?? []) {
           if (frame.approvedMediaAssetId) {
             const parsed = Number(frame.approvedMediaAssetId);
-            const url = Number.isFinite(parsed) ? assetUrlById.get(parsed) : undefined;
+            const url = Number.isFinite(parsed)
+              ? assetUrlById.get(parsed)
+              : undefined;
             if (isUsableUrl(url)) bucket.push(url);
-          } else if (frame.angleGrid?.imageUrl && isUsableUrl(frame.angleGrid.imageUrl)) {
+          } else if (
+            frame.angleGrid?.imageUrl &&
+            isUsableUrl(frame.angleGrid.imageUrl)
+          ) {
             bucket.push(frame.angleGrid.imageUrl);
           }
         }
@@ -4340,7 +4912,10 @@ export const verticalDramaSeriesRouter = router({
       // so a long series doesn't just show episodes 2/3 repeatedly.
       for (let i = otherEpisodeImageUrls.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1));
-        [otherEpisodeImageUrls[i], otherEpisodeImageUrls[j]] = [otherEpisodeImageUrls[j], otherEpisodeImageUrls[i]];
+        [otherEpisodeImageUrls[i], otherEpisodeImageUrls[j]] = [
+          otherEpisodeImageUrls[j],
+          otherEpisodeImageUrls[i],
+        ];
       }
       const imageUrls = [...episodeOneImageUrls, ...otherEpisodeImageUrls];
 
@@ -4348,8 +4923,10 @@ export const verticalDramaSeriesRouter = router({
       const episodeOneClipUrls: string[] = [];
       const otherEpisodeClipUrls: string[] = [];
       for (const row of episodeRows) {
-        const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
-        const bucket = row.episodeNumber === 1 ? episodeOneClipUrls : otherEpisodeClipUrls;
+        const pack =
+          row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+        const bucket =
+          row.episodeNumber === 1 ? episodeOneClipUrls : otherEpisodeClipUrls;
         for (const clip of pack?.clips ?? []) {
           const url = clip.videoTask?.videoUrl;
           if (isUsableUrl(url)) bucket.push(url);
@@ -4366,7 +4943,10 @@ export const verticalDramaSeriesRouter = router({
       }
 
       const runtimeConfig = getCachedAppRuntimeConfig();
-      const internalBaseUrl = runtimeConfig.internalNodeUrl || ctx.publicUrl || "http://localhost:3000";
+      const internalBaseUrl =
+        runtimeConfig.internalNodeUrl ||
+        ctx.publicUrl ||
+        "http://localhost:3000";
 
       const { jobId } = await submitTrailerJob({
         owner: { tenantId, userId, seriesId },
@@ -4397,7 +4977,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
@@ -4461,7 +5044,10 @@ export const verticalDramaSeriesRouter = router({
             includeDialogueAudio: z.boolean().optional(),
             loudnessNormalize: z.boolean().optional(),
             subtitlePreset: z
-              .union([HyperframesFinalCompositeSubtitlePresetSchema, z.literal("none")])
+              .union([
+                HyperframesFinalCompositeSubtitlePresetSchema,
+                z.literal("none"),
+              ])
               .optional(),
             // Task #34 (Text Overlay Suite) — batch-level toggles
             // (plan.md "batch season render: toggle รวม 'ใส่ข้อความตามแผน
@@ -4472,14 +5058,17 @@ export const verticalDramaSeriesRouter = router({
             applyWatermark: z.boolean().optional(),
           })
           .optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       const options = input.options ?? {};
 
@@ -4503,15 +5092,15 @@ export const verticalDramaSeriesRouter = router({
           and(
             eq(verticalDramaEpisodes.tenantId, tenantId),
             eq(verticalDramaEpisodes.userId, userId),
-            eq(verticalDramaEpisodes.seriesId, seriesId),
-          ),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          )
         )
         .orderBy(asc(verticalDramaEpisodes.episodeNumber));
 
       if (episodeRows.length === 0) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "This series has no episodes yet.",
+          message: "This series has no Sub-episodes yet.",
         });
       }
 
@@ -4534,22 +5123,31 @@ export const verticalDramaSeriesRouter = router({
       const voiceChainEnabled = flags?.verticalDramaSeriesVoiceChain === true;
       // F131AB (task #34) — mirrors `resolveVerticalDramaTextOverlaySuiteFlag`
       // above.
-      const textOverlaySuiteEnabled = await resolveVerticalDramaTextOverlaySuiteFlag(tenantId);
-      const applyTextOverlays = textOverlaySuiteEnabled && options.applyTextOverlays !== false;
-      const applyWatermark = textOverlaySuiteEnabled && options.applyWatermark !== false;
+      const textOverlaySuiteEnabled =
+        await resolveVerticalDramaTextOverlaySuiteFlag(tenantId);
+      const applyTextOverlays =
+        textOverlaySuiteEnabled && options.applyTextOverlays !== false;
+      const applyWatermark =
+        textOverlaySuiteEnabled && options.applyWatermark !== false;
       // Task #34 — SHARED resolution service (see that file's own header doc
       // comment for why it is safe/deliberate for this router to depend on
       // it — a plain service-to-service dependency, not a cross-ROUTER one).
-      const { resolveVdEpisodeTextOverlayEngineInputs } = await import(
-        "../services/verticalDramaTextOverlayResolution"
-      );
+      const { resolveVdEpisodeTextOverlayEngineInputs } =
+        await import("../services/verticalDramaTextOverlayResolution");
 
       const runtimeConfig = getCachedAppRuntimeConfig();
       const internalBaseUrl =
-        runtimeConfig.internalNodeUrl || ctx.publicUrl || "http://localhost:3000";
+        runtimeConfig.internalNodeUrl ||
+        ctx.publicUrl ||
+        "http://localhost:3000";
 
       const specs: Array<{
-        owner: { tenantId: string; userId: number; seriesId: number; episodeId: number };
+        owner: {
+          tenantId: string;
+          userId: number;
+          seriesId: number;
+          episodeId: number;
+        };
         clips: EpisodeClipSource[];
         filename: string;
         dialogueAudio?: RunAssemblyJobDialogueAudioInput;
@@ -4563,18 +5161,23 @@ export const verticalDramaSeriesRouter = router({
       let episodesWithWatermark = 0;
 
       for (const row of episodeRows) {
-        const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
-        const clipSources: EpisodeClipSource[] = extractClipSourcesFromMotionPromptPack(pack);
+        const pack =
+          row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+        const clipSources: EpisodeClipSource[] =
+          extractClipSourcesFromMotionPromptPack(pack);
         if (clipSources.length === 0) {
           skipped.push({
             episodeId: String(row.id),
             reason:
-              "No video clips exist for this episode yet — generate the video motion prompt pack and render clips first.",
+              "No video clips exist for this Sub-episode yet — generate the video motion prompt pack and render clips first.",
           });
           continue;
         }
 
-        let resolvedClips: { ordered: EpisodeClipSource[]; missing: { clipNumber: number }[] };
+        let resolvedClips: {
+          ordered: EpisodeClipSource[];
+          missing: { clipNumber: number }[];
+        };
         try {
           resolvedClips = resolveClipsForAssembly(clipSources, {
             allowPartial: options.allowPartial,
@@ -4585,27 +5188,31 @@ export const verticalDramaSeriesRouter = router({
             reason:
               err instanceof Error
                 ? err.message
-                : "Episode video assembly precondition failed",
+                : "Sub-episode video assembly precondition failed",
           });
           continue;
         }
 
-        const dialoguePlan = row.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null;
-        const dialogueRunInputs = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
-          plan: dialoguePlan,
-          motionClips: (pack?.clips ?? []).map(
-            (c): VdDialogueTimelineClip => ({
-              clipNumber: c.clipNumber,
-              sourceShotNumbers: c.sourceShotNumbers,
-              durationSeconds: c.durationSeconds,
-            }),
-          ),
-          includedClipNumbers: resolvedClips.ordered.map(c => c.clipNumber),
-          includeDialogueAudio: voiceChainEnabled && options.includeDialogueAudio === true,
-          loudnessNormalize: options.loudnessNormalize === true,
-          subtitlePreset: options.subtitlePreset,
-        });
-        dialogueAudioSegmentsIncluded += dialogueRunInputs.dialogueAudioSegmentsIncluded;
+        const dialoguePlan =
+          row.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null;
+        const dialogueRunInputs =
+          resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+            plan: dialoguePlan,
+            motionClips: (pack?.clips ?? []).map(
+              (c): VdDialogueTimelineClip => ({
+                clipNumber: c.clipNumber,
+                sourceShotNumbers: c.sourceShotNumbers,
+                durationSeconds: c.durationSeconds,
+              })
+            ),
+            includedClipNumbers: resolvedClips.ordered.map(c => c.clipNumber),
+            includeDialogueAudio:
+              voiceChainEnabled && options.includeDialogueAudio === true,
+            loudnessNormalize: options.loudnessNormalize === true,
+            subtitlePreset: options.subtitlePreset,
+          });
+        dialogueAudioSegmentsIncluded +=
+          dialogueRunInputs.dialogueAudioSegmentsIncluded;
         subtitleLinesIncluded += dialogueRunInputs.subtitleLinesIncluded;
 
         // Text Overlay Suite (F131AB, task #34) — additive, flag-gated feed,
@@ -4613,22 +5220,27 @@ export const verticalDramaSeriesRouter = router({
         // `buildAssSubtitleFile`'s own doc comment for why one `.ass` file
         // safely carries both).
         let combinedSubtitles = dialogueRunInputs.subtitles;
-        let episodeWatermarkImage: RunAssemblyJobWatermarkImageInput | undefined;
+        let episodeWatermarkImage:
+          | RunAssemblyJobWatermarkImageInput
+          | undefined;
         if (applyTextOverlays || applyWatermark) {
-          const plan = applyTextOverlays ? parseTextOverlayPlan(row.textOverlayPlan) : null;
+          const plan = applyTextOverlays
+            ? parseTextOverlayPlan(row.textOverlayPlan)
+            : null;
           const { overlays, watermarkImage, overlaysIncluded } =
             await resolveVdEpisodeTextOverlayEngineInputs({
               owner: { tenantId, userId, seriesId },
               episodeNumber: row.episodeNumber,
               episodeTitle: row.title,
               plan,
-              startFramePlan: row.startFramePlan as VerticalDramaStartFramePlan | null,
+              startFramePlan:
+                row.startFramePlan as VerticalDramaStartFramePlan | null,
               motionClips: (pack?.clips ?? []).map(
                 (c): VdDialogueTimelineClip => ({
                   clipNumber: c.clipNumber,
                   sourceShotNumbers: c.sourceShotNumbers,
                   durationSeconds: c.durationSeconds,
-                }),
+                })
               ),
               includedClipNumbers: resolvedClips.ordered.map(c => c.clipNumber),
               includeWatermark: applyWatermark,
@@ -4636,7 +5248,8 @@ export const verticalDramaSeriesRouter = router({
           textOverlayEventsIncluded += overlaysIncluded;
           if (overlays.length > 0) {
             combinedSubtitles = {
-              preset: dialogueRunInputs.subtitles?.preset ?? "no_subtitle_style",
+              preset:
+                dialogueRunInputs.subtitles?.preset ?? "no_subtitle_style",
               lines: dialogueRunInputs.subtitles?.lines ?? [],
               fontsDir: dialogueRunInputs.subtitles?.fontsDir,
               overlays,
@@ -4673,10 +5286,16 @@ export const verticalDramaSeriesRouter = router({
         };
       }
 
-      const submitted = await submitSequentialAssemblyJobs(specs, internalBaseUrl);
+      const submitted = await submitSequentialAssemblyJobs(
+        specs,
+        internalBaseUrl
+      );
 
       return {
-        submitted: submitted.map(s => ({ episodeId: String(s.episodeId), jobId: s.jobId })),
+        submitted: submitted.map(s => ({
+          episodeId: String(s.episodeId),
+          jobId: s.jobId,
+        })),
         skipped,
         dialogueAudioSegmentsIncluded,
         subtitleLinesIncluded,
@@ -4717,6 +5336,20 @@ export const verticalDramaSeriesRouter = router({
    * work. Progress: the client polls `verticalDramaSeries.get`'s
    * `productionEpisodesManifest` (this mutation does not add a separate
    * polling endpoint), same convention as `assembleSeasonVideos`.
+   *
+   * Render-options LEVEL (plan.md "Render-options LEVEL" section, user
+   * correction 2026-07-13, Phase D′-2): `renderOptions` carries the SAME
+   * styling fields `assembleEpisodeVideo` accepts
+   * (`verticalDramaEpisodes.ts`), reusing its exact zod field types/enums
+   * (`HyperframesFinalCompositeSubtitlePresetSchema` for `subtitlePreset`,
+   * `SUBTITLE_FONT_SIZE_IDS` for `subtitleFontSize`) rather than retyping
+   * them — so styling is configured ONCE per Production Episode and applied
+   * UNIFORMLY across every Sub-Episode in the group, instead of per
+   * Sub-Episode. Omitted (every pre-existing caller) preserves D′-1 behavior
+   * exactly. See `ProductionEpisodeRenderOptions` and
+   * `assembleProductionEpisodesForSeries`'s own doc comments
+   * (`server/services/verticalDramaProductionEpisodeAssembly.ts`) for how
+   * this threads into a per-Sub-Episode re-render.
    */
   assembleProductionEpisodes: verticalDramaProcedure
     .input(
@@ -4724,14 +5357,58 @@ export const verticalDramaSeriesRouter = router({
         seriesId: z.string().min(1),
         groupSize: z.union([z.literal(5), z.literal(10)]),
         allowPartial: z.boolean().optional(),
-      }),
+        renderOptions: z
+          .object({
+            subtitlePreset: z
+              .union([
+                HyperframesFinalCompositeSubtitlePresetSchema,
+                z.literal("none"),
+              ])
+              .optional(),
+            subtitleFontSize: z.enum(SUBTITLE_FONT_SIZE_IDS).optional(),
+            showAgeBadge: z.boolean().optional(),
+            includeDialogueAudio: z.boolean().optional(),
+            loudnessNormalize: z.boolean().optional(),
+          })
+          .optional(),
+        // Phase B-1 (`planning/vertical-drama-production-render/plan.md`
+        // Phase B) — BGM bed + ducking, attached at the PRODUCTION EPISODE
+        // level (never per Sub-Episode). `url` uses `z.string()` (not
+        // `.url()`), same relative-path tolerance as `VdBgmTrack.url`
+        // (`@shared/verticalDramaSeries/standout.ts`) and every other asset
+        // URL field in this codebase. Omitted entirely preserves prior
+        // behavior exactly (no second ffmpeg pass) — see
+        // `assembleProductionEpisodesForSeries`'s own `bgm` doc comment.
+        bgm: z
+          .object({
+            url: z.string().min(1).max(2048),
+            volumePercent: z.number().min(1).max(100).default(35),
+            duckUnderVideoAudio: z.boolean().default(true),
+          })
+          .optional(),
+        // Phase C-1 (`planning/vertical-drama-production-render/plan.md`
+        // Phase C) — an OPTIONAL scrolling credits roll, attached at the
+        // PRODUCTION EPISODE level (never per Sub-Episode), burned in as a
+        // post-pass AFTER the bgm post-pass (if any). Multi-line: one
+        // name/role per line. Omitted entirely preserves prior behavior
+        // exactly (no credits pass) — see
+        // `assembleProductionEpisodesForSeries`'s own `credits` doc comment.
+        credits: z
+          .object({
+            text: z.string().min(1).max(4000),
+          })
+          .optional(),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Ensure the caller owns it (throws NOT_FOUND otherwise).
@@ -4739,7 +5416,9 @@ export const verticalDramaSeriesRouter = router({
 
       const runtimeConfig = getCachedAppRuntimeConfig();
       const internalBaseUrl =
-        runtimeConfig.internalNodeUrl || ctx.publicUrl || "http://localhost:3000";
+        runtimeConfig.internalNodeUrl ||
+        ctx.publicUrl ||
+        "http://localhost:3000";
 
       // Lazy-loaded — same "narrow vi.mock sibling test" convention this
       // file's Season Batch Render / Ad Banner Overlay import blocks
@@ -4748,9 +5427,8 @@ export const verticalDramaSeriesRouter = router({
       // `../storage` + spawns ffmpeg, exactly like
       // `verticalDramaEpisodeVideoAssembly.ts`) are loaded INSIDE this
       // handler, never as a static top-level import.
-      const { assembleProductionEpisodesForSeries } = await import(
-        "../services/verticalDramaProductionEpisodeAssembly"
-      );
+      const { assembleProductionEpisodesForSeries } =
+        await import("../services/verticalDramaProductionEpisodeAssembly");
 
       try {
         const result = await assembleProductionEpisodesForSeries({
@@ -4761,6 +5439,9 @@ export const verticalDramaSeriesRouter = router({
           allowPartial: input.allowPartial,
           internalBaseUrl,
           seriesTitle: seriesRow.title ?? undefined,
+          renderOptions: input.renderOptions,
+          bgm: input.bgm,
+          credits: input.credits,
         });
         return {
           groupsCreated: result.groupsCreated,
@@ -4800,26 +5481,38 @@ export const verticalDramaSeriesRouter = router({
         seriesId: z.string().min(1),
         proposalEventId: z.string().min(1),
         idempotencyKey: z.string().trim().min(1).max(128).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       const proposalEventId = Number(input.proposalEventId);
       if (!Number.isFinite(proposalEventId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid proposal event id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid proposal event id",
+        });
       }
 
       // Ownership re-check (throws NOT_FOUND otherwise — never discloses
       // existence of another tenant's/user's series).
       const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
-      const proposalRow = await loadArcReplanProposalEvent(tenantId, seriesId, proposalEventId);
+      const proposalRow = await loadArcReplanProposalEvent(
+        tenantId,
+        seriesId,
+        proposalEventId
+      );
 
-      const parsedProposal = verticalDramaArcReplanProposalSchema.safeParse(proposalRow.payload);
+      const parsedProposal = verticalDramaArcReplanProposalSchema.safeParse(
+        proposalRow.payload
+      );
       if (!parsedProposal.success) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -4835,7 +5528,9 @@ export const verticalDramaSeriesRouter = router({
       // where it is required). This defensive check narrows the type for
       // `applyApprovedArcReplan` below AND catches a corrupted/hand-crafted
       // proposal before it can silently drop a budget.
-      const missingBudgetItem = parsedProposal.data.proposedBreakdown.find((item) => !item.contentBudget);
+      const missingBudgetItem = parsedProposal.data.proposedBreakdown.find(
+        item => !item.contentBudget
+      );
       if (missingBudgetItem) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -4843,7 +5538,12 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
-      const existingDecision = await findArcReplanDecision(tenantId, userId, seriesId, proposalRow.id);
+      const existingDecision = await findArcReplanDecision(
+        tenantId,
+        userId,
+        seriesId,
+        proposalRow.id
+      );
       if (existingDecision) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -4853,7 +5553,8 @@ export const verticalDramaSeriesRouter = router({
 
       const approvedProposal: VerticalDramaArcReplanProposal = {
         ...parsedProposal.data,
-        proposedBreakdown: parsedProposal.data.proposedBreakdown as VerticalDramaEpisodeBreakdownItem[],
+        proposedBreakdown: parsedProposal.data
+          .proposedBreakdown as VerticalDramaEpisodeBreakdownItem[],
         status: "approved",
       };
 
@@ -4862,7 +5563,7 @@ export const verticalDramaSeriesRouter = router({
         nextBible = applyApprovedArcReplan(
           (seriesRow.bible as Record<string, unknown> | null) ?? null,
           approvedProposal,
-          userId,
+          userId
         );
       } catch (error) {
         if (error instanceof VerticalDramaArcReplanGuardViolationError) {
@@ -4941,25 +5642,40 @@ export const verticalDramaSeriesRouter = router({
         seriesId: z.string().min(1),
         proposalEventId: z.string().min(1),
         idempotencyKey: z.string().trim().min(1).max(128).optional(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
       const proposalEventId = Number(input.proposalEventId);
       if (!Number.isFinite(proposalEventId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid proposal event id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid proposal event id",
+        });
       }
 
       // Ownership re-check (throws NOT_FOUND otherwise).
       await loadOwnedSeries(tenantId, userId, seriesId);
-      const proposalRow = await loadArcReplanProposalEvent(tenantId, seriesId, proposalEventId);
+      const proposalRow = await loadArcReplanProposalEvent(
+        tenantId,
+        seriesId,
+        proposalEventId
+      );
 
-      const existingDecision = await findArcReplanDecision(tenantId, userId, seriesId, proposalRow.id);
+      const existingDecision = await findArcReplanDecision(
+        tenantId,
+        userId,
+        seriesId,
+        proposalRow.id
+      );
       if (existingDecision) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -5007,7 +5723,8 @@ export const verticalDramaSeriesRouter = router({
       // Lazy-loaded (see this file's Ad Banner Overlay import-block doc
       // comment) — `services/rateLimiter` is checked FIRST, fail-fast,
       // before any DB read or paid call.
-      const { mediaGenerationLimiter } = await import("../services/rateLimiter");
+      const { mediaGenerationLimiter } =
+        await import("../services/rateLimiter");
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
         throw new TRPCError({
@@ -5020,15 +5737,14 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
-      const { rawProductTieIn, banners, bannerIndex, banner } = await loadOwnedAdBanner(
-        tenantId,
-        userId,
-        seriesId,
-        input.bannerId,
-      );
+      const { rawProductTieIn, banners, bannerIndex, banner } =
+        await loadOwnedAdBanner(tenantId, userId, seriesId, input.bannerId);
       ensureAdBannerDesignsWithinLimits(banners);
 
       const stylePreset = getAdBannerStylePreset(banner.stylePresetId);
@@ -5043,10 +5759,13 @@ export const verticalDramaSeriesRouter = router({
         VdAdBannerForbiddenClaimError,
       } = await import("../services/verticalDramaAdBanner");
 
-      const referenceImageUrls = await resolveAdBannerProductReferenceImageUrls(rawProductTieIn, {
-        userId,
-        tenantId,
-      });
+      const referenceImageUrls = await resolveAdBannerProductReferenceImageUrls(
+        rawProductTieIn,
+        {
+          userId,
+          tenantId,
+        }
+      );
 
       let result;
       try {
@@ -5068,26 +5787,38 @@ export const verticalDramaSeriesRouter = router({
         });
       } catch (err) {
         if (err instanceof AdBannerRateLimitExceededError) {
-          throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: err.message });
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: err.message,
+          });
         }
         if (err instanceof InsufficientCreditsError) {
           throw new TRPCError({ code: "FORBIDDEN", message: err.message });
         }
         if (err instanceof VdAdBannerForbiddenClaimError) {
-          throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: err.message });
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message: err.message,
+          });
         }
         if (err instanceof VdSchemaValidationError) {
-          throw new TRPCError({ code: "UNPROCESSABLE_CONTENT", message: err.message });
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message: err.message,
+          });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: err instanceof Error ? err.message : "Ad banner prompt generation failed",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Ad banner prompt generation failed",
         });
       }
 
       const isRegulatedGate = resolveAdBannerApprovalGate(
         productContext.regulatedCategory,
-        productContext.requireHumanApproval,
+        productContext.requireHumanApproval
       );
 
       const nextBanner: VdAdBannerDesign = {
@@ -5100,13 +5831,23 @@ export const verticalDramaSeriesRouter = router({
         status: "prompt_ready",
         approval: {
           required: isRegulatedGate,
-          ...(banner.approval?.approvedBy ? { approvedBy: banner.approval.approvedBy } : {}),
-          ...(banner.approval?.approvedAt ? { approvedAt: banner.approval.approvedAt } : {}),
+          ...(banner.approval?.approvedBy
+            ? { approvedBy: banner.approval.approvedBy }
+            : {}),
+          ...(banner.approval?.approvedAt
+            ? { approvedAt: banner.approval.approvedAt }
+            : {}),
         },
       };
       const nextBanners = banners.slice();
       nextBanners[bannerIndex] = nextBanner;
-      await persistAdBannerDesigns(tenantId, userId, seriesId, rawProductTieIn, nextBanners);
+      await persistAdBannerDesigns(
+        tenantId,
+        userId,
+        seriesId,
+        rawProductTieIn,
+        nextBanners
+      );
 
       return {
         banner: nextBanner,
@@ -5136,7 +5877,8 @@ export const verticalDramaSeriesRouter = router({
     .mutation(async ({ ctx, input }) => {
       // Lazy-loaded (see this file's Ad Banner Overlay import-block doc
       // comment) — checked FIRST, fail-fast, before any DB read or paid call.
-      const { mediaGenerationLimiter } = await import("../services/rateLimiter");
+      const { mediaGenerationLimiter } =
+        await import("../services/rateLimiter");
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
         throw new TRPCError({
@@ -5149,22 +5891,22 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
-      const { rawProductTieIn, banners, bannerIndex, banner } = await loadOwnedAdBanner(
-        tenantId,
-        userId,
-        seriesId,
-        input.bannerId,
-      );
+      const { rawProductTieIn, banners, bannerIndex, banner } =
+        await loadOwnedAdBanner(tenantId, userId, seriesId, input.bannerId);
       ensureAdBannerDesignsWithinLimits(banners);
 
       const promptText = banner.prompt.final || banner.prompt.generated;
       if (!promptText) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Generate (or write) a prompt before generating the banner image",
+          message:
+            "Generate (or write) a prompt before generating the banner image",
         });
       }
 
@@ -5178,10 +5920,13 @@ export const verticalDramaSeriesRouter = router({
       ]
         .filter((v): v is string => Boolean(v))
         .join(" \n ");
-      if (containsForbiddenClaim(combinedText, productContext.forbiddenClaims)) {
+      if (
+        containsForbiddenClaim(combinedText, productContext.forbiddenClaims)
+      ) {
         throw new TRPCError({
           code: "UNPROCESSABLE_CONTENT",
-          message: "VD_AD_BANNER_FORBIDDEN_CLAIM: the banner prompt/copy contains a forbidden claim",
+          message:
+            "VD_AD_BANNER_FORBIDDEN_CLAIM: the banner prompt/copy contains a forbidden claim",
         });
       }
 
@@ -5194,7 +5939,7 @@ export const verticalDramaSeriesRouter = router({
 
       const isRegulatedGate = resolveAdBannerApprovalGate(
         productContext.regulatedCategory,
-        productContext.requireHumanApproval,
+        productContext.requireHumanApproval
       );
       if (isRegulatedGate && !banner.approval?.approvedAt) {
         throw new TRPCError({
@@ -5204,7 +5949,8 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
-      const { DEFAULT_MODELS } = await import("../services/mediaGenerationService");
+      const { DEFAULT_MODELS } =
+        await import("../services/mediaGenerationService");
       const modelId = banner.generation.modelId || DEFAULT_MODELS.image;
       const pricing = await resolveAdBannerImageModelPricing(modelId);
       const shouldChargeImageCredits = pricing.creditCost > 0;
@@ -5218,10 +5964,13 @@ export const verticalDramaSeriesRouter = router({
         }
       }
 
-      const referenceImageUrls = await resolveAdBannerProductReferenceImageUrls(rawProductTieIn, {
-        userId,
-        tenantId,
-      });
+      const referenceImageUrls = await resolveAdBannerProductReferenceImageUrls(
+        rawProductTieIn,
+        {
+          userId,
+          tenantId,
+        }
+      );
 
       // Credits are RESERVED now; `getAdBannerImageStatus` reconciles once
       // the task completes/fails, same convention as `generateCharacterImage`.
@@ -5267,12 +6016,19 @@ export const verticalDramaSeriesRouter = router({
             amount: pricing.creditCost,
             description: `Refund: ad banner image render failed to submit (banner ${banner.id})`,
             sourceType: "media_image",
-            metadata: { feature: "vertical_drama_ad_banner", seriesId, bannerId: banner.id },
+            metadata: {
+              feature: "vertical_drama_ad_banner",
+              seriesId,
+              bannerId: banner.id,
+            },
           });
         }
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: err instanceof Error ? err.message : "Ad banner image generation failed to submit",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Ad banner image generation failed to submit",
         });
       }
 
@@ -5283,9 +6039,19 @@ export const verticalDramaSeriesRouter = router({
       };
       const nextBanners = banners.slice();
       nextBanners[bannerIndex] = nextBanner;
-      await persistAdBannerDesigns(tenantId, userId, seriesId, rawProductTieIn, nextBanners);
+      await persistAdBannerDesigns(
+        tenantId,
+        userId,
+        seriesId,
+        rawProductTieIn,
+        nextBanners
+      );
 
-      return { taskId: submitResult.taskId, creditCost: pricing.creditCost, banner: nextBanner };
+      return {
+        taskId: submitResult.taskId,
+        creditCost: pricing.creditCost,
+        banner: nextBanner,
+      };
     }),
 
   /**
@@ -5306,41 +6072,55 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
-      const { rawProductTieIn, banners, bannerIndex, banner } = await loadOwnedAdBanner(
-        tenantId,
-        userId,
-        seriesId,
-        input.bannerId,
-      );
+      const { rawProductTieIn, banners, bannerIndex, banner } =
+        await loadOwnedAdBanner(tenantId, userId, seriesId, input.bannerId);
 
       if (!banner.pendingTaskId) {
         return { banner, taskStatus: null };
       }
 
       const userToken = await getAdBannerMediaUserToken(ctx);
-      const { mediaGenerationService } = await import("../services/mediaGenerationService");
+      const { mediaGenerationService } =
+        await import("../services/mediaGenerationService");
       let task;
       try {
-        task = await mediaGenerationService.getTask(banner.pendingTaskId, userToken, {
-          userId,
-          source: "trpc.verticalDramaSeries.getAdBannerImageStatus",
-          stage: "poll",
-        });
+        task = await mediaGenerationService.getTask(
+          banner.pendingTaskId,
+          userToken,
+          {
+            userId,
+            source: "trpc.verticalDramaSeries.getAdBannerImageStatus",
+            stage: "poll",
+          }
+        );
       } catch (err) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: err instanceof Error ? err.message : "Ad banner image task not found",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Ad banner image task not found",
         });
       }
 
       if (task.status === "completed" && task.resultUrl) {
-        const { pendingTaskId: completedTaskId, ...bannerWithoutPendingTask } = banner;
-        const resultData = task.resultData as Record<string, unknown> | undefined;
-        const width = typeof resultData?.width === "number" ? resultData.width : undefined;
-        const height = typeof resultData?.height === "number" ? resultData.height : undefined;
+        const { pendingTaskId: completedTaskId, ...bannerWithoutPendingTask } =
+          banner;
+        const resultData = task.resultData as
+          | Record<string, unknown>
+          | undefined;
+        const width =
+          typeof resultData?.width === "number" ? resultData.width : undefined;
+        const height =
+          typeof resultData?.height === "number"
+            ? resultData.height
+            : undefined;
         const nextBanner: VdAdBannerDesign = {
           ...bannerWithoutPendingTask,
           status: "ready",
@@ -5354,17 +6134,37 @@ export const verticalDramaSeriesRouter = router({
         };
         const nextBanners = banners.slice();
         nextBanners[bannerIndex] = nextBanner;
-        await persistAdBannerDesigns(tenantId, userId, seriesId, rawProductTieIn, nextBanners);
+        await persistAdBannerDesigns(
+          tenantId,
+          userId,
+          seriesId,
+          rawProductTieIn,
+          nextBanners
+        );
         return { banner: nextBanner, taskStatus: task.status };
       }
 
       if (task.status === "failed") {
-        const { pendingTaskId: _droppedTaskId, ...bannerWithoutPendingTask } = banner;
-        const nextBanner: VdAdBannerDesign = { ...bannerWithoutPendingTask, status: "failed" };
+        const { pendingTaskId: _droppedTaskId, ...bannerWithoutPendingTask } =
+          banner;
+        const nextBanner: VdAdBannerDesign = {
+          ...bannerWithoutPendingTask,
+          status: "failed",
+        };
         const nextBanners = banners.slice();
         nextBanners[bannerIndex] = nextBanner;
-        await persistAdBannerDesigns(tenantId, userId, seriesId, rawProductTieIn, nextBanners);
-        return { banner: nextBanner, taskStatus: task.status, errorMessage: task.errorMessage };
+        await persistAdBannerDesigns(
+          tenantId,
+          userId,
+          seriesId,
+          rawProductTieIn,
+          nextBanners
+        );
+        return {
+          banner: nextBanner,
+          taskStatus: task.status,
+          errorMessage: task.errorMessage,
+        };
       }
 
       return { banner, taskStatus: task.status };
@@ -5387,7 +6187,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       // Ownership guard — NOT_FOUND (never FORBIDDEN) for a missing/
@@ -5415,7 +6218,10 @@ export const verticalDramaSeriesRouter = router({
       const userId = ctx.user.id;
       const seriesId = Number(input.seriesId);
       if (!Number.isFinite(seriesId)) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid series id" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
       }
 
       await loadOwnedSeries(tenantId, userId, seriesId);

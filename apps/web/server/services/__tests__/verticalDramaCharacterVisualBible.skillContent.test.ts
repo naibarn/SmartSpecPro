@@ -89,6 +89,71 @@ describe("vertical-drama-character-visual-bible/skill.md — Output skeleton exa
     expect(character.negative_prompt).toMatch(/no other people/i);
     expect(character.negative_prompt).toMatch(/no second person/i);
   });
+
+  it("the worked example includes a complete character_design_dna result", () => {
+    const dna = character.character_design_dna as Record<string, unknown>;
+    expect(dna).toMatchObject({
+      version: 1,
+      design_intent: expect.any(String),
+      role_tier: expect.any(String),
+      beauty_archetype: expect.any(String),
+      age_range: expect.any(String),
+      face_identity: expect.any(Object),
+      body_language: expect.any(Object),
+      recall_stack: expect.any(Object),
+      anti_clone_checks: expect.any(Object),
+      scores: expect.any(Object),
+      comparison_evidence: expect.any(Object),
+    });
+  });
+});
+
+describe("vertical-drama-character-visual-bible/skill.md — story-grounded Character DNA", () => {
+  const body = readSkillMdBody();
+
+  it("requires Series Character DNA and the four attraction layers before face design", () => {
+    expect(body).toMatch(/Series Character DNA.*MANDATORY/i);
+    expect(body).toMatch(/visual appeal/i);
+    expect(body).toMatch(/emotional readability/i);
+    expect(body).toMatch(/narrative promise/i);
+    expect(body).toMatch(/memorable identity/i);
+  });
+
+  it("requires three internal directions, score-based selection, and one redesign on threshold failure", () => {
+    expect(body).toMatch(/three\*{0,2}\s+materially distinct\s+directions/i);
+    expect(body).toMatch(/story_fit/i);
+    expect(body).toMatch(/screen_presence/i);
+    expect(body).toMatch(/emotional_readability/i);
+    expect(body).toMatch(/ensemble_contrast/i);
+    expect(body).toMatch(/cross_series_uniqueness/i);
+    expect(body).toMatch(/redesign exactly once/i);
+  });
+
+  it("enforces anti-clone dimensions, recall stack, body language, and family resemblance without cloning", () => {
+    expect(body).toMatch(/3\*{0,2}\s+of 5 facial\s+dimensions/i);
+    expect(body).toMatch(/2\*{0,2}\s+of 4 hair\s+dimensions/i);
+    expect(body).toMatch(/2\*{0,2}\s+of 4 body-language\s+dimensions/i);
+    expect(body).toMatch(/Recall Stack/i);
+    expect(body).toMatch(/Body Language Profile/i);
+    expect(body).toMatch(/25.?40%/i);
+  });
+
+  it("compares only distinct people for ensemble contrast while treating variants as identity evidence and twins as face-linked", () => {
+    expect(body).toMatch(/same_person_variant/);
+    expect(body).toMatch(/face_linked_twin/);
+    expect(body).toMatch(/exclude the target character[\s\S]{0,120}from self-contrast/i);
+  });
+
+  it("treats an unavailable archive as unprovable history rather than evidence of no prior designs", () => {
+    expect(body).toMatch(/archiveStatus/);
+    expect(body).toMatch(/unavailable[\s\S]{0,180}cross-series uniqueness[\s\S]{0,80}could not be proven/i);
+    expect(body).toMatch(/never treat an `?unavailable`? archive as evidence that no prior designs\s+exist/i);
+  });
+
+  it("returns concise decision evidence, never private chain-of-thought", () => {
+    expect(body).toMatch(/Do not\s+reveal.*chain-of-thought/is);
+    expect(body).toMatch(/concise.*rationale/is);
+  });
 });
 
 describe("vertical-drama-character-visual-bible/skill.md — standing MANDATORY sections (Phase 2 content relocation)", () => {
@@ -310,6 +375,16 @@ describe("vertical-drama-character-visual-bible/skill.md — Custom instruction 
     expect(section).toMatch(/never.*rewrite.*identity/is);
   });
 
+  it("accepts wardrobe, color, prop, setting, and lighting details as real visual intent when no higher-priority rule conflicts", () => {
+    const section = body.split("## Custom instruction")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/outfit/i);
+    expect(section).toMatch(/colors?/i);
+    expect(section).toMatch(/props?/i);
+    expect(section).toMatch(/setting/i);
+    expect(section).toMatch(/lighting/i);
+    expect(section).toMatch(/must replace the corresponding default detail/i);
+  });
+
   it("instructs weaving the hint naturally into primary_portrait_prompt and other genuinely relevant fields, never mechanically appending it to every field", () => {
     const section = body.split("## Custom instruction")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
     expect(section).toMatch(/primary_portrait_prompt/);
@@ -349,6 +424,14 @@ describe("vertical-drama-character-visual-bible/skill.md — Custom instruction 
     expect(input.custom_instruction).toBe("half-body shot, front-facing");
     expect(promptText).toMatch(/half-body/i);
     expect(promptText).toMatch(/front-facing/i);
+  });
+
+  it("contains a Thai worked example proving a full-body pajama brief is honored instead of the default look", () => {
+    expect(body).toMatch(/\"custom_instruction\": \"ภาพเต็มตัว ในชุดนอนแบบสบาย\"/);
+    const section = body.split("Worked example (the same contract also accepts a Thai visual brief):")[1]?.split("## Character Design Bible sheet types")[0] ?? "";
+    expect(section).toMatch(/full-body|full-length/i);
+    expect(section).toMatch(/comfortable sleepwear|comfortable pajamas/i);
+    expect(section).toMatch(/must not silently return the default outfit/i);
   });
 });
 
