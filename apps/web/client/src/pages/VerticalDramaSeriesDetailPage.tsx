@@ -11,10 +11,20 @@
  * Consumes the base series router `trpc.verticalDramaSeries.get`.
  */
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Clapperboard, Copy, Loader2, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import {
+  Clapperboard,
+  Copy,
+  Download,
+  Expand,
+  Loader2,
+  Plus,
+  Save,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 
 import { AppPage, type AppPageState } from "@/components/AppPage";
 import { Badge } from "@/components/ui/badge";
@@ -249,6 +259,13 @@ export default function VerticalDramaSeriesDetailPage() {
     status: string;
     thumbnailUrl?: string | null;
     updatedAt?: Date | string | null;
+    /** Compact compiled-video player on the Episodes tab card — present +
+     *  non-null ONLY when a completed full-episode render exists. */
+    compiledVideo?: {
+      videoUrl: string;
+      status: string;
+      durationSeconds?: number;
+    } | null;
   }>;
 
   // All 8 tabs are always reachable; these flags only drive a "needs
@@ -466,6 +483,13 @@ export function EpisodesTab({
     status: string;
     thumbnailUrl?: string | null;
     updatedAt?: Date | string | null;
+    /** Compact compiled-video player on the Episodes tab card — present +
+     *  non-null ONLY when a completed full-episode render exists. */
+    compiledVideo?: {
+      videoUrl: string;
+      status: string;
+      durationSeconds?: number;
+    } | null;
   }>;
   readOnly: boolean;
 }) {
@@ -655,63 +679,81 @@ export function EpisodesTab({
         {episodes.map((ep) => (
           <li key={ep.id}>
             <Card className="transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring">
-              <CardContent className="flex items-center justify-between gap-3 p-4">
-                <Link
-                  href={verticalDramaRoutes.episode(seriesId, ep.id)}
-                  className="min-w-0 flex-1"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    {ep.thumbnailUrl ? (
-                      <img
-                        src={ep.thumbnailUrl}
-                        alt=""
-                        aria-hidden="true"
-                        className="aspect-[9/16] w-12 shrink-0 rounded-md border border-border object-cover"
-                      />
-                    ) : (
-                      <div
-                        aria-hidden="true"
-                        className="flex aspect-[9/16] w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40"
-                      >
-                        <Clapperboard className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+              <CardContent className="flex flex-col gap-3 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <Link
+                    href={verticalDramaRoutes.episode(seriesId, ep.id)}
+                    className="min-w-0 flex-1"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      {ep.thumbnailUrl ? (
+                        <img
+                          src={ep.thumbnailUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="aspect-[9/16] w-12 shrink-0 rounded-md border border-border object-cover"
+                        />
+                      ) : (
+                        <div
+                          aria-hidden="true"
+                          className="flex aspect-[9/16] w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-border bg-muted/40"
+                        >
+                          <Clapperboard className="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium">
+                          EP {ep.episodeNumber}
+                          {ep.title ? ` · ${ep.title}` : ""}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{ep.status}</p>
                       </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-medium">
-                        EP {ep.episodeNumber}
-                        {ep.title ? ` · ${ep.title}` : ""}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{ep.status}</p>
                     </div>
+                  </Link>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.open)}</Badge>
+                    {!readOnly && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        disabled={isDeleting}
+                        onClick={() =>
+                          setEpisodeToDelete({
+                            id: ep.id,
+                            episodeNumber: ep.episodeNumber,
+                            title: ep.title,
+                          })
+                        }
+                        title={lang === "th" ? "ลบตอนนี้" : "Delete episode"}
+                        aria-label={
+                          lang === "th"
+                            ? `ลบตอนที่ ${ep.episodeNumber}`
+                            : `Delete episode ${ep.episodeNumber}`
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </Button>
+                    )}
                   </div>
-                </Link>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant="outline">{pickCopy(lang, verticalDramaCopy.open)}</Badge>
-                  {!readOnly && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      disabled={isDeleting}
-                      onClick={() =>
-                        setEpisodeToDelete({
-                          id: ep.id,
-                          episodeNumber: ep.episodeNumber,
-                          title: ep.title,
-                        })
-                      }
-                      title={lang === "th" ? "ลบตอนนี้" : "Delete episode"}
-                      aria-label={
-                        lang === "th"
-                          ? `ลบตอนที่ ${ep.episodeNumber}`
-                          : `Delete episode ${ep.episodeNumber}`
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                    </Button>
-                  )}
                 </div>
+                {/* Compact compiled-video player (2026-07-13) — OUTSIDE the
+                    episode-navigation <Link> above so play/seek/download/
+                    fullscreen never triggers navigation. Only rendered once
+                    a completed full-episode render exists; episodes without
+                    one keep the thumbnail-only row above unchanged. */}
+                {ep.compiledVideo &&
+                ep.compiledVideo.status === "completed" &&
+                ep.compiledVideo.videoUrl ? (
+                  <EpisodeCompiledVideoPlayer
+                    lang={lang}
+                    episodeNumber={ep.episodeNumber}
+                    title={ep.title}
+                    videoUrl={ep.compiledVideo.videoUrl}
+                    posterUrl={ep.thumbnailUrl}
+                  />
+                ) : null}
               </CardContent>
             </Card>
           </li>
@@ -987,6 +1029,132 @@ export function EpisodesTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Pure predicate — true only when `ep.compiledVideo` is a completed,
+ * playable full-episode render (non-empty `videoUrl`). Exported for direct
+ * unit testing, same convention as `resolveInitialSeriesTab` above. The
+ * `EpisodesTab` render loop re-checks the same condition inline (rather
+ * than calling this) so TypeScript's control-flow narrowing can access
+ * `ep.compiledVideo.videoUrl` without a non-null assertion — this helper
+ * exists for testability, not as the actual render gate.
+ */
+export function hasPlayableCompiledVideo(ep: {
+  compiledVideo?: {
+    videoUrl: string;
+    status: string;
+    durationSeconds?: number;
+  } | null;
+}): boolean {
+  return Boolean(
+    ep.compiledVideo &&
+      ep.compiledVideo.status === "completed" &&
+      ep.compiledVideo.videoUrl,
+  );
+}
+
+/**
+ * Compact compiled-video player for an Episodes-tab card (added
+ * 2026-07-13) — shown only when the episode has a completed full-episode
+ * render (see `hasPlayableCompiledVideo`). Icons + copy match the
+ * per-episode workspace's own compiled-video/clip players
+ * (`VerticalDramaStoryboardPanel.tsx`'s "วิดีโอรวมทั้งตอน" card and its per-clip
+ * player): `Download` for the download action, `Expand` for the explicit
+ * fullscreen action (same icon that section's "เปิดแบบเต็มจอ"/"View fullscreen"
+ * button already uses). Rendered by `EpisodesTab` as a sibling of — never
+ * inside — the episode-navigation `<Link>`, so play/seek/download/
+ * fullscreen here never triggers navigation.
+ */
+function EpisodeCompiledVideoPlayer({
+  lang,
+  episodeNumber,
+  title,
+  videoUrl,
+  posterUrl,
+}: {
+  lang: "th" | "en";
+  episodeNumber: number;
+  title?: string | null;
+  videoUrl: string;
+  posterUrl?: string | null;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const episodeLabel = `EP ${episodeNumber}${title ? ` · ${title}` : ""}`;
+
+  const handleFullscreen = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (typeof video.requestFullscreen === "function") {
+      void video.requestFullscreen();
+      return;
+    }
+    // iOS Safari has no standard `Element.requestFullscreen`; its <video>
+    // elements expose this vendor-prefixed method instead.
+    const iosVideo = video as HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+    };
+    if (typeof iosVideo.webkitEnterFullscreen === "function") {
+      iosVideo.webkitEnterFullscreen();
+    }
+  };
+
+  return (
+    <div className="border-t border-border pt-3">
+      <div className="mx-auto w-36 max-w-full overflow-hidden rounded-md border border-border bg-black sm:mx-0">
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          poster={posterUrl ?? undefined}
+          controls
+          playsInline
+          preload="none"
+          className="aspect-[9/16] max-h-[40vh] w-full bg-black"
+          aria-label={
+            lang === "th"
+              ? `วิดีโอรวมทั้งตอน ${episodeLabel}`
+              : `${episodeLabel} compiled video`
+          }
+          data-testid="vd-episode-card-compiled-video-player"
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Button asChild variant="outline" size="sm" className="gap-1.5">
+          <a
+            href={videoUrl}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={
+              lang === "th"
+                ? `ดาวน์โหลดวิดีโอรวม ${episodeLabel}`
+                : `Download compiled video for ${episodeLabel}`
+            }
+            data-testid="vd-episode-card-compiled-video-download"
+          >
+            <Download className="h-3.5 w-3.5" aria-hidden="true" />
+            {lang === "th" ? "ดาวน์โหลด" : "Download"}
+          </a>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={handleFullscreen}
+          aria-label={
+            lang === "th"
+              ? `เปิดวิดีโอรวม ${episodeLabel} แบบเต็มจอ`
+              : `Open compiled video for ${episodeLabel} fullscreen`
+          }
+          data-testid="vd-episode-card-compiled-video-fullscreen"
+        >
+          <Expand className="h-3.5 w-3.5" aria-hidden="true" />
+          {lang === "th" ? "เต็มจอ" : "Fullscreen"}
+        </Button>
+      </div>
     </div>
   );
 }

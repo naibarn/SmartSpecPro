@@ -354,6 +354,12 @@ import {
  * (`@shared/hyperframes/runtimeApiSchemas`) — also safe.
  */
 import type {
+  /**
+   * Series detail `get`'s `compiledVideo` episode-list summary (below) reads
+   * `episode.assemblyManifest.compiledVideo` against this shape — same
+   * type-only-import safety as every other name in this block.
+   */
+  CompiledVideoState,
   EpisodeClipSource,
   RunAssemblyJobDialogueAudioInput,
   RunAssemblyJobSubtitlesInput,
@@ -390,6 +396,15 @@ type EpisodeListProjection = {
   status: string;
   targetDurationSeconds: number;
   updatedAt: Date;
+  /**
+   * Raw jsonb manifest — read ONLY so `get`'s DTO map (below) can derive the
+   * compact `compiledVideo` summary via `extractEpisodeCompiledVideoSummary`;
+   * it is destructured back OUT before the episode DTO is returned, so the
+   * raw manifest itself never reaches the client. `unknown` matches this
+   * column's Drizzle-inferred type (`jsonb()`, no `.$type<>()`) — same
+   * convention as `RunArtifactProjection.mediaAssetIds` below.
+   */
+  assemblyManifest: unknown;
 };
 /** Character asset projection (joined to character name) for the Assets tab. */
 type CharacterAssetProjection = {
@@ -2239,6 +2254,54 @@ async function persistAdBannerDesigns(
     .where(seriesOwnershipWhere(tenantId, userId, seriesId));
 }
 
+/**
+ * Compact, client-safe summary of an episode's assembled full-episode video
+ * (Episode List UI player) — used by `get`'s DTO map below. Reads the
+ * untyped `assemblyManifest` jsonb column defensively (same
+ * "narrow-an-`unknown`-jsonb-read" posture as every `row.bible as
+ * Record<string, unknown> | null` read elsewhere in this file) and returns
+ * ONLY a compact summary — never the raw manifest itself, which also carries
+ * per-clip render plans, subtitle plans, pending job ids, etc. that the
+ * client has no business seeing.
+ *
+ * Returns `null` unless `assemblyManifest.compiledVideo` (shape
+ * `CompiledVideoState`, `../services/verticalDramaEpisodeVideoAssembly`) has
+ * BOTH `status === "completed"` AND a non-empty `videoUrl` — a
+ * `pending`/`failed` compiled video (or a manifest that never had one) has
+ * nothing playable to offer the episode list yet.
+ *
+ * Exported for direct unit testing — same "export the pure function so
+ * tests can call it directly" precedent as `stampPresetVisualIdentityIntoBible`
+ * above.
+ */
+export function extractEpisodeCompiledVideoSummary(
+  assemblyManifest: unknown,
+): { videoUrl: string; status: "completed"; durationSeconds?: number } | null {
+  if (!assemblyManifest || typeof assemblyManifest !== "object") return null;
+
+  const compiledVideo = (assemblyManifest as Record<string, unknown>).compiledVideo as
+    | CompiledVideoState
+    | null
+    | undefined;
+  if (!compiledVideo || typeof compiledVideo !== "object") return null;
+
+  const status = compiledVideo.status;
+  if (status !== "completed") return null;
+
+  const videoUrl = compiledVideo.videoUrl;
+  if (typeof videoUrl !== "string" || videoUrl.trim().length === 0) return null;
+
+  const summary: { videoUrl: string; status: "completed"; durationSeconds?: number } = {
+    videoUrl,
+    status: "completed",
+  };
+  const durationSeconds = compiledVideo.durationSeconds;
+  if (typeof durationSeconds === "number" && Number.isFinite(durationSeconds)) {
+    summary.durationSeconds = durationSeconds;
+  }
+  return summary;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Router                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -2519,6 +2582,10 @@ export const verticalDramaSeriesRouter = router({
           status: verticalDramaEpisodes.status,
           targetDurationSeconds: verticalDramaEpisodes.targetDurationSeconds,
           updatedAt: verticalDramaEpisodes.updatedAt,
+          // Read ONLY to derive `compiledVideo` below via
+          // `extractEpisodeCompiledVideoSummary` — never spread into the
+          // returned episode DTO (see the `episodes.map` destructure below).
+          assemblyManifest: verticalDramaEpisodes.assemblyManifest,
         })
         .from(verticalDramaEpisodes)
         .where(
@@ -2552,11 +2619,18 @@ export const verticalDramaSeriesRouter = router({
           // breakdown version has never been critiqued.
           lastCritique: readActiveSeasonCritique(row.bible as Record<string, unknown> | null),
         },
-        episodes: episodes.map((e) => ({
-          ...e,
-          id: String(e.id),
-          thumbnailUrl: thumbnailByEpisode.get(e.id) ?? null,
-        })),
+        episodes: episodes.map((e) => {
+          // Destructure `assemblyManifest` OUT of the spread so the raw
+          // jsonb manifest never reaches the client — only the compact
+          // `compiledVideo` summary derived from it does.
+          const { assemblyManifest, ...rest } = e;
+          return {
+            ...rest,
+            id: String(e.id),
+            thumbnailUrl: thumbnailByEpisode.get(e.id) ?? null,
+            compiledVideo: extractEpisodeCompiledVideoSummary(assemblyManifest),
+          };
+        }),
       };
     }),
 
