@@ -102,15 +102,16 @@ import {
   findSubEpisodesMissingCompiledVideo,
   productionEpisodeFilename,
   resolveSubEpisodesForProductionAssembly,
+  type ProductionEpisodeBgmOptions,
   type ProductionEpisodeRenderOptions,
   type ProductionEpisodeSourceSubEpisode,
+  type ProductionEpisodesManifestWithBgm,
   type RenderSubEpisodeWithOptionsArgs,
   type RenderSubEpisodeWithOptionsResult,
 } from "../verticalDramaProductionEpisodeAssembly";
 import { storagePutFromPath } from "../../storage";
 import { getTenantFeatureFlags } from "../tenantFeatureFlagService";
 import { FEATURE_FLAG_DEFAULTS } from "@shared/featureFlags";
-import type { VerticalDramaProductionEpisodesManifest } from "@shared/verticalDramaSeries/assembly";
 
 beforeEach(() => {
   dbState.episodes = [];
@@ -137,8 +138,8 @@ async function waitForCondition(
   }
 }
 
-function completedManifest(): VerticalDramaProductionEpisodesManifest | null {
-  return dbState.productionEpisodesManifest as VerticalDramaProductionEpisodesManifest | null;
+function completedManifest(): ProductionEpisodesManifestWithBgm | null {
+  return dbState.productionEpisodesManifest as ProductionEpisodesManifestWithBgm | null;
 }
 
 function allGroupsSettled(): boolean {
@@ -640,5 +641,153 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
     const finalManifest = completedManifest()!;
     expect(finalManifest.episodes[0].status).toBe("failed");
     expect(finalManifest.episodes[0].error).toMatch(/boom: render failed/);
+  });
+});
+
+/**
+ * Phase B-1 (`planning/vertical-drama-production-render/plan.md` Phase B) —
+ * BGM bed + ducking, a POST-PASS run after a group's own concat. Covers
+ * mutation-input threading (`bgm` flowing from `assembleProductionEpisodesForSeries`
+ * into `runProductionEpisodeGroupJob`'s second ffmpeg invocation) and
+ * group-state persistence (`bgm` recorded on the group state at "pending"
+ * time and carried through unchanged to "completed"/"failed", mirroring the
+ * existing `renderOptions` coverage above). The pure ffmpeg-args builder
+ * itself (`buildBgmMixFilterComplex`/`buildBgmMixFfmpegArgs` — loop, volume,
+ * sidechain-on/off) is covered separately in
+ * `verticalDramaFinalRenderGraph.test.ts`; this file only asserts that the
+ * SERVICE actually invokes it as a second ffmpeg call and uploads its output.
+ */
+describe("assembleProductionEpisodesForSeries — Phase B-1 (bgm)", () => {
+  const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
+  const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
+  const fakeProbeDurationSeconds = vi.fn(async () => 42);
+
+  beforeEach(() => {
+    fakeFfmpegRunner.mockClear();
+    fakeProbeDurationSeconds.mockClear();
+  });
+
+  function seedCompiledEpisodes(episodeNumbers: number[]) {
+    dbState.episodes = episodeNumbers.map(n => ({
+      episodeNumber: n,
+      assemblyManifest: {
+        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
+      },
+    }));
+  }
+
+  const bgm: ProductionEpisodeBgmOptions = {
+    url: "/api/storage/files/track.mp3",
+    volumePercent: 35,
+    duckUnderVideoAudio: true,
+  };
+
+  it("does not run a second ffmpeg pass, and records no bgm on the group state, when bgm is omitted (default, unchanged)", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+    });
+    expect(result.manifest.episodes[0].bgm).toBeUndefined();
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no bgm pass
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].bgm).toBeUndefined();
+  });
+
+  it("runs a second bgm-mix ffmpeg pass after the concat, uploads ONLY its output, and records bgm on the group state (pending AND completed)", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+
+    const result = await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      bgm,
+    });
+    // Recorded synchronously onto the "pending" group state, before the
+    // background concat/bgm-mix chain has necessarily run at all.
+    expect(result.manifest.episodes[0].bgm).toEqual(bgm);
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then bgm mix
+    const bgmArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
+    expect(bgmArgs).toContain("-stream_loop");
+    expect(bgmArgs.join(" ")).toContain("sidechaincompress");
+    const tIndex = bgmArgs.indexOf("-t");
+    expect(bgmArgs[tIndex + 1]).toBe("42"); // the concat's own probed duration
+
+    // The duration probe runs ONCE (against the concat output) — the bgm
+    // pass reuses that same value rather than re-probing its own output.
+    expect(fakeProbeDurationSeconds).toHaveBeenCalledTimes(1);
+
+    // Only the FINAL (bgm-mixed) file is uploaded — the intermediate
+    // concat-only file is never separately uploaded.
+    expect(storagePutFromPath).toHaveBeenCalledTimes(1);
+    const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
+    expect(sourcePath).toMatch(/output-bgm\.mp4$/);
+
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("completed");
+    expect(finalManifest.episodes[0].videoUrl).toMatch(/^\/api\/storage\/files\//);
+    expect(finalManifest.episodes[0].bgm).toEqual(bgm);
+  });
+
+  it("marks the group failed (without uploading) when the bgm-mix ffmpeg pass itself exits non-zero", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+    let call = 0;
+    const runner = vi.fn(async () => {
+      call += 1;
+      return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "bgm boom" };
+    });
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: runner,
+      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      bgm,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(storagePutFromPath).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("failed");
+    expect(finalManifest.episodes[0].error).toMatch(/ffmpeg production-episode bgm mix failed/);
+  });
+
+  it("marks the group failed (without attempting the bgm pass) when the concat's own duration probe fails", async () => {
+    seedCompiledEpisodes([1, 2, 3]);
+    const probeFails = vi.fn(async () => undefined);
+
+    await assembleProductionEpisodesForSeries({
+      ...owner,
+      groupSize: 5,
+      internalBaseUrl: "http://localhost:3000",
+      ffmpegRunner: fakeFfmpegRunner,
+      probeDurationSecondsFn: probeFails,
+      bgm,
+    });
+
+    await waitForCondition(allGroupsSettled);
+
+    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only; bgm pass never attempted
+    expect(storagePutFromPath).not.toHaveBeenCalled();
+    const finalManifest = completedManifest()!;
+    expect(finalManifest.episodes[0].status).toBe("failed");
+    expect(finalManifest.episodes[0].error).toMatch(
+      /vertical_drama_production_bgm_duration_probe_failed/
+    );
   });
 });

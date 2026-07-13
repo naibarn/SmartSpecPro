@@ -54,6 +54,21 @@
  * re-rendered to a new URL without its `episodeNumber` set changing, the
  * already-completed Production Episode group is NOT auto-invalidated; that
  * is an accepted v1 limitation, not a correctness bug for THIS wave.
+ *
+ * Phase B-1 (`planning/vertical-drama-production-render/plan.md` Phase B,
+ * "audio bed + ducking attached at the Production Episode level") adds an
+ * OPTIONAL BGM-mix ffmpeg post-pass, run AFTER a group's own concat produces
+ * its video (`runProductionEpisodeGroupJob`): when the caller supplies
+ * `bgm`, the track is downloaded (same `downloadClipToFile` machinery),
+ * looped to the concat's own probed duration, and mixed under — optionally
+ * sidechain-ducked against — that concat's own audio via the new pure
+ * `buildBgmMixFfmpegArgs` graph builder (`verticalDramaFinalRenderGraph.ts`).
+ * Omitted `bgm` (every pre-existing caller) is byte-identical to before this
+ * wave: no second ffmpeg pass. The `bgm` settings are persisted onto each
+ * group's state exactly like `renderOptions` (see
+ * `VerticalDramaProductionEpisodeGroupStateWithBgm`'s own doc comment for why
+ * that widening is LOCAL to this file rather than the shared
+ * `@shared/verticalDramaSeries/assembly.ts` module).
  */
 
 import { randomUUID } from "crypto";
@@ -72,6 +87,7 @@ import {
   defaultFfmpegRunner,
   downloadClipToFile,
   extractClipSourcesFromMotionPromptPack,
+  inferDownloadExtension,
   probeDurationSeconds,
   resolveClipsForAssembly,
   resolveEpisodeDialogueAudioAndSubtitlesRunInputs,
@@ -81,15 +97,23 @@ import {
 } from "./verticalDramaEpisodeVideoAssembly";
 // Render-options LEVEL (plan.md "Render-options LEVEL", user correction
 // 2026-07-13) — `CaptionPresetId`/`SubtitleFontSizeId` back
-// `ProductionEpisodeRenderOptions` below. Pure, side-effect-free sibling
-// service (only imports `zod` + `@shared/hyperframes/runtimeApiSchemas` —
-// no `../storage`, no ffmpeg spawn, no DB), so a normal static import here
+// `ProductionEpisodeRenderOptions` below. Phase B-1
+// (`planning/vertical-drama-production-render/plan.md` Phase B) additionally
+// imports the pure `buildBgmMixFfmpegArgs` graph builder for the BGM-mix
+// post-pass (`runProductionEpisodeGroupJob` below). Both are from a pure,
+// side-effect-free sibling service (only imports `zod` +
+// `@shared/hyperframes/runtimeApiSchemas` + `@shared/verticalDramaSeries/adBannerPresets`
+// — no `../storage`, no ffmpeg spawn, no DB), so a normal static import here
 // carries none of `verticalDramaEpisodeVideoAssembly.ts`'s own "heavy,
 // lazily-imported-by-the-router" posture — this whole SERVICE module is
 // already lazily imported by the router (see `verticalDramaSeries.ts`'s own
 // `assembleProductionEpisodes` doc comment), so nothing downstream is at risk
 // either way.
-import type { CaptionPresetId, SubtitleFontSizeId } from "./verticalDramaFinalRenderGraph";
+import {
+  buildBgmMixFfmpegArgs,
+  type CaptionPresetId,
+  type SubtitleFontSizeId,
+} from "./verticalDramaFinalRenderGraph";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import {
   resolveAudienceAgeRating,
@@ -140,6 +164,66 @@ export interface ProductionEpisodeRenderOptions {
   showAgeBadge?: boolean;
   includeDialogueAudio?: boolean;
   loudnessNormalize?: boolean;
+}
+
+/**
+ * Phase B-1 (`planning/vertical-drama-production-render/plan.md` Phase B) —
+ * background-music bed + ducking configuration for ONE
+ * `assembleProductionEpisodesForSeries` call, applied UNIFORMLY as a
+ * POST-PASS over every group's own concatenated video (see
+ * `runProductionEpisodeGroupJob` below). Mirrors
+ * `ProductionEpisodeRenderOptions`'s own "STRICT server-side type, always
+ * already-resolved by the router's zod `.default()`s" convention:
+ * `volumePercent`/`duckUnderVideoAudio` are never optional here, since the
+ * router never forwards a `bgm` object with either field missing.
+ */
+export interface ProductionEpisodeBgmOptions {
+  /** `z.string()` (not `.url()`) at the router — same relative-path
+   *  tolerance as `VdBgmTrack.url` (`@shared/verticalDramaSeries/standout.ts`)
+   *  and every other asset URL field in this codebase (local storage returns
+   *  `/api/storage/...` paths); downloaded via the SAME `downloadClipToFile`
+   *  this file already reuses for every Sub-Episode's own compiled video. */
+  url: string;
+  /** 1-100; router default 35. The LINEAR volume (`volumePercent / 100`) the
+   *  BGM is mixed in at, BEFORE any ducking attenuation — see
+   *  `buildBgmMixFilterComplex`'s own doc comment
+   *  (`verticalDramaFinalRenderGraph.ts`). */
+  volumePercent: number;
+  /** Router default `true`. When `true`, the BGM ducks under this group's
+   *  OWN audio (dialogue + native clip SFX) via `sidechaincompress`; when
+   *  `false`, the volume-scaled BGM is mixed in flat. */
+  duckUnderVideoAudio: boolean;
+}
+
+/**
+ * Local, ADDITIVE extension of the shared
+ * `VerticalDramaProductionEpisodeGroupState`
+ * (`@shared/verticalDramaSeries/assembly.ts`) — adds the `bgm` field this
+ * service persists onto a group's state (Phase B-1), mirroring exactly how
+ * that shared type's own `renderOptions` field is persisted (set once at
+ * "pending" time in the `groupStates` map below, then carried through
+ * unchanged to "completed"/"failed" since `patchProductionEpisodeGroupState`
+ * never touches either field). Kept LOCAL to this file rather than added to
+ * the shared module itself — that module is outside THIS change's assigned
+ * file scope for this working session (a concurrent session may be editing
+ * it); every value of this WIDER local type still structurally satisfies the
+ * shared one (`bgm` is only ever an ADDED optional field), so it round-trips
+ * through the `productionEpisodesManifest` JSONB column and every existing
+ * shared-type-typed consumer completely unchanged. A natural follow-up is to
+ * fold `bgm` into the shared type directly, alongside `renderOptions`.
+ */
+export interface VerticalDramaProductionEpisodeGroupStateWithBgm
+  extends VerticalDramaProductionEpisodeGroupState {
+  bgm?: ProductionEpisodeBgmOptions;
+}
+
+/** Local mirror of `VerticalDramaProductionEpisodesManifest` whose
+ *  `episodes` carry the WIDER per-group type above — see that type's own doc
+ *  comment for why this is defined locally instead of editing the shared
+ *  module in this wave. */
+export interface ProductionEpisodesManifestWithBgm {
+  groupSize: 5 | 10;
+  episodes: VerticalDramaProductionEpisodeGroupStateWithBgm[];
 }
 
 /**
@@ -595,7 +679,12 @@ export async function renderSubEpisodeWithOptions(
 /* One group's concat job — reuses the shot-clip concat machinery verbatim    */
 /* (`downloadClipToFile` / `buildConcatListFileContent` /                    */
 /* `buildConcatFfmpegArgs` / `storagePutFromPath`, all imported above — no    */
-/* new ffmpeg arg construction, no new uploader).                            */
+/* new uploader/downloader). Phase B-1 additionally runs an OPTIONAL BGM-mix  */
+/* post-pass over this group's own concat output when `bgm` is supplied,     */
+/* still reusing `downloadClipToFile`/`inferDownloadExtension`/              */
+/* `storagePutFromPath` — the only genuinely NEW ffmpeg arg construction is   */
+/* the pure `buildBgmMixFfmpegArgs` graph builder                            */
+/* (`verticalDramaFinalRenderGraph.ts`).                                     */
 /* -------------------------------------------------------------------------- */
 
 async function runProductionEpisodeGroupJob(args: {
@@ -618,6 +707,11 @@ async function runProductionEpisodeGroupJob(args: {
   voiceChainEnabled: boolean;
   audienceAgeRating?: AudienceAgeRating;
   renderSubEpisodeWithOptionsFn: RenderSubEpisodeWithOptionsFn;
+  /** Phase B-1 — when supplied, this group's OWN concat output is run
+   *  through an additional BGM-mix ffmpeg pass before upload. Omitted
+   *  (every pre-existing caller) skips that pass entirely — byte-identical
+   *  to before this wave. */
+  bgm?: ProductionEpisodeBgmOptions;
 }): Promise<void> {
   const {
     owner,
@@ -633,6 +727,7 @@ async function runProductionEpisodeGroupJob(args: {
     voiceChainEnabled,
     audienceAgeRating,
     renderSubEpisodeWithOptionsFn,
+    bgm,
   } = args;
 
   const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), "vd-production-ep-"));
@@ -693,8 +788,61 @@ async function runProductionEpisodeGroupJob(args: {
     }
 
     const durationSeconds = await probeDurationSecondsFn(outputPath);
+
+    // Phase B-1 (`planning/vertical-drama-production-render/plan.md` Phase B)
+    // — BGM bed + ducking, a SELF-CONTAINED POST-PASS over the group video
+    // this function JUST produced above. Omitted `bgm` (every pre-existing
+    // caller) never enters this branch — byte-identical to before this
+    // wave. Reuses `downloadClipToFile`/`inferDownloadExtension` (the SAME
+    // staging helpers `verticalDramaEpisodeVideoAssembly.ts`'s own
+    // `runAssemblyJob` uses for banner/dialogue-audio assets) and
+    // `storagePutFromPath` — no new download/upload primitive, only the new
+    // PURE `buildBgmMixFfmpegArgs` graph builder
+    // (`verticalDramaFinalRenderGraph.ts`).
+    let finalOutputPath = outputPath;
+    if (bgm) {
+      // The looped BGM input (`-stream_loop -1`, see `buildBgmMixFfmpegArgs`)
+      // never terminates on its own — a numeric `durationSeconds` is what
+      // bounds it (via that builder's own `-t`), so a failed probe here must
+      // hard-fail the group rather than risk an unbounded ffmpeg process.
+      // Mirrors `runAssemblyJob`'s own
+      // `vertical_drama_final_render_duration_probe_failed` guard
+      // (`verticalDramaEpisodeVideoAssembly.ts`) for the same class of
+      // problem. The PRE-EXISTING no-`bgm` path below this `if` is
+      // untouched — a failed probe there stays a non-fatal, best-effort
+      // `durationSeconds: undefined` on an otherwise-"completed" group,
+      // exactly as before this wave.
+      if (durationSeconds == null) {
+        throw new Error(
+          "vertical_drama_production_bgm_duration_probe_failed: could not determine the assembled Production Episode's duration; cannot safely bound the looped BGM track."
+        );
+      }
+      const bgmLocalPath = path.join(
+        workDir,
+        `bgm${inferDownloadExtension(bgm.url, ".mp3")}`
+      );
+      await downloadClipToFile(bgm.url, bgmLocalPath, internalBaseUrl);
+
+      const bgmOutputPath = path.join(workDir, "output-bgm.mp4");
+      const bgmArgs = buildBgmMixFfmpegArgs({
+        videoPath: outputPath,
+        bgmPath: bgmLocalPath,
+        output: bgmOutputPath,
+        videoDurationSeconds: durationSeconds,
+        volumePercent: bgm.volumePercent,
+        duckUnderVideoAudio: bgm.duckUnderVideoAudio,
+      });
+      const bgmResult = await ffmpegRunner(bgmArgs);
+      if (bgmResult.code !== 0) {
+        throw new Error(
+          `ffmpeg production-episode bgm mix failed (exit ${bgmResult.code}): ${bgmResult.stderr.slice(-2000)}`
+        );
+      }
+      finalOutputPath = bgmOutputPath;
+    }
+
     const storageKey = `vertical-drama/production-episodes/${owner.seriesId}/${randomUUID()}-${filename}`;
-    const { url } = await storagePutFromPath(storageKey, outputPath, "video/mp4");
+    const { url } = await storagePutFromPath(storageKey, finalOutputPath, "video/mp4");
 
     await patchProductionEpisodeGroupState(owner, groupIndex, {
       status: "completed",
@@ -744,6 +892,16 @@ export interface AssembleProductionEpisodesForSeriesArgs {
    * re-render. See `ProductionEpisodeRenderOptions`'s own doc comment.
    */
   renderOptions?: ProductionEpisodeRenderOptions;
+  /**
+   * Phase B-1 (`planning/vertical-drama-production-render/plan.md` Phase B)
+   * — when supplied, EVERY group's own concatenated video is run through an
+   * additional BGM-mix ffmpeg post-pass (see `runProductionEpisodeGroupJob`)
+   * before upload, and the settings are recorded on each group's persisted
+   * state (see `VerticalDramaProductionEpisodeGroupStateWithBgm`). Omitted
+   * (every pre-existing caller) preserves prior behavior exactly: no second
+   * ffmpeg pass, no `bgm` field on the persisted group state.
+   */
+  bgm?: ProductionEpisodeBgmOptions;
   /** Test injection points — mirror `runAssemblyJob`'s own convention so
    *  tests never spawn a real ffmpeg/ffprobe process. Default to the real
    *  implementations. */
@@ -767,8 +925,12 @@ export interface AssembleProductionEpisodesForSeriesResult {
   groupsSkipped: number;
   /** The manifest as persisted synchronously by this call — pending groups
    *  will still transition to completed/failed in the background; poll
-   *  `verticalDramaSeries.get` to observe that. */
-  manifest: VerticalDramaProductionEpisodesManifest;
+   *  `verticalDramaSeries.get` to observe that. Typed as
+   *  `ProductionEpisodesManifestWithBgm` (this file's own local, WIDER
+   *  mirror of the shared `VerticalDramaProductionEpisodesManifest` — see
+   *  that type's own doc comment) so a caller/test can read `.bgm` off each
+   *  group entry when this call supplied `bgm`. */
+  manifest: ProductionEpisodesManifestWithBgm;
 }
 
 /** One group as planned by `assembleProductionEpisodesForSeries`, before the
@@ -778,7 +940,7 @@ interface PlannedProductionEpisodeGroup {
   subEpisodeNumbers: number[];
   members: ProductionEpisodeSourceSubEpisodeRow[];
   /** Non-null when an existing COMPLETED group can be reused verbatim. */
-  reuse: VerticalDramaProductionEpisodeGroupState | null;
+  reuse: VerticalDramaProductionEpisodeGroupStateWithBgm | null;
 }
 
 /**
@@ -794,8 +956,16 @@ interface PlannedProductionEpisodeGroup {
 export async function assembleProductionEpisodesForSeries(
   args: AssembleProductionEpisodesForSeriesArgs
 ): Promise<AssembleProductionEpisodesForSeriesResult> {
-  const { tenantId, userId, seriesId, groupSize, allowPartial, internalBaseUrl, renderOptions } =
-    args;
+  const {
+    tenantId,
+    userId,
+    seriesId,
+    groupSize,
+    allowPartial,
+    internalBaseUrl,
+    renderOptions,
+    bgm,
+  } = args;
   const ffmpegRunner = args.ffmpegRunner ?? defaultFfmpegRunner;
   const probeDurationSecondsFn = args.probeDurationSecondsFn ?? probeDurationSeconds;
   const renderSubEpisodeWithOptionsFn =
@@ -864,8 +1034,8 @@ export async function assembleProductionEpisodesForSeries(
     };
   });
 
-  const groupStates: VerticalDramaProductionEpisodeGroupState[] = planned.map(
-    (p): VerticalDramaProductionEpisodeGroupState =>
+  const groupStates: VerticalDramaProductionEpisodeGroupStateWithBgm[] = planned.map(
+    (p): VerticalDramaProductionEpisodeGroupStateWithBgm =>
       p.reuse ?? {
         index: p.index,
         groupSize,
@@ -878,10 +1048,15 @@ export async function assembleProductionEpisodesForSeries(
         // `VerticalDramaProductionEpisodeGroupState.renderOptions`'s own doc
         // comment. Absent entirely when this call had no `renderOptions`.
         ...(renderOptions ? { renderOptions } : {}),
+        // Phase B-1 — same "set once at pending time, carried through
+        // unchanged" convention as `renderOptions` immediately above; see
+        // `VerticalDramaProductionEpisodeGroupStateWithBgm`'s own doc
+        // comment. Absent entirely when this call had no `bgm`.
+        ...(bgm ? { bgm } : {}),
       }
   );
 
-  const manifest: VerticalDramaProductionEpisodesManifest = {
+  const manifest: ProductionEpisodesManifestWithBgm = {
     groupSize,
     episodes: groupStates,
   };
@@ -936,6 +1111,7 @@ export async function assembleProductionEpisodesForSeries(
           voiceChainEnabled,
           audienceAgeRating,
           renderSubEpisodeWithOptionsFn,
+          bgm,
         });
       } catch {
         // Defense-in-depth only — `runProductionEpisodeGroupJob` already

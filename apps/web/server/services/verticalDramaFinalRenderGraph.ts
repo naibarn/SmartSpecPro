@@ -1751,3 +1751,161 @@ export function buildFinalRenderFfmpegArgs(
   args.push(input.output);
   return args;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Production Episode BGM mix (Phase B-1,                                    */
+/* `planning/vertical-drama-production-render/plan.md` Phase B) — a SEPARATE, */
+/* SELF-CONTAINED post-pass over an ALREADY-CONCATENATED Production Episode   */
+/* video (`server/services/verticalDramaProductionEpisodeAssembly.ts`'s own   */
+/* `runProductionEpisodeGroupJob`), NOT part of the per-Sub-Episode final-    */
+/* render graph above. Music attaches at the PRODUCTION EPISODE level only    */
+/* (the 4-10 min grouped/published video), never per Sub-Episode — see        */
+/* `planning/vertical-drama-production-render/plan.md`'s "Terminology model"  */
+/* section. Pure, DB-free, exec-free — same conventions as every other        */
+/* builder in this module.                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Input to `buildBgmMixFfmpegArgs`/`buildBgmMixFilterComplex`. The caller
+ * (`runProductionEpisodeGroupJob`) has ALREADY: produced `videoPath` via a
+ * prior `buildConcatFfmpegArgs` re-encode, downloaded the BGM track locally
+ * via the SAME `downloadClipToFile` this whole feature area reuses
+ * elsewhere, and probed `videoPath`'s own duration — this builder only ever
+ * turns those already-resolved local paths/numbers into ffmpeg argv, never
+ * touching the network/filesystem/DB itself (mirrors every other builder's
+ * "pure, unit-testable, the job service owns all I/O" contract in this file).
+ */
+export interface BgmMixInput {
+  /** Absolute path to the ALREADY-CONCATENATED Production Episode video (has
+   *  both a video AND an audio stream) — ffmpeg input `0`. The video stream
+   *  is stream-copied (`-c:v copy`) here, never re-scaled/re-padded again —
+   *  it was already normalized to 1080x1920 by the concat pass that produced
+   *  it (mirrors `buildMuxNarrationFfmpegArgs`'s own `-c:v copy` re-mux
+   *  convention in `verticalDramaSeriesTrailerAssembly.ts`). */
+  videoPath: string;
+  /** Absolute path to the locally-staged (already-downloaded) BGM audio file
+   *  — ffmpeg input `1`, looped via `-stream_loop -1` so a track shorter
+   *  than the episode still covers its whole length. */
+  bgmPath: string;
+  /** Absolute output path. */
+  output: string;
+  /** `videoPath`'s own duration (seconds), from the caller's prior probe of
+   *  the JUST-PRODUCED concat output — REQUIRED so the output (and the
+   *  otherwise-endlessly-looped BGM input) is bounded to EXACTLY this length
+   *  via an explicit `-t`, mirroring
+   *  `BuildFinalRenderFfmpegArgsInput.videoDurationSeconds`'s own "resolved
+   *  by the caller's prior probe, never re-probed here" convention. Without
+   *  this bound, `-stream_loop -1` would make ffmpeg run indefinitely. */
+  videoDurationSeconds: number;
+  /** 1-100 (validated + defaulted by the caller's zod schema; this module
+   *  trusts it, same "already-validated caller input" convention as
+   *  `ResolvedWatermarkImage.opacity`). Converted to a LINEAR `volume=`
+   *  multiplier (`volumePercent / 100`) applied to the BGM BEFORE any
+   *  ducking. */
+  volumePercent: number;
+  /** When `true`, the BGM is ducked under the Production Episode's OWN audio
+   *  (dialogue + native clip SFX already baked into `videoPath`'s own audio
+   *  track) via `sidechaincompress`, keyed off THAT audio — music dips
+   *  automatically whenever the episode's own audio is active. When
+   *  `false`, the volume-scaled BGM is mixed in flat, with no ducking. */
+  duckUnderVideoAudio: boolean;
+}
+
+/**
+ * Tuned `sidechaincompress` constants (v1 — not caller-configurable, same
+ * "fixed, documented constant" posture as this module's own
+ * `loudnorm=I=-16:TP=-1.5:LRA=11` dialogue-mix constant above): a fairly
+ * aggressive, fast-reacting downward compression so the BGM audibly ducks
+ * within one `attack` window of dialogue/SFX starting, and recovers over
+ * `release` once it stops. `threshold`/`ratio` are ffmpeg's own documented
+ * `sidechaincompress` option ranges (`threshold` is a LINEAR 0-1 amplitude,
+ * not dB; `ratio` 1-20; `attack`/`release` in milliseconds).
+ */
+const BGM_DUCK_SIDECHAIN_THRESHOLD = 0.05;
+const BGM_DUCK_SIDECHAIN_RATIO = 8;
+const BGM_DUCK_SIDECHAIN_ATTACK_MS = 5;
+const BGM_DUCK_SIDECHAIN_RELEASE_MS = 300;
+
+/**
+ * Build ONLY the `-filter_complex` value (exported separately from
+ * `buildBgmMixFfmpegArgs` so ducking-on/off + volume math are independently
+ * unit-testable without re-asserting the surrounding argv scaffolding every
+ * time — mirrors this module's own "graph builder split from top-level
+ * composer" shape already used for `buildAudioFilterGraph`).
+ *
+ * `[1:a]` (the BGM, ffmpeg input 1) is volume-scaled first, THEN — when
+ * `duckUnderVideoAudio` — fed into `sidechaincompress` as the MAIN signal
+ * with `[0:a]` (the Production Episode's OWN audio, ffmpeg input 0) as the
+ * SIDECHAIN key. `sidechaincompress` always reads its two filter inputs as
+ * `[main][sidechain]`, so `[0:a]` must never be listed FIRST here or the
+ * duck would apply backwards (ducking the episode's own dialogue under the
+ * MUSIC instead of the reverse) — per this feature's own spec ("BGM as main
+ * input, the concatenated video's audio as the sidechain key").
+ *
+ * The (possibly ducked) BGM is then mixed with `[0:a]` via `amix` with
+ * `normalize=0`: unlike every dialogue-mix `amix` earlier in this file, this
+ * one deliberately DISABLES amix's built-in auto-gain-compensation — `[0:a]`
+ * (the episode's own dialogue/SFX) must stay at its own already-correct
+ * level, with the (already independently volume-scaled and optionally
+ * ducked) BGM simply summed in UNDER it, never the other way around.
+ * `duration=first` (matching `[0:a]`, listed first) is a redundant,
+ * deterministic safety net alongside `buildBgmMixFfmpegArgs`'s own output
+ * `-t` bound, in case the endlessly `-stream_loop`-ed BGM input would
+ * otherwise make `amix`'s default `duration=longest` run unbounded.
+ */
+export function buildBgmMixFilterComplex(
+  input: Pick<BgmMixInput, "volumePercent" | "duckUnderVideoAudio">
+): string {
+  const linearVolume = Math.max(0, Math.min(1, input.volumePercent / 100));
+  const fragments: string[] = [`[1:a]volume=${secStr(linearVolume)}[bgmvol]`];
+  let bgmLabel = "bgmvol";
+  if (input.duckUnderVideoAudio) {
+    fragments.push(
+      `[${bgmLabel}][0:a]sidechaincompress=threshold=${BGM_DUCK_SIDECHAIN_THRESHOLD}:ratio=${BGM_DUCK_SIDECHAIN_RATIO}:attack=${BGM_DUCK_SIDECHAIN_ATTACK_MS}:release=${BGM_DUCK_SIDECHAIN_RELEASE_MS}[bgmducked]`
+    );
+    bgmLabel = "bgmducked";
+  }
+  fragments.push(
+    `[0:a][${bgmLabel}]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]`
+  );
+  return fragments.join(";");
+}
+
+/**
+ * Build the full ffmpeg argv for the BGM-mix post-pass. Video stream is
+ * stream-copied (`-c:v copy`) — see `BgmMixInput.videoPath`'s own doc
+ * comment for why no re-scale/re-encode is needed. `-stream_loop -1` on the
+ * BGM input (not the `aloop` FILTER) mirrors this codebase's OWN existing
+ * "loop a short audio source to cover a longer duration" convention
+ * (`storyboardPreviewMatchCaptureWorker.ts`'s `encodeAudioEventAssetSegment`)
+ * rather than introducing a second looping technique; the explicit output
+ * `-t` bound is what makes that otherwise-infinite loop safe to run.
+ */
+export function buildBgmMixFfmpegArgs(input: BgmMixInput): string[] {
+  return [
+    "-y",
+    "-i",
+    input.videoPath,
+    "-stream_loop",
+    "-1",
+    "-i",
+    input.bgmPath,
+    "-filter_complex",
+    buildBgmMixFilterComplex(input),
+    "-map",
+    "0:v",
+    "-map",
+    "[aout]",
+    "-t",
+    secStr(input.videoDurationSeconds),
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "128k",
+    "-movflags",
+    "+faststart",
+    input.output,
+  ];
+}

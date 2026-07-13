@@ -72,6 +72,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -81,6 +82,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
 import { trpc } from "@/lib/trpc";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import {
@@ -167,6 +169,31 @@ const DEFAULT_RENDER_OPTIONS: ProductionRenderOptionsState = {
 };
 
 /* -------------------------------------------------------------------------- */
+/* Background-music (BGM) local state — additive control: attaches an        */
+/* optional music track to the whole assembled Production Episode, with      */
+/* ducking under dialogue/clip audio. Mirrors the parallel                   */
+/* `assembleProductionEpisodes` mutation-input field                         */
+/* `bgm?: { url, volumePercent, duckUnderVideoAudio }` (see `handleAssemble` */
+/* below for the same "non-literal payload variable" structural-             */
+/* assignability note this file's header doc comment already documents for  */
+/* `renderOptions`).                                                         */
+/* -------------------------------------------------------------------------- */
+
+interface ProductionBgmState {
+  enabled: boolean;
+  url: string;
+  volumePercent: number;
+  duckUnderVideoAudio: boolean;
+}
+
+const DEFAULT_BGM_OPTIONS: ProductionBgmState = {
+  enabled: false,
+  url: "",
+  volumePercent: 35,
+  duckUnderVideoAudio: true,
+};
+
+/* -------------------------------------------------------------------------- */
 /* Panel                                                                      */
 /* -------------------------------------------------------------------------- */
 
@@ -193,6 +220,7 @@ export function VerticalDramaProductionEpisodesPanel({
   const [renderOptions, setRenderOptions] = useState<ProductionRenderOptionsState>(
     DEFAULT_RENDER_OPTIONS,
   );
+  const [bgmOptions, setBgmOptions] = useState<ProductionBgmState>(DEFAULT_BGM_OPTIONS);
   const [lastResult, setLastResult] = useState<{
     groupsCreated: number;
     groupsSkipped: number;
@@ -260,6 +288,10 @@ export function VerticalDramaProductionEpisodesPanel({
     },
   });
 
+  // Trimmed once and reused both to gate the assemble button below and to
+  // decide whether `handleAssemble` includes `bgm` in its payload.
+  const trimmedBgmUrl = bgmOptions.url.trim();
+
   function handleAssemble() {
     // Built as a standalone variable (not an inline object literal in the
     // `.mutate()` call) so TypeScript's normal structural assignability —
@@ -268,7 +300,12 @@ export function VerticalDramaProductionEpisodesPanel({
     // input type, and this same code starts actually taking effect
     // server-side with zero further client changes once the parallel
     // `renderOptions` backend increment lands (see this file's own header
-    // doc comment).
+    // doc comment). `bgm` below rides the exact same mechanism: as of this
+    // panel's authoring, `assembleProductionEpisodes`'s zod input has no
+    // `bgm` field yet (a parallel backend increment); zod strips unknown
+    // keys server-side today, so sending it is a harmless no-op until that
+    // field lands, at which point BGM starts working with zero further
+    // client changes.
     const payload = {
       seriesId,
       groupSize,
@@ -282,11 +319,28 @@ export function VerticalDramaProductionEpisodesPanel({
         includeDialogueAudio: voiceChainEnabled && renderOptions.includeDialogueAudio,
         loudnessNormalize: renderOptions.loudnessNormalize,
       },
+      // Omitted entirely (rather than sent with an empty `url`) unless BGM
+      // is toggled on AND a non-empty URL was entered — default behavior
+      // (no `bgm` key) stays "no music", matching every pre-existing caller.
+      ...(bgmOptions.enabled && trimmedBgmUrl
+        ? {
+            bgm: {
+              url: trimmedBgmUrl,
+              volumePercent: bgmOptions.volumePercent,
+              duckUnderVideoAudio: bgmOptions.duckUnderVideoAudio,
+            },
+          }
+        : {}),
     };
     assembleMutation.mutate(payload);
   }
 
   const controlsDisabled = assembleMutation.isPending || hasInFlightGroups;
+  // BGM is toggled on but no URL was entered yet — block the mutate call
+  // instead of sending an empty `url` (see `handleAssemble` above); the BGM
+  // section itself also surfaces this as an inline hint next to the field.
+  const bgmUrlMissing = bgmOptions.enabled && trimmedBgmUrl.length === 0;
+  const assembleDisabled = controlsDisabled || bgmUrlMissing;
 
   if (detailQuery.isLoading) {
     return (
@@ -318,7 +372,7 @@ export function VerticalDramaProductionEpisodesPanel({
         <p className="text-xs text-muted-foreground">
           {lang === "th"
             ? 'ตอนเต็ม คือการนำ "ตอนย่อย" (ตอน ~9 ช็อตที่ประกอบวิดีโอเสร็จแล้ว) หลายตอนมาต่อกันเป็นวิดีโอเดียวยาว 4–10 นาที สำหรับเผยแพร่สู่สาธารณะ/โซเชียล — เลือกได้ว่าจะรวมทีละ 5 หรือ 10 ตอนย่อย'
-            : 'A Production Episode groups several already-compiled "Sub-Episodes" (today\'s ~9-shot episodes) into one 4–10 minute video for public/social release. Choose whether to group every 5 or 10 Sub-Episodes.'}
+            : 'A Production Episode groups several already-compiled "Sub-Episodes" (today\'s ~9-shot Sub-episodes) into one 4–10 minute video for public/social release. Choose whether to group every 5 or 10 Sub-Episodes.'}
         </p>
       </div>
 
@@ -361,6 +415,13 @@ export function VerticalDramaProductionEpisodesPanel({
               disabled={controlsDisabled}
             />
 
+            <VerticalDramaProductionBgmSection
+              lang={lang}
+              value={bgmOptions}
+              onChange={setBgmOptions}
+              disabled={controlsDisabled}
+            />
+
             {lastResult ? (
               <p className="text-xs text-muted-foreground" data-testid="vd-production-assemble-result">
                 {lang === "th"
@@ -381,7 +442,7 @@ export function VerticalDramaProductionEpisodesPanel({
               type="button"
               className="gap-2"
               onClick={handleAssemble}
-              disabled={controlsDisabled}
+              disabled={assembleDisabled}
               data-testid="vd-production-assemble-button"
             >
               {controlsDisabled ? (
@@ -411,8 +472,8 @@ export function VerticalDramaProductionEpisodesPanel({
             </p>
             <p className="max-w-md text-xs text-muted-foreground">
               {lang === "th"
-                ? 'ตอนเต็ม (Production Episode) จะนำวิดีโอที่ "ประกอบ" (compiled) เสร็จแล้วของตอนย่อยหลาย ๆ ตอนมาต่อกันเป็นวิดีโอเดียว ก่อนสร้างตอนเต็ม ต้องมีตอนย่อยที่ประกอบวิดีโอเสร็จอย่างน้อย 1 ตอนก่อน (ดูที่แท็บ "ตอน")'
-                : 'A Production Episode concatenates several Sub-Episodes\' own compiled videos into one video. You need at least one Sub-Episode with a completed compiled video before you can assemble a Production Episode — see the "Episodes" tab.'}
+                ? 'ตอนเต็ม (Production Episode) จะนำวิดีโอที่ "ประกอบ" (compiled) เสร็จแล้วของตอนย่อยหลาย ๆ ตอนมาต่อกันเป็นวิดีโอเดียว ก่อนสร้างตอนเต็ม ต้องมีตอนย่อยที่ประกอบวิดีโอเสร็จอย่างน้อย 1 ตอนก่อน (ดูที่แท็บ "ตอนย่อย")'
+                : 'A Production Episode concatenates several Sub-Episodes\' own compiled videos into one video. You need at least one Sub-Episode with a completed compiled video before you can assemble a Production Episode — see the "Sub-episodes" tab.'}
             </p>
           </CardContent>
         </Card>
@@ -569,6 +630,146 @@ function VerticalDramaProductionRenderOptionsSection({
         </div>
         <p className="pl-6 text-[11px] text-muted-foreground">{t.finalRenderShowAgeBadgeHelp}</p>
       </div>
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Background-music (BGM) section — additive control that sits alongside     */
+/* `VerticalDramaProductionRenderOptionsSection` above (same local           */
+/* `value`/`onChange`/`disabled` prop shape, same card/label/checkbox        */
+/* styling) so it reads as a natural continuation of the render-options      */
+/* section rather than a bolted-on control. `handleAssemble`                 */
+/* (`VerticalDramaProductionEpisodesPanel` above) only sends `bgm` in the    */
+/* mutate payload when `value.enabled` is true AND the URL is non-empty      */
+/* after trimming — this section mirrors that same gate as an inline hint    */
+/* next to the URL field so the user sees why the assemble button is         */
+/* disabled instead of a silently-ignored empty `url`.                       */
+/* -------------------------------------------------------------------------- */
+
+function VerticalDramaProductionBgmSection({
+  lang,
+  value,
+  onChange,
+  disabled = false,
+}: {
+  lang: VerticalDramaLang;
+  value: ProductionBgmState;
+  onChange: (next: ProductionBgmState) => void;
+  disabled?: boolean;
+}) {
+  function emit(patch: Partial<ProductionBgmState>) {
+    onChange({ ...value, ...patch });
+  }
+
+  const trimmedUrl = value.url.trim();
+  const urlMissing = value.enabled && trimmedUrl.length === 0;
+
+  return (
+    <section
+      className="space-y-3 rounded-lg border bg-card p-3"
+      aria-label={lang === "th" ? "เพลงประกอบ" : "Background music"}
+      data-testid="vd-production-bgm-section"
+    >
+      <div>
+        <h3 className="text-sm font-medium">
+          {lang === "th" ? "เพลงประกอบ (Background music)" : "Background music"}
+        </h3>
+        <p className="text-[11px] text-muted-foreground">
+          {lang === "th"
+            ? "เพิ่มเพลงประกอบให้ตอนเต็ม (Production Episode) ที่ประกอบขึ้น พร้อมหลบเสียงพูดอัตโนมัติ"
+            : "Attaches background music to the assembled Production Episode, with automatic ducking under dialogue."}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Checkbox
+          id="vd-production-bgm-enabled"
+          checked={value.enabled}
+          disabled={disabled}
+          onCheckedChange={(checked) => emit({ enabled: checked === true })}
+          data-testid="vd-production-bgm-enabled"
+        />
+        <label htmlFor="vd-production-bgm-enabled" className="text-sm">
+          {lang === "th" ? "ใส่เพลงประกอบ" : "Add background music"}
+        </label>
+      </div>
+
+      {value.enabled ? (
+        <div className="space-y-3 pl-6">
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="vd-production-bgm-url"
+              className="text-xs font-medium text-muted-foreground"
+            >
+              {lang === "th" ? "ลิงก์เพลง (mp3/wav)" : "Music URL (mp3/wav)"}
+            </label>
+            <Input
+              id="vd-production-bgm-url"
+              placeholder="https://…/track.mp3"
+              value={value.url}
+              disabled={disabled}
+              onChange={(e) => emit({ url: e.target.value })}
+              data-testid="vd-production-bgm-url"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              {lang === "th"
+                ? "ต้องเป็นลิงก์ไฟล์เสียงสาธารณะที่เข้าถึงได้ (mp3 หรือ wav)"
+                : "Expects a public, reachable audio file URL (mp3 or wav)."}
+            </p>
+            {urlMissing ? (
+              <p
+                className="text-xs font-medium text-destructive"
+                role="alert"
+                data-testid="vd-production-bgm-url-required-hint"
+              >
+                {lang === "th"
+                  ? "กรอกลิงก์เพลงก่อนสร้าง Production Episodes"
+                  : "Enter a music URL before assembling Production Episodes."}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">
+                {lang === "th" ? "ความดังเพลง (%)" : "Music volume (%)"}
+              </span>
+              <span className="text-xs text-muted-foreground">{value.volumePercent}%</span>
+            </div>
+            <Slider
+              min={1}
+              max={100}
+              step={1}
+              value={[value.volumePercent]}
+              disabled={disabled}
+              onValueChange={([v]) => emit({ volumePercent: v ?? value.volumePercent })}
+              aria-label={lang === "th" ? "ความดังเพลง" : "Music volume"}
+              data-testid="vd-production-bgm-volume"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="vd-production-bgm-duck"
+                checked={value.duckUnderVideoAudio}
+                disabled={disabled}
+                onCheckedChange={(checked) => emit({ duckUnderVideoAudio: checked === true })}
+                data-testid="vd-production-bgm-duck"
+              />
+              <label htmlFor="vd-production-bgm-duck" className="text-sm">
+                {lang === "th" ? "หลบเสียงพูดอัตโนมัติ (ducking)" : "Auto-duck under speech"}
+              </label>
+            </div>
+            <p className="pl-6 text-[11px] text-muted-foreground">
+              {lang === "th"
+                ? "ลดเสียงเพลงลงเองตอนมีคนพูดหรือมีเสียงในคลิป"
+                : "Lowers music when there's dialogue or clip audio."}
+            </p>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -15,6 +15,8 @@ import { buildConcatFfmpegArgs } from "../verticalDramaEpisodeVideoAssembly";
 import {
   buildAssSubtitleFile,
   buildBannerInputArgs,
+  buildBgmMixFfmpegArgs,
+  buildBgmMixFilterComplex,
   buildFinalRenderFfmpegArgs,
   buildWatermarkInputArgs,
   escapeFfmpegFilterPath,
@@ -1064,5 +1066,102 @@ describe("resolveWatermarkOverlayFragment", () => {
       { baseLabel: "vbase" }
     );
     expect(filterFragments[0]).toContain("colorchannelmixer=aa=1");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Production Episode BGM mix (Phase B-1,                                    */
+/* planning/vertical-drama-production-render/plan.md Phase B)                */
+/* -------------------------------------------------------------------------- */
+
+describe("buildBgmMixFilterComplex", () => {
+  it("volume-scales the BGM (input 1) and mixes it flat under the video's own audio (input 0) when ducking is off", () => {
+    const fc = buildBgmMixFilterComplex({ volumePercent: 35, duckUnderVideoAudio: false });
+    expect(fc).toBe(
+      "[1:a]volume=0.35[bgmvol];[0:a][bgmvol]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]"
+    );
+    expect(fc).not.toContain("sidechaincompress");
+  });
+
+  it("ducks the BGM under the video's own audio via sidechaincompress — BGM as the MAIN input, video audio as the SIDECHAIN key — when ducking is on", () => {
+    const fc = buildBgmMixFilterComplex({ volumePercent: 35, duckUnderVideoAudio: true });
+    expect(fc).toBe(
+      "[1:a]volume=0.35[bgmvol];" +
+        "[bgmvol][0:a]sidechaincompress=threshold=0.05:ratio=8:attack=5:release=300[bgmducked];" +
+        "[0:a][bgmducked]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]"
+    );
+  });
+
+  it("disables amix's built-in normalize so the video's own audio is never auto-attenuated by the mix", () => {
+    const flat = buildBgmMixFilterComplex({ volumePercent: 35, duckUnderVideoAudio: false });
+    const ducked = buildBgmMixFilterComplex({ volumePercent: 35, duckUnderVideoAudio: true });
+    expect(flat).toContain("amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]");
+    expect(ducked).toContain("amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]");
+  });
+
+  it("converts volumePercent to a clamped 0-1 linear multiplier at the extremes", () => {
+    expect(
+      buildBgmMixFilterComplex({ volumePercent: 100, duckUnderVideoAudio: false })
+    ).toContain("[1:a]volume=1[bgmvol]");
+    expect(
+      buildBgmMixFilterComplex({ volumePercent: 1, duckUnderVideoAudio: false })
+    ).toContain("[1:a]volume=0.01[bgmvol]");
+  });
+});
+
+describe("buildBgmMixFfmpegArgs", () => {
+  const BASE_INPUT = {
+    videoPath: "/tmp/production-episode.mp4",
+    bgmPath: "/tmp/bgm.mp3",
+    output: "/tmp/production-episode-bgm.mp4",
+    videoDurationSeconds: 250.5,
+    volumePercent: 35,
+    duckUnderVideoAudio: true,
+  };
+
+  it("loops the BGM input via -stream_loop -1 (input 1) after the video (input 0)", () => {
+    const args = buildBgmMixFfmpegArgs(BASE_INPUT);
+    expect(args.slice(0, 8)).toEqual([
+      "-y",
+      "-i",
+      "/tmp/production-episode.mp4",
+      "-stream_loop",
+      "-1",
+      "-i",
+      "/tmp/bgm.mp3",
+      "-filter_complex",
+    ]);
+  });
+
+  it("bounds the output with -t at the video's own probed duration, so the endlessly-looped BGM input never hangs ffmpeg", () => {
+    const args = buildBgmMixFfmpegArgs(BASE_INPUT);
+    const tIndex = args.indexOf("-t");
+    expect(tIndex).toBeGreaterThan(-1);
+    expect(args[tIndex + 1]).toBe("250.5");
+  });
+
+  it("stream-copies the video (-c:v copy) and maps 0:v + the mixed [aout] audio label, in that order", () => {
+    const args = buildBgmMixFfmpegArgs(BASE_INPUT);
+    const mapVIndex = args.indexOf("-map");
+    expect(args[mapVIndex + 1]).toBe("0:v");
+    const mapAIndex = args.indexOf("-map", mapVIndex + 1);
+    expect(args[mapAIndex + 1]).toBe("[aout]");
+    const cvIndex = args.indexOf("-c:v");
+    expect(args[cvIndex + 1]).toBe("copy");
+  });
+
+  it("embeds the SAME filter_complex buildBgmMixFilterComplex produces for the same input", () => {
+    const args = buildBgmMixFfmpegArgs(BASE_INPUT);
+    expect(extractFilterComplex(args)).toBe(buildBgmMixFilterComplex(BASE_INPUT));
+  });
+
+  it("omits sidechaincompress from the embedded graph when duckUnderVideoAudio is false", () => {
+    const args = buildBgmMixFfmpegArgs({ ...BASE_INPUT, duckUnderVideoAudio: false });
+    expect(extractFilterComplex(args)).not.toContain("sidechaincompress");
+  });
+
+  it("ends with the output path as the final argv element", () => {
+    const args = buildBgmMixFfmpegArgs(BASE_INPUT);
+    expect(args[args.length - 1]).toBe("/tmp/production-episode-bgm.mp4");
   });
 });
