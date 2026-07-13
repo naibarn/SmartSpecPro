@@ -1009,6 +1009,18 @@ function EpisodeWorkspaceShell({
   const resolveMediaAssetForImportMutation =
     trpc.verticalDramaCharacters.resolveMediaAssetForImport.useMutation();
 
+  /**
+   * Image providers, particularly MCP-backed ones, can take substantially
+   * longer than the former five-minute browser window. Keep the async task
+   * attached to this page for up to 30 minutes so completion is still
+   * finalized into the episode's approved start-frame slot.
+   */
+  const VD_START_FRAME_POLL_INTERVAL_MS = 2500;
+  const VD_START_FRAME_POLL_TIMEOUT_MS = 30 * 60 * 1000;
+  const VD_START_FRAME_POLL_MAX_ATTEMPTS = Math.ceil(
+    VD_START_FRAME_POLL_TIMEOUT_MS / VD_START_FRAME_POLL_INTERVAL_MS
+  );
+
   async function pollStartFrameTask(
     taskId: string,
     shotNumber: number,
@@ -1016,9 +1028,14 @@ function EpisodeWorkspaceShell({
   ) {
     setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
     try {
-      // Bounded poll (5 min max at 2.5s intervals) — matches the timeout
-      // discipline used for other async media polls in this codebase.
-      for (let attempt = 0; attempt < 120; attempt++) {
+      // Bounded poll (30 min max at 2.5s intervals) — long-running image
+      // providers must still have their completed result finalized into the
+      // episode card instead of being left only in Media History.
+      for (
+        let attempt = 0;
+        attempt < VD_START_FRAME_POLL_MAX_ATTEMPTS;
+        attempt++
+      ) {
         const task = await utils.media.getTask.fetch({ taskId });
         const status = (task as { status?: string } | null)?.status;
         if (status === "completed") {
@@ -1031,20 +1048,28 @@ function EpisodeWorkspaceShell({
             );
             return;
           }
-          const resolved = await resolveMediaAssetForImportMutation.mutateAsync(
-            {
+          try {
+            const resolved =
+              await resolveMediaAssetForImportMutation.mutateAsync({
+                seriesId,
+                source: "url",
+                url: resultUrl,
+                mimeType: "image/png",
+              });
+            await setApprovedStartFrameAssetMutation.mutateAsync({
               seriesId,
-              source: "url",
-              url: resultUrl,
-              mimeType: "image/png",
-            }
-          );
-          await setApprovedStartFrameAssetMutation.mutateAsync({
-            seriesId,
-            episodeId,
-            shotNumber,
-            mediaAssetId: resolved.mediaAssetId,
-          });
+              episodeId,
+              shotNumber,
+              mediaAssetId: resolved.mediaAssetId,
+            });
+          } catch (err) {
+            toast.error(
+              lang === "th"
+                ? `สร้างภาพเสร็จแล้ว แต่ซิงก์เข้า shot ไม่สำเร็จ${err instanceof Error ? `: ${err.message}` : ""} ตรวจสอบ Media History แล้วลองใหม่`
+                : `Image generation finished, but syncing it to the shot failed${err instanceof Error ? `: ${err.message}` : ""}. Check Media History and retry.`
+            );
+            return;
+          }
           toast.success(
             lang === "th"
               ? "สร้างภาพเฟรมเริ่มต้นสำเร็จ"
@@ -1087,7 +1112,9 @@ function EpisodeWorkspaceShell({
           );
           return;
         }
-        await new Promise(resolve => setTimeout(resolve, 2500));
+        await new Promise(resolve =>
+          setTimeout(resolve, VD_START_FRAME_POLL_INTERVAL_MS)
+        );
       }
       toast.error(
         lang === "th"
@@ -2379,10 +2406,21 @@ function EpisodeWorkspaceShell({
     setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
     try {
       let plan = episodeDetailQuery.data?.startFramePlan as
-        | { frames?: Array<{ shotNumber: number; imagePrompt?: string }> }
+        | {
+            frames?: Array<{
+              shotNumber: number;
+              imagePrompt?: string;
+              canonicalShotSummary?: string;
+            }>;
+          }
         | null
         | undefined;
       let frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
+
+      const canonicalShotSummary =
+        episodeDetailQuery.data?.episodePlan?.shotDrafts?.find(
+          shot => shot.shotNumber === shotNumber
+        )?.summary?.trim() || undefined;
 
       if (!plan || !plan.frames?.length) {
         // No plan at all yet — generate real prompts for every shot first
@@ -2418,7 +2456,51 @@ function EpisodeWorkspaceShell({
         frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
       }
 
+      // The start-frame plan is a materialized snapshot. When the Overview
+      // shot draft is newer (or the frame predates source tracking), route the
+      // latest raw summary through the dedicated skill before any paid image
+      // render. The skill authors the new prompt; this page never appends
+      // story prose to a provider prompt.
+      if (
+        canonicalShotSummary &&
+        frame?.canonicalShotSummary?.trim() !== canonicalShotSummary
+      ) {
+        try {
+          await generateShotStartFramePromptMutation.mutateAsync({
+            seriesId,
+            episodeId,
+            shotNumber,
+            canonicalShotSummary,
+            idempotencyKey: crypto.randomUUID(),
+          });
+        } catch (err) {
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : lang === "th"
+                ? "ซิงก์ shot ล่าสุดเพื่อสร้างพรอมต์ไม่สำเร็จ"
+                : "Failed to sync the latest shot source into the image prompt"
+          );
+          return;
+        }
+        const refreshed =
+          await utils.verticalDramaEpisodes.getEpisodeDetail.fetch({
+            seriesId,
+            episodeId,
+          });
+        plan = refreshed?.startFramePlan as typeof plan;
+        frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
+      }
+
       if (!frame?.imagePrompt?.trim()) {
+        if (canonicalShotSummary) {
+          toast.error(
+            lang === "th"
+              ? "สร้างพรอมต์จากเรื่องย่อล่าสุดไม่สำเร็จ ลองใหม่อีกครั้ง"
+              : "Failed to create a prompt from the latest shot source — try again."
+          );
+          return;
+        }
         // Plan exists but this specific shot has no prompt — auto-compose an
         // instruction and repair it SILENTLY (no dialog, no typing).
         const autoInstruction =
@@ -3651,6 +3733,10 @@ function EpisodeWorkspaceShell({
       includeDialogueAudio: false,
       loudnessNormalize: false,
       subtitlePreset: "classic_box",
+      // Render-options extension (2026-07-13) — mirrors the 3 fields above;
+      // matches `assembleEpisodeVideo`'s own server-side defaults.
+      subtitleFontSize: "medium",
+      showAgeBadge: false,
     });
   /** Durable (non-toast) proof of what the most recently SUBMITTED
    *  `assembleEpisodeVideo` call actually included — mirrors `scriptSummary`'s
@@ -3722,6 +3808,11 @@ function EpisodeWorkspaceShell({
         voiceChainFlagEnabled && finalRenderOptions.includeDialogueAudio,
       loudnessNormalize: finalRenderOptions.loudnessNormalize,
       subtitlePreset: finalRenderOptions.subtitlePreset,
+      // Render-options extension (2026-07-13) — optional on the mutation;
+      // sent explicitly here since the section always resolves a concrete
+      // value (defaults "medium"/false match the server's own defaults).
+      subtitleFontSize: finalRenderOptions.subtitleFontSize,
+      showAgeBadge: finalRenderOptions.showAgeBadge,
       idempotencyKey: crypto.randomUUID(),
     });
   }
@@ -4385,23 +4476,7 @@ function EpisodeWorkspaceShell({
             onGenerateVideoPromptPack: handleGenerateVideoPromptPack,
             generatingVideoPromptPack,
             onGenerateStartFrameImage: shotNumber => {
-              if (!requireMcpConnectionOrToast("image")) return;
-              // Lock the button the instant it's clicked (mirrors
-              // `onGenerateAllStartFrameImages` + `handleGeneratePromptAndImage`)
-              // — previously the shot only entered `pollingStartFrameShots`
-              // once the mutation round-tripped and `pollStartFrameTask`
-              // started, leaving a click window for accidental double-submits.
-              setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
-              generateStartFrameImageMutation.mutate({
-                seriesId,
-                episodeId,
-                shotNumber,
-                idempotencyKey: crypto.randomUUID(),
-                mcpConnectionId: imageModelUsesMcp
-                  ? (mcpConnectionId ?? undefined)
-                  : undefined,
-                resolution: selectedImageResolution || undefined,
-              });
+              void handleGeneratePromptAndImage(shotNumber, "single");
             },
             generatingStartFrameImageForShot: pollingStartFrameShots,
             onGenerateAllStartFrameImages: (shotNumbers: number[]) => {
@@ -4411,18 +4486,11 @@ function EpisodeWorkspaceShell({
                 shotNumbers.forEach(n => next.add(n));
                 return next;
               });
-              shotNumbers.forEach(shotNumber => {
-                generateStartFrameImageMutation.mutate({
-                  seriesId,
-                  episodeId,
-                  shotNumber,
-                  idempotencyKey: crypto.randomUUID(),
-                  mcpConnectionId: imageModelUsesMcp
-                    ? (mcpConnectionId ?? undefined)
-                    : undefined,
-                  resolution: selectedImageResolution || undefined,
-                });
-              });
+              void Promise.all(
+                shotNumbers.map(shotNumber =>
+                  handleGeneratePromptAndImage(shotNumber, "single")
+                )
+              );
             },
             characterPortraits: episodeDetailQuery.data?.characterPortraits as
               | VerticalDramaCharacterPortraitMap
@@ -4444,17 +4512,7 @@ function EpisodeWorkspaceShell({
             onSetShotLocation: handleSetShotLocation,
             onDropStartFrame: handleDropStartFrame,
             onGenerateAngleVariations: shotNumber => {
-              if (!requireMcpConnectionOrToast("image")) return;
-              generateAngleVariationsMutation.mutate({
-                seriesId,
-                episodeId,
-                shotNumber,
-                idempotencyKey: crypto.randomUUID(),
-                mcpConnectionId: imageModelUsesMcp
-                  ? (mcpConnectionId ?? undefined)
-                  : undefined,
-                resolution: selectedImageResolution || undefined,
-              });
+              void handleGeneratePromptAndImage(shotNumber, "angles");
             },
             generatingAngleVariationsForShot:
               pollingAngleVariationsShot ??

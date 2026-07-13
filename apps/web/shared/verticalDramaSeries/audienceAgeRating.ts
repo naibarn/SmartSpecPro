@@ -55,6 +55,20 @@ export const AUDIENCE_AGE_RATING_LABELS: Record<
 };
 
 /**
+ * Short badge labels for the FINAL RENDER's "age rating badge" overlay
+ * (Phase A render-options quick win — burned into a corner of the video via
+ * `verticalDramaFinalRenderGraph.ts`'s `age_badge` overlay kind when a render
+ * requests `showAgeBadge`). Deliberately terse (unlike the full bilingual
+ * `AUDIENCE_AGE_RATING_LABELS` used by the wizard `<Select>`) so the label
+ * stays legible at the badge's small burned-in font size.
+ */
+export const AUDIENCE_AGE_RATING_BADGE_LABEL: Record<AudienceAgeRating, string> = {
+  "18plus": "18+",
+  "13plus": "13+",
+  under13: "ทั่วไป",
+};
+
+/**
  * The compact, firm content-constraint block injected into every generation
  * stage's prompt (mirrors `storyBible.ts`'s `userPremiseBlock`). English —
  * consistent with the surrounding English prompt scaffolds; the constraint

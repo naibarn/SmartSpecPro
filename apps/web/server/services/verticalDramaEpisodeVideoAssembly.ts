@@ -75,6 +75,14 @@ import {
   VD_OPENER_RECAP_HEADER_TH,
   resolveOpeningSequenceWindows,
 } from "@shared/verticalDramaSeries/textOverlay";
+// Phase A render-options quick win — the age-rating badge's label text. Safe
+// static import (zero transitive deps — see that module's own header doc
+// comment); same convention as the Text Overlay Suite import above.
+import {
+  AUDIENCE_AGE_RATING_BADGE_LABEL,
+  DEFAULT_AUDIENCE_AGE_RATING,
+  type AudienceAgeRating,
+} from "@shared/verticalDramaSeries/audienceAgeRating";
 import {
   buildAssSubtitleFile,
   buildFinalRenderFfmpegArgs,
@@ -83,6 +91,7 @@ import {
   type DialogueAudioSegment,
   type ResolvedBanner,
   type ResolvedWatermarkImage,
+  type SubtitleFontSizeId,
   type VdTextOverlayAssEvent,
   type VdTextOverlayAssKind,
 } from "./verticalDramaFinalRenderGraph";
@@ -179,10 +188,32 @@ export function findMissingClips(clips: EpisodeClipSource[]): MissingClip[] {
 }
 
 /**
+ * Collapse a list of missing CLIP numbers down to their human-readable
+ * PARENT SHOT numbers, for the `resolveClipsForAssembly` error message below.
+ * A split sub-shot's `clipNumber` is `parentShotNumber * 100 + subShotNumber`
+ * (e.g. shot 3's 2nd sub-shot is `302` — see `extractClipSourcesFromMotionPromptPack`'s
+ * own doc comment) — `n >= 100` collapses to `Math.floor(n / 100)`; an
+ * unsplit shot's `clipNumber` IS its shot number already (`n < 100`) and
+ * passes through unchanged. Multiple missing sub-shots of the same parent
+ * shot collapse to ONE entry (`Set`-deduplicated); the result is sorted
+ * ascending so the message always reads shot numbers in story order,
+ * regardless of the input clip-number order.
+ */
+export function deriveMissingShotNumbers(missing: MissingClip[]): number[] {
+  const shotNumbers = new Set<number>(
+    missing.map(m => (m.clipNumber >= 100 ? Math.floor(m.clipNumber / 100) : m.clipNumber))
+  );
+  return Array.from(shotNumbers).sort((a, b) => a - b);
+}
+
+/**
  * Resolve which clips actually go into the concat, honoring `allowPartial`.
  * Throws a plain `Error` with a human-readable, user-facing message (mapped to
  * `PRECONDITION_FAILED` at the router) when clips are missing and partial
- * assembly was not explicitly requested.
+ * assembly was not explicitly requested. The message reports PARENT SHOT
+ * numbers (via `deriveMissingShotNumbers`), not raw `clipNumber`s — a raw
+ * sub-shot `clipNumber` like `301` is meaningless to a user who thinks in
+ * terms of shots, not clips.
  */
 export function resolveClipsForAssembly(
   clips: EpisodeClipSource[],
@@ -192,10 +223,10 @@ export function resolveClipsForAssembly(
   const missing = findMissingClips(ordered);
 
   if (missing.length > 0 && !opts.allowPartial) {
-    const list = missing.map(m => m.clipNumber).join(", ");
+    const shotList = deriveMissingShotNumbers(missing).join(", ");
     throw new Error(
-      `vertical_drama_assembly_missing_clips: shot(s)/clip(s) ${list} have no completed video yet. ` +
-        `Generate those clips first, or pass allowPartial to concatenate only the completed clips in order.`
+      `vertical_drama_assembly_missing_clips: shot(s) ${shotList} still need a rendered video. ` +
+        `Generate those shots first, or assemble only the completed shots.`
     );
   }
 
@@ -708,6 +739,11 @@ export interface RunAssemblyJobSubtitlesInput {
    *  why this is safe/independent of `preset`/`lines`). Absent/empty is
    *  BYTE-IDENTICAL to before task #34. */
   overlays?: RunAssemblyJobTextOverlayEventInput[];
+  /** Phase A render-options quick win — scale preset for the burned-in
+   *  caption text size (see `SUBTITLE_FONT_SIZE_SCALE` in
+   *  `verticalDramaFinalRenderGraph.ts`). Omitted/`"medium"` is
+   *  BYTE-IDENTICAL to before this option existed. */
+  fontSize?: SubtitleFontSizeId;
 }
 
 export interface RunAssemblyJobArgs {
@@ -908,6 +944,7 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
             fontsDir,
             playResX: 1080,
             playResY: 1920,
+            fontSize: args.subtitles.fontSize,
           },
           resolvedOverlayEvents
         );
@@ -1103,6 +1140,31 @@ export async function submitAssemblyJob(args: {
  *   — see that module's own doc comment for the shot-local -> absolute
  *   timeline conversion and its deterministic sequential-estimate fallback
  *   for lines with no resolvable clip mapping.
+ * - Phase A render-options quick win (`subtitleFontSize`/`showAgeBadge` on
+ *   `assembleEpisodeVideo`'s mutation input) threads through HERE too,
+ *   mirroring `subtitlePreset`'s own "input -> this resolver -> render args"
+ *   path exactly. `subtitleFontSize` is carried onto the returned
+ *   `subtitles.fontSize` untouched (actually APPLIED later, inside
+ *   `runAssemblyJob` -> `buildAssSubtitleFile`). `showAgeBadge` builds ONE
+ *   whole-clip `age_badge` overlay event (the SAME `entireClip: true`
+ *   "advisory window, resolved post-probe" convention
+ *   `resolveEpisodeTextOverlayRunInputs` below uses for `episode_indicator`/
+ *   `watermark_text`) and merges it into `subtitles.overlays` —
+ *   INDEPENDENTLY of whether there is any dialogue-audio/subtitle-preset data
+ *   at all, since the badge is a fully separate feature from the dialogue
+ *   plan (a `showAgeBadge`-only render still gets a `subtitles` object, with
+ *   `preset: "no_subtitle_style"` when no captions were also requested —
+ *   mirrors the SAME fallback `verticalDramaEpisodes.ts`'s own
+ *   `combinedSubtitles` merge already uses for Text Overlay Suite events).
+ *
+ * TODO Phase A parity: `assembleSeasonVideos` (`verticalDramaSeries.ts`)
+ * already shares `subtitlePreset`/`includeDialogueAudio`/`loudnessNormalize`
+ * through this SAME function per episode, but does not yet forward the new
+ * `subtitleFontSize`/`showAgeBadge`/`audienceAgeRating` params added here —
+ * `verticalDramaSeries.ts` is outside this quick win's edit scope. A
+ * follow-up wave should add both fields to that mutation's `options` input
+ * (+ resolve each episode's series audience rating) and pass them through
+ * here for full parity with `assembleEpisodeVideo`.
  */
 export interface VdEpisodeDialogueAudioSubtitlesRunInputs {
   dialogueAudio?: RunAssemblyJobDialogueAudioInput;
@@ -1118,6 +1180,14 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
   includeDialogueAudio: boolean;
   loudnessNormalize: boolean;
   subtitlePreset: CaptionPresetId | "none" | undefined;
+  /** Phase A render-options quick win — see this function's own doc comment. */
+  subtitleFontSize?: SubtitleFontSizeId;
+  /** Phase A render-options quick win — see this function's own doc comment. */
+  showAgeBadge?: boolean;
+  /** Only consulted when `showAgeBadge` is true; defaults to the
+   *  least-restrictive `"18plus"` tier when omitted (mirrors
+   *  `resolveAudienceAgeRating`'s own "no rating? default to 18+" default). */
+  audienceAgeRating?: AudienceAgeRating;
 }): VdEpisodeDialogueAudioSubtitlesRunInputs {
   const lines = params.plan?.dialogueLines ?? [];
   const wantsSubtitles =
@@ -1125,8 +1195,36 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
     params.subtitlePreset !== "none" &&
     params.subtitlePreset !== "no_subtitle_style";
 
+  // Phase A age-rating badge — resolved up front, independent of the
+  // dialogue-plan guard below (see this function's own doc comment).
+  const ageBadgeOverlays: RunAssemblyJobTextOverlayEventInput[] = params.showAgeBadge
+    ? [
+        {
+          kind: "age_badge",
+          text:
+            AUDIENCE_AGE_RATING_BADGE_LABEL[
+              params.audienceAgeRating ?? DEFAULT_AUDIENCE_AGE_RATING
+            ],
+          // Advisory-only — `runAssemblyJob` re-resolves to the real
+          // [0, videoDurationSeconds] window post-probe (same convention as
+          // `episode_indicator`/`watermark_text` below).
+          startSec: 0,
+          endSec: 0,
+          entireClip: true,
+        },
+      ]
+    : [];
+
   if (lines.length === 0 || (!params.includeDialogueAudio && !wantsSubtitles)) {
-    return { dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 };
+    const badgeOnlySubtitles: RunAssemblyJobSubtitlesInput | undefined =
+      ageBadgeOverlays.length > 0
+        ? { preset: "no_subtitle_style", lines: [], overlays: ageBadgeOverlays }
+        : undefined;
+    return {
+      dialogueAudioSegmentsIncluded: 0,
+      subtitleLinesIncluded: 0,
+      ...(badgeOnlySubtitles ? { subtitles: badgeOnlySubtitles } : {}),
+    };
   }
 
   const timings = resolveDialogueLineAbsoluteTimings(
@@ -1169,15 +1267,34 @@ export function resolveEpisodeDialogueAudioAndSubtitlesRunInputs(params: {
     }
   }
 
+  // `hasCaptions` (not just `wantsSubtitles`) gates the caption preset/lines
+  // in the returned `subtitles` object below — a real preset with zero
+  // resolvable subtitle lines (e.g. every line blank) must NOT emit a
+  // caption style with nothing to show it; the age badge (if any) still can.
+  const hasCaptions = wantsSubtitles && subtitleLines.length > 0;
+
+  let subtitles: RunAssemblyJobSubtitlesInput | undefined;
+  if (hasCaptions || ageBadgeOverlays.length > 0) {
+    subtitles = {
+      preset: hasCaptions
+        ? (params.subtitlePreset as CaptionPresetId)
+        : "no_subtitle_style",
+      lines: hasCaptions ? subtitleLines : [],
+    };
+    if (hasCaptions && params.subtitleFontSize) {
+      subtitles.fontSize = params.subtitleFontSize;
+    }
+    if (ageBadgeOverlays.length > 0) {
+      subtitles.overlays = ageBadgeOverlays;
+    }
+  }
+
   return {
     dialogueAudio:
       params.includeDialogueAudio && segments.length > 0
         ? { segments, loudnessNormalize: params.loudnessNormalize }
         : undefined,
-    subtitles:
-      wantsSubtitles && subtitleLines.length > 0
-        ? { preset: params.subtitlePreset as CaptionPresetId, lines: subtitleLines }
-        : undefined,
+    subtitles,
     dialogueAudioSegmentsIncluded: segments.length,
     subtitleLinesIncluded: subtitleLines.length,
   };

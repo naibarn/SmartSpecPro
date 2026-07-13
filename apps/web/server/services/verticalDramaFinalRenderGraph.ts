@@ -194,10 +194,37 @@ export interface AssSubtitleLine {
   text: string;
 }
 
+/**
+ * Subtitle font-size scale presets (Phase A render-options quick win,
+ * `subtitleFontSize` mutation input on `assembleEpisodeVideo`) — multiplies
+ * every CAPTION preset's base `fontSize` (`VD_CAPTION_PRESET_ASS_STYLES`
+ * below), and everything DERIVED from it (e.g. the speaker-name chip in
+ * `buildAssDialogueEvent`), by a fixed factor before it is burned into the
+ * `.ass` file. Deliberately does NOT touch the separate Text Overlay Suite
+ * style table (`VD_TEXT_OVERLAY_ASS_STYLES`) — end cards/watermark/age badge/
+ * etc. keep their own fixed sizes regardless of this option (out of scope —
+ * this is a SUBTITLE/caption option, not a general text-size option).
+ * `"medium"` (scale `1.0`) is the default when `AssSubtitleBuildOpts.fontSize`
+ * is omitted and is BYTE-IDENTICAL to every render before this option
+ * existed.
+ */
+export const SUBTITLE_FONT_SIZE_IDS = ["small", "medium", "large", "xlarge"] as const;
+export type SubtitleFontSizeId = (typeof SUBTITLE_FONT_SIZE_IDS)[number];
+export const SUBTITLE_FONT_SIZE_SCALE: Record<SubtitleFontSizeId, number> = {
+  small: 0.8,
+  medium: 1.0,
+  large: 1.25,
+  xlarge: 1.5,
+};
+
 export interface AssSubtitleBuildOpts {
   fontsDir?: string;
   playResX: number;
   playResY: number;
+  /** Scale preset for the burned-in CAPTION text size — see
+   *  `SUBTITLE_FONT_SIZE_SCALE`'s own doc comment. Omitted defaults to
+   *  `"medium"` (scale `1.0`, byte-identical to before this option existed). */
+  fontSize?: SubtitleFontSizeId;
 }
 
 /** The 10 HyperFrames subtitle preset ids, reused whole (see module doc comment). */
@@ -629,6 +656,22 @@ function formatAssStyleLine(style: VdAssStyleSpec): string {
   ].join(" ");
 }
 
+/**
+ * Return a COPY of `style` with `fontSize` multiplied by `scale` and rounded
+ * to the nearest integer pixel (every preset above defines an integer
+ * `Fontsize`, matching the ASS spec's own convention). Every size DERIVED
+ * from `style.fontSize` downstream (`buildAssDialogueEvent`'s speaker-name
+ * chip) reads the returned, ALREADY-SCALED object, so it stays
+ * proportionally consistent automatically — no separate scaling logic is
+ * needed at those call sites. `scale === 1` (the `"medium"` subtitle-font-
+ * size default) returns the SAME object reference unchanged — byte-identical
+ * by construction, not just by arithmetic coincidence.
+ */
+function scaleAssStyleFontSize(style: VdAssStyleSpec, scale: number): VdAssStyleSpec {
+  if (scale === 1) return style;
+  return { ...style, fontSize: Math.round(style.fontSize * scale) };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Text Overlay Suite (task #34) — 8 overlay kinds, one shared ASS channel   */
 /* -------------------------------------------------------------------------- */
@@ -644,6 +687,15 @@ function formatAssStyleLine(style: VdAssStyleSpec): string {
  * (see `defaultCardStyleVariantForKind` in
  * `@shared/verticalDramaSeries/textOverlay.ts`) — there is no dedicated
  * "custom" style, keeping the ASS style budget at exactly 8.
+ *
+ * `age_badge` (Phase A render-options quick win, added alongside the other 8)
+ * is the ONE kind NOT owned by the Text Overlay Suite's plan/flag — it is fed
+ * directly by `resolveEpisodeDialogueAudioAndSubtitlesRunInputs`
+ * (`verticalDramaEpisodeVideoAssembly.ts`) whenever a render's `showAgeBadge`
+ * mutation input is `true`, reusing this SAME overlay/`.ass` channel rather
+ * than inventing a new ffmpeg input/filter chain — see
+ * `VD_TEXT_OVERLAY_ASS_STYLES.age_badge`'s own doc comment for its corner
+ * placement rationale.
  */
 export const VD_TEXT_OVERLAY_ASS_KINDS = [
   "end_card",
@@ -654,6 +706,7 @@ export const VD_TEXT_OVERLAY_ASS_KINDS = [
   "time_setting",
   "narrative_hook",
   "watermark_text",
+  "age_badge",
 ] as const;
 export type VdTextOverlayAssKind = (typeof VD_TEXT_OVERLAY_ASS_KINDS)[number];
 
@@ -907,6 +960,40 @@ const VD_TEXT_OVERLAY_ASS_STYLES: Record<VdTextOverlayAssKind, VdAssStyleSpec> =
     marginR: 32,
     marginV: 32,
   },
+  // age_badge (Phase A render-options quick win) — small, legible pill: bold
+  // white text on a semi-opaque black box (BorderStyle 3 + a `0x80` ≈ 50%-
+  // opacity BackColour), same small-corner-badge visual language as
+  // `episode_indicator` (identical FontSize/MarginL/R/V) but pinned to
+  // TOP-LEFT (Alignment 7) — the OPPOSITE corner from `episode_indicator`'s
+  // AND the watermark's own default `top_right` position (see
+  // `VD_EPISODE_INDICATOR_POSITIONS`/`VD_WATERMARK_POSITIONS` defaults in
+  // `@shared/verticalDramaSeries/textOverlay.ts`) — this keeps the badge
+  // clear of both by construction, without this module needing to know a
+  // given render's ACTUAL configured watermark/indicator corner (out of
+  // scope for this quick win; a fixed, well-reasoned default corner is
+  // simpler and more predictable than cross-referencing the resolved
+  // watermark position at render time). Not corner-configurable — no
+  // `variant`-driven `\an`/`\pos()` override branch in `buildOverlayAssEvent`
+  // (unlike `episode_indicator`/`watermark_text`), since `showAgeBadge` is a
+  // plain boolean with no position input.
+  age_badge: {
+    name: "VdAgeBadge",
+    fontName: "Noto Sans Thai",
+    fontSize: 34,
+    primaryColour: "&H00FFFFFF",
+    secondaryColour: "&H000000FF",
+    outlineColour: "&H80000000",
+    backColour: "&H80000000",
+    bold: 1,
+    italic: 0,
+    borderStyle: 3,
+    outline: 1,
+    shadow: 0,
+    alignment: 7,
+    marginL: 40,
+    marginR: 40,
+    marginV: 50,
+  },
 };
 
 /** ASS numpad alignment for a frame corner (7=top-left, 9=top-right,
@@ -1073,7 +1160,16 @@ export function buildAssSubtitleFile(
   opts: AssSubtitleBuildOpts,
   overlays: VdTextOverlayAssEvent[] = []
 ): string {
-  const style = VD_CAPTION_PRESET_ASS_STYLES[preset];
+  const baseStyle = VD_CAPTION_PRESET_ASS_STYLES[preset];
+  // Phase A `subtitleFontSize` — scales ONLY the caption preset's style (see
+  // `SUBTITLE_FONT_SIZE_SCALE`'s own doc comment for why the Text Overlay
+  // Suite's `VD_TEXT_OVERLAY_ASS_STYLES` below is deliberately untouched).
+  const style = baseStyle
+    ? scaleAssStyleFontSize(
+        baseStyle,
+        SUBTITLE_FONT_SIZE_SCALE[opts.fontSize ?? "medium"]
+      )
+    : null;
   const headerLines = [
     "[Script Info]",
     "ScriptType: v4.00+",

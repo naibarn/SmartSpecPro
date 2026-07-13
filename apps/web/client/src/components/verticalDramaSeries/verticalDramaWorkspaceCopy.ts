@@ -769,6 +769,13 @@ export const VD_COPY = {
     finalRenderLoudnessNormalizeLabel: "Normalize loudness",
     finalRenderSubtitlePresetLabel: "Subtitle style",
     finalRenderSubtitlePresetNone: "No subtitles",
+    /* ---- Subtitle font size + audience-age badge (render-options
+     *  extension, 2026-07-13) — mirrors the subtitle preset picker/toggle
+     *  copy immediately above verbatim. ---- */
+    finalRenderSubtitleFontSizeLabel: "Subtitle font size",
+    finalRenderShowAgeBadgeLabel: "Show audience-age badge",
+    finalRenderShowAgeBadgeHelp:
+      "Burns the series' age rating as a small corner badge",
     finalRenderResultTitle: "Last render result",
     finalRenderResultSubtitleLinesTemplate: "{n} subtitle line(s) included",
     finalRenderResultAudioSegmentsTemplate:
@@ -1373,6 +1380,12 @@ export const VD_COPY = {
     finalRenderLoudnessNormalizeLabel: "ปรับความดังมาตรฐาน (loudness)",
     finalRenderSubtitlePresetLabel: "รูปแบบซับไตเติล",
     finalRenderSubtitlePresetNone: "ไม่ฝังซับไตเติล",
+    /* ---- Subtitle font size + audience-age badge (render-options
+     *  extension, 2026-07-13) — mirrors the subtitle preset picker/toggle
+     *  copy immediately above verbatim. ---- */
+    finalRenderSubtitleFontSizeLabel: "ขนาดตัวอักษรซับไตเติล",
+    finalRenderShowAgeBadgeLabel: "แสดง badge อายุผู้ชม",
+    finalRenderShowAgeBadgeHelp: "ติดป้ายเรตอายุมุมวิดีโอ (จากที่ตั้งไว้ในซีรีย์)",
     finalRenderResultTitle: "ผลการเรนเดอร์ล่าสุด",
     finalRenderResultSubtitleLinesTemplate: "ฝังซับไตเติล {n} บรรทัด",
     finalRenderResultAudioSegmentsTemplate: "รวมเสียงพูด {n} ช่วง",
@@ -2482,6 +2495,42 @@ export function vdFinalRenderSubtitlePresetLabel(
   locale: VdLocale
 ): string {
   const l = VD_FINAL_RENDER_SUBTITLE_PRESET_LABELS[id];
+  return locale === "th" ? l.th : l.en;
+}
+
+/**
+ * Subtitle FONT SIZE options for the whole-episode compiled video render
+ * (render-options extension, 2026-07-13) — mirrors
+ * `VD_FINAL_RENDER_SUBTITLE_PRESET_LABELS`'s id-map + stable-order-array +
+ * label-helper shape exactly, just for the 4-value `subtitleFontSize` union
+ * instead of the 9 style presets. `"medium"` is the server's default
+ * whenever `subtitleFontSize` is omitted from the mutate payload
+ * (`assembleEpisodeVideo`, `server/routers/verticalDramaEpisodes.ts`).
+ */
+export const VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_LABELS: Record<
+  "small" | "medium" | "large" | "xlarge",
+  { en: string; th: string }
+> = {
+  small: { en: "Small", th: "เล็ก" },
+  medium: { en: "Medium (default)", th: "กลาง (ค่าเริ่มต้น)" },
+  large: { en: "Large", th: "ใหญ่" },
+  xlarge: { en: "Extra large", th: "ใหญ่มาก" },
+};
+
+/** The mutations' `subtitleFontSize` input union. */
+export type VdFinalRenderSubtitleFontSizeValue =
+  keyof typeof VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_LABELS;
+
+/** Stable render order for the picker — insertion order of the labels map above. */
+export const VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_IDS = Object.keys(
+  VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_LABELS
+) as VdFinalRenderSubtitleFontSizeValue[];
+
+export function vdFinalRenderSubtitleFontSizeLabel(
+  id: VdFinalRenderSubtitleFontSizeValue,
+  locale: VdLocale
+): string {
+  const l = VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_LABELS[id];
   return locale === "th" ? l.th : l.en;
 }
 

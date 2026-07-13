@@ -366,6 +366,17 @@ import type { VdDialogueTimelineClip } from "@shared/verticalDramaSeries/dialogu
 // caption preset ids `verticalDramaFinalRenderGraph.ts` already burns in
 // (see that module's own header doc comment for the "reused whole" citation).
 import { HyperframesFinalCompositeSubtitlePresetSchema } from "@shared/hyperframes/runtimeApiSchemas";
+// Phase A render-options quick win — `showAgeBadge`'s label needs the
+// series' resolved audience age rating; `resolveAudienceAgeRating` is the
+// SAME "untyped bible read -> defaulted tier" helper `verticalDramaSeries.ts`
+// already uses (see `loadSeriesAudienceAgeRating` below, which mirrors this
+// file's own `loadSeriesTargetAudienceRegion` "read bible for a caller-owned
+// series" convention). Pure/zero-dependency shared module — safe as a normal
+// static import.
+import {
+  resolveAudienceAgeRating,
+  type AudienceAgeRating,
+} from "@shared/verticalDramaSeries/audienceAgeRating";
 /**
  * Ad Banner Overlay — per-episode SELECTION of the series' ready banner
  * designs (F131W, #30-A2, `planning/vertical-drama-ad-banner-overlay/plan.md`
@@ -570,6 +581,38 @@ async function loadSeriesTargetAudienceRegion(
   return readTargetAudienceRegionFromBible(
     (row?.bible as Record<string, unknown> | null) ?? null
   );
+}
+
+/**
+ * Series-level audience age rating (Phase A render-options quick win) —
+ * mirrors `loadSeriesTargetAudienceRegion`'s exact "read `bible` for a
+ * caller-owned series" query shape. Only called by `assembleEpisodeVideo`
+ * when `input.showAgeBadge` is true (every pre-existing caller never sets
+ * it, so this pays zero extra DB cost for them). Resolves via the SAME
+ * `resolveAudienceAgeRating` helper the series router uses when reading an
+ * existing series' `bible.audienceAgeRating` — defaults to the
+ * least-restrictive `"18plus"` tier (never throws) when the series/bible/
+ * field is missing, satisfying this mutation's own "no rating? default to
+ * 18+" contract for free.
+ */
+async function loadSeriesAudienceAgeRating(
+  tenantId: string,
+  userId: number,
+  seriesId: number
+): Promise<AudienceAgeRating> {
+  const [row] = await db
+    .select({ bible: verticalDramaSeries.bible })
+    .from(verticalDramaSeries)
+    .where(
+      and(
+        eq(verticalDramaSeries.id, seriesId),
+        eq(verticalDramaSeries.tenantId, tenantId),
+        eq(verticalDramaSeries.userId, userId)
+      )
+    )
+    .limit(1);
+  const bible = (row?.bible as Record<string, unknown> | null) ?? null;
+  return resolveAudienceAgeRating(bible?.audienceAgeRating);
 }
 
 /**
@@ -4011,6 +4054,8 @@ export interface VerticalDramaEpisodePlanSummary {
   logline: string;
   keyBeats: string[];
   cliffhangerLine: string | null;
+  /** Latest Overview shot summaries; omitted when the active item has no deep draft. */
+  shotDrafts?: Array<{ shotNumber: number; summary: string }>;
 }
 
 /**
@@ -4031,7 +4076,7 @@ async function resolveEpisodePlanForEpisode(
   episodeNumber: number
 ): Promise<VerticalDramaEpisodePlanSummary | null> {
   try {
-    const { getActiveBreakdown, readItemCliffhangerLine } = await import(
+    const { getActiveBreakdown, readItemCliffhangerLine, readItemShotDrafts } = await import(
       "../services/verticalDramaStoryBible"
     );
     const [seriesRow] = await db
@@ -4050,11 +4095,23 @@ async function resolveEpisodePlanForEpisode(
       item => item.episodeNumber === episodeNumber
     );
     if (!activeItem) return null;
+    const shotDrafts =
+      typeof readItemShotDrafts === "function"
+        ? readItemShotDrafts(activeItem)
+        : null;
     return {
       workingTitle: activeItem.workingTitle,
       logline: activeItem.logline,
       keyBeats: activeItem.keyBeats,
       cliffhangerLine: readItemCliffhangerLine(activeItem) ?? null,
+      ...(shotDrafts
+        ? {
+            shotDrafts: shotDrafts.map(shot => ({
+              shotNumber: shot.shot_number,
+              summary: shot.summary,
+            })),
+          }
+        : {}),
     };
   } catch (err) {
     debugError(
@@ -10641,7 +10698,9 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
-        instruction: z.string().trim().min(1).max(4000),
+        instruction: z.string().trim().max(4000).optional(),
+        /** Latest Overview shot summary; passed raw to the skill as its authoritative source. */
+        canonicalShotSummary: z.string().trim().max(2000).optional(),
         idempotencyKey,
       })
     )
@@ -10766,6 +10825,7 @@ export const verticalDramaEpisodesRouter = router({
           instruction: input.instruction,
           currentPrompt: shotStartFramePromptBasePrompt,
           currentNegativePrompt: frame.negativePrompt ?? "",
+          canonicalShotSummary: input.canonicalShotSummary,
           requiredCharacterRefs: frame.requiredCharacterRefs,
           characters: shotStartFramePromptCharacterIdentitySources,
           characterReferenceManifest:
@@ -10891,6 +10951,9 @@ export const verticalDramaEpisodesRouter = router({
           ...updatedFrames[targetIndex],
           imagePrompt: shotStartFramePromptResult.prompt,
           negativePrompt: shotStartFramePromptResult.negativePrompt,
+          ...(input.canonicalShotSummary
+            ? { canonicalShotSummary: input.canonicalShotSummary }
+            : {}),
         };
         const updatedPlan: VerticalDramaStartFramePlan = {
           ...freshPlan,
@@ -13375,6 +13438,15 @@ export const verticalDramaEpisodesRouter = router({
         subtitlePreset: z
           .union([HyperframesFinalCompositeSubtitlePresetSchema, z.literal("none")])
           .optional(),
+        // Phase A render-options quick win — additive/optional, same
+        // convention as `subtitlePreset` above (threaded through the exact
+        // same path: this input -> `resolveEpisodeDialogueAudioAndSubtitlesRunInputs`
+        // -> `buildFinalRenderFfmpegArgs`). Omitted `subtitleFontSize` means
+        // `"medium"` (byte-identical to every render before this option
+        // existed); omitted/`false` `showAgeBadge` means no badge is burned
+        // in (also byte-identical).
+        subtitleFontSize: z.enum(["small", "medium", "large", "xlarge"]).optional(),
+        showAgeBadge: z.boolean().optional(),
         // Task #34 — render-time opt-outs. Both default to "apply whatever
         // the saved plan/series config says" (`!== false`, i.e. omitted or
         // `true` both mean "apply"); passing `false` explicitly skips that
@@ -13472,6 +13544,13 @@ export const verticalDramaEpisodesRouter = router({
         await resolveVerticalDramaVoiceChainFlag(tenantId);
       const dialoguePlan =
         row.dialogueAudioPlan as VerticalDramaDialogueAudioPlan | null;
+      // Phase A render-options quick win — only queried when this render
+      // actually requests the badge (see `loadSeriesAudienceAgeRating`'s own
+      // doc comment), so every pre-existing caller pays zero extra DB cost.
+      const audienceAgeRating =
+        input.showAgeBadge === true
+          ? await loadSeriesAudienceAgeRating(tenantId, userId, seriesId)
+          : undefined;
       const dialogueRunInputs = resolveEpisodeDialogueAudioAndSubtitlesRunInputs(
         {
           plan: dialoguePlan,
@@ -13487,6 +13566,9 @@ export const verticalDramaEpisodesRouter = router({
             voiceChainEnabled && input.includeDialogueAudio === true,
           loudnessNormalize: input.loudnessNormalize === true,
           subtitlePreset: input.subtitlePreset,
+          subtitleFontSize: input.subtitleFontSize,
+          showAgeBadge: input.showAgeBadge === true,
+          audienceAgeRating,
         }
       );
 
@@ -13532,7 +13614,15 @@ export const verticalDramaEpisodesRouter = router({
             preset: dialogueRunInputs.subtitles?.preset ?? "no_subtitle_style",
             lines: dialogueRunInputs.subtitles?.lines ?? [],
             fontsDir: dialogueRunInputs.subtitles?.fontsDir,
-            overlays,
+            // Phase A render-options quick win — preserve the font-size
+            // scale AND any overlay `dialogueRunInputs.subtitles` already
+            // carried (the age badge, when `showAgeBadge` is set) instead of
+            // letting this Text Overlay Suite rebuild silently drop them;
+            // `dialogueRunInputs.subtitles?.overlays` is empty/absent for
+            // every pre-existing caller, so `[...[], ...overlays]` is
+            // BYTE-IDENTICAL to the prior `overlays` value in that case.
+            fontSize: dialogueRunInputs.subtitles?.fontSize,
+            overlays: [...(dialogueRunInputs.subtitles?.overlays ?? []), ...overlays],
           };
         }
       }

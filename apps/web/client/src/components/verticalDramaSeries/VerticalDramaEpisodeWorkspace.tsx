@@ -60,13 +60,16 @@ import {
 import {
   VD_PHASES,
   VD_FINAL_RENDER_SUBTITLE_PRESET_IDS,
+  VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_IDS,
   vdAdBannerExclusionReasonLabel,
   vdCopy,
   vdCopyWithParams,
   vdFinalRenderSubtitlePresetLabel,
+  vdFinalRenderSubtitleFontSizeLabel,
   vdPhaseLabel,
   vdStageLabel,
   type VdFinalRenderSubtitlePresetValue,
+  type VdFinalRenderSubtitleFontSizeValue,
   type VdLocale,
   type VdPhase,
 } from "./verticalDramaWorkspaceCopy";
@@ -297,6 +300,21 @@ export interface VerticalDramaFinalRenderOptionsView {
   includeDialogueAudio: boolean;
   loudnessNormalize: boolean;
   subtitlePreset: VdFinalRenderSubtitlePresetValue;
+  /** Render-options extension (2026-07-13). Optional (unlike the 3 fields
+   *  above) purely for backward compatibility with existing callers/tests
+   *  that construct this view without it — `VerticalDramaFinalRenderOptionsSection`
+   *  below still always resolves + re-emits a fully-populated value
+   *  including this field, same "one object in, one object out" convention.
+   *  Absent ⇒ server default `"medium"` (`assembleEpisodeVideo`,
+   *  `server/routers/verticalDramaEpisodes.ts`). Only meaningful when
+   *  `subtitlePreset !== "none"`. */
+  subtitleFontSize?: VdFinalRenderSubtitleFontSizeValue;
+  /** Render-options extension (2026-07-13) — burns the series' age rating
+   *  as a small corner badge on the compiled video. Optional for the same
+   *  backward-compatibility reason as `subtitleFontSize` above. Absent ⇒
+   *  server default `false`. Independent of the subtitle options (no
+   *  gating on `subtitlePreset`). */
+  showAgeBadge?: boolean;
 }
 
 /** Mirrors `VdEpisodeAdBannerExclusion` (`server/routers/verticalDramaEpisodes.ts`) as this file's own independent client view type. */
@@ -3178,12 +3196,16 @@ function VerticalDramaFinalRenderOptionsSection({
   const includeDialogueAudio = value?.includeDialogueAudio ?? false;
   const loudnessNormalize = value?.loudnessNormalize ?? false;
   const subtitlePreset = value?.subtitlePreset ?? "classic_box";
+  const subtitleFontSize = value?.subtitleFontSize ?? "medium";
+  const showAgeBadge = value?.showAgeBadge ?? false;
 
   function emit(patch: Partial<VerticalDramaFinalRenderOptionsView>) {
     onChange?.({
       includeDialogueAudio,
       loudnessNormalize,
       subtitlePreset,
+      subtitleFontSize,
+      showAgeBadge,
       ...patch,
     });
   }
@@ -3261,6 +3283,57 @@ function VerticalDramaFinalRenderOptionsSection({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="vd-final-render-subtitle-font-size"
+          className="text-xs font-medium text-muted-foreground"
+        >
+          {t.finalRenderSubtitleFontSizeLabel}
+        </label>
+        <Select
+          value={subtitleFontSize}
+          disabled={subtitlePreset === "none"}
+          onValueChange={v =>
+            emit({
+              subtitleFontSize: v as VdFinalRenderSubtitleFontSizeValue,
+            })
+          }
+        >
+          <SelectTrigger
+            id="vd-final-render-subtitle-font-size"
+            data-testid="vd-final-render-subtitle-font-size"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VD_FINAL_RENDER_SUBTITLE_FONT_SIZE_IDS.map(id => (
+              <SelectItem key={id} value={id}>
+                {vdFinalRenderSubtitleFontSizeLabel(id, locale)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="vd-final-render-show-age-badge"
+            checked={showAgeBadge}
+            onCheckedChange={checked =>
+              emit({ showAgeBadge: Boolean(checked) })
+            }
+            data-testid="vd-final-render-show-age-badge"
+          />
+          <label htmlFor="vd-final-render-show-age-badge" className="text-sm">
+            {t.finalRenderShowAgeBadgeLabel}
+          </label>
+        </div>
+        <p className="pl-6 text-[11px] text-muted-foreground">
+          {t.finalRenderShowAgeBadgeHelp}
+        </p>
       </div>
 
       {lastResult ? (

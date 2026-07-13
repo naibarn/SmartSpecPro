@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AUDIENCE_AGE_RATINGS,
+  AUDIENCE_AGE_RATING_BADGE_LABEL,
   DEFAULT_AUDIENCE_AGE_RATING,
   isAudienceAgeRating,
   resolveAudienceAgeRating,
@@ -22,6 +23,28 @@ describe("AUDIENCE_AGE_RATINGS / DEFAULT_AUDIENCE_AGE_RATING", () => {
 
   it("defaults to the least-restrictive 18plus tier", () => {
     expect(DEFAULT_AUDIENCE_AGE_RATING).toBe("18plus");
+  });
+});
+
+describe("AUDIENCE_AGE_RATING_BADGE_LABEL", () => {
+  it("maps every tier to its short render-time badge label", () => {
+    expect(AUDIENCE_AGE_RATING_BADGE_LABEL).toEqual({
+      "18plus": "18+",
+      "13plus": "13+",
+      under13: "ทั่วไป",
+    });
+  });
+
+  it("has an entry for every documented tier (no missing/extra keys)", () => {
+    expect(Object.keys(AUDIENCE_AGE_RATING_BADGE_LABEL).sort()).toEqual(
+      [...AUDIENCE_AGE_RATINGS].sort(),
+    );
+  });
+
+  it("every label is short (<=6 chars) — stays legible at the badge's small font size", () => {
+    for (const rating of AUDIENCE_AGE_RATINGS) {
+      expect(AUDIENCE_AGE_RATING_BADGE_LABEL[rating].length).toBeLessThanOrEqual(6);
+    }
   });
 });
 
