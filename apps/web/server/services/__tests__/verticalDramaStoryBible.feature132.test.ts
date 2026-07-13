@@ -82,6 +82,7 @@ import {
   type VdDeepDraftShotDraft,
 } from "../verticalDramaStoryBible";
 import { renderCriteriaVersionMarker } from "../verticalDramaQualityCriteria";
+import { renderAudienceAgeRatingBlock } from "@shared/verticalDramaSeries/audienceAgeRating";
 
 function baseParams(overrides: Record<string, unknown> = {}) {
   return {
@@ -274,6 +275,60 @@ describe("generateStoryBibleDeep — user premise (F132A)", () => {
     await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
     const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
     expect(systemPrompt).toContain(renderCriteriaVersionMarker());
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Series-level audience age rating (Phase 1 of a 2-phase feature)           */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBible — audience age rating (Phase 1)", () => {
+  it("always includes the AUDIENCE AGE RATING block, defaulting to 18plus when audienceAgeRating is omitted", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain(renderAudienceAgeRatingBlock("18plus"));
+  });
+
+  it("includes the tier-specific block for a given audienceAgeRating", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ audienceAgeRating: "under13" }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain(renderAudienceAgeRatingBlock("under13"));
+    expect(userPrompt).not.toContain(renderAudienceAgeRatingBlock("18plus"));
+  });
+
+  it("adds a firm HARD CONSTRAINT instruction to the system prompt", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain("AUDIENCE AGE RATING (HARD CONSTRAINT)");
+  });
+});
+
+describe("generateStoryBibleDeep — audience age rating (Phase 1)", () => {
+  it("always includes the AUDIENCE AGE RATING block, defaulting to 18plus when audienceAgeRating is omitted", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain(renderAudienceAgeRatingBlock("18plus"));
+  });
+
+  it("includes the tier-specific block for a given audienceAgeRating", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(
+      baseParams({ episodes: [deepDraftItem(1)], audienceAgeRating: "13plus" }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain(renderAudienceAgeRatingBlock("13plus"));
+    expect(userPrompt).not.toContain(renderAudienceAgeRatingBlock("18plus"));
+  });
+
+  it("adds a firm HARD CONSTRAINT instruction to the system prompt", async () => {
+    mockLlmResponse(deepDraftResponse(1));
+    await generateStoryBibleDeep(baseParams({ episodes: [deepDraftItem(1)] }));
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+    expect(systemPrompt).toContain("AUDIENCE AGE RATING (HARD CONSTRAINT)");
   });
 });
 

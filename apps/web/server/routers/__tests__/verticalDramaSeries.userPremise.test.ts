@@ -159,8 +159,10 @@ beforeEach(() => {
 /* -------------------------------------------------------------------------- */
 
 describe("create — userPremise merges into bible.userPremise (F132A)", () => {
-  it("with input.userPremise set and no input.bible, the inserted row's bible becomes { userPremise }", async () => {
-    mockDb.insert.mockReturnValueOnce(insertChain([{ ...INSERTED_ROW, bible: { userPremise: "premise text" } }]));
+  it("with input.userPremise set and no input.bible, the inserted row's bible becomes { userPremise, audienceAgeRating }", async () => {
+    mockDb.insert.mockReturnValueOnce(
+      insertChain([{ ...INSERTED_ROW, bible: { userPremise: "premise text", audienceAgeRating: "18plus" } }]),
+    );
 
     await router.create({
       ctx: ctx(),
@@ -168,10 +170,14 @@ describe("create — userPremise merges into bible.userPremise (F132A)", () => {
     });
 
     const insertedValues = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
-    expect(insertedValues.bible).toEqual({ userPremise: "premise text" });
+    // Series-level audience age rating (Phase 1) — `create` now ALWAYS
+    // merges a resolved `audienceAgeRating` alongside `userPremise` (see
+    // the dedicated "audienceAgeRating merges into bible.audienceAgeRating"
+    // describe block below for its own focused coverage).
+    expect(insertedValues.bible).toEqual({ userPremise: "premise text", audienceAgeRating: "18plus" });
   });
 
-  it("with both input.userPremise and input.bible.logline set, the inserted row's bible contains both keys merged (no clobber)", async () => {
+  it("with both input.userPremise and input.bible.logline set, the inserted row's bible contains both keys merged plus audienceAgeRating (no clobber)", async () => {
     mockDb.insert.mockReturnValueOnce(insertChain([INSERTED_ROW]));
 
     await router.create({
@@ -184,16 +190,85 @@ describe("create — userPremise merges into bible.userPremise (F132A)", () => {
     });
 
     const insertedValues = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
-    expect(insertedValues.bible).toEqual({ logline: "existing logline", userPremise: "premise text" });
+    expect(insertedValues.bible).toEqual({
+      logline: "existing logline",
+      userPremise: "premise text",
+      audienceAgeRating: "18plus",
+    });
   });
 
-  it("omits userPremise (byte-identical bible: input.bible ?? null) when the field is absent", async () => {
+  it("omits userPremise when the field is absent — bible now always carries at least audienceAgeRating (Phase 1 changed this from a byte-identical null)", async () => {
     mockDb.insert.mockReturnValueOnce(insertChain([INSERTED_ROW]));
 
     await router.create({ ctx: ctx(), input: { title: "My Series" } });
 
     const insertedValues = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
-    expect(insertedValues.bible).toBeNull();
+    expect(insertedValues.bible).toEqual({ audienceAgeRating: "18plus" });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* create — audienceAgeRating merges into bible.audienceAgeRating (Phase 1)  */
+/* -------------------------------------------------------------------------- */
+
+describe("create — audienceAgeRating merges into bible.audienceAgeRating (Phase 1)", () => {
+  it("persists the given audienceAgeRating tier", async () => {
+    mockDb.insert.mockReturnValueOnce(insertChain([INSERTED_ROW]));
+
+    await router.create({
+      ctx: ctx(),
+      input: { title: "My Series", audienceAgeRating: "13plus" },
+    });
+
+    const insertedValues = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
+    expect(insertedValues.bible.audienceAgeRating).toBe("13plus");
+  });
+
+  it("defaults to 18plus when audienceAgeRating is omitted", async () => {
+    mockDb.insert.mockReturnValueOnce(insertChain([INSERTED_ROW]));
+
+    await router.create({ ctx: ctx(), input: { title: "My Series" } });
+
+    const insertedValues = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
+    expect(insertedValues.bible.audienceAgeRating).toBe("18plus");
+  });
+
+  it("merges alongside an existing input.bible without clobbering other keys", async () => {
+    mockDb.insert.mockReturnValueOnce(insertChain([INSERTED_ROW]));
+
+    await router.create({
+      ctx: ctx(),
+      input: {
+        title: "My Series",
+        audienceAgeRating: "under13",
+        bible: { logline: "existing logline" },
+      },
+    });
+
+    const insertedValues = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
+    expect(insertedValues.bible).toEqual({
+      logline: "existing logline",
+      audienceAgeRating: "under13",
+    });
+  });
+
+  it("merges alongside userPremise (both persisted together, no clobber)", async () => {
+    mockDb.insert.mockReturnValueOnce(insertChain([INSERTED_ROW]));
+
+    await router.create({
+      ctx: ctx(),
+      input: {
+        title: "My Series",
+        userPremise: "premise text",
+        audienceAgeRating: "under13",
+      },
+    });
+
+    const insertedValues = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
+    expect(insertedValues.bible).toEqual({
+      userPremise: "premise text",
+      audienceAgeRating: "under13",
+    });
   });
 });
 

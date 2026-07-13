@@ -51,6 +51,19 @@ import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+/**
+ * Series-level audience age rating (Phase 1 of a 2-phase feature — later
+ * phases thread it into per-episode stages). Imported directly from its own
+ * submodule (not the shared barrel), same convention as `speechProfile.ts`
+ * (this module's own header doc comment mirrors that file). `buildPrompts`/
+ * `buildDeepDraftPrompts` always resolve+render the block unconditionally —
+ * see each function's own doc comment below.
+ */
+import {
+  resolveAudienceAgeRating,
+  renderAudienceAgeRatingBlock,
+  type AudienceAgeRating,
+} from "@shared/verticalDramaSeries/audienceAgeRating";
 // Story-density reform (spec §7.7, section-13, added 2026-07-07) — imported
 // DIRECTLY from the submodule (not the shared barrel) per section-13: this
 // is the ONE canonical source for the content-budget/breakdown-versioning
@@ -1109,6 +1122,17 @@ interface GenerateStoryBibleParams {
    * conditional-block idiom below renders nothing).
    */
   userPremise?: string;
+  /**
+   * Series-level audience age rating (Phase 1, `@shared/verticalDramaSeries/
+   * audienceAgeRating`) — persisted at `bible.audienceAgeRating`, resolved
+   * by the router (`verticalDramaSeries.ts`) via `resolveAudienceAgeRating`
+   * before this call. Optional here ONLY so every pre-existing caller/test
+   * that predates this field keeps compiling — UNLIKE `userPremise` above,
+   * `buildPrompts` ALWAYS renders the resulting content-constraint block
+   * (re-resolving a missing/invalid value to the least-restrictive
+   * `"18plus"` default), so the block itself is never absent.
+   */
+  audienceAgeRating?: AudienceAgeRating;
 }
 
 function buildPrompts(params: GenerateStoryBibleParams): {
@@ -1146,6 +1170,10 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     "You are a vertical-drama (short-form mobile drama series) story bible writer.",
     "Given a series' basic setup, expand it into a fuller production-ready story bible.",
     langInstruction,
+    // Series-level audience age rating (Phase 1) — firm, unconditional
+    // instruction; the actual constraint block is rendered in the user
+    // message below (see `audienceAgeRatingBlock`).
+    "Every story beat, character, and plot element you generate MUST honor the AUDIENCE AGE RATING (HARD CONSTRAINT) block given in the user message below — treat it as a non-negotiable content boundary, exactly like the JSON response shape.",
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
     responseShape,
     `"episodeBreakdown" must contain exactly ${params.targetEpisodeCount} entries, numbered 1..${params.targetEpisodeCount} in order, each with 3-5 short keyBeats.`,
@@ -1174,8 +1202,18 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     ? `USER PREMISE (PRIMARY):\n${trimmedUserPremise}\nThis premise is the PRIMARY story spine — the series' genre/tone/existing bible fields below are supporting flavor. Do not contradict this premise.`
     : null;
 
+  // Series-level audience age rating (Phase 1) — unlike `userPremiseBlock`
+  // above, this is unconditional: `resolveAudienceAgeRating` always returns
+  // a concrete tier (defaulting to the least-restrictive "18plus" when
+  // `params.audienceAgeRating` is absent/invalid), so this block is never
+  // `null`.
+  const audienceAgeRatingBlock = renderAudienceAgeRatingBlock(
+    resolveAudienceAgeRating(params.audienceAgeRating)
+  );
+
   const userPrompt = [
     userPremiseBlock,
+    audienceAgeRatingBlock,
     `Series title: ${params.title}`,
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
@@ -2330,6 +2368,13 @@ function buildDeepDraftPrompts(params: {
   userPremise?: string;
   /** Feature 132 §6 (F132C) — see `GenerateStoryBibleDeepParams.sceneContractsEnabled`'s own doc comment. */
   sceneContractsEnabled?: boolean;
+  /**
+   * Series-level audience age rating (Phase 1) — see
+   * `GenerateStoryBibleParams.audienceAgeRating`'s own doc comment; same
+   * "optional field, unconditionally-rendered block" contract, threaded
+   * into the standard-mode per-chunk loop below (see `generateStoryBibleDeep`).
+   */
+  audienceAgeRating?: AudienceAgeRating;
 }): { systemPrompt: string; userPrompt: string } {
   const langInstruction =
     params.locale === "th"
@@ -2365,6 +2410,10 @@ function buildDeepDraftPrompts(params: {
     "You are a vertical-drama (short-form mobile drama series) shot-dialogue writer.",
     `For EACH episode listed below, write a draft of EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) with speakable dialogue that fills that shot's speech budget.`,
     langInstruction,
+    // Series-level audience age rating (Phase 1) — firm, unconditional
+    // instruction; the actual constraint block is rendered in the user
+    // message below (see `audienceAgeRatingBlockForDeepDraft`).
+    "Every shot, dialogue line, and situation you draft MUST honor the AUDIENCE AGE RATING (HARD CONSTRAINT) block given in the user message below — treat it as a non-negotiable content boundary, exactly like the JSON response shape.",
     params.locale === "th" ? VD_NATURAL_THAI_DIALOGUE_RULES : null,
     'SPEAKABILITY RULES (hard requirement): every "line" must be literally speakable as written — no wrapping quote marks, no parenthetical stage direction, no symbols (~ * [ ] / ` < > _), no em-dash as a spoken beat (use a comma instead), at most one "…" per line, no emoji. Put delivery/emotion notes in the separate "delivery" field, NEVER inside "line" itself. A shot that is only an animal/ambient sound or otherwise wordless must set "silence_intent" instead of writing the sound as a dialogue line.',
     'A shot must NEVER set BOTH "silence_intent" and one or more "dialogue_lines" — pick exactly one: give it real speakable dialogue, or mark it "silence_intent" only if it truly has no speech at all.',
@@ -2393,6 +2442,12 @@ function buildDeepDraftPrompts(params: {
     ? `USER PREMISE (PRIMARY):\n${trimmedUserPremiseForDeepDraft}\nThis premise is the PRIMARY story spine — keep every drafted shot consistent with it.`
     : null;
 
+  // Series-level audience age rating (Phase 1) — unconditional, see
+  // `buildPrompts`'s identical `audienceAgeRatingBlock` doc comment.
+  const audienceAgeRatingBlockForDeepDraft = renderAudienceAgeRatingBlock(
+    resolveAudienceAgeRating(params.audienceAgeRating)
+  );
+
   const episodesPayload = params.chunkEpisodes.map(ep => ({
     episodeNumber: ep.episodeNumber,
     workingTitle: ep.workingTitle,
@@ -2411,6 +2466,7 @@ function buildDeepDraftPrompts(params: {
 
   const userPrompt = [
     userPremiseBlockForDeepDraft,
+    audienceAgeRatingBlockForDeepDraft,
     `Series title: ${params.title}`,
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
@@ -2531,6 +2587,17 @@ export interface GenerateStoryBibleDeepParams {
    * existed (spec §16.5 "flag-off = current behavior").
    */
   sceneContractsEnabled?: boolean;
+  /**
+   * Series-level audience age rating (Phase 1 of a 2-phase feature) — see
+   * `GenerateStoryBibleParams.audienceAgeRating`'s own doc comment; same
+   * contract. Threaded into `buildDeepDraftPrompts` for the STANDARD-mode
+   * per-chunk loop below only — the `mode: "premium"` pipeline
+   * (`generateStoryBibleDeepPremium`) is NOT yet wired to forward this field
+   * (a Phase 2 follow-up), so premium-mode `buildDeepDraftPrompts` calls
+   * fall back to the unconditional `"18plus"` default block rather than the
+   * series' actual chosen tier.
+   */
+  audienceAgeRating?: AudienceAgeRating;
 }
 
 /**
@@ -2837,6 +2904,7 @@ export async function generateStoryBibleDeep(
       tieInDraftContext: params.tieInDraftContext,
       userPremise: params.userPremise,
       sceneContractsEnabled: params.sceneContractsEnabled,
+      audienceAgeRating: params.audienceAgeRating,
     });
 
     try {

@@ -47,6 +47,12 @@ import type {
   VerticalDramaPresetMixWeight,
   VerticalDramaPresetVisualIdentity,
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import {
+  AUDIENCE_AGE_RATINGS,
+  AUDIENCE_AGE_RATING_LABELS,
+  DEFAULT_AUDIENCE_AGE_RATING,
+  type AudienceAgeRating,
+} from "@shared/verticalDramaSeries/audienceAgeRating";
 import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
 import { mixWeightLabel, pickCopy, verticalDramaCopy, visualStyleLabel, wizardSteps } from "./verticalDramaCopy";
 
@@ -63,6 +69,14 @@ interface WizardState {
    * `handleSynthesizePreset`/`handleCreate` below.
    */
   userPremise: string;
+  /**
+   * Series-level target-audience age tier — contract:
+   * `@shared/verticalDramaSeries/audienceAgeRating`. Shapes how mature every
+   * generation stage (story, script, dialogue, storyboard) authors this
+   * series. Always a defined enum value, never undefined — seeded from
+   * `DEFAULT_AUDIENCE_AGE_RATING` in `INITIAL_WIZARD` below.
+   */
+  audienceAgeRating: AudienceAgeRating;
   logline: string;
   targetEpisodeCount: string;
   locale: VerticalDramaSeriesLocale;
@@ -103,6 +117,7 @@ const INITIAL_WIZARD: WizardState = {
   title: "",
   genre: "",
   userPremise: "",
+  audienceAgeRating: DEFAULT_AUDIENCE_AGE_RATING,
   logline: "",
   targetEpisodeCount: "10",
   locale: "th",
@@ -338,6 +353,10 @@ export function CreateSeriesWizard({
       // TODO: server accepts this once verticalDramaSeries.ts's deferred
       // userPremise wiring lands (section-02 plan item 3/4).
       userPremise: form.userPremise.trim() || undefined,
+      // Contract: `@shared/verticalDramaSeries/audienceAgeRating` — steers
+      // preset-mix synthesis to match the series' target maturity tier.
+      // Always a defined enum value (see `handleCreate` above).
+      audienceAgeRating: form.audienceAgeRating,
     } as Parameters<typeof synthesizePresetMutation.mutate>[0]);
   }
 
@@ -418,6 +437,11 @@ export function CreateSeriesWizard({
       // TODO: server accepts this once verticalDramaSeries.ts's deferred
       // userPremise wiring lands (section-02 plan item 3).
       userPremise: form.userPremise.trim() || undefined,
+      // Contract: `@shared/verticalDramaSeries/audienceAgeRating` — enum with
+      // a default (`DEFAULT_AUDIENCE_AGE_RATING`), unlike the free-form
+      // `userPremise` above this is always a defined value, so it is sent
+      // directly (never `|| undefined`).
+      audienceAgeRating: form.audienceAgeRating,
     } as Parameters<typeof createMutation.mutate>[0]);
   };
 
@@ -776,6 +800,30 @@ function WizardStep({
                   value={form.targetEpisodeCount}
                   onChange={(e) => set("targetEpisodeCount", e.target.value)}
                 />
+              </Field>
+              <Field
+                label={th ? "อายุผู้ชม" : "Audience age"}
+                helperText={
+                  th
+                    ? "มีผลต่อความเหมาะสมของเนื้อหาที่ระบบสร้าง (ค่าเริ่มต้น 18+)"
+                    : "Shapes how mature the generated content is (default 18+)"
+                }
+              >
+                <Select
+                  value={form.audienceAgeRating}
+                  onValueChange={(v) => set("audienceAgeRating", v as AudienceAgeRating)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[min(60vh,24rem)]">
+                    {AUDIENCE_AGE_RATINGS.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {AUDIENCE_AGE_RATING_LABELS[r][th ? "th" : "en"]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field
                 label={th ? "โจทย์เรื่องที่อยากได้ (ไม่บังคับ)" : "Story premise you want (optional)"}

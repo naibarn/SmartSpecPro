@@ -98,6 +98,20 @@ import {
 } from "@shared/verticalDramaSeries/contentBudget";
 import type { VerticalDramaQualityLedgers } from "@shared/verticalDramaSeries/qualityLedgers";
 /**
+ * Series-level audience age rating (Phase 1 of a 2-phase feature — later
+ * phases thread it into per-episode stages) — single source of truth for
+ * the target-audience content-constraint tier shown to every story-bible
+ * generation prompt; see that module's own header doc comment. Value import
+ * (not type-only): `AUDIENCE_AGE_RATINGS` backs the
+ * `createSeriesInput`/`synthesizeGenrePresetInput` zod enums below and
+ * `resolveAudienceAgeRating` narrows the untyped `bible.audienceAgeRating`
+ * jsonb read at every call site that reads an existing series' bible.
+ */
+import {
+  AUDIENCE_AGE_RATINGS,
+  resolveAudienceAgeRating,
+} from "@shared/verticalDramaSeries/audienceAgeRating";
+/**
  * Task #22 (season-level product tie-in draft awareness, spec §7.7.2/§7.7.3,
  * added 2026-07-09) — VALUE import (not type-only): `planSeasonTieInPlacements`
  * is a pure/shared function with zero server-only transitive imports (same
@@ -1065,6 +1079,11 @@ export async function runGenerateStoryBibleDeepJob(
       // `create`/`synthesizeGenrePreset` write time (only a truthy string
       // ever gets persisted into `bible.userPremise` in the first place).
       userPremise: typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+      // Series-level audience age rating (Phase 1) — same "inherit via the
+      // bible read already done above" convention as `userPremise` just
+      // above; always resolves to a concrete tier (defaults to the
+      // least-restrictive "18plus" when absent/invalid).
+      audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
       onProgress,
     });
   } catch (error) {
@@ -1319,6 +1338,9 @@ export async function runExtendStoryDraftHorizonJob(
       // Feature 132 §4.2.7 (F132A) — see `runGenerateStoryBibleDeepJob`'s
       // identical wiring; inherits the premise via the same bible read.
       userPremise: typeof bible.userPremise === "string" ? bible.userPremise : undefined,
+      // Series-level audience age rating (Phase 1) — see
+      // `runGenerateStoryBibleDeepJob`'s identical wiring.
+      audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
       onProgress,
     });
   } catch (error) {
@@ -1999,6 +2021,14 @@ export const createSeriesInput = z.object({
    * automatically. `create` merges it into `bible.userPremise` below.
    */
   userPremise: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.userPremise).optional(),
+  /**
+   * Series-level audience age rating (Phase 1) — see
+   * `@shared/verticalDramaSeries/audienceAgeRating`'s header doc comment.
+   * Optional; `create` below always resolves a concrete tier via
+   * `resolveAudienceAgeRating` (defaulting to the least-restrictive
+   * `"18plus"`), so omitting it is a valid, fully-supported input.
+   */
+  audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
 });
 
 const listSeriesInput = z
@@ -2036,6 +2066,8 @@ const synthesizeGenrePresetInput = z.object({
    * `verticalDramaUserPremise` flag is on; forced to `undefined` otherwise.
    */
   userPremise: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.userPremise).optional(),
+  /** Phase 1 — same contract as `createSeriesInput.audienceAgeRating`; accepted here for forward compatibility, not yet forwarded into preset synthesis (see Phase 1 task notes). */
+  audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
 });
 
 /**
@@ -2352,11 +2384,20 @@ export const verticalDramaSeriesRouter = router({
         agePolicyId: input.agePolicyId ?? null,
         // Feature 132 §4.2 (F132A) — merge the top-level `userPremise` field
         // into `bible.userPremise` when present, preserving every other
-        // `input.bible` key untouched; byte-identical (`input.bible ?? null`)
-        // when `userPremise` is absent.
-        bible: input.userPremise
-          ? { ...(input.bible ?? {}), userPremise: input.userPremise }
-          : input.bible ?? null,
+        // `input.bible` key untouched.
+        //
+        // Series-level audience age rating (Phase 1) — unlike `userPremise`,
+        // `audienceAgeRating` is ALWAYS merged in (it has a safe default via
+        // `resolveAudienceAgeRating`, same "always defaulted" precedent as
+        // `locale: input.locale ?? "th"` above), so `bible` is no longer
+        // ever persisted as `null` — the "no premise, no bible" branch now
+        // persists an object carrying just `audienceAgeRating`.
+        bible: {
+          ...(input.userPremise
+            ? { ...(input.bible ?? {}), userPremise: input.userPremise }
+            : input.bible ?? {}),
+          audienceAgeRating: resolveAudienceAgeRating(input.audienceAgeRating),
+        },
         memory: input.memory ?? null,
         productTieIn: input.productTieIn ?? null,
         policy: input.policy ?? null,
