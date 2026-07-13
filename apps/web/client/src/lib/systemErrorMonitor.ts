@@ -84,7 +84,14 @@ function getTrpcData(error: unknown): TrpcErrorData | undefined {
   return error.data as TrpcErrorData | undefined;
 }
 
-function isNetworkFailure(error: unknown): boolean {
+/**
+ * True only for a pure network-connection failure — a `TypeError` thrown
+ * because the request never reached the server (offline, DNS failure,
+ * connection refused/reset, e.g. during a backend restart). Exported so
+ * `@/lib/requestResilience` can reuse this exact check for the mutation
+ * retry policy instead of duplicating the regex.
+ */
+export function isNetworkFailure(error: unknown): boolean {
   if (!(error instanceof TypeError)) return false;
   return /failed to fetch|networkerror|load failed/i.test(error.message);
 }
@@ -172,6 +179,26 @@ export function handleError(error: unknown, path?: string): void {
     return;
   }
   recentToastAt.set(dedupeKey, now);
+
+  // A pure network-connection failure (the request never reached the
+  // server at all) is most often a brief backend restart rather than a
+  // genuine application error, so show a softer "reconnecting" message
+  // instead of the generic "system malfunction" wording. This only changes
+  // the toast copy — dedupe (above) and the record buffer (above) are
+  // unchanged, and the report action is still available either way.
+  if (isNetworkFailure(error)) {
+    toast.error("กำลังเชื่อมต่อใหม่...", {
+      id: "system-error",
+      duration: 8000,
+      description:
+        "การเชื่อมต่อกับเซิร์ฟเวอร์ขาดหายชั่วคราว ระบบกำลังลองใหม่ให้อัตโนมัติ หากยังไม่หายกรุณาแจ้งปัญหา",
+      action: {
+        label: "แจ้งปัญหา",
+        onClick: () => dispatchReportEvent(resolvedPath),
+      },
+    });
+    return;
+  }
 
   toast.error("ระบบขัดข้องชั่วคราว", {
     id: "system-error",

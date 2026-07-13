@@ -4,6 +4,12 @@ import * as systemErrorMonitor from "@/lib/systemErrorMonitor";
 import { trpc } from "@/lib/trpc";
 import { getPrivateVaultAccessToken } from "@/lib/privateVault";
 import { getProtectedSurfaceAccessToken } from "@/lib/protectedSurface";
+import {
+  retryDelayMs,
+  shouldRetryMutation,
+  shouldRetryQuery,
+  TRPC_REQUEST_TIMEOUT_MS,
+} from "@/lib/requestResilience";
 import { parseSampleRate, shouldEnableBrowserSentry } from "@/lib/sentryConfig";
 import { getSmartSpecWebEndpoint } from "@/lib/webRuntime";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
@@ -381,7 +387,24 @@ if (isSentryEnabled && sentryDsn) {
 import { initPostHog } from "@/lib/posthog";
 initPostHog();
 
-const queryClient = new QueryClient();
+// System-wide resilience policy: bounded retry-and-wait for transient
+// backend unavailability (e.g. a smartspec-web restart) instead of an
+// immediate error. See @/lib/requestResilience for the exact fixed policy
+// (queries retry any transient/system-class error; mutations retry only a
+// pure network-connection failure, never 5xx/timeout, to avoid
+// double-charging credits on a write that may have already landed).
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: shouldRetryQuery,
+      retryDelay: retryDelayMs,
+    },
+    mutations: {
+      retry: shouldRetryMutation,
+      retryDelay: retryDelayMs,
+    },
+  },
+});
 
 setupAuthInterceptor();
 
@@ -514,6 +537,28 @@ const trpcClient = trpc.createClient({
             bodySummary: summarizeTrpcRequestBody(init?.body),
           });
         }
+      // Bounded request timeout: aborts a truly hung connection after
+      // TRPC_REQUEST_TIMEOUT_MS (3 min — generous so long sync operations
+      // like LLM/skill/media prompt generation aren't broken). Composed
+      // with tRPC's own `init.signal` (used for query cancellation) via a
+      // dedicated AbortController: either source aborting the combined
+      // controller aborts the fetch, and the timer is always cleared so
+      // nothing leaks.
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        timeoutController.abort();
+      }, TRPC_REQUEST_TIMEOUT_MS);
+      const incomingSignal = init?.signal;
+      const abortFromIncomingSignal = () => timeoutController.abort();
+      if (incomingSignal) {
+        if (incomingSignal.aborted) {
+          timeoutController.abort();
+        } else {
+          incomingSignal.addEventListener("abort", abortFromIncomingSignal, {
+            once: true,
+          });
+        }
+      }
       try {
         const headers = new Headers(init?.headers || {});
         const privateVaultToken = getPrivateVaultAccessToken();
@@ -528,6 +573,7 @@ const trpcClient = trpc.createClient({
           ...(init ?? {}),
           headers,
           credentials: "include",
+          signal: timeoutController.signal,
         });
           if (!response.ok) {
             try {
@@ -551,6 +597,9 @@ const trpcClient = trpc.createClient({
         } catch (err) {
           console.error("[tRPC Fetch Error]", err);
           throw err;
+        } finally {
+          clearTimeout(timeoutId);
+          incomingSignal?.removeEventListener("abort", abortFromIncomingSignal);
         }
       },
     }),
