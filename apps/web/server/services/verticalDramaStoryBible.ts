@@ -13,6 +13,7 @@ import { randomUUID } from "crypto";
 import fs from "fs";
 import path from "path";
 import { z } from "zod";
+import { jsonrepair } from "jsonrepair";
 import { parseSkillFile } from "@smartspec/skills";
 import {
   resolveSkillDirCandidates,
@@ -760,6 +761,9 @@ function findBalancedJsonEnd(text: string, openIndex: number): number {
  *     JSON, or the balanced slice itself doesn't parse), fall back to the
  *     previous "first `{` to last `}`" heuristic so existing error messages
  *     and behavior are preserved for genuinely malformed/truncated output.
+ *  4. Only if THAT also fails to parse (i.e. every happy-path attempt above
+ *     has already thrown), make one last-resort attempt to repair the slice
+ *     with `jsonrepair` (see the catch block below for why).
  */
 export function extractJson(text: string): unknown {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
@@ -772,10 +776,13 @@ export function extractJson(text: string): unknown {
       ? braceStart
       : bracketStart;
 
+  // Tracked outside the `if` block below so the catch-path repair (added for
+  // ticket #61, see below) can prefer this slice over the cruder legacy one.
+  let balancedSlice: string | null = null;
   if (start >= 0) {
     const end = findBalancedJsonEnd(candidate, start);
     if (end > start) {
-      const balancedSlice = candidate.slice(start, end + 1);
+      balancedSlice = candidate.slice(start, end + 1);
       try {
         return JSON.parse(balancedSlice);
       } catch {
@@ -797,6 +804,41 @@ export function extractJson(text: string): unknown {
   try {
     return JSON.parse(jsonSlice);
   } catch (error) {
+    // Last-resort repair (ticket #61 — trace `zKiR56XQGSE1KpCJewzGI`):
+    // weaker models (e.g. `google/gemini-3.1-flash-lite`, picked by the
+    // cheapest-thinking-model cost policy — see
+    // `resolveVerticalDramaSeriesModel`) occasionally emit STRUCTURALLY
+    // malformed JSON (e.g. a missing comma between array elements) well
+    // under the output-token ceiling, so it is NOT a truncation issue, and
+    // it survives all `VD_SCHEMA_MAX_RETRIES` retries unchanged because the
+    // model keeps making the same class of mistake. This block runs ONLY
+    // after the normal `JSON.parse` above has already thrown — it can only
+    // turn a current failure into a possible success, and it NEVER touches
+    // the happy path above.
+    //
+    // IMPORTANT: only attempt repair when `balancedSlice` is non-null, i.e.
+    // the string-aware brace/bracket scan already found a FULLY-CLOSED JSON
+    // envelope somewhere in the text (so the failure is a structural glitch
+    // *inside* an otherwise-complete value, like a missing comma). If no
+    // balanced envelope was found at all, the response is genuinely
+    // truncated (cut off mid-value by the output-token ceiling) — and
+    // `jsonrepair` happily "fixes" truncation too, by fabricating whatever
+    // closing brackets are needed. Silently accepting a machine-completed
+    // guess for a truncated response would defeat
+    // `executeJsonPlanningCallWithRetry`'s higher-token-ceiling schema retry
+    // and could ship fabricated/incomplete data, so truncated responses must
+    // keep throwing exactly as before.
+    if (balancedSlice) {
+      try {
+        const repaired = jsonrepair(balancedSlice);
+        return JSON.parse(repaired);
+      } catch {
+        // Repair failed too (or produced something still unparsable) — fall
+        // through to the throw below.
+      }
+    }
+    // Throw the SAME error shape/message as before this change, using the
+    // ORIGINAL (pre-repair) parse error so audit logs stay consistent.
     throw new VdSchemaValidationError(
       `LLM response was not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
       { rawResponse: text }

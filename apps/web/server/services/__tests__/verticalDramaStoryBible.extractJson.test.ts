@@ -91,4 +91,59 @@ describe("extractJson", () => {
       expect((error as VdSchemaValidationError).issues).toEqual({ rawResponse: truncated });
     }
   });
+
+  // Ticket #61 (trace `zKiR56XQGSE1KpCJewzGI`, path
+  // `verticalDramaCharacters.previewCharacterPrompt`): `google/gemini-3.1-flash-lite`
+  // (the weak model picked by cost policy) emitted a COMPLETE, well-under-the-
+  // token-ceiling JSON object with a missing comma between two array
+  // elements — "Expected ',' or ']' after array element in JSON at position
+  // 3551" — which was not truncation, survived all `VD_SCHEMA_MAX_RETRIES`
+  // retries unchanged, and threw `VdSchemaValidationError`. `extractJson` now
+  // makes one last-resort `jsonrepair` attempt in the catch path only.
+  describe("jsonrepair fallback (ticket #61)", () => {
+    it("repairs a missing comma between array elements (the reported live failure)", () => {
+      const malformed = '{"a":1,"list":["x","y" "z"],"b":2}';
+      const result = extractJson(malformed);
+      expect(result).toEqual({ a: 1, list: ["x", "y", "z"], b: 2 });
+    });
+
+    it("repairs a trailing comma before a closing brace/bracket", () => {
+      const malformed = '{"a":1,"list":["x","y",],"b":2,}';
+      const result = extractJson(malformed);
+      expect(result).toEqual({ a: 1, list: ["x", "y"], b: 2 });
+    });
+
+    it("still throws VdSchemaValidationError for genuinely un-repairable garbage", () => {
+      const garbage = "{{{ not json at all, just } broken [ tokens }}}";
+      expect(() => extractJson(garbage)).toThrow(VdSchemaValidationError);
+      try {
+        extractJson(garbage);
+        expect.fail("expected extractJson to throw");
+      } catch (error) {
+        expect((error as VdSchemaValidationError).message).toMatch(
+          /^LLM response was not valid JSON:/,
+        );
+      }
+    });
+
+    it("still throws (does NOT repair) genuinely truncated/unterminated JSON, so the higher-token-ceiling schema retry still fires", () => {
+      // `jsonrepair` CAN "fix" truncation by fabricating closing brackets —
+      // that would silently accept an incomplete response instead of
+      // surfacing the failure to `executeJsonPlanningCallWithRetry`'s
+      // schema-retry path, so `extractJson` must deliberately NOT repair
+      // this case (see the `balancedSlice` check in the implementation).
+      const truncated = '{"items":["a","b"';
+      expect(() => extractJson(truncated)).toThrow(VdSchemaValidationError);
+    });
+
+    it("leaves already-valid JSON untouched (happy path unaffected by the repair fallback)", () => {
+      const valid = '{"episode_title":"Test","hook":"A hook","list":["x","y","z"]}';
+      const result = extractJson(valid);
+      expect(result).toEqual({
+        episode_title: "Test",
+        hook: "A hook",
+        list: ["x", "y", "z"],
+      });
+    });
+  });
 });
