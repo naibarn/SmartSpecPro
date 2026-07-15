@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
+const { mockResetVerticalDramaFfmpegAssemblyStateOnCancel } = vi.hoisted(() => ({
+  mockResetVerticalDramaFfmpegAssemblyStateOnCancel: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../verticalDramaFfmpegAssemblyRunner", () => ({
+  resetVerticalDramaFfmpegAssemblyStateOnCancel: mockResetVerticalDramaFfmpegAssemblyStateOnCancel,
+}));
+
 import {
   cancelQueuedUserWorkerJob,
   getUserWorkerJobDetail,
@@ -272,5 +280,93 @@ describe("workerJobMonitorService", () => {
       { auth: { tenantId: "tenant-1", userId: 7 }, jobId: "job-1" },
       { repo },
     )).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  it("does not reset VD state when the canceled job is not a vertical_drama_ffmpeg_assembly job", async () => {
+    mockResetVerticalDramaFfmpegAssemblyStateOnCancel.mockClear();
+    const repo = createRepo();
+
+    await cancelQueuedUserWorkerJob(
+      { auth: { tenantId: "tenant-1", userId: 7 }, jobId: "job-queued" },
+      { repo },
+    );
+
+    expect(mockResetVerticalDramaFfmpegAssemblyStateOnCancel).not.toHaveBeenCalled();
+  });
+
+  it("resets the linked VD state when a vertical_drama_ffmpeg_assembly job is canceled", async () => {
+    mockResetVerticalDramaFfmpegAssemblyStateOnCancel.mockClear();
+    const contractInput = {
+      kind: "sub_episode" as const,
+      owner: { tenantId: "tenant-1", userId: "7", seriesId: "9", episodeId: "3" },
+      renderFeed: { owner: { tenantId: "tenant-1", userId: 7, seriesId: 9, episodeId: 3 } },
+      contractVersion: 1 as const,
+    };
+    const repo = createRepo({
+      cancelQueuedJob: vi.fn().mockResolvedValue({
+        id: "job-vd-1",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "desktop_zeroclaw_managed",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "vertical_drama_ffmpeg_assembly",
+        status: "canceled",
+        statusReason: "Canceled by requester",
+        resourceProfile: "cpu_heavy",
+        outputJson: null,
+        failureReason: null,
+        createdAt,
+        startedAt: null,
+        finishedAt: laterAt,
+        inputJson: contractInput,
+      }),
+    });
+
+    await expect(cancelQueuedUserWorkerJob(
+      { auth: { tenantId: "tenant-1", userId: 7 }, jobId: "job-vd-1" },
+      { repo },
+    )).resolves.toEqual({ canceled: true, jobId: "job-vd-1" });
+
+    expect(mockResetVerticalDramaFfmpegAssemblyStateOnCancel).toHaveBeenCalledTimes(1);
+    expect(mockResetVerticalDramaFfmpegAssemblyStateOnCancel).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "sub_episode", owner: contractInput.owner }),
+    );
+  });
+
+  it("never fails the cancel when the VD state reset throws", async () => {
+    mockResetVerticalDramaFfmpegAssemblyStateOnCancel.mockClear();
+    mockResetVerticalDramaFfmpegAssemblyStateOnCancel.mockRejectedValueOnce(new Error("boom"));
+    const contractInput = {
+      kind: "trailer" as const,
+      owner: { tenantId: "tenant-1", userId: "7", seriesId: "9" },
+      renderFeed: { owner: { tenantId: "tenant-1", userId: 7, seriesId: 9 } },
+      contractVersion: 1 as const,
+    };
+    const repo = createRepo({
+      cancelQueuedJob: vi.fn().mockResolvedValue({
+        id: "job-vd-2",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "desktop_zeroclaw_managed",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "vertical_drama_ffmpeg_assembly",
+        status: "canceled",
+        statusReason: "Canceled by requester",
+        resourceProfile: "cpu_heavy",
+        outputJson: null,
+        failureReason: null,
+        createdAt,
+        startedAt: null,
+        finishedAt: laterAt,
+        inputJson: contractInput,
+      }),
+    });
+
+    await expect(cancelQueuedUserWorkerJob(
+      { auth: { tenantId: "tenant-1", userId: 7 }, jobId: "job-vd-2" },
+      { repo },
+    )).resolves.toEqual({ canceled: true, jobId: "job-vd-2" });
   });
 });

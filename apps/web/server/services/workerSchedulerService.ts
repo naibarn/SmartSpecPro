@@ -9,6 +9,7 @@ import type {
   HyperframesFinalCompositeWorkerInput,
   LocalFolderIngestJobContract,
   RemotionRenderVideoWorkerInput,
+  VerticalDramaFfmpegAssemblyJobContract,
   WorkerResourceProfile,
   WorkerRuntimeType,
   VideoAssemblyJobContract,
@@ -20,6 +21,8 @@ import {
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES,
   REMOTION_RENDER_VIDEO_PROGRESS_STAGES,
+  VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES,
+  VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE,
   comfyImageGenerationJobContractSchema,
   comfyWorkflowRunJobContractSchema,
   getWorkerRuntimeDefinition,
@@ -30,6 +33,7 @@ import {
   looksLikeWorkerLocalFilePath,
   LOCAL_FOLDER_INGEST_PROGRESS_STAGES,
   remotionRenderVideoWorkerInputSchema,
+  verticalDramaFfmpegAssemblyJobContractSchema,
   videoAssemblyJobContractSchema,
   workerHermesRuntimeMetadataSchema,
 } from "../../shared/workerRuntime";
@@ -994,6 +998,137 @@ export async function queueDesktopVideoAssemblyJob(
     }
     throw error;
   }
+}
+
+/**
+ * Queue-only additive fields layered on top of the frozen envelope
+ * `VerticalDramaFfmpegAssemblyJobContract` (`shared/workerRuntime.ts`) — same
+ * pattern as `QueueRemotionRenderVideoJobInput` extending
+ * `RemotionRenderVideoWorkerInput`.
+ */
+export interface QueueVerticalDramaFfmpegAssemblyJobInput
+  extends VerticalDramaFfmpegAssemblyJobContract {
+  tenantId: string;
+  requestedByUserId?: number | null;
+  priority?: number;
+  idempotencyKey?: string | null;
+}
+
+const VERTICAL_DRAMA_FFMPEG_ASSEMBLY_TIMEOUT_SECONDS = 1800;
+
+/**
+ * Vertical Drama Render Queue plan (`planning/vertical-drama-render-queue/plan.md`
+ * §4.1/§4.2) Wave 1: server-computed idempotency key so re-submitting the
+ * same render (same kind/owner/render-feed) dedupes instead of double-queuing.
+ * Reuses the same sha256-hash approach as
+ * `buildRemotionRenderVideoIdempotencyKey` above.
+ */
+function buildVerticalDramaFfmpegAssemblyIdempotencyKey(
+  input: VerticalDramaFfmpegAssemblyJobContract,
+): string {
+  const ownerKey = input.owner.episodeId ?? input.owner.seriesId;
+  const groupSuffix = input.display?.groupIndex ?? "";
+  const renderFeedHash = createHash("sha256")
+    .update(JSON.stringify(input.renderFeed))
+    .digest("hex")
+    .slice(0, 32);
+  return `${VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE}:${input.kind}:${ownerKey}:${groupSuffix}:${renderFeedHash}`;
+}
+
+/**
+ * Enqueue function for the `vertical_drama_ffmpeg_assembly` worker job type
+ * (Vertical Drama Render Queue plan §4.1/§4.2) — Wave 1. Modeled on
+ * `queueDesktopVideoAssemblyJob` above (same `DESKTOP_RUNTIME_TYPE` lane,
+ * same private-const/idempotency conventions), with two deliberate
+ * departures:
+ *
+ * - **Free (0 credits).** This is a local re-encode of media the tenant
+ *   already owns — VD assembly has never charged credits — so
+ *   `reserveWorkerJobCredits` is never called and `instructionsJson` carries
+ *   no `workerBilling` block (contrast `queueDesktopVideoAssemblyJob`, which
+ *   always reserves).
+ * - **Server-computed idempotency key** (see
+ *   `buildVerticalDramaFfmpegAssemblyIdempotencyKey`) rather than trusted
+ *   verbatim from the caller when omitted — mirrors
+ *   `queueRemotionRenderVideoJob`'s `buildRemotionRenderVideoIdempotencyKey`
+ *   pattern, not `queueDesktopVideoAssemblyJob`'s caller-supplied-only key.
+ *
+ * `capabilityRequirementsJson.capabilityFamilies` is always
+ * `VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES` (non-empty — the
+ * anti-mis-claim safety mechanism, see `workerJobMatchesSelection` above)
+ * and is never caller-overridable.
+ *
+ * Not part of `queueWorkerJobByRuntime`'s `QueueWorkerJobByRuntimeInput`
+ * union: like `queueRemotionRenderVideoJob`, this is called directly by its
+ * own router mutations (a later wave), not by the generic
+ * runEngine/workpack-launch dispatch path that the union serves.
+ */
+export async function queueVerticalDramaFfmpegAssemblyJob(
+  rawInput: QueueVerticalDramaFfmpegAssemblyJobInput,
+  deps: {
+    repo?: WorkerSchedulerRepository;
+  } = {},
+): Promise<{ created: boolean; job: WorkerJobRecord }> {
+  const {
+    tenantId: _tenantId,
+    requestedByUserId: _requestedByUserId,
+    priority: _priority,
+    idempotencyKey: _idempotencyKey,
+    ...corePayload
+  } = rawInput;
+  const input = verticalDramaFfmpegAssemblyJobContractSchema.parse(corePayload);
+  const repo = deps.repo ?? defaultRepo;
+
+  const idempotencyKey =
+    rawInput.idempotencyKey ?? buildVerticalDramaFfmpegAssemblyIdempotencyKey(input);
+
+  const existing = await repo.findJobByIdempotencyKey(rawInput.tenantId, idempotencyKey);
+  if (existing) {
+    return { created: false, job: existing };
+  }
+
+  const capabilityFamilies = [...VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES];
+
+  const job = await repo.insertJob({
+    tenantId: rawInput.tenantId,
+    teamId: null,
+    workerId: null,
+    runtimeType: DESKTOP_RUNTIME_TYPE,
+    workflowRunId: null,
+    requestedByUserId: rawInput.requestedByUserId ?? null,
+    requestedBySystemComponent: "vertical_drama_ffmpeg_assembly_worker_scheduler",
+    jobType: VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE,
+    status: "queued",
+    statusReason: "vertical_drama_ffmpeg_assembly_worker",
+    priority: rawInput.priority ?? 25,
+    resourceProfile: "cpu_heavy",
+    capabilityRequirementsJson: {
+      capabilityFamilies,
+      preferredWorkerId: null,
+    },
+    inputJson: input,
+    instructionsJson: {
+      intent: VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE,
+      requiredProgressStages: [
+        "resolve_render_feed",
+        "run_ffmpeg_assembly",
+        "verify_outputs",
+        "publish_artifacts",
+      ],
+      // Free job — no workerBilling block (contrast every other
+      // DESKTOP_RUNTIME_TYPE queue fn above, which always reserves credits).
+    },
+    timeoutSeconds: VERTICAL_DRAMA_FFMPEG_ASSEMBLY_TIMEOUT_SECONDS,
+    retryPolicyJson: {
+      // Not auto-retry-safe (an ffmpeg re-encode isn't idempotent to blindly
+      // re-run on a worker crash mid-write) — the user re-submits instead.
+      maxAttempts: 1,
+      backoffSeconds: 0,
+    },
+    idempotencyKey,
+  });
+
+  return { created: true, job };
 }
 
 export async function queueDesktopLocalFolderIngestJob(

@@ -748,6 +748,24 @@ export const systemSettingsRouter = router({
           clearPinnedMerchantPresetCache();
         }
 
+        // Clearing the toggle falls back to the env default (OFF unless
+        // `SMARTSPEC_INLINE_RENDER_WORKER=true`) — stop the in-server worker
+        // to match, mirroring the update-path hook below.
+        if (input.category === "infrastructure" && input.key === "web_process_render_worker_enabled") {
+          const { clearRenderWorkerSettingsCache, getWebProcessRenderWorkerEnabled } = await import(
+            "../services/renderWorkerSettings"
+          );
+          clearRenderWorkerSettingsCache();
+          const { startInlineRenderWorker, stopInlineRenderWorker } = await import(
+            "../services/inlineRenderWorker"
+          );
+          if (await getWebProcessRenderWorkerEnabled()) {
+            startInlineRenderWorker();
+          } else {
+            stopInlineRenderWorker();
+          }
+        }
+
         return { success: true };
       }
 
@@ -795,6 +813,22 @@ export const systemSettingsRouter = router({
       if (input.category === "finance") {
         clearFinanceSlipMappingPresetCache();
         clearPinnedMerchantPresetCache();
+      }
+
+      // Vertical Drama Render Queue plan §4.4 — live start/stop of the
+      // in-server ffmpeg render worker when the admin flips the toggle.
+      // Lazy `await import(...)` for cross-service wiring.
+      if (input.category === "infrastructure" && input.key === "web_process_render_worker_enabled") {
+        const { clearRenderWorkerSettingsCache } = await import("../services/renderWorkerSettings");
+        clearRenderWorkerSettingsCache();
+        const { startInlineRenderWorker, stopInlineRenderWorker } = await import(
+          "../services/inlineRenderWorker"
+        );
+        if (input.value === "true") {
+          startInlineRenderWorker();
+        } else {
+          stopInlineRenderWorker();
+        }
       }
 
       return { success: true };

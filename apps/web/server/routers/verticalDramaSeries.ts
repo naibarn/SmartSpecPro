@@ -5120,8 +5120,21 @@ export const verticalDramaSeriesRouter = router({
         resolveClipsForAssembly,
         compiledVideoFilename,
         resolveEpisodeDialogueAudioAndSubtitlesRunInputs,
+        // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
         submitSequentialAssemblyJobs,
+        // Vertical Drama Render Queue plan §4.2 Wave 3 — persists
+        // `assemblyManifest.compiledVideo` = `{status:"pending", pendingJobId}`
+        // per episode after enqueueing, same shape convention
+        // `submitSequentialAssemblyJobs` itself always used.
+        persistCompiledVideoState,
       } = await import("../services/verticalDramaEpisodeVideoAssembly");
+      // Vertical Drama Render Queue plan §4.2 Wave 3 — enqueue-only entry
+      // point for the `vertical_drama_ffmpeg_assembly` worker job type, lazy-
+      // loaded for the SAME "narrow vi.mock sibling test" reason as the
+      // import block above.
+      const { queueVerticalDramaFfmpegAssemblyJob } = await import(
+        "../services/workerSchedulerService"
+      );
 
       // Small, deliberate duplication of `verticalDramaEpisodes.ts`'s own
       // `resolveVerticalDramaVoiceChainFlag` (a 2-line tenant-flag read) —
@@ -5295,9 +5308,50 @@ export const verticalDramaSeriesRouter = router({
         };
       }
 
-      const submitted = await submitSequentialAssemblyJobs(
-        specs,
-        internalBaseUrl
+      // Vertical Drama Render Queue plan §4.2 Wave 3 — fan OUT one
+      // `vertical_drama_ffmpeg_assembly` worker job (kind:
+      // "season_sub_episode") per episode instead of one in-process
+      // sequential ffmpeg chain (`submitSequentialAssemblyJobs`, now unused
+      // here). Minting/persisting every episode's pending job id stays
+      // parallel across episodes (independent rows, no write conflict —
+      // same as `submitSequentialAssemblyJobs`'s own up-front persist step);
+      // the ACTUAL ffmpeg runs are serialized later by the executor's
+      // concurrency cap (plan §4.3), not by this router.
+      const submitted = await Promise.all(
+        specs.map(async spec => {
+          const renderFeed = {
+            owner: spec.owner,
+            clips: spec.clips,
+            internalBaseUrl,
+            filename: spec.filename,
+            ...(spec.dialogueAudio ? { dialogueAudio: spec.dialogueAudio } : {}),
+            ...(spec.subtitles ? { subtitles: spec.subtitles } : {}),
+            ...(spec.watermarkImage ? { watermarkImage: spec.watermarkImage } : {}),
+          };
+          const { job } = await queueVerticalDramaFfmpegAssemblyJob({
+            tenantId,
+            requestedByUserId: userId,
+            kind: "season_sub_episode",
+            contractVersion: 1,
+            owner: {
+              tenantId,
+              userId: String(userId),
+              seriesId: String(seriesId),
+              episodeId: String(spec.owner.episodeId),
+            },
+            renderFeed,
+            display: {
+              seriesTitle: seriesRow.title ?? undefined,
+              label: spec.filename,
+            },
+          });
+          await persistCompiledVideoState(spec.owner, {
+            pendingJobId: job.id,
+            status: "pending",
+            error: undefined,
+          });
+          return { episodeId: spec.owner.episodeId, jobId: job.id as string };
+        })
       );
 
       return {

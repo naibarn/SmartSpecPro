@@ -151,6 +151,10 @@ import {
   type SubtitleFontSizeId,
 } from "./verticalDramaFinalRenderGraph";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+// Vertical Drama Render Queue plan §4.2 Wave 3 — enqueue-only entry point
+// for the `vertical_drama_ffmpeg_assembly` worker job type; replaces the
+// in-process `runProductionEpisodeGroupJob` fire-and-forget chain below.
+import { queueVerticalDramaFfmpegAssemblyJob } from "./workerSchedulerService";
 import {
   resolveAudienceAgeRating,
   type AudienceAgeRating,
@@ -751,7 +755,7 @@ export async function renderSubEpisodeWithOptions(
 /* (`verticalDramaFinalRenderGraph.ts`).                                     */
 /* -------------------------------------------------------------------------- */
 
-async function runProductionEpisodeGroupJob(args: {
+export async function runProductionEpisodeGroupJob(args: {
   owner: ProductionEpisodeOwner;
   groupIndex: number;
   /** This group's members, in playback order. */
@@ -1202,10 +1206,15 @@ export async function assembleProductionEpisodesForSeries(
     credits,
     overlays,
   } = args;
-  const ffmpegRunner = args.ffmpegRunner ?? defaultFfmpegRunner;
-  const probeDurationSecondsFn = args.probeDurationSecondsFn ?? probeDurationSeconds;
-  const renderSubEpisodeWithOptionsFn =
-    args.renderSubEpisodeWithOptionsFn ?? renderSubEpisodeWithOptions;
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `ffmpegRunner`/
+  // `probeDurationSecondsFn`/`renderSubEpisodeWithOptionsFn` are no longer
+  // resolved/used HERE: this function only enqueues now (see the loop
+  // below), it never calls `runProductionEpisodeGroupJob` in-process. The
+  // executor (`verticalDramaFfmpegAssemblyRunner.ts`) supplies its own
+  // default injectables when it later calls `runProductionEpisodeGroupJob`
+  // for a claimed job. The three fields remain on
+  // `AssembleProductionEpisodesForSeriesArgs` for backward-compatible test
+  // injection but are otherwise unused by this function's body.
   const owner: ProductionEpisodeOwner = { tenantId, userId, seriesId };
 
   const episodeRows = await db
@@ -1312,60 +1321,71 @@ export async function assembleProductionEpisodesForSeries(
 
   const groupsToRun = planned.filter(p => !p.reuse);
 
-  // Fire-and-forget — each group's ffmpeg job runs SEQUENTIALLY (never
-  // parallel; same single-host resource-budget rationale as
-  // `submitSequentialAssemblyJobs`). Errors are caught and persisted inside
-  // `runProductionEpisodeGroupJob`, never thrown back to this function's
-  // (already-returned) caller.
-  void (async () => {
-    // Render-options LEVEL — resolved ONCE for the whole call (not per group/
-    // per Sub-Episode), mirroring `assembleEpisodeVideo`'s own handler:
-    // `voiceChainEnabled` is always resolved up front when rendering is
-    // requested at all; `audienceAgeRating` is resolved LAZILY, only when
-    // `showAgeBadge` is actually requested, so a render that never asks for
-    // the badge pays zero extra DB cost (see `loadProductionSeriesAudienceAgeRating`'s
-    // own doc comment).
-    let voiceChainEnabled = false;
-    let audienceAgeRating: AudienceAgeRating | undefined;
-    if (renderOptions) {
-      voiceChainEnabled = await resolveProductionVoiceChainFlag(tenantId);
-      if (renderOptions.showAgeBadge === true) {
-        audienceAgeRating = await loadProductionSeriesAudienceAgeRating(owner);
-      }
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — enqueue ONE
+  // `vertical_drama_ffmpeg_assembly` worker job (kind:
+  // "production_episode_group") per NEW/changed group instead of running
+  // `runProductionEpisodeGroupJob` in-process here. `renderFeed` carries
+  // exactly the DATA args `runProductionEpisodeGroupJob` reads — NEVER
+  // `ffmpegRunner`/`probeDurationSecondsFn`/`renderSubEpisodeWithOptionsFn`
+  // (the executor supplies its own default injectables for those). Group
+  // entries in `manifest` stay `status: "pending"`; the executor patches
+  // each to `completed`/`failed` once its job finishes.
+  //
+  // Render-options LEVEL — resolved ONCE for the whole call (not per group/
+  // per Sub-Episode), mirroring `assembleEpisodeVideo`'s own handler:
+  // `voiceChainEnabled` is always resolved up front when rendering is
+  // requested at all; `audienceAgeRating` is resolved LAZILY, only when
+  // `showAgeBadge` is actually requested, so a render that never asks for
+  // the badge pays zero extra DB cost (see `loadProductionSeriesAudienceAgeRating`'s
+  // own doc comment).
+  let voiceChainEnabled = false;
+  let audienceAgeRating: AudienceAgeRating | undefined;
+  if (renderOptions) {
+    voiceChainEnabled = await resolveProductionVoiceChainFlag(tenantId);
+    if (renderOptions.showAgeBadge === true) {
+      audienceAgeRating = await loadProductionSeriesAudienceAgeRating(owner);
     }
+  }
 
-    for (const group of groupsToRun) {
-      const filename = productionEpisodeFilename({
-        seriesId,
-        groupIndex: group.index,
+  for (const group of groupsToRun) {
+    const filename = productionEpisodeFilename({
+      seriesId,
+      groupIndex: group.index,
+      seriesTitle: args.seriesTitle,
+    });
+    const renderFeed = {
+      owner,
+      groupIndex: group.index,
+      members: group.members,
+      internalBaseUrl,
+      filename,
+      ...(args.seriesTitle ? { seriesTitle: args.seriesTitle } : {}),
+      ...(allowPartial !== undefined ? { allowPartial } : {}),
+      ...(renderOptions ? { renderOptions } : {}),
+      voiceChainEnabled,
+      ...(audienceAgeRating !== undefined ? { audienceAgeRating } : {}),
+      ...(bgm ? { bgm } : {}),
+      ...(credits ? { credits } : {}),
+      ...(overlays && overlays.length > 0 ? { overlays } : {}),
+    };
+    await queueVerticalDramaFfmpegAssemblyJob({
+      tenantId,
+      requestedByUserId: userId,
+      kind: "production_episode_group",
+      contractVersion: 1,
+      owner: {
+        tenantId,
+        userId: String(userId),
+        seriesId: String(seriesId),
+      },
+      renderFeed,
+      display: {
         seriesTitle: args.seriesTitle,
-      });
-      try {
-        await runProductionEpisodeGroupJob({
-          owner,
-          groupIndex: group.index,
-          members: group.members,
-          internalBaseUrl,
-          filename,
-          ffmpegRunner,
-          probeDurationSecondsFn,
-          seriesTitle: args.seriesTitle,
-          allowPartial,
-          renderOptions,
-          voiceChainEnabled,
-          audienceAgeRating,
-          renderSubEpisodeWithOptionsFn,
-          bgm,
-          credits,
-          overlays,
-        });
-      } catch {
-        // Defense-in-depth only — `runProductionEpisodeGroupJob` already
-        // catches internally and persists a "failed" state; continue the
-        // chain regardless so one bad group never blocks the rest.
-      }
-    }
-  })();
+        groupIndex: group.index,
+        label: filename,
+      },
+    });
+  }
 
   return {
     groupsCreated: groupsToRun.length,

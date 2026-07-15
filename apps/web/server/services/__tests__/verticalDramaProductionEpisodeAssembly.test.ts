@@ -27,6 +27,21 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleProductionEpisodesForSeries`
+// now ENQUEUES a `vertical_drama_ffmpeg_assembly` worker job per group
+// instead of running `runProductionEpisodeGroupJob` in-process, so its own
+// tests below mock the enqueue function rather than waiting on a real
+// ffmpeg chain. `runProductionEpisodeGroupJob` itself is UNCHANGED by that
+// wave — its own ffmpeg-orchestration behavior (render-options/bgm/credits/
+// overlays passes) is covered directly further down this file via direct
+// calls to that (still-exported) function.
+const { mockQueueVerticalDramaFfmpegAssemblyJob } = vi.hoisted(() => ({
+  mockQueueVerticalDramaFfmpegAssemblyJob: vi.fn(),
+}));
+vi.mock("../workerSchedulerService", () => ({
+  queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
+}));
+
 const dbState = {
   episodes: [] as Array<{
     episodeNumber: number;
@@ -102,6 +117,11 @@ import {
   findSubEpisodesMissingCompiledVideo,
   productionEpisodeFilename,
   resolveSubEpisodesForProductionAssembly,
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — the ffmpeg-orchestration
+  // behavior tests below (render-options/bgm/credits/overlays) now call this
+  // directly (it is unchanged by that wave), since
+  // `assembleProductionEpisodesForSeries` no longer invokes it in-process.
+  runProductionEpisodeGroupJob,
   type ProductionEpisodeBgmOptions,
   type ProductionEpisodeCreditsOptions,
   type ProductionEpisodeRenderOptions,
@@ -126,33 +146,54 @@ beforeEach(() => {
   dbState.bible = null;
   vi.clearAllMocks();
   vi.mocked(getTenantFeatureFlags).mockResolvedValue({ ...FEATURE_FLAG_DEFAULTS });
+  // Default enqueue stub — a fresh fake job id per call, so callers that
+  // assert on `job.id` (e.g. `pendingJobId`) never collide across groups.
+  let queueCallCount = 0;
+  mockQueueVerticalDramaFfmpegAssemblyJob.mockImplementation(async () => {
+    queueCallCount += 1;
+    return { created: true, job: { id: `queued-job-${queueCallCount}` } };
+  });
 });
-
-/** Poll-until-settled helper — mirrors `verticalDramaEpisodeVideoAssembly.test.ts`'s
- *  own helper for waiting on a fire-and-forget background chain. */
-async function waitForCondition(
-  predicate: () => boolean,
-  opts: { timeoutMs?: number; intervalMs?: number } = {}
-): Promise<void> {
-  const timeoutMs = opts.timeoutMs ?? 2000;
-  const intervalMs = opts.intervalMs ?? 5;
-  const deadline = Date.now() + timeoutMs;
-  while (!predicate()) {
-    if (Date.now() >= deadline) {
-      throw new Error(`waitForCondition: condition not met within ${timeoutMs}ms`);
-    }
-    await new Promise(resolve => setTimeout(resolve, intervalMs));
-  }
-}
 
 function completedManifest(): ProductionEpisodesManifestWithBgm | null {
   return dbState.productionEpisodesManifest as ProductionEpisodesManifestWithBgm | null;
 }
 
-function allGroupsSettled(): boolean {
-  const manifest = completedManifest();
-  if (!manifest) return false;
-  return manifest.episodes.every(e => e.status === "completed" || e.status === "failed");
+/** Read one group's CURRENT persisted state by index — used by the
+ *  `runProductionEpisodeGroupJob` direct-call tests below (that function is
+ *  awaited directly now, no fire-and-forget chain to poll for). */
+function groupState(groupIndex: number) {
+  return completedManifest()?.episodes.find(e => e.index === groupIndex);
+}
+
+/** Seed a single pending group entry at `groupIndex` — mirrors the shape
+ *  `assembleProductionEpisodesForSeries` itself persists before enqueueing,
+ *  for tests that call `runProductionEpisodeGroupJob` directly (bypassing
+ *  the orchestrator entirely). */
+function seedGroupManifest(
+  groupIndex: number,
+  subEpisodeNumbers: number[],
+  groupSize: 5 | 10 = 5
+): void {
+  dbState.productionEpisodesManifest = {
+    groupSize,
+    episodes: [{ index: groupIndex, groupSize, subEpisodeNumbers, status: "pending" }],
+  };
+}
+
+/** Build `runProductionEpisodeGroupJob`'s `members` arg directly (bypassing
+ *  the `dbState.episodes` query `assembleProductionEpisodesForSeries` itself
+ *  uses) — placeholder `motionPromptPack`/`dialogueAudioPlan` values are
+ *  only ever read by the INJECTED fake `renderSubEpisodeWithOptionsFn`,
+ *  never interpreted directly by this helper's callers below. */
+function membersFrom(episodeNumbers: number[]) {
+  return episodeNumbers.map(n => ({
+    episodeNumber: n,
+    videoUrl: `/api/storage/files/sub-ep-${n}.mp4`,
+    episodeId: n,
+    motionPromptPack: { clips: [{ clipNumber: 1 }] },
+    dialogueAudioPlan: null as unknown,
+  }));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -333,15 +374,8 @@ describe("productionEpisodeFilename", () => {
   });
 });
 
-describe("assembleProductionEpisodesForSeries (mocked ffmpeg + db + storage)", () => {
+describe("assembleProductionEpisodesForSeries — enqueue (mocked db + workerSchedulerService)", () => {
   const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
-  const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
-  const fakeProbeDurationSeconds = vi.fn(async () => 42);
-
-  beforeEach(() => {
-    fakeFfmpegRunner.mockClear();
-    fakeProbeDurationSeconds.mockClear();
-  });
 
   function seedCompiledEpisodes(episodeNumbers: number[]) {
     dbState.episodes = episodeNumbers.map(n => ({
@@ -359,10 +393,9 @@ describe("assembleProductionEpisodesForSeries (mocked ffmpeg + db + storage)", (
         ...owner,
         groupSize: 5,
         internalBaseUrl: "http://localhost:3000",
-        ffmpegRunner: fakeFfmpegRunner,
-        probeDurationSecondsFn: fakeProbeDurationSeconds,
       })
     ).rejects.toThrowError(/vertical_drama_production_no_subepisodes/);
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).not.toHaveBeenCalled();
   });
 
   it("throws when a sub-episode is missing a compiled video and allowPartial is not set", async () => {
@@ -374,18 +407,16 @@ describe("assembleProductionEpisodesForSeries (mocked ffmpeg + db + storage)", (
         ...owner,
         groupSize: 5,
         internalBaseUrl: "http://localhost:3000",
-        ffmpegRunner: fakeFfmpegRunner,
-        probeDurationSecondsFn: fakeProbeDurationSeconds,
       })
     ).rejects.toThrowError(/vertical_drama_production_missing_subepisodes.*\b3\b/);
 
-    // No ffmpeg work and no manifest persisted — the precondition check runs
+    // No enqueue and no manifest persisted — the precondition check runs
     // before any group is planned or written.
-    expect(fakeFfmpegRunner).not.toHaveBeenCalled();
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).not.toHaveBeenCalled();
     expect(dbState.productionEpisodesManifest).toBeNull();
   });
 
-  it("chunks + persists a pending manifest synchronously, then completes each group in the background", async () => {
+  it("chunks + persists a pending manifest synchronously, then enqueues ONE vertical_drama_ffmpeg_assembly job per NEW group", async () => {
     seedCompiledEpisodes([1, 2, 3, 4, 5, 6, 7]);
 
     const result = await assembleProductionEpisodesForSeries({
@@ -393,8 +424,6 @@ describe("assembleProductionEpisodesForSeries (mocked ffmpeg + db + storage)", (
       groupSize: 5,
       internalBaseUrl: "http://localhost:3000",
       seriesTitle: "Test Series",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
     });
 
     expect(result.groupsCreated).toBe(2);
@@ -404,38 +433,61 @@ describe("assembleProductionEpisodesForSeries (mocked ffmpeg + db + storage)", (
       [1, 2, 3, 4, 5],
       [6, 7],
     ]);
-    // Persisted synchronously as "pending" before this function returned.
+    // Persisted synchronously as "pending" before this function returned —
+    // and STAYS "pending" here: the executor (a separate process, exercised
+    // by `verticalDramaFfmpegAssemblyRunner.test.ts`/`inlineRenderWorker.test.ts`)
+    // is what later flips a group to completed/failed, not this function.
     expect(result.manifest.episodes.every(e => e.status === "pending")).toBe(true);
     expect(dbState.productionEpisodesManifest).toEqual(result.manifest);
 
-    await waitForCondition(allGroupsSettled);
-
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes.map(e => e.status)).toEqual(["completed", "completed"]);
-    expect(finalManifest.episodes[0].videoUrl).toMatch(/^\/api\/storage\/files\//);
-    expect(finalManifest.episodes[0].durationSeconds).toBe(42);
-    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2);
-    expect(storagePutFromPath).toHaveBeenCalledTimes(2);
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledTimes(2);
+    const [firstCall, secondCall] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(
+      c => c[0] as any
+    );
+    expect(firstCall).toMatchObject({
+      tenantId: owner.tenantId,
+      requestedByUserId: owner.userId,
+      kind: "production_episode_group",
+      owner: {
+        tenantId: owner.tenantId,
+        userId: String(owner.userId),
+        seriesId: String(owner.seriesId),
+      },
+    });
+    expect(firstCall.renderFeed).toMatchObject({
+      owner: { tenantId: owner.tenantId, userId: owner.userId, seriesId: owner.seriesId },
+      groupIndex: 0,
+      internalBaseUrl: "http://localhost:3000",
+      seriesTitle: "Test Series",
+      voiceChainEnabled: false,
+    });
+    expect(firstCall.renderFeed.members.map((m: any) => m.episodeNumber)).toEqual([
+      1, 2, 3, 4, 5,
+    ]);
+    expect(secondCall.renderFeed.groupIndex).toBe(1);
+    expect(secondCall.renderFeed.members.map((m: any) => m.episodeNumber)).toEqual([6, 7]);
+    // Enqueue-only — no direct ffmpeg spawn from this function anymore.
   });
 
-  it("marks a group failed (without throwing) when its ffmpeg concat exits non-zero", async () => {
+  it("resolves the voice-chain tenant flag and lazily loads the audience age rating into the enqueued renderFeed only when showAgeBadge is requested", async () => {
     seedCompiledEpisodes([1, 2, 3]);
-    const failingRunner = vi.fn(async () => ({ code: 1, stderr: "boom" }));
+    dbState.bible = { audienceAgeRating: "13plus" };
+    vi.mocked(getTenantFeatureFlags).mockResolvedValue({
+      ...FEATURE_FLAG_DEFAULTS,
+      verticalDramaSeriesVoiceChain: true,
+    });
 
-    const result = await assembleProductionEpisodesForSeries({
+    await assembleProductionEpisodesForSeries({
       ...owner,
       groupSize: 5,
       internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: failingRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
+      renderOptions: { includeDialogueAudio: true, showAgeBadge: true },
     });
-    expect(result.groupsCreated).toBe(1);
 
-    await waitForCondition(allGroupsSettled);
-
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(/ffmpeg production-episode concat failed/);
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledTimes(1);
+    const [call] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(c => c[0] as any);
+    expect(call.renderFeed.voiceChainEnabled).toBe(true);
+    expect(call.renderFeed.audienceAgeRating).toBe("13plus");
   });
 
   it("skips re-running an already-completed group with unchanged membership on a second call", async () => {
@@ -445,36 +497,51 @@ describe("assembleProductionEpisodesForSeries (mocked ffmpeg + db + storage)", (
       ...owner,
       groupSize: 5,
       internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
     });
     expect(first.groupsCreated).toBe(2);
-    await waitForCondition(allGroupsSettled);
-    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2);
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledTimes(2);
 
-    // A new sub-episode 7 arrives; re-running should only assemble the NEW
+    // Simulate the executor completing group 0 in the background before the
+    // second call (the real timeline: the executor patches the manifest
+    // independently of this function, via `patchProductionEpisodeGroupState`).
+    const manifestAfterFirst = dbState.productionEpisodesManifest as ProductionEpisodesManifestWithBgm;
+    dbState.productionEpisodesManifest = {
+      ...manifestAfterFirst,
+      episodes: manifestAfterFirst.episodes.map(e =>
+        e.index === 0
+          ? { ...e, status: "completed" as const, videoUrl: "/api/storage/files/group-0.mp4" }
+          : e
+      ),
+    };
+
+    // A new sub-episode 7 arrives; re-running should only enqueue the NEW
     // trailing short group, reusing group 0's completed state untouched.
-    fakeFfmpegRunner.mockClear();
+    mockQueueVerticalDramaFfmpegAssemblyJob.mockClear();
     seedCompiledEpisodes([1, 2, 3, 4, 5, 6, 7]);
 
     const second = await assembleProductionEpisodesForSeries({
       ...owner,
       groupSize: 5,
       internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
     });
     expect(second.groupsCreated).toBe(1);
     expect(second.groupsSkipped).toBe(1);
     expect(second.manifest.episodes[0].status).toBe("completed"); // reused verbatim
     expect(second.manifest.episodes[1].status).toBe("pending"); // freshly (re)computed
 
-    await waitForCondition(allGroupsSettled);
-    expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1);
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledTimes(1);
+    const [onlyCall] = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls.map(c => c[0] as any);
+    expect(onlyCall.renderFeed.groupIndex).toBe(1);
   });
 });
 
-describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOptions)", () => {
+describe("runProductionEpisodeGroupJob — Render-options LEVEL (renderOptions)", () => {
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleProductionEpisodesForSeries`
+  // no longer calls `runProductionEpisodeGroupJob` in-process (see the
+  // "enqueue" describe block above), so this ffmpeg-orchestration behavior
+  // is now exercised by calling the (still-exported, unchanged)
+  // `runProductionEpisodeGroupJob` directly — mirrors how the executor
+  // itself will invoke it for a claimed job.
   const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
   const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
   const fakeProbeDurationSeconds = vi.fn(async () => 42);
@@ -484,28 +551,8 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
     fakeProbeDurationSeconds.mockClear();
   });
 
-  /**
-   * Seeds sub-episodes with the `id`/`motionPromptPack`/`dialogueAudioPlan`
-   * fields a renderOptions-mode render step reads — these placeholder
-   * values are never actually interpreted here (the render step itself is
-   * always the INJECTED fake `renderSubEpisodeWithOptionsFn` below, never
-   * the real `renderSubEpisodeWithOptions`), so their exact shape doesn't
-   * matter beyond existing.
-   */
-  function seedRenderableEpisodes(episodeNumbers: number[]) {
-    dbState.episodes = episodeNumbers.map(n => ({
-      episodeNumber: n,
-      id: n,
-      assemblyManifest: {
-        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
-      },
-      motionPromptPack: { clips: [{ clipNumber: 1 }] },
-      dialogueAudioPlan: null,
-    }));
-  }
-
   it("does not invoke the per-Sub-Episode render function when renderOptions is omitted (D′-1 default, unchanged)", async () => {
-    seedRenderableEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
     const renderFn = vi.fn(
       async (
         _args: RenderSubEpisodeWithOptionsArgs
@@ -514,25 +561,24 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
       })
     );
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
+    await runProductionEpisodeGroupJob({
+      owner,
+      groupIndex: 0,
+      members: membersFrom([1, 2, 3]),
       internalBaseUrl: "http://localhost:3000",
+      filename: "prod-ep-1.mp4",
       ffmpegRunner: fakeFfmpegRunner,
       probeDurationSecondsFn: fakeProbeDurationSeconds,
+      voiceChainEnabled: false,
       renderSubEpisodeWithOptionsFn: renderFn,
     });
 
-    await waitForCondition(allGroupsSettled);
-
     expect(renderFn).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].renderOptions).toBeUndefined();
+    expect(groupState(0)?.status).toBe("completed");
   });
 
-  it("renders every Sub-Episode in a group WITH the given renderOptions before concatenating, and records renderOptions on the group state (pending AND completed)", async () => {
-    seedRenderableEpisodes([1, 2, 3]);
+  it("renders every Sub-Episode in a group WITH the given renderOptions before concatenating", async () => {
+    seedGroupManifest(0, [1, 2, 3]);
     const calls: RenderSubEpisodeWithOptionsArgs[] = [];
     const renderFn = vi.fn(
       async (
@@ -554,21 +600,18 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
       loudnessNormalize: true,
     };
 
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
+    await runProductionEpisodeGroupJob({
+      owner,
+      groupIndex: 0,
+      members: membersFrom([1, 2, 3]),
       internalBaseUrl: "http://localhost:3000",
+      filename: "prod-ep-1.mp4",
       ffmpegRunner: fakeFfmpegRunner,
       probeDurationSecondsFn: fakeProbeDurationSeconds,
+      voiceChainEnabled: false,
       renderSubEpisodeWithOptionsFn: renderFn,
       renderOptions,
     });
-
-    // Persisted synchronously onto the "pending" group state, before the
-    // background render/concat chain has necessarily run at all.
-    expect(result.manifest.episodes[0].renderOptions).toEqual(renderOptions);
-
-    await waitForCondition(allGroupsSettled);
 
     expect(renderFn).toHaveBeenCalledTimes(3);
     expect(calls.map(c => c.owner.episodeId)).toEqual([1, 2, 3]);
@@ -582,18 +625,11 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
     // ones) — one ffmpeg invocation for the whole group's concat, on top of
     // the 3 per-Sub-Episode render calls above.
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1);
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].renderOptions).toEqual(renderOptions);
+    expect(groupState(0)?.status).toBe("completed");
   });
 
-  it("threads the voice-chain tenant flag and lazily resolves the series audience age rating only when showAgeBadge is requested", async () => {
-    seedRenderableEpisodes([1]);
-    dbState.bible = { audienceAgeRating: "13plus" };
-    vi.mocked(getTenantFeatureFlags).mockResolvedValue({
-      ...FEATURE_FLAG_DEFAULTS,
-      verticalDramaSeriesVoiceChain: true,
-    });
+  it("passes the caller-supplied voiceChainEnabled/audienceAgeRating through to every per-Sub-Episode render call", async () => {
+    seedGroupManifest(0, [1]);
     const calls: RenderSubEpisodeWithOptionsArgs[] = [];
     const renderFn = vi.fn(
       async (
@@ -604,17 +640,19 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
       }
     );
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
+    await runProductionEpisodeGroupJob({
+      owner,
+      groupIndex: 0,
+      members: membersFrom([1]),
       internalBaseUrl: "http://localhost:3000",
+      filename: "prod-ep-1.mp4",
       ffmpegRunner: fakeFfmpegRunner,
       probeDurationSecondsFn: fakeProbeDurationSeconds,
+      voiceChainEnabled: true,
+      audienceAgeRating: "13plus",
       renderSubEpisodeWithOptionsFn: renderFn,
       renderOptions: { includeDialogueAudio: true, showAgeBadge: true },
     });
-
-    await waitForCondition(allGroupsSettled);
 
     expect(renderFn).toHaveBeenCalledTimes(1);
     expect(calls[0].voiceChainEnabled).toBe(true);
@@ -622,7 +660,7 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
   });
 
   it("marks the whole group failed (without concatenating) when a per-Sub-Episode render fails", async () => {
-    seedRenderableEpisodes([1, 2]);
+    seedGroupManifest(0, [1, 2]);
     const renderFn = vi.fn(
       async (
         args: RenderSubEpisodeWithOptionsArgs
@@ -632,22 +670,22 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
       }
     );
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
+    await runProductionEpisodeGroupJob({
+      owner,
+      groupIndex: 0,
+      members: membersFrom([1, 2]),
       internalBaseUrl: "http://localhost:3000",
+      filename: "prod-ep-1.mp4",
       ffmpegRunner: fakeFfmpegRunner,
       probeDurationSecondsFn: fakeProbeDurationSeconds,
+      voiceChainEnabled: false,
       renderSubEpisodeWithOptionsFn: renderFn,
       renderOptions: { subtitlePreset: "none" },
     });
 
-    await waitForCondition(allGroupsSettled);
-
     expect(fakeFfmpegRunner).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(/boom: render failed/);
+    expect(groupState(0)?.status).toBe("failed");
+    expect(groupState(0)?.error).toMatch(/boom: render failed/);
   });
 });
 
@@ -664,24 +702,25 @@ describe("assembleProductionEpisodesForSeries — Render-options LEVEL (renderOp
  * `verticalDramaFinalRenderGraph.test.ts`; this file only asserts that the
  * SERVICE actually invokes it as a second ffmpeg call and uploads its output.
  */
-describe("assembleProductionEpisodesForSeries — Phase B-1 (bgm)", () => {
+describe("runProductionEpisodeGroupJob — Phase B-1 (bgm)", () => {
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — see the doc comment atop
+  // the "Render-options LEVEL" describe block above for why this now calls
+  // `runProductionEpisodeGroupJob` directly instead of going through
+  // `assembleProductionEpisodesForSeries` (which only enqueues now).
   const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
   const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
   const fakeProbeDurationSeconds = vi.fn(async () => 42);
+  const neverCalledRenderFn = vi.fn(
+    async (_args: RenderSubEpisodeWithOptionsArgs): Promise<RenderSubEpisodeWithOptionsResult> => {
+      throw new Error("renderSubEpisodeWithOptionsFn should not be called");
+    }
+  );
 
   beforeEach(() => {
     fakeFfmpegRunner.mockClear();
     fakeProbeDurationSeconds.mockClear();
+    neverCalledRenderFn.mockClear();
   });
-
-  function seedCompiledEpisodes(episodeNumbers: number[]) {
-    dbState.episodes = episodeNumbers.map(n => ({
-      episodeNumber: n,
-      assemblyManifest: {
-        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
-      },
-    }));
-  }
 
   const bgm: ProductionEpisodeBgmOptions = {
     url: "/api/storage/files/track.mp3",
@@ -689,42 +728,36 @@ describe("assembleProductionEpisodesForSeries — Phase B-1 (bgm)", () => {
     duckUnderVideoAudio: true,
   };
 
-  it("does not run a second ffmpeg pass, and records no bgm on the group state, when bgm is omitted (default, unchanged)", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
-
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
+  function baseArgs(overrides: Record<string, unknown> = {}) {
+    return {
+      owner,
+      groupIndex: 0,
+      members: membersFrom([1, 2, 3]),
       internalBaseUrl: "http://localhost:3000",
+      filename: "prod-ep-1.mp4",
       ffmpegRunner: fakeFfmpegRunner,
       probeDurationSecondsFn: fakeProbeDurationSeconds,
-    });
-    expect(result.manifest.episodes[0].bgm).toBeUndefined();
+      voiceChainEnabled: false,
+      renderSubEpisodeWithOptionsFn: neverCalledRenderFn,
+      ...overrides,
+    };
+  }
 
-    await waitForCondition(allGroupsSettled);
+  it("does not run a second ffmpeg pass when bgm is omitted (default, unchanged)", async () => {
+    seedGroupManifest(0, [1, 2, 3]);
+
+    await runProductionEpisodeGroupJob(baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]);
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no bgm pass
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].bgm).toBeUndefined();
+    expect(groupState(0)?.status).toBe("completed");
   });
 
-  it("runs a second bgm-mix ffmpeg pass after the concat, uploads ONLY its output, and records bgm on the group state (pending AND completed)", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+  it("runs a second bgm-mix ffmpeg pass after the concat and uploads ONLY its output", async () => {
+    seedGroupManifest(0, [1, 2, 3]);
 
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      bgm,
-    });
-    // Recorded synchronously onto the "pending" group state, before the
-    // background concat/bgm-mix chain has necessarily run at all.
-    expect(result.manifest.episodes[0].bgm).toEqual(bgm);
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ bgm }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then bgm mix
     const bgmArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
@@ -743,57 +776,41 @@ describe("assembleProductionEpisodesForSeries — Phase B-1 (bgm)", () => {
     const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
     expect(sourcePath).toMatch(/output-bgm\.mp4$/);
 
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].videoUrl).toMatch(/^\/api\/storage\/files\//);
-    expect(finalManifest.episodes[0].bgm).toEqual(bgm);
+    expect(groupState(0)?.status).toBe("completed");
+    expect(groupState(0)?.videoUrl).toMatch(/^\/api\/storage\/files\//);
   });
 
   it("marks the group failed (without uploading) when the bgm-mix ffmpeg pass itself exits non-zero", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
     let call = 0;
     const runner = vi.fn(async () => {
       call += 1;
       return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "bgm boom" };
     });
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: runner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      bgm,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ bgm, ffmpegRunner: runner }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(storagePutFromPath).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(/ffmpeg production-episode bgm mix failed/);
+    expect(groupState(0)?.status).toBe("failed");
+    expect(groupState(0)?.error).toMatch(/ffmpeg production-episode bgm mix failed/);
   });
 
   it("marks the group failed (without attempting the bgm pass) when the concat's own duration probe fails", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
     const probeFails = vi.fn(async () => undefined);
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: probeFails,
-      bgm,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ bgm, probeDurationSecondsFn: probeFails }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only; bgm pass never attempted
     expect(storagePutFromPath).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(
+    expect(groupState(0)?.status).toBe("failed");
+    expect(groupState(0)?.error).toMatch(
       /vertical_drama_production_bgm_duration_probe_failed/
     );
   });
@@ -815,24 +832,23 @@ describe("assembleProductionEpisodesForSeries — Phase B-1 (bgm)", () => {
  * SERVICE actually invokes them as an additional ffmpeg call and uploads its
  * output.
  */
-describe("assembleProductionEpisodesForSeries — Phase C-1 (credits)", () => {
+describe("runProductionEpisodeGroupJob — Phase C-1 (credits)", () => {
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — see the doc comment atop
+  // the "Render-options LEVEL" describe block above.
   const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
   const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
   const fakeProbeDurationSeconds = vi.fn(async () => 42);
+  const neverCalledRenderFn = vi.fn(
+    async (_args: RenderSubEpisodeWithOptionsArgs): Promise<RenderSubEpisodeWithOptionsResult> => {
+      throw new Error("renderSubEpisodeWithOptionsFn should not be called");
+    }
+  );
 
   beforeEach(() => {
     fakeFfmpegRunner.mockClear();
     fakeProbeDurationSeconds.mockClear();
+    neverCalledRenderFn.mockClear();
   });
-
-  function seedCompiledEpisodes(episodeNumbers: number[]) {
-    dbState.episodes = episodeNumbers.map(n => ({
-      episodeNumber: n,
-      assemblyManifest: {
-        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
-      },
-    }));
-  }
 
   const credits: ProductionEpisodeCreditsOptions = {
     text: "Jane Doe — Writer\nJohn Smith — Director",
@@ -844,42 +860,36 @@ describe("assembleProductionEpisodesForSeries — Phase C-1 (credits)", () => {
     duckUnderVideoAudio: true,
   };
 
-  it("does not run an extra ffmpeg pass, and records no credits on the group state, when credits is omitted (default, unchanged)", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
-
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
+  function baseArgs(overrides: Record<string, unknown> = {}) {
+    return {
+      owner,
+      groupIndex: 0,
+      members: membersFrom([1, 2, 3]),
       internalBaseUrl: "http://localhost:3000",
+      filename: "prod-ep-1.mp4",
       ffmpegRunner: fakeFfmpegRunner,
       probeDurationSecondsFn: fakeProbeDurationSeconds,
-    });
-    expect(result.manifest.episodes[0].credits).toBeUndefined();
+      voiceChainEnabled: false,
+      renderSubEpisodeWithOptionsFn: neverCalledRenderFn,
+      ...overrides,
+    };
+  }
 
-    await waitForCondition(allGroupsSettled);
+  it("does not run an extra ffmpeg pass when credits is omitted (default, unchanged)", async () => {
+    seedGroupManifest(0, [1, 2, 3]);
+
+    await runProductionEpisodeGroupJob(baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]);
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no credits pass
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].credits).toBeUndefined();
+    expect(groupState(0)?.status).toBe("completed");
   });
 
-  it("runs a second credits-burn ffmpeg pass after the concat, uploads ONLY its output, and records credits on the group state (pending AND completed)", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+  it("runs a second credits-burn ffmpeg pass after the concat and uploads ONLY its output", async () => {
+    seedGroupManifest(0, [1, 2, 3]);
 
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      credits,
-    });
-    // Recorded synchronously onto the "pending" group state, before the
-    // background concat/credits-burn chain has necessarily run at all.
-    expect(result.manifest.episodes[0].credits).toEqual(credits);
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then credits burn
     const creditsArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
@@ -897,26 +907,16 @@ describe("assembleProductionEpisodesForSeries — Phase C-1 (credits)", () => {
     const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
     expect(sourcePath).toMatch(/output-credits\.mp4$/);
 
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].videoUrl).toMatch(/^\/api\/storage\/files\//);
-    expect(finalManifest.episodes[0].credits).toEqual(credits);
+    expect(groupState(0)?.status).toBe("completed");
+    expect(groupState(0)?.videoUrl).toMatch(/^\/api\/storage\/files\//);
   });
 
   it("burns credits onto the BGM-mixed output (not the raw concat output) when both bgm and credits are supplied — three passes, in order", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      bgm,
-      credits,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ bgm, credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(3); // concat, bgm mix, credits burn
     const bgmArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
@@ -932,59 +932,44 @@ describe("assembleProductionEpisodesForSeries — Phase C-1 (credits)", () => {
     const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
     expect(sourcePath).toMatch(/output-credits\.mp4$/);
 
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].bgm).toEqual(bgm);
-    expect(finalManifest.episodes[0].credits).toEqual(credits);
+    expect(groupState(0)?.status).toBe("completed");
   });
 
   it("marks the group failed (without uploading) when the credits-burn ffmpeg pass itself exits non-zero", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
     let call = 0;
     const runner = vi.fn(async () => {
       call += 1;
       return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "credits boom" };
     });
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: runner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      credits,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ credits, ffmpegRunner: runner }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
+    );
 
     expect(storagePutFromPath).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(
+    expect(groupState(0)?.status).toBe("failed");
+    expect(groupState(0)?.error).toMatch(
       /ffmpeg production-episode credits burn failed/
     );
   });
 
   it("marks the group failed (without attempting the credits pass) when the concat's own duration probe fails", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
     const probeFails = vi.fn(async () => undefined);
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: probeFails,
-      credits,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ credits, probeDurationSecondsFn: probeFails }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only; credits pass never attempted
     expect(storagePutFromPath).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(
+    expect(groupState(0)?.status).toBe("failed");
+    expect(groupState(0)?.error).toMatch(
       /vertical_drama_production_credits_duration_probe_failed/
     );
   });
@@ -1009,24 +994,23 @@ describe("assembleProductionEpisodesForSeries — Phase C-1 (credits)", () => {
  * asserts that the SERVICE actually invokes them as an additional ffmpeg call
  * and uploads its output.
  */
-describe("assembleProductionEpisodesForSeries — Phase C-2 (overlays)", () => {
+describe("runProductionEpisodeGroupJob — Phase C-2 (overlays)", () => {
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — see the doc comment atop
+  // the "Render-options LEVEL" describe block above.
   const owner = { tenantId: "t1", userId: 1, seriesId: 7 };
   const fakeFfmpegRunner = vi.fn(async () => ({ code: 0, stderr: "" }));
   const fakeProbeDurationSeconds = vi.fn(async () => 42);
+  const neverCalledRenderFn = vi.fn(
+    async (_args: RenderSubEpisodeWithOptionsArgs): Promise<RenderSubEpisodeWithOptionsResult> => {
+      throw new Error("renderSubEpisodeWithOptionsFn should not be called");
+    }
+  );
 
   beforeEach(() => {
     fakeFfmpegRunner.mockClear();
     fakeProbeDurationSeconds.mockClear();
+    neverCalledRenderFn.mockClear();
   });
-
-  function seedCompiledEpisodes(episodeNumbers: number[]) {
-    dbState.episodes = episodeNumbers.map(n => ({
-      episodeNumber: n,
-      assemblyManifest: {
-        compiledVideo: { status: "completed", videoUrl: `/api/storage/files/sub-ep-${n}.mp4` },
-      },
-    }));
-  }
 
   const overlays: ProductionEpisodeOverlayItem[] = [
     { atSeconds: 5, durationSeconds: 3, text: "Follow for more", style: "lower_third" },
@@ -1043,63 +1027,47 @@ describe("assembleProductionEpisodesForSeries — Phase C-2 (overlays)", () => {
     duckUnderVideoAudio: true,
   };
 
-  it("does not run an extra ffmpeg pass, and records no overlays on the group state, when overlays is omitted (default, unchanged)", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
-
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
+  function baseArgs(overrides: Record<string, unknown> = {}) {
+    return {
+      owner,
+      groupIndex: 0,
+      members: membersFrom([1, 2, 3]),
       internalBaseUrl: "http://localhost:3000",
+      filename: "prod-ep-1.mp4",
       ffmpegRunner: fakeFfmpegRunner,
       probeDurationSecondsFn: fakeProbeDurationSeconds,
-    });
-    expect(result.manifest.episodes[0].overlays).toBeUndefined();
+      voiceChainEnabled: false,
+      renderSubEpisodeWithOptionsFn: neverCalledRenderFn,
+      ...overrides,
+    };
+  }
 
-    await waitForCondition(allGroupsSettled);
+  it("does not run an extra ffmpeg pass when overlays is omitted (default, unchanged)", async () => {
+    seedGroupManifest(0, [1, 2, 3]);
+
+    await runProductionEpisodeGroupJob(baseArgs() as Parameters<typeof runProductionEpisodeGroupJob>[0]);
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no overlays pass
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].overlays).toBeUndefined();
+    expect(groupState(0)?.status).toBe("completed");
   });
 
-  it("does not run an extra ffmpeg pass, and records no overlays on the group state, when overlays is an EMPTY array (same as omitted)", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+  it("does not run an extra ffmpeg pass when overlays is an EMPTY array (same as omitted)", async () => {
+    seedGroupManifest(0, [1, 2, 3]);
 
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      overlays: [],
-    });
-    expect(result.manifest.episodes[0].overlays).toBeUndefined();
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ overlays: [] }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only, no overlays pass
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].overlays).toBeUndefined();
+    expect(groupState(0)?.status).toBe("completed");
   });
 
-  it("runs a second overlays-burn ffmpeg pass after the concat, uploads ONLY its output, and records overlays on the group state (pending AND completed), when overlays is supplied WITHOUT credits", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+  it("runs a second overlays-burn ffmpeg pass after the concat and uploads ONLY its output, when overlays is supplied WITHOUT credits", async () => {
+    seedGroupManifest(0, [1, 2, 3]);
 
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      overlays,
-    });
-    // Recorded synchronously onto the "pending" group state, before the
-    // background concat/overlays-burn chain has necessarily run at all.
-    expect(result.manifest.episodes[0].overlays).toEqual(overlays);
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ overlays }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then overlays burn
     const overlaysArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
@@ -1119,28 +1087,16 @@ describe("assembleProductionEpisodesForSeries — Phase C-2 (overlays)", () => {
     const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
     expect(sourcePath).toMatch(/output-overlays\.mp4$/);
 
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].videoUrl).toMatch(/^\/api\/storage\/files\//);
-    expect(finalManifest.episodes[0].overlays).toEqual(overlays);
+    expect(groupState(0)?.status).toBe("completed");
+    expect(groupState(0)?.videoUrl).toMatch(/^\/api\/storage\/files\//);
   });
 
   it("FOLDS overlays + credits into ONE additional ffmpeg pass (not two) when both are supplied for the same call", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
 
-    const result = await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      overlays,
-      credits,
-    });
-    expect(result.manifest.episodes[0].overlays).toEqual(overlays);
-    expect(result.manifest.episodes[0].credits).toEqual(credits);
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ overlays, credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     // Concat, then ONE combined overlays+credits burn — NOT concat + overlays
     // + credits (three passes) — this is the "one re-encode instead of two"
@@ -1158,25 +1114,15 @@ describe("assembleProductionEpisodesForSeries — Phase C-2 (overlays)", () => {
     const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
     expect(sourcePath).toMatch(/output-overlays-credits\.mp4$/);
 
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].overlays).toEqual(overlays);
-    expect(finalManifest.episodes[0].credits).toEqual(credits);
+    expect(groupState(0)?.status).toBe("completed");
   });
 
   it("still uses the ORIGINAL single-pass credits-only code path (Phase C-1, untouched) when credits is supplied WITHOUT overlays", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      credits,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(2); // concat, then credits burn only
     const creditsArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
@@ -1189,20 +1135,11 @@ describe("assembleProductionEpisodesForSeries — Phase C-2 (overlays)", () => {
   });
 
   it("burns the combined overlays+credits pass onto the BGM-mixed output (not the raw concat output) when bgm is ALSO supplied — three ffmpeg passes total, in order", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      bgm,
-      overlays,
-      credits,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ bgm, overlays, credits }) as Parameters<typeof runProductionEpisodeGroupJob>[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(3); // concat, bgm mix, combined overlays+credits burn
     const bgmArgs = fakeFfmpegRunner.mock.calls[1]![0] as string[];
@@ -1217,88 +1154,65 @@ describe("assembleProductionEpisodesForSeries — Phase C-2 (overlays)", () => {
     const [, sourcePath] = vi.mocked(storagePutFromPath).mock.calls[0]!;
     expect(sourcePath).toMatch(/output-overlays-credits\.mp4$/);
 
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("completed");
-    expect(finalManifest.episodes[0].bgm).toEqual(bgm);
-    expect(finalManifest.episodes[0].overlays).toEqual(overlays);
-    expect(finalManifest.episodes[0].credits).toEqual(credits);
+    expect(groupState(0)?.status).toBe("completed");
   });
 
   it("marks the group failed (without uploading) when the overlays-only burn ffmpeg pass exits non-zero", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
     let call = 0;
     const runner = vi.fn(async () => {
       call += 1;
       return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "overlays boom" };
     });
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: runner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      overlays,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ overlays, ffmpegRunner: runner }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
+    );
 
     expect(storagePutFromPath).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(
+    expect(groupState(0)?.status).toBe("failed");
+    expect(groupState(0)?.error).toMatch(
       /ffmpeg production-episode overlays burn failed/
     );
   });
 
   it("marks the group failed (without uploading) when the COMBINED overlays+credits burn ffmpeg pass exits non-zero", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
     let call = 0;
     const runner = vi.fn(async () => {
       call += 1;
       return call === 1 ? { code: 0, stderr: "" } : { code: 1, stderr: "combined boom" };
     });
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: runner,
-      probeDurationSecondsFn: fakeProbeDurationSeconds,
-      overlays,
-      credits,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ overlays, credits, ffmpegRunner: runner }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
+    );
 
     expect(storagePutFromPath).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(
+    expect(groupState(0)?.status).toBe("failed");
+    expect(groupState(0)?.error).toMatch(
       /ffmpeg production-episode overlays\/credits burn failed/
     );
   });
 
   it("marks the group failed (without attempting the overlays pass) when the concat's own duration probe fails", async () => {
-    seedCompiledEpisodes([1, 2, 3]);
+    seedGroupManifest(0, [1, 2, 3]);
     const probeFails = vi.fn(async () => undefined);
 
-    await assembleProductionEpisodesForSeries({
-      ...owner,
-      groupSize: 5,
-      internalBaseUrl: "http://localhost:3000",
-      ffmpegRunner: fakeFfmpegRunner,
-      probeDurationSecondsFn: probeFails,
-      overlays,
-    });
-
-    await waitForCondition(allGroupsSettled);
+    await runProductionEpisodeGroupJob(
+      baseArgs({ overlays, probeDurationSecondsFn: probeFails }) as Parameters<
+        typeof runProductionEpisodeGroupJob
+      >[0]
+    );
 
     expect(fakeFfmpegRunner).toHaveBeenCalledTimes(1); // concat only; overlays pass never attempted
     expect(storagePutFromPath).not.toHaveBeenCalled();
-    const finalManifest = completedManifest()!;
-    expect(finalManifest.episodes[0].status).toBe("failed");
-    expect(finalManifest.episodes[0].error).toMatch(
+    expect(groupState(0)?.status).toBe("failed");
+    expect(groupState(0)?.error).toMatch(
       /vertical_drama_production_overlays_duration_probe_failed/
     );
   });

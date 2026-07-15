@@ -609,8 +609,13 @@ export function getJobStatus(jobId: string): JobRecord | undefined {
 }
 
 /** Persist `assemblyManifest.compiledVideo` onto the owned episode (JSONB-patch,
- *  same shape convention as `updateEpisodeDraft`'s `assemblyManifest` field). */
-async function persistCompiledVideoState(
+ *  same shape convention as `updateEpisodeDraft`'s `assemblyManifest` field).
+ *  Exported (Vertical Drama Render Queue plan §4.2, Wave 3) so the router
+ *  enqueue sites can mark `compiledVideo.status="pending"` with the new
+ *  `worker_jobs` id the SAME way `submitAssemblyJob` always has — the
+ *  executor (a separate wave) is the one that later flips it to
+ *  `"ready"`/`"failed"`. */
+export async function persistCompiledVideoState(
   owner: AssembleEpisodeVideoOwner,
   patch: CompiledVideoState
 ): Promise<void> {

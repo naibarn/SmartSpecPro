@@ -1600,6 +1600,23 @@ async function main() {
     console.error("[Startup] Failed to start deferred media retry worker:", error);
   }
 
+  // Vertical Drama Render Queue plan §4.4 — start the in-server ffmpeg
+  // render worker only when the admin flag is ON (default OFF). Lazy
+  // `await import(...)` so a failure to load either module never blocks
+  // the rest of startup.
+  try {
+    const { getWebProcessRenderWorkerEnabled } = await import("../services/renderWorkerSettings");
+    if (await getWebProcessRenderWorkerEnabled()) {
+      const { startInlineRenderWorker } = await import("../services/inlineRenderWorker");
+      startInlineRenderWorker();
+      console.log("[Startup] Inline ffmpeg render worker started (admin flag ON)");
+    } else {
+      console.log("[Startup] Inline ffmpeg render worker NOT started (admin flag OFF — default)");
+    }
+  } catch (error) {
+    console.error("[Startup] Failed to start inline render worker:", error);
+  }
+
   // Initialize Telegram notification queue
   try {
     const db = await getDb();

@@ -54,6 +54,14 @@ type WorkerJobRow = Pick<
   | "finishedAt"
 >;
 
+// Vertical Drama Render Queue plan §4.5, Wave 3 — `cancelQueuedJob`'s
+// `.returning()` (no column list) already returns EVERY `workerJobs` column
+// at runtime, including `inputJson`; this widened type just lets
+// `cancelQueuedUserWorkerJob` read it back to detect + reset a canceled
+// `vertical_drama_ffmpeg_assembly` job's linked VD state (§4.5) without
+// re-querying the row.
+type WorkerJobRowWithInput = WorkerJobRow & Pick<WorkerJob, "inputJson">;
+
 type WorkerSummaryRow = {
   id: string | null;
   displayName: string | null;
@@ -98,7 +106,7 @@ export type WorkerJobMonitorRepository = {
   cancelQueuedJob(input: {
     auth: WorkerJobMonitorAuth;
     jobId: string;
-  }): Promise<WorkerJobRow | null>;
+  }): Promise<WorkerJobRowWithInput | null>;
 };
 
 export type SafeWorkerJobEvent = {
@@ -304,7 +312,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
       ))
       .returning();
 
-    return (updated as WorkerJobRow | undefined) ?? null;
+    return (updated as WorkerJobRowWithInput | undefined) ?? null;
   },
 };
 
@@ -561,5 +569,29 @@ export async function cancelQueuedUserWorkerJob(
       message: "Only active jobs can be canceled.",
     });
   }
+
+  // Vertical Drama Render Queue plan §4.5 — a canceled
+  // `vertical_drama_ffmpeg_assembly` job leaves its linked episode/series
+  // state stuck on "pending"/"processing" unless reset here. Best-effort
+  // ONLY: any failure in this block must never fail the cancel itself,
+  // since the `worker_jobs` row is already terminal at this point. Lazy
+  // `await import(...)` for cross-service wiring.
+  try {
+    const { VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE, verticalDramaFfmpegAssemblyJobContractSchema } =
+      await import("../../shared/workerRuntime");
+    if (updated.jobType === VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE) {
+      const { resetVerticalDramaFfmpegAssemblyStateOnCancel } = await import(
+        "./verticalDramaFfmpegAssemblyRunner"
+      );
+      const contract = verticalDramaFfmpegAssemblyJobContractSchema.parse(updated.inputJson);
+      await resetVerticalDramaFfmpegAssemblyStateOnCancel(contract);
+    }
+  } catch (error) {
+    console.error(
+      `[workerJobMonitorService] Failed to reset VD state for canceled job ${updated.id}:`,
+      error,
+    );
+  }
+
   return { canceled: true, jobId: updated.id };
 }

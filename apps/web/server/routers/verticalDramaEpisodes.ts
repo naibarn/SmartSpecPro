@@ -313,6 +313,17 @@ import {
   type EpisodeRunOwner,
 } from "../services/verticalDramaEpisodePipeline";
 import { createVerticalDramaProviderRoutingPort } from "../services/verticalDramaProviderRouting";
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `queueVerticalDramaFfmpegAssemblyJob`
+// (`../services/workerSchedulerService`) replaces the in-process
+// `submitAssemblyJob` launch inside `assembleEpisodeVideo`. Loaded via a
+// lazy `await import(...)` INSIDE that handler (not a static top-level
+// import) because `workerSchedulerService.ts` calls `createRateLimiter(...)`
+// at module-load time — a static import here would pull that side effect
+// into every OTHER procedure's sibling test file that mocks
+// `../services/rateLimiter` narrowly (or not at all), breaking module load
+// for tests that never touch `assembleEpisodeVideo`. Mirrors this file's
+// existing lazy-import posture for other heavy/side-effecting service
+// modules.
 import {
   verticalDramaSeriesMemoryService,
   memoryRowToEvent,
@@ -321,7 +332,13 @@ import {
   extractClipSourcesFromMotionPromptPack,
   mergeVideoTaskIntoMotionPromptPack,
   resolveClipsForAssembly,
+  // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
   submitAssemblyJob,
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+  // enqueues instead of launching `runAssemblyJob` in-process; this is the
+  // SAME read-modify-write persist `submitAssemblyJob` always used, exported
+  // so the router can call it directly right after enqueueing.
+  persistCompiledVideoState,
   compiledVideoFilename,
   // Task #21 phase B — connects the already-landed render engine's
   // `dialogueAudio`/`subtitles` inputs to real data. Lives in the SERVICE
@@ -13742,7 +13759,14 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      const { jobId } = await submitAssemblyJob({
+      // Vertical Drama Render Queue plan §4.2 Wave 3 — enqueue the
+      // `vertical_drama_ffmpeg_assembly` worker job instead of launching
+      // `runAssemblyJob` in-process (`submitAssemblyJob`, now unused here).
+      // `renderFeed` carries exactly the DATA args `runAssemblyJob` needs
+      // (never the ffmpeg/probe fn injectables — the executor supplies its
+      // own defaults for those), same set `submitAssemblyJob` was passed
+      // above.
+      const renderFeed = {
         owner,
         clips: resolved.ordered,
         internalBaseUrl,
@@ -13753,7 +13777,38 @@ export const verticalDramaEpisodesRouter = router({
           : {}),
         ...(combinedSubtitles ? { subtitles: combinedSubtitles } : {}),
         ...(watermarkImageForJob ? { watermarkImage: watermarkImageForJob } : {}),
+      };
+      // Lazy `await import(...)` — see this file's own import-block doc
+      // comment above (`queueVerticalDramaFfmpegAssemblyJob` reference) for
+      // why this is not a static top-level import.
+      const { queueVerticalDramaFfmpegAssemblyJob } = await import(
+        "../services/workerSchedulerService"
+      );
+      const { job } = await queueVerticalDramaFfmpegAssemblyJob({
+        tenantId,
+        requestedByUserId: userId,
+        kind: "sub_episode",
+        contractVersion: 1,
+        owner: {
+          tenantId,
+          userId: String(userId),
+          seriesId: String(seriesId),
+          episodeId: String(episodeId),
+        },
+        renderFeed,
+        display: {
+          seriesTitle: row.title ?? undefined,
+          episodeNumber: row.episodeNumber ?? undefined,
+          label: filename,
+        },
+        idempotencyKey: input.idempotencyKey,
       });
+      await persistCompiledVideoState(owner, {
+        pendingJobId: job.id,
+        status: "pending",
+        error: undefined,
+      });
+      const jobId = job.id as string;
 
       // W12-A voice chain manifest audit trail (additive, flag-gated) —
       // merges a RAW, shot-LOCAL-timed `dialogueAudioTimeline` snapshot into

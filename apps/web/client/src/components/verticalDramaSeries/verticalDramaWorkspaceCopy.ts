@@ -332,6 +332,9 @@ export const VD_COPY = {
     deliveryLabel: "Delivery",
     estimatedDialogueSecondsLabel: "Estimated total speech",
 
+    /* ---- Canonical dialogue preview (source-of-truth, pre-video-prompt) ---- */
+    canonicalDialoguePreviewLabel: "Dialogue (from the full script)",
+
     /* ---- One-click generate + inline prompt editing (Phase 4.1/4.2) ---- */
     generatePromptAndImage: "Generate prompt + image",
     generatingPromptAndImage: "Working…",
@@ -485,6 +488,9 @@ export const VD_COPY = {
       "Missing clips: {list} — generate those clips first, or assemble with only the completed clips.",
     compiledVideoAssemblePartial: "Assemble with completed clips only",
     compiledVideoProcessing: "Assembling the full Sub-episode video…",
+    compiledVideoQueuedHint:
+      "The job has been queued for rendering — if this takes a while, check or cancel it on the Render Jobs page.",
+    compiledVideoOpenRenderJobs: "Open Render Jobs",
     compiledVideoFailed: "Failed to assemble the full Sub-episode video.",
     compiledVideoRetry: "Retry",
     compiledVideoDurationLabel: "sec",
@@ -978,6 +984,9 @@ export const VD_COPY = {
     deliveryLabel: "น้ำเสียง/การแสดง",
     estimatedDialogueSecondsLabel: "รวมบทพูดประมาณ",
 
+    /* ---- Canonical dialogue preview (source-of-truth, pre-video-prompt) ---- */
+    canonicalDialoguePreviewLabel: "บทพูด (จากบทเต็ม)",
+
     /* ---- One-click generate + inline prompt editing (Phase 4.1/4.2) ---- */
     generatePromptAndImage: "สร้าง prompt + ภาพ",
     generatingPromptAndImage: "กำลังทำงาน…",
@@ -1123,6 +1132,9 @@ export const VD_COPY = {
       "ยังไม่มีคลิป: {list} — สร้างคลิปเหล่านี้ก่อน หรือประกอบเฉพาะช็อตที่เสร็จแล้ว",
     compiledVideoAssemblePartial: "ประกอบเฉพาะช็อตที่เสร็จแล้ว",
     compiledVideoProcessing: "กำลังประกอบวิดีโอรวม Sub-episode…",
+    compiledVideoQueuedHint:
+      "งานถูกส่งเข้าคิวเรนเดอร์แล้ว — ถ้าใช้เวลานาน ตรวจสอบหรือยกเลิกได้ที่หน้า Render Jobs",
+    compiledVideoOpenRenderJobs: "ไปที่ Render Jobs",
     compiledVideoFailed: "ประกอบวิดีโอรวม Sub-episode ไม่สำเร็จ",
     compiledVideoRetry: "ลองใหม่",
     compiledVideoDurationLabel: "วิ",

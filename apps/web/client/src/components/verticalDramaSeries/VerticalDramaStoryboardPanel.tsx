@@ -4711,9 +4711,24 @@ export function VerticalDramaStoryboardPanel({
             </div>
           ) : compiledVideo?.status === "pending" ||
             compiledVideo?.pendingJobId ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-              {t2.compiledVideoProcessing}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin"
+                />
+                {t2.compiledVideoProcessing}
+              </div>
+              <div className="flex items-center gap-1 pl-6 text-xs text-muted-foreground">
+                <span>{t2.compiledVideoQueuedHint}</span>
+                <Link
+                  href="/render-jobs"
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                  data-testid="vd-compiled-video-render-jobs-link"
+                >
+                  {t2.compiledVideoOpenRenderJobs}
+                </Link>
+              </div>
             </div>
           ) : compiledVideo?.status === "failed" ? (
             <div className="flex flex-col gap-2">

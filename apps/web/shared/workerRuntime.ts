@@ -1655,6 +1655,74 @@ export const videoAssemblyJobContractSchema = z.object({
   }
 });
 
+/**
+ * `vertical_drama_ffmpeg_assembly` worker job contract (Vertical Drama Render
+ * Queue plan, `planning/vertical-drama-render-queue/plan.md` §4.1). This job
+ * type offloads the four pure-ffmpeg VD render operations (single
+ * Sub-Episode, Production-Episode group, season batch, trailer) off the web
+ * server's request path into the existing `worker_jobs` queue.
+ *
+ * Unlike `remotionRenderVideoWorkerInputSchema` / `videoAssemblyJobContractSchema`
+ * (both `.strict()`), this contract is deliberately an "enqueue-time
+ * resolution" envelope: the caller (a VD router mutation) resolves the full
+ * internal render feed on the request path exactly as it does today, then
+ * carries it as an opaque `renderFeed` blob. The executor (a later wave)
+ * re-hydrates it and calls the existing `runAssemblyJob` machinery verbatim
+ * — this schema only needs to validate the envelope (kind/owner/display),
+ * never the complex internal render-feed shape, so it is NOT `.strict()`
+ * on `renderFeed`.
+ *
+ * `VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES` is a distinct,
+ * non-shared capability family (never `ffmpeg-probe`/`video-edit`, which are
+ * shared by Remotion/Hyperframes/`video_assembly` workers) so the `.every()`
+ * superset claim gate (`workerJobMatchesSelection`,
+ * `server/services/workerSchedulerService.ts`) keeps this job type isolated
+ * from those other worker pools.
+ */
+export const VERTICAL_DRAMA_FFMPEG_ASSEMBLY_JOB_TYPE =
+  "vertical_drama_ffmpeg_assembly" as const;
+
+export const VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES = [
+  "vertical-drama-ffmpeg-assembly",
+] as const;
+
+export const VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CONTRACT_VERSION = 1 as const;
+
+export type VerticalDramaFfmpegAssemblyCapabilityFamily =
+  (typeof VERTICAL_DRAMA_FFMPEG_ASSEMBLY_CAPABILITY_FAMILIES)[number];
+
+export const verticalDramaFfmpegAssemblyJobContractSchema = z.object({
+  kind: z.enum([
+    "sub_episode",
+    "production_episode_group",
+    "season_sub_episode",
+    "trailer",
+  ]),
+  owner: z.object({
+    tenantId: z.string().min(1),
+    userId: z.string().min(1),
+    seriesId: z.string().min(1),
+    episodeId: z.string().optional(),
+  }),
+  display: z.object({
+    label: z.string().optional(),
+    seriesTitle: z.string().optional(),
+    episodeNumber: z.number().optional(),
+    groupIndex: z.number().optional(),
+  }).optional(),
+  // Opaque internal render-feed blob (verticalDramaEpisodeVideoAssembly.ts's
+  // `runAssemblyJob` input) — resolved on the request path by the caller and
+  // re-hydrated verbatim by the executor. Not re-validated here (see
+  // doc-comment above); every existing render-feed shape round-trips through
+  // `z.record(z.string(), z.unknown())` unchanged.
+  renderFeed: z.record(z.string(), z.unknown()),
+  contractVersion: z.literal(1).default(1),
+});
+
+export type VerticalDramaFfmpegAssemblyJobContract = z.infer<
+  typeof verticalDramaFfmpegAssemblyJobContractSchema
+>;
+
 export const localFolderIngestJobContractSchema = z.object({
   roots: z.array(
     z.object({

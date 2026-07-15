@@ -50,9 +50,18 @@ import { debugError } from "../_core/logger";
 import {
   buildConcatListFileContent,
   probeDurationSeconds,
-  defaultFfmpegRunner,
   type FfmpegRunner,
 } from "./verticalDramaEpisodeVideoAssembly";
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `submitTrailerJob` enqueues
+// the `vertical_drama_ffmpeg_assembly` worker job (kind: "trailer") instead
+// of launching `runTrailerJob` in-process. Loaded via a lazy
+// `await import(...)` INSIDE `submitTrailerJob` (not a static top-level
+// import) because `workerSchedulerService.ts` calls `createRateLimiter(...)`
+// at module-load time, and THIS module is itself a static top-level import
+// of `verticalDramaSeries.ts` (unlike that router's other heavy deps, which
+// are already lazy) — a static import here would pull that side effect into
+// EVERY sibling test that loads the router, breaking any that mock
+// `../services/rateLimiter` narrowly (e.g. `verticalDramaSeries.adBanner.test.ts`).
 import type { VerticalDramaSeriesTrailerState } from "@shared/verticalDramaSeries";
 
 /* -------------------------------------------------------------------------- */
@@ -422,7 +431,7 @@ async function persistTrailerState(
 /* Job execution                                                              */
 /* -------------------------------------------------------------------------- */
 
-async function runTrailerJob(args: {
+export async function runTrailerJob(args: {
   owner: TrailerJobOwner;
   jobId: string;
   audioUrls: string[];
@@ -579,32 +588,48 @@ async function runTrailerJob(args: {
 }
 
 /**
- * Submit a new trailer job: persists the `jobId` + `status: "processing"`
+ * Submit a new trailer job: enqueues the `vertical_drama_ffmpeg_assembly`
+ * worker job (Vertical Drama Render Queue plan §4.2 Wave 3 — kind:
+ * "trailer") instead of launching `runTrailerJob` in-process, then persists
+ * `series.trailer` = `{ status: "processing", jobId: <worker job id> }`
  * synchronously (so a reload/navigation before completion can resume via
- * `series.trailer`), then kicks off `runTrailerJob` in the background (not
- * awaited).
+ * `series.trailer`). `renderFeed` carries exactly the DATA args
+ * `runTrailerJob` needs (never `ffmpegRunner` — the executor supplies its
+ * own default).
  */
 export async function submitTrailerJob(args: SubmitTrailerJobArgs): Promise<{ jobId: string }> {
-  const jobId = randomUUID();
+  const renderFeed = {
+    owner: args.owner,
+    audioUrls: args.audioUrls,
+    audioDurationSeconds: args.audioDurationSeconds,
+    imageUrls: args.imageUrls,
+    videoClipUrls: args.videoClipUrls,
+    internalBaseUrl: args.internalBaseUrl,
+  };
+  // Lazy `await import(...)` — see this file's own import-block doc comment
+  // above for why this is not a static top-level import.
+  const { queueVerticalDramaFfmpegAssemblyJob } = await import("./workerSchedulerService");
+  const { job } = await queueVerticalDramaFfmpegAssemblyJob({
+    tenantId: args.owner.tenantId,
+    requestedByUserId: args.owner.userId,
+    kind: "trailer",
+    contractVersion: 1,
+    owner: {
+      tenantId: args.owner.tenantId,
+      userId: String(args.owner.userId),
+      seriesId: String(args.owner.seriesId),
+    },
+    renderFeed,
+    display: { label: "series trailer" },
+  });
+  const jobId = job.id as string;
+
   await persistTrailerState(args.owner, {
     status: "processing",
     jobId,
     narrationAudioUrl: args.audioUrls[0],
     narrationDurationSeconds: args.audioDurationSeconds,
     error: undefined,
-  });
-  jobs.set(jobId, { jobId, owner: args.owner, status: "processing" });
-
-  // Fire-and-forget — errors are captured inside runTrailerJob and persisted.
-  void runTrailerJob({
-    owner: args.owner,
-    jobId,
-    audioUrls: args.audioUrls,
-    audioDurationSeconds: args.audioDurationSeconds,
-    imageUrls: args.imageUrls,
-    videoClipUrls: args.videoClipUrls,
-    internalBaseUrl: args.internalBaseUrl,
-    ffmpegRunner: args.ffmpegRunner ?? defaultFfmpegRunner,
   });
 
   return { jobId };

@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DashboardCard } from "@/components/dashboard";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -239,6 +240,15 @@ export default function InfrastructureSettingsPanel() {
       hideSecrets: isThai ? "ซ่อน secrets" : "Hide secrets",
       showSecrets: isThai ? "แสดง secrets" : "Show secrets",
     },
+    renderWorker: {
+      title: isThai ? "Render Worker ในเครื่องนี้" : "In-Server Render Worker",
+      label: isThai
+        ? "ให้เซิร์ฟเวอร์เรนเดอร์วิดีโอ (ffmpeg) เอง"
+        : "Server also acts as an ffmpeg render worker",
+      helper: isThai
+        ? "เมื่อเปิด เซิร์ฟเวอร์นี้จะดึงงาน ffmpeg จากคิว Render Jobs มาเรนเดอร์เอง (ทำงานเหมือน worker หนึ่งตัว, เฉพาะงาน ffmpeg ไม่รวม Remotion/Hyperframes). เมื่อปิด งานจะรอในคิวจนกว่าจะมี worker มารับ"
+        : "When on, this server claims and renders ffmpeg video-assembly jobs from the Render Jobs queue (acts like one worker; ffmpeg-only, not Remotion/Hyperframes). When off, jobs wait in the queue until another worker claims them.",
+    },
   } as const;
   const [activeTab, setActiveTab] = useState("gcp");
   const [gcpForm, setGcpForm] = useState<GcpForm>(EMPTY_FORM);
@@ -292,6 +302,7 @@ export default function InfrastructureSettingsPanel() {
     forge_api_key: "",
     llm_gateway_service_account_id: "",
   });
+  const [webProcessRenderWorkerEnabled, setWebProcessRenderWorkerEnabled] = useState(false);
   const [selectedTier, setSelectedTier] = useState<"starter" | "growth" | "pro" | "business" | "enterprise">("starter");
   const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudrun">("localhost");
   const [showApplyDialog, setShowApplyDialog] = useState(false);
@@ -366,6 +377,20 @@ export default function InfrastructureSettingsPanel() {
   const { data: deployModeInfo, isLoading: deployModeLoading, refetch: refetchDeployMode } =
     trpc.infrastructure.getDeployModeInfo.useQuery();
 
+  const {
+    data: infrastructureSettings,
+    refetch: refetchInfrastructureSettings,
+  } = trpc.systemSettings.getSettingsByCategory.useQuery({
+    category: "infrastructure" as any,
+  });
+
+  useEffect(() => {
+    const renderWorkerSetting = infrastructureSettings?.find(
+      (s: any) => s.key === "web_process_render_worker_enabled",
+    );
+    setWebProcessRenderWorkerEnabled(renderWorkerSetting?.value === "true");
+  }, [infrastructureSettings]);
+
   const setDeployModeMutation = trpc.infrastructure.setDeployModeInfo.useMutation({
     onSuccess: (data) => {
       toast.success(`Deploy mode switched to ${data.mode === "cloudrun" ? "Cloud Run" : "Localhost"}`);
@@ -419,6 +444,11 @@ export default function InfrastructureSettingsPanel() {
       refetchGcp();
     },
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
+  });
+
+  const updateRenderWorkerSettingMutation = trpc.systemSettings.updateSetting.useMutation({
+    onSuccess: () => refetchInfrastructureSettings(),
+    onError: (err: any) => toast.error(`Failed to save: ${err.message}`),
   });
 
   const setModeMutation = trpc.infrastructure.setTaskProcessingMode.useMutation({
@@ -1119,6 +1149,44 @@ done`}
               ? "No changes"
               : `Switch to ${selectedMode === "cloud_tasks" ? "Cloud Tasks" : "Celery"}`}
           </Button>
+        </div>
+      </DashboardCard>
+
+      {/* ============================================ */}
+      {/* CARD: In-Server Render Worker (ffmpeg video-assembly queue) */}
+      {/* ============================================ */}
+      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden mt-6">
+        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <h3 className="flex items-center gap-2 text-lg">
+            <Server className="w-5 h-5 text-purple-500" />
+            {copy.renderWorker.title}
+          </h3>
+        </div>
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 mt-6">
+          <div className="space-y-1">
+            <Label className="text-sm font-medium">{copy.renderWorker.label}</Label>
+            <p className="text-xs text-muted-foreground">{copy.renderWorker.helper}</p>
+          </div>
+          <Switch
+            checked={webProcessRenderWorkerEnabled}
+            onCheckedChange={(checked) => {
+              const previousValue = webProcessRenderWorkerEnabled;
+              setWebProcessRenderWorkerEnabled(checked);
+              updateRenderWorkerSettingMutation.mutate(
+                {
+                  category: "infrastructure" as any,
+                  key: "web_process_render_worker_enabled",
+                  value: checked ? "true" : "false",
+                  description:
+                    "Web server process also claims and renders ffmpeg video-assembly jobs from the render queue",
+                },
+                {
+                  onError: () => setWebProcessRenderWorkerEnabled(previousValue),
+                },
+              );
+            }}
+            disabled={updateRenderWorkerSettingMutation.isPending}
+          />
         </div>
       </DashboardCard>
         </TabsContent>
