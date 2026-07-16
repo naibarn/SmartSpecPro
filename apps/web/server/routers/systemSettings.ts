@@ -766,6 +766,20 @@ export const systemSettingsRouter = router({
           }
         }
 
+        // Feature 135 — Hermes Grok media worker admin settings live under
+        // `category: "infrastructure"` with a `hermes_`/`web_process_hermes_worker_enabled`
+        // key prefix. Clearing a row falls back to its documented default —
+        // clear the TTL cache so the next read picks that up immediately.
+        // Start/stop of an in-web drainer for `web_process_hermes_worker_enabled`
+        // is section 07's concern; only the cache clear happens here.
+        if (
+          input.category === "infrastructure"
+          && (input.key.startsWith("hermes_") || input.key === "web_process_hermes_worker_enabled")
+        ) {
+          const { clearHermesWorkerSettingsCache } = await import("../services/hermesWorkerSettings");
+          clearHermesWorkerSettingsCache();
+        }
+
         return { success: true };
       }
 
@@ -829,6 +843,19 @@ export const systemSettingsRouter = router({
         } else {
           stopInlineRenderWorker();
         }
+      }
+
+      // Feature 135 — Hermes Grok media worker admin settings. Lazy
+      // `await import(...)` for cross-service wiring (see memory note:
+      // lazy-import chain convention). Only clears the TTL cache — the
+      // in-web drainer start/stop for `web_process_hermes_worker_enabled`
+      // is section 07's concern.
+      if (
+        input.category === "infrastructure"
+        && (input.key.startsWith("hermes_") || input.key === "web_process_hermes_worker_enabled")
+      ) {
+        const { clearHermesWorkerSettingsCache } = await import("../services/hermesWorkerSettings");
+        clearHermesWorkerSettingsCache();
       }
 
       return { success: true };

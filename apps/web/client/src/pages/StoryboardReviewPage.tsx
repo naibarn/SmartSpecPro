@@ -32,6 +32,7 @@ import {
   storyboardHistoryTaskMatchesProduct,
 } from "@/lib/storyboardHistoryGalleryFilter";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import type { MediaTransport } from "@shared/mcpConnectTypes";
 import {
   buildHyperframesRenderLibrarySession,
   getHyperframesRenderLibraryReadyOutput,
@@ -337,7 +338,12 @@ type StoryboardReviewVideoModelOption = {
   value: string;
   label: string;
   provider: string;
-  transport: "gateway_api" | "mcp";
+  // Widened to the full `MediaTransport` union (Feature 135 added a third
+  // "hermes_worker" arm) so this option shape can carry the real resolved
+  // transport through; only the label falls back to existing "MCP"/"API"
+  // copy for the not-yet-built hermes UI (see the `label` computation
+  // below), which is fine for display purposes.
+  transport: MediaTransport;
   providerKey: string | null;
   providerModelId?: string | null;
   toolName?: string | null;
@@ -534,7 +540,12 @@ function buildStoryboardReviewCurrentVideoModelOption(input: {
     modelId: normalizedModelId,
     configJson: input.model?.configJson,
   });
-  const transport = explicitTransport ?? resolvedTransport.transport;
+  // Feature 135 widened MediaTransport with a third "hermes_worker" arm.
+  // Pass the REAL resolved transport through (not coerced) — this option's
+  // `label` ternary below only distinguishes "mcp" vs. everything else, so
+  // a hermes_worker model falls back to the existing "API" label copy fine
+  // until hermes-aware UI ships in a later section.
+  const transport: MediaTransport = explicitTransport ?? resolvedTransport.transport;
   const legacyProviderKey =
     typeof firstTaskTransportMetadata?.providerKey === "string"
       ? firstTaskTransportMetadata.providerKey.trim()

@@ -1,4 +1,9 @@
-export type MediaTransport = "gateway_api" | "mcp";
+// Feature 135 — Hermes Grok media worker adds a third transport arm,
+// `hermes_worker`. This widening is intentionally additive/dark: existing
+// `gateway_api`/`mcp` resolution stays byte-identical (see
+// `shared/mediaModelTransport.ts`). The routing/validation behavior for the
+// new arm belongs to later sections (08+), not this one.
+export type MediaTransport = "gateway_api" | "mcp" | "hermes_worker";
 export type MediaAssetType = "image" | "video";
 export type MediaOriginSurface =
   | "media_studio"

@@ -56,6 +56,7 @@ export interface TenantFeatureFlags {
   nemoClawSecureWorkerPool: boolean; // F48 — NemoClaw secure worker pools
   hiClawClusterRuntime: boolean; // F49 — HiClaw collaborative cluster runtime
   hermesAgentRuntime: boolean; // F50 — Hermes bridge-backed external runtime foundation
+  hermesMediaWorker: boolean; // F135 — Hermes Grok media worker; unrelated to hermesAgentRuntime
   desktopHostEnabled: boolean; // F51 — Unified Desktop Host control plane
   desktopAdvancedLocalMode: boolean; // F52 — Step-up desktop local power
   desktopPackageSync: boolean; // F53 — Signed desktop package sync and materialization
@@ -264,6 +265,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "nemoClawSecureWorkerPool",
   "hiClawClusterRuntime",
   "hermesAgentRuntime",
+  "hermesMediaWorker",
   "desktopHostEnabled",
   "desktopAdvancedLocalMode",
   "desktopPackageSync",
@@ -471,6 +473,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   nemoClawSecureWorkerPool: false, // Secure sandbox pools are explicitly admin-gated
   hiClawClusterRuntime: false, // Collaborative cluster runtime is explicitly admin-gated
   hermesAgentRuntime: false, // Hermes bridge-backed runtime stays disabled until rollout and policy surfaces are ready
+  hermesMediaWorker: false, // F135 — Hermes Grok media worker stays disabled until rollout is ready (unrelated to hermesAgentRuntime)
   desktopHostEnabled: false, // Desktop Host control plane rollout is explicit and fail-closed
   desktopAdvancedLocalMode: false, // High-power local mode requires explicit tenant opt-in
   desktopPackageSync: false, // Signed package sync stays disabled until registry/policy is ready

@@ -2028,4 +2028,30 @@ export type ComfyImageGenerationJobContract = z.infer<typeof comfyImageGeneratio
 export type ComfyWorkflowRunJobContract = z.infer<typeof comfyWorkflowRunJobContractSchema>;
 export type LocalAiProviderConfig = z.infer<typeof localAiProviderConfigSchema>;
 export type LocalAiWorkerJobContract = z.infer<typeof localAiWorkerJobContractSchema>;
+
+/**
+ * Feature 135 — Hermes Grok media worker (namespace: `hermes_media` /
+ * `hermesMedia`). NOT related to the pre-existing agent-gateway Hermes lane
+ * (`queueHermesWorkerJob`, tenant flag `hermesAgentRuntime`, job type
+ * `external_agent_task` — all in `server/services/workerSchedulerService.ts`
+ * / `shared/featureFlags.ts`). See
+ * `server/services/__tests__/hermesMediaNamespaceGuard.test.ts` for the
+ * grep-style guard that enforces this separation across the whole feature.
+ *
+ * `HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY` follows the same claim-capability
+ * precedent as the Remotion render worker (`REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES`
+ * above): section 05 wires it into `claimWorkerJob` so only a worker that
+ * declares the `hermes_media` capability (and the `hermes-media-generation`
+ * family) can claim these five job types.
+ */
+export const HERMES_MEDIA_IMAGE_JOB_TYPE = "hermes_media_image_generate" as const;
+export const HERMES_MEDIA_VIDEO_JOB_TYPE = "hermes_media_video_generate" as const;
+export const HERMES_CONNECTION_AUTH_JOB_TYPE = "hermes_connection_authorize" as const;
+export const HERMES_CONNECTION_PROBE_JOB_TYPE = "hermes_connection_probe" as const;
+export const HERMES_CONNECTION_DISCONNECT_JOB_TYPE = "hermes_connection_disconnect" as const;
+export const HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY = "hermes_media" as const;
+export const HERMES_MEDIA_CAPABILITY_FAMILIES = ["hermes-media-generation"] as const;
+
+export type HermesMediaCapabilityFamily = (typeof HERMES_MEDIA_CAPABILITY_FAMILIES)[number];
+export const hermesMediaCapabilityFamilySchema = z.enum(HERMES_MEDIA_CAPABILITY_FAMILIES);
 export type McpWorkerCompletionPayload = z.infer<typeof mcpWorkerCompletionPayloadSchema>;

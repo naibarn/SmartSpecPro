@@ -9,6 +9,7 @@ import {
   getMediaModelTransportLabel,
   resolveMediaModelTransportConfig,
 } from "@shared/mediaModelTransport";
+import type { MediaTransport } from "@shared/mcpConnectTypes";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,8 +156,13 @@ interface FormData {
   voices: string;
   isEnabled: boolean;
   priority: number;
-  // API Config (configJson)
-  transport: "gateway_api" | "mcp";
+  // API Config (configJson). Widened to the full `MediaTransport` union
+  // (Feature 135 added a third "hermes_worker" arm) so an edit/duplicate
+  // round-trip preserves the real transport value even though this admin
+  // UI only exposes a picker for the two pre-existing arms so far — see
+  // the pass-through comment at the handleEditModel/handleDuplicateModel
+  // call sites (hermes-aware admin UI ships in a later section).
+  transport: MediaTransport;
   providerModelId: string;
   mcpProviderKey: string;
   mcpToolName: string;
@@ -1752,6 +1758,13 @@ export default function AdminMediaModels() {
       voices: (model.voices || []).join("\n"),
       isEnabled: model.isEnabled,
       priority: model.priority,
+      // Feature 135 widened MediaTransport with a third "hermes_worker" arm.
+      // This admin form only renders a picker for the two pre-existing arms
+      // so far (hermes-aware admin UI ships in a later section), but the
+      // REAL resolved transport must still flow into state — Save writes
+      // `formData.transport` straight back into configJson.transport, so
+      // coercing here would silently clobber an existing hermes_worker row
+      // to gateway_api on every edit/duplicate round-trip.
       transport: transportConfig.transport,
       providerModelId: transportConfig.providerModelId || "",
       mcpProviderKey: transportConfig.providerKey || "",
@@ -1822,6 +1835,13 @@ export default function AdminMediaModels() {
       voices: (model.voices || []).join("\n"),
       isEnabled: false, // Start disabled for safety
       priority: model.priority,
+      // Feature 135 widened MediaTransport with a third "hermes_worker" arm.
+      // This admin form only renders a picker for the two pre-existing arms
+      // so far (hermes-aware admin UI ships in a later section), but the
+      // REAL resolved transport must still flow into state — Save writes
+      // `formData.transport` straight back into configJson.transport, so
+      // coercing here would silently clobber an existing hermes_worker row
+      // to gateway_api on every edit/duplicate round-trip.
       transport: transportConfig.transport,
       providerModelId: transportConfig.providerModelId || "",
       mcpProviderKey: transportConfig.providerKey || "",
