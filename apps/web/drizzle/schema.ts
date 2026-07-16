@@ -36,6 +36,7 @@ import type {
   AutoTeamStageStatus,
   AutoTeamStageType,
 } from "../shared/autoTeamExecution";
+import type { HermesConnectionCapabilityManifest } from "../shared/hermesMedia";
 
 /**
  * pgvector custom column type for 1536-dimension embeddings (OpenAI text-embedding-3-small).
@@ -14077,6 +14078,99 @@ export const workerJobs = pgTable(
 export type WorkerJob = typeof workerJobs.$inferSelect;
 export type InsertWorkerJob = typeof workerJobs.$inferInsert;
 
+/**
+ * Feature 135 — Hermes Grok media worker connections (spec §10.1, §12.2).
+ * Records connection identity, scope, status, worker assignment, capability
+ * manifest, defaults, and quota metadata. NEVER stores a token or secret —
+ * tokens live only inside the Hermes CLI profile on the worker host.
+ */
+export const hermesConnectionScopeEnum = pgEnum("hermes_connection_scope", [
+  "server_shared",
+  "server_personal",
+  "private_worker",
+]);
+export const hermesConnectionStatusEnum = pgEnum("hermes_connection_status", [
+  "pending",
+  "authorized",
+  "reauth_required",
+  "entitlement_restricted",
+  "disconnected",
+  "error",
+]);
+
+export const hermesProviderConnections = pgTable(
+  "hermes_provider_connections",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    ownerUserId: integer("ownerUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: hermesConnectionScopeEnum("scope").notNull(),
+    providerType: varchar("providerType", { length: 64 })
+      .notNull()
+      .default("xai_grok"),
+    adapterType: varchar("adapterType", { length: 64 })
+      .notNull()
+      .default("hermes_cli"),
+    authenticationType: varchar("authenticationType", { length: 64 })
+      .notNull()
+      .default("oauth_device_code"),
+    status: hermesConnectionStatusEnum("status").notNull().default("pending"),
+    assignedWorkerId: varchar("assignedWorkerId", { length: 36 }).references(
+      () => workers.id,
+      { onDelete: "set null" }
+    ),
+    profileReference: varchar("profileReference", { length: 255 }).notNull(),
+    accountLabel: varchar("accountLabel", { length: 120 }),
+    accountHint: varchar("accountHint", { length: 120 }),
+    entitlementStatus: varchar("entitlementStatus", { length: 64 }),
+    capabilitiesJson: jsonb("capabilitiesJson").$type<HermesConnectionCapabilityManifest>(),
+    defaultForImage: boolean("defaultForImage").notNull().default(false),
+    defaultForVideo: boolean("defaultForVideo").notNull().default(false),
+    dailyJobQuota: integer("dailyJobQuota"),
+    metadataJson: jsonb("metadataJson")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    authorizedAt: timestamp("authorizedAt", { withTimezone: true }),
+    lastProbeAt: timestamp("lastProbeAt", { withTimezone: true }),
+    disconnectedAt: timestamp("disconnectedAt", { withTimezone: true }),
+  },
+  t => [
+    index("hermes_provider_connections_tenant_owner_status_idx").on(
+      t.tenantId,
+      t.ownerUserId,
+      t.status
+    ),
+    index("hermes_provider_connections_tenant_scope_status_idx").on(
+      t.tenantId,
+      t.scope,
+      t.status
+    ),
+    uniqueIndex("hermes_provider_connections_default_image_unique")
+      .on(t.tenantId, t.ownerUserId)
+      .where(
+        sql`"defaultForImage" = true AND "status" IN ('authorized', 'reauth_required', 'entitlement_restricted')`
+      ),
+    uniqueIndex("hermes_provider_connections_default_video_unique")
+      .on(t.tenantId, t.ownerUserId)
+      .where(
+        sql`"defaultForVideo" = true AND "status" IN ('authorized', 'reauth_required', 'entitlement_restricted')`
+      ),
+  ]
+);
+
+export type HermesProviderConnection = typeof hermesProviderConnections.$inferSelect;
+export type InsertHermesProviderConnection = typeof hermesProviderConnections.$inferInsert;
+
 export const workerJobEvents = pgTable(
   "worker_job_events",
   {
@@ -20471,6 +20565,14 @@ export const verticalDramaCharacters = pgTable(
     characterKey: varchar("characterKey", { length: 64 }).notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     role: varchar("role", { length: 100 }),
+    /** Canonical story role; legacy `role` remains the occupation/status compatibility field. */
+    narrativeRole: varchar("narrativeRole", { length: 32 }),
+    /** Detailed visual-design tier shared with the Character Visual Bible V2 contract. */
+    roleTier: varchar("roleTier", { length: 48 }),
+    occupation: varchar("occupation", { length: 160 }),
+    roleVisualIntent: jsonb("roleVisualIntent"),
+    roleProvenance: varchar("roleProvenance", { length: 24 }),
+    roleReviewStatus: varchar("roleReviewStatus", { length: 32 }),
     /** Full VerticalDramaCharacter payload (identityLock, wardrobeRules, currentState, ...). */
     data: jsonb("data"),
     /**
