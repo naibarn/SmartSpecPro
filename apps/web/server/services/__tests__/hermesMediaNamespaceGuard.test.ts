@@ -57,6 +57,9 @@ describe("Feature 135 Hermes media namespace guard", () => {
       "hermesMediaNamespaceGuard.test.ts",
     );
     const serverServicesDir = path.resolve(import.meta.dirname, "..");
+    // Section-03 adds `server/routers/hermesConnections.ts` (spec §3.3
+    // explicitly requires extending this guard's globs to cover it).
+    const serverRoutersDir = path.resolve(import.meta.dirname, "../../routers");
     const sharedDir = path.resolve(import.meta.dirname, "../../../shared");
     // Section-07's shared worker process directory — does not exist yet as of
     // this section; skipped when absent (walkDirRecursive/collectMatchingFiles
@@ -65,6 +68,7 @@ describe("Feature 135 Hermes media namespace guard", () => {
 
     const candidateFiles = [
       ...collectMatchingFiles(serverServicesDir, ["hermes"]),
+      ...collectMatchingFiles(serverRoutersDir, ["hermes"]),
       ...collectMatchingFiles(sharedDir, ["hermesMedia"]),
       ...walkDirRecursive(hermesWorkerDir),
     ]
