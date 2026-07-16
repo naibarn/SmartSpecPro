@@ -10,7 +10,15 @@ export type MediaOriginSurface =
   | "auto_storyboard_review"
   | "marketplace_capture"
   | "storyboard_review";
-export type McpCreditPolicy = "smartspec_credits" | "provider_credits_tracked";
+// "provider_account" is the hermes_worker transport arm's value (Feature 135
+// — matches `MediaModelTransportConfig.creditSource` in
+// `shared/mediaModelTransport.ts`). Additive widening only — existing
+// `smartspec_credits` / `provider_credits_tracked` equality checks in
+// consumers are unaffected.
+export type McpCreditPolicy =
+  | "smartspec_credits"
+  | "provider_credits_tracked"
+  | "provider_account";
 export type McpConnectionScope = "personal" | "shared";
 
 export interface MediaTaskTransportMetadata {
