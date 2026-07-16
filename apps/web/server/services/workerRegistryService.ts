@@ -31,6 +31,12 @@ import {
   COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
   COMFY_WORKFLOW_RUN_FAILURE_CODES,
   COMFY_WORKFLOW_RUN_PROGRESS_STAGES,
+  HERMES_CONNECTION_AUTH_JOB_TYPE,
+  HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
+  HERMES_CONNECTION_PROBE_JOB_TYPE,
+  HERMES_MEDIA_IMAGE_JOB_TYPE,
+  HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY,
+  HERMES_MEDIA_VIDEO_JOB_TYPE,
   HYPERFRAMES_FINAL_COMPOSITE_FAILURE_CODES,
   HYPERFRAMES_FINAL_COMPOSITE_PROGRESS_STAGES,
   LOCAL_FOLDER_INGEST_FAILURE_CODES,
@@ -62,6 +68,7 @@ import { issueWorkerAccessTokens } from "./workerAuthService";
 import { getDb } from "../db";
 import {
   groupMembers,
+  hermesProviderConnections,
   runtimeProfiles,
   userGroups,
   workerArtifacts,
@@ -102,6 +109,23 @@ const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
  */
 const REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY: (typeof REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES)[number] =
   "remotion-render";
+
+/**
+ * Feature 135 section-05 — same defense-in-depth precedent as the remotion
+ * constant above, applied to every `hermes_media_*` / `hermes_connection_*`
+ * job type (constants, never a regex over arbitrary job type strings).
+ */
+const HERMES_FABRIC_JOB_TYPES: ReadonlySet<string> = new Set([
+  HERMES_MEDIA_IMAGE_JOB_TYPE,
+  HERMES_MEDIA_VIDEO_JOB_TYPE,
+  HERMES_CONNECTION_AUTH_JOB_TYPE,
+  HERMES_CONNECTION_PROBE_JOB_TYPE,
+  HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
+]);
+
+function isHermesFabricJobType(jobType: string): boolean {
+  return HERMES_FABRIC_JOB_TYPES.has(jobType);
+}
 const RECLAIMABLE_JOB_STATUSES: WorkerJobStatus[] = [
   "claimed",
   "preparing",
@@ -197,6 +221,22 @@ export interface WorkerRuntimeRepository {
   insertJobEvent: (workerJobId: string, eventType: string, payloadJson: Record<string, unknown>) => Promise<WorkerJobEventRecord>;
   listClaimableJobs: (tenantId: string, runtimeType: WorkerRuntimeType, teamId: string | null, capabilityHints: string[]) => Promise<WorkerJobRecord[]>;
   listJobEvents: (workerJobId: string) => Promise<WorkerJobEventRecord[]>;
+  /**
+   * Feature 135 section-05 — narrow lookup backing the hermes claim-time
+   * connection-affinity assertion (mirrors the remotion defense-in-depth
+   * precedent above): resolves a hermes job's pinned `connectionId` to its
+   * currently assigned worker id, so a worker can never cross-claim another
+   * worker's connection's jobs. Optional: only hermes-fabric job types with
+   * a `connectionId` in `capabilityRequirementsJson` ever call this.
+   *
+   * Code review FIX 6: `tenantId` is threaded through for defense-in-depth
+   * consistency with every other tenant-scoped lookup in this repository —
+   * the claim call site already has `worker.tenantId` in scope.
+   */
+  getHermesConnectionAssignedWorkerId?: (params: {
+    tenantId: string;
+    connectionId: string;
+  }) => Promise<string | null>;
   renewActiveJobLeasesForWorker?: (input: { tenantId: string; workerId: string; leaseExpiresAt: Date; heartbeatAt: Date }) => Promise<number>;
   tryClaimJob: (jobId: string, workerId: string, leaseOwnerToken: string, leaseExpiresAt: Date) => Promise<WorkerJobRecord | null>;
   updateJob: (jobId: string, values: Record<string, any>) => Promise<WorkerJobRecord>;
@@ -899,6 +939,15 @@ const defaultRepo: WorkerRuntimeRepository = {
       .where(eq(workerJobEvents.workerJobId, workerJobId))
       .orderBy(asc(workerJobEvents.createdAt));
   },
+  async getHermesConnectionAssignedWorkerId({ tenantId, connectionId }) {
+    const db = await getDb();
+    const [row] = await db
+      .select({ assignedWorkerId: hermesProviderConnections.assignedWorkerId })
+      .from(hermesProviderConnections)
+      .where(and(eq(hermesProviderConnections.id, connectionId), eq(hermesProviderConnections.tenantId, tenantId)))
+      .limit(1);
+    return row?.assignedWorkerId ?? null;
+  },
   async renewActiveJobLeasesForWorker(input) {
     const db = await getDb();
     const leaseIso = input.leaseExpiresAt.toISOString();
@@ -1248,6 +1297,11 @@ export async function claimWorkerJob(
     workerJobMatchesSelection(candidate, worker.id, input.payload.capabilityHints),
   );
 
+  // Feature 135 section-05 — memoizes `connectionId -> assignedWorkerId`
+  // lookups across this single claim call so a candidate pool with several
+  // hermes jobs pinned to the same connection only resolves it once.
+  const hermesConnectionAssignedWorkerIdCache = new Map<string, string | null>();
+
   for (const candidate of selectableCandidates) {
     // Defense-in-depth claim-time assertion (implementation-progress.md
     // gap #2, spec §6.3 step 7) — see the constant's doc comment above.
@@ -1265,6 +1319,44 @@ export async function claimWorkerJob(
       && !input.payload.capabilityHints.includes(REMOTION_RENDER_VIDEO_REQUIRED_CLAIM_CAPABILITY)
     ) {
       continue;
+    }
+
+    // Feature 135 section-05 — same `continue`-not-`throw` discipline as the
+    // remotion fix above (an unrelated candidate later in the same pool
+    // must still be claimable in this pass).
+    if (isHermesFabricJobType(candidate.jobType)) {
+      // Assertion 1 (capability): a worker that doesn't advertise
+      // `hermes_media` may never claim a hermes job, regardless of what
+      // `capabilityRequirementsJson.capabilityFamilies` says (mirrors the
+      // remotion primary-check gap: that check is a no-op on an empty
+      // `capabilityFamilies` array).
+      if (!input.payload.capabilityHints.includes(HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY)) {
+        continue;
+      }
+
+      // Assertion 2 (connection affinity): a hermes job pinned to a
+      // connection may only be claimed by that connection's currently
+      // assigned worker — this is layered ON TOP OF (never a replacement
+      // for) the pinned `workerId` / `filterClaimableJobsForWorker` owner
+      // check, closing the gap where `capabilityRequirementsJson.
+      // preferredWorkerId` is intentionally null for server-scoped
+      // connections (see `hermesMediaScheduler.ts`).
+      const requirements = (candidate.capabilityRequirementsJson ?? {}) as Record<string, unknown>;
+      const connectionId = typeof requirements.connectionId === "string" ? requirements.connectionId : null;
+      if (connectionId) {
+        let assignedWorkerId: string | null;
+        if (hermesConnectionAssignedWorkerIdCache.has(connectionId)) {
+          assignedWorkerId = hermesConnectionAssignedWorkerIdCache.get(connectionId) ?? null;
+        } else {
+          assignedWorkerId = repo.getHermesConnectionAssignedWorkerId
+            ? await repo.getHermesConnectionAssignedWorkerId({ tenantId: worker.tenantId, connectionId })
+            : null;
+          hermesConnectionAssignedWorkerIdCache.set(connectionId, assignedWorkerId);
+        }
+        if (assignedWorkerId !== worker.id) {
+          continue;
+        }
+      }
     }
 
     const leaseOwnerToken = crypto.randomBytes(12).toString("hex");

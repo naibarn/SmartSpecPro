@@ -1415,6 +1415,192 @@ describe("workerRegistryService", () => {
     });
   });
 
+  describe("hermes media claim gating (Feature 135 section-05)", () => {
+    function hermesJob(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "job-hermes-1",
+        tenantId: "tenant-1",
+        teamId: null,
+        workerId: null,
+        runtimeType: "hermes_agent_gateway",
+        jobType: "hermes_media_image_generate",
+        status: "queued",
+        priority: 25,
+        capabilityRequirementsJson: { connectionId: "conn-1" },
+        inputJson: {},
+        instructionsJson: {},
+        outputJson: null,
+        failureReason: null,
+        timeoutSeconds: 600,
+        retryPolicyJson: {},
+        idempotencyKey: null,
+        leaseOwnerToken: null,
+        leaseExpiresAt: null,
+        createdAt: new Date("2026-06-01T00:00:00.000Z"),
+        startedAt: null,
+        finishedAt: null,
+        ...overrides,
+      };
+    }
+
+    function hermesWorkerRepo(
+      job: ReturnType<typeof hermesJob>,
+      overrides: Record<string, unknown> = {},
+    ) {
+      return {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "hermes_agent_gateway",
+          status: "online",
+          capabilitiesJson: {},
+        }),
+        listClaimableJobs: vi.fn().mockResolvedValue([job]),
+        getHermesConnectionAssignedWorkerId: vi.fn().mockResolvedValue("worker-1"),
+        tryClaimJob: vi.fn().mockResolvedValue({
+          ...job,
+          workerId: "worker-1",
+          status: "claimed",
+          leaseOwnerToken: "lease-hermes-1",
+          leaseExpiresAt: new Date("2030-06-01T00:05:00.000Z"),
+        }),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...job, ...values })),
+        ...overrides,
+      };
+    }
+
+    it("skips (does not claim) a hermes_media_* job when capabilityHints lack hermes_media, without throwing", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob();
+      const repo = hermesWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job).toBeNull();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+    });
+
+    it("skips (does not claim) a hermes_connection_* control job when capabilityHints lack hermes_media", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob({ id: "job-hermes-connection-1", jobType: "hermes_connection_authorize" });
+      const repo = hermesWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["ffmpeg-probe"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job).toBeNull();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+    });
+
+    it("skips a hermes job whose connection is assigned to a DIFFERENT worker (connection affinity), even with the capability hint present", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob();
+      const repo = hermesWorkerRepo(job, {
+        getHermesConnectionAssignedWorkerId: vi.fn().mockResolvedValue("worker-OTHER"),
+      });
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["hermes_media"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job).toBeNull();
+      expect(repo.tryClaimJob).not.toHaveBeenCalled();
+      expect(repo.getHermesConnectionAssignedWorkerId).toHaveBeenCalledWith({ tenantId: "tenant-1", connectionId: "conn-1" });
+    });
+
+    it("claims a hermes job when the capability hint is present AND the connection is assigned to this worker", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob();
+      const repo = hermesWorkerRepo(job);
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["hermes_media"] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hermes-1");
+      expect(repo.tryClaimJob).toHaveBeenCalledTimes(1);
+    });
+
+    it("no-availability regression: a worker with empty capabilityHints still claims a DIFFERENT, unrelated job when a mismatched hermes job is also in its candidate pool", async () => {
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const hermesCandidate = hermesJob({ id: "job-hermes-mismatch" });
+      const unrelatedCandidate = hermesJob({
+        id: "job-hf-unrelated-2",
+        jobType: "hyperframes_final_composite",
+        capabilityRequirementsJson: {},
+      });
+
+      const repo = {
+        getWorkerById: vi.fn().mockResolvedValue({
+          id: "worker-1",
+          tenantId: "tenant-1",
+          teamId: null,
+          runtimeType: "hermes_agent_gateway",
+          status: "online",
+          capabilitiesJson: {},
+        }),
+        // Hermes candidate listed FIRST — proves the loop moves past the
+        // disqualified candidate to the next one, rather than aborting.
+        listClaimableJobs: vi.fn().mockResolvedValue([hermesCandidate, unrelatedCandidate]),
+        getHermesConnectionAssignedWorkerId: vi.fn().mockResolvedValue("worker-1"),
+        tryClaimJob: vi.fn().mockImplementation(async (jobId: string) =>
+          jobId === "job-hf-unrelated-2"
+            ? {
+                ...unrelatedCandidate,
+                workerId: "worker-1",
+                status: "claimed",
+                leaseOwnerToken: "lease-hf-2",
+                leaseExpiresAt: new Date("2030-06-01T00:05:00.000Z"),
+              }
+            : null,
+        ),
+        updateJob: vi.fn().mockImplementation(async (_jobId, values) => ({ ...unrelatedCandidate, ...values })),
+      };
+
+      const result = await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      expect(result.job?.id).toBe("job-hf-unrelated-2");
+      expect(repo.tryClaimJob).not.toHaveBeenCalledWith("job-hermes-mismatch", expect.anything(), expect.anything(), expect.anything());
+      expect(repo.tryClaimJob).toHaveBeenCalledWith(
+        "job-hf-unrelated-2",
+        "worker-1",
+        expect.any(String),
+        expect.any(Date),
+      );
+    });
+  });
+
   it("requires matching assignmentAttempt for HyperFrames progress events", async () => {
     const { recordWorkerJobEvent } = await import("../workerRegistryService");
 

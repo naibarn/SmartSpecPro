@@ -21,6 +21,8 @@ import {
 import { clearDocumentOcrSettingsCache, getDocumentOcrSettings } from "../services/documentOcrSettings";
 import { clearFinanceSlipMappingPresetCache } from "../services/financeSlipPresetSettings";
 import { clearPinnedMerchantPresetCache } from "../services/financeMerchantPresetSettings";
+import { HERMES_WORKER_SETTINGS_KEYS, getHermesWorkerSettings } from "../services/hermesWorkerSettings";
+import { validateHermesLimitCoherence } from "../services/hermesMediaAdmission";
 import { DOCUMENT_OCR_PROVIDER_IDS } from "../../shared/documentOcrRouting";
 import {
   browserPolicyConfigSchema,
@@ -781,6 +783,36 @@ export const systemSettingsRouter = router({
         }
 
         return { success: true };
+      }
+
+      // Feature 135 section-05 — limit-coherence invariant (spec §9): reject
+      // a `hermes_max_queued_per_user` write that would drop the cap below
+      // the max single-call admission batch size (portrait candidates,
+      // `HERMES_MAX_ADMISSION_BATCH_SIZE`) — such a value would make that
+      // batch permanently un-admittable. Tightly scoped to this one key so
+      // every other setting write is unaffected.
+      if (
+        input.category === "infrastructure"
+        && input.key === HERMES_WORKER_SETTINGS_KEYS.maxQueuedPerUser
+        && input.value !== undefined
+      ) {
+        const parsedMaxQueuedPerUser = Number.parseInt(input.value, 10);
+        const currentSettings = await getHermesWorkerSettings();
+        const coherence = validateHermesLimitCoherence({
+          maxRunningPerConnection: currentSettings.maxRunningPerConnection,
+          maxQueuedPerUser: Number.isFinite(parsedMaxQueuedPerUser)
+            ? parsedMaxQueuedPerUser
+            : currentSettings.maxQueuedPerUser,
+          maxQueuedPerTenantSharedPool: currentSettings.maxQueuedPerTenantSharedPool,
+          submitWindowPerUser: currentSettings.submitWindowPerUser,
+          submitWindowPerTenant: currentSettings.submitWindowPerTenant,
+        });
+        if (!coherence.ok) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: coherence.reason ?? "Invalid Hermes admission limit configuration",
+          });
+        }
       }
 
       const storedValue = input.isSensitive && input.value !== undefined
