@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  HERMES_AUTHORIZED_EVENT_TYPE,
+  HERMES_CONNECTION_SETTLED_EVENT_TYPE,
+  HERMES_CONTROL_FAILURE_REASONS,
+  HERMES_DEVICE_CODE_EVENT_TYPE,
   HERMES_MEDIA_ERROR_CODES,
   effectiveHermesCapability,
   formatHermesErrorMessage,
+  hermesAuthorizedEventPayloadSchema,
+  hermesDeviceCodeEventPayloadSchema,
   hermesErrorCopy,
   hermesMediaJobContractSchema,
   maskTokenLike,
@@ -264,5 +270,60 @@ describe("maskTokenLike", () => {
   it("fully masks null/undefined safely", () => {
     expect(maskTokenLike(null)).toBe("***");
     expect(maskTokenLike(undefined)).toBe("***");
+  });
+});
+
+// Section 04 §4.4 — event-contract tests (additive).
+describe("hermes connection-control event contract", () => {
+  it("event-type constants are the exact frozen strings", () => {
+    expect(HERMES_DEVICE_CODE_EVENT_TYPE).toBe("hermes_device_code");
+    expect(HERMES_AUTHORIZED_EVENT_TYPE).toBe("hermes_authorized");
+    expect(HERMES_CONNECTION_SETTLED_EVENT_TYPE).toBe("hermes_connection_settled");
+  });
+
+  it("hermesDeviceCodeEventPayloadSchema accepts the structured shape", () => {
+    const result = hermesDeviceCodeEventPayloadSchema.safeParse({
+      verificationUrl: "https://accounts.x.ai/device",
+      userCode: "ABCD-EFGH",
+      expiresAt: "2026-06-01T13:00:00.000Z",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("hermesDeviceCodeEventPayloadSchema accepts the raw-fallback shape", () => {
+    const result = hermesDeviceCodeEventPayloadSchema.safeParse({
+      raw: "Waiting for authorization... please check your terminal.",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("hermesDeviceCodeEventPayloadSchema accepts an empty object (nothing parsed yet)", () => {
+    expect(hermesDeviceCodeEventPayloadSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("hermesDeviceCodeEventPayloadSchema rejects payloads with token-like extra fields (.strict())", () => {
+    const result = hermesDeviceCodeEventPayloadSchema.safeParse({
+      userCode: "ABCD-EFGH",
+      refreshToken: "should-not-be-here",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("hermesAuthorizedEventPayloadSchema accepts an accountHint and rejects extra keys", () => {
+    expect(hermesAuthorizedEventPayloadSchema.safeParse({ accountHint: "grok-fan" }).success).toBe(true);
+    expect(hermesAuthorizedEventPayloadSchema.safeParse({}).success).toBe(true);
+    expect(
+      hermesAuthorizedEventPayloadSchema.safeParse({ accountHint: "grok-fan", authToken: "leak" }).success,
+    ).toBe(false);
+  });
+
+  it("HERMES_CONTROL_FAILURE_REASONS is the exact 5-value vocabulary in order", () => {
+    expect(HERMES_CONTROL_FAILURE_REASONS).toEqual([
+      "oauth_session_expired",
+      "oauth_denied",
+      "entitlement_restricted",
+      "reauth_required",
+      "process_failed",
+    ]);
   });
 });

@@ -383,3 +383,60 @@ export function maskTokenLike(value: string | null | undefined): string {
   }
   return "***";
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// Section 04 — connection-control job event contract (additive block).
+//
+// Rule (spec §16 token-leak ban): device-code payloads
+// (`hermesDeviceCodeEventPayloadSchema` shape) exist ONLY in
+// `worker_job_events.payloadJson` and the `getConnectStatus` response —
+// NEVER in worker logs, audit JSONL, or error messages. Section 12's CI
+// grep test locks this in fleet-wide; `server/hermesWorker/` handler tests
+// assert the injected logger spy is never called with a string containing
+// `userCode`/`verificationUrl`.
+// ────────────────────────────────────────────────────────────────────────
+
+/** Frozen event-type strings — `worker_job_events.eventType` values used by
+ *  this feature's connection-control jobs. Consumed by sections 03/07/10/11. */
+export const HERMES_DEVICE_CODE_EVENT_TYPE = "hermes_device_code" as const;
+export const HERMES_AUTHORIZED_EVENT_TYPE = "hermes_authorized" as const;
+export const HERMES_CONNECTION_SETTLED_EVENT_TYPE = "hermes_connection_settled" as const;
+
+export const hermesDeviceCodeEventPayloadSchema = z
+  .object({
+    verificationUrl: z.string().url().optional(),
+    userCode: z.string().min(1).optional(),
+    expiresAt: z.string().datetime().optional(),
+    // Fallback when defensive stdout parsing failed — still never logged.
+    raw: z.string().optional(),
+  })
+  .strict();
+
+export type HermesDeviceCodeEventPayload = z.infer<typeof hermesDeviceCodeEventPayloadSchema>;
+
+export const hermesAuthorizedEventPayloadSchema = z
+  .object({
+    accountHint: z.string().optional(),
+  })
+  .strict();
+
+export type HermesAuthorizedEventPayload = z.infer<typeof hermesAuthorizedEventPayloadSchema>;
+
+/**
+ * Shared failure-reason vocabulary (section-03 review carry-forward item A).
+ * `server/hermesWorker/connectionControlHandlers.ts` emits EXACTLY these
+ * strings as a job's `failureReason` / outcome `classification`; both
+ * `hermesConnectionService.ts`'s classifiers and
+ * `hermesConnectionJobs.ts`'s media-job side-effect classifier match these
+ * constants FIRST, keeping their prior substring-sniffing heuristics only
+ * as a legacy fallback for jobs written before this vocabulary existed.
+ */
+export const HERMES_CONTROL_FAILURE_REASONS = [
+  "oauth_session_expired",
+  "oauth_denied",
+  "entitlement_restricted",
+  "reauth_required",
+  "process_failed",
+] as const;
+
+export type HermesControlFailureReason = (typeof HERMES_CONTROL_FAILURE_REASONS)[number];

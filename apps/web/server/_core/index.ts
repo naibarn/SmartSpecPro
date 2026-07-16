@@ -1617,6 +1617,27 @@ async function main() {
     console.error("[Startup] Failed to start inline render worker:", error);
   }
 
+  // Feature 135 — Hermes Grok media worker: start the 60s connection-
+  // control-job settlement sweep only when the admin flag is ON (default
+  // OFF). Mirrors the inline render worker block directly above: lazy
+  // `await import(...)` + flag-guard + try/catch so a failure to load
+  // either module (or the flag being off) never blocks the rest of
+  // startup. Settles terminal-but-unsettled hermes connection/media jobs
+  // that nobody polled (e.g. the user closed the tab mid-authorize).
+  try {
+    const { getHermesWorkerSettings } = await import("../services/hermesWorkerSettings");
+    const settings = await getHermesWorkerSettings();
+    if (settings.enabled) {
+      const { startHermesConnectionJobSweep } = await import("../services/hermesConnectionJobs");
+      startHermesConnectionJobSweep();
+      console.log("[Startup] Hermes connection-control job sweep started (admin flag ON)");
+    } else {
+      console.log("[Startup] Hermes connection-control job sweep NOT started (admin flag OFF — default)");
+    }
+  } catch (error) {
+    console.error("[Startup] Failed to start Hermes connection-control job sweep:", error);
+  }
+
   // Initialize Telegram notification queue
   try {
     const db = await getDb();
@@ -1894,6 +1915,19 @@ async function main() {
     await setupVite(app, server);
   } else {
     serveStatic(app);
+  }
+
+  // Warm the model registry cache from the DB BEFORE accepting traffic, so the
+  // first requests after a (re)start don't fall back to the small static model
+  // subset — which omits DB-only models (e.g. the higgsfield/magnific catalog)
+  // and would make the vertical-drama model-resolution guards falsely reject a
+  // valid user selection during the cold-start window. Non-fatal: the resolvers
+  // also tolerate an unloaded catalog (see `isDbModelCatalogLoaded`).
+  try {
+    const { refreshModelCache } = await import("../services/modelRegistry");
+    await refreshModelCache();
+  } catch (error) {
+    console.error("[Startup] Failed to warm model registry cache:", error);
   }
 
   // Prefer PORT, else pick a free one

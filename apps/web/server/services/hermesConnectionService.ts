@@ -55,6 +55,13 @@ import {
 } from "../../shared/workerRuntime";
 import {
   formatHermesErrorMessage,
+  // Section-04 carry-forward item A: the shared failure-reason vocabulary
+  // that `server/hermesWorker/connectionControlHandlers.ts` emits verbatim
+  // as a job's `failureReason`. `mapAuthFailureReasonToErrorCode` /
+  // `classifyProbeFailureReason` below match these constants FIRST, keeping
+  // their pre-existing substring-sniffing heuristics only as a legacy
+  // fallback for jobs whose `failureReason` predates this vocabulary.
+  HERMES_CONTROL_FAILURE_REASONS,
   HERMES_MEDIA_ERROR_CODES,
   type HermesConnectionCapabilityManifest,
   type HermesMediaErrorCode,
@@ -305,15 +312,31 @@ function isTerminalWorkerJobStatus(status: string): boolean {
   return status === "completed" || TERMINAL_FAILURE_STATUSES.has(status);
 }
 
+/** True when `reason` is one of the frozen `HERMES_CONTROL_FAILURE_REASONS`
+ *  strings — section-04's handlers emit exactly these, so an exact match
+ *  here always wins over the legacy substring heuristics below it. */
+function isKnownControlFailureReason(
+  reason: string,
+): reason is (typeof HERMES_CONTROL_FAILURE_REASONS)[number] {
+  return (HERMES_CONTROL_FAILURE_REASONS as readonly string[]).includes(reason);
+}
+
 function mapAuthFailureReasonToErrorCode(job: {
   status: string;
   failureReason?: string | null;
 }): HermesMediaErrorCode {
   if (job.status === "expired") return "HERMES_TIMEOUT";
-  const reason = (job.failureReason ?? "").toLowerCase();
-  if (reason.includes("timeout") || reason.includes("timed out")) return "HERMES_TIMEOUT";
-  if (reason.includes("denied") || reason.includes("declined")) return "HERMES_OAUTH_DENIED";
-  if (reason.includes("expired")) return "HERMES_OAUTH_SESSION_EXPIRED";
+  const reason = job.failureReason ?? "";
+  if (isKnownControlFailureReason(reason)) {
+    if (reason === "oauth_session_expired") return "HERMES_OAUTH_SESSION_EXPIRED";
+    if (reason === "oauth_denied") return "HERMES_OAUTH_DENIED";
+  }
+  // Legacy substring fallback (jobs written before the section-04
+  // vocabulary existed).
+  const lower = reason.toLowerCase();
+  if (lower.includes("timeout") || lower.includes("timed out")) return "HERMES_TIMEOUT";
+  if (lower.includes("denied") || lower.includes("declined")) return "HERMES_OAUTH_DENIED";
+  if (lower.includes("expired")) return "HERMES_OAUTH_SESSION_EXPIRED";
   return "HERMES_PROCESS_FAILED";
 }
 
@@ -333,7 +356,26 @@ function classifyProbeFailureReason(job: {
   status: string;
   failureReason?: string | null;
 }): { outcome: ProbeFailureOutcome; errorCode: HermesMediaErrorCode } {
-  const reason = (job.failureReason ?? "").toLowerCase();
+  const rawReason = job.failureReason ?? "";
+
+  // Constants-first (section-04 carry-forward item A): the handlers emit
+  // exactly these reason strings — match them before the legacy substring
+  // heuristics further down.
+  if (isKnownControlFailureReason(rawReason)) {
+    if (rawReason === "entitlement_restricted") {
+      return { outcome: "entitlement_restricted", errorCode: "HERMES_ENTITLEMENT_RESTRICTED" };
+    }
+    if (rawReason === "reauth_required" || rawReason === "oauth_session_expired" || rawReason === "oauth_denied") {
+      return { outcome: "reauth_required", errorCode: "HERMES_REAUTH_REQUIRED" };
+    }
+    if (rawReason === "process_failed") {
+      return { outcome: "other", errorCode: "HERMES_PROCESS_FAILED" };
+    }
+  }
+
+  // Legacy substring fallback (jobs written before the section-04
+  // vocabulary existed).
+  const reason = rawReason.toLowerCase();
   if (reason.includes("403") || reason.includes("entitlement") || reason.includes("forbidden")) {
     return { outcome: "entitlement_restricted", errorCode: "HERMES_ENTITLEMENT_RESTRICTED" };
   }
@@ -858,6 +900,11 @@ export async function getHermesConnectStatus(
         {
           connectionId: row.id,
           job: {
+            // Section-04 carry-forward item B (defense-in-depth): this
+            // lookup is already tenant-scoped above, but pass tenantId
+            // through anyway so the seam's own tenant check applies
+            // uniformly regardless of call site.
+            tenantId,
             jobType: job.jobType,
             status: job.status,
             failureReason: job.failureReason ?? undefined,
@@ -892,6 +939,13 @@ export async function settleHermesConnectionFromControlJob(
   params: {
     connectionId: string;
     job: {
+      /** Section-04 carry-forward item B (defense-in-depth): when a caller
+       *  (the sweep / completion hook) supplies the job's tenantId, this
+       *  seam refuses to settle a connection row belonging to a different
+       *  tenant — guards against a corrupted/forged job row driving a
+       *  cross-tenant connection-status mutation. Optional so existing
+       *  call sites that don't pass it are unaffected. */
+      tenantId?: string;
       jobType: string;
       status: string;
       failureReason?: string;
@@ -906,6 +960,7 @@ export async function settleHermesConnectionFromControlJob(
 
   const row = await repo.findConnectionById({ connectionId: params.connectionId });
   if (!row) return;
+  if (params.job.tenantId !== undefined && params.job.tenantId !== row.tenantId) return;
 
   const isSuccess = params.job.status === "completed";
   const isFailure = TERMINAL_FAILURE_STATUSES.has(params.job.status);

@@ -808,6 +808,194 @@ describe("settleHermesConnectionFromControlJob", () => {
       expect(updateConnection).not.toHaveBeenCalled();
     });
   });
+
+  // Section-04 carry-forward item A: constants-first classification.
+  describe("constants-first failure-reason classification (section-04 carry-forward item A)", () => {
+    it("auth job: exact 'oauth_session_expired' reason -> HERMES_OAUTH_SESSION_EXPIRED (constants path)", async () => {
+      const row = buildConnectionRow({ status: "pending" });
+      let state = { ...row };
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          updateConnection: vi.fn().mockImplementation(async ({ values }: any) => {
+            state = { ...state, ...values };
+            return state;
+          }),
+        },
+      };
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "failed", failureReason: "oauth_session_expired" },
+      }, deps);
+      expect((state.metadataJson as any).lastError).toBe("HERMES_OAUTH_SESSION_EXPIRED");
+    });
+
+    it("auth job: exact 'oauth_denied' reason -> HERMES_OAUTH_DENIED (constants path)", async () => {
+      const row = buildConnectionRow({ status: "pending" });
+      let state = { ...row };
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          updateConnection: vi.fn().mockImplementation(async ({ values }: any) => {
+            state = { ...state, ...values };
+            return state;
+          }),
+        },
+      };
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "failed", failureReason: "oauth_denied" },
+      }, deps);
+      expect((state.metadataJson as any).lastError).toBe("HERMES_OAUTH_DENIED");
+    });
+
+    it("auth job: legacy substring phrasing still works (fallback path unaffected)", async () => {
+      const row = buildConnectionRow({ status: "pending" });
+      let state = { ...row };
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          updateConnection: vi.fn().mockImplementation(async ({ values }: any) => {
+            state = { ...state, ...values };
+            return state;
+          }),
+        },
+      };
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "failed", failureReason: "oauth session expired" },
+      }, deps);
+      expect((state.metadataJson as any).lastError).toBe("HERMES_OAUTH_SESSION_EXPIRED");
+    });
+
+    it("probe job: exact 'entitlement_restricted' reason -> entitlement_restricted (constants path)", async () => {
+      const row = buildConnectionRow({ status: "authorized" });
+      let state = { ...row };
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          updateConnection: vi.fn().mockImplementation(async ({ values }: any) => {
+            state = { ...state, ...values };
+            return state;
+          }),
+        },
+      };
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_PROBE_JOB_TYPE, status: "failed", failureReason: "entitlement_restricted" },
+      }, deps);
+      expect(state.status).toBe("entitlement_restricted");
+      expect((state.metadataJson as any).lastError).toBe("HERMES_ENTITLEMENT_RESTRICTED");
+    });
+
+    it("probe job: exact 'reauth_required' reason -> reauth_required (constants path)", async () => {
+      const row = buildConnectionRow({ status: "authorized" });
+      let state = { ...row };
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          updateConnection: vi.fn().mockImplementation(async ({ values }: any) => {
+            state = { ...state, ...values };
+            return state;
+          }),
+        },
+      };
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_PROBE_JOB_TYPE, status: "failed", failureReason: "reauth_required" },
+      }, deps);
+      expect(state.status).toBe("reauth_required");
+      expect((state.metadataJson as any).lastError).toBe("HERMES_REAUTH_REQUIRED");
+    });
+
+    it("probe job: exact 'process_failed' reason -> other outcome, status untouched (constants path)", async () => {
+      const row = buildConnectionRow({ status: "authorized" });
+      let state = { ...row };
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          updateConnection: vi.fn().mockImplementation(async ({ values }: any) => {
+            state = { ...state, ...values };
+            return state;
+          }),
+        },
+      };
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_PROBE_JOB_TYPE, status: "failed", failureReason: "process_failed" },
+      }, deps);
+      expect(state.status).toBe("authorized");
+      expect((state.metadataJson as any).lastError).toBe("HERMES_PROCESS_FAILED");
+    });
+  });
+
+  // Section-04 carry-forward item B: tenant defense-in-depth.
+  describe("tenant defense-in-depth (section-04 carry-forward item B)", () => {
+    it("refuses to settle when the supplied job.tenantId does not match the connection row's tenantId", async () => {
+      const row = buildConnectionRow({ status: "pending", tenantId: "tenant-owner" });
+      const updateConnection = vi.fn();
+      const deps = {
+        repo: { ...buildDeps().repo!, findConnectionById: vi.fn().mockResolvedValue(row), updateConnection },
+      };
+
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { tenantId: "tenant-attacker", jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "completed" },
+      }, deps);
+
+      expect(updateConnection).not.toHaveBeenCalled();
+    });
+
+    it("settles normally when job.tenantId matches the connection row's tenantId", async () => {
+      const row = buildConnectionRow({ status: "pending", tenantId: "tenant-owner" });
+      let state = { ...row };
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          updateConnection: vi.fn().mockImplementation(async ({ values }: any) => {
+            state = { ...state, ...values };
+            return state;
+          }),
+        },
+      };
+
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { tenantId: "tenant-owner", jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "completed", outputJson: { accountHint: "grok-fan" } },
+      }, deps);
+
+      expect(state.status).toBe("authorized");
+    });
+
+    it("settles normally when job.tenantId is omitted (backward-compatible — existing call sites unaffected)", async () => {
+      const row = buildConnectionRow({ status: "pending", tenantId: "tenant-owner" });
+      let state = { ...row };
+      const deps = {
+        repo: {
+          ...buildDeps().repo!,
+          findConnectionById: vi.fn().mockImplementation(async () => state),
+          updateConnection: vi.fn().mockImplementation(async ({ values }: any) => {
+            state = { ...state, ...values };
+            return state;
+          }),
+        },
+      };
+
+      await settleHermesConnectionFromControlJob({
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "completed", outputJson: { accountHint: "grok-fan" } },
+      }, deps);
+
+      expect(state.status).toBe("authorized");
+    });
+  });
 });
 
 describe("getHermesConnection", () => {
