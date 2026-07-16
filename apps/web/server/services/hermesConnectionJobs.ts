@@ -56,6 +56,8 @@ import {
   settleHermesConnectionFromControlJob,
   type HermesConnectionRepo,
 } from "./hermesConnectionService";
+import { reconcileHermesMediaJobFee } from "./hermesMediaAdapter";
+import { billingEnvelopeFromMetadata } from "./workerBillingService";
 
 // ────────────────────────────────────────────────────────────────────────
 // Constants
@@ -378,6 +380,32 @@ export async function onTerminalHermesMediaJob(
   deps: { repo?: HermesConnectionJobsRepo } = {},
 ): Promise<void> {
   const repo = deps.repo ?? defaultHermesConnectionJobsRepo;
+
+  // Feature 135 section 06 — fee reconciliation runs for ANY terminal
+  // hermes_media_* status (completed or failure alike), unlike the
+  // connection-status side effect below which only cares about
+  // auth/entitlement failures. Shares ONE implementation with
+  // `reconcileTaskCredits`'s hermes branch (`server/routers/media.ts`) via
+  // `reconcileHermesMediaJobFee` — this is the callee for a job that
+  // reaches a terminal state via lease expiry and is never observed by a
+  // polling client (the sweep's `listTerminalUnsettledHermesJobs` driver).
+  // Redis idempotency (`credit:reconciled:<taskId>`) makes this safe even
+  // if the generic per-event worker billing reconciliation already ran for
+  // the same job's reservation.
+  if ((TERMINAL_STATUSES as ReadonlySet<string>).has(job.status)) {
+    const billing = billingEnvelopeFromMetadata(
+      (job.instructionsJson as Record<string, unknown> | null | undefined)?.workerBilling,
+    );
+    // Raw status, unmapped — `reconcileHermesMediaJobFee` classifies
+    // completed vs. failed/canceled/expired itself (and no-ops on anything
+    // non-terminal as a defense-in-depth guard).
+    try {
+      await reconcileHermesMediaJobFee({ taskId: `hermes_${job.id}`, status: job.status, billing });
+    } catch (error) {
+      debugError("hermesConnectionJobs", `Failed to reconcile hermes media fee for job ${job.id}`, error);
+    }
+  }
+
   if (!TERMINAL_FAILURE_STATUSES.has(job.status)) return;
 
   const connectionId = extractConnectionId(job);

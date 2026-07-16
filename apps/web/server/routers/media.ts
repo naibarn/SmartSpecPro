@@ -19,6 +19,8 @@ import {
 } from "../services/mediaGenerationService";
 import { deductCredits, hasEnoughCredits, refundCredits } from "../services/creditService";
 import { calculateCreditCost, type UserSelections } from "../services/pricingCalculator";
+import { isHermesMediaTaskId, reconcileHermesMediaJobFee } from "../services/hermesMediaAdapter";
+import { billingEnvelopeFromMetadata } from "../services/workerBillingService";
 import {
   GEMINI_OMNI_AUDIO_CAPABILITY,
   GEMINI_OMNI_CHARACTER_CAPABILITY,
@@ -681,6 +683,24 @@ export async function reconcileTaskCredits(params: {
 }): Promise<{ adjusted: boolean; difference: number; action: "refund" | "charge" | "none" }> {
   const noOp = { adjusted: false, difference: 0, action: "none" as const };
   const { task, userId } = params;
+
+  // Fee-only hermes branch (Feature 135 §06) — early return BEFORE the
+  // duration/resolution reconciliation below, which never applies to
+  // hermes_media_* tasks (fee-only, not per-second/resolution pricing).
+  // Shares one implementation with the section-04 terminal sweep's
+  // `onTerminalHermesMediaJob` hook via `reconcileHermesMediaJobFee`.
+  if (isHermesMediaTaskId(task.id)) {
+    const billing = billingEnvelopeFromMetadata(
+      (task.parameters as Record<string, unknown> | undefined)?.workerBilling,
+    );
+    // Pass the RAW task status through unmapped — `reconcileHermesMediaJobFee`
+    // does its own terminal-status classification (code review fix: the
+    // previous `status === "completed" ? "completed" : "failed"` ternary
+    // would have wrongly classified an in-flight "pending"/"processing"
+    // task as "failed" and refunded a reservation for a job that hadn't
+    // actually finished, had this ever been called before a terminal state).
+    return reconcileHermesMediaJobFee({ taskId: task.id, status: task.status, billing });
+  }
 
   try {
     const { getCacheClient } = await import("../services/redisClients");

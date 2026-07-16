@@ -8,6 +8,8 @@ import { z } from "zod";
 
 import type { TenantRequest } from "../_core/tenant";
 import {
+  HERMES_MEDIA_IMAGE_JOB_TYPE,
+  HERMES_MEDIA_VIDEO_JOB_TYPE,
   workerArtifactCompletePayloadSchema,
   workerArtifactInitPayloadSchema,
   workerClaimRequestSchema,
@@ -17,11 +19,19 @@ import {
   workerRegistrationPayloadSchema,
 } from "../../shared/workerRuntime";
 import {
+  defaultHermesMediaAdapterRepo,
+  extractHermesJobReferenceAssetIds,
+  HermesReferenceAssetOwnershipError,
+  mintHermesMediaReferenceUrls,
+} from "../services/hermesMediaAdapter";
+import { finalizeHermesMediaArtifact } from "../services/hermesMediaFinalizeService";
+import {
   delegatedSessionRequestSchema,
   delegatedWorkerCallbackPayloadSchema,
 } from "../../shared/workerDelegation";
 import { sendApiError } from "../middleware/publicApiHeaders";
 import { enforceJsonBodyMaxBytes, rateLimit } from "../_core/limits";
+import { debugError } from "../_core/logger";
 import {
   createWorkerRegistrationToken,
   WorkerAuthError,
@@ -56,7 +66,7 @@ import { getWorkerPolicySnapshot } from "../services/workerPolicyService";
 import { getRedisClient } from "../services/redis";
 import { getWorkerAccessPermissionScopesForPreset } from "../../shared/workerAccessKeys";
 import { getDb, getUserById } from "../db";
-import { tenants } from "../../drizzle/schema";
+import { tenants, type WorkerArtifact, type WorkerJob } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 interface WorkerRuntimeRouteDeps {
@@ -571,6 +581,88 @@ async function verifyWorkerRouteAccessToken(
   });
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 — Hermes Grok media worker (section 06): claim-time reference
+// URL enrichment + the `/references/urls` re-mint route. `workerRegistryService.ts`
+// is off-limits to this section (concurrent-edit guard), so the lease /
+// job-scope checks below are deliberately duplicated (not imported) from
+// `ensureLease` / `ensureJobScopedAccess` in that file — same semantics,
+// applied only to this narrow reference-URL surface.
+// ────────────────────────────────────────────────────────────────────────
+
+const HERMES_MEDIA_JOB_TYPES: ReadonlySet<string> = new Set([
+  HERMES_MEDIA_IMAGE_JOB_TYPE,
+  HERMES_MEDIA_VIDEO_JOB_TYPE,
+]);
+
+const HERMES_MEDIA_REFERENCE_URL_ACTIVE_STATUSES: ReadonlySet<string> = new Set([
+  "claimed",
+  "preparing",
+  "running",
+  "uploading",
+]);
+
+// Code review fix (nit): `workerRegistryService.ts`'s `ensureAssignmentAttempt`
+// (the /events route's equivalent check) only ever enforces stale-attempt
+// rejection for `jobType === "hyperframes_final_composite"` — it's a no-op
+// for every other job type, including hermes_media_*. Since this route has
+// no matching enforcement to mirror, `assignmentAttempt` is dropped from
+// the request schema entirely rather than accepted-but-ignored.
+const hermesReferenceUrlRequestSchema = z.object({
+  leaseOwnerToken: z.string().min(1),
+});
+
+function ensureHermesJobScopedAccess(
+  auth: { tenantId: string; runtimeType: string; workerId: string },
+  job: { tenantId: string; runtimeType: string; workerId: string | null },
+): void {
+  if (job.tenantId !== auth.tenantId || job.runtimeType !== auth.runtimeType) {
+    throw new WorkerRuntimeServiceError("worker_scope_mismatch", 403, "Worker token does not match the requested job scope", "auth_error");
+  }
+  if (job.workerId && job.workerId !== auth.workerId) {
+    throw new WorkerRuntimeServiceError("worker_scope_mismatch", 403, "Worker token does not own the requested job", "auth_error");
+  }
+}
+
+function ensureHermesJobLease(
+  job: { leaseOwnerToken: string | null; leaseExpiresAt: Date | string | null },
+  leaseOwnerToken: string,
+): void {
+  if (!leaseOwnerToken || !job.leaseOwnerToken || job.leaseOwnerToken !== leaseOwnerToken) {
+    throw new WorkerRuntimeServiceError("stale_worker_lease", 409, "Worker lease token is stale or invalid");
+  }
+  if (job.leaseExpiresAt && new Date(job.leaseExpiresAt).getTime() < Date.now()) {
+    throw new WorkerRuntimeServiceError("stale_worker_lease", 409, "Worker lease has expired");
+  }
+}
+
+async function mintHermesReferenceUrlsOrThrow(params: {
+  tenantId: string;
+  requestedByUserId: number | null;
+  references: Array<{ assetId: string }>;
+}) {
+  if (params.references.length === 0 || params.requestedByUserId == null) {
+    return [];
+  }
+  try {
+    return await mintHermesMediaReferenceUrls({
+      tenantId: params.tenantId,
+      requestedByUserId: params.requestedByUserId,
+      references: params.references,
+    });
+  } catch (error) {
+    if (error instanceof HermesReferenceAssetOwnershipError) {
+      throw new WorkerRuntimeServiceError(
+        "hermes_reference_asset_not_found",
+        404,
+        error.message,
+        "not_found_error",
+      );
+    }
+    throw error;
+  }
+}
+
 export function registerWorkerRuntimeRoutes(
   app: Express,
   deps: WorkerRuntimeRouteDeps = {},
@@ -974,6 +1066,29 @@ export function registerWorkerRuntimeRoutes(
           payload: parsed,
           workerId: req.params.workerId,
         });
+
+        // Feature 135 section 06 — claim-time reference URL enrichment for
+        // hermes_media_* jobs ONLY. Response-only: the `worker_jobs` row
+        // itself is never mutated to contain a URL (contract stays
+        // `assetId + sha256` at rest — spec §13.1).
+        if (result.job && HERMES_MEDIA_JOB_TYPES.has(result.job.jobType)) {
+          // `result.job` is `claimWorkerJob`'s intentionally loose
+          // `Record<string, any>` row shape — cast to the strict Drizzle
+          // row type at this one crossing point (see the doc comment on
+          // `extractHermesJobReferenceAssetIds`).
+          const references = extractHermesJobReferenceAssetIds(result.job as unknown as WorkerJob);
+          const referenceUrls = await mintHermesReferenceUrlsOrThrow({
+            tenantId: auth.tenantId,
+            requestedByUserId: result.job.requestedByUserId ?? null,
+            references,
+          });
+          res.json({
+            ...result,
+            job: { ...result.job, referenceUrls },
+          });
+          return;
+        }
+
         res.json(result);
       } catch (error) {
         handleWorkerRouteError(error, res);
@@ -1130,6 +1245,57 @@ export function registerWorkerRuntimeRoutes(
     },
   );
 
+  // Feature 135 section 06 — same middleware stack as the events route
+  // above (rate limiter, body cap, `requireBearerToken` +
+  // `verifyWorkerRouteAccessToken` with `worker_execution` use +
+  // `workers:report` scope), then lease + active-state enforcement
+  // mirroring `recordWorkerJobEvent`. Re-mints the exact same URL set the
+  // claim response minted, via the same shared helper.
+  app.post(
+    "/api/worker-jobs/:jobId/references/urls",
+    eventLimiter,
+    enforceJsonBodyMaxBytes(16 * 1024),
+    async (req, res) => {
+      try {
+        const token = requireBearerToken(req);
+        const parsed = hermesReferenceUrlRequestSchema.parse(req.body ?? {});
+        const auth = await verifyWorkerRouteAccessToken(req, token, {
+          allowedTokenUses: ["worker_execution"],
+          requiredScopes: ["workers:report"],
+        });
+        const job = await defaultHermesMediaAdapterRepo.getJobById(req.params.jobId);
+        if (!job) {
+          throw new WorkerRuntimeServiceError("not_found", 404, `Worker job ${req.params.jobId} was not found`, "not_found_error");
+        }
+        // Code review fix — this route is hermes_media_* only (matches the
+        // claim-enrichment and finalize-dispatch gates); a non-hermes job id
+        // must be rejected the same way a nonexistent job would be, never
+        // leaking that it exists as some other job type.
+        if (!HERMES_MEDIA_JOB_TYPES.has(job.jobType)) {
+          throw new WorkerRuntimeServiceError("not_found", 404, `Worker job ${req.params.jobId} was not found`, "not_found_error");
+        }
+        ensureHermesJobScopedAccess(auth, job);
+        ensureHermesJobLease(job, parsed.leaseOwnerToken);
+        if (!HERMES_MEDIA_REFERENCE_URL_ACTIVE_STATUSES.has(job.status)) {
+          throw new WorkerRuntimeServiceError(
+            "worker_state_invalid",
+            409,
+            "Worker job is not in an active state for reference URL minting",
+          );
+        }
+        const references = extractHermesJobReferenceAssetIds(job);
+        const referenceUrls = await mintHermesReferenceUrlsOrThrow({
+          tenantId: job.tenantId,
+          requestedByUserId: job.requestedByUserId,
+          references,
+        });
+        res.json({ referenceUrls });
+      } catch (error) {
+        handleWorkerRouteError(error, res);
+      }
+    },
+  );
+
   app.post(
     "/api/worker-jobs/:jobId/artifacts/init-upload",
     artifactLimiter,
@@ -1171,6 +1337,26 @@ export function registerWorkerRuntimeRoutes(
           jobId: req.params.jobId,
           payload: parsed,
         });
+
+        // Feature 135 section 06 — finalize dispatch. Only hermes_media_*
+        // job artifacts are handled here; every other job type (including
+        // hyperframes) is untouched by this branch (regression-safe).
+        const job = await defaultHermesMediaAdapterRepo.getJobById(req.params.jobId);
+        if (job && HERMES_MEDIA_JOB_TYPES.has(job.jobType)) {
+          try {
+            // `result.artifact` is `completeWorkerArtifact`'s intentionally
+            // loose `Record<string, any>` row shape — cast to the strict
+            // Drizzle row type at this one crossing point.
+            await finalizeHermesMediaArtifact({ job, artifact: result.artifact as unknown as WorkerArtifact });
+          } catch (finalizeError) {
+            // finalizeHermesMediaArtifact already fails the job internally
+            // (typed failureReason) on a validation/safety-gate rejection —
+            // the artifact upload itself still succeeded, so the HTTP
+            // response to the worker must not change; just log.
+            debugError("workerRuntime", `Hermes media finalize failed for job ${req.params.jobId}`, finalizeError);
+          }
+        }
+
         res.json(result);
       } catch (error) {
         handleWorkerRouteError(error, res);

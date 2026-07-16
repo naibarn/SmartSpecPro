@@ -41,6 +41,7 @@ import {
 } from "./enabledMediaModelSelection";
 import { resolveMediaTransport } from "./mediaTransportResolver";
 import { getMcpMediaTask, submitMcpMediaGeneration } from "./mcpMediaAdapter";
+import { getHermesMediaTask, isHermesMediaTaskId } from "./hermesMediaAdapter";
 import { normalizeMcpProviderModelIdForProvider } from "./mcpProviderModelAliases";
 import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
 import type {
@@ -1262,6 +1263,9 @@ const PERSISTED_INTERNAL_EXTRA_PARAM_KEYS = new Set([
   "__vd_series_id",
   "__vd_episode_id",
   "__vd_character_id",
+  "__vd_portrait_candidate_batch_id",
+  "__vd_portrait_candidate_id",
+  "__vd_portrait_candidate_asset_link_id",
   // Vertical Drama shot/image provenance tags (2026-07-06) — additive
   // bookkeeping only, not provider-facing. They are read by project-scoped
   // history/recovery paths and never sent as provider prompt semantics.
@@ -2782,6 +2786,31 @@ export class MediaGenerationService {
         endpoint: `/api/v1/media/tasks/${taskId}`,
       },
     });
+
+    if (isHermesMediaTaskId(taskId)) {
+      const userId = typeof auditContext?.userId === "number" ? auditContext.userId : null;
+      if (!userId) {
+        throw new Error("Hermes media task polling requires authenticated user context");
+      }
+      const task = await getHermesMediaTask(taskId, userId);
+      if (!task) {
+        throw new Error(`Task ${taskId} not found`);
+      }
+      auditLogger.log({
+        traceId: typeof auditContext?.traceId === "string" ? auditContext.traceId : undefined,
+        eventType: "media_response",
+        userId,
+        requestType: "getTask",
+        mediaTaskId: taskId,
+        statusCode: 200,
+        responsePayload: {
+          transport: "hermes_worker",
+          status: task.status,
+          mediaType: task.mediaType,
+        },
+      });
+      return task;
+    }
 
     if (taskId.startsWith("mcp_")) {
       const userId = typeof auditContext?.userId === "number" ? auditContext.userId : null;
