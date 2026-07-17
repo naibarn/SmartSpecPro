@@ -133,6 +133,52 @@ describe("getHermesMediaTask — status mapping", () => {
     expect(task?.status).toBe("failed");
     expect(task?.errorMessage).toBeTruthy();
   });
+
+  // ── Section-06 amendment: MediaTask.errorCode round-trips alongside
+  // the existing localized errorMessage, so section-10's client can parse
+  // it (extractHermesErrorCode) for retry affordances. ──
+
+  it("populates errorCode (typed, unstripped) alongside the localized errorMessage for a [HERMES_X]-coded failureReason", async () => {
+    const job = buildJob({ status: "failed", failureReason: "[HERMES_TIMEOUT] Processing timed out. Please try again." });
+    const repo = buildRepo({ getJobById: vi.fn(async () => job) });
+    const task = await getHermesMediaTask("hermes_job-1", USER_ID, { repo });
+    expect(task?.errorCode).toBe("HERMES_TIMEOUT");
+    // errorMessage stays exactly as before — localized copy, no [HERMES_X] prefix.
+    expect(task?.errorMessage).toBeTruthy();
+    expect(task?.errorMessage).not.toContain("[HERMES_TIMEOUT]");
+  });
+
+  it("populates errorCode HERMES_JOB_CANCELLED for a canceled job", async () => {
+    const job = buildJob({ status: "canceled" });
+    const repo = buildRepo({ getJobById: vi.fn(async () => job) });
+    const task = await getHermesMediaTask("hermes_job-1", USER_ID, { repo });
+    expect(task?.errorCode).toBe("HERMES_JOB_CANCELLED");
+    expect(task?.errorMessage).toBeTruthy();
+  });
+
+  it("populates errorCode HERMES_TIMEOUT (retryable) for an expired job whose failureReason carries the code", async () => {
+    const job = buildJob({ status: "expired", failureReason: "[HERMES_TIMEOUT] Processing timed out. Please try again." });
+    const repo = buildRepo({ getJobById: vi.fn(async () => job) });
+    const task = await getHermesMediaTask("hermes_job-1", USER_ID, { repo });
+    expect(task?.status).toBe("failed");
+    expect(task?.errorCode).toBe("HERMES_TIMEOUT");
+  });
+
+  it("leaves errorCode undefined when failureReason doesn't follow the [HERMES_X] convention (never fabricates a code)", async () => {
+    const job = buildJob({ status: "failed", failureReason: "raw worker stderr, no code" });
+    const repo = buildRepo({ getJobById: vi.fn(async () => job) });
+    const task = await getHermesMediaTask("hermes_job-1", USER_ID, { repo });
+    expect(task?.errorCode).toBeUndefined();
+    expect(task?.errorMessage).toBe("raw worker stderr, no code");
+  });
+
+  it("leaves both errorCode and errorMessage undefined for non-failed statuses", async () => {
+    const job = buildJob({ status: "completed" });
+    const repo = buildRepo({ getJobById: vi.fn(async () => job) });
+    const task = await getHermesMediaTask("hermes_job-1", USER_ID, { repo });
+    expect(task?.errorCode).toBeUndefined();
+    expect(task?.errorMessage).toBeUndefined();
+  });
 });
 
 describe("getHermesMediaTask — ownership", () => {

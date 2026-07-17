@@ -1122,6 +1122,15 @@ export interface MediaTask {
   resultUrl?: string;
   resultData?: Record<string, unknown>;
   errorMessage?: string;
+  /** Section-06 amendment (Feature 135) — the typed `HermesMediaErrorCode`
+   * (e.g. `HERMES_TIMEOUT`) for a failed/expired/canceled hermes_ task,
+   * populated by `hermesMediaAdapter.ts`'s `getHermesMediaTask` alongside
+   * the existing localized `errorMessage`. Left undefined for every other
+   * transport/task — `errorMessage` remains the only field non-hermes
+   * renderers need. Typed as `string` here (not the imported
+   * `HermesMediaErrorCode` union) so this shared, transport-agnostic
+   * interface never has to import from the hermes namespace. */
+  errorCode?: string;
   creditsUsed?: number;
   creditsBalance?: number;
   createdAt: string;

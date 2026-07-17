@@ -155,20 +155,42 @@ function deriveHermesTaskStatus(jobStatus: string): { status: TaskStatus; errorC
   return { status: "failed" };
 }
 
-function deriveHermesErrorMessage(
+/**
+ * Resolves the typed `HermesMediaErrorCode` for a failed/expired/canceled
+ * projection — `errorCodeOverride` (the `canceled` → `HERMES_JOB_CANCELLED`
+ * mapping) wins outright; otherwise parses the code back out of the raw
+ * `[HERMES_X] ...` `failureReason` convention (section 01's
+ * `formatHermesErrorMessage`/`parseHermesErrorMessage` wire contract).
+ * Returns `undefined` when the worker didn't follow that convention (e.g. a
+ * pre-section-01 row, or a bug) — callers must never fabricate a code.
+ */
+function resolveHermesErrorCode(
   failureReason: string | null | undefined,
   errorCodeOverride?: HermesMediaErrorCode,
-): string | undefined {
-  if (errorCodeOverride) return hermesErrorCopy(errorCodeOverride).th;
+): HermesMediaErrorCode | undefined {
+  if (errorCodeOverride) return errorCodeOverride;
   if (!failureReason) return undefined;
-  const parsedCode = parseHermesErrorMessage(failureReason);
-  if (parsedCode) return hermesErrorCopy(parsedCode).th;
+  return parseHermesErrorMessage(failureReason) ?? undefined;
+}
+
+/**
+ * Section-06 amendment — the client (section 10's `extractHermesErrorCode`)
+ * needs the machine-readable code (`MediaTask.errorCode`) to drive retry
+ * affordances; this function still returns ONLY the localized Thai copy for
+ * `MediaTask.errorMessage` (existing renderers are unchanged, no `[HERMES_X]`
+ * prefix ever reaches that field).
+ */
+function deriveHermesErrorMessage(
+  failureReason: string | null | undefined,
+  resolvedErrorCode: HermesMediaErrorCode | undefined,
+): string | undefined {
+  if (resolvedErrorCode) return hermesErrorCopy(resolvedErrorCode).th;
   // Never fabricate a message, but never surface raw stderr either — if the
   // worker didn't follow the `[HERMES_X] ...` convention, fall back to the
   // stored failureReason as-is (it is at minimum a human-authored string,
   // never a stack trace, since only `recordWorkerJobEvent`'s sanitized
   // payload ever reaches this column).
-  return failureReason;
+  return failureReason ?? undefined;
 }
 
 async function resolveSignedUrl(
@@ -236,8 +258,11 @@ export async function getHermesMediaTask(
     // from an un-finalized artifact.
   }
 
+  const resolvedErrorCode = status === "failed"
+    ? resolveHermesErrorCode(job.failureReason, errorCode)
+    : undefined;
   const errorMessage = status === "failed"
-    ? deriveHermesErrorMessage(job.failureReason, errorCode)
+    ? deriveHermesErrorMessage(job.failureReason, resolvedErrorCode)
     : undefined;
 
   const capabilityRequirements = (job.capabilityRequirementsJson ?? {}) as Record<string, unknown>;
@@ -261,6 +286,7 @@ export async function getHermesMediaTask(
       connectionId: typeof capabilityRequirements.connectionId === "string" ? capabilityRequirements.connectionId : undefined,
     },
     ...(errorMessage ? { errorMessage } : {}),
+    ...(resolvedErrorCode ? { errorCode: resolvedErrorCode } : {}),
     creditsUsed: workerBilling?.reservedCredits ?? 0,
     createdAt: (job.createdAt instanceof Date ? job.createdAt : new Date(job.createdAt)).toISOString(),
     ...(job.startedAt ? { startedAt: new Date(job.startedAt).toISOString() } : {}),
