@@ -212,7 +212,12 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
   extractClipSourcesFromMotionPromptPack: vi.fn(() => []),
   resolveClipsForAssembly: vi.fn(() => ({ ordered: [], missing: [] })),
+  // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
   submitAssemblyJob: vi.fn(async () => ({ jobId: "job-1" })),
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+  // persists `assemblyManifest.compiledVideo = {status:"pending", pendingJobId}`
+  // right after enqueueing.
+  persistCompiledVideoState: vi.fn(async () => undefined),
   compiledVideoFilename: vi.fn(() => "compiled.mp4"),
   // Task #21 phase B — default no-op shape (matches every PRE-EXISTING test
   // in this file, none of which set `includeDialogueAudio`/`subtitlePreset`);
@@ -225,6 +230,22 @@ vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
     dialogueAudioSegmentsIncluded: 0,
     subtitleLinesIncluded: 0,
   })),
+}));
+
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+// enqueues via this lazily-imported service instead of calling
+// `submitAssemblyJob` in-process; mocked here the SAME way so
+// `assembleEpisodeVideo`'s dynamic `await import(...)` resolves to this
+// stub instead of the real module (which calls `createRateLimiter(...)` at
+// load time — see that router file's own import-block doc comment).
+const { mockQueueVerticalDramaFfmpegAssemblyJob } = vi.hoisted(() => ({
+  mockQueueVerticalDramaFfmpegAssemblyJob: vi.fn(async () => ({
+    created: true,
+    job: { id: "job-1" },
+  })),
+}));
+vi.mock("../../services/workerSchedulerService", () => ({
+  queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
 }));
 
 vi.mock("../../services/appRuntimeConfig", () => ({
@@ -733,8 +754,10 @@ describe("assembleEpisodeVideo — dialogueAudioTimeline merge (W12-A)", () => {
         startFrameShotNumbers: [1, 3, 4],
       },
     );
-    expect(episodeVideoAssembly.submitAssemblyJob).toHaveBeenCalledWith(
-      expect.objectContaining({ clips: selectedClipSources }),
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        renderFeed: expect.objectContaining({ clips: selectedClipSources }),
+      }),
     );
   });
 
@@ -922,7 +945,7 @@ describe("assembleEpisodeVideo — dialogue audio + subtitles feeding (task #21 
       },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
     expect(call.dialogueAudio).toEqual({
       segments: [{ audioUrl: "https://cdn.example.com/l1.mp3", startSec: 0 }],
       loudnessNormalize: true,
@@ -945,7 +968,7 @@ describe("assembleEpisodeVideo — dialogue audio + subtitles feeding (task #21 
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
     expect(call.dialogueAudio).toBeUndefined();
     expect(call.subtitles).toBeUndefined();
     expect(result.dialogueAudioSegmentsIncluded).toBe(0);

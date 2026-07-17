@@ -73,6 +73,30 @@ function loadRefinerSystemPrompt(): string {
   );
 }
 
+/**
+ * Weak-model-tolerant `string[]` — accepts the array the schema wants, OR the
+ * bare string weaker QC models (e.g. `google/gemini-3.1-flash-lite`) routinely
+ * emit for these fields instead, coercing it to a single-element array. Before
+ * this, `changes_made`/`risk_flags` returned as a string failed schema
+ * validation on every attempt (`Expected array, received string`), exhausting
+ * the retry budget and forcing the QC refine to fall back to hard truncation
+ * for whole episodes. This is a purely structural tolerance at the extraction
+ * layer (see the VD weak-model-JSON failure class) — it never changes the
+ * refined prompt itself, only how the advisory changes/risk notes are parsed.
+ */
+const coercedStringArray = z
+  .preprocess(v => {
+    if (v == null) return undefined; // let .default([]) apply
+    if (Array.isArray(v)) return v.map(item => String(item));
+    if (typeof v === "string") {
+      const trimmed = v.trim();
+      return trimmed ? [trimmed] : [];
+    }
+    return v; // any other shape falls through to array validation below
+  }, z.array(z.string()))
+  .optional()
+  .default([]);
+
 /** Output schema — mirrors `schemas/output.schema.json` (only the fields this module reads are strictly typed; rest passthrough). */
 const refinerOutputSchema = z
   .object({
@@ -81,8 +105,8 @@ const refinerOutputSchema = z
     character_count: z.number().optional(),
     within_limit: z.boolean().optional(),
     preserved_intent_summary: z.string().optional(),
-    changes_made: z.array(z.string()).optional().default([]),
-    risk_flags: z.array(z.string()).optional().default([]),
+    changes_made: coercedStringArray,
+    risk_flags: coercedStringArray,
     notes: z.string().optional().default(""),
   })
   .passthrough();
@@ -100,12 +124,83 @@ export interface EnsurePromptWithinLimitParams {
   prompt: string;
   /** Optional extra context folded into the refiner's user prompt (e.g. shot description, dialogue directive summary) to help it preserve intent. */
   context?: string;
+  /** Exact fragments (normally native-audio dialogue) that must survive every refinement/truncation pass. */
+  protectedFragments?: string[];
   userId: number;
   tenantId?: string;
   seriesId: number;
   idempotencyKey?: string;
   /** Human-readable label used only in log lines / credit transaction descriptions, e.g. "start-frame prompt (shot 3)". */
   label?: string;
+}
+
+export class PromptProtectedFragmentsOverflowError extends Error {
+  code = "VD_PROMPT_PROTECTED_FRAGMENTS_OVERFLOW" as const;
+  constructor(maxChars: number) {
+    super(`Mandatory prompt fragments exceed the ${maxChars}-character hard limit`);
+    this.name = "PromptProtectedFragmentsOverflowError";
+  }
+}
+
+export function assertProtectedFragmentsFit(
+  kind: VerticalDramaPromptKind,
+  protectedFragments: string[] | undefined,
+): void {
+  const protectedLength = (protectedFragments ?? [])
+    .map(value => value.trim())
+    .filter(Boolean)
+    .join("\n").length;
+  const maxChars = promptCapForKind(kind);
+  if (protectedLength > maxChars) {
+    throw new PromptProtectedFragmentsOverflowError(maxChars);
+  }
+}
+
+function finalizeProtectedFragments(
+  prompt: string,
+  protectedFragments: string[] | undefined,
+  maxChars: number,
+): { prompt: string; truncated: boolean } {
+  const fragments = (protectedFragments ?? []).map(value => value.trim()).filter(Boolean);
+  const missing: string[] = [];
+  const seenCount = new Map<string, number>();
+  for (const fragment of fragments) {
+    const requiredOccurrence = (seenCount.get(fragment) ?? 0) + 1;
+    seenCount.set(fragment, requiredOccurrence);
+    let foundOccurrence = 0;
+    let fromIndex = 0;
+    while (fromIndex <= prompt.length) {
+      const index = prompt.indexOf(fragment, fromIndex);
+      if (index < 0) break;
+      foundOccurrence += 1;
+      fromIndex = index + Math.max(1, fragment.length);
+    }
+    if (foundOccurrence < requiredOccurrence) missing.push(fragment);
+  }
+  if (missing.length === 0) {
+    return {
+      prompt: prompt.length <= maxChars ? prompt : truncateAtSentenceBoundary(prompt, maxChars),
+      truncated: prompt.length > maxChars,
+    };
+  }
+
+  const protectedBlock = missing.join("\n");
+  if (protectedBlock.length > maxChars) {
+    throw new PromptProtectedFragmentsOverflowError(maxChars);
+  }
+  if (protectedBlock.length === maxChars) {
+    return { prompt: protectedBlock, truncated: prompt !== protectedBlock };
+  }
+  const separator = prompt.trim().length > 0 ? "\n" : "";
+  const availableForBase = maxChars - separator.length - protectedBlock.length;
+  const base =
+    prompt.length <= availableForBase
+      ? prompt.trim()
+      : truncateAtSentenceBoundary(prompt, availableForBase);
+  return {
+    prompt: `${base}${base ? separator : ""}${protectedBlock}`,
+    truncated: prompt.length > availableForBase,
+  };
 }
 
 export interface EnsurePromptWithinLimitResult {
@@ -118,6 +213,7 @@ export interface EnsurePromptWithinLimitResult {
 
 /** Hard sentence-boundary truncation at `maxChars` — final fallback only, never the first move. */
 export function truncateAtSentenceBoundary(text: string, maxChars: number): string {
+  if (maxChars <= 0) return "";
   if (text.length <= maxChars) return text;
   const slice = text.slice(0, maxChars);
   const lastBoundary = Math.max(
@@ -258,9 +354,11 @@ export async function ensurePromptWithinLimit(
   const { kind, prompt, context, userId, tenantId, seriesId, idempotencyKey } = params;
   const maxChars = promptCapForKind(kind);
   const label = params.label ?? `${kind} prompt`;
+  assertProtectedFragmentsFit(kind, params.protectedFragments);
 
   if (prompt.length <= maxChars) {
-    return { prompt, refined: false, creditsUsed: 0, truncated: false };
+    const finalized = finalizeProtectedFragments(prompt, params.protectedFragments, maxChars);
+    return { prompt: finalized.prompt, refined: false, creditsUsed: 0, truncated: finalized.truncated };
   }
 
   let creditsUsed = 0;
@@ -280,7 +378,12 @@ export async function ensurePromptWithinLimit(
     });
     creditsUsed += first.creditsUsed;
     if (first.optimizedPrompt.length <= maxChars) {
-      return { prompt: first.optimizedPrompt, refined: true, creditsUsed, truncated: false };
+      const finalized = finalizeProtectedFragments(
+        first.optimizedPrompt,
+        params.protectedFragments,
+        maxChars,
+      );
+      return { prompt: finalized.prompt, refined: true, creditsUsed, truncated: finalized.truncated };
     }
 
     debugLog(
@@ -303,7 +406,12 @@ export async function ensurePromptWithinLimit(
     });
     creditsUsed += second.creditsUsed;
     if (second.optimizedPrompt.length <= maxChars) {
-      return { prompt: second.optimizedPrompt, refined: true, creditsUsed, truncated: false };
+      const finalized = finalizeProtectedFragments(
+        second.optimizedPrompt,
+        params.protectedFragments,
+        maxChars,
+      );
+      return { prompt: finalized.prompt, refined: true, creditsUsed, truncated: finalized.truncated };
     }
 
     debugError(
@@ -311,13 +419,19 @@ export async function ensurePromptWithinLimit(
       `${label}: refiner still over cap after strict retry (${second.optimizedPrompt.length} > ${maxChars}) — falling back to hard truncation`,
       { kind, maxChars },
     );
+    const finalized = finalizeProtectedFragments(
+      truncateAtSentenceBoundary(second.optimizedPrompt, maxChars),
+      params.protectedFragments,
+      maxChars,
+    );
     return {
-      prompt: truncateAtSentenceBoundary(second.optimizedPrompt, maxChars),
+      prompt: finalized.prompt,
       refined: true,
       creditsUsed,
       truncated: true,
     };
   } catch (error) {
+    if (error instanceof PromptProtectedFragmentsOverflowError) throw error;
     // Refinement failing entirely (rate limit, insufficient credits, LLM
     // error) must never block the user's generation — fall back to hard
     // truncation of the ORIGINAL prompt, logged as a warning.
@@ -326,8 +440,13 @@ export async function ensurePromptWithinLimit(
       `${label}: refinement failed, falling back to hard truncation`,
       { kind, maxChars, message: error instanceof Error ? error.message : String(error) },
     );
+    const finalized = finalizeProtectedFragments(
+      truncateAtSentenceBoundary(prompt, maxChars),
+      params.protectedFragments,
+      maxChars,
+    );
     return {
-      prompt: truncateAtSentenceBoundary(prompt, maxChars),
+      prompt: finalized.prompt,
       refined: creditsUsed > 0,
       creditsUsed,
       truncated: true,

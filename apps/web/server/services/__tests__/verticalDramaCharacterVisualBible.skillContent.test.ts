@@ -156,6 +156,60 @@ describe("vertical-drama-character-visual-bible/skill.md — story-grounded Char
   });
 });
 
+describe("vertical-drama-character-visual-bible/skill.md — first-portrait candidate casting", () => {
+  const body = readSkillMdBody();
+
+  it("defines portrait_candidate_count 1-5 as a visible candidate-batch mode without changing normal output", () => {
+    expect(body).toMatch(/portrait_candidate_count/);
+    expect(body).toMatch(/1.?5/);
+    expect(body).toMatch(/portrait_candidate_batch/);
+    expect(body).toMatch(/normal.*output.*unchanged/is);
+  });
+
+  it("keeps plain_text_summary optional only for the lean candidate contract", () => {
+    const schema = JSON.parse(
+      fs.readFileSync(path.join(path.dirname(resolveSkillMdPath()), "schemas/output.schema.json"), "utf8"),
+    ) as { oneOf: Array<{ required: string[] }> };
+    expect(schema.oneOf[0]?.required).toContain("plain_text_summary");
+    expect(schema.oneOf[1]?.required).not.toContain("plain_text_summary");
+    expect(body).toMatch(/plain_text_summary.*optional/is);
+  });
+
+  it("forbids an empty candidate DNA placeholder and names the previously omitted required keys", () => {
+    const candidateSection = body.match(
+      /### First-portrait candidate casting[\s\S]*?## Lead-role screen presence/i,
+    )?.[0];
+    expect(candidateSection).toBeTruthy();
+    expect(candidateSection).not.toMatch(/"character_design_dna"\s*:\s*\{\s*\}/);
+    for (const key of [
+      "series_dna_alignment",
+      "costume_grammar",
+      "public_mask",
+      "hidden_truth",
+      "narrative_promise",
+      "attractive_contradiction",
+      "forbidden_drift",
+      "anti_clone_checks",
+    ]) {
+      expect(candidateSection).toContain(key);
+    }
+  });
+
+  it("requires different people while preserving one premium dramatic visual language and equal casting quality", () => {
+    expect(body).toMatch(/different people|different faces/i);
+    expect(body).toMatch(/same premium visual language/i);
+    expect(body).toMatch(/equally compelling|same casting floor/i);
+    expect(body).toMatch(/3.*of 5 facial dimensions/i);
+    expect(body).toMatch(/hair.*different/is);
+    expect(body).toMatch(/signature|silhouette/i);
+  });
+
+  it("rejects model-advertising language in favor of story-character magnetism", () => {
+    expect(body).toMatch(/catalog|advertising model|influencer/i);
+    expect(body).toMatch(/story character|dramatic character/i);
+  });
+});
+
 describe("vertical-drama-character-visual-bible/skill.md — standing MANDATORY sections (Phase 2 content relocation)", () => {
   const body = readSkillMdBody();
 
@@ -199,6 +253,25 @@ describe("vertical-drama-character-visual-bible/skill.md — standing MANDATORY 
 
   it("the role-tier archetype table still contains the child-precedence rule (always wins over lead\\/villain labels)", () => {
     expect(body).toMatch(/Always wins, even over an explicit lead\/villain role label/i);
+  });
+
+  it("requires an explicit lead beauty floor and keeps occupation/genre secondary", () => {
+    expect(body).toMatch(/Role Beauty Spec.*MANDATORY before prompt writing/i);
+    expect(body).toMatch(/beauty_priority/);
+    expect(body).toMatch(/lead_attractiveness_level/);
+    expect(body).toMatch(/screen_magnetism_level/);
+    expect(body).toMatch(/must_not_undershoot_beauty/);
+    expect(body).toMatch(/occupation.*secondary/i);
+    expect(body).toMatch(/HARD PRIORITY over genre/i);
+    expect(body).toMatch(/exceptionally|strikingly.*handsome/i);
+    expect(body).toMatch(/exceptionally|strikingly.*beautiful/i);
+  });
+
+  it("does not let noir/thriller grammar override a lead's open romantic visual read", () => {
+    expect(body).toMatch(/thriller tension.*MUST NOT turn a lead's face/is);
+    expect(body).toMatch(/predatory gaze.*elegant menace.*quiet calculation/is);
+    expect(body).toMatch(/Move danger into the\s+story environment/i);
+    expect(body).toMatch(/high-contrast thriller color grade/i);
   });
 });
 

@@ -98,6 +98,7 @@ import {
   InsufficientCreditsError as StartFrameInsufficientCreditsError,
   VdSchemaValidationError as StartFrameVdSchemaValidationError,
   type StartFrameRenderPlanProjection,
+  type VdReferenceMappingWarning,
 } from "./verticalDramaStartFrameGeneration";
 import {
   generateVideoMotionPromptPack,
@@ -124,6 +125,7 @@ import {
   type SeriesMemoryPlannerOutput,
 } from "./verticalDramaSeriesMemoryPlanning";
 import { ensurePromptWithinLimit } from "./verticalDramaPromptQc";
+import { stampArtifactForStoryboard } from "./verticalDramaStoryboardRevision";
 import {
   generateEpisodeDialogueAudioPlan,
   buildDialogueAudioPlan,
@@ -2669,6 +2671,8 @@ export class VerticalDramaEpisodePipeline {
      *  the plan so the caller can run the missing-character-identity QC
      *  check without a second DB query. */
     characters: VerticalDramaCharacterDescriptorSource[];
+    /** Present only when a reference-mapping contradiction survived `generateStartFrameRenderPlan`'s one corrective retry — see `VdReferenceMappingWarning`'s doc comment. */
+    referenceMappingWarnings?: VdReferenceMappingWarning[];
   }> {
     const storyboard =
       (episode.storyboard as Record<string, unknown> | null) ?? null;
@@ -2741,12 +2745,45 @@ export class VerticalDramaEpisodePipeline {
           }
         )
       : undefined;
+    const episodePlanShotDrafts: VdDeepDraftShotDraft[] = episodePlanItem
+      ? readItemShotDrafts(episodePlanItem) ?? []
+      : [];
     const canonicalShotSummaryByShotNumber = new Map<number, string>(
-      (episodePlanItem ? readItemShotDrafts(episodePlanItem) ?? [] : [])
+      episodePlanShotDrafts
         .filter((shot): shot is VdDeepDraftShotDraft =>
           typeof shot.summary === "string" && shot.summary.trim().length > 0
         )
         .map(shot => [shot.shot_number, shot.summary.trim()] as const),
+    );
+    // Speaker-order composition fix (start-frame character positioning) —
+    // this shot's dialogue speakers, in delivery order, deduped to first
+    // appearance. Read from the SAME deep-drafted `shotDrafts[].dialogue_lines`
+    // that `canonicalShotSummaryByShotNumber` above already reads (no extra
+    // DB round trip) — this is the Overview page's canonical dialogue source
+    // AND the only reliable dialogue source available at this pipeline stage:
+    // `start_frame_render_plan` runs BEFORE `dialogue_audio_plan`/
+    // `video_motion_prompt_pack` are generated, so those later-stage sources
+    // (the ones `resolveShotDialogueLines()` in `verticalDramaEpisodes.ts`
+    // also tries) are never populated yet at this point in the pipeline.
+    // Empty for any shot with no drafted `dialogue_lines` (legacy episode
+    // with no deep draft, an in-progress/never-drafted shot, or an explicit
+    // `silence_intent` shot) — `speakingOrderByShotNumber.get(...)` then
+    // returns `undefined` and `buildStartFrameRenderPlanUserPrompt` omits the
+    // `speaking_order:` line entirely for that shot (byte-identical
+    // regression guard).
+    const speakingOrderByShotNumber = new Map<number, string[]>(
+      episodePlanShotDrafts
+        .map(shot => {
+          const order = Array.from(
+            new Set(
+              shot.dialogue_lines
+                .map(line => line.speaker?.trim())
+                .filter((speaker): speaker is string => Boolean(speaker))
+            )
+          );
+          return [shot.shot_number, order] as const;
+        })
+        .filter(([, order]) => order.length > 0),
     );
 
     // Character identity descriptors (2026-07-07 non-human-character-
@@ -2896,6 +2933,11 @@ export class VerticalDramaEpisodePipeline {
         // this shot, so the downstream prompt builder's byte-identical guard
         // sees no shape difference for that shot.
         const locationGroup = locationByShotNumber.get(shotNumber);
+        // Speaker-order composition fix — see `speakingOrderByShotNumber`'s
+        // doc comment above. Omitted entirely (not merely `undefined` in a
+        // spread) when this shot has no resolved speaking order, same
+        // "omit the key" convention as `location` immediately above.
+        const speakingOrder = speakingOrderByShotNumber.get(shotNumber);
         return {
           shotNumber,
           description: String(s.description ?? s.visual_description ?? ""),
@@ -2912,6 +2954,7 @@ export class VerticalDramaEpisodePipeline {
                 },
               }
             : {}),
+          ...(speakingOrder ? { speakingOrder } : {}),
         };
       }),
     });
@@ -3586,6 +3629,25 @@ export class VerticalDramaEpisodePipeline {
           });
         }
 
+        // Same non-blocking QC channel, for the reference-mapping validator
+        // (`planning/vd-start-frame-reference-mapping/plan.md` Phase 2,
+        // RC3 fix, 2026-07-16) — a shot whose own "Image N ↔ name" claim
+        // still contradicts its real attachment order after
+        // `generateStartFrameRenderPlan`'s one corrective retry warns rather
+        // than fails the whole 9-shot batch (the per-shot "ให้ AI ปรับ"
+        // regenerate path — `generateShotStartFramePrompt` — fails CLOSED
+        // instead, since that path only ever touches one shot).
+        for (const mismatch of generated.referenceMappingWarnings ?? []) {
+          stageQcWarnings.push({
+            code: "VD_START_FRAME_REFERENCE_MAPPING_MISMATCH",
+            severity: "warning",
+            message: `Shot ${mismatch.shotNumber}: prompt claims "${mismatch.characterName}" is Image ${mismatch.claimedImageIndex}, but the real attachment order makes it Image ${mismatch.expectedImageIndex} — regenerate this shot's prompt to fix the mapping before rendering.`,
+            targetStage: stage,
+            targetShotNumber: mismatch.shotNumber,
+            repairable: true,
+          });
+        }
+
         payload = { stage, ...generated.plan };
         // Persist to the episode's own `startFramePlan` jsonb column.
         await db
@@ -3725,7 +3787,13 @@ export class VerticalDramaEpisodePipeline {
         // Persist to the episode's own `motionPromptPack` jsonb column.
         await db
           .update(verticalDramaEpisodes)
-          .set({ motionPromptPack: generated.pack, updatedAt: new Date() })
+          .set({
+            motionPromptPack: stampArtifactForStoryboard(
+              generated.pack as unknown as Record<string, unknown>,
+              episode.storyboard,
+            ),
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(verticalDramaEpisodes.id, owner.episodeId),

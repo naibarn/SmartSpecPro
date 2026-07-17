@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCharacterDescriptorLine,
   buildCharacterIdentityMapBlock,
+  findCharacterImageIndexMappingMismatches,
   findMissingCharacterIdentityWarnings,
   stripExistingIdentityLockSuffix,
   type VerticalDramaCharacterDescriptorSource,
@@ -173,13 +174,126 @@ describe("findMissingCharacterIdentityWarnings", () => {
   });
 });
 
-// `formatIdentityLockedImagePrompt` (and its test coverage, formerly here)
-// was removed (2026-07-11, vertical-drama-skill-first-architecture plan,
-// Phase 3, item 2) — the `vertical-drama-shot-start-frame-render` skill now
-// authors the full identity-lock text itself, in its own prose, so no
-// code-side formatter is needed. `stripExistingIdentityLockSuffix` remains a
-// standalone back-compat safety net (see its doc comment) and keeps its own
-// coverage below.
+describe("findCharacterImageIndexMappingMismatches (2026-07-16 start-frame reference-mapping contradiction fix)", () => {
+  // Real repro data (series 16, episode 66, shot 9): the skill's own prose
+  // said "ภาคิน (Image 1)" / "ไอริณ (Image 2)" while a code-appended tail
+  // block said "Image 1 = ไอริณ; Image 2 = ภาคิน" — a direct, silent
+  // self-contradiction. The tail-block phrasing is now the ONLY code-authored
+  // path removed (Phase 3); this validator exists to catch exactly this
+  // shape of contradiction wherever it appears in a skill-authored prompt.
+  const references = [
+    { imageIndex: 1, characterName: "ภาคิน" },
+    { imageIndex: 2, characterName: "ไอริณ" },
+  ];
+
+  it("returns no mismatches for a correct mapping (name-then-Image-N prose)", () => {
+    const prompt =
+      "ภาคิน (Image 1, leftmost, mid-stride) faces ไอริณ (Image 2, rightmost, arms crossed).";
+    expect(findCharacterImageIndexMappingMismatches(prompt, references)).toEqual([]);
+  });
+
+  it("returns no mismatches for a correct mapping (Image-N-equals-name tail style)", () => {
+    const prompt = "A tense standoff. Image 1 = ภาคิน; Image 2 = ไอริณ.";
+    expect(findCharacterImageIndexMappingMismatches(prompt, references)).toEqual([]);
+  });
+
+  it("catches a swapped mapping — the exact live bug (prose says Image 1/2 one way, tail says the other)", () => {
+    const prompt =
+      "ภาคิน (Image 1, leftmost) faces ไอริณ (Image 2, rightmost). " +
+      "[Attached character reference images: Image 1 = ไอริณ; Image 2 = ภาคิน.]";
+    const mismatches = findCharacterImageIndexMappingMismatches(prompt, references);
+    expect(mismatches.length).toBeGreaterThan(0);
+    expect(mismatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          characterName: "ไอริณ",
+          claimedImageIndex: 1,
+          expectedImageIndex: 2,
+        }),
+        expect.objectContaining({
+          characterName: "ภาคิน",
+          claimedImageIndex: 2,
+          expectedImageIndex: 1,
+        }),
+      ]),
+    );
+  });
+
+  it("catches the exact 'Image 1 = ไอริณ; Image 2 = ภาคิน' tail-style claim contradicting the manifest", () => {
+    const prompt = "A quiet scene. Image 1 = ไอริณ; Image 2 = ภาคิน";
+    const mismatches = findCharacterImageIndexMappingMismatches(prompt, references);
+    expect(mismatches).toEqual([
+      { characterName: "ไอริณ", claimedImageIndex: 1, expectedImageIndex: 2 },
+      { characterName: "ภาคิน", claimedImageIndex: 2, expectedImageIndex: 1 },
+    ]);
+  });
+
+  it("catches a 'name (Image N, leftmost' style claim that contradicts the manifest", () => {
+    // ภาคิน is really Image 1, but this prose claims Image 2.
+    const prompt = "ภาคิน (Image 2, leftmost, mid-stride) glances toward the door.";
+    const mismatches = findCharacterImageIndexMappingMismatches(prompt, references);
+    expect(mismatches).toEqual([
+      { characterName: "ภาคิน", claimedImageIndex: 2, expectedImageIndex: 1 },
+    ]);
+  });
+
+  it("works with Latin names, case-insensitively", () => {
+    const latinReferences = [
+      { imageIndex: 1, characterName: "Hero" },
+      { imageIndex: 2, characterName: "Villain" },
+    ];
+    const prompt = "hero (image 2, tense) squares off against Villain (Image 1).";
+    const mismatches = findCharacterImageIndexMappingMismatches(prompt, latinReferences);
+    expect(mismatches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ characterName: "Hero", claimedImageIndex: 2, expectedImageIndex: 1 }),
+        expect.objectContaining({ characterName: "Villain", claimedImageIndex: 1, expectedImageIndex: 2 }),
+      ]),
+    );
+  });
+
+  it("does NOT flag implicit prose that never makes an explicit 'Image N' claim (lenient by design)", () => {
+    const prompt =
+      "ภาคิน stands near the window while ไอริณ leans against the counter, both illuminated by warm evening light.";
+    expect(findCharacterImageIndexMappingMismatches(prompt, references)).toEqual([]);
+  });
+
+  it("ignores 'Image N = location: ...' claims — locations are a separate concern", () => {
+    const prompt =
+      "Image 1 = ภาคิน; Image 2 = ไอริณ; Image 3 = location: ร้านกาแฟริมทาง, warm afternoon light.";
+    expect(
+      findCharacterImageIndexMappingMismatches(prompt, [
+        ...references,
+        { imageIndex: 3, characterName: "ร้านกาแฟริมทาง" },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("does not let a shorter name that is a substring of a longer one produce a false match", () => {
+    const substringReferences = [
+      { imageIndex: 1, characterName: "Rin" },
+      { imageIndex: 2, characterName: "Katarin" },
+    ];
+    // "Katarin" correctly claims Image 2 — "Rin" (a substring of "Katarin")
+    // must NOT also be matched here and flagged as claiming Image 2.
+    const prompt = "Katarin (Image 2, composed) stands at the doorway.";
+    expect(
+      findCharacterImageIndexMappingMismatches(prompt, substringReferences),
+    ).toEqual([]);
+  });
+
+  it("returns no mismatches when the prompt is empty or no references are known", () => {
+    expect(findCharacterImageIndexMappingMismatches("", references)).toEqual([]);
+    expect(
+      findCharacterImageIndexMappingMismatches("Image 1 = ภาคิน", []),
+    ).toEqual([]);
+  });
+
+  it("ignores an explicit claim naming someone who isn't a known reference at all", () => {
+    const prompt = "Image 1 = ภาคิน; a background extra also appears (Image 3, unnamed).";
+    expect(findCharacterImageIndexMappingMismatches(prompt, references)).toEqual([]);
+  });
+});
 
 describe("stripExistingIdentityLockSuffix", () => {
   it("returns the prompt unchanged when no identity-lock suffix is present", () => {

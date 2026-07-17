@@ -227,12 +227,33 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
   extractClipSourcesFromMotionPromptPack: vi.fn(() => []),
   resolveClipsForAssembly: vi.fn(() => ({ ordered: [], missing: [] })),
+  // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
   submitAssemblyJob: vi.fn(async () => ({ jobId: "job-1" })),
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+  // persists `assemblyManifest.compiledVideo = {status:"pending", pendingJobId}`
+  // right after enqueueing.
+  persistCompiledVideoState: vi.fn(async () => undefined),
   compiledVideoFilename: vi.fn(() => "compiled.mp4"),
   resolveEpisodeDialogueAudioAndSubtitlesRunInputs: vi.fn(() => ({
     dialogueAudioSegmentsIncluded: 0,
     subtitleLinesIncluded: 0,
   })),
+}));
+
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+// enqueues via this lazily-imported service instead of calling
+// `submitAssemblyJob` in-process; mocked here the SAME way so
+// `assembleEpisodeVideo`'s dynamic `await import(...)` resolves to this
+// stub instead of the real module (which calls `createRateLimiter(...)` at
+// load time — see that router file's own import-block doc comment).
+const { mockQueueVerticalDramaFfmpegAssemblyJob } = vi.hoisted(() => ({
+  mockQueueVerticalDramaFfmpegAssemblyJob: vi.fn(async () => ({
+    created: true,
+    job: { id: "job-1" },
+  })),
+}));
+vi.mock("../../services/workerSchedulerService", () => ({
+  queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
 }));
 
 const { mockResolveVdEpisodeTextOverlayEngineInputs } = vi.hoisted(() => ({
@@ -540,7 +561,7 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
     expect(result.textOverlayEventsIncluded).toBe(0);
     expect(result.watermarkIncluded).toBe(false);
     expect(mockResolveVdEpisodeTextOverlayEngineInputs).not.toHaveBeenCalled();
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
     expect(call.subtitles).toBeUndefined();
     expect(call.watermarkImage).toBeUndefined();
   });
@@ -559,7 +580,7 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
     expect(call.subtitles).toEqual({
       preset: "no_subtitle_style",
       lines: [],
@@ -589,7 +610,7 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
     expect(call.watermarkImage).toEqual(watermarkImage);
     expect(result.watermarkIncluded).toBe(true);
   });
@@ -642,7 +663,7 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
       input: { seriesId: "10", episodeId: "20", subtitlePreset: "classic_box" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    const call = mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[0]![0].renderFeed as any;
     expect(call.subtitles.preset).toBe("classic_box");
     expect(call.subtitles.lines).toEqual([{ startSec: 0, endSec: 2, text: "สวัสดี" }]);
     expect(call.subtitles.overlays).toEqual([overlayEvent]);

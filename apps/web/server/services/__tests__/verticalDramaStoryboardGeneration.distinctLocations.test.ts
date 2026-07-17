@@ -320,8 +320,13 @@ describe("generateStoryboardShotgrid — distinct_locations pass-through", () =>
 
     const result = await generateStoryboardShotgrid(baseParams());
     expect(result.storyboard.distinct_locations).toHaveLength(1);
+    // Key generation updated 2026-07-14 (episode 59 / series 16 swap fix):
+    // a content-derived slug of location_name, not a positional
+    // `location-${index+1}` — see this file's doc comment on the fallback
+    // block. "ฉากหลัก" is Thai-only and slugifies to the "location"
+    // fallback (no numeric suffix needed for a single group).
     expect(result.storyboard.distinct_locations![0]).toMatchObject({
-      location_key: "location-1",
+      location_key: "location",
       location_name: "ฉากหลัก",
       shot_numbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
     });
@@ -337,14 +342,41 @@ describe("generateStoryboardShotgrid — distinct_locations pass-through", () =>
 
     const result = await generateStoryboardShotgrid(baseParams());
     expect(result.storyboard.distinct_locations).toHaveLength(2);
+    // Both names are Thai-only, so both slugify to the same "location"
+    // base — the fallback's own `usedFallbackKeys` dedup (mirroring
+    // `generateUniqueLocationKey`'s convention) gives the SECOND group a
+    // `-2` suffix rather than colliding with the first (see this file's
+    // 2026-07-14 doc comment update).
     expect(result.storyboard.distinct_locations![0]).toMatchObject({
-      location_key: "location-1",
+      location_key: "location",
       location_name: "ร้านสะดวกซื้อ",
       shot_numbers: [1, 2, 3, 4, 5],
     });
     expect(result.storyboard.distinct_locations![1]).toMatchObject({
       location_key: "location-2",
       location_name: "ครัวหลังร้าน",
+      shot_numbers: [6, 7, 8, 9],
+    });
+  });
+
+  it("derives the fallback key from an English-slug-shaped location_name so it EQUALS the series' canonical locationKey convention (2026-07-14 episode 59 / series 16 swap fix)", async () => {
+    const output = validOutput();
+    output.shots = output.shots.map((s, i) => ({
+      ...s,
+      location: i < 5 ? "Shophouse Stairhall" : "Irin Cafe",
+    })) as typeof output.shots;
+    mockExecute.mockResolvedValue(successResponse(output));
+
+    const result = await generateStoryboardShotgrid(baseParams());
+    expect(result.storyboard.distinct_locations).toHaveLength(2);
+    expect(result.storyboard.distinct_locations![0]).toMatchObject({
+      location_key: "shophouse-stairhall",
+      location_name: "Shophouse Stairhall",
+      shot_numbers: [1, 2, 3, 4, 5],
+    });
+    expect(result.storyboard.distinct_locations![1]).toMatchObject({
+      location_key: "irin-cafe",
+      location_name: "Irin Cafe",
       shot_numbers: [6, 7, 8, 9],
     });
   });

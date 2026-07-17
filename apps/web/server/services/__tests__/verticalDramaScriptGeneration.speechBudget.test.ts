@@ -288,8 +288,8 @@ describe("evaluateScriptSpeechCoverage", () => {
     const inRange = evaluateScriptSpeechCoverage(scriptBuilderOutputSchema.parse(wellFilledScript()), 60);
     const noData = evaluateScriptSpeechCoverage(scriptBuilderOutputSchema.parse(noDialogueDataScript()), 60);
     for (const result of [inRange, noData]) {
-      expect(result.targetSpeechSecondsMin).toBeCloseTo(34.8, 5); // 0.58 * 60
-      expect(result.targetSpeechSecondsMax).toBeCloseTo(40.8, 5); // default 8-clip profile sum
+      expect(result.targetSpeechSecondsMin).toBeCloseTo(17.4, 5); // 0.29 * 60 (MIN_EPISODE_COVERAGE_RATIO rescaled 0.58->0.29 alongside THAI_CHARS_PER_SECOND 8.5->17)
+      expect(result.targetSpeechSecondsMax).toBeCloseTo(20.4, 5); // default 8-clip profile sum, rescaled x0.5 alongside the target-clip ratio
     }
   });
 
@@ -301,13 +301,13 @@ describe("evaluateScriptSpeechCoverage", () => {
         beats: [
           {
             beat: 1,
-            dialogue_lines: [{ speaker: "Aria", line: "short", estimated_speech_seconds: 25 }],
+            dialogue_lines: [{ speaker: "Aria", line: "short", estimated_speech_seconds: 12.5 }],
           },
         ],
       },
     };
     const parsed = scriptBuilderOutputSchema.parse(script);
-    const result = evaluateScriptSpeechCoverage(parsed, 60); // 25/60 = 0.417 -> between 0.33 and 0.58
+    const result = evaluateScriptSpeechCoverage(parsed, 60); // 12.5/60 = 0.208 -> between ERROR 0.165 and MIN 0.29 (halved alongside THAI_CHARS_PER_SECOND 8.5->17 to land in the same band)
     expect(result.status).toBe("underfilled_warning");
   });
 
@@ -348,7 +348,7 @@ describe("evaluateScriptSpeechCoverage", () => {
     };
     const parsed = scriptBuilderOutputSchema.parse(script);
     const result = evaluateScriptSpeechCoverage(parsed, 60);
-    // 8 Thai chars / 8.5 chars-per-second (floored at 0.75) — must be > 0,
+    // 8 Thai chars / 17 chars-per-second (floored at 0.75) — must be > 0,
     // proving the canonical estimator ran instead of defaulting to 0.
     expect(result.estimatedSpeechSeconds).toBeGreaterThan(0);
   });
@@ -369,11 +369,13 @@ describe("evaluateScriptSpeechCoverage — legacy scene_dialogue_summary fallbac
    *  scene_dialogue_summary[].dialogue_lines[] freeform strings — exactly
    *  the shape resolveShotDialogueLines's source-3b already parses
    *  (verticalDramaEpisodes.ts). The main line is 313 repeated Thai
-   *  characters — 313 / 8.5 chars-per-second ≈ 36.8s — a deterministic
+   *  characters — 313 / 17 chars-per-second ≈ 18.4s (rescaled 2026-07-15
+   *  alongside THAI_CHARS_PER_SECOND 8.5->17; was ≈36.8s) — a deterministic
    *  stand-in for the EXACT production repro (owner's density meter showed
-   *  "บทพูดรวม 36.8 วิ" / 0.61 coverage on a 60s episode) so this test's
-   *  expected numbers can be computed exactly rather than hand-counting a
-   *  natural-language sentence.
+   *  "บทพูดรวม 36.8 วิ" / 0.61 coverage on a 60s episode, now displayed as
+   *  ≈18.4s / same ≈0.31 coverage since MIN_EPISODE_COVERAGE_RATIO was
+   *  rescaled 0.58->0.29 in lockstep) so this test's expected numbers can be
+   *  computed exactly rather than hand-counting a natural-language sentence.
    */
   function legacyScriptWithSceneDialogue(): Record<string, unknown> {
     return {
@@ -392,8 +394,8 @@ describe("evaluateScriptSpeechCoverage — legacy scene_dialogue_summary fallbac
   it("falls back to scene_dialogue_summary[] when no beat has any dialogue_lines, instead of reporting 0/underfilled_error — reproduces the production contradiction (owner's screenshot: wizard said underfilled_error while the density meter, which resolves from this same legacy source, showed 36.8s/in_range on a 60s episode)", () => {
     const parsed = scriptBuilderOutputSchema.parse(legacyScriptWithSceneDialogue());
     const result = evaluateScriptSpeechCoverage(parsed, 60);
-    expect(result.estimatedSpeechSeconds).toBeCloseTo(313 / 8.5, 5); // ≈ 36.8s
-    expect(result.status).toBe("in_range"); // 36.8/60 ≈ 0.613 >= MIN_EPISODE_COVERAGE_RATIO (0.58)
+    expect(result.estimatedSpeechSeconds).toBeCloseTo(313 / 17, 5); // ≈ 18.4s (was ≈36.8s pre-rescale)
+    expect(result.status).toBe("in_range"); // 18.4/60 ≈ 0.307 >= MIN_EPISODE_COVERAGE_RATIO (0.29)
   });
 
   it("prefers beat-level dialogue_lines over the legacy fallback whenever source 1 has ANY entry (unchanged precedence, even when the legacy fallback alone would sum higher)", () => {
@@ -494,7 +496,7 @@ describe("generateEpisodeScript — speech-budget prompt injection (flag-gated)"
     expect(userMessage.content).not.toContain("content_budget");
   });
 
-  it("derives per_shot_band from the default 8-clip duration profile (8s -> ~5.4/3.6, 4s -> ~2.7)", async () => {
+  it("derives per_shot_band from the default 8-clip duration profile (8s -> ~2.7/1.8, 4s -> ~1.4)", async () => {
     mockLlmResponse(wellFilledScript());
 
     await generateEpisodeScript(baseParams({ opts: { speechBudgetEnabled: true } }));
@@ -512,11 +514,11 @@ describe("generateEpisodeScript — speech-budget prompt injection (flag-gated)"
 
     expect(payload.per_shot_band).toHaveLength(2);
     expect(payload.per_shot_band[0].clip_duration_seconds).toBe(8);
-    expect(payload.per_shot_band[0].target_speech_seconds).toBeCloseTo(5.44, 5);
-    expect(payload.per_shot_band[0].min_speech_seconds).toBeCloseTo(3.6, 5);
+    expect(payload.per_shot_band[0].target_speech_seconds).toBeCloseTo(2.72, 5);
+    expect(payload.per_shot_band[0].min_speech_seconds).toBeCloseTo(1.8, 5);
     expect(payload.per_shot_band[1].clip_duration_seconds).toBe(4);
-    expect(payload.per_shot_band[1].target_speech_seconds).toBeCloseTo(2.72, 5);
-    expect(payload.per_shot_band[1].min_speech_seconds).toBeCloseTo(1.8, 5);
+    expect(payload.per_shot_band[1].target_speech_seconds).toBeCloseTo(1.36, 5);
+    expect(payload.per_shot_band[1].min_speech_seconds).toBeCloseTo(0.9, 5);
   });
 });
 

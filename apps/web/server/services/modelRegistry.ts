@@ -317,8 +317,33 @@ export function deriveVerticalDramaCapabilities(model: {
 > {
   if (model.type === "image") {
     // An image model qualifies for the vertical-drama start-frame picker as
-    // long as it can render 9:16 — the other three fields only apply to video.
+    // long as it can render 9:16 — `verticalDramaReady` is unaffected by
+    // `maxReferenceImages` (that logic is unchanged from before this fix).
+    //
+    // Latent-bug fix (confirmed 2026-07-14): this branch used to return
+    // BEFORE ever parsing `configJson.maxReferenceImages`, so
+    // `imageCapabilities.maxReferenceImages` was ALWAYS `undefined` for
+    // every image model — even ones (e.g. `google-banana-2-lite: 10`, see
+    // the `STATIC_MODEL_REGISTRY` entry below) that explicitly declare it.
+    // That silently no-op'd the fail-closed capacity guard
+    // (`assertRequiredCharacterReferenceCapacity` in
+    // `verticalDramaEpisodes.ts`) and the trim in
+    // `mergeAndTrimReferenceImageUrls` for ALL image models. Mirrors the
+    // video branch's own `rawMaxReferenceImages`/`maxReferenceImages`
+    // parsing below EXACTLY (same field name, same
+    // undefined/null/non-finite -> `undefined` fallback) so a model without
+    // the field still resolves to `undefined` — byte-identical to the prior
+    // behavior for the common (unconfigured) case.
+    const imgCfg = model.configJson ?? {};
+    const rawImageMaxReferenceImages = imgCfg.maxReferenceImages;
+    const imageMaxReferenceImages =
+      rawImageMaxReferenceImages === undefined || rawImageMaxReferenceImages === null
+        ? undefined
+        : Number.isFinite(Number(rawImageMaxReferenceImages))
+          ? Number(rawImageMaxReferenceImages)
+          : undefined;
     return {
+      maxReferenceImages: imageMaxReferenceImages,
       verticalDramaReady: (model.aspectRatios ?? []).includes("9:16"),
     };
   }
@@ -371,6 +396,38 @@ export function deriveVerticalDramaCapabilities(model: {
     supportsNativeAudio,
     verticalDramaReady: supports9x16 && supportsStartFrame,
   };
+}
+
+/**
+ * Provider-independent Grok video-family classifier.
+ *
+ * The invariant intentionally lives above individual provider catalogs: a
+ * Grok video remains native-audio capable whether it is routed through Kie,
+ * Higgsfield, Magnific, KNPLabs, or a future MCP provider. Image/upscale
+ * models are excluded even when their ids contain the Grok token.
+ */
+export function isGrokVideoFamily(
+  modelId: string,
+  model: {
+    type: MediaType;
+    configJson?: Record<string, any>;
+  },
+): boolean {
+  if (model.type !== "video") return false;
+
+  const cfg = model.configJson ?? {};
+  const candidates = [
+    modelId,
+    cfg.providerModelId,
+    cfg.kieModelId,
+    cfg.modelId,
+    cfg.mcp?.providerModelId,
+  ];
+  return candidates.some(
+    value =>
+      typeof value === "string" &&
+      /(^|[^a-z0-9])grok([^a-z0-9]|$)/i.test(value),
+  );
 }
 
 const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
@@ -958,11 +1015,13 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     // KNPLabs "JSON" video models accept an `images` array in the request
     // body (`create_video_json()` in `knplabai_provider.py`) — usable as a
     // start-frame reference, though the provider does not document a
-    // dedicated first/last-frame bridge mode (single reference only) and has
-    // no native audio/dialogue channel.
+    // dedicated first/last-frame bridge mode (single reference only). Grok
+    // video-family models always expose native synchronized audio regardless
+    // of the provider carrying the request.
     supportsStartFrame: true,
     maxReferenceImages: 1,
-    nativeAudioDialogue: false,
+    nativeAudioDialogue: true,
+    supportsNativeAudio: true,
     verticalDramaReady: true,
   },
   ...wavespeedModelSeeds.map((seed) => ({
@@ -1182,6 +1241,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
 const _registryCounters = {
   staticFallbackHits: 0,
   cacheHits: 0,
+  grokNativeAudioInvariantRepairs: 0,
 };
 
 export function getModelRegistryCounters(): Readonly<typeof _registryCounters> {
@@ -1191,6 +1251,7 @@ export function getModelRegistryCounters(): Readonly<typeof _registryCounters> {
 export function resetModelRegistryCounters(): void {
   _registryCounters.staticFallbackHits = 0;
   _registryCounters.cacheHits = 0;
+  _registryCounters.grokNativeAudioInvariantRepairs = 0;
 }
 
 function reportStaticFallback(reason: string): void {
@@ -1248,6 +1309,7 @@ export function resolveVerticalDramaCapabilities(
   | "verticalDramaReady"
 > {
   const staticMatch = getStaticModelById(modelId);
+  let resolved: ReturnType<typeof deriveVerticalDramaCapabilities>;
   if (
     staticMatch &&
     (staticMatch.supportsStartFrame !== undefined ||
@@ -1256,15 +1318,31 @@ export function resolveVerticalDramaCapabilities(
       staticMatch.supportsNativeAudio !== undefined ||
       staticMatch.verticalDramaReady !== undefined)
   ) {
-    return {
+    resolved = {
       supportsStartFrame: staticMatch.supportsStartFrame,
       maxReferenceImages: staticMatch.maxReferenceImages,
       nativeAudioDialogue: staticMatch.nativeAudioDialogue,
       supportsNativeAudio: staticMatch.supportsNativeAudio,
       verticalDramaReady: staticMatch.verticalDramaReady,
     };
+  } else {
+    resolved = deriveVerticalDramaCapabilities(model);
   }
-  return deriveVerticalDramaCapabilities(model);
+
+  // Model-family invariant: persisted catalog metadata may be absent, stale,
+  // or explicitly false after a provider sync. Such row-level state must not
+  // disable native audio for any Grok video route.
+  if (isGrokVideoFamily(modelId, model)) {
+    if (resolved.nativeAudioDialogue !== true || resolved.supportsNativeAudio !== true) {
+      _registryCounters.grokNativeAudioInvariantRepairs += 1;
+    }
+    return {
+      ...resolved,
+      nativeAudioDialogue: true,
+      supportsNativeAudio: true,
+    };
+  }
+  return resolved;
 }
 
 /**
@@ -1516,6 +1594,23 @@ function getModelRegistry(): ModelDefinition[] {
 export function clearModelCache(): void {
   _cachedModels = null;
   _cacheLoadedAt = 0;
+}
+
+/**
+ * Whether the DB-backed model catalog is currently loaded, versus serving the
+ * small hardcoded `STATIC_MODEL_REGISTRY` fallback.
+ *
+ * During a cold start (the HTTP server accepts a request before the DB/model
+ * cache is warm) or a transient DB outage, `loadModelsFromDatabase()` returns
+ * empty and `_cachedModels` stays `null`, so `getModelsByType` serves only the
+ * static subset — which OMITS every DB-only model (e.g. the higgsfield/magnific
+ * catalog). A model-resolution guard should NOT declare a user-selected model
+ * "unavailable" (nor silently swap it for a default) in that window, because it
+ * genuinely cannot verify the catalog yet. `false` here means "cannot verify —
+ * trust the caller's selection and let the actual generation validate it."
+ */
+export function isDbModelCatalogLoaded(): boolean {
+  return _cachedModels !== null;
 }
 
 // ==================== Backward Compatible Exports ====================

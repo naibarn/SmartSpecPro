@@ -128,6 +128,30 @@ function isHermesFabricJobType(jobType: string): boolean {
   return HERMES_FABRIC_JOB_TYPES.has(jobType);
 }
 
+/**
+ * Feature 135 section 12 — enriches the `worker_job_claimed` / terminal
+ * audit metadata with `connectionId` + the enqueue-time `traceId` for
+ * `hermes_*` job types ONLY (`jobType.startsWith("hermes_")` per spec §4.1)
+ * — every other job type's audit metadata stays byte-identical. `traceId`
+ * comes from `instructionsJson.traceId` (stamped at enqueue by
+ * `hermesMediaScheduler.ts`); `connectionId` from
+ * `capabilityRequirementsJson.connectionId` (present on both media jobs and
+ * connection-control jobs).
+ */
+function buildHermesAuditEnrichment(
+  job: WorkerJobRecord,
+): { connectionId?: string; traceId?: string } {
+  if (!job.jobType || !job.jobType.startsWith("hermes_")) return {};
+  const capabilityRequirements = isPlainObject(job.capabilityRequirementsJson) ? job.capabilityRequirementsJson : null;
+  const instructions = isPlainObject(job.instructionsJson) ? job.instructionsJson : null;
+  const connectionId = typeof capabilityRequirements?.connectionId === "string" ? capabilityRequirements.connectionId : undefined;
+  const traceId = typeof instructions?.traceId === "string" ? instructions.traceId : undefined;
+  return {
+    ...(connectionId ? { connectionId } : {}),
+    ...(traceId ? { traceId } : {}),
+  };
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Feature 135 §11 — server-side `hermes_worker_min_version` enforcement.
 // Applied at BOTH registration and heartbeat ingestion (never exempted by
@@ -1521,6 +1545,7 @@ export async function claimWorkerJob(
           runtimeType: claimedWithAttempt.runtimeType,
           jobType: claimedWithAttempt.jobType,
           assignmentAttempt,
+          ...buildHermesAuditEnrichment(claimedWithAttempt),
         },
       });
       return {
@@ -1697,6 +1722,7 @@ export async function recordWorkerJobEvent(
         jobType: job.jobType,
         eventType: input.payload.eventType,
         finalStatus: nextStatus,
+        ...buildHermesAuditEnrichment(job),
       },
     });
   }

@@ -80,9 +80,25 @@ vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
     dialogueAudioSegmentsIncluded: 0,
     subtitleLinesIncluded: 0,
   })),
+  // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
   submitSequentialAssemblyJobs: vi.fn(async (specs: Array<{ owner: { episodeId: number } }>) =>
     specs.map(spec => ({ episodeId: spec.owner.episodeId, jobId: `job-${spec.owner.episodeId}` }))
   ),
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleSeasonVideos`
+  // persists `assemblyManifest.compiledVideo = {status:"pending", pendingJobId}`
+  // per episode after enqueueing.
+  persistCompiledVideoState: vi.fn(async () => undefined),
+}));
+
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleSeasonVideos` fans
+// out one `vertical_drama_ffmpeg_assembly` job per episode via this
+// lazily-imported service instead of one in-process
+// `submitSequentialAssemblyJobs` chain.
+const { mockQueueVerticalDramaFfmpegAssemblyJob } = vi.hoisted(() => ({
+  mockQueueVerticalDramaFfmpegAssemblyJob: vi.fn(),
+}));
+vi.mock("../../services/workerSchedulerService", () => ({
+  queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
 }));
 
 const { mockResolveVdEpisodeTextOverlayEngineInputs } = vi.hoisted(() => ({
@@ -94,6 +110,14 @@ vi.mock("../../services/verticalDramaTextOverlayResolution", () => ({
 
 import { verticalDramaSeriesRouter } from "../verticalDramaSeries";
 import * as episodeVideoAssembly from "../../services/verticalDramaEpisodeVideoAssembly";
+
+/** Read the `renderFeed` passed to the Nth `queueVerticalDramaFfmpegAssemblyJob`
+ *  call — mirrors the OLD single-array `specs[i]` indexing this file used
+ *  before Wave 3's fan-out (one enqueue call per episode now, instead of one
+ *  `submitSequentialAssemblyJobs(specs)` call carrying all episodes). */
+function renderFeedAt(i: number) {
+  return (mockQueueVerticalDramaFfmpegAssemblyJob.mock.calls[i]![0] as any).renderFeed;
+}
 
 const router = verticalDramaSeriesRouter as unknown as Record<string, Function>;
 
@@ -168,6 +192,12 @@ beforeEach(() => {
   vi.mocked(episodeVideoAssembly.submitSequentialAssemblyJobs).mockImplementation(
     async (specs: any) =>
       specs.map((spec: any) => ({ episodeId: spec.owner.episodeId, jobId: `job-${spec.owner.episodeId}` }))
+  );
+  mockQueueVerticalDramaFfmpegAssemblyJob.mockImplementation(
+    async (input: { renderFeed: { owner: { episodeId: number } } }) => ({
+      created: true,
+      job: { id: `job-${input.renderFeed.owner.episodeId}` },
+    })
   );
 });
 
@@ -270,8 +300,7 @@ describe("assembleSeasonVideos — Text Overlay Suite feeding (F131AB, task #34)
     await router.assembleSeasonVideos({ ctx: ctx(), input: { seriesId: "10" } });
 
     expect(mockResolveVdEpisodeTextOverlayEngineInputs).not.toHaveBeenCalled();
-    const specs = vi.mocked(episodeVideoAssembly.submitSequentialAssemblyJobs).mock.calls[0]![0] as any[];
-    expect(specs[0].watermarkImage).toBeUndefined();
+    expect(renderFeedAt(0).watermarkImage).toBeUndefined();
   });
 
   it("flag ON: resolves per-episode overlays and merges them into that episode's subtitles.overlays", async () => {
@@ -289,8 +318,7 @@ describe("assembleSeasonVideos — Text Overlay Suite feeding (F131AB, task #34)
     const result = await router.assembleSeasonVideos({ ctx: ctx(), input: { seriesId: "10" } });
 
     expect(mockResolveVdEpisodeTextOverlayEngineInputs).toHaveBeenCalledTimes(1);
-    const specs = vi.mocked(episodeVideoAssembly.submitSequentialAssemblyJobs).mock.calls[0]![0] as any[];
-    expect(specs[0].subtitles).toEqual({
+    expect(renderFeedAt(0).subtitles).toEqual({
       preset: "no_subtitle_style",
       lines: [],
       fontsDir: undefined,
@@ -319,9 +347,8 @@ describe("assembleSeasonVideos — Text Overlay Suite feeding (F131AB, task #34)
 
     const result = await router.assembleSeasonVideos({ ctx: ctx(), input: { seriesId: "10" } });
 
-    const specs = vi.mocked(episodeVideoAssembly.submitSequentialAssemblyJobs).mock.calls[0]![0] as any[];
-    expect(specs[0].watermarkImage).toEqual(watermarkImage);
-    expect(specs[1].watermarkImage).toEqual(watermarkImage);
+    expect(renderFeedAt(0).watermarkImage).toEqual(watermarkImage);
+    expect(renderFeedAt(1).watermarkImage).toEqual(watermarkImage);
     expect(result.episodesWithWatermark).toBe(2);
   });
 

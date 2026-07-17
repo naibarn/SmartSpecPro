@@ -795,6 +795,71 @@ async function callMcpTool(params: {
   return json.result;
 }
 
+/** Max attempts for a reference-image IMPORT/UPLOAD call (never for the paid
+ *  generation call itself — see `callMcpToolWithTransientRetry`). */
+const MCP_REFERENCE_IMPORT_MAX_ATTEMPTS = 3;
+const MCP_REFERENCE_IMPORT_RETRY_BASE_MS = 1200;
+
+/**
+ * Transient provider-side failures seen while the provider fetches OUR
+ * reference-image URL (Higgsfield `media_import_url` / Magnific
+ * `creations_upload_image`). Our storage URL is public and serves these files
+ * in well under a second (verified 2026-07-16: HTTP 200, ~1.2MB, ~0.3s from an
+ * unauthenticated client), and the same URLs import fine on other runs — so
+ * these messages are the provider's own fetcher hiccuping, and re-issuing the
+ * identical import usually succeeds. A PERMANENT problem (bad/unsupported URL,
+ * auth, quota) surfaces as a different message and must NOT be retried.
+ */
+function isTransientMcpImportError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (!message) return false;
+  return (
+    message.includes("timeout") ||
+    message.includes("timed out") ||
+    message.includes("aborted") ||
+    message.includes("something went wrong") ||
+    message.includes("please try again") ||
+    message.includes("failed: 502") ||
+    message.includes("failed: 503") ||
+    message.includes("failed: 504")
+  );
+}
+
+/**
+ * Retry wrapper for reference-image import/upload tool calls ONLY.
+ *
+ * Safe to retry because these tools just pull a URL into the provider's media
+ * library — they don't render anything, so a duplicate import costs no provider
+ * credits. Deliberately NOT used for the generation submit call, where a retry
+ * could double-charge the connected provider account.
+ */
+async function callMcpToolWithTransientRetry(params: {
+  mcpUrl: string;
+  accessToken: string;
+  tokenType: string;
+  toolName: string;
+  arguments: Record<string, unknown>;
+}) {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= MCP_REFERENCE_IMPORT_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await callMcpTool(params);
+    } catch (error) {
+      lastError = error;
+      if (
+        attempt === MCP_REFERENCE_IMPORT_MAX_ATTEMPTS ||
+        !isTransientMcpImportError(error)
+      ) {
+        throw error;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, MCP_REFERENCE_IMPORT_RETRY_BASE_MS * attempt),
+      );
+    }
+  }
+  throw lastError;
+}
+
 async function uploadMagnificReferenceImages(params: {
   runtime: {
     mcpUrl: string;
@@ -805,7 +870,7 @@ async function uploadMagnificReferenceImages(params: {
 }): Promise<Array<{ type: "image"; identifier: string }>> {
   const identifiers: string[] = [];
   for (const url of params.urls) {
-    const result = await callMcpTool({
+    const result = await callMcpToolWithTransientRetry({
       ...params.runtime,
       toolName: "creations_upload_image",
       arguments: { url },
@@ -830,7 +895,7 @@ async function importHiggsfieldReferenceImages(params: {
 }): Promise<Array<{ value: string; role: string }>> {
   const identifiers: string[] = [];
   for (const url of params.urls) {
-    const result = await callMcpTool({
+    const result = await callMcpToolWithTransientRetry({
       ...params.runtime,
       toolName: "media_import_url",
       arguments: { url, type: "image" },
@@ -1478,6 +1543,111 @@ const MCP_STALE_RECONCILER_INTERVAL_MS = Math.max(
 );
 
 /**
+ * Marker key `verticalDramaCharacters.ts`'s `generatePortraitCandidateBatch`
+ * writes into every submitted candidate task's `extraParams`
+ * (`__vd_portrait_candidate_asset_link_id`), used below to detect a
+ * force-failed MCP task is a Vertical Drama character portrait candidate.
+ * Read via a small local helper (mirroring, not importing, that router's
+ * private `readMediaTaskInternalParameter`) rather than importing the router
+ * module — this module is loaded at server bootstrap
+ * (`startMcpStaleMediaTaskReconciler`) and must not pull tRPC router wiring
+ * (`adminProcedure`, etc.) into that path.
+ */
+function readVdPortraitCandidateTaskMarker(
+  parameters: Record<string, unknown> | undefined,
+  key: string,
+): string | undefined {
+  if (!parameters) return undefined;
+  const direct = parameters[key];
+  if (typeof direct === "string") return direct;
+  const extra = parameters.extraParams;
+  if (extra && typeof extra === "object" && !Array.isArray(extra)) {
+    const value = (extra as Record<string, unknown>)[key];
+    if (typeof value === "string") return value;
+  }
+  return undefined;
+}
+
+/**
+ * When the stale-task sweep force-fails an `mcp_media_tasks` row that is a
+ * Vertical Drama character portrait-candidate submission, cascade the
+ * failure into the durable VD asset row AND refund the reserved credits —
+ * the SAME two calls `settlePortraitCandidate`'s failed branch
+ * (`verticalDramaCharacters.ts`) makes, just triggered by this background
+ * sweep instead of a browser poll (2026-07-16 stuck-candidate incident: the
+ * reserved credit and the "กำลังสร้าง…" card both hung forever once a tab
+ * closed/timed out and nothing else ever re-ran that cascade — plan.md Set A
+ * gaps 5 & 6).
+ *
+ * Lazy dynamic imports for both downstream calls: `routers/media.ts` pulls
+ * in `adminProcedure`/full tRPC router wiring (and itself imports this
+ * module for MCP transport, so a static import here would be circular);
+ * `verticalDramaCharacterStock.ts` has no such cycle today, but is imported
+ * lazily too for symmetry and to keep this sweep's own static import graph
+ * minimal (same "worker/scheduler-safe" convention `settlePortraitCandidate`
+ * already uses for `reconcileTaskCredits`).
+ *
+ * A no-op for any non-VD task (no marker) and safe to call more than once
+ * for the same task: `reconcileTaskCredits` is idempotent via its own Redis
+ * key, and `markPortraitCandidateSubmissionFailed` only acts on a candidate
+ * still awaiting its task ("submitting"/"queued") — an already
+ * failed/completed/selected/superseded candidate is left untouched.
+ */
+async function cascadeFailedVdPortraitCandidateTask(task: MediaTask): Promise<void> {
+  const assetLinkIdRaw = readVdPortraitCandidateTaskMarker(
+    task.parameters,
+    "__vd_portrait_candidate_asset_link_id",
+  );
+  if (!assetLinkIdRaw) return; // Not a VD portrait-candidate task — no-op.
+
+  const seriesIdRaw = readVdPortraitCandidateTaskMarker(task.parameters, "__vd_series_id");
+  const metadata = (task.parameters?.transportMetadata ?? task.resultData?.transportMetadata) as
+    | MediaTaskTransportMetadata
+    | undefined;
+  const tenantId = metadata?.tenantId;
+  const userId = Number(task.userId);
+  const seriesId = seriesIdRaw ? Number(seriesIdRaw) : NaN;
+  const assetLinkId = Number(assetLinkIdRaw);
+  if (
+    !tenantId ||
+    !Number.isFinite(userId) ||
+    !Number.isFinite(seriesId) ||
+    !Number.isFinite(assetLinkId)
+  ) {
+    console.warn("[mcp-media] VD portrait-candidate cascade skipped — incomplete task markers", {
+      taskId: task.id,
+    });
+    return;
+  }
+
+  try {
+    const { reconcileTaskCredits } = await import("../routers/media");
+    await reconcileTaskCredits({ task: task as any, userId });
+  } catch (error) {
+    console.warn("[mcp-media] VD portrait-candidate credit reconcile failed", {
+      taskId: task.id,
+      error: error instanceof Error ? error.message : error,
+    });
+  }
+
+  try {
+    const { verticalDramaCharacterStockService } = await import("./verticalDramaCharacterStock");
+    await verticalDramaCharacterStockService.markPortraitCandidateSubmissionFailed({
+      tenantId,
+      userId,
+      seriesId,
+      assetLinkId,
+      errorMessage: task.errorMessage ?? "หมดเวลารอผลจากผู้ให้บริการ",
+    });
+  } catch (error) {
+    console.warn("[mcp-media] VD portrait-candidate cascade failed to mark asset row failed", {
+      taskId: task.id,
+      error: error instanceof Error ? error.message : error,
+    });
+  }
+}
+
+/**
  * Sweeps MCP media tasks stuck in "processing"/"pending" for longer than
  * `MCP_STALE_TASK_THRESHOLD_MS` and forces a provider status refresh for
  * each one (the same `refreshMcpMediaTaskStatus` path used on-demand by
@@ -1520,6 +1690,9 @@ export async function reconcileStaleMcpMediaTasks(): Promise<{ scanned: number; 
         scanned += 1;
         if (result.status === "fulfilled" && result.value.status !== "processing" && result.value.status !== "pending") {
           changed += 1;
+          if (result.value.status === "failed") {
+            await cascadeFailedVdPortraitCandidateTask(result.value);
+          }
         } else if (result.status === "rejected") {
           console.warn("[mcp-media] stale task reconciler failed for task", {
             taskId: chunk[index]?.id,

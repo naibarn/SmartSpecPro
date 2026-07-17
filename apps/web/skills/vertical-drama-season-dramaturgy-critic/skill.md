@@ -163,7 +163,7 @@ single revised/targeted version) — score EVERY given
 (candidate, episode) pair independently; when no candidate grouping is
 given, treat the whole input as a single implicit candidate.
 
-For each (candidate, episode) pair, score these 12 dimensions, each 1-5
+For each (candidate, episode) pair, score these 14 dimensions, each 1-5
 (1 = weak, 5 = excellent), plus one holistic `"overall"` 1-5 score:
 
 1. `hook_strength` — how compelling and specific the episode's OPENING hook
@@ -223,11 +223,34 @@ For each (candidate, episode) pair, score these 12 dimensions, each 1-5
     meaningfully across the episode/season-so-far rather than staying flat
     or resetting. 5 = stakes are demonstrably higher by the episode's end
     than at its start; 1 = the threat level is unchanged or lower.
+13. `shot_completeness` — whether every shot draft is stageable as written:
+    a concrete per-shot synopsis (who does what, where, what changes — not
+    a vague mood line), every visible character named from the character
+    bible WITH an explicit, specific emotional state (and `emotion_after`
+    when the shot changes it), and an explicit location that is consistent
+    with the established/declared locations. When the episode uses a NEW
+    location, its declaration must describe the place and its surroundings
+    fully enough to generate a scene image without follow-up questions.
+    5 = every shot is fully specified and staging-ready; 3 = most shots
+    complete but some characters lack precise emotions or some locations
+    are generic; 1 = shots read as abstract summaries an artist could not
+    stage (missing who/where/emotion).
+14. `dialogue_accessibility` — whether the dialogue is plain spoken
+    language a high-school student understands on first listen (ภาษาที่
+    เด็กมัธยมฟังรู้เรื่อง): short sentences, everyday vocabulary, natural
+    speech rhythm. Domain-specific terms are acceptable only when the story
+    needs them, used sparingly, and understandable from context. 5 = every
+    line lands on first listen with jargon rationed and contextualized;
+    3 = mostly plain but with occasional unexplained or stacked technical
+    terms or bookish phrasing; 1 = dense jargon, formal written register,
+    or lines a teen viewer would not parse in real time. This is distinct
+    from `dialogue_naturalness` (does it sound like real speech?) — a line
+    can be natural yet still too technical for the target audience.
 
 A caller MAY append one additional, narrowly-scoped scoring instruction
-(covering a conditional 13th dimension) directly after this skill's own
+(covering a conditional 15th dimension) directly after this skill's own
 system prompt when at least one episode in this call carries an extra
-marker — when no such addendum is present, score ONLY the 12 dimensions
+marker — when no such addendum is present, score ONLY the 14 dimensions
 above and do not invent any additional dimension yourself.
 
 ### Mode 2 output contract
@@ -236,7 +259,7 @@ Respond with ONLY a single JSON object (no markdown, no commentary) matching
 exactly this shape:
 
 ```json
-{"scores": [{"candidateIndex": number, "episodeNumber": number, "hook_strength": number, "reversal_sharpness": number, "emotion_variety": number, "dialogue_naturalness": number, "pacing": number, "cliffhanger_strength": number, "continuity_with_recap": number, "season_cohesion": number, "clarity": number, "character_consistency": number, "evidence_payoff": number, "threat_escalation": number, "overall": number}]}
+{"scores": [{"candidateIndex": number, "episodeNumber": number, "hook_strength": number, "reversal_sharpness": number, "emotion_variety": number, "dialogue_naturalness": number, "pacing": number, "cliffhanger_strength": number, "continuity_with_recap": number, "season_cohesion": number, "clarity": number, "character_consistency": number, "evidence_payoff": number, "threat_escalation": number, "shot_completeness": number, "dialogue_accessibility": number, "overall": number}]}
 ```
 
 `"scores"` must contain exactly one entry for EVERY (candidate, episode)

@@ -8,7 +8,10 @@ vi.mock("fs", () => ({
 }));
 
 vi.mock("@smartspec/skills", () => ({
-  parseSkillFile: vi.fn(() => ({ content: "System prompt body" })),
+  parseSkillFile: vi.fn(() => ({
+    content:
+      "System prompt body. creatorSummary must be natural readable prose; correct spelling, Thai spacing and punctuation; narrativeRole and roleTier are required. Mix and Match v2 contract_version blendFacets presetId kept.",
+  })),
 }));
 
 vi.mock("../skillFiles", () => ({
@@ -59,6 +62,7 @@ import {
   buildFacetAssignments,
   resolveMixSelections,
   synthesizeVerticalDramaPresetV2,
+  assertPresetSynthesizerSkillSupportsV2,
   evaluatePremiseCoverage,
   type PresetSynthesisPresetInput,
   type PresetSynthesisPresetInputV2,
@@ -67,12 +71,29 @@ import {
 import { VdSchemaValidationError } from "../verticalDramaStoryBible";
 import { CREATE_SERIES_FIELD_LIMITS } from "@shared/verticalDramaSeries";
 import { renderCriteriaVersionMarker } from "../verticalDramaQualityCriteria";
+import { NARRATIVE_ROLE_VALUES, ROLE_TIER_VALUES } from "@shared/verticalDramaSeries/narrativeRole";
 import {
   DEFAULT_MIN_FACETS_PER_PRESET,
   mergeVisualIdentities,
   VERTICAL_DRAMA_BLEND_FACETS,
   type VerticalDramaPresetVisualIdentity,
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
+
+describe("vertical-drama-preset-synthesizer skill contract guard", () => {
+  it("requires the v2 contract to be present in the loaded skill", () => {
+    expect(() =>
+      assertPresetSynthesizerSkillSupportsV2(
+        "legacy v1 skill with contract_version only",
+      ),
+    ).toThrow(/missing its v2 output contract markers/);
+
+    expect(() =>
+      assertPresetSynthesizerSkillSupportsV2(
+        "Mix and Match v2 contract_version blendFacets presetId kept",
+      ),
+    ).not.toThrow();
+  });
+});
 
 const VALID_DRAFT = {
   contract_version: 1,
@@ -83,10 +104,17 @@ const VALID_DRAFT = {
   seasonArc: "ร้านเริ่มจากปัญหารีวิวหนึ่งดาว ก่อนรวมใจสู้ค่าเช่าตลาด",
   tone: "คอมเมดี้บริการแบบไทย อบอุ่น จังหวะไว",
   cliffhangerStyle: "จบตอนด้วยออเดอร์หรือรีวิวที่หักมุม",
+  creatorSummary: {
+    whatItIsAbout: "ร้านก๋วยเตี๋ยวชุมชนต้องสู้เพื่ออยู่รอดท่ามกลางเรื่องวุ่นวายในตลาด",
+    protagonistAndGoal: "ป้าจอย เจ้าของร้าน พยายามรักษาร้านไว้เพื่อไม่ให้ชุมชนที่เธอรักหายไป",
+    conflictAndDiscovery: "เธอเจอรีวิวแย่ ค่าเช่าสูง และคู่แข่ง ก่อนค้นพบว่าตลาดกำลังถูกซื้อพื้นที่",
+    centralMystery: "ใครอยู่เบื้องหลังการซื้อพื้นที่และเกี่ยวข้องกับร้านอย่างไร",
+    decisionNotes: ["ร้านคือแกนเรื่อง", "ปมตลาดซื้อพื้นที่ลากยาวตลอดซีซัน"],
+  },
   characters: [
-    { name: "ป้าจอย", role: "เจ้าของร้าน", description: "ปากไว ใจดี จำลูกค้าได้ทุกคน" },
-    { name: "ต้น", role: "พนักงานใหม่", description: "จริงใจเกินพอดีและทำพลาดบ่อย" },
-    { name: "มิว", role: "ลูกค้าประจำ", description: "ครีเอเตอร์สายกินที่ทำให้ร้านไวรัล" },
+    { name: "ป้าจอย", role: "เจ้าของร้าน", narrativeRole: "protagonist", roleTier: "lead_female", occupation: "เจ้าของร้าน", description: "ปากไว ใจดี จำลูกค้าได้ทุกคน" },
+    { name: "ต้น", role: "พนักงานใหม่", narrativeRole: "supporting", roleTier: "support_memorable", occupation: "พนักงานใหม่", description: "จริงใจเกินพอดีและทำพลาดบ่อย" },
+    { name: "มิว", role: "ลูกค้าประจำ", narrativeRole: "supporting", roleTier: "background_character", occupation: "ครีเอเตอร์สายกิน", description: "ครีเอเตอร์สายกินที่ทำให้ร้านไวรัล" },
   ],
   visualBible: "ร้านก๋วยเตี๋ยวตลาดเช้า แสงอุ่น ไอน้ำ และป้ายเมนูเขียนมือ",
   mixRecipe: {
@@ -165,6 +193,47 @@ describe("synthesizeVerticalDramaPreset", () => {
     );
   });
 
+  it("uses the preset-synthesizer skill as the system contract and requests creator-readable copy", async () => {
+    await synthesizeVerticalDramaPreset(baseParams());
+
+    const call = mockExecuteWithFallback.mock.calls[0][0];
+    expect(call.messages[0].role).toBe("system");
+    expect(call.messages[0].content).toContain("creatorSummary");
+    expect(call.messages[0].content).toContain("correct spelling, Thai spacing and punctuation");
+    expect(call.messages[0].content).toContain("narrativeRole");
+    expect(call.messages[0].content).toContain("roleTier");
+    const userPrompt = call.messages[1].content as string;
+    expect(userPrompt).toContain('"creatorSummary"');
+    expect(userPrompt).toContain('"narrativeRole"');
+  });
+
+  it("rejects a technical blend recipe when it leaks into creatorSummary", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_DRAFT,
+                creatorSummary: {
+                  ...VALID_DRAFT.creatorSummary,
+                  whatItIsAbout: "blendFacets: story_spine -> primaryFlavor",
+                },
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      },
+    });
+
+    await expect(synthesizeVerticalDramaPreset(baseParams())).rejects.toBeInstanceOf(
+      VdSchemaValidationError,
+    );
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
   it("does not deduct credits when the LLM output fails schema validation", async () => {
     mockExecuteWithFallback.mockResolvedValue({
       type: "success",
@@ -233,6 +302,128 @@ describe("clampDraftForCreateSeries", () => {
     expect(draft.title.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.genre);
     expect(draft.tone.length).toBeLessThanOrEqual(CREATE_SERIES_FIELD_LIMITS.tone);
     expect(draft.warnings.some((w) => w.code === "preset_field_length_clamped")).toBe(true);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Lenient narrativeRole/roleTier schema (2026-07-14 recurring failure fix)  */
+/* -------------------------------------------------------------------------- */
+
+describe("synthesizeVerticalDramaPreset — lenient narrativeRole/roleTier", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  it("succeeds and backfills narrativeRole/roleTier via normalizeLegacyRole when the LLM guesses an unrecognized enum value", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_DRAFT,
+                characters: [
+                  {
+                    ...VALID_DRAFT.characters[0],
+                    name: "โอม",
+                    role: "พระรอง",
+                    // Invalid/guessed values — never a member of NARRATIVE_ROLE_VALUES/ROLE_TIER_VALUES.
+                    narrativeRole: "second_lead",
+                    roleTier: "supporting_male",
+                  },
+                  VALID_DRAFT.characters[1],
+                  VALID_DRAFT.characters[2],
+                ],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPreset(baseParams());
+
+    const backfilled = draft.characters.find((c) => c.name === "โอม")!;
+    expect(backfilled.narrativeRole).toBe("secondary_lead");
+    expect(backfilled.roleTier).toBe("second_lead_male");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("succeeds with narrativeRole/roleTier left undefined when the role text is also unmappable", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_DRAFT,
+                characters: [
+                  {
+                    ...VALID_DRAFT.characters[0],
+                    name: "นิรนาม",
+                    role: "บทบาทพิเศษที่ไม่ระบุ",
+                    narrativeRole: "main_antagonist",
+                    roleTier: "love_interest",
+                  },
+                  VALID_DRAFT.characters[1],
+                  VALID_DRAFT.characters[2],
+                ],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPreset(baseParams());
+
+    const unmapped = draft.characters.find((c) => c.name === "นิรนาม")!;
+    expect(unmapped.narrativeRole).toBeUndefined();
+    expect(unmapped.roleTier).toBeUndefined();
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("recovers a pure-casing miss via the shared lowercase preprocess (e.g. \"Protagonist\"/\"Second_Lead_Male\") instead of discarding it", async () => {
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                ...VALID_DRAFT,
+                characters: [
+                  {
+                    ...VALID_DRAFT.characters[0],
+                    name: "เคน",
+                    role: "พระรอง",
+                    // Title-cased/mixed-case — a valid label once lowercased,
+                    // unlike the fully-invented labels above.
+                    narrativeRole: "Protagonist",
+                    roleTier: "Second_Lead_Male",
+                  },
+                  VALID_DRAFT.characters[1],
+                  VALID_DRAFT.characters[2],
+                ],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+
+    const { draft } = await synthesizeVerticalDramaPreset(baseParams());
+
+    const recovered = draft.characters.find((c) => c.name === "เคน")!;
+    expect(recovered.narrativeRole).toBe("protagonist");
+    expect(recovered.roleTier).toBe("second_lead_male");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -414,10 +605,17 @@ describe("synthesizeVerticalDramaPresetV2", () => {
       seasonArc: "season arc",
       tone: "เข้มข้นดิบเถื่อน",
       cliffhangerStyle: "จบด้วยหักมุม",
+      creatorSummary: {
+        whatItIsAbout: "เรื่องราวของทีมผู้พิทักษ์ที่ต้องปกป้องเมืองจากภัยใหม่",
+        protagonistAndGoal: "ตัวเอกต้องรวมทีมเพื่อหยุดภัยและรักษาคนที่รัก",
+        conflictAndDiscovery: "ทีมพบศัตรูที่รู้ความลับของพวกเขา",
+        centralMystery: "ใครกำลังชักใยเหตุการณ์ทั้งหมด",
+        decisionNotes: ["เน้นตัวเอกเป็นแกน", "ใช้ความลับเป็นปมต่อเนื่อง"],
+      },
       characters: [
-        { name: "A", role: "นางเอก", description: "d" },
-        { name: "B", role: "พระเอก", description: "d" },
-        { name: "C", role: "ตัวร้าย", description: "d" },
+        { name: "A", role: "นางเอก", narrativeRole: "protagonist", roleTier: "lead_female", occupation: "นักสำรวจ", description: "d" },
+        { name: "B", role: "พระเอก", narrativeRole: "co_protagonist", roleTier: "lead_male", occupation: "นักบิน", description: "d" },
+        { name: "C", role: "ตัวร้าย", narrativeRole: "antagonist", roleTier: "villain_male_open", occupation: "ผู้นำกองกำลัง", description: "d" },
       ],
       visualBible: "prose",
       mixRecipe: { primaryFlavor: "101", supportingFlavors: ["202"], rationale: "why" },
@@ -634,6 +832,31 @@ describe("synthesizeVerticalDramaPresetV2", () => {
     expect(draft.visualIdentity).toBeUndefined();
   });
 
+  it("succeeds and drops a malformed empty-string visualIdentity when no selected preset carries visualIdentityJson (2026-07-14 recurring failure fix)", async () => {
+    // No preset in baseV2Params() carries visualIdentityJson, so
+    // mergedVisualIdentity is null — the LLM should have omitted
+    // visualIdentity entirely, but it instead emits an empty-string object
+    // (the exact failure mode this fix guards against).
+    mockExecuteWithFallback.mockResolvedValueOnce(
+      mockLlmResponse(
+        draftPayload({
+          visualIdentity: {
+            styleName: "",
+            lighting: "",
+            cameraGrammar: "",
+            characterArchetypes: [],
+            positiveFragments: [],
+          },
+        }),
+      ),
+    );
+
+    const { draft } = await synthesizeVerticalDramaPresetV2(baseV2Params());
+
+    expect(draft.visualIdentity).toBeUndefined();
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
   it("does not deduct credits when the LLM output fails schema validation", async () => {
     mockExecuteWithFallback.mockResolvedValue(mockLlmResponse({ title: "bad" }));
 
@@ -721,6 +944,21 @@ describe("buildUserPrompt (via synthesizeVerticalDramaPreset) — premise-primar
     await synthesizeVerticalDramaPreset({ ...baseParams(), userPremise: "แนวสืบสวน" });
     expect(capturedUserPrompt()).toContain(renderCriteriaVersionMarker());
   });
+
+  it("prompt rules list every NARRATIVE_ROLE_VALUES and ROLE_TIER_VALUES value so the model never has to guess (2026-07-14 recurring failure fix)", async () => {
+    await synthesizeVerticalDramaPreset(baseParams());
+    const prompt = capturedUserPrompt();
+
+    for (const value of NARRATIVE_ROLE_VALUES) {
+      expect(prompt).toContain(value);
+    }
+    expect(prompt).toContain("roleTier");
+    expect(prompt).toContain("villain_female_hidden");
+    expect(prompt).toContain("second_lead_male");
+    for (const value of ROLE_TIER_VALUES) {
+      expect(prompt).toContain(value);
+    }
+  });
 });
 
 describe("buildUserPromptV2 (via synthesizeVerticalDramaPresetV2) — premise-primary blending", () => {
@@ -757,10 +995,17 @@ describe("buildUserPromptV2 (via synthesizeVerticalDramaPresetV2) — premise-pr
       seasonArc: "season arc",
       tone: "tone",
       cliffhangerStyle: "cliffhanger",
+      creatorSummary: {
+        whatItIsAbout: "A team protects a city while a hidden threat grows.",
+        protagonistAndGoal: "The lead gathers allies to stop the threat and protect their family.",
+        conflictAndDiscovery: "The team discovers the enemy knows their secrets.",
+        centralMystery: "Who is directing the attacks and why?",
+        decisionNotes: ["Keep the lead at the center.", "Use the mystery across the season."],
+      },
       characters: [
-        { name: "A", role: "lead", description: "d" },
-        { name: "B", role: "support", description: "d" },
-        { name: "C", role: "villain", description: "d" },
+        { name: "A", role: "lead", narrativeRole: "protagonist", roleTier: "lead_female", occupation: "นักสำรวจ", description: "d" },
+        { name: "B", role: "support", narrativeRole: "supporting", roleTier: "support_memorable", occupation: "ช่างเครื่อง", description: "d" },
+        { name: "C", role: "villain", narrativeRole: "antagonist", roleTier: "villain_male_open", occupation: "ผู้นำกองกำลัง", description: "d" },
       ],
       visualBible: "prose",
       mixRecipe: { primaryFlavor: "101", supportingFlavors: ["202"], rationale: "why" },
@@ -829,6 +1074,51 @@ describe("buildUserPromptV2 (via synthesizeVerticalDramaPresetV2) — premise-pr
   it("embeds the shared criteria version marker regardless of userPremise presence", async () => {
     await synthesizeVerticalDramaPresetV2(baseV2ParamsMin());
     expect(capturedUserPromptV2()).toContain(renderCriteriaVersionMarker());
+  });
+
+  it('"Return exactly this JSON shape" line omits "visualIdentity" when no selected preset carries visualIdentityJson (2026-07-14 recurring failure fix)', async () => {
+    await synthesizeVerticalDramaPresetV2(baseV2ParamsMin());
+    expect(capturedUserPromptV2()).not.toContain('"visualIdentity"');
+  });
+
+  it('"Return exactly this JSON shape" line includes "visualIdentity" when a selected preset carries visualIdentityJson', async () => {
+    const identity: VerticalDramaPresetVisualIdentity = {
+      styleName: "style",
+      palette: ["Teal"],
+      lighting: "rim light",
+      environmentMotifs: ["jungle"],
+      wardrobeGrammar: ["techwear"],
+      signaturePropsAndCompanions: ["companion"],
+      cameraGrammar: "low angle",
+      characterArchetypes: [{ role: "lead", look: "scout" }],
+      imagePromptFragments: { positive: ["cinematic"], negative: ["blurry"] },
+    };
+    await synthesizeVerticalDramaPresetV2(
+      baseV2ParamsMin({
+        selectedPresets: [
+          presetInputV2({ id: "101", title: "Primary Preset", visualIdentityJson: identity }),
+          presetInputV2({ id: "202", title: "Supporting Preset" }),
+        ],
+      }),
+    );
+    expect(capturedUserPromptV2()).toContain('"visualIdentity"');
+  });
+
+  it("prompt rules list every NARRATIVE_ROLE_VALUES and ROLE_TIER_VALUES value so the model never has to guess (2026-07-14 recurring failure fix)", async () => {
+    await synthesizeVerticalDramaPresetV2(baseV2ParamsMin());
+    const prompt = capturedUserPromptV2();
+
+    for (const value of NARRATIVE_ROLE_VALUES) {
+      expect(prompt).toContain(value);
+    }
+    expect(prompt).toContain("roleTier");
+    // Representative roleTier values (asserting the full 38-value list would
+    // be redundant with the source-of-truth constant itself).
+    expect(prompt).toContain("villain_female_hidden");
+    expect(prompt).toContain("second_lead_male");
+    for (const value of ROLE_TIER_VALUES) {
+      expect(prompt).toContain(value);
+    }
   });
 });
 

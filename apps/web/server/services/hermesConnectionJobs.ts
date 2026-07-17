@@ -58,6 +58,12 @@ import {
 } from "./hermesConnectionService";
 import { reconcileHermesMediaJobFee } from "./hermesMediaAdapter";
 import { billingEnvelopeFromMetadata } from "./workerBillingService";
+import {
+  auditHermesConnectionEntitlementRestricted,
+  auditHermesConnectionReauthRequired,
+  recordHermesUsage,
+} from "./hermesMediaObservability";
+import type { HermesMediaJobContract } from "../../shared/hermesMedia";
 
 // ────────────────────────────────────────────────────────────────────────
 // Constants
@@ -404,6 +410,31 @@ export async function onTerminalHermesMediaJob(
     } catch (error) {
       debugError("hermesConnectionJobs", `Failed to reconcile hermes media fee for job ${job.id}`, error);
     }
+
+    // Feature 135 section 12 — usage row + quota bump. `onTerminalHermesMediaJob`
+    // runs from two call sites now: (1) `workerRuntime.ts`'s
+    // artifacts/complete dispatch, immediately after finalize, which ALSO
+    // appends the `hermes_connection_settled` marker via
+    // `settleHermesConnectionJob` (code review fix) — so a job that
+    // completes through the normal path is excluded from
+    // `listTerminalUnsettledHermesJobs` on the very next sweep tick; (2) the
+    // 60s sweep itself, now a genuine backstop for whatever call site (1)
+    // never got to (a crash between finalize and settlement, or a true
+    // lease-expiry completion no poll/callback ever observes). Both call
+    // sites are safe to run for the SAME job: `recordHermesUsage` is a
+    // no-op for anything but `status === "completed"`, and is
+    // Redis-idempotent (plus a durable `worker_job_events` marker check —
+    // see `hermesMediaObservability.ts`) against being invoked twice for
+    // the same job id.
+    try {
+      await recordHermesUsage({
+        job,
+        contract: (job.inputJson ?? {}) as Pick<HermesMediaJobContract, "settings">,
+        feeCreditsKept: job.status === "completed" ? (billing?.reservedCredits ?? 0) : 0,
+      });
+    } catch (error) {
+      debugError("hermesConnectionJobs", `Failed to record hermes usage for job ${job.id}`, error);
+    }
   }
 
   if (!TERMINAL_FAILURE_STATUSES.has(job.status)) return;
@@ -428,6 +459,12 @@ export async function onTerminalHermesMediaJob(
         metadataJson: { ...(connection.metadataJson ?? {}), lastError: "HERMES_ENTITLEMENT_RESTRICTED" },
       },
     });
+    auditHermesConnectionEntitlementRestricted({
+      userId: connection.ownerUserId,
+      tenantId: job.tenantId,
+      connectionId,
+      scope: connection.scope,
+    });
     return;
   }
   if (classification === "reauth_required") {
@@ -438,6 +475,16 @@ export async function onTerminalHermesMediaJob(
         status: "reauth_required",
         metadataJson: { ...(connection.metadataJson ?? {}), lastError: "HERMES_REAUTH_REQUIRED" },
       },
+    });
+    // Code review FIX 4 — same rule as the probe-failure branch in
+    // `hermesConnectionService.ts`: a media job failing with an
+    // auth-invalidation reason is a real connection-health signal, not
+    // just "one job failed" — it must be audited.
+    auditHermesConnectionReauthRequired({
+      userId: connection.ownerUserId,
+      tenantId: job.tenantId,
+      connectionId,
+      scope: connection.scope,
     });
   }
 }

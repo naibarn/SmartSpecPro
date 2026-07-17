@@ -2,10 +2,10 @@
   "name": "vertical_drama_preset_synthesizer",
   "display_name": "Vertical Drama Preset Synthesizer",
   "display_name_th": "ผู้ช่วยผสมแนวเรื่องซีรีย์แนวตั้ง",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Blend several Vertical Drama genre presets or category flavors into one coherent editable series preset draft.",
   "description_th": "ผสมหลายแนวเรื่องให้กลายเป็นพรีเซ็ตซีรีย์แนวตั้งชุดเดียวที่แก้ต่อได้",
-  "entry_prompt": "Synthesize one coherent Vertical Drama preset draft from multiple selected flavors. Do not concatenate templates. Return structured JSON only.",
+  "entry_prompt": "Synthesize one coherent Vertical Drama preset draft from multiple selected flavors. Return a proofread creator-readable synopsis and canonical character roles. Honor the caller's explicit v1 or Mix and Match v2 contract without downgrading. Do not concatenate templates. Return structured JSON only.",
   "input_schema": "schemas/input.schema.json",
   "ui_schema": "schemas/ui.schema.json",
   "output_schema": "schemas/output.schema.json",
@@ -19,5 +19,6 @@
   },
   "capabilities": ["json_handoff", "bilingual_ui", "preset_synthesis"],
   "contract_version": 1,
+  "supported_output_contract_versions": [1, 2],
   "smartspec_slug": "vertical-drama-preset-synthesizer"
 }

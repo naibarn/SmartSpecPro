@@ -47,14 +47,21 @@ export type VerticalDramaShotReferenceRole = "start_frame" | "reference";
  *  distinguishes an auto-demoted row from one the user deliberately added
  *  via grid-cut/history/library/upload, purely for display/analytics; it is
  *  never validated differently by this service. Column is `varchar(20)` with
- *  no DB CHECK constraint, so this is purely additive. */
+ *  no DB CHECK constraint, so this is purely additive.
+ *  `"reference_frame"` (`planning/vd-start-frame-reference-mapping/plan.md`
+ *  Phase 6, 2026-07-16) marks a user-controlled supplementary reference
+ *  frame — generated via `generateShotReferenceFrameImage`
+ *  (`verticalDramaEpisodes.ts`) and linked here by the CLIENT once the user
+ *  confirms the render, same link flow as every other source. 16 chars,
+ *  fits the existing `varchar(20)` column — no migration needed. */
 export type VerticalDramaShotReferenceSource =
   | "generated"
   | "grid_cut"
   | "history"
   | "library"
   | "upload"
-  | "previous_main";
+  | "previous_main"
+  | "reference_frame";
 
 export type ShotReferenceRejectionReason =
   | "episode_not_found"

@@ -70,6 +70,12 @@ export type VerticalDramaCharacter = {
   characterId: string;
   name: string;
   role: string;
+  narrativeRole?: import("./narrativeRole").NarrativeRole | null;
+  roleTier?: import("./narrativeRole").RoleTier | null;
+  occupation?: string | null;
+  roleVisualIntent?: import("./narrativeRole").RoleVisualIntent | null;
+  roleProvenance?: import("./narrativeRole").RoleProvenance | null;
+  roleReviewStatus?: import("./narrativeRole").RoleReviewStatus | null;
   personality: string;
   backstory?: string;
   identityLock: string;
@@ -531,6 +537,26 @@ export type VerticalDramaStartFramePlan = {
       mediaTaskId?: string;
       dismissedIndexes?: number[];
     };
+    /**
+     * Persisted alternate-angle "backup still" media asset ids for this shot
+     * (`vd-start-frame-reference-mapping/plan.md` Phase 5d) — durable,
+     * user-approved single frames the reshoot/repair flow can fall back to
+     * (research finding (c): "reshoot/repair assets — regenerate a drifted
+     * shot's start frame from a stored alternate angle"), independent of the
+     * transient `angleGrid.imageUrl` 3x3 picker state above (that field
+     * tracks ONE in-flight/just-completed 9-tile grid render; this field
+     * accumulates individual APPROVED tiles/stills across possibly several
+     * grid renders over the shot's lifetime). Written ONLY via the
+     * `recordShotAngleGridAsset` mutation (`verticalDramaEpisodes.ts`) — a
+     * pure data patch, no LLM/regeneration involved, same
+     * "find by shotNumber, replace one field, write the whole jsonb column
+     * back" convention as `setApprovedStartFrameAsset`/
+     * `setShotCharacterReference`/`setShotLocation`. Capped at the 5 MOST
+     * RECENT entries (oldest dropped) — see that mutation's doc comment.
+     * Absent on every frame created before this field existed, equivalent to
+     * `[]` (fully backward compatible).
+     */
+    angleGridAssetIds?: number[];
   }>;
 };
 

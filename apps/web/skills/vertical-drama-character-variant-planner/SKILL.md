@@ -61,6 +61,44 @@ when you are proposing at least one variant for them; omit characters that need 
 Likewise, omit `twin_detections` entirely (empty array) when the story never establishes
 twins/lookalikes.
 
+## Recognizing an already-known variant/twin (avoid re-proposing duplicates)
+
+The roster you're given is not always characters only — some roster entries may
+THEMSELVES be a variant or twin an earlier run of this same skill already proposed and
+the calling app already saved. You can tell, because that entry carries one of these
+marker fields:
+
+- `existing_parent_character_key` + `existing_variant_label` — this roster entry is
+  already a saved VARIANT of another roster entry (the parent's `character_key` and
+  this variant's own already-stored label).
+- `existing_shares_face_with_character_key` — this roster entry is already a saved
+  TWIN whose face reference resolves to another roster entry's `character_key`.
+
+Base characters (no prior variant/twin history) simply have neither marker — that is
+the common case and needs no special handling.
+
+When you are about to propose a variant or twin and you recognize that a roster entry
+carrying one of these markers is ALREADY describing the exact same variant/twin
+relationship you would otherwise be proposing fresh, set `existing_character_key` on
+your output entry (`character_plans[].variants[].existing_character_key` for a
+variant, or `twin_detections[].new_characters[].existing_character_key` for a twin) to
+that roster entry's OWN `character_key`. This tells the calling app "this is a
+continuation of something you already know about, not a new proposal" — it will match
+and update the existing row instead of creating a duplicate, even if you happen to
+phrase the label/description slightly differently than last time.
+
+Still author the variant/twin normally when doing this — write full-quality
+`variant_label`/`description` (or `name`/`distinguishing_notes` for a twin) exactly as
+you would for a brand-new proposal. Setting `existing_character_key` does NOT mean you
+can skip content; the calling app may use your fresh description to refresh the
+existing row's stored details too.
+
+When you genuinely don't recognize an overlap — a roster entry's existing
+parent/variant-label or shares-face-with marker doesn't match what you're about to
+propose, or the roster entry you're proposing against has no marker at all (a true
+base character) — simply omit `existing_character_key` and propose normally. This is
+today's existing, unchanged behavior for the ordinary case.
+
 ## Two variant types — read this carefully, they are NOT interchangeable
 
 ### `"outfit"` variants — same person, same age, same face, different look
@@ -364,6 +402,151 @@ Note `กันต์` (the half-brother) is NOT included in `twin_detections` a
 story explicitly says he does not look alike, so he is not a twin/lookalike case;
 he is simply a new independent character the calling app can add separately through
 the normal character-creation flow, not something this skill proposes.
+
+## Worked example 4 — second run recognizing an already-known outfit variant
+
+This is a SECOND run over the exact same season as worked example 1 above — a prior
+run already proposed the "ชุดนักเรียน" (school uniform) variant for `character-1`, and
+the calling app already saved it. The roster now includes that saved variant as its
+own entry, carrying `existing_parent_character_key`/`existing_variant_label`:
+
+Input:
+
+```json
+{
+  "contract_version": 1,
+  "characters": [
+    {
+      "character_key": "character-1",
+      "name": "หนูนา",
+      "role": "protagonist",
+      "description": "หญิงสาววัย 22 ปี ผมยาวสีดำ ผิวสีแทน ลูกสาวคนโตของครอบครัวขายก๋วยเตี๋ยว"
+    },
+    {
+      "character_key": "character-1-school-uniform",
+      "name": "หนูนา",
+      "role": "protagonist",
+      "description": "school uniform: white blouse, navy pleated skirt, hair neatly tied back",
+      "existing_parent_character_key": "character-1",
+      "existing_variant_label": "ชุดนักเรียน"
+    }
+  ],
+  "episodes": [
+    {
+      "episode_number": 2,
+      "working_title": "วันแรกที่โรงเรียนมัธยม",
+      "logline": "หนูนาใส่ชุดนักเรียนสีขาว-กรมท่า เดินเข้าโรงเรียนมัธยมเป็นวันแรกของเทอม",
+      "key_beats": ["หนูนาใส่ชุดนักเรียน เดินเข้าประตูโรงเรียนพร้อมเพื่อน"]
+    },
+    {
+      "episode_number": 3,
+      "working_title": "สอบกลางภาค",
+      "logline": "หนูนาใส่ชุดนักเรียนนั่งทำข้อสอบกลางภาคในห้องเรียน",
+      "key_beats": ["หนูนาใส่ชุดนักเรียน นั่งสอบในห้องเรียน"]
+    }
+  ]
+}
+```
+
+You still see the same story evidence for a "ชุดนักเรียน" outfit variant on
+`character-1` as before — but this time the roster tells you that variant already
+exists as `character-1-school-uniform`. Instead of proposing it fresh, echo the
+existing roster entry's own `character_key` back via `existing_character_key`:
+
+Output:
+
+```json
+{
+  "contract_version": 1,
+  "character_plans": [
+    {
+      "character_key": "character-1",
+      "variants": [
+        {
+          "variant_label": "ชุดนักเรียน",
+          "variant_type": "outfit",
+          "description": "white blouse with navy pleated skirt school uniform, hair neatly tied back, no makeup, black school shoes, carrying a school bag",
+          "applies_to_episodes": [2, 3],
+          "existing_character_key": "character-1-school-uniform"
+        }
+      ]
+    }
+  ],
+  "twin_detections": []
+}
+```
+
+Note you still authored a full, concrete `description` — `existing_character_key`
+tells the calling app "match/refresh this existing row," it does not mean you can
+skip the content.
+
+## Worked example 5 — second run recognizing an already-known twin
+
+Same idea, applied to worked example 3's twin case: a prior run already proposed
+ใบตอง as ใบเฟิร์น's identical twin, and the calling app already saved her as her own
+roster row carrying `existing_shares_face_with_character_key`:
+
+Input:
+
+```json
+{
+  "contract_version": 1,
+  "characters": [
+    {
+      "character_key": "character-4",
+      "name": "ใบเฟิร์น",
+      "role": "protagonist",
+      "description": "หญิงสาววัย 20 ปี ผมตรงยาวสีดำ ผิวขาว บุคลิกร่าเริง"
+    },
+    {
+      "character_key": "character-4-twin",
+      "name": "ใบตอง",
+      "role": "supporting",
+      "description": "always wears glasses and keeps her hair short",
+      "existing_shares_face_with_character_key": "character-4"
+    }
+  ],
+  "episodes": [
+    {
+      "episode_number": 5,
+      "working_title": "ความลับของฝาแฝด",
+      "logline": "เผยความจริงว่าใบเฟิร์นมีน้องสาวฝาแฝดแท้ชื่อใบตองที่หน้าเหมือนกันทุกอย่างจนแยกไม่ออก แต่ใบตองไว้ผมสั้นและใส่แว่นเสมอ ต่างจากใบเฟิร์นที่ไว้ผมยาวและไม่ใส่แว่น",
+      "key_beats": [
+        "เปิดเผยว่าใบเฟิร์นมีน้องสาวฝาแฝดแท้ชื่อใบตอง หน้าเหมือนกันทุกอย่าง แยกไม่ออกถ้าไม่มีแว่นกับทรงผมสั้นของใบตอง"
+      ]
+    }
+  ]
+}
+```
+
+You still see the same story evidence for an identical twin as before — but the
+roster now tells you ใบตอง already exists as `character-4-twin`. Echo her existing
+`character_key` back via `existing_character_key` rather than proposing her as a new
+sibling:
+
+Output:
+
+```json
+{
+  "contract_version": 1,
+  "character_plans": [],
+  "twin_detections": [
+    {
+      "description": "identical twin sister revealed in episode 5, visually indistinguishable from ใบเฟิร์น except for hairstyle and glasses",
+      "source_character_key": "character-4",
+      "new_characters": [
+        {
+          "name": "ใบตอง",
+          "role": "supporting",
+          "shares_face_with": "character-4",
+          "distinguishing_notes": "always wears glasses and keeps her hair short, opposite of ใบเฟิร์น's long hair and no glasses — this is the only way to visually tell them apart",
+          "existing_character_key": "character-4-twin"
+        }
+      ]
+    }
+  ]
+}
+```
 
 ## Omit everything when nothing qualifies
 

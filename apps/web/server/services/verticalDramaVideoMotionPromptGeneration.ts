@@ -73,6 +73,10 @@ import {
 import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 import { VD_PRODUCT_LOCK_VIDEO_INSTRUCTION } from "./verticalDramaProductTieIn";
 import { buildThaiAdComplianceInstruction } from "@shared/verticalDramaSeries/thaiAdCompliance";
+import {
+  buildNativeDialogueVerbatimBlock,
+  NATIVE_DIALOGUE_BLOCK_MARKER,
+} from "@shared/verticalDramaSeries/nativeDialogue";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
 // section-15 change D, Wave-4A completing the "motion prompts" leg of the
 // rule). Type-only — pure/shared, no runtime import needed here.
@@ -80,6 +84,7 @@ import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSer
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
+export { buildNativeDialogueVerbatimBlock } from "@shared/verticalDramaSeries/nativeDialogue";
 
 /**
  * Thrown when the per-user `mediaGenerationLimiter` rejects a video
@@ -1274,6 +1279,37 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    */
   locationReferenceImage?: { url: string; name?: string };
   shotContext: {
+    /**
+     * Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
+     * Phase 1a) — the canonical Overview-page shot beat (the deep-drafted
+     * `summary`, the same richer, user-edited synopsis already threaded into
+     * the sibling start-frame prompt flow), when the caller has resolved
+     * one. This is the single source of truth for WHAT VISIBLY HAPPENS in
+     * the shot (e.g. "reads a message silently" vs "speaks the message
+     * aloud") — far richer than the terse storyboard `description` below,
+     * which is the historical (and still present) fallback fact. The
+     * router resolves this from `deepDraftShotForDialogue?.summary` (only
+     * populated when the `verticalDramaSeriesDeepStoryDrafts` tenant flag is
+     * on AND this shot has a deep-drafted entry). Optional/omitted (every
+     * caller before this fix, and any caller whose series hasn't deep-
+     * drafted this shot) preserves today's byte-identical prompt — no new
+     * fact line at all in that case. See `buildShotVideoPromptUserPrompt`'s
+     * exact fact-line wording.
+     */
+    canonicalShotSummary?: string;
+    /**
+     * Persistence/pin root-cause fix (`planning/vd-video-prompt-skill-first/
+     * plan.md` Phase 2) — true when the caller has already determined this
+     * shot is an intentionally SILENT beat (deep-drafted
+     * `silence_intent` truthy). When true, both prompt builders inject a
+     * MANDATORY "return dialogue as [] and do not invent speech" fact ahead
+     * of the dialogue instructions, and `generateVerticalDramaShotVideoPrompt`
+     * itself never lets an LLM-invented line reach the deterministic
+     * dialogue-stitch/compliance-retry logic (see that function's
+     * `requiredDialogue` resolution). Optional/omitted (every caller before
+     * this fix) preserves today's byte-identical prompt/behavior.
+     */
+    beatIsSilent?: boolean;
     description?: string;
     camera?: string;
     emotion?: string;
@@ -1284,6 +1320,15 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
       emotion?: string;
       delivery?: { tone?: string; pace?: string; pauses?: string; texture?: string };
       subtext?: string;
+      /**
+       * Speaker-attributed lip-sync discipline fix — the speaker's DISPLAY
+       * name, pre-resolved by the caller (router) from the series' character
+       * roster (`characterKey -> name`, already loaded there for
+       * `characterIdentityMap` above — no new DB query needed). Falls back
+       * to `characterKey` when absent. See
+       * `@shared/verticalDramaSeries/nativeDialogue.ts`.
+       */
+      speakerName?: string;
     }>;
     /**
      * Compact "key = name (role): descriptor" character identity map
@@ -1466,7 +1511,14 @@ function buildShotVideoPromptUserPrompt(
   const dialogueBlock = dialogueLines.length
     ? dialogueLines
         .map((l, i) => {
-          const parts = [`${i + 1}. ${l.characterKey ?? "character"}: "${l.lineTh}"`];
+          // Speaker attribution uses the resolved DISPLAY NAME (`speakerName`,
+          // pre-resolved by the router from characterKey->name) so the skill
+          // attributes each line to the same name it sees on the attached
+          // character reference images + CHARACTER IDENTITY MAP — never the raw
+          // `characterKey`. Falls back to `characterKey` when no name resolved
+          // (byte-identical to before for any line without a speakerName).
+          const speaker = l.speakerName ?? l.characterKey ?? "character";
+          const parts = [`${i + 1}. ${speaker}: "${l.lineTh}"`];
           if (l.emotion) parts.push(`emotion: ${l.emotion}`);
           if (l.delivery?.tone) parts.push(`tone: ${l.delivery.tone}`);
           if (l.delivery?.pace) parts.push(`pace: ${l.delivery.pace}`);
@@ -1522,9 +1574,24 @@ function buildShotVideoPromptUserPrompt(
     typeof params.shotDurationSeconds === "number" && typeof params.targetSpeechSeconds === "number"
       ? `Target spoken-dialogue duration: about ${params.targetSpeechSeconds.toFixed(1)}s total across all returned lines. Avoid one-line dialogue that only fills 1-2 seconds of an 8-second clip unless the user explicitly requests silence.`
       : null,
+    // Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
+    // Phase 1a) — placed BEFORE the terse `description` fact below so the
+    // richer, canonical beat is read first; see `canonicalShotSummary`'s own
+    // doc comment for the full rationale. Omitted entirely (byte-identical)
+    // when absent.
+    shotContext.canonicalShotSummary?.trim()
+      ? `AUTHORITATIVE SHOT BEAT (story overview — the single source of truth for what visibly happens in this shot; ground the video motion in THIS; when it conflicts with the shorter shot description below, follow this): ${shotContext.canonicalShotSummary.trim()}`
+      : null,
     shotContext.description ? `Shot description: ${shotContext.description}` : null,
     shotContext.camera ? `Camera setup: ${shotContext.camera}` : null,
     shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
+    // Persistence/pin root-cause fix (`planning/vd-video-prompt-skill-first/
+    // plan.md` Phase 2) — placed ahead of the dialogue block below so the
+    // model reads the silence mandate before deciding how to handle
+    // dialogue. Omitted entirely (byte-identical) when absent.
+    shotContext.beatIsSilent
+      ? `SILENT BEAT (MANDATORY): this shot is intentionally silent — no character speaks aloud. Express the beat purely through action, expression, and camera. Return "dialogue" as [] and do NOT write any spoken line, lip-sync direction, or verbatim dialogue block.`
+      : null,
     // Retention hooks (W7) — structured facts only, see the skill's "Hook +
     // retention-ending shot motion energy" rule for the actual creative
     // instruction (skill-first; no rule text lives here).
@@ -1549,7 +1616,7 @@ function buildShotVideoPromptUserPrompt(
       ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
       : null,
     params.imagePrompt
-      ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
+      ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (left / center / right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
       : null,
     shotContext.characterIdentityMap ?? null,
     // Multi-character reference images (multi-character disambiguation fix,
@@ -1619,7 +1686,7 @@ function buildShotVideoPromptUserPrompt(
  * wrote descriptive "mouth moves in sync"-style prose instead of quoting the
  * line — 2026-07-07 fix, see the shot 4/series 4/episode 11 bug report.
  */
-function promptEmbedsDialogueVerbatim(
+export function promptEmbedsDialogueVerbatim(
   prompt: string,
   dialogueLines: Array<{ lineTh: string }>,
 ): boolean {
@@ -1630,6 +1697,36 @@ function promptEmbedsDialogueVerbatim(
     const normalizedLine = normalize(line.lineTh);
     return normalizedLine.length > 0 && normalizedPrompt.includes(normalizedLine);
   });
+}
+
+/** Deterministic full-source block after the LLM compliance retry. */
+export function appendMissingDialogueVerbatim(
+  prompt: string,
+  dialogueLines: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
+  options?: { dialogueLanguageName?: string; establishedCharacterCount?: number },
+): string {
+  const block = buildNativeDialogueVerbatimBlock(dialogueLines, options);
+  if (!block) return prompt.trim();
+  const markerIndex = prompt.indexOf(NATIVE_DIALOGUE_BLOCK_MARKER);
+  let base = markerIndex >= 0 ? prompt.slice(0, markerIndex) : prompt;
+  // The canonical block must be the sole carrier of spoken text. A compliant
+  // LLM commonly embeds the exact quote in its prose; retaining that quote
+  // and then appending the block makes native-audio providers speak it twice.
+  // Remove every canonical line from the descriptive portion first while
+  // leaving an explicit non-spoken pointer in its place.
+  for (const { lineTh } of dialogueLines) {
+    const tokens = lineTh.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) continue;
+    const pattern = tokens
+      .map(token => token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("\\s+");
+    base = base.replace(
+      new RegExp(`["“”'‘’\`]?[\\s]*${pattern}[\\s]*["“”'‘’\`]?`, "gu"),
+      " [spoken text: use canonical dialogue below] ",
+    );
+  }
+  base = base.replace(/\s+/g, " ").trim();
+  return `${base}${base ? "\n" : ""}${block}`;
 }
 
 /**
@@ -1661,6 +1758,18 @@ export async function generateVerticalDramaShotVideoPrompt(
   }
 
   const { model, hasVision } = await resolveShotVideoPromptModel(params.seriesId);
+  // Vision fallback surface (`planning/vd-video-prompt-skill-first/plan.md`
+  // Phase 1b) — a visible server-log signal (instead of a silent guess) that
+  // this generation ran without ever seeing the actual start-frame image, so
+  // the model relied entirely on the textual `imagePrompt` proxy. No
+  // behavior change beyond this one log line — see this module's own
+  // vision-support doc comment for why the fallback itself is intentional.
+  if (!hasVision) {
+    console.warn(
+      "[vd_video_prompt] generated WITHOUT vision (no vision-capable model enabled) — model relied on imagePrompt text proxy only",
+      { seriesId: params.seriesId, episodeId: params.episodeId, shotNumber: params.shotNumber },
+    );
+  }
   const systemPrompt = loadShotVideoPromptSystemPrompt();
 
   const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
@@ -1669,6 +1778,23 @@ export async function generateVerticalDramaShotVideoPrompt(
     configJson: params.selectedVideoModel.configJson,
   });
   const nativeAudioDialogue = capabilities.nativeAudioDialogue === true;
+  // Lip-sync discipline fix — speech-language name for the deterministic
+  // dialogue block appended below (see `appendMissingDialogueVerbatim`'s
+  // `options` param / `@shared/verticalDramaSeries/nativeDialogue.ts`).
+  // Deliberately NOT threading an `establishedCharacterCount` signal here
+  // (e.g. `characterReferenceImages?.length`): this block's text must stay
+  // reproducible LATER, purely from `dialogueLines` + language, by
+  // `generateVideoClip`'s render-time formatter (`verticalDramaVideoPromptFormatter.ts`),
+  // which re-verifies/re-embeds the SAME block from the PERSISTED clip at a
+  // separate request with no established-character-count signal available —
+  // an out-of-band count here that formatter can't reproduce would make its
+  // idempotency check ("is the canonical block already present?") fail and
+  // append a second, differently-worded dialogue clause on top. The
+  // distinct-SPEAKER count derived from `dialogueLines` itself (see
+  // `buildNativeDialogueVerbatimBlock`) stays the sole, always-reproducible
+  // signal for the SILENT LISTENER rules gate.
+  const dialogueLanguageName =
+    VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[params.dialogueLanguage ?? "th"];
   // Vertical Drama task #36 — the caller (router) already resolved the
   // rollout gate + the user's persisted preference into
   // `params.nativeAudioEnabled`; this function ANDs its own model-capability
@@ -1710,12 +1836,28 @@ export async function generateVerticalDramaShotVideoPrompt(
   // prose instead — see this file's bug report for a real repro. One
   // corrective retry with an explicit, unambiguous instruction before giving
   // up and returning the model's (still schema-valid) best effort.
+  //
+  // Silence enforcement at generation time (`planning/vd-video-prompt-
+  // skill-first/plan.md` Phase 2b) — when the caller has already resolved
+  // this shot as an intentionally SILENT beat, never let an LLM-invented
+  // `outcome.data.dialogue` line (a hard-rule violation) reach the
+  // compliance-retry/deterministic-stitch logic below — an invented line
+  // must never be treated as "required" just because the source was empty.
+  // The persisted `matchingClip.dialogue` is separately protected by the
+  // router's own pin fix (never promotes an invented line to authoritative
+  // when the resolved source was empty) — this is the generation-time half
+  // of that same guarantee.
+  const requiredDialogue = params.shotContext.beatIsSilent
+    ? []
+    : (params.shotContext.dialogueLines?.length ?? 0) > 0
+      ? params.shotContext.dialogueLines!
+      : outcome.data.dialogue ?? [];
   if (
     nativeAudioDialogue &&
-    !promptEmbedsDialogueVerbatim(outcome.data.prompt, outcome.data.dialogue ?? [])
+    !promptEmbedsDialogueVerbatim(outcome.data.prompt, requiredDialogue)
   ) {
     try {
-      const dialogueForRetry = outcome.data.dialogue ?? [];
+      const dialogueForRetry = requiredDialogue;
       const quotedLines = dialogueForRetry
         .map((l) => `"${l.lineTh}"`)
         .join(", ");
@@ -1739,7 +1881,7 @@ export async function generateVerticalDramaShotVideoPrompt(
       if (
         promptEmbedsDialogueVerbatim(
           correctedOutcome.data.prompt,
-          correctedOutcome.data.dialogue ?? dialogueForRetry,
+          dialogueForRetry,
         )
       ) {
         outcome = correctedOutcome;
@@ -1789,10 +1931,27 @@ export async function generateVerticalDramaShotVideoPrompt(
     ? data.audio_direction || undefined
     : undefined;
 
+  const dialogueBlockOptions = { dialogueLanguageName };
+  // Skill-first stitching gate (`planning/vd-video-prompt-skill-first/
+  // plan.md` Phase 3a) — `appendMissingDialogueVerbatim` is a GATED SAFETY
+  // NET for weak/non-compliant models, not an unconditional re-stitch: when
+  // the model's own `data.prompt` already embeds every required dialogue
+  // line verbatim (a compliant, skill-first composition — including after
+  // the compliance-correction retry above succeeded), trust it and leave
+  // the model's own coherent prose as-is instead of stripping its quote and
+  // re-appending a second, differently-worded canonical block (the
+  // double-dialogue bug this fix removes). `promptEmbedsDialogueVerbatim`
+  // also returns `true` trivially when there is nothing to stitch (silent
+  // beat / non-native model, `dialogueForStitch` empty), preserving today's
+  // exact no-op in that case.
+  const dialogueForStitch = nativeAudioDialogue ? requiredDialogue : [];
+  const stitchedBasePrompt = promptEmbedsDialogueVerbatim(data.prompt, dialogueForStitch)
+    ? data.prompt.trim()
+    : appendMissingDialogueVerbatim(data.prompt, dialogueForStitch, dialogueBlockOptions);
   return {
     prompt: resolvedAudioDirection
-      ? `${data.prompt} SFX cues: ${resolvedAudioDirection}`
-      : data.prompt,
+      ? `${stitchedBasePrompt} SFX cues: ${resolvedAudioDirection}`
+      : stitchedBasePrompt,
     negativeMotionPrompt: data.negative_motion_prompt || undefined,
     dialogue: data.dialogue,
     creditsUsed,
@@ -1934,6 +2093,15 @@ function buildSpeakerSwitchUserPrompt(
   // doc comment.
   const locationReferenceImageName = params.locationReferenceImage?.name ?? "location";
 
+  // Resolve every speaker's DISPLAY NAME (from characterKey) so both the
+  // per-line attribution and the segment's anchor-speaker label read as the
+  // real character name the skill sees on the attached reference images +
+  // CHARACTER IDENTITY MAP — never the raw `characterKey`. Falls back to the
+  // key when no name resolved (byte-identical to before for keyless lines).
+  const speakerNameByKey = new Map<string, string>();
+  for (const l of allDialogueLines) {
+    if (l.characterKey && l.speakerName) speakerNameByKey.set(l.characterKey, l.speakerName);
+  }
   let cursorSeconds = 0;
   const segmentBlocks = subShotWindows
     .map((w) => {
@@ -1943,10 +2111,13 @@ function buildSpeakerSwitchUserPrompt(
       const lines = w.lineIndexes
         .map((idx) => allDialogueLines[idx])
         .filter((l): l is NonNullable<typeof l> => Boolean(l));
+      const anchorSpeaker = speakerNameByKey.get(w.characterKey) ?? w.characterKey;
       const linesText = lines.length
         ? lines
             .map((l, li) => {
-              const parts = [`${li + 1}. ${l.characterKey ?? w.characterKey}: "${l.lineTh}"`];
+              const speaker =
+                l.speakerName ?? l.characterKey ?? w.characterKey;
+              const parts = [`${li + 1}. ${speaker}: "${l.lineTh}"`];
               if (l.emotion) parts.push(`emotion: ${l.emotion}`);
               if (l.delivery?.tone) parts.push(`tone: ${l.delivery.tone}`);
               if (l.delivery?.pace) parts.push(`pace: ${l.delivery.pace}`);
@@ -1958,7 +2129,7 @@ function buildSpeakerSwitchUserPrompt(
             .join("\n")
         : "(no dialogue lines assigned to this segment)";
       return [
-        `SEGMENT ${w.subShotNumber} of ${subShotWindows.length} — [${startSeconds}s, ${endSeconds}s) (${w.durationSeconds}s), anchor speaker: ${w.characterKey}`,
+        `SEGMENT ${w.subShotNumber} of ${subShotWindows.length} — [${startSeconds}s, ${endSeconds}s) (${w.durationSeconds}s), anchor speaker: ${anchorSpeaker}`,
         `Dialogue lines in this segment:\n${linesText}`,
       ].join("\n");
     })
@@ -1968,11 +2139,27 @@ function buildSpeakerSwitchUserPrompt(
   return [
     `Shot number: ${params.shotNumber}`,
     `Total clip duration: ${totalDurationSeconds}s across ${subShotWindows.length} timed segments (this shot's dialogue requires cutting between speakers — see the segment facts below; write ONE combined "prompt" narrating all segments in order, per your instructions).`,
+    // Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
+    // Phase 1a) — see `buildShotVideoPromptUserPrompt`'s identical fact line
+    // for the full rationale. Omitted entirely (byte-identical) when absent.
+    shotContext.canonicalShotSummary?.trim()
+      ? `AUTHORITATIVE SHOT BEAT (story overview — the single source of truth for what visibly happens in this shot; ground the video motion in THIS; when it conflicts with the shorter shot description below, follow this): ${shotContext.canonicalShotSummary.trim()}`
+      : null,
     shotContext.description ? `Shot description: ${shotContext.description}` : null,
     shotContext.camera ? `Overall scene camera setup (base framing before the timed cuts): ${shotContext.camera}` : null,
     shotContext.emotion ? `Shot emotion: ${shotContext.emotion}` : null,
+    // Persistence/pin root-cause fix (`planning/vd-video-prompt-skill-first/
+    // plan.md` Phase 2) — see `buildShotVideoPromptUserPrompt`'s identical
+    // fact line for the full rationale. This path always has real speaker
+    // windows in practice (a split only happens when dialogue requires
+    // cutting between speakers), so this fact line is here purely for
+    // shotContext-shape symmetry/forward-compat — omitted entirely
+    // (byte-identical) when absent, which is every caller today.
+    shotContext.beatIsSilent
+      ? `SILENT BEAT (MANDATORY): this shot is intentionally silent — no character speaks aloud. Express the beat purely through action, expression, and camera. Return "dialogue" as [] and do NOT write any spoken line, lip-sync direction, or verbatim dialogue block.`
+      : null,
     params.imagePrompt
-      ? `The attached image was generated from this exact prompt (use it as a precise textual description of what the start frame shows, in addition to analyzing the attached image directly): ${params.imagePrompt}`
+      ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (left / center / right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
       : null,
     shotContext.characterIdentityMap ?? null,
     // Multi-character reference images (multi-character disambiguation fix,
@@ -2053,6 +2240,15 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   }
 
   const { model, hasVision } = await resolveShotVideoPromptModel(params.seriesId);
+  // Vision fallback surface (`planning/vd-video-prompt-skill-first/plan.md`
+  // Phase 1b) — same signal as `generateVerticalDramaShotVideoPrompt`'s
+  // identical block above.
+  if (!hasVision) {
+    console.warn(
+      "[vd_video_prompt] generated WITHOUT vision (no vision-capable model enabled) — model relied on imagePrompt text proxy only",
+      { seriesId: params.seriesId, episodeId: params.episodeId, shotNumber: params.shotNumber },
+    );
+  }
   const systemPrompt = loadShotVideoPromptSubShotsSystemPrompt();
 
   const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
@@ -2063,6 +2259,12 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   const nativeAudioDialogue = capabilities.nativeAudioDialogue === true;
   const nativeAudioDirectionEnabled =
     params.nativeAudioEnabled === true && capabilities.supportsNativeAudio === true;
+  // Lip-sync discipline fix — same speech-language name signal as
+  // `generateVerticalDramaShotVideoPrompt` above (deliberately no
+  // `establishedCharacterCount` — see that function's identical local for
+  // the full cross-mutation-parity rationale).
+  const dialogueLanguageName =
+    VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[params.dialogueLanguage ?? "th"];
 
   const userPromptText = buildSpeakerSwitchUserPrompt(
     params,
@@ -2070,7 +2272,34 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     nativeAudioDirectionEnabled,
   );
 
-  const { data, response } = await executeVisionAwareJsonCallWithRetry<ShotVideoPromptOutput>({
+  const allDialogueLines = params.shotContext.dialogueLines ?? [];
+  const dialogue: VerticalDramaMotionPromptClipDialogueLine[] = params.subShotWindows.flatMap(
+    (w) =>
+      w.lineIndexes
+        .map((idx) => allDialogueLines[idx])
+        .filter((l): l is NonNullable<typeof l> => Boolean(l))
+        .map((l) => ({
+          characterKey: l.characterKey,
+          lineTh: l.lineTh,
+          emotion: l.emotion,
+          delivery: l.delivery,
+          subtext: l.subtext,
+        })),
+  );
+  // Speaker-name-augmented mirror of `dialogue` above, used ONLY to build the
+  // deterministic lip-sync block (`appendMissingDialogueVerbatim` below) —
+  // kept separate from the returned/persisted `dialogue` array so
+  // `speakerName` never leaks into the stored `VerticalDramaMotionPromptClipDialogueLine`
+  // shape (no schema change requested for this fix).
+  const dialogueForBlock: Array<{ lineTh: string; characterKey?: string; speakerName?: string }> =
+    params.subShotWindows.flatMap((w) =>
+      w.lineIndexes
+        .map((idx) => allDialogueLines[idx])
+        .filter((l): l is NonNullable<typeof l> => Boolean(l))
+        .map((l) => ({ lineTh: l.lineTh, characterKey: l.characterKey, speakerName: l.speakerName })),
+    );
+
+  let outcome = await executeVisionAwareJsonCallWithRetry<ShotVideoPromptOutput>({
     model,
     systemPrompt,
     userPromptText,
@@ -2085,6 +2314,35 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     firstAttemptMaxTokens: 3000,
     retryMaxTokens: 6000,
   });
+
+  if (nativeAudioDialogue && !promptEmbedsDialogueVerbatim(outcome.data.prompt, dialogue)) {
+    try {
+      const quotedLines = dialogue.map(line => `"${line.lineTh}"`).join(", ");
+      const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
+        model,
+        systemPrompt,
+        content: buildVisionAwareContent(
+          `${userPromptText}\n\nCOMPLIANCE CORRECTION (MANDATORY): quote every timed dialogue line verbatim inside "prompt": ${quotedLines}.`,
+          hasVision,
+          buildShotVideoPromptVisionImages(
+            params.imageUrl,
+            params.characterReferenceImages,
+            params.locationReferenceImage,
+          ),
+        ),
+        userId: params.userId,
+        maxTokens: 3000,
+        schema: shotVideoPromptOutputSchema,
+      });
+      if (promptEmbedsDialogueVerbatim(correctedOutcome.data.prompt, dialogue)) {
+        outcome = correctedOutcome;
+      }
+    } catch {
+      // Deterministic append below still guarantees the post-condition.
+    }
+  }
+
+  const { data, response } = outcome;
 
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
@@ -2134,29 +2392,28 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
 
   // Flatten every window's dialogue lines in chronological order (windows are
   // already chronological per `computeSpeakerSwitchSubShotPlan`'s contract).
-  const allDialogueLines = params.shotContext.dialogueLines ?? [];
-  const dialogue: VerticalDramaMotionPromptClipDialogueLine[] = params.subShotWindows.flatMap(
-    (w) =>
-      w.lineIndexes
-        .map((idx) => allDialogueLines[idx])
-        .filter((l): l is NonNullable<typeof l> => Boolean(l))
-        .map((l) => ({
-          characterKey: l.characterKey,
-          lineTh: l.lineTh,
-          emotion: l.emotion,
-          delivery: l.delivery,
-          subtext: l.subtext,
-        })),
-  );
-
   const durationSeconds = round2(
     params.subShotWindows.reduce((sum, w) => sum + w.durationSeconds, 0),
   );
 
+  const dialogueBlockOptions = { dialogueLanguageName };
+  // Skill-first stitching gate (`planning/vd-video-prompt-skill-first/
+  // plan.md` Phase 3a) — same gated-safety-net convention as
+  // `generateVerticalDramaShotVideoPrompt`'s identical block above: only
+  // strip+re-append the deterministic canonical block when the model's own
+  // `data.prompt` does NOT already embed every timed segment's dialogue
+  // verbatim; trust (and leave untouched) an already-compliant skill-first
+  // composition. Trivially a no-op (byte-identical to before this fix) when
+  // there is nothing to stitch (`dialogueForStitch` empty — silent/no-dialogue
+  // shot or non-native model).
+  const dialogueForStitch = nativeAudioDialogue ? dialogueForBlock : [];
+  const stitchedBasePrompt = promptEmbedsDialogueVerbatim(data.prompt, dialogueForStitch)
+    ? data.prompt.trim()
+    : appendMissingDialogueVerbatim(data.prompt, dialogueForStitch, dialogueBlockOptions);
   return {
     prompt: resolvedAudioDirection
-      ? `${data.prompt} SFX cues: ${resolvedAudioDirection}`
-      : data.prompt,
+      ? `${stitchedBasePrompt} SFX cues: ${resolvedAudioDirection}`
+      : stitchedBasePrompt,
     negativeMotionPrompt: data.negative_motion_prompt || undefined,
     dialogue,
     durationSeconds,

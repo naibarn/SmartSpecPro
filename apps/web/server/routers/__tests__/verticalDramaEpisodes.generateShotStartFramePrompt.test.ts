@@ -202,6 +202,7 @@ const {
   MockInsufficientCreditsError,
   MockVdSchemaValidationError,
   MockRateLimitExceededError,
+  MockVdReferenceMappingError,
 } = vi.hoisted(() => {
   class MockInsufficientCreditsError extends Error {
     code = "VD_INSUFFICIENT_CREDITS";
@@ -215,11 +216,22 @@ const {
   class MockRateLimitExceededError extends Error {
     code = "VD_RATE_LIMIT_EXCEEDED";
   }
+  // RC3 fix (`planning/vd-start-frame-reference-mapping/plan.md` Phase 2) —
+  // thrown by the (mocked) service when a corrective retry still leaves an
+  // explicit "Image N" contradiction; the router must map this to
+  // PRECONDITION_FAILED (see the test below).
+  class MockVdReferenceMappingError extends Error {
+    code = "VD_REFERENCE_MAPPING_MISMATCH";
+    constructor(message: string, public mismatches: unknown) {
+      super(message);
+    }
+  }
   return {
     mockGenerateStartFrameShotPrompt: vi.fn(),
     MockInsufficientCreditsError,
     MockVdSchemaValidationError,
     MockRateLimitExceededError,
+    MockVdReferenceMappingError,
   };
 });
 vi.mock("../../services/verticalDramaStartFrameGeneration", () => ({
@@ -227,6 +239,7 @@ vi.mock("../../services/verticalDramaStartFrameGeneration", () => ({
   InsufficientCreditsError: MockInsufficientCreditsError,
   VdSchemaValidationError: MockVdSchemaValidationError,
   RateLimitExceededError: MockRateLimitExceededError,
+  VdReferenceMappingError: MockVdReferenceMappingError,
 }));
 
 // `verticalDramaEpisodes.ts` imports `ensurePromptWithinLimit` from
@@ -530,6 +543,86 @@ describe("generateShotStartFramePrompt", () => {
     );
   });
 
+  it("RC1 fix (planning/vd-start-frame-reference-mapping/plan.md Phase 1): characterReferenceManifest follows frame.requiredCharacterRefs order even when the DB returns character rows in the OPPOSITE order", async () => {
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "two characters in a standoff",
+            negativePrompt: "no blur",
+            requiredCharacterRefs: ["hero", "villain"],
+            productReferenceAssetIds: [],
+            approvedMediaAssetId: "900",
+          },
+        ],
+      },
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ bible: null }])) // loadSeriesTargetAudienceRegion
+      .mockReturnValueOnce(
+        selectChain([
+          { characterKey: "hero", name: "Hero Name", role: "protagonist", data: {} },
+          { characterKey: "villain", name: "Villain Name", role: "antagonist", data: {} },
+        ]),
+      ) // resolveShotCharacterIdentitySources
+      // `resolveShotCharacterReferenceEntries`'s `characterRows` query has NO
+      // `ORDER BY` — Postgres returns the OPPOSITE order from
+      // `requiredCharacterRefs` here, the exact scenario RC1 fixes.
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 2, name: "Villain Name", characterKey: "villain" },
+          { id: 1, name: "Hero Name", characterKey: "hero" },
+        ]),
+      );
+
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce("https://cdn/villain-portrait.png")
+      .mockResolvedValueOnce("https://cdn/hero-portrait.png");
+
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotStartFramePrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+    });
+
+    // The manifest handed to the skill must be in `requiredCharacterRefs`
+    // order (hero=1, villain=2) — the SAME order the real paid render later
+    // attaches reference images in — NOT the DB's own arbitrary row order.
+    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        characterReferenceManifest: [
+          { index: 1, characterId: null, name: "Hero Name" },
+          { index: 2, characterId: null, name: "Villain Name" },
+        ],
+      }),
+    );
+  });
+
+  it("maps a VdReferenceMappingError (still-contradictory prompt after one corrective retry) to a PRECONDITION_FAILED TRPCError", async () => {
+    mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
+      new MockVdReferenceMappingError("reference mapping still contradicts the manifest", [
+        { characterName: "Hero Name", claimedImageIndex: 2, expectedImageIndex: 1 },
+      ]),
+    );
+    const episodeRow = baseEpisodeRow();
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ bible: null }]));
+
+    await expect(
+      router.generateShotStartFramePrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1, instruction: "fix it" },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
   it("maps InsufficientCreditsError to a FORBIDDEN TRPCError", async () => {
     mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
       new MockInsufficientCreditsError("insufficient credits"),
@@ -697,5 +790,181 @@ describe("generateShotStartFramePrompt", () => {
       shotNumber: 1,
       imagePrompt: "regenerated start-frame prompt",
     });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* generateShotReferenceFramePrompt (Phase 6a — user-controlled              */
+/* supplementary reference frames, planning/vd-start-frame-reference-mapping/ */
+/* plan.md Phase 6)                                                          */
+/* -------------------------------------------------------------------------- */
+
+describe("generateShotReferenceFramePrompt", () => {
+  it("throws PRECONDITION_FAILED when there is no start-frame plan/frame yet, and never calls the LLM service", async () => {
+    const episodeRow = baseEpisodeRow({ startFramePlan: null });
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRow])); // loadOwnedEpisode
+
+    await expect(
+      router.generateShotReferenceFramePrompt({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          characterKeys: ["hero"],
+          instruction: "ไอริณโอบกอดภาคิน",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalled();
+  });
+
+  it("throws PRECONDITION_FAILED when a selected characterKey is not in the series roster, and never calls the LLM service", async () => {
+    const episodeRow = baseEpisodeRow();
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ characterKey: "hero" }])); // roster query — only "hero" exists
+
+    await expect(
+      router.generateShotReferenceFramePrompt({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          characterKeys: ["hero", "ghost-key"],
+          instruction: "ไอริณโอบกอดภาคิน",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalled();
+  });
+
+  it("builds characterReferenceManifest in the USER'S characterKeys order (not frame.requiredCharacterRefs order), passes referenceFrameMode: true, and never persists onto the episode row", async () => {
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: {
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-nano-banana-pro",
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "two characters in a standoff",
+            negativePrompt: "no blur",
+            // Deliberately the OPPOSITE order from the user's selection below
+            // — the manifest must follow the USER's order, not this.
+            requiredCharacterRefs: ["villain", "hero"],
+            productReferenceAssetIds: [],
+            canonicalShotSummary: "ฉากเผชิญหน้าในซอกตึก",
+          },
+        ],
+      },
+    });
+
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(
+        selectChain([{ characterKey: "hero" }, { characterKey: "villain" }]),
+      ) // roster validation query
+      .mockReturnValueOnce(
+        // resolveShotCharacterReferenceEntries's characterRows query — DB
+        // returns rows in yet another (arbitrary) order.
+        selectChain([
+          { id: 2, name: "Villain Name", characterKey: "villain" },
+          { id: 1, name: "Hero Name", characterKey: "hero" },
+        ]),
+      )
+      .mockReturnValueOnce(
+        // resolveShotCharacterIdentitySources
+        selectChain([
+          { characterKey: "hero", name: "Hero Name", role: "protagonist", data: {} },
+          { characterKey: "villain", name: "Villain Name", role: "antagonist", data: {} },
+        ]),
+      );
+
+    mockGetPrimaryPortraitUrl
+      .mockResolvedValueOnce("https://cdn/hero-portrait.png")
+      .mockResolvedValueOnce("https://cdn/villain-portrait.png");
+
+    const result = await router.generateShotReferenceFramePrompt({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        // User selects hero FIRST, villain second — the opposite of
+        // frame.requiredCharacterRefs above.
+        characterKeys: ["hero", "villain"],
+        instruction: "ไอริณโอบกอดภาคิน",
+      },
+    });
+
+    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instruction: "ไอริณโอบกอดภาคิน",
+        referenceFrameMode: true,
+        requiredCharacterRefs: ["hero", "villain"],
+        canonicalShotSummary: "ฉากเผชิญหน้าในซอกตึก",
+        characterReferenceManifest: [
+          { index: 1, characterId: null, name: "Hero Name" },
+          { index: 2, characterId: null, name: "Villain Name" },
+        ],
+      }),
+    );
+    // Never a speakingOrder fact — Phase 6 design (arbitrary user-directed
+    // pose/action, not necessarily this shot's dialogue beat).
+    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalledWith(
+      expect.objectContaining({ speakingOrder: expect.anything() }),
+    );
+
+    expect(result).toEqual({
+      prompt: "regenerated start-frame prompt",
+      negativePrompt: "regenerated negative prompt",
+      creditsUsed: 4,
+      model: "gpt-image-planner",
+      characterKeys: ["hero", "villain"],
+    });
+
+    // MUST NOT write to `startFramePlan.frames[].imagePrompt` — this is a
+    // prompt-authoring-only call.
+    expect(mockDb.update).not.toHaveBeenCalled();
+    expect(mockDb.transaction).not.toHaveBeenCalled();
+  });
+
+  it("maps a VdReferenceMappingError (still-contradictory prompt after one corrective retry) to a PRECONDITION_FAILED TRPCError, and never persists", async () => {
+    mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
+      new MockVdReferenceMappingError("reference mapping still contradicts the manifest", [
+        { characterName: "Hero Name", claimedImageIndex: 2, expectedImageIndex: 1 },
+      ]),
+    );
+    const episodeRow = baseEpisodeRow();
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ characterKey: "hero" }])) // roster validation
+      .mockReturnValueOnce(
+        selectChain([{ id: 1, name: "Hero Name", characterKey: "hero" }]),
+      ) // resolveShotCharacterReferenceEntries's characterRows query
+      .mockReturnValueOnce(
+        selectChain([
+          { characterKey: "hero", name: "Hero Name", role: "protagonist", data: {} },
+        ]),
+      ); // resolveShotCharacterIdentitySources
+    mockGetPrimaryPortraitUrl.mockResolvedValueOnce("https://cdn/hero-portrait.png");
+
+    await expect(
+      router.generateShotReferenceFramePrompt({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          episodeId: "100",
+          shotNumber: 1,
+          characterKeys: ["hero"],
+          instruction: "fix it",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 });

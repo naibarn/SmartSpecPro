@@ -50,6 +50,26 @@ vi.mock("../mcpConnectionService", () => ({
   recordMcpUsageEvent: recordMcpUsageEventMock,
 }));
 
+// Set A gap 5/6 (2026-07-16 stuck-candidate fix) — the VD portrait-candidate
+// cascade lazy-`import()`s both of these at the call site (see
+// `cascadeFailedVdPortraitCandidateTask` in `../mcpMediaAdapter`) precisely
+// so this module's static import graph stays worker/scheduler-safe; mocked
+// here so the cascade tests below assert the wiring without loading the
+// real (heavy, adminProcedure-carrying) `routers/media.ts` or touching a
+// real database through the VD stock service.
+const { mockReconcileTaskCredits, mockMarkPortraitCandidateSubmissionFailed } = vi.hoisted(() => ({
+  mockReconcileTaskCredits: vi.fn().mockResolvedValue({ adjusted: true, difference: -5, action: "refund" }),
+  mockMarkPortraitCandidateSubmissionFailed: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("../../routers/media", () => ({
+  reconcileTaskCredits: mockReconcileTaskCredits,
+}));
+vi.mock("../verticalDramaCharacterStock", () => ({
+  verticalDramaCharacterStockService: {
+    markPortraitCandidateSubmissionFailed: mockMarkPortraitCandidateSubmissionFailed,
+  },
+}));
+
 function makeSelectChain(result: unknown[]) {
   const chain: Record<string, unknown> = {};
   chain.from = vi.fn().mockReturnValue(chain);
@@ -234,5 +254,148 @@ describe("mcpMediaAdapter — stale reconciler + hard timeout", () => {
     // response, the other's connection lookup failed and is left processing
     // — the sweep must not throw for either case).
     expect(summary.changed).toBe(0);
+  });
+});
+
+/**
+ * VD portrait-candidate cascade (2026-07-16 Set A gap 5/6 fix): a stale
+ * `mcp_media_tasks` row tagged with `__vd_portrait_candidate_asset_link_id`
+ * (`generatePortraitCandidateBatch`'s marker, see
+ * `readVdPortraitCandidateTaskMarker` in `../mcpMediaAdapter`) that the sweep
+ * force-fails must also refund reserved credits and durably fail the VD
+ * asset row — without depending on a browser tab ever polling again.
+ */
+describe("reconcileStaleMcpMediaTasks — VD portrait-candidate cascade (2026-07-16)", () => {
+  const vdStaleRow = {
+    id: "mcp_vd_candidate",
+    tenantId: "tenant-test",
+    userId: 1,
+    connectionId: "conn-1",
+    shareId: null,
+    providerTaskId: "provider-job-vd",
+    idempotencyKey: null,
+    mediaType: "image",
+    status: "processing",
+    model: "higgsfield/text2image",
+    prompt: "portrait prompt",
+    parameters: {
+      transportMetadata: {
+        tenantId: "tenant-test",
+        actorUserId: 1,
+        ownerUserId: 1,
+        providerKey: "higgsfield",
+        connectionId: "conn-1",
+        providerJobId: "provider-job-vd",
+        assetType: "image",
+      },
+      extraParams: {
+        __origin_surface: "vertical_drama_character_portrait_candidates",
+        __reserved_credits: 5,
+        __vd_series_id: "10",
+        __vd_character_id: "3",
+        __vd_portrait_candidate_batch_id: "batch-1",
+        __vd_portrait_candidate_id: "candidate-1",
+        __vd_portrait_candidate_asset_link_id: "71",
+      },
+    },
+    resultData: {},
+    errorMessage: null,
+    // Hard-timeout branch (30h > default 24h ceiling) — deterministic
+    // "failed" outcome with no provider network call, same pattern as the
+    // hard-timeout test above.
+    createdAt: new Date(Date.now() - 30 * 60 * 60_000),
+    startedAt: new Date(Date.now() - 30 * 60 * 60_000),
+    completedAt: null,
+    updatedAt: new Date(Date.now() - 30 * 60 * 60_000),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    recordMcpUsageEventMock.mockResolvedValue(undefined);
+    mockReconcileTaskCredits.mockResolvedValue({ adjusted: true, difference: -5, action: "refund" });
+    mockMarkPortraitCandidateSubmissionFailed.mockResolvedValue(undefined);
+    dbMock.update.mockImplementation(() => makeUpdateChain());
+    dbMock.insert.mockImplementation(() => makeInsertChain());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("force-fails a VD-tagged stale task and cascades: refunds reserved credits AND marks the candidate row failed", async () => {
+    dbMock.select.mockImplementation(() => makeSelectChain([vdStaleRow]));
+    vi.stubGlobal("fetch", vi.fn());
+
+    const { reconcileStaleMcpMediaTasks } = await import("../mcpMediaAdapter");
+    const summary = await reconcileStaleMcpMediaTasks();
+
+    expect(summary.scanned).toBe(1);
+    expect(summary.changed).toBe(1);
+    expect(mockReconcileTaskCredits).toHaveBeenCalledTimes(1);
+    expect(mockReconcileTaskCredits).toHaveBeenCalledWith({
+      task: expect.objectContaining({ id: "mcp_vd_candidate", status: "failed", userId: "1" }),
+      userId: 1,
+    });
+    expect(mockMarkPortraitCandidateSubmissionFailed).toHaveBeenCalledTimes(1);
+    expect(mockMarkPortraitCandidateSubmissionFailed).toHaveBeenCalledWith({
+      tenantId: "tenant-test",
+      userId: 1,
+      seriesId: 10,
+      assetLinkId: 71,
+      errorMessage: "หมดเวลารอผลจากผู้ให้บริการ",
+    });
+  });
+
+  it("does not cascade for a non-VD stale task even when force-failed (generic reconcile behavior unchanged)", async () => {
+    const nonVdStaleRow = {
+      ...vdStaleRow,
+      id: "mcp_non_vd",
+      parameters: {
+        transportMetadata: vdStaleRow.parameters.transportMetadata,
+        // No `__vd_portrait_candidate_asset_link_id` marker.
+        extraParams: { __origin_surface: "media_studio" },
+      },
+    };
+    dbMock.select.mockImplementation(() => makeSelectChain([nonVdStaleRow]));
+    vi.stubGlobal("fetch", vi.fn());
+
+    const { reconcileStaleMcpMediaTasks } = await import("../mcpMediaAdapter");
+    const summary = await reconcileStaleMcpMediaTasks();
+
+    expect(summary.changed).toBe(1);
+    expect(mockReconcileTaskCredits).not.toHaveBeenCalled();
+    expect(mockMarkPortraitCandidateSubmissionFailed).not.toHaveBeenCalled();
+  });
+
+  it("tolerates a credit-reconcile failure and still attempts to mark the candidate row failed (per-call error isolation)", async () => {
+    dbMock.select.mockImplementation(() => makeSelectChain([vdStaleRow]));
+    vi.stubGlobal("fetch", vi.fn());
+    mockReconcileTaskCredits.mockRejectedValueOnce(new Error("redis unreachable"));
+
+    const { reconcileStaleMcpMediaTasks } = await import("../mcpMediaAdapter");
+    const summary = await reconcileStaleMcpMediaTasks();
+
+    expect(summary.changed).toBe(1);
+    expect(mockMarkPortraitCandidateSubmissionFailed).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips the cascade (but still force-fails the mcp_media_tasks row) when tenant/series markers are incomplete", async () => {
+    const incompleteRow = {
+      ...vdStaleRow,
+      id: "mcp_vd_incomplete",
+      parameters: {
+        transportMetadata: { ...vdStaleRow.parameters.transportMetadata, tenantId: undefined },
+        extraParams: vdStaleRow.parameters.extraParams,
+      },
+    };
+    dbMock.select.mockImplementation(() => makeSelectChain([incompleteRow]));
+    vi.stubGlobal("fetch", vi.fn());
+
+    const { reconcileStaleMcpMediaTasks } = await import("../mcpMediaAdapter");
+    const summary = await reconcileStaleMcpMediaTasks();
+
+    expect(summary.changed).toBe(1);
+    expect(mockReconcileTaskCredits).not.toHaveBeenCalled();
+    expect(mockMarkPortraitCandidateSubmissionFailed).not.toHaveBeenCalled();
   });
 });

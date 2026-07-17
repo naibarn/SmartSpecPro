@@ -101,6 +101,8 @@ function shotDraft(shotNumber: number, overrides: Record<string, unknown> = {}) 
   return {
     shot_number: shotNumber,
     summary: `Shot ${shotNumber} summary`,
+    characters: [{ name: "Aria", emotion: "calm" }],
+    location_key: "loc-default",
     dialogue_lines: [{ speaker: "Aria", line: `บทพูดช็อต ${shotNumber} ที่ยาวพอสมควรสำหรับการทดสอบ` }],
     ...overrides,
   };
@@ -222,9 +224,9 @@ beforeEach(() => {
 /* -------------------------------------------------------------------------- */
 
 describe("estimatePremiumDeepDraftCalls", () => {
-  it("computes chunkCount * 6 + 2", () => {
-    expect(estimatePremiumDeepDraftCalls(1)).toBe(8);
-    expect(estimatePremiumDeepDraftCalls(3)).toBe(20);
+  it("computes chunkCount * 10 + 2", () => {
+    expect(estimatePremiumDeepDraftCalls(1)).toBe(12);
+    expect(estimatePremiumDeepDraftCalls(3)).toBe(32);
     expect(estimatePremiumDeepDraftCalls(0)).toBe(2);
   });
 
@@ -460,12 +462,18 @@ describe("premium — targeted revise + regression guard", () => {
     // Round 2 (still below floor): same outcome — rejected again.
     mockLlmResponseOnce(reviseResponsePayload("revised-r2", [2]));
     mockLlmResponseOnce(rejudgeResponsePayload([{ episodeNumber: 2, overrides: { overall: 2 } }]));
+    // Round 3 (still below floor): same outcome — rejected again.
+    mockLlmResponseOnce(reviseResponsePayload("revised-r3", [2]));
+    mockLlmResponseOnce(rejudgeResponsePayload([{ episodeNumber: 2, overrides: { overall: 2 } }]));
+    // Round 4 (still below floor, the round cap): same outcome — rejected again.
+    mockLlmResponseOnce(reviseResponsePayload("revised-r4", [2]));
+    mockLlmResponseOnce(rejudgeResponsePayload([{ episodeNumber: 2, overrides: { overall: 2 } }]));
     // Season sweep — no issues, to keep this test focused on the revise loop.
     mockLlmResponseOnce(sweepResponsePayload([]));
 
     const result = await generateStoryBibleDeep(baseDeepParams({ episodes }));
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(9); // 3 fanout + 1 judge + 2*(revise+rejudge) + 1 sweep
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(13); // 3 fanout + 1 judge + 4*(revise+rejudge) + 1 sweep
 
     // The revise call (5th call, index 4) must target ONLY episode 2.
     const reviseUserPrompt = userPromptOf(4);
@@ -784,5 +792,168 @@ describe("premium — silence_intent/dialogue contradiction (shared enforcement 
     expect(winningShot.silence_intent).toBeUndefined();
     expect(winningShot.dialogue_lines).toEqual([{ speaker: "Aria", line: "ปล่อยฉันออกไปที" }]);
     expect(result.warnings).toContainEqual({ episodeNumber: 1, shotNumber: 1, reason: "silence_intent_conflict" });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Resilient resume (added 2026-07-14,                                       */
+/* `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — premium- */
+/* mode analogue of `verticalDramaStoryBible.deepStoryDrafts.test.ts`'s own  */
+/* "generateStoryBibleDeep — resilient resume" describe block.               */
+/* -------------------------------------------------------------------------- */
+
+describe("premium — resilient resume", () => {
+  function resumedItem(episodeNumber: number) {
+    return {
+      episodeNumber,
+      shotDrafts: nineShotDrafts(),
+      cliffhanger_line: `Resumed cliffhanger ${episodeNumber}`,
+      draftCompleteness: { allSpeakable: true, dialogueEveryShot: true, estimatedSpeechSeconds: 50 },
+    };
+  }
+
+  it("skips episodes in alreadyDraftedEpisodeNumbers entirely: no fan-out/judge call, no credits deducted for them — only the remaining episodes' chunk runs, and the result is the full (resumed + new) union", async () => {
+    const episodes = [existingItem(1), existingItem(2), existingItem(3), existingItem(4)];
+    const resumedItems = [resumedItem(1), resumedItem(2)];
+
+    // Only ONE chunk (episodes 3-4) should ever run — episodes 1-2 are
+    // already drafted, so `computePremiumDeepDraftChunkSizes` only ever sees
+    // the remaining 2 episodes -> chunkSizes [2], not [2, 2].
+    mockLlmResponseOnce(candidateChunkPayload("c0", [3, 4]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [3, 4]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [3, 4]));
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 3 },
+        { candidateIndex: 0, episodeNumber: 4 },
+        { candidateIndex: 1, episodeNumber: 3 },
+        { candidateIndex: 1, episodeNumber: 4 },
+        { candidateIndex: 2, episodeNumber: 3 },
+        { candidateIndex: 2, episodeNumber: 4 },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({
+        episodes,
+        resumeDraftedItems: resumedItems,
+        alreadyDraftedEpisodeNumbers: [1, 2],
+      }),
+    );
+
+    // 3 fan-out + 1 judge + 1 sweep = 5 calls for ONE chunk — a fresh
+    // (non-resumed) 4-episode run would need 2 chunks (9 calls: 4+4+1).
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(5);
+    expect(userPromptOf(0)).toContain("Logline for episode 3");
+    expect(userPromptOf(0)).toContain("Logline for episode 4");
+    expect(userPromptOf(0)).not.toContain("Logline for episode 1");
+    expect(userPromptOf(0)).not.toContain("Logline for episode 2");
+
+    // Credit pre-check only covers the 1 remaining chunk (estimatePremiumDeepDraftCalls(1) = 12),
+    // not the 2 chunks a fresh 4-episode run would normally need (estimatePremiumDeepDraftCalls(2) = 22).
+    expect(mockHasEnoughCredits).toHaveBeenCalledWith(1, estimatePremiumDeepDraftCalls(1) * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE);
+
+    // Full union returned: 2 resumed + 2 newly drafted = 4, ascending order preserved.
+    expect(result.draftedItems.map((i) => i.episodeNumber)).toEqual([1, 2, 3, 4]);
+    expect(result.draftedItems.find((i) => i.episodeNumber === 1)?.cliffhanger_line).toBe("Resumed cliffhanger 1");
+    expect(result.draftedItems.find((i) => i.episodeNumber === 2)?.cliffhanger_line).toBe("Resumed cliffhanger 2");
+    expect(result.draftedItems.find((i) => i.episodeNumber === 3)?.cliffhanger_line).toBe("c0 cliffhanger for episode 3");
+    expect(result.draftedItems.find((i) => i.episodeNumber === 4)?.cliffhanger_line).toBe("c0 cliffhanger for episode 4");
+    expect(result.partial).toBe(false);
+    expect(result.chunkSizes).toEqual([2]);
+  });
+
+  it("returns the full resumed set with zero LLM calls/credits and a valid empty premiumMetrics when EVERY requested episode is already drafted (full resume)", async () => {
+    const episodes = [existingItem(1), existingItem(2)];
+    const resumedItems = [resumedItem(1), resumedItem(2)];
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({
+        episodes,
+        resumeDraftedItems: resumedItems,
+        alreadyDraftedEpisodeNumbers: [1, 2],
+      }),
+    );
+
+    expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(result.draftedItems).toHaveLength(2);
+    expect(result.creditsUsed).toBe(0);
+    expect(result.partial).toBe(false);
+    expect(result.chunkSizes).toEqual([]);
+    expect(result.premiumMetrics).toEqual({
+      mode: "premium",
+      candidateCount: VD_PREMIUM_DRAFT_CANDIDATE_COUNT,
+      roundsUsedPerChunk: [],
+      firstPassGatePassRate: 0,
+      episodesBelowFloorAfter: 0,
+      sweepIssuesFound: 0,
+      callsMade: 0,
+    });
+  });
+
+  it("fires onChunkComplete once per chunk with ONLY that chunk's freshly-drafted items (never the resumed ones)", async () => {
+    const episodes = [existingItem(1), existingItem(2), existingItem(3), existingItem(4)];
+
+    // Chunk 1: episodes 1-2.
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1, 2]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1, 2]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1, 2]));
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1 },
+        { candidateIndex: 0, episodeNumber: 2 },
+        { candidateIndex: 1, episodeNumber: 1 },
+        { candidateIndex: 1, episodeNumber: 2 },
+        { candidateIndex: 2, episodeNumber: 1 },
+        { candidateIndex: 2, episodeNumber: 2 },
+      ]),
+    );
+    // Chunk 2: episodes 3-4.
+    mockLlmResponseOnce(candidateChunkPayload("c0", [3, 4]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [3, 4]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [3, 4]));
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 3 },
+        { candidateIndex: 0, episodeNumber: 4 },
+        { candidateIndex: 1, episodeNumber: 3 },
+        { candidateIndex: 1, episodeNumber: 4 },
+        { candidateIndex: 2, episodeNumber: 3 },
+        { candidateIndex: 2, episodeNumber: 4 },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+    const onChunkComplete = vi.fn();
+
+    await generateStoryBibleDeep(baseDeepParams({ episodes, onChunkComplete }));
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(9); // 4 + 4 + 1 sweep
+    expect(onChunkComplete).toHaveBeenCalledTimes(2);
+    expect(onChunkComplete.mock.calls[0][0].map((i: { episodeNumber: number }) => i.episodeNumber)).toEqual([1, 2]);
+    expect(onChunkComplete.mock.calls[1][0].map((i: { episodeNumber: number }) => i.episodeNumber)).toEqual([3, 4]);
+  });
+
+  it("byte-identical to a fresh (non-resumed) premium run when resumeDraftedItems/alreadyDraftedEpisodeNumbers/onChunkComplete are omitted", async () => {
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1 },
+        { candidateIndex: 1, episodeNumber: 1 },
+        { candidateIndex: 2, episodeNumber: 1 },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(5);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(5); // premium deducts per LLM call (3 fanout + judge + sweep), not per chunk
+    expect(result.draftedItems).toHaveLength(1);
+    expect(result.partial).toBe(false);
   });
 });

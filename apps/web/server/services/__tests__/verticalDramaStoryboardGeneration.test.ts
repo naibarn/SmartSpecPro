@@ -426,13 +426,17 @@ describe("generateStoryboardShotgrid", () => {
 
   it("throws VdSchemaValidationError (does not silently persist an empty storyboard) when BOTH the first attempt and the retry are truncated", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
-    mockExecute.mockResolvedValueOnce(truncatedResponse()).mockResolvedValueOnce(truncatedResponse());
+    mockExecute
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(truncatedResponse());
 
     await expect(generateStoryboardShotgrid(baseParams())).rejects.toThrow(
       VdSchemaValidationError,
     );
 
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // 1 initial + VD_SCHEMA_MAX_RETRIES (2) corrective retries
+    expect(mockExecute).toHaveBeenCalledTimes(3);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 

@@ -48,6 +48,23 @@ describe("stripProviderInternalExtraParams — Vertical Drama shot tags", () => 
     expect(result.__vd_purpose).toBe("repair");
   });
 
+  it("keeps first-portrait candidate provenance for durable task recovery", () => {
+    const result = stripProviderInternalExtraParams({
+      __vd_series_id: "series-1",
+      __vd_character_id: "character-4",
+      __vd_portrait_candidate_batch_id: "batch-1",
+      __vd_portrait_candidate_id: "candidate-3",
+      __vd_portrait_candidate_asset_link_id: "asset-link-19",
+    });
+    expect(result).toEqual({
+      __vd_series_id: "series-1",
+      __vd_character_id: "character-4",
+      __vd_portrait_candidate_batch_id: "batch-1",
+      __vd_portrait_candidate_id: "candidate-3",
+      __vd_portrait_candidate_asset_link_id: "asset-link-19",
+    });
+  });
+
   it("still strips an unrelated/unknown double-underscore internal key", () => {
     const result = stripProviderInternalExtraParams({
       __vd_shot_number: "3",

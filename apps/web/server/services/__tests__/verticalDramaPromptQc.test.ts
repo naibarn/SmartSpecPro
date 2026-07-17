@@ -60,6 +60,7 @@ import {
   promptCapForKind,
   VD_IMAGE_PROMPT_MAX,
   VD_VIDEO_PROMPT_MAX,
+  PromptProtectedFragmentsOverflowError,
 } from "../verticalDramaPromptQc";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import { resolveSkillDirCandidates, resolveSkillManifestPath } from "../skillFiles";
@@ -161,6 +162,126 @@ describe("verticalDramaPromptQc", () => {
       expect(mockExecuteRetry).not.toHaveBeenCalled();
       expect(mockDeductCredits).not.toHaveBeenCalled();
       expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    });
+
+    it("appends missing protected dialogue fragments without an LLM call", async () => {
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: "Camera pushes in as both speakers react.",
+        protectedFragments: [
+          'Native dialogue (verbatim): "บทพูดบรรทัดหนึ่ง" / "บทพูดบรรทัดสอง"',
+        ],
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result.prompt).toContain('"บทพูดบรรทัดหนึ่ง"');
+      expect(result.prompt).toContain('"บทพูดบรรทัดสอง"');
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
+    });
+
+    // Dialogue-duplication regression (2026-07-15): the skill/refiner writes
+    // inline dialogue in CURLY quotes; the router protects the BARE (unquoted)
+    // line text so finalizeProtectedFragments' raw indexOf finds it inside the
+    // curly-quoted inline copy and does NOT append a duplicate.
+    it("does NOT re-append a BARE line fragment already present inside CURLY-quoted inline text", async () => {
+      const line = "อย่ามาเสียตอนเช้านะ วันนี้ลูกค้าจองเมล็ดใหม่ไว้แล้ว";
+      const prompt = `Cinematic two-shot. Irin says, “${line}”, jabbing the switch.`;
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt,
+        protectedFragments: [line], // BARE line — the fix (not `"${line}"`)
+        userId: 1,
+        seriesId: 6,
+      });
+      expect(result.prompt.split(line).length - 1).toBe(1); // present once, not duplicated
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
+    });
+
+    it("documents the OLD bug: a STRAIGHT-quoted fragment does not match curly-quoted inline and gets duplicated", async () => {
+      const line = "อย่ามาเสียตอนเช้านะ วันนี้ลูกค้าจองเมล็ดใหม่ไว้แล้ว";
+      const prompt = `Cinematic two-shot. Irin says, “${line}”, jabbing the switch.`;
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt,
+        protectedFragments: [`"${line}"`], // OLD straight-quoted form
+        userId: 1,
+        seriesId: 6,
+      });
+      expect(result.prompt.split(line).length - 1).toBe(2); // appended → duplicated
+    });
+
+    it("preserves protected dialogue after an over-cap refiner result omits it", async () => {
+      const overCapPrompt = "x".repeat(VD_VIDEO_PROMPT_MAX + 200);
+      mockExecuteRetry.mockResolvedValueOnce(refinerResult("concise camera motion", "video"));
+
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: overCapPrompt,
+        protectedFragments: ['Native dialogue (verbatim): "ห้ามทำบทพูดนี้หาย"'],
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result.prompt).toContain('"ห้ามทำบทพูดนี้หาย"');
+      expect(result.prompt.length).toBeLessThanOrEqual(VD_VIDEO_PROMPT_MAX);
+    });
+
+    it("preserves an ordered protected block containing intentional repeated lines", async () => {
+      const block = 'Native dialogue (verbatim): "พูดซ้ำ" / "พูดซ้ำ" / "ประโยคท้าย"';
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: "Camera holds on both speakers.",
+        protectedFragments: [block],
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result.prompt).toContain(block);
+      expect(result.prompt.match(/"พูดซ้ำ"/g)).toHaveLength(2);
+    });
+
+    it("throws explicitly when protected fragments alone exceed the hard cap", async () => {
+      await expect(
+        ensurePromptWithinLimit({
+          kind: "video",
+          prompt: "short",
+          protectedFragments: ["ก".repeat(VD_VIDEO_PROMPT_MAX + 1)],
+          userId: 1,
+          seriesId: 6,
+        }),
+      ).rejects.toBeInstanceOf(PromptProtectedFragmentsOverflowError);
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
+    });
+
+    it("keeps the hard cap when protected content exactly fills the limit", async () => {
+      const protectedBlock = "ก".repeat(VD_VIDEO_PROMPT_MAX);
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: "base text must be discarded",
+        protectedFragments: [protectedBlock],
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result.prompt).toBe(protectedBlock);
+      expect(result.prompt).toHaveLength(VD_VIDEO_PROMPT_MAX);
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
+    });
+
+    it("drops the base cleanly when protected content leaves zero base budget", async () => {
+      const protectedBlock = "ก".repeat(VD_VIDEO_PROMPT_MAX - 1);
+      const result = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: "base text must be discarded",
+        protectedFragments: [protectedBlock],
+        userId: 1,
+        seriesId: 6,
+      });
+
+      expect(result.prompt).toBe(protectedBlock);
+      expect(result.prompt.length).toBeLessThanOrEqual(VD_VIDEO_PROMPT_MAX);
+      expect(mockExecuteRetry).not.toHaveBeenCalled();
     });
 
     it("over-cap prompt: refines successfully via cinematic-prompt-refiner-pro, deducts credits once", async () => {
@@ -271,6 +392,72 @@ describe("verticalDramaPromptQc", () => {
       expect(result.prompt.length).toBeLessThanOrEqual(VD_IMAGE_PROMPT_MAX);
       expect(mockExecuteRetry).not.toHaveBeenCalled();
       expect(mockDeductCredits).not.toHaveBeenCalled();
+    });
+
+    // Dialogue-duplication fix (2026-07-15, ground truth from
+    // logs/audit/audit-2026-07-15.jsonl) — the router's video-prompt
+    // `ensurePromptWithinLimit` call sites now pass INDIVIDUAL bare-quoted
+    // dialogue lines as `protectedFragments` (e.g. `["\"line one\"",
+    // "\"line two\""]`) instead of the `buildNativeDialogueVerbatimBlock`
+    // boilerplate block. These two tests prove that contract actually fixes
+    // the duplication: the refiner already keeps dialogue inline while
+    // compressing, so protecting the bare line (not the block) means
+    // `finalizeProtectedFragments` recognizes it as already-present and
+    // never re-appends a second copy — and a genuinely dropped line comes
+    // back as a single bare quoted line, never the boilerplate block.
+    describe("line-level protectedFragments (dialogue-duplication fix, 2026-07-15)", () => {
+      it("inline dialogue already embedded by the refiner survives EXACTLY ONCE — no boilerplate block is re-appended on top", async () => {
+        const overCapPrompt = "x".repeat(VD_VIDEO_PROMPT_MAX + 400);
+        // The refiner keeps both lines inline/verbatim while compressing —
+        // this mirrors the real `cinematic-prompt-refiner-pro` behavior the
+        // production bug was rooted in.
+        const refinedWithInlineDialogue =
+          'Kla speaks: "สวัสดีนะ" while walking away. Nuna replies "อย่าลืมฉัน" softly.';
+        mockExecuteRetry.mockResolvedValueOnce(
+          refinerResult(refinedWithInlineDialogue, "video"),
+        );
+
+        const result = await ensurePromptWithinLimit({
+          kind: "video",
+          prompt: overCapPrompt,
+          protectedFragments: ['"สวัสดีนะ"', '"อย่าลืมฉัน"'],
+          userId: 1,
+          seriesId: 6,
+        });
+
+        expect(result.prompt).toBe(refinedWithInlineDialogue);
+        // Exactly one occurrence of each line — never duplicated.
+        expect(result.prompt.match(/"สวัสดีนะ"/g)).toHaveLength(1);
+        expect(result.prompt.match(/"อย่าลืมฉัน"/g)).toHaveLength(1);
+        // The canonical boilerplate block marker must never be added on top
+        // of already-inline dialogue.
+        expect(result.prompt).not.toContain("Native dialogue (verbatim)");
+      });
+
+      it("a dialogue line the refiner dropped is re-appended EXACTLY ONCE as a bare quoted line — never the boilerplate block", async () => {
+        const overCapPrompt = "x".repeat(VD_VIDEO_PROMPT_MAX + 400);
+        // Refiner keeps the first line inline but drops the second entirely.
+        const refinedMissingSecondLine = 'Kla speaks: "สวัสดีนะ" while walking away.';
+        mockExecuteRetry.mockResolvedValueOnce(
+          refinerResult(refinedMissingSecondLine, "video"),
+        );
+
+        const result = await ensurePromptWithinLimit({
+          kind: "video",
+          prompt: overCapPrompt,
+          protectedFragments: ['"สวัสดีนะ"', '"อย่าลืมฉัน"'],
+          userId: 1,
+          seriesId: 6,
+        });
+
+        // First line: unchanged, still exactly once (already inline).
+        expect(result.prompt.match(/"สวัสดีนะ"/g)).toHaveLength(1);
+        // Second (missing) line: re-appended exactly once, as a bare quoted
+        // line — not wrapped in the boilerplate block.
+        expect(result.prompt.match(/"อย่าลืมฉัน"/g)).toHaveLength(1);
+        expect(result.prompt).not.toContain("Native dialogue (verbatim)");
+        expect(result.prompt.endsWith('"อย่าลืมฉัน"')).toBe(true);
+      });
     });
   });
 });

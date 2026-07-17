@@ -72,6 +72,17 @@ these into concrete, varied visual direction per shot:
    eyes), and note an accelerated cut rhythm in `continuity_notes` or
    `visual_description` (e.g. "cut lands hard on the beat — no lingering").
    Do not give reversal beats the same slow, deliberate camera as calm beats.
+   **Exception — never isolate a character out of a multi-character beat.**
+   When the shot's `characters`/`required_character_refs` lists 2 or more
+   characters, `camera.shot_type` must NOT be a single-subject isolating size
+   (`close_up` or `extreme_close_up` framed on only one person's face/eyes).
+   Use the tightest framing that still keeps every listed character visible
+   in the same frame (a tight two-shot / medium-close two-shot), and push the
+   reversal's intensity through angle, movement, lighting, and composition
+   instead (e.g. a fast push-in on a two-shot, a canted/low angle, harder
+   contrast) — not by cropping a co-present character out of the image. A
+   rendered start frame that drops a required character causes the
+   downstream video step to invent a stand-in for that character's dialogue.
 4. **Lighting must follow the scene's emotion, location, and time-of-day —
    do NOT default to low-key/dark.** `lighting` and `visual_description` are
    per-shot creative fields, not fixed constants: derive them from the beat's
@@ -511,6 +522,12 @@ NOT invent a divergent plot.**
   what already happens in each shot.
 - Do NOT invent a divergent plot: the draft's shot-by-shot story is already-
   approved source material to visualize, not raw material to reinterpret.
+- When a draft shot's `dialogue_lines[]` names a speaker, that speaker's
+  character id MUST be included in this shot's `characters`/
+  `required_character_refs` — even a brief reverse-shot listener line counts.
+  Extra non-speaking characters are allowed; a SPEAKING character missing
+  from the list is not — a line whose speaker isn't in the frame makes the
+  video invent a stand-in.
 
 When `episode_draft` is absent, this section does not apply — build the 9
 shots from the script/scene beats as usual.

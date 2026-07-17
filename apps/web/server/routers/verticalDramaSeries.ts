@@ -336,6 +336,16 @@ import { verticalDramaSeriesMemoryService } from "../services/verticalDramaSerie
  */
 import { persistDeepDraftDeclaredLocations } from "../services/verticalDramaLocationReconciliation";
 /**
+ * Series memory (`planning/vd-series-memory-and-lineage/plan.md` Stage 1.2)
+ * — persists each drafted episode's ALREADY-RESOLVED `episodeMemory`
+ * (`DeepDraftedEpisodeItem.episodeMemory`, populated by
+ * `extractDramaturgyStructureFields` in `verticalDramaStoryBible.ts` for
+ * every item) into `vertical_drama_series.memory`; see the SAME two call
+ * sites as `persistDeepDraftDeclaredLocations` just above
+ * (`runGenerateStoryBibleDeepJob` / `runExtendStoryDraftHorizonJob` below).
+ */
+import { persistDeepDraftEpisodeMemories } from "../services/verticalDramaSeriesMemoryProjection";
+/**
  * Auto-register story-introduced characters (`planning/vd-auto-register-story-characters/plan.md`)
  * — INSERT-capable counterpart to this file's own `reconcileCharactersFromStoryBible`
  * (which is UPDATE-only); persists a deep story draft run's dialogue
@@ -1669,6 +1679,29 @@ export async function runGenerateStoryBibleDeepJob(
     }
   }
 
+  // Series memory (`planning/vd-series-memory-and-lineage/plan.md` Stage
+  // 1.2) — merge every drafted episode's ALREADY-RESOLVED `episodeMemory`
+  // into `vertical_drama_series.memory`, AFTER the bible write succeeds.
+  // Best-effort, same convention as the location block just above — a
+  // failure here must NEVER fail this mutation or roll back the bible
+  // write. `generateStoryBibleDeep` always resolves `episodeMemory` for
+  // every fresh item (at minimum via a deterministic recap-only fallback —
+  // see `DeepDraftedEpisodeItem.episodeMemory`'s own doc comment), so this
+  // is the ONE stage that gets memory for every episode, whether or not the
+  // series ever reaches script/storyboard/render.
+  try {
+    await persistDeepDraftEpisodeMemories(
+      { tenantId, userId, seriesId },
+      result.draftedItems
+    );
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Failed to persist deep story draft episode memory",
+      error
+    );
+  }
+
   // Auto-register story-introduced characters
   // (`planning/vd-auto-register-story-characters/plan.md`) — same
   // "best-effort, AFTER the bible write succeeds, never fail/roll back the
@@ -2073,6 +2106,22 @@ export async function runExtendStoryDraftHorizonJob(
         error
       );
     }
+  }
+
+  // Series memory (`planning/vd-series-memory-and-lineage/plan.md` Stage
+  // 1.2) — parity with `runGenerateStoryBibleDeepJob`'s identical block
+  // above; see that block's own doc comment for the full rationale.
+  try {
+    await persistDeepDraftEpisodeMemories(
+      { tenantId, userId, seriesId },
+      result.draftedItems
+    );
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Failed to persist deep story draft episode memory (extend)",
+      error
+    );
   }
 
   // Auto-register story-introduced characters

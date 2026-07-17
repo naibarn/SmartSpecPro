@@ -17,6 +17,7 @@ import {
   adminListHermesConnections,
   adminSetHermesQuota,
   disconnectHermesConnection,
+  getHermesAdminOverview,
   getHermesAvailability,
   getHermesConnectStatus,
   getHermesConnection,
@@ -121,6 +122,15 @@ export const hermesConnectionsRouter = router({
 
   adminList: adminProcedure
     .query(({ ctx }) => adminListHermesConnections({
+      tenantId: tenantRequiredFromCtx(ctx),
+    })),
+
+  // Feature 135 section 12 — read-only monitoring overview (connections per
+  // scope + quota consumption + kill-switch/settings snapshot). Mutations
+  // stay on the adminSetQuota/adminDisable/startConnect procedures above —
+  // this is the ONE authoritative read surface for the admin panel.
+  adminOverview: adminProcedure
+    .query(({ ctx }) => getHermesAdminOverview({
       tenantId: tenantRequiredFromCtx(ctx),
     })),
 

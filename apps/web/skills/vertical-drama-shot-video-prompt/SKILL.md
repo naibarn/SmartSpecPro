@@ -75,6 +75,34 @@ the caller's NO-SOURCE-DIALOGUE instruction) instead of defaulting to silence
 — never invent speech for a shot that is genuinely silent/ambient, but never
 default to silence just because no source line was given either.
 
+## Ground the clip in the authoritative shot beat — MANDATORY
+
+The caller may supply an `AUTHORITATIVE SHOT BEAT (story overview ...)` fact —
+the human-authored/edited synopsis of what visibly happens in this shot. When
+present, it is the SINGLE SOURCE OF TRUTH for the beat: read it FIRST and ground
+the video's action, intent, and speech-vs-silence in it. When it conflicts with
+the shorter shot `description`, follow the authoritative beat, not the
+description. Do not "guess the beat from the image alone" when this fact is
+given — the image is one frozen frame; the beat tells you what the moment
+actually IS across the clip.
+
+Interpret the beat literally for speech vs. action. A beat that describes a
+character READING a message on their phone, looking at something, thinking,
+noticing, or reacting silently is a SILENT ACTION beat — depict the
+reading/looking/reacting itself, and return `dialogue` as `[]`. NEVER convert a
+silent action ("she reads the message on her phone") into spoken words ("she
+says the message aloud") or into her talking to the other character. Only
+produce spoken dialogue when the beat — or a supplied source dialogue line —
+actually has the character SPEAKING to someone.
+
+## Silent beat — MANDATORY when signalled
+
+When the caller supplies a `SILENT BEAT (MANDATORY)` fact, this shot is
+intentionally silent: no character speaks aloud. Express the entire beat through
+action, expression, and camera motion only. Return `dialogue` as `[]`, and never
+write any spoken line, lip-sync direction, speaking mouth movement, or verbatim
+dialogue block for this shot — a listener/reader keeps their mouth closed.
+
 ## Language — MANDATORY
 
 The caller tells you two independent language settings for this shot:
@@ -150,7 +178,37 @@ The caller tells you two independent language settings for this shot:
    - If native audio is supported: embed the dialogue line(s) VERBATIM (in the
      SPEECH LANGUAGE) in `prompt`, with matching mouth/lip movement and
      delivery direction (tone/pace/pauses/texture from the shot context), and
-     also return the line(s) in `dialogue`.
+     also return the line(s) in `dialogue`. Your `prompt` must be SELF-CONTAINED
+     and final: weave each exact spoken line, in quotes, at the point in the
+     motion where that character speaks it, together with the who-speaks-when /
+     silent-listener discipline — do not rely on any post-processing step to add
+     or re-attach the dialogue afterward. Never quote the same line more than
+     once, and never make two characters speak at the same moment.
+     **Introduce every embedded quoted line with an explicit speech cue** —
+     the named speaker + a speaking verb (and delivery tone) placed
+     immediately BEFORE the quote, e.g. `ภาคิน, on the left, says with heavy
+     certainty: "จากนี้คุณอย่าอยู่ร้านคนเดียว"` — never a floating quote with
+     no named speaker attached; an explicit "X says:" cue immediately before
+     the quoted text is what native-audio models lip-sync against, and an
+     unattributed quote is how the wrong character's mouth ends up moving.
+     **Lip-sync emphasis (MANDATORY for native audio) — this is the single
+     biggest fix for "wrong person's mouth moves / wrong line":**
+     - Place a GLOBAL directive up front in `prompt` (at or near the opening),
+       e.g. "highly detailed, realistic lip sync for every spoken line".
+     - For EACH spoken line, immediately alongside its speech cue, state
+       explicit, clearly visible lip movement that PRECISELY matches the exact
+       words, tied to that line's delivery mode — whisper vs. speak vs. shout —
+       e.g. `ปราง whispers with soft but clearly visible lip movements matching
+       every syllable: "..."`; `กล้า shouts, mouth opening wide with strong,
+       visible lip movements on each word: "..."`.
+     - EVERY established character who is NOT speaking in that beat keeps their
+       mouth FULLY CLOSED with NO mouth movement — state it explicitly (a silent
+       listener never appears to mouth, mumble, or lip-sync another character's
+       line).
+     - Use concrete lip-sync wording — "clear visible lip movements matching the
+       words", "precise realistic lip sync", "strong visible lip sync" — never a
+       vague "talks" / "mouth moves", which is what lets the model drift the
+       words onto the wrong face.
    - If native audio is NOT supported: describe mouth movement + acting
      direction ONLY in `prompt` (in the PROMPT LANGUAGE, no literal transcript
      embedded in the prompt text), and still return the resolved line(s) (in
@@ -160,9 +218,31 @@ The caller tells you two independent language settings for this shot:
    continuation of the start frame's framing (do not invent a completely
    different shot type/angle than what the start frame implies) unless the
    shot context explicitly calls for a hard cut/reversal beat.
+   **ONE primary camera move per clip.** Direct a single continuous camera
+   path for the whole clip (a slow dolly-in, a handheld push-in, a steady
+   hold with minimal drift, one OTS-to-OTS exchange) — never stack multiple
+   independent or contradictory camera moves ("pan left, then zoom, then
+   crane up") in one ~6s clip; stacked moves make video models produce
+   mushy, unstable motion. Use concrete camera verbs ("slow dolly-in",
+   "handheld push-in"), never vague drama ("zoom dramatically").
 7. `negative_motion_prompt` should list concrete artifacts to avoid (identity
    drift, warping, extra fingers, mouth desync when there is dialogue,
    unintended camera shake, text/labels/watermarks in frame).
+   **Never let `negative_motion_prompt` be the ONLY place a critical
+   constraint lives** — some primary video models (e.g. Grok Imagine) have
+   NO negative-prompt input at all and will never see that field. Every
+   constraint that would break the shot if violated (silent listener's mouth
+   stays closed, exactly N people in frame, product stays unchanged) must
+   ALSO be stated positively inside `prompt` itself; treat
+   `negative_motion_prompt` as supplementary reinforcement for models that
+   support it. When 2+
+   characters are established for this shot (rule 12), also include: the
+   silent listener's mouth moving, two characters speaking or moving their
+   lips at the same time, any lip movement during a camera transition,
+   on-screen subtitles/captions, and — per rule 14 — characters facing the
+   camera instead of each other during the conversation, a listener looking
+   away from or not reacting to the active speaker, and stiff frontal blank
+   stares that read as posing for the lens rather than talking to each other.
 8. **Prompt length limit — MANDATORY:** `prompt` MUST be **2000 characters or
    fewer**, INCLUDING any embedded dialogue/delivery text (this is the base
    motion prompt the router formats into the final provider request, so write
@@ -221,7 +301,44 @@ The caller tells you two independent language settings for this shot:
    strictly about NAMING who is acting/speaking, never about describing
    their physical appearance — rule 1 still applies in full; do not let this
    rule become an excuse to describe a face, body, or outfit.
-12. **Environmental consistency when a location/environment reference image
+12. **SPEAKER / SILENT LISTENER lip-sync discipline — MANDATORY whenever
+   2+ characters are established for this shot** (same "established"
+   definition as rule 11 above: 2+ characters in the CHARACTER IDENTITY MAP
+   and/or 2+ distinct `characterKey`s among the dialogue lines). At each
+   dialogue beat, explicitly write WHO SPEAKS that line and that every other
+   established character in the shot is a SILENT LISTENER whose mouth stays
+   fully closed — e.g. "ฝ้าย speaks the line while กล้า listens in silence,
+   his mouth closed." Never depict two established characters moving their
+   lips at the same time, and never let a listener's mouth move as if
+   speaking. Only ONE character's speaking face should read as clearly
+   visible per line. During any camera cut/transition within this clip,
+   nobody's lips move. This is strictly about lip-sync/attribution
+   discipline, never about describing appearance — rule 1 still applies in
+   full.
+
+   **Name every character and lock who-is-who — MANDATORY.** Refer to each
+   character by their NAME (from the CHARACTER IDENTITY MAP and the numbered
+   dialogue facts' per-line speaker labels) — never a generic "character", a
+   raw id/key, or an unnamed "the man/the woman". When a character first
+   appears, anchor their identity: name them, tie them to their attached
+   reference image, and fix their spatial position, then keep that same
+   name↔face↔position consistent for the whole clip so the rendered video
+   can never swap who is who. **Read every character's on-screen POSITION
+   (left / center / right) by LOOKING AT THE ATTACHED START-FRAME IMAGE —
+   never copy positions from the image-prompt text.** That text is only the
+   REQUEST that was sent to the image model; image models very often place
+   characters differently than requested, so a position restated from the text
+   is frequently the WRONG side of the frame. When the text and the image
+   disagree, the IMAGE is right. **Anchor every speaking beat by NAME + SCREEN
+   POSITION as the start frame shows it** ("ภาคิน on the left speaks…",
+   "ไอริณ on the right listens, mouth closed") — screen position is the one
+   identity signal a video model reads reliably from the start frame, and it
+   is how the model decides whose mouth moves; position anchoring is NOT
+   appearance description and does not violate rule 1. Attribute EVERY spoken line to the EXACT named
+   speaker the dialogue facts assign it to — the speaker you write for each
+   line MUST match the name the facts give for that line; never reassign a
+   line to the wrong character or let a silent listener appear to speak it.
+13. **Environmental consistency when a location/environment reference image
    is attached — MANDATORY.** When an environment/location reference image
    is attached (below the start frame and any character reference images,
    preceded by a text label naming the location), keep this shot's setting,
@@ -234,6 +351,41 @@ The caller tells you two independent language settings for this shot:
    what this shot's own motion/camera direction already needs; do not add
    new scene-setting description just because a location reference is
    attached.
+14. **Conversational blocking & eye-line — MANDATORY whenever 2+ characters
+   are established for this shot** (same "established" definition as rules 11
+   and 12). Direct the shot so it reads as a real conversation between people
+   engaged with EACH OTHER, not a row of characters addressing the camera:
+   - **Facing each other / semi-circle.** Position the established characters
+     in a natural conversational arrangement — angled toward one another in a
+     loose semi-circle or facing pair, clearly facing EACH OTHER — never lined
+     up shoulder-to-shoulder staring straight into the lens, AND never turned
+     OUTWARD with their backs or profiles to one another / facing away from the
+     group (two people facing away read as strangers ignoring each other, not a
+     conversation). EVERY established character present — including a silent
+     third person who has no line this shot — must orient INWARD toward the
+     shared conversational space (head and torso angled toward the others), not
+     outward toward the wall/door/camera. Keep this consistent with what the
+     start frame already shows (rule 6): refine the orientation the frame
+     implies, never contradict it.
+   - **Attention follows the speaker, every beat.** At each dialogue beat the
+     listener(s) turn their head and direct their gaze toward the ACTIVE
+     speaker (rule 12 fixes who speaks), and the speaker in turn faces and
+     looks toward the character they are addressing. Whenever attention passes
+     from one character to the next, describe the head turn and eye-line shift
+     that carries it, so the exchange reads as people genuinely looking at and
+     reacting to one another rather than holding stiff frontal poses.
+   - **Over-the-shoulder / reverse angle to keep both in relationship.** Where
+     the framing allows, favor an over-the-shoulder or reverse angle that keeps
+     BOTH the speaker and the listener facing each other visible in frame (the
+     listener's near shoulder or back-of-head foregrounding the speaker they
+     face), so it always reads that the two are oriented toward each other —
+     never isolate every line into a flat frontal single that hides who is
+     being spoken to. This stays ONE continuous camera continuation of the
+     start frame (rule 6) unless the shot context explicitly calls for a cut.
+   This rule governs BLOCKING, GAZE, and CAMERA RELATIONSHIP only — it never
+   licenses describing appearance (rule 1 still applies in full) and never
+   overrides the SPEAKER / SILENT LISTENER lip-sync discipline (rule 12): a
+   listener turns toward and watches the speaker, but their mouth stays closed.
 
 ## NATIVE AUDIO DIRECTION (conditional — only when the caller states `native_audio: true` for this shot)
 

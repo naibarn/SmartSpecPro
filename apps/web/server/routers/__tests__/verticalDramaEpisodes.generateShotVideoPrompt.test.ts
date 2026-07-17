@@ -296,8 +296,10 @@ vi.mock("../../services/verticalDramaStoryBible", () => ({
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
+import { ensurePromptWithinLimit } from "../../services/verticalDramaPromptQc";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
+const mockEnsurePromptWithinLimit = vi.mocked(ensurePromptWithinLimit);
 
 function ctx(
   overrides: Partial<{ tenantId: string; user: { id: number }; publicUrl: string }> = {},
@@ -452,9 +454,15 @@ describe("generateShotVideoPrompt", () => {
       input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
     });
 
+    // Anti-lock-in fix (`planning/vd-video-prompt-skill-first/plan.md`
+    // Phase 2a) — this shot has no resolved SOURCE dialogue (no
+    // matchingClip.dialogue, no dialogueAudioPlan, no script) — the
+    // service mock's own echoed `dialogue: [{ lineTh: "สวัสดี", ... }]` is
+    // an LLM improvisation and must NOT be persisted/returned as
+    // authoritative; the resolved source stays `[]`.
     expect(result).toEqual({
       prompt: "generated motion prompt",
-      dialogue: [{ lineTh: "สวัสดี", characterKey: "hero" }],
+      dialogue: [],
       creditsUsed: 3,
       usedVision: true,
     });
@@ -483,7 +491,7 @@ describe("generateShotVideoPrompt", () => {
         sourceShotNumbers: [1],
         prompt: "generated motion prompt",
         negativeMotionPrompt: "no glitching",
-        dialogue: [{ lineTh: "สวัสดี", characterKey: "hero" }],
+        dialogue: [],
       }),
     ]);
   });
@@ -629,11 +637,15 @@ describe("generateShotVideoPrompt", () => {
     const newClip = capturedSet.motionPromptPack.clips.find(
       (c: any) => c.clipNumber === 1,
     );
+    // Anti-lock-in fix (`planning/vd-video-prompt-skill-first/plan.md`
+    // Phase 2a) — no resolved source dialogue for this shot, so the LLM
+    // mock's own echoed `dialogue` is never persisted; see the "happy path"
+    // test above for the full rationale.
     expect(newClip).toMatchObject({
       clipNumber: 1,
       sourceShotNumbers: [1],
       prompt: "generated motion prompt",
-      dialogue: [{ lineTh: "สวัสดี", characterKey: "hero" }],
+      dialogue: [],
     });
     // Untouched pre-existing clip stays exactly as-is.
     expect(capturedSet.motionPromptPack.clips).toContainEqual(
@@ -876,6 +888,175 @@ describe("generateShotVideoPrompt", () => {
         ],
       }),
     ]);
+  });
+
+  // Dialogue-duplication fix (2026-07-15, ground truth from
+  // logs/audit/audit-2026-07-15.jsonl) — `shotVideoPromptQc`'s
+  // `ensurePromptWithinLimit` call used to protect the
+  // `buildNativeDialogueVerbatimBlock` boilerplate block as a single
+  // `protectedFragments` entry. Because the refiner already keeps dialogue
+  // INLINE while compressing, that block was re-appended a SECOND time
+  // whenever the prompt was over the length cap, duplicating every spoken
+  // line. The fix protects each individual quoted line instead.
+  describe("dialogue-duplication fix (2026-07-15) — protectedFragments is individual quoted lines, not the boilerplate block", () => {
+    it("protects each resolved dialogue line as a bare quoted string, never the 'Native dialogue (verbatim)' block", async () => {
+      const pack = {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+        motionMode: "first_frame_to_video",
+        clips: [
+          {
+            clipNumber: 2,
+            sourceShotNumbers: [2],
+            prompt: "old shot 2 prompt",
+            durationSeconds: 6,
+            dialogue: [
+              {
+                lineTh: "ยายทวดจันมองตู้กระจกแล้วพูดเบา ๆ ว่าของในนั้นไม่ควรถูกแตะอีก",
+                characterKey: "grandmother",
+              },
+            ],
+          },
+        ],
+        warnings: [],
+      };
+      const episodeRow = baseEpisodeRow({
+        startFramePlan: {
+          mode: "single_frame_per_shot",
+          selectedImageModelId: "google-nano-banana-pro",
+          frames: [
+            {
+              shotNumber: 2,
+              imagePrompt: "shot two image prompt by the glass cabinet",
+              negativePrompt: "",
+              requiredCharacterRefs: [],
+              productReferenceAssetIds: [],
+              approvedMediaAssetId: "901",
+            },
+          ],
+        },
+        storyboard: {
+          gridLayout: "3x3",
+          shotCount: 9,
+          shots: [
+            {
+              shotNumber: 2,
+              description: "Girl reaches toward the glass cabinet",
+              cameraSetup: "close-up, eye level, slow push-in",
+              characterIds: ["hero", "grandmother"],
+              continuityNotes: [],
+              durationSeconds: 6,
+            },
+          ],
+        },
+        motionPromptPack: pack,
+      });
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
+      });
+
+      expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "video",
+          protectedFragments: [
+            "ยายทวดจันมองตู้กระจกแล้วพูดเบา ๆ ว่าของในนั้นไม่ควรถูกแตะอีก",
+          ],
+        }),
+      );
+      const videoQcCall = mockEnsurePromptWithinLimit.mock.calls.find(
+        ([args]) => args.kind === "video",
+      );
+      expect(videoQcCall).toBeDefined();
+      const fragments = videoQcCall?.[0].protectedFragments ?? [];
+      expect(fragments.some((f: string) => f.includes("Native dialogue (verbatim)"))).toBe(false);
+    });
+
+    it("non-native-audio model: protectedFragments is undefined (gate unchanged)", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
+      const pack = {
+        selectedVideoModelId: "veo-3-1",
+        durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+        motionMode: "first_frame_to_video",
+        clips: [
+          {
+            clipNumber: 2,
+            sourceShotNumbers: [2],
+            prompt: "old shot 2 prompt",
+            durationSeconds: 6,
+            dialogue: [
+              {
+                lineTh: "ยายทวดจันมองตู้กระจกแล้วพูดเบา ๆ ว่าของในนั้นไม่ควรถูกแตะอีก",
+                characterKey: "grandmother",
+              },
+            ],
+          },
+        ],
+        warnings: [],
+      };
+      const episodeRow = baseEpisodeRow({
+        startFramePlan: {
+          mode: "single_frame_per_shot",
+          selectedImageModelId: "google-nano-banana-pro",
+          frames: [
+            {
+              shotNumber: 2,
+              imagePrompt: "shot two image prompt by the glass cabinet",
+              negativePrompt: "",
+              requiredCharacterRefs: [],
+              productReferenceAssetIds: [],
+              approvedMediaAssetId: "901",
+            },
+          ],
+        },
+        storyboard: {
+          gridLayout: "3x3",
+          shotCount: 9,
+          shots: [
+            {
+              shotNumber: 2,
+              description: "Girl reaches toward the glass cabinet",
+              cameraSetup: "close-up, eye level, slow push-in",
+              characterIds: ["hero", "grandmother"],
+              continuityNotes: [],
+              durationSeconds: 6,
+            },
+          ],
+        },
+        motionPromptPack: pack,
+      });
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow]))
+        .mockReturnValueOnce(selectChain([{ id: 901, originalUrl: "https://cdn/901.png" }]))
+        .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+        .mockReturnValueOnce(selectChain([]));
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 2 },
+      });
+
+      expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "video", protectedFragments: undefined }),
+      );
+    });
   });
 
   it("refreshes duplicated persisted dialogue before regenerating shot 2 video prompt", async () => {
@@ -2164,6 +2345,180 @@ describe("generateShotVideoPrompt — dialogue single-source-of-truth (planning/
         expect.objectContaining({ characterReferenceImages: undefined }),
       );
     });
+  });
+});
+
+/**
+ * Synopsis grounding + silence signal + anti-lock-in persistence fix
+ * (`planning/vd-video-prompt-skill-first/plan.md` Phases 1a/2) — the router
+ * threads the deep-drafted shot's `summary`/`silence_intent` into
+ * `shotContext.canonicalShotSummary`/`beatIsSilent`, and the persist-pin
+ * step never lets an LLM-invented line become authoritative when the
+ * resolved source dialogue is empty (including the explicit silent-beat
+ * case).
+ */
+describe("generateShotVideoPrompt — canonicalShotSummary / beatIsSilent + anti-lock-in persistence (planning/vd-video-prompt-skill-first/plan.md)", () => {
+  function canonicalEpisodeBreakdownItem(over: Record<string, unknown> = {}) {
+    return {
+      episodeNumber: 1,
+      workingTitle: "ตอนทดสอบ",
+      logline: "โลจไลน์ทดสอบ",
+      keyBeats: ["บีตหนึ่ง"],
+      ...over,
+    };
+  }
+
+  it("threads the deep-drafted shot summary into shotContext.canonicalShotSummary when the deep-story-drafts flag is on", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesDeepStoryDrafts: true });
+    mockGetActiveBreakdown.mockReturnValue([canonicalEpisodeBreakdownItem()]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 1,
+        summary: "The character silently reads a text message on their phone.",
+        dialogue_lines: [{ speaker: "หนูนา", line: "TESTMARK123" }],
+      },
+    ]);
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotContext: expect.objectContaining({
+          canonicalShotSummary:
+            "The character silently reads a text message on their phone.",
+          beatIsSilent: false,
+        }),
+      }),
+    );
+  });
+
+  it("byte-identical: canonicalShotSummary is undefined and beatIsSilent is false when the deep-story-drafts flag is off (default)", async () => {
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+    await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotContext: expect.objectContaining({
+          canonicalShotSummary: undefined,
+          beatIsSilent: false,
+        }),
+      }),
+    );
+  });
+
+  it("silent beat (silence_intent set): threads beatIsSilent: true, and the LLM's own invented dialogue is NEVER persisted or returned — the anti-lock-in fix for the 'silent beat becomes speaking, permanently' bug", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesDeepStoryDrafts: true });
+    mockGetActiveBreakdown.mockReturnValue([canonicalEpisodeBreakdownItem()]);
+    mockReadItemShotDrafts.mockReturnValue([
+      {
+        shot_number: 1,
+        summary: "The character silently reads a text message on their phone.",
+        dialogue_lines: [],
+        silence_intent: "action_visual",
+      },
+    ]);
+    // The video-prompt LLM disobeys the SILENT BEAT instruction and invents
+    // a spoken line anyway — this must never become durable ground truth.
+    mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+      prompt: "The character looks at their phone, expression unreadable.",
+      negativeMotionPrompt: "no glitching",
+      dialogue: [{ lineTh: "บทที่ LLM แต่งขึ้นเองทั้งที่ควรเงียบ", characterKey: "หนูนา" }],
+      creditsUsed: 3,
+      model: "gpt-vision",
+      usedVision: true,
+    });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([]));
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((v: any) => {
+        capturedSet = v;
+        return updateChain([episodeRow]);
+      }),
+    });
+
+    const result = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    // beatIsSilent + the (empty) resolved dialogueLines both reached the
+    // service call.
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        shotContext: expect.objectContaining({
+          canonicalShotSummary:
+            "The character silently reads a text message on their phone.",
+          beatIsSilent: true,
+          dialogueLines: undefined,
+        }),
+      }),
+    );
+    // The persist-pin anti-lock-in fix: the LLM's invented line never
+    // becomes persisted/returned authoritative dialogue.
+    expect(result.dialogue).toEqual([]);
+    expect(capturedSet.motionPromptPack.clips[0].dialogue).toEqual([]);
+
+    // A SECOND call (source stays silent) must independently resolve to the
+    // same empty dialogue — never pinned to the first call's invented line
+    // via `matchingClip.dialogue` (proves the lock-in bug stays fixed).
+    const freshPack = capturedSet.motionPromptPack;
+    const secondEpisodeRow = baseEpisodeRow({
+      motionPromptPack: freshPack,
+      episodeNumber: 1,
+    });
+    mockGenerateVerticalDramaShotVideoPrompt.mockResolvedValueOnce({
+      prompt: "The character looks at their phone again, expression unreadable.",
+      negativeMotionPrompt: "no glitching",
+      dialogue: [],
+      creditsUsed: 3,
+      model: "gpt-vision",
+      usedVision: true,
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([secondEpisodeRow]))
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
+      .mockReturnValueOnce(selectChain([{ locale: "th" }]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([secondEpisodeRow])) });
+
+    const secondResult = await router.generateShotVideoPrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+    expect(secondResult.dialogue).toEqual([]);
+    // Source 1 (`matchingClip.dialogue`) never saw the first call's
+    // invented line, so this second call's own resolved `dialogueLines`
+    // (source 0, still silent) stays empty too.
+    expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        shotContext: expect.objectContaining({ beatIsSilent: true, dialogueLines: undefined }),
+      }),
+    );
   });
 });
 

@@ -13,7 +13,7 @@ vi.mock("../../../db", () => {
   return { getDb: vi.fn().mockResolvedValue(mockDb) };
 });
 
-import { classifyByKeywords, processTicket } from "../feedbackProcessor";
+import { classifyByKeywords, processTicket, adminNotificationGroupKey } from "../feedbackProcessor";
 import { getDb } from "../../../db";
 
 describe("FeedbackProcessor", () => {
@@ -48,6 +48,30 @@ describe("FeedbackProcessor", () => {
     });
   });
 
+  describe("adminNotificationGroupKey", () => {
+    it("returns undefined for human tickets so each one notifies fresh", () => {
+      expect(
+        adminNotificationGroupKey({ submittedByType: "human", title: "Bug in editor" }),
+      ).toBeUndefined();
+    });
+
+    it("groups system tickets by 50-char title prefix", () => {
+      const key = adminNotificationGroupKey({
+        submittedByType: "system",
+        title: "[Auto][2997db0c] tRPC verticalDramaEpisodes.generateShotVideo failed",
+      });
+      expect(key).toBe(
+        `feedback-auto:${"[Auto][2997db0c] tRPC verticalDramaEpisodes.generateShotVideo failed".slice(0, 50).toLowerCase()}`,
+      );
+    });
+
+    it("produces the same key for repeats of the same error", () => {
+      const a = adminNotificationGroupKey({ submittedByType: "system", title: "[Auto][x] same error" });
+      const b = adminNotificationGroupKey({ submittedByType: "system", title: "[Auto][x] same error" });
+      expect(a).toBe(b);
+    });
+  });
+
   describe("processTicket", () => {
     it("updates ticket with classification results", async () => {
       const db = await getDb() as any;
@@ -62,6 +86,42 @@ describe("FeedbackProcessor", () => {
       expect(result.autoCategory).toBe("bug");
       expect(result.autoPriority).toBe("high");
       expect(db.update).toHaveBeenCalled();
+    });
+
+    it("keeps human-submitted tickets in 'new' status (admin triages manually)", async () => {
+      const db = await getDb() as any;
+      db.set.mockClear();
+      db.limit.mockResolvedValueOnce([{
+        id: 2,
+        title: "Error in media studio",
+        description: "Upload fails with error",
+        tenantId: "t1",
+        submittedByType: "human",
+      }]);
+
+      await processTicket(2);
+      expect(db.set).toHaveBeenCalled();
+      const setArg = db.set.mock.calls[0][0];
+      expect(setArg.status).toBeUndefined();
+      expect(setArg.triagedAt).toBeUndefined();
+      expect(setArg.autoCategory).toBe("bug");
+    });
+
+    it("auto-triages system-submitted tickets", async () => {
+      const db = await getDb() as any;
+      db.set.mockClear();
+      db.limit.mockResolvedValueOnce([{
+        id: 3,
+        title: "[Auto] tRPC failure",
+        description: "error stack",
+        tenantId: "t1",
+        submittedByType: "system",
+      }]);
+
+      await processTicket(3);
+      const setArg = db.set.mock.calls[0][0];
+      expect(setArg.status).toBe("triaged");
+      expect(setArg.triagedAt).toBeInstanceOf(Date);
     });
 
     it("returns defaults when ticket not found", async () => {

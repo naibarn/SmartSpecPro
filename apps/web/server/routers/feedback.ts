@@ -10,6 +10,7 @@ import {
   users,
 } from "../../drizzle/schema";
 import { processTicket } from "../services/virtualAdmin/feedbackProcessor";
+import { deriveTitleFromDescription } from "../services/feedbackTitle";
 import { createNotification } from "../services/notificationService";
 import { TRPCError } from "@trpc/server";
 import type { Express, Request, Response } from "express";
@@ -59,6 +60,8 @@ export const feedbackRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const normalized = deriveTitleFromDescription(input.title, input.description);
+
       const [ticket] = await db
         .insert(feedbackTickets)
         .values({
@@ -66,8 +69,8 @@ export const feedbackRouter = router({
           submittedBy: ctx.user.id,
           submittedByType: "human",
           ticketType: input.ticketType,
-          title: sanitizeHtml(input.title),
-          description: input.description ? sanitizeHtml(input.description) : null,
+          title: sanitizeHtml(normalized.title),
+          description: normalized.description ? sanitizeHtml(normalized.description) : null,
           stepsToReproduce: input.stepsToReproduce ? sanitizeHtml(input.stepsToReproduce) : null,
           expectedBehavior: input.expectedBehavior ? sanitizeHtml(input.expectedBehavior) : null,
           actualBehavior: input.actualBehavior ? sanitizeHtml(input.actualBehavior) : null,
@@ -89,10 +92,19 @@ export const feedbackRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      // "My Feedback" lists only tickets the user actually submitted.
+      // Auto-filed system error reports carry the user's id in submittedBy
+      // but are not their feedback — showing them buried real tickets and
+      // made this page look like a (broken) admin inbox.
       return db
         .select()
         .from(feedbackTickets)
-        .where(eq(feedbackTickets.submittedBy, ctx.user.id))
+        .where(
+          and(
+            eq(feedbackTickets.submittedBy, ctx.user.id),
+            eq(feedbackTickets.submittedByType, "human"),
+          ),
+        )
         .orderBy(desc(feedbackTickets.createdAt))
         .limit(input.limit)
         .offset(input.offset);
@@ -147,6 +159,10 @@ export const feedbackRouter = router({
       z.object({
         status: z.enum(["new", "triaged", "in_progress", "deferred", "resolved", "duplicate", "closed"]).optional(),
         ticketType: z.enum(["bug", "feature_request", "observation", "question"]).optional(),
+        // Separate genuine user feedback ("human") from auto-filed system
+        // error reports ("system"). Defaults to no filter so existing callers
+        // keep seeing everything.
+        submittedByType: z.enum(["human", "system"]).optional(),
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
       }),
@@ -159,6 +175,8 @@ export const feedbackRouter = router({
       if (ctx.tenantId) conditions.push(eq(feedbackTickets.tenantId, ctx.tenantId));
       if (input.status) conditions.push(eq(feedbackTickets.status, input.status));
       if (input.ticketType) conditions.push(eq(feedbackTickets.ticketType, input.ticketType));
+      if (input.submittedByType)
+        conditions.push(eq(feedbackTickets.submittedByType, input.submittedByType));
 
       const query = db
         .select()
@@ -423,7 +441,9 @@ export const feedbackRouter = router({
         COUNT(*) FILTER (WHERE status = 'new') as new_count,
         COUNT(*) FILTER (WHERE status = 'triaged') as triaged_count,
         COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress_count,
-        COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count
+        COUNT(*) FILTER (WHERE status = 'resolved') as resolved_count,
+        COUNT(*) FILTER (WHERE "submittedByType" = 'human') as human_count,
+        COUNT(*) FILTER (WHERE "submittedByType" = 'system') as system_count
       FROM feedback_tickets
       WHERE ${conditions}
     `);
@@ -435,6 +455,8 @@ export const feedbackRouter = router({
       triaged: Number(row?.triaged_count ?? 0),
       inProgress: Number(row?.in_progress_count ?? 0),
       resolved: Number(row?.resolved_count ?? 0),
+      human: Number(row?.human_count ?? 0),
+      system: Number(row?.system_count ?? 0),
     };
   }),
 });

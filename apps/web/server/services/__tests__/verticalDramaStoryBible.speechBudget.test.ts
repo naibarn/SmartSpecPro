@@ -139,8 +139,9 @@ describe("generateStoryBible — speech-budget prompt (flag-gated)", () => {
     expect(systemMessage.content).toContain("conflictLevel");
     expect(systemMessage.content).toContain("reversalTarget");
     expect(systemMessage.content).toContain("arcThreads");
-    // MIN_EPISODE_COVERAGE_RATIO (0.58) * 60s = 34.8 -> ceil -> 35
-    expect(systemMessage.content).toContain("35");
+    // MIN_EPISODE_COVERAGE_RATIO (0.29) * 60s = 17.4 -> ceil -> 18 (rescaled
+    // 2026-07-15 x0.5 alongside THAI_CHARS_PER_SECOND 8.5->17; was 35)
+    expect(systemMessage.content).toContain("18");
   });
 
   it("omits the speech-budget text entirely when the flag is off (byte-identical to before)", async () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { projectDramaShotDialogueLinesForExtension } from "../verticalDramaExtensionReadService";
+import { estimateVerticalDramaSpeechSeconds } from "../../../shared/verticalDramaSeries/dialogueQuality";
 
 describe("projectDramaShotDialogueLinesForExtension", () => {
   it("returns only the requested shot's safe dialogue fields with planned durations", () => {
@@ -39,16 +40,21 @@ describe("projectDramaShotDialogueLinesForExtension", () => {
     expect(JSON.stringify(lines)).not.toContain("private-voice-id");
   });
 
-  it("keeps clip dialogue visible without inventing a duration when no plan exists", () => {
-    expect(projectDramaShotDialogueLinesForExtension({
+  it("estimates a clip dialogue speaking length from text when no plan exists", () => {
+    const lineTh = "หนูไม่ยอมแพ้หรอก";
+    const lines = projectDramaShotDialogueLinesForExtension({
       shotNumber: 1,
       dialogueAudioPlan: null,
-      clipDialogue: [{ characterKey: "ใบข้าว", lineTh: "หนูไม่ยอมแพ้หรอก", emotion: "เด็ดเดี่ยว" }],
-    })).toEqual([{
+      clipDialogue: [{ characterKey: "ใบข้าว", lineTh, emotion: "เด็ดเดี่ยว" }],
+    });
+    expect(lines).toEqual([{
       speaker: "ใบข้าว",
       emotion: "เด็ดเดี่ยว",
-      text: "หนูไม่ยอมแพ้หรอก",
-      durationSeconds: null,
+      text: lineTh,
+      durationSeconds: estimateVerticalDramaSpeechSeconds(lineTh),
     }]);
+    // The estimate must be a real positive number so the extension shows a
+    // speaking length instead of "ยังไม่มีเวลาพูด".
+    expect(lines[0].durationSeconds).toBeGreaterThan(0);
   });
 });

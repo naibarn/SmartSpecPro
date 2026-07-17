@@ -12,7 +12,15 @@ import { isApiRequestPath } from "./apiPathGuard";
 const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm|zip)(\?.*)?$/i;
 const HTML_CACHE_CONTROL = "no-store, no-cache, must-revalidate, proxy-revalidate";
 const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
-const STATIC_NOT_FOUND_CACHE_CONTROL = "public, max-age=60";
+// A missing static asset (matching STATIC_ASSET_REQUEST) is almost always a
+// transient deploy-window condition (dist/public briefly empty while a build
+// swaps in) or a genuinely-removed old hashed chunk. In BOTH cases the 404 must
+// never be cached: a cacheable 404 lets Cloudflare (which is in front of the
+// origin and elevates asset TTLs to hours) negatively-cache the miss at an edge
+// PoP, so real users keep getting 404 for that chunk long after the deploy
+// finished and the origin serves 200 again. `no-store` makes every layer
+// (browser, nginx, Cloudflare) re-fetch from origin on the next request.
+const STATIC_NOT_FOUND_CACHE_CONTROL = "no-store, no-cache, must-revalidate";
 const COMPRESSIBLE_STATIC_EXTENSIONS = new Set([
   ".css",
   ".js",

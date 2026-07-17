@@ -92,6 +92,12 @@ export interface WorkerFleetSummary {
   workerAccessPolicyPreset: string | null;
   workerAccessPolicyScopeCount: number;
   workerAccessPolicyQuotaDisplayLabel: string;
+  /** Feature 135 section 12 — pure projection of `capabilitiesJson.hermesMedia`
+   *  (section-07/11 shape: `{ capability, advertised, reason?, hermesVersion }`).
+   *  `undefined` when the worker never advertised this capability at all
+   *  (not even a legacy worker) — distinct from `ready: false` (advertised
+   *  but demoted, e.g. below `hermes_worker_min_version`). */
+  hermes?: { ready: boolean; version: string | null };
 }
 
 export interface WorkerDiagnosticsSnapshot {
@@ -376,6 +382,21 @@ function readRemoteEndpointPolicy(worker: WorkerRecord): WorkerRemoteEndpointPol
     return policy;
   }
   return "unknown";
+}
+
+/** Feature 135 section 12 — pure projection of `capabilitiesJson.hermesMedia`
+ *  (the shape sections 07/11 registered); read for EVERY runtimeType, not
+ *  just `hermes_agent_gateway` — the shared Hermes worker unit advertises
+ *  this capability on its own registration/heartbeat regardless of runtime
+ *  family. */
+function readHermesFleetSummary(worker: WorkerRecord): { ready: boolean; version: string | null } | undefined {
+  const capabilities = isPlainObject(worker.capabilitiesJson) ? worker.capabilitiesJson : null;
+  const hermesMedia = capabilities && isPlainObject(capabilities.hermesMedia) ? capabilities.hermesMedia : null;
+  if (!hermesMedia) return undefined;
+  return {
+    ready: hermesMedia.advertised === true,
+    version: typeof hermesMedia.hermesVersion === "string" ? hermesMedia.hermesVersion : null,
+  };
 }
 
 function readHermesPersonaSummary(worker: WorkerRecord): ReturnType<typeof summarizeHermesRuntimePersona> {
@@ -965,6 +986,7 @@ export async function listWorkerFleet(
       workerAccessPolicyPreset: accessPolicySummary.workerAccessPolicyPreset,
       workerAccessPolicyScopeCount: accessPolicySummary.workerAccessPolicyScopeCount,
       workerAccessPolicyQuotaDisplayLabel: accessPolicySummary.workerAccessPolicyQuotaDisplayLabel,
+      hermes: readHermesFleetSummary(worker),
     };
   });
 }

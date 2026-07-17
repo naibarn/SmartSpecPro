@@ -282,8 +282,10 @@ vi.mock("../../services/verticalDramaStoryBible", () => ({
 }));
 
 import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
+import { ensurePromptWithinLimit } from "../../services/verticalDramaPromptQc";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<string, Function>;
+const mockEnsurePromptWithinLimit = vi.mocked(ensurePromptWithinLimit);
 
 function ctx(overrides: Partial<{ tenantId: string; user: { id: number } }> = {}) {
   return {
@@ -815,6 +817,149 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
             name: "ครัวที่บ้าน",
           },
         }),
+      );
+    });
+  });
+
+  // Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
+  // Phase 1a) — the split path threads the SAME deep-drafted shot summary
+  // the non-split path does. Every OTHER test in this file (byte-identical
+  // regression bar: flag off, no deep draft) already proves the
+  // non-silent multi-speaker case is unchanged by this fix.
+  describe("canonicalShotSummary / beatIsSilent threading (planning/vd-video-prompt-skill-first/plan.md)", () => {
+    it("threads the deep-drafted shot summary into the speaker-switch call's shotContext.canonicalShotSummary, beatIsSilent stays false (real dialogue present)", async () => {
+      mockGetTenantFeatureFlags.mockResolvedValue({
+        verticalDramaSeriesSubShots: true,
+        verticalDramaSeriesDeepStoryDrafts: true,
+      });
+      mockGetActiveBreakdown.mockReturnValue([
+        { episodeNumber: 1, workingTitle: "t", logline: "l", keyBeats: [] },
+      ]);
+      mockReadItemShotDrafts.mockReturnValue([
+        {
+          shot_number: 1,
+          summary: "The hero confronts the villain about the hidden truth.",
+          dialogue_lines: [
+            { speaker: "hero", line: "Why didn't you tell me the truth?" },
+            { speaker: "villain", line: "I was protecting you the whole time." },
+          ],
+        },
+      ]);
+      const episodeRow = baseEpisodeRow({ episodeNumber: 1 });
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          shotContext: expect.objectContaining({
+            canonicalShotSummary: "The hero confronts the villain about the hidden truth.",
+            beatIsSilent: false,
+          }),
+        }),
+      );
+    });
+  });
+
+  // Dialogue-duplication fix (2026-07-15, ground truth from
+  // logs/audit/audit-2026-07-15.jsonl) — the `ensurePromptWithinLimit` call
+  // for this split/consolidated-clip path used to protect the
+  // `buildNativeDialogueVerbatimBlock` boilerplate block as a single
+  // `protectedFragments` entry. Because the refiner already keeps dialogue
+  // INLINE while compressing (e.g. `Kla speaks: "..."`), that block was
+  // re-appended a SECOND time whenever the prompt was over the length cap,
+  // duplicating every spoken line. The fix protects each individual quoted
+  // line instead, so the refiner's inline dialogue is recognized as
+  // already-present and never duplicated.
+  describe("dialogue-duplication fix (2026-07-15) — protectedFragments is individual quoted lines, not the boilerplate block", () => {
+    it("protects each dialogue line as a bare quoted string, never the 'Native dialogue (verbatim)' block", async () => {
+      const episodeRow = baseEpisodeRow();
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "video",
+          protectedFragments: [
+            "Why didn't you tell me the truth?",
+            "I was protecting you the whole time.",
+          ],
+        }),
+      );
+      const videoQcCall = mockEnsurePromptWithinLimit.mock.calls.find(
+        ([args]) => args.kind === "video",
+      );
+      expect(videoQcCall).toBeDefined();
+      const fragments = videoQcCall?.[0].protectedFragments ?? [];
+      expect(fragments.some((f: string) => f.includes("Native dialogue (verbatim)"))).toBe(false);
+    });
+
+    it("non-native-audio model: protectedFragments is undefined (gate unchanged)", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: false,
+        verticalDramaReady: true,
+      });
+      const episodeRow = baseEpisodeRow();
+
+      mockDb.select
+        .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+        .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+        .mockReturnValueOnce(selectChain([{ locale: "en" }])) // locale lookup
+        .mockReturnValueOnce(selectChain([])) // loadSeriesKnownSpeakerKeys
+        .mockReturnValueOnce(selectChain([])) // resolveShotVideoPromptCharacterReferenceImages's characterRows query
+        .mockReturnValueOnce(
+          selectChain([
+            { id: 501, characterKey: "hero" },
+            { id: 502, characterKey: "villain" },
+          ]),
+        ); // verticalDramaCharacters portrait lookup
+
+      mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
+
+      await router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+      });
+
+      expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "video", protectedFragments: undefined }),
       );
     });
   });

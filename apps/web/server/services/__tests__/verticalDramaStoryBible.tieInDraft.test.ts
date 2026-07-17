@@ -80,6 +80,8 @@ function shotDraft(shotNumber: number, overrides: Record<string, unknown> = {}) 
   return {
     shot_number: shotNumber,
     summary: `Shot ${shotNumber} summary`,
+    characters: [{ name: "Aria", emotion: "calm" }],
+    location_key: "loc-default",
     dialogue_lines: [{ speaker: "Aria", line: `บทพูดช็อต ${shotNumber} ที่ยาวพอสมควรสำหรับการทดสอบ` }],
     ...overrides,
   };

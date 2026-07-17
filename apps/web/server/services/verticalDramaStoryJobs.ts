@@ -80,12 +80,21 @@ const VERTICAL_DRAMA_STORY_JOBS_WORKER_CONCURRENCY = 3;
 /** Bounds how long a finished/queued job record survives in Redis — long
  *  enough to cover a realistic "client polls, then reloads and resumes"
  *  window, short enough to bound Redis memory for a large premium run's
- *  `result` payload (which can carry a full season's shot drafts). */
-const JOB_RECORD_TTL_SECONDS = 2 * 60 * 60; // 2h
+ *  `result` payload (which can carry a full season's shot drafts). Raised
+ *  from 2h -> 6h (resilient resume, added 2026-07-14,
+ *  `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — a
+ *  multi-hour deep-draft run now checkpoints per chunk (see `checkpoint` on
+ *  `VerticalDramaStoryJobRecord`) and refreshes this TTL on every write (the
+ *  heartbeat below), so the floor only matters for a run that stops making
+ *  progress entirely. */
+const JOB_RECORD_TTL_SECONDS = 6 * 60 * 60; // 6h
 /** Safety-net TTL on the per-series active-job pointer — self-heals a
  *  crashed/killed worker's stuck pointer (which would otherwise deadlock the
- *  series' story-job slot forever) instead of requiring manual recovery. */
-const ACTIVE_POINTER_TTL_SECONDS = 2 * 60 * 60; // 2h
+ *  series' story-job slot forever) instead of requiring manual recovery.
+ *  Raised 2h -> 6h alongside `JOB_RECORD_TTL_SECONDS` above; refreshed on
+ *  every progress/checkpoint/status write (see `refreshActivePointerTtl`) so
+ *  an actively-progressing job's pointer never expires mid-run. */
+const ACTIVE_POINTER_TTL_SECONDS = 6 * 60 * 60; // 6h
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -181,6 +190,25 @@ export interface VerticalDramaStoryJobPayload extends VerticalDramaStoryJobOwner
   input: Record<string, unknown>;
 }
 
+/**
+ * Resilient resume checkpoint (added 2026-07-14,
+ * `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — a
+ * kind-agnostic snapshot of a long-running job's own progress, written
+ * incrementally (per chunk) so a mid-run crash/redelivery can resume instead
+ * of restarting from scratch and re-charging credits. `draftedItems` is
+ * `unknown[]` deliberately: this file stays domain-agnostic (never imports
+ * `verticalDramaStoryBible.ts`'s `DeepDraftedEpisodeItem` — see this file's
+ * own module doc comment on why); `routers/verticalDramaSeries.ts` casts it
+ * back to the concrete shape it knows.
+ */
+export interface VerticalDramaStoryJobCheckpoint {
+  draftedItems: unknown[];
+  completedEpisodeNumbers: number[];
+  chunkSizesDone: number[];
+  creditsUsed: number;
+  updatedAt: string;
+}
+
 export interface VerticalDramaStoryJobRecord extends VerticalDramaStoryJobPayload {
   jobId: string;
   status: VerticalDramaStoryJobStatus;
@@ -191,15 +219,46 @@ export interface VerticalDramaStoryJobRecord extends VerticalDramaStoryJobPayloa
   error: string | null;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Resilient resume — this job's own incremental progress, written via
+   * `persistCheckpoint` (see `VerticalDramaStoryJobExecutor`/
+   * `runVerticalDramaStoryJob`). Optional/absent for every job kind that
+   * never checkpoints (`improve_script`) and for any job started before this
+   * field existed — omitting it is BYTE-IDENTICAL to before this feature
+   * existed (a fresh run with no checkpoint drafts everything, exactly like
+   * today).
+   */
+  checkpoint?: VerticalDramaStoryJobCheckpoint;
+}
+
+/**
+ * Resilient resume — handed to the executor alongside `onProgress` on every
+ * (re)start of `runVerticalDramaStoryJob`, INCLUDING a same-jobId BullMQ
+ * redelivery after a mid-run crash. `checkpoint` is the record's checkpoint
+ * AS OF THIS RUN'S START (`null` for a fresh job or one with no checkpoint
+ * yet) — a kind-specific executor (`runGenerateStoryBibleDeepJob`/
+ * `runExtendStoryDraftHorizonJob`) reads it to seed
+ * `generateStoryBibleDeep`'s `resumeDraftedItems`/`alreadyDraftedEpisodeNumbers`.
+ * `persistCheckpoint` is fire-and-forget (never awaited by the executor),
+ * mirroring `onProgress`'s exact contract — a slow/failing checkpoint write
+ * must never block or fail the real generation work.
+ */
+export interface VerticalDramaStoryJobResumeContext {
+  checkpoint: VerticalDramaStoryJobCheckpoint | null;
+  persistCheckpoint: (checkpoint: VerticalDramaStoryJobCheckpoint) => void;
 }
 
 /** Generic executor signature — dispatches a job payload to kind-specific
  *  domain logic. `onProgress` is fire-and-forget (never awaited by the
  *  executor) so threading it into `verticalDramaStoryBible.ts` is a true
- *  zero-behavior-change addition there. */
+ *  zero-behavior-change addition there. `resume` (added 2026-07-14) is
+ *  ALWAYS passed (never optional) — a job kind that doesn't checkpoint
+ *  simply never calls `resume.persistCheckpoint` and ignores
+ *  `resume.checkpoint` (always `null` for it, since it never writes one). */
 export type VerticalDramaStoryJobExecutor = (
   payload: VerticalDramaStoryJobPayload,
   onProgress: (progress: VerticalDramaStoryJobProgress) => void,
+  resume: VerticalDramaStoryJobResumeContext,
 ) => Promise<unknown>;
 
 /* -------------------------------------------------------------------------- */
@@ -262,6 +321,36 @@ async function writeRecord(
   deps: VerticalDramaStoryJobStoreDependencies,
 ): Promise<void> {
   await deps.redis.set(jobRecordKey(record.jobId), JSON.stringify(record), "EX", JOB_RECORD_TTL_SECONDS);
+  // Heartbeat TTL (added 2026-07-14, resilient resume) — refresh the
+  // per-series active-pointer's TTL on every WRITE made while the job is
+  // actively running (the initial "running" transition + every subsequent
+  // `onProgress`/`persistCheckpoint` call both route through this same
+  // function), so a long multi-hour run never has its pointer expire out
+  // from under it. Deliberately re-`set`s (rather than a bare `expire`) so
+  // no adapter-interface change is needed — `set` is already the only write
+  // primitive `VerticalDramaStoryJobRedisAdapter` exposes. Skipped for
+  // "queued" (nothing is progressing yet; the enqueue-time TTL already
+  // covers the pre-dequeue window) and terminal writes (`runVerticalDramaStoryJob`'s
+  // own `finally` block deletes the pointer immediately after anyway).
+  // Defensively checks the pointer ALREADY points at THIS job before
+  // refreshing it — mirrors `runVerticalDramaStoryJob`'s own `finally`-block
+  // guard exactly, so a stale/superseded job's write can never re-claim (or
+  // extend the TTL of) a pointer a NEWER job has since taken over.
+  if (record.status === "running") {
+    try {
+      const pointerKey = activePointerKey(record.tenantId, record.seriesId);
+      const currentPointer = await deps.redis.get(pointerKey);
+      if (currentPointer === record.jobId) {
+        await deps.redis.set(pointerKey, record.jobId, "EX", ACTIVE_POINTER_TTL_SECONDS);
+      }
+    } catch (error) {
+      debugError(
+        "verticalDramaStoryJobs",
+        `Failed to refresh active-pointer TTL for story job ${record.jobId}`,
+        error,
+      );
+    }
+  }
 }
 
 /**
@@ -282,6 +371,52 @@ function enqueueWrite(jobId: string, fn: () => Promise<unknown>): Promise<unknow
     next.catch(() => {}),
   );
   return next;
+}
+
+/**
+ * Resilient resume — standalone, independently-testable checkpoint writer.
+ * Reads the CURRENT persisted record, shallow-merges `patch` onto its
+ * existing `checkpoint` (a field present in `patch` wins; a field absent
+ * from `patch` falls back to whatever the record already had, `[]`/`0`
+ * otherwise — supports both "send the full replacement every time"
+ * callers, like `runVerticalDramaStoryJob`'s own `persistCheckpoint` below,
+ * and a genuinely-partial patch), and writes the result back — through the
+ * SAME per-job `enqueueWrite` serialization `onProgress`/the terminal
+ * succeeded/failed write use, so a checkpoint write can never complete AFTER
+ * (and clobber) a terminal write, and two checkpoint writes queued out of
+ * call-order still apply strictly in the order they were CALLED. No-op
+ * (never throws) when the record is missing/TTL'd out — mirrors this file's
+ * established "best-effort, fire-and-forget-safe" convention for anything
+ * called from deep inside the story-bible service's own call chain.
+ */
+export async function updateVerticalDramaStoryJobCheckpoint(
+  jobId: string,
+  patch: Partial<VerticalDramaStoryJobCheckpoint>,
+  dependencies?: Partial<VerticalDramaStoryJobStoreDependencies>,
+): Promise<void> {
+  const deps = resolveDeps(dependencies);
+  await enqueueWrite(jobId, async () => {
+    const latest = await readRecord(jobId, deps);
+    if (!latest) return;
+    const priorCheckpoint = latest.checkpoint;
+    const mergedCheckpoint: VerticalDramaStoryJobCheckpoint = {
+      draftedItems: patch.draftedItems ?? priorCheckpoint?.draftedItems ?? [],
+      completedEpisodeNumbers:
+        patch.completedEpisodeNumbers ?? priorCheckpoint?.completedEpisodeNumbers ?? [],
+      chunkSizesDone: patch.chunkSizesDone ?? priorCheckpoint?.chunkSizesDone ?? [],
+      creditsUsed: patch.creditsUsed ?? priorCheckpoint?.creditsUsed ?? 0,
+      updatedAt: new Date(deps.now()).toISOString(),
+    };
+    await writeRecord(
+      {
+        ...latest,
+        status: "running",
+        checkpoint: mergedCheckpoint,
+        updatedAt: mergedCheckpoint.updatedAt,
+      },
+      deps,
+    );
+  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -731,14 +866,51 @@ export async function runVerticalDramaStoryJob(
   record.updatedAt = new Date(deps.now()).toISOString();
   await enqueueWrite(jobId, () => writeRecord(record, deps));
 
+  // Resilient resume (added 2026-07-14) — `record.checkpoint` as of THIS
+  // RUN'S START is what gets handed to the executor as `resume.checkpoint`
+  // (so a same-jobId BullMQ redelivery after a mid-run crash resumes from
+  // where the PRIOR attempt left off). `currentCheckpoint` then tracks the
+  // latest value `persistCheckpoint` below has queued a write for — every
+  // OTHER write this function makes (`onProgress`, and both terminal
+  // succeeded/failed writes) includes it too, so a later write (which closes
+  // over the stale `record` object read above for every OTHER field) can
+  // never regress the checkpoint back to its start-of-run value. Safe
+  // without re-reading Redis because `onProgress`/`persistCheckpoint` are
+  // only ever called synchronously, one at a time, from within this single
+  // executor invocation's own call stack (never concurrently) — so by the
+  // time any queued write's closure actually runs, `currentCheckpoint`
+  // already reflects every `persistCheckpoint` call made before it.
+  let currentCheckpoint: VerticalDramaStoryJobCheckpoint | null = record.checkpoint ?? null;
+
   const onProgress = (progress: VerticalDramaStoryJobProgress) => {
     enqueueWrite(jobId, () =>
       writeRecord(
-        { ...record, status: "running", progress, updatedAt: new Date(deps.now()).toISOString() },
+        {
+          ...record,
+          status: "running",
+          progress,
+          checkpoint: currentCheckpoint ?? undefined,
+          updatedAt: new Date(deps.now()).toISOString(),
+        },
         deps,
       ),
     ).catch((error) => {
       debugError("verticalDramaStoryJobs", `Failed to persist progress for story job ${jobId}`, error);
+    });
+  };
+
+  // Resilient resume — fire-and-forget, mirrors `onProgress`'s exact
+  // contract. The caller (`routers/verticalDramaSeries.ts`) always sends the
+  // FULL replacement checkpoint (computed from its own running accumulator),
+  // so `updateVerticalDramaStoryJobCheckpoint`'s merge is effectively a
+  // replace — kept as a merge there for standalone-caller safety (see its
+  // own doc comment). `currentCheckpoint` is updated SYNCHRONOUSLY here
+  // (before the actual Redis write is even enqueued) so every later write in
+  // this run sees at least this value — see the doc comment above.
+  const persistCheckpoint = (checkpoint: VerticalDramaStoryJobCheckpoint) => {
+    currentCheckpoint = checkpoint;
+    updateVerticalDramaStoryJobCheckpoint(jobId, checkpoint, deps).catch((error) => {
+      debugError("verticalDramaStoryJobs", `Failed to persist checkpoint for story job ${jobId}`, error);
     });
   };
 
@@ -752,12 +924,14 @@ export async function runVerticalDramaStoryJob(
         input: record.input,
       },
       onProgress,
+      { checkpoint: record.checkpoint ?? null, persistCheckpoint },
     );
     const terminalRecord: VerticalDramaStoryJobRecord = {
       ...record,
       status: "succeeded",
       result,
       error: null,
+      checkpoint: currentCheckpoint ?? undefined,
       updatedAt: new Date(deps.now()).toISOString(),
     };
     await enqueueWrite(jobId, () => writeRecord(terminalRecord, deps));
@@ -768,6 +942,11 @@ export async function runVerticalDramaStoryJob(
       ...record,
       status: "failed",
       error: message,
+      // Resilient resume — MUST reflect the latest checkpoint, not the
+      // stale start-of-run one: a same-jobId BullMQ redelivery (retry) reads
+      // exactly this field back via `readRecord` to resume, so losing it
+      // here would silently undo every chunk this failed attempt completed.
+      checkpoint: currentCheckpoint ?? undefined,
       updatedAt: new Date(deps.now()).toISOString(),
     };
     await enqueueWrite(jobId, () => writeRecord(terminalRecord, deps)).catch(() => {});
@@ -797,7 +976,43 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
   if (!queue) {
     throw new Error(`${VERTICAL_DRAMA_STORY_JOBS_QUEUE} queue is not initialized`);
   }
-  await queue.add("run", { jobId }, { removeOnComplete: true, removeOnFail: true });
+  await queue.add(
+    "run",
+    { jobId },
+    {
+      removeOnComplete: true,
+      // Auto-retry (added 2026-07-14, resilient resume) — `attempts: 3`
+      // bounds how many times BullMQ will redeliver this job (including its
+      // OWN stalled-job recovery: a worker process that dies mid-run —
+      // `systemctl restart`, OOM, crash — without ever completing the job
+      // leaves it "stalled"; BullMQ detects this and redelivers it to the
+      // next available worker, independent of whether the processor ever
+      // threw). THAT redelivery path is what this feature primarily targets
+      // (this module's own header doc comment's motivating scenario) and is
+      // now safe to retry cheaply: `runVerticalDramaStoryJob` resumes from
+      // the job's own `checkpoint` on every (re)start, so a redelivery
+      // re-drafts only what the PRIOR attempt hadn't already checkpointed,
+      // never re-charging already-drafted episodes.
+      //
+      // NOTE: this does NOT retry a LOGICAL failure (LLM/schema/insufficient-
+      // credits error) — `runVerticalDramaStoryJob`'s own try/catch swallows
+      // the executor's error, writes the terminal "failed" record, and
+      // returns normally, so the BullMQ processor callback in
+      // `initVerticalDramaStoryJobsQueue` below never rejects and BullMQ
+      // never sees a "failed" attempt to retry for that case. Extending
+      // retry to logical failures would require that callback to re-throw
+      // when the job ended "failed" — out of this task's scope (it would
+      // also mean the existing "failed" notification/auto-feedback-ticket
+      // fires prematurely before a retry might still recover it); flagged as
+      // a follow-up rather than implemented speculatively.
+      // `removeOnFail` is bounded (24h) rather than `true` so a job that
+      // exhausts every attempt stays inspectable for a day instead of
+      // vanishing immediately, but still doesn't accumulate forever.
+      attempts: 3,
+      backoff: { type: "exponential", delay: 10_000 },
+      removeOnFail: { age: 24 * 60 * 60 },
+    }
+  );
 }
 
 /**

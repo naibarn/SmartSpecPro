@@ -217,6 +217,30 @@ reflects it. Separate-TTS mode: translate `delivery` into a style/steering
 instruction the TTS model can follow (tone, pace, texture — most TTS providers,
 e.g. Gemini Flash TTS, accept natural-language style direction).
 
+## Character speech-profile delivery hints (spec §7.3, F132F)
+
+When the request includes a **"Character speech-profile delivery hints"**
+section (one line per character: `pace = <phrase>; tone = <phrase>`, derived
+from that character's structured `speechProfile`), use it to bias
+`delivery.pace`/`delivery.tone` for every line that character speaks — e.g. a
+character whose hint says "rapid-fire, breathless pacing; tone = barely-
+contained panic" should get short, urgent `pace`/`tone` values consistently
+across their lines, not just once. This is a HINT to bias your own
+`delivery` object per line, not a value to copy verbatim — still write a
+concrete, line-specific `delivery`/`subtext` as usual. A character with no
+hint in the request gets no additional constraint beyond the rules above.
+
+## Dialogue quality rules v2 (spec §7.1, F132D)
+
+The single source of truth for the §7.1 dialogue-rules-v2 rule TEXT (spoken
+register, one-idea-per-line, distinct voices, etc.) is
+`shared/verticalDramaSeries/qualityCriteria.ts`'s `buildDialogueRulesV2Fragment()`
+— not duplicated here a second time. When the caller enables
+`verticalDramaMultiPassQc` (F132D), that fragment (stamped with a greppable
+`<!-- VD_QUALITY_CRITERIA_Vn -->` criteria-version marker) is injected directly
+into this skill's rendered user prompt — read and follow it exactly as
+delivered; it reinforces (never contradicts) the HARD RULEs above.
+
 Output skeleton:
 
 ```json

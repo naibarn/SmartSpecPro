@@ -91,6 +91,51 @@ const SKILL_FOLDER_PATH = path.join(
   "vertical-drama-storyboard-shotgrid"
 );
 
+/**
+ * Slugify a location name into a `locationKey` candidate — byte-identical
+ * convention to `verticalDramaLocationReconciliation.ts`'s own
+ * `slugifyForLocationKey` (duplicated here rather than imported: this
+ * codebase's established convention for the location system is "duplicate
+ * small helpers per file to keep systems decoupled", per that file's own
+ * doc comment). Falls back to `"location"` for a name that's entirely
+ * non-alphanumeric (e.g. Thai-only text).
+ *
+ * Used ONLY by the `distinct_locations` mechanical fallback below — see that
+ * block's doc comment for why a content-derived slug replaced the previous
+ * positional `location-${index + 1}` key (root cause of episode 59's
+ * shophouse-stairhall/irin-cafe reference-image swap, confirmed against
+ * production data).
+ */
+function slugifyForLocationKey(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "location";
+}
+
+/**
+ * Appends `-2`, `-3`, ... until `baseKey` is not already present in
+ * `usedKeys`; mutates nothing, caller adds the result to `usedKeys` itself.
+ * Byte-identical convention to `verticalDramaLocationReconciliation.ts`'s
+ * own `generateUniqueLocationKey` (duplicated here per this file's
+ * decoupling convention — see `slugifyForLocationKey` above). No column
+ * length truncation here (unlike that file's copy): every key minted by
+ * this fallback is already a short slug of a shot's own `location` string,
+ * never a raw pass-through of untrusted LLM-supplied text.
+ */
+function generateUniqueLocationKey(baseKey: string, usedKeys: Set<string>): string {
+  const base = baseKey.trim() || "location";
+  let key = base;
+  let suffix = 2;
+  while (usedKeys.has(key)) {
+    key = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return key;
+}
+
 let cachedSystemPrompt: string | null = null;
 
 /**
@@ -775,6 +820,34 @@ export async function generateStoryboardShotgrid(
       ...(c.variants?.map(v => v.characterKey) ?? []),
     ])
   );
+  // Dialogue-speaker coverage (deterministic reconcile, added 2026-07-15) —
+  // guarantees every character who SPEAKS a `dialogue_lines[]` line in a
+  // shot's matching `episodeDraft` draft is present in that shot's
+  // `characters`/`required_character_refs`, so the reference-image
+  // attachment (and the downstream video step) never has to invent a
+  // stand-in for a speaker who wasn't given a face. `dialogue_lines[].speaker`
+  // is a freeform string a draft author may have written as a display name,
+  // a `characterId`, or a variant `characterKey` — resolved through the SAME
+  // roster facts (`name` / `characterId` / `variants[].characterKey`) the
+  // `nameMatches`/`validCharacterIds` logic above already keys off of, via a
+  // trimmed-exact lookup (mirroring, not replacing, that convention). A
+  // speaker string that doesn't resolve to any roster character is skipped —
+  // never added as a raw/unknown id, since that could never match a real
+  // reference image downstream anyway. Built once (not per-shot): O(characters)
+  // instead of O(shots * characters).
+  const speakerLookup = new Map<string, string>();
+  const characterFamilyById = new Map<string, string[]>();
+  for (const c of params.characters) {
+    const familyIds = [c.characterId, ...(c.variants?.map(v => v.characterKey) ?? [])];
+    for (const id of familyIds) {
+      characterFamilyById.set(id, familyIds);
+    }
+    speakerLookup.set(c.name.trim(), c.characterId);
+    speakerLookup.set(c.characterId.trim(), c.characterId);
+    for (const v of c.variants ?? []) {
+      speakerLookup.set(v.characterKey.trim(), v.characterKey);
+    }
+  }
   for (const shot of storyboardData.shots) {
     const shotRecord = shot as unknown as Record<string, unknown>;
     const narrativeText = [
@@ -809,6 +882,26 @@ export async function generateStoryboardShotgrid(
       })
       .map(c => c.characterId);
     const resolvedIds = Array.from(new Set([...nameMatches, ...validLlmIds]));
+    // Dialogue-speaker coverage — see `speakerLookup`/`characterFamilyById`
+    // doc comment above. Additive only: a shot with no matching
+    // `episodeDraft` entry (legacy/non-deep-draft path, or `episodeDraft`
+    // absent entirely) leaves `dialogueLines` empty and this is a no-op, and
+    // a speaker whose family (base id + variants) is already in
+    // `resolvedIds` is never re-added — so a shot whose speakers are already
+    // covered stays byte-identical.
+    const draftShot = params.episodeDraft?.shots.find(
+      d => d.shot_number === shot.shot_number,
+    );
+    for (const dialogueLine of draftShot?.dialogue_lines ?? []) {
+      const speakerCharacterId = speakerLookup.get(dialogueLine.speaker.trim());
+      if (!speakerCharacterId) continue; // unknown/junk speaker label — skip
+      const familyIds = characterFamilyById.get(speakerCharacterId) ?? [
+        speakerCharacterId,
+      ];
+      if (!familyIds.some(id => resolvedIds.includes(id))) {
+        resolvedIds.push(speakerCharacterId);
+      }
+    }
     shot.characters = resolvedIds;
     shot.required_character_refs = resolvedIds;
   }
@@ -899,6 +992,24 @@ export async function generateStoryboardShotgrid(
   // grouping is absent entirely; a partial/malformed attempt from the model
   // is left as-is (Zod already accepts anything satisfying
   // `distinctLocationSchema`, malformed shapes fail validation upstream).
+  //
+  // Key generation (updated 2026-07-14, production evidence from series
+  // 16 / episode 59) — PREVIOUSLY minted a purely POSITIONAL key
+  // (`location-${index + 1}`), which is order-dependent: across
+  // regenerations the same index can land on a different physical location,
+  // so `reconcileEpisodeLocations`'s key-match-first logic would silently
+  // rebind an existing roster row's (frozen, correct) reference image to
+  // whatever the model now calls that position — a wrong/swapped location
+  // image with no error anywhere. Now derives the key from the location's
+  // own NAME via `slugifyForLocationKey` (content-derived, order-independent),
+  // deduped within this call via `generateUniqueLocationKey` so two
+  // distinct names appearing in the same episode never collide (including
+  // the Thai-only-name case, which both slug to `"location"` and dedup to
+  // `location-2`, `location-3`, ...). For the common case of an
+  // English-slug-shaped `location_name` this makes the fallback key EQUAL
+  // the series' existing canonical `locationKey` for that same place, so
+  // `reconcileEpisodeLocations` reuses the correct pre-existing roster row
+  // instead of minting/rebinding a positional one.
   if (
     !storyboardData.distinct_locations ||
     storyboardData.distinct_locations.length === 0
@@ -922,10 +1033,16 @@ export async function generateStoryboardShotgrid(
       group.shotNumbers.push(shot.shot_number);
       group.descriptions.push(shot.visual_description);
     }
-    storyboardData.distinct_locations = groupOrder.map((locationName, index) => {
+    const usedFallbackKeys = new Set<string>();
+    storyboardData.distinct_locations = groupOrder.map((locationName) => {
       const group = groupsByName.get(locationName)!;
+      const key = generateUniqueLocationKey(
+        slugifyForLocationKey(locationName),
+        usedFallbackKeys
+      );
+      usedFallbackKeys.add(key);
       return {
-        location_key: `location-${index + 1}`,
+        location_key: key,
         location_name: locationName,
         description: group.descriptions.slice(0, 3).join(" "),
         shot_numbers: group.shotNumbers,

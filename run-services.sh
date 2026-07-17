@@ -593,6 +593,14 @@ cmd_stop() {
     sudo systemctl stop smartspec-backend.service 2>/dev/null || true
     log_info "Backend stopped"
 
+    # Feature 135 (Hermes Grok media worker) — optional, admin-installed
+    # unit (docs/HERMES_MEDIA_WORKER_OPS.md). Stop is idempotent/harmless
+    # when the unit was never installed (systemctl stop on an unknown unit
+    # just no-ops via the `|| true`).
+    log_step "Stopping Hermes Grok media worker (systemd, if installed)..."
+    sudo systemctl stop smartspec-hermes-worker.service 2>/dev/null || true
+    log_info "Hermes worker stopped"
+
     # Stop Docker Status UI
     stop_docker_status
 
@@ -702,6 +710,18 @@ cmd_status() {
         echo -e "  ${GREEN}✓${NC} Web Application  Running (HTTP $web_responding) [health endpoint]"
     else
         echo -e "  ${RED}x${NC} Web Application  $web_active [systemd, restarts: $web_restarts]"
+    fi
+
+    # Feature 135 (Hermes Grok media worker) — optional, admin-installed
+    # unit; see docs/HERMES_MEDIA_WORKER_OPS.md for install/pairing steps.
+    # NEVER auto-started by this script (install/enable is a deliberate
+    # admin step, spec §8).
+    local hermes_worker_active=$(systemd_is_active smartspec-hermes-worker.service)
+    if [ "$hermes_worker_active" = "active" ]; then
+        local hermes_worker_restarts=$(systemd_restart_count smartspec-hermes-worker.service)
+        echo -e "  ${GREEN}✓${NC} Hermes Worker    Running [systemd, restarts: $hermes_worker_restarts]"
+    else
+        echo -e "  ${YELLOW}-${NC} Hermes Worker    Not running ($hermes_worker_active) [optional — install per docs/HERMES_MEDIA_WORKER_OPS.md]"
     fi
 
     # Docker Status (systemd or screen)

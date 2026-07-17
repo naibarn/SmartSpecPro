@@ -33,11 +33,46 @@ export type VerticalDramaCharacterAssetSource = "generated" | "imported";
 /** Role the reference plays in the character bible. */
 export type VerticalDramaCharacterAssetRole =
   | "primary_reference"
+  | "primary_portrait"
+  | "portrait_candidate"
   | "expression"
   | "wardrobe"
   | "pose"
   | "product"
   | "other";
+
+export type VerticalDramaPortraitCandidateStatus =
+  | "previewed"
+  | "submitting"
+  | "queued"
+  | "completed"
+  | "failed"
+  | "selected"
+  | "superseded";
+
+/** Browser-safe lifecycle metadata for an unselected first-portrait candidate. */
+export type VerticalDramaPortraitCandidateProjection = {
+  batchId: string;
+  candidateId: string;
+  index: number;
+  count: number;
+  status: VerticalDramaPortraitCandidateStatus;
+  taskId?: string;
+  selectedAt?: string;
+  /**
+   * Present only when `status === "failed"`. A clear, user-facing message —
+   * the classified Thai policy message when the provider rejection matched
+   * `isCharacterLockPolicyFailureMessage` (`characterLock.ts`), otherwise the
+   * raw provider/timeout error. Populated by both a client-triggered
+   * `settlePortraitCandidate` failed-branch AND the background
+   * `reconcileStaleMcpMediaTasks` sweep (`mcpMediaAdapter.ts`) so a rejection
+   * surfaces even after the tab that submitted it is gone (2026-07-16
+   * stuck-candidate fix, Set A gap 5/6/7).
+   */
+  errorMessage?: string;
+  /** True when `errorMessage` reflects a provider content-policy rejection (vs. a generic/timeout failure). */
+  policyRejected?: boolean;
+};
 
 /**
  * A durable character-stock asset link. `mediaAssetId` is the tenant-scoped
@@ -67,6 +102,7 @@ export type VerticalDramaCharacterAsset = {
   createdAt: string;
   updatedAt: string;
   thumbnailUrl?: string;
+  portraitCandidate?: VerticalDramaPortraitCandidateProjection;
 };
 
 /** The per-series character-asset manifest projection (spec §7.3 §03 artifact). */
@@ -154,3 +190,33 @@ export function stagesInvalidatedByCharacterRefChange(): {
 export function isCharacterAssetUsable(asset: Pick<VerticalDramaCharacterAsset, "state" | "approved">): boolean {
   return asset.approved === true && asset.state === "approved";
 }
+
+/**
+ * Character-roster completeness signal (`vd-stuck-generation-and-lost-characters`
+ * plan, Set B, added 2026-07-16) — flags a roster row that still needs manual
+ * follow-up before it's production-ready. Independent reasons (a row can carry
+ * more than one at once):
+ *  - `"auto_registered_from_story"` — the row was INSERTed by
+ *    `ensureRosterCharactersFromStory` (a dialogue speaker / shot character the
+ *    deep-draft LLM introduced organically), never touched by the wizard or a
+ *    manual create flow. Carries no DNA/portrait by construction.
+ *  - `"missing_portrait"` — no `primary_portrait` character-asset in an
+ *    approved/generated/imported state is on file yet (same selection rule
+ *    the roster card thumbnail uses — see
+ *    `VerticalDramaCharacterStockPanel.tsx`'s `resolveCharacterCardPortraitAsset`).
+ *  - `"missing_dna"` — `verticalDramaCharacters.data.description` (the
+ *    authoritative physical/demographic description consumed by the
+ *    visual-bible/portrait prompt builder — see `verticalDramaCharacters.ts`'s
+ *    `extractCharacterDescription`) is empty or absent.
+ * `characterRowToDto` computes this server-side; the client only reads it.
+ */
+export type VdCharacterNeedsSetupReason =
+  | "auto_registered_from_story"
+  | "missing_portrait"
+  | "missing_dna";
+
+export const VD_CHARACTER_NEEDS_SETUP_REASONS: readonly VdCharacterNeedsSetupReason[] = [
+  "auto_registered_from_story",
+  "missing_portrait",
+  "missing_dna",
+] as const;

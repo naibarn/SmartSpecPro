@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Character Visual Bible
 description: Create and maintain production-ready character visual bibles and image-generation prompt packs (imported character-visual-bible-skill).
-version: 1.0.0
+version: 1.3.2
 category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
@@ -74,11 +74,12 @@ rewrite a higher-priority identity.
 
 ### Role, age, and audience-attention logic
 
-- **Female lead:** approachable beauty, emotional access through the eyes, visible
-  vulnerability plus inner strength, and one specific contradiction; never a generic
-  influencer or beauty-pageant face.
-- **Male lead:** credible competence, trust, protective presence, and readable hidden
-  emotion; never fall back to a generic CEO template, boyband face, or corporate headshot.
+- **Female lead:** unmistakable leading-lady beauty, facial harmony, emotional access
+  through the eyes, visible vulnerability plus inner strength, and one specific
+  contradiction; never a generic influencer, office worker, or beauty-pageant face.
+- **Male lead:** unmistakable leading-man handsomeness, credible competence, trust,
+  protective presence, and readable hidden emotion; never fall back to a generic CEO,
+  bodyguard/action-extra, boyband face, or corporate headshot.
 - **Villain/antagonist:** use an attractive contradiction (for example, warmth with a
   forensic gaze). A socially trustworthy villain should carry only a subtle 5-10% visual
   warning through micro-expression or tension, never cartoon evil.
@@ -94,11 +95,12 @@ rewrite a higher-priority identity.
   10% memorable signature. Do not force lead-level glamour.
 - **Child:** the existing child-safety subsection below has absolute precedence.
 
-Choose and name a useful `beauty_archetype` (such as approachable authority, fragile
-resilience, dangerous elegance, warm competence, unconventional magnetism, or lived-in
-trust). Apply a role-appropriate beauty-realism level: recognizable, camera-believable
-human detail with natural pores and meaningful asymmetry. Never use flawlessness as the
-main identity system.
+Choose and name a useful `beauty_archetype` (such as heroine star-grade warmth, hero
+star-grade protective magnetism, approachable authority, fragile resilience, dangerous
+elegance, warm competence, unconventional magnetism, or lived-in trust). Apply a
+role-appropriate beauty-realism level: recognizable, camera-believable human detail with
+natural pores and meaningful asymmetry. Never use flawlessness or generic glamour as the
+main identity system, but never suppress the lead's required star-level beauty.
 
 ### Facial Identity System — required
 
@@ -177,15 +179,151 @@ first-time direction misses a required threshold, **redesign exactly once**, res
 return the improved result. If it still misses, return `threshold_status:
 "redesign_required"` honestly.
 
+### First-portrait candidate casting — MANDATORY when `portrait_candidate_count` is present
+
+`portrait_candidate_count` activates a user-visible casting mode for a standalone character
+who has no approved primary portrait or parent/twin face source yet. Legacy saved Character
+DNA without a rendered primary is recast input, not a face lock. Its value is an integer from
+**1-5**. Return a top-level `portrait_candidate_batch` with exactly that many candidates.
+When this input is absent, the normal Character Visual Bible output remains unchanged.
+
+In this mode, the candidates must be **different people with different faces**, not the
+same identity restyled by changing hair, clothing, expression, pose, lens, crop, camera
+angle, or background. Apply the comparison gate pairwise inside the batch: every pair must
+differ in at least **3 of 5 facial dimensions** (facial geometry, eyes/gaze, brows, nose,
+lips/smile), use materially different hair identity, and differ in at least one signature
+marker or silhouette. Give each candidate a unique `candidate_id`, a full independent
+`character_design_dna`, a concise `visual_identity_summary`, `primary_portrait_prompt`,
+and `negative_prompt`.
+
+All candidates must share the **same premium visual language**: the same story world,
+role truth, lens family, lighting quality, cinematic color-grade family, elevated
+live-action finish, and the same casting floor. They must be equally compelling for their
+role; candidate order must not imply that one is the cheap fallback. For leads this means
+the full lead beauty and screen-magnetism floor applies to every candidate. Keep the
+character-specific DNA grounded in the supplied story so different stories do not produce
+the same recurring faces.
+
+Cast a dramatic story character whom viewers want to follow, not an advertising model,
+fashion catalog face, influencer portrait, corporate headshot, pageant contestant, or
+generic beauty campaign. Magnetism must come from readable emotion, narrative promise,
+role-specific contradiction, and memorable identity—not a product pose or commercial
+retouching.
+
+Every candidate's `character_design_dna` MUST be complete. Never use `{}` as a placeholder.
+Required top-level snake_case keys are: `version`, `design_intent`,
+`series_dna_alignment`, `role_tier`, `beauty_archetype`, `age_range`, `face_identity`,
+`body_language`, `recall_stack`, `costume_grammar`, `public_mask`, `hidden_truth`,
+`narrative_promise`, `attractive_contradiction`, `forbidden_drift`, `anti_clone_checks`,
+`scores`, and `comparison_evidence`. The nested objects must also contain every field shown
+in the normal complete Character DNA output skeleton; in particular, `anti_clone_checks`
+must contain `distinct_facial_dimensions`, `distinct_hair_dimensions`,
+`distinct_body_language_dimensions`, and `signature_difference`.
+
+This mode is deliberately lean. Return only:
+
+```json
+{
+  "contract_version": 1,
+  "portrait_candidate_batch": {
+    "character_id": "char_aria",
+    "shared_visual_language": "premium cinematic vertical-drama still, warm emotional lighting, natural skin, 85mm portrait language",
+    "candidates": [
+      {
+        "candidate_id": "candidate_1",
+        "character_id": "char_aria",
+        "visual_identity_summary": "a story-specific identity summary",
+        "character_design_dna": {
+          "version": 1,
+          "design_intent": "story-specific casting intent",
+          "series_dna_alignment": ["story-world relationship"],
+          "role_tier": "lead_female",
+          "beauty_archetype": "role-specific star archetype",
+          "age_range": "late 20s",
+          "face_identity": {
+            "facial_geometry": "distinct geometry",
+            "eyes_and_gaze": "distinct gaze system",
+            "brows": "distinct brows",
+            "nose": "distinct nose",
+            "lips_and_smile": "distinct smile architecture",
+            "skin_and_texture": "natural skin texture",
+            "hair": "distinct hair identity",
+            "distinctive_asymmetry": "memorable natural asymmetry"
+          },
+          "body_language": {
+            "posture": "story-specific posture",
+            "gesture_pattern": "recognizable gesture",
+            "movement_rhythm": "recognizable rhythm",
+            "tension_tell": "subtle tension tell"
+          },
+          "recall_stack": {
+            "face": "face recall cue",
+            "silhouette": "silhouette cue",
+            "color": "color cue",
+            "behavior": "behavior cue",
+            "emotional_hook": "emotional hook"
+          },
+          "costume_grammar": "story and role-specific costume logic",
+          "public_mask": "what viewers first read",
+          "hidden_truth": "emotion beneath the mask",
+          "narrative_promise": "why viewers keep watching",
+          "attractive_contradiction": "memorable inner contrast",
+          "forbidden_drift": ["generic catalog model"],
+          "anti_clone_checks": {
+            "distinct_facial_dimensions": ["geometry", "eyes", "nose"],
+            "distinct_hair_dimensions": ["construction", "silhouette"],
+            "distinct_body_language_dimensions": ["posture", "gesture"],
+            "signature_difference": "candidate-specific signature"
+          },
+          "scores": {
+            "story_fit": 9,
+            "screen_presence": 9,
+            "emotional_readability": 9,
+            "ensemble_contrast": 9,
+            "cross_series_uniqueness": 16,
+            "threshold_status": "pass",
+            "rationale": "concise evidence"
+          },
+          "comparison_evidence": {
+            "candidate_direction_count": 3,
+            "current_cast_compared": 0,
+            "recent_series_compared": 0,
+            "prior_lead_dna_compared": 0,
+            "history_completeness": "none"
+          }
+        },
+        "primary_portrait_prompt": "solo cinematic vertical portrait ...",
+        "negative_prompt": "advertising model, catalog pose, influencer portrait, extra people ..."
+      }
+    ]
+  },
+  "plain_text_summary": "Optional concise comparison summary without private reasoning."
+}
+```
+
+`plain_text_summary` is optional in this lean candidate contract. Do not fail or repair an
+otherwise complete candidate batch only because this summary is absent. It remains required
+for the normal Character Visual Bible output.
+
+The internal three-direction rule above is still part of quality design, but in candidate
+casting mode each user-visible candidate is a separately selected identity direction. Do
+not return the normal five-prompt character sheet pack for every candidate. The server
+stores each validated DNA privately until the user explicitly selects one as canonical.
+
 When `approvedDesignDna` exists, it is the canonical identity. Do not generate a new face
 or rerun direction selection for routine portrait/sheet generations: reproduce that DNA
 unchanged after applying safety/reference facts. A per-generation `custom_instruction`
 may change pose, framing, mood, outfit, setting, lighting, or other permitted variables,
 but must never rewrite canonical face/identity DNA.
 
-Set `role_tier` from the supplied role/description facts, with the child-precedence rule
-below. It is server-verified and must never be changed to a support/other tier merely to
-avoid an adult-lead threshold.
+Set `role_tier` from the canonical `characters[0].role_tier` fact when supplied, with the
+child-precedence rule below. Treat `characters[0].narrative_role` as the story function and
+`characters[0].occupation`/legacy `role` as a separate profession or descriptor. Never infer
+lead/villain status from an occupation such as CEO, bodyguard, manager, teacher, or soldier.
+When `role_review_status` is `needs_role_review`, do not promote the character: use the safest
+supporting/other visual tier and state the unresolved role in the rationale. The server verifies
+the canonical tier and must never allow the model to change it merely to avoid an adult-lead
+threshold.
 
 Every character output MUST include a complete `character_design_dna` object. Do not
 reveal private chain-of-thought, rejected directions, or hidden deliberation. Return only
@@ -195,33 +333,115 @@ this additive object for readability; that abbreviation is never permission to o
 
 ## Lead-role screen presence — MANDATORY
 
-Vertical-drama audiences follow shows for leads with strong, believable screen presence —
-not fashion-model or corporate-headshot polish. An "ordinary," over-glammed, or
-influencer-style face on a lead (พระเอก / นางเอก) kills retention just as much as a plain
-one does. Every generated prompt (`primary_portrait_prompt`, `turnaround_prompt`,
+Vertical-drama audiences follow shows for leads with unmistakable, believable star
+presence — not a cheap fashion catalogue, flat corporate headshot, or plastic beauty
+render. An ordinary, under-attractive, or influencer-style face on a lead (พระเอก / นางเอก)
+kills retention just as much as a plain one does. Every generated prompt (`primary_portrait_prompt`, `turnaround_prompt`,
 `full_body_prompt`, `expression_sheet_prompt`, `outfit_sheet_prompt`) MUST reflect the
-character's role tier using the **modern vertical-drama archetypes** below — natural
-screen presence over glamour, not idol/corporate perfection:
+character's role tier using the **modern vertical-drama archetypes** below — cinematic
+elevated realism for leads (star-level beauty with believable skin), grounded realism for
+supporting roles, and never artificial/plastic perfection:
 
 | Role (Thai / English examples) | Tier | Archetype directive |
 |---|---|---|
 | เด็ก, เด็กชาย, เด็กหญิง, child, kid, OR any description-stated age under 15 | **child (highest precedence)** | Age-appropriate and memorable child character: expressive eyes, curious gaze, natural childlike charm, brave but vulnerable expression, clever observant personality, simple modest everyday outfit, natural hairstyle; realistic skin. Always wins, even over an explicit lead/villain role label. |
-| นางเอก, female lead, leading lady, heroine | **lead (female)** | หญิงสาวสวยสง่า อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น (warm natural lighting, beautiful appearance); emotionally magnetic, natural beauty with strong screen presence, expressive eyes capable of tears, vulnerable yet determined expression, soft delicate features, relatable but unforgettable, quiet strength, clean bright warm lighting, romantic-drama tension; simple elegant outfit; realistic skin texture. |
-| พระเอก, male lead, leading man | **lead (male)** | ชายหนุ่มหล่อเหลาชวนหลงใหล อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น (warm natural lighting, handsome appearance); magnetic yet credible competence, trustworthy protective presence, sharp realistic facial structure, readable hidden emotion, inviting warmth beneath restraint, clean bright warm lighting; story-specific elegant outfit; realistic skin texture; never a generic CEO template. |
-| คู่หลัก, ตัวหลัก, ตัวเอก, protagonist, lead role (gender unclear) | **lead (neutral)** | ตัวเอกรูปร่างหน้าตาดี สง่างาม อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น (warm natural lighting, beautiful/handsome appearance); emotionally magnetic with strong screen presence, natural realistic features with quiet intensity and clean bright warm lighting, expressive eyes, relatable but unforgettable, understated elegant styling; realistic skin texture. |
+| นางเอก, female lead, leading lady, heroine | **lead (female)** | หญิงสาวสวยระดับดารานำ (exceptionally/strikingly beautiful leading-lady), facial harmony สูง, luminous realistic skin, emotionally magnetic eyes, อ่อนโยนและเข้าถึงอารมณ์ได้, แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น; vulnerable yet determined, soft refined features, romantic-drama heroine aura, relatable but unforgettable, simple elegant outfit; cinematic elevated realism, never a plain office worker or cold rival. |
+| พระเอก, male lead, leading man | **lead (male)** | ชายหนุ่มหล่อระดับพระเอกดารานำ (exceptionally/strikingly handsome leading-man), harmonious masculine facial structure, luminous healthy skin, expressive eyes, warm trustworthy magnetism, อ่อนโยนและน่าหลงใหล, แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น; credible competence with readable hidden emotion, premium romantic-drama hero aura, story-specific elegant outfit; cinematic elevated realism, never a generic action extra or bodyguard portrait. |
+| คู่หลัก, ตัวหลัก, ตัวเอก, protagonist, lead role (gender unclear) | **lead (neutral)** | ตัวเอกรูปร่างหน้าตาดีระดับดารานำ (exceptionally beautiful/handsome, camera-ready lead), facial harmony สูง, emotionally magnetic และเข้าถึงได้, สง่างาม อ่อนโยน แต่งกายสว่างสะอาดตา แสงภาพสว่างอบอุ่น; relatable but unforgettable, premium romantic-drama aura, understated elegant styling; cinematic elevated realism. |
 | ตัวร้ายหญิง, นางร้าย, female antagonist | **villain (female)** | Beautiful and sharp-featured, elegant high-status aura, refined features, confident gaze, subtle half-smile, emotionally controlled expression, hidden agenda, quiet calculation, polished high-society rival energy, elegant tension; realistic skin. |
 | ตัวร้ายชาย, วายร้ายชาย, male antagonist | **villain (male)** | Dangerously attractive, sharp predatory gaze, calm but threatening presence, faint manipulative smile, elegant menace, quiet intimidation, luxury villain energy, dark tailored suit, controlled dominant posture; realistic skin. |
 | ตัวร้าย, วายร้าย, antagonist (gender unclear) | **villain (neutral)** | Strikingly attractive but sharp/cold/dangerous aura (สวย/หล่อแบบอันตราย) — elegant menace, not cartoonish evil; magnetic and photogenic, not merely attractive-neutral. |
 | ตัวประกอบ, supporting, extra | **support / other** | Natural, believable, well-groomed. Do NOT force glamour or idol-grade features. |
 
+### Lead visual hierarchy — HARD PRIORITY over genre, occupation, and lighting
+
+For `lead_female`, `lead_male`, and `lead`, the viewer must recognize an unmistakable
+romantic-drama lead at first glance. Do not settle for merely competent, rugged,
+professional, or attractive-enough casting. The selected direction MUST make the lead
+look clearly more beautiful/handsome and more camera-ready than ordinary supporting
+characters, while remaining believable for the character's age, region, and story world.
+
+- **Female lead:** use explicit leading-lady beauty language (for example
+  exceptionally beautiful, strikingly beautiful, camera-ready leading-lady features,
+  luminous natural complexion, harmonious facial proportions, emotionally magnetic
+  eyes, and approachable warmth). Beauty must read as heroine beauty, not a fashion
+  model, socialite, or cold rival.
+- **Male lead:** use explicit leading-man beauty language (for example exceptionally
+  handsome, strikingly handsome, camera-ready leading-man features, harmonious
+  masculine facial structure, luminous healthy skin, expressive eyes, and a warm,
+  trustworthy magnetism). A rugged, military, bodyguard, or streetwear cue may support
+  the identity, but MUST NOT be the only attractiveness cue or make him look like a
+  generic action extra.
+- **Neutral lead:** choose the gender-appropriate equivalent of unmistakable,
+  camera-ready lead beauty and state the emotional access that makes the audience want
+  to follow this person.
+
+This hierarchy is stronger than the series genre, occupation, preset palette, or camera
+style. Noir/thriller tension may appear in the setting, prop, restrained posture, or
+background contrast, but it MUST NOT turn a lead's face, gaze, smile, wardrobe, or key
+light into villain grammar. For leads, never use predatory gaze, elegant menace,
+dangerous aura, quiet calculation, manipulative smile, threatening presence, villain
+energy, micro-frown as the defining expression, ominous/deep-blue-only lighting, or a
+high-contrast thriller color grade as the primary identity cue. Move danger into the
+story environment and keep the lead's face open, emotionally accessible, and clearly
+heroic/romantic. Apply this rule consistently to all five generated prompt fields, not
+only the primary portrait.
+
+### Role Beauty Spec — MANDATORY before prompt writing
+
+Before composing any prompt, derive a small internal `role_beauty_spec` from the
+canonical role tier and the series DNA. It is a design control, not random adjective
+decoration. When the output contract has no dedicated field for it, express its decision
+through `beauty_archetype`, `design_intent`, `scores`, `narrative_promise`, and every
+prompt field:
+
+```yaml
+role_beauty_spec:
+  beauty_priority: heroine_star_grade | hero_star_grade | second_lead_star_grade | villain_striking_beauty | grounded_support
+  lead_attractiveness_level: 1-10
+  emotional_access_level: 1-10
+  screen_magnetism_level: 1-10
+  beauty_render_mode: grounded_realism | elevated_realism | heroine_cinematic | luxury_melodrama_lead
+  must_not_undershoot_beauty: true | false
+  audience_pull_intent: [stop_scroll, instant_likeability, romantic_interest, emotional_attachment]
+```
+
+For an adult `lead_female` or `lead_male`, default to `beauty_priority` of
+`heroine_star_grade`/`hero_star_grade`, `lead_attractiveness_level: 9`,
+`emotional_access_level: 9`, `screen_magnetism_level: 9`,
+`beauty_render_mode: heroine_cinematic` (or `luxury_melodrama_lead` when the series
+DNA supports it), and `must_not_undershoot_beauty: true`. A lead may be wounded,
+restrained, intelligent, or professionally powerful, but those traits are secondary to
+an unmistakable star face and an emotional reason to keep watching. A first impression
+that reads only as `plain_office_worker`, `generic_corporate_portrait`,
+`severe_executive_only`, `generic_action_extra`, `bodyguard_only`, `emotionally_distant
+editorial_model`, `female rival`, or `villain` fails this spec and must be redesigned.
+
+For a `second_lead`, use attractiveness level 8 plus one distinct charm axis. For a
+villain, use striking beauty around 8–9 but reserve menace, calculation, and dangerous
+elegance for the villain tier only. For support, use grounded believable attractiveness
+without stealing the leads' visual grammar. `occupation` is always secondary: write the
+role/beauty identity first, then let CEO/bodyguard/teacher/etc. shape wardrobe and world.
+
 Every lead/villain tier's `negative_prompt` MUST also include its matching negative terms, to
 actively steer away from the wrong look:
-- **Female lead negatives**: fashion model look, corporate portrait, over-glam makeup,
-  plastic skin, generic pretty face.
-- **Male lead negatives**: model photoshoot, corporate portrait, influencer smile,
-  boyband look, generic handsome face.
-- **Neutral lead negatives**: fashion model look, corporate portrait, over-glam makeup,
-  plastic skin, generic pretty/handsome face.
+- **Female lead negatives**: cheap fashion-catalog look, flat corporate headshot,
+  plastic skin, exaggerated pageant styling, overfilled lips, extreme contour, uncanny
+  perfection, severe executive portrait with no emotional warmth, obvious female villain
+  styling, predatory gaze, elegant menace, dangerous aura, quiet calculation,
+  manipulative smile, villain energy, micro-frown as the defining expression,
+  high-contrast thriller color grade, ominous lighting.
+- **Male lead negatives**: cheap model photoshoot, flat corporate headshot, influencer
+  smile, generic boyband styling, plastic skin, uncanny perfection, generic action-extra
+  face, severe bodyguard portrait with no romantic warmth, obvious male villain styling,
+  predatory gaze, elegant menace, dangerous aura, quiet calculation, manipulative smile,
+  threatening presence, villain energy, micro-frown as the defining expression,
+  high-contrast thriller color grade, ominous lighting.
+- **Neutral lead negatives**: cheap fashion-catalog look, flat corporate headshot,
+  plastic skin, exaggerated pageant styling, extreme contour, uncanny perfection,
+  generic action-extra face, obvious villain styling, predatory gaze, elegant menace,
+  dangerous aura, quiet calculation, manipulative smile, villain energy,
+  high-contrast thriller color grade, ominous lighting.
 - **Female antagonist negatives**: exaggerated evil face, fantasy villain styling,
   overly seductive styling, revealing outfit, beauty pageant pose, generic influencer
   look, plastic skin.
@@ -230,6 +450,18 @@ actively steer away from the wrong look:
 - **Child negatives (STRICT, always applied — see child-safety subsection below)**:
   adult beauty styling, glamorous makeup, seductive pose, revealing outfit, mature
   expression, romantic tension, fashion model look, plastic skin.
+
+### Schema-retry repair contract
+
+When the server appends `Validation guidance` to a retry turn, treat that text as a
+contract-level repair order, not as creative content. If any of the five lead prompt
+fields is flagged, rewrite all five fields together so the face, expression, wardrobe,
+lighting, and camera language stay consistent. A lead-beauty failure requires an
+explicit role-specific star marker plus at least two appeal signals in every field. A
+villain-grammar failure requires removing the offending face/gaze/smile/wardrobe/key-
+light cues and relocating tension to the setting or posture. Never return unchanged
+failed prose, never copy the diagnostic into a prompt, and always return the complete
+JSON object with every required key.
 
 ## Child-safety subsection — MANDATORY, highest precedence
 
@@ -330,6 +562,30 @@ concisely so it still fits the length budget below:
 - Professional key light with a soft rim/edge light for separation from the background.
 - A background that hints at story/location but stays clearly out of focus (bokeh) so it
   never competes with the subject.
+
+## Production prompt composition — MANDATORY
+
+Do not answer with a keyword list or a short generic prefix. For every prompt field,
+compose one coherent, production-ready paragraph in this order (combine naturally, do
+not print the labels): **subject and canonical role/age/region → facial geometry and
+gaze → hair/makeup/skin → locked or role-appropriate wardrobe and silhouette →
+personality/body language/emotional contradiction → scene/context and lighting → lens,
+depth of field, color grade, realism, vertical 9:16 and one-person constraint**. The
+For adult leads, put the heroine/hero star signal immediately after the canonical role
+and before the occupation; the job title is secondary context, never the visual identity.
+primary portrait must normally contain at least six concrete visual clauses and a
+story-specific emotional hook. A prompt that begins with `solo portrait, exactly one
+person` and then stops after generic camera adjectives is incomplete; expand it until
+the viewer can recognize the character without the name. Apply the same DNA anchors to
+turnaround/full-body/expression/outfit sheets, changing only the deliverable's camera,
+pose, grid, or permitted wardrobe variation.
+
+For a lead, start with heroine/hero star identity before mentioning occupation. Prefer
+approachable but unmistakably beautiful/handsome, unforgettable screen presence over a
+stock fashion model or corporate-headshot look. For a villain, make the threat or hidden contradiction
+read in the eyes, posture, silhouette, and color logic. For a supporting character,
+design one memorable cue without stealing the lead's visual grammar. Keep all choices
+causally tied to the series emotional engine and current-cast contrast facts.
 
 ## Required prompt fields — MANDATORY, never omit
 
@@ -934,28 +1190,38 @@ legacy/optional, not every series uses a preset.
 
 Good example (female lead, description says "late-20s single mother"):
 > "solo portrait, exactly one person in frame: cinematic vertical portrait of Aria,
-> late-20s, emotionally magnetic with natural beauty and strong screen presence,
-> expressive eyes glistening with restrained tears, vulnerable yet determined expression,
-> soft delicate features, realistic skin texture, simple elegant blouse, 85mm f/1.8
-> portrait lens, shallow depth of field, warm cinematic color grade, subtle film grain,
-> soft key light with a gentle rim light for separation, out-of-focus interior background
-> hinting at home, 9:16"
-> negative_prompt: "fashion model look, corporate portrait, over-glam makeup, plastic
-> skin, generic pretty face, no other people, no second person, no children, no extra
-> person, no crowd, no background figures, no hands of others"
+> late-20s, strikingly beautiful leading-lady with harmonious facial proportions,
+> luminous realistic skin, camera-ready yet relatable beauty, emotionally magnetic eyes
+> glistening with restrained tears, vulnerable yet determined expression, soft refined
+> features and a gentle open smile, simple elegant blouse, 85mm f/1.8 portrait lens,
+> shallow depth of field, warm cinematic color grade with a soft gold accent, subtle film
+> grain, soft key light with a gentle rim light for separation, out-of-focus interior
+> background hinting at home, premium romantic-drama heroine aura, 9:16"
+> negative_prompt: "cheap fashion-catalog look, flat corporate headshot, plastic skin,
+> exaggerated pageant styling, overfilled lips, extreme contour, severe executive portrait
+> with no emotional warmth, predatory gaze, elegant menace, quiet calculation, villain
+> energy, high-contrast thriller color grade, no other people, no second person, no
+> children, no extra person, no crowd, no background figures, no hands of others"
 
 Bad example (female lead rendered as a fashion-model/corporate headshot — do NOT do this):
 > "portrait of a glamorous woman, flawless symmetrical face, studio beauty lighting,
 > idol-grade makeup, premium wardrobe"
 
 Good example (male lead, description says "early-30s CEO forced to expose his family's fraud"):
-> "cinematic vertical portrait of Krit, early-30s, credible hard-earned competence and a
-> trustworthy protective presence, sharp but human facial structure, steady observant
-> eyes that soften before he lies, emotionally restrained expression carrying family
-> guilt, thumb tightening against an inherited signet ring, practical dark tailoring
-> specific to his legal-finance world, realistic skin texture, 9:16, moody rim light"
-> negative_prompt: "model photoshoot, corporate portrait, influencer smile, boyband look,
-> generic handsome face"
+> "cinematic vertical portrait of Krit, early-30s, exceptionally handsome leading-man
+> with harmonious masculine facial structure, luminous healthy skin, camera-ready eyes
+> that soften before he lies, warm trustworthy magnetism, credible hard-earned competence
+> and a protective presence, emotionally restrained expression carrying family guilt,
+> thumb tightening against an inherited signet ring, elegant story-specific tailoring
+> rather than a generic corporate suit, premium romantic-drama hero aura, realistic skin
+> texture, soft warm key light with a refined rim light, 85mm f/1.8, shallow depth of
+> field, cinematic elevated realism, 9:16"
+> negative_prompt: "cheap model photoshoot, flat corporate headshot, influencer smile,
+> generic boyband styling, plastic skin, generic action-extra face, severe bodyguard
+> portrait with no romantic warmth, predatory gaze, elegant menace, quiet calculation,
+> threatening presence, villain energy, high-contrast thriller color grade, no other
+> people, no second person, no children, no extra person, no crowd, no background figures,
+> no hands of others"
 
 Good example (villain, gender unclear/neutral):
 > "portrait of a sharp-featured man, strikingly handsome but cold and calculating gaze,
@@ -1274,12 +1540,12 @@ Output skeleton:
       "signature_wardrobe": "tailored charcoal blazer, gold hoop earrings",
       "hair_makeup_notes": "soft glam, natural brow, glossy nude lip",
       "performance_energy": "poised, controlled, quietly intense",
-      "primary_portrait_prompt": "solo portrait, exactly one person in frame: cinematic vertical portrait of Aria, late-20s executive, warm bronze skin, sharp jawline, mole under left eye, shoulder-length dark waves, poised and quietly intense expression, tailored charcoal blazer with gold hoop earrings, 85mm f/1.8 portrait lens, shallow depth of field, cinematic color grade, subtle film grain, soft key light with a gentle rim light for separation, out-of-focus boardroom background, 9:16",
-      "full_body_prompt": "solo portrait, exactly one person in frame: full body of Aria standing, head to toe visible, tailored charcoal blazer, gold hoop earrings, confident poised stance, studio seamless background kept softly out of focus, same 85mm cinematic look and warm bronze skin tone as the primary portrait, 9:16",
-      "expression_sheet_prompt": "solo portrait, exactly one person in frame: grid of Aria's facial expressions on a single sheet — neutral, determined, tearful, smiling — identical framing, lighting, and identity anchors (mole under left eye, shoulder-length dark waves) across every panel, cinematic color grade, 9:16",
-      "outfit_sheet_prompt": "solo portrait, exactly one person in frame: outfit sheet of Aria wearing her signature office blazer, an evening gown, and a casual knit top in three side-by-side poses, same face/hair identity anchors held constant across all three, cinematic color grade, 9:16",
-      "turnaround_prompt": "solo portrait, exactly one person in frame: 360-degree turnaround of Aria showing front, three-quarter, and back-of-head angles, consistent identity anchors (mole under left eye, shoulder-length dark waves, tailored charcoal blazer) held constant across every angle, cinematic color grade, 9:16",
-      "negative_prompt": "no extra fingers, no identity drift, no wardrobe change, no other people, no second person, no children, no extra person, no crowd, no background figures, no hands of others",
+      "primary_portrait_prompt": "solo portrait, exactly one person in frame: cinematic vertical portrait of Aria, late-20s, strikingly beautiful leading-lady with harmonious facial proportions, luminous realistic skin, camera-ready emotionally magnetic eyes, poised executive femininity with a gentle open warmth, mole under left eye, shoulder-length dark waves, tailored charcoal blazer with gold hoop earrings, 85mm f/1.8 portrait lens, shallow depth of field, warm cinematic color grade with a refined gold accent, subtle film grain, soft key light with a gentle rim light for separation, out-of-focus boardroom background, premium romantic-drama heroine aura, 9:16",
+      "full_body_prompt": "solo portrait, exactly one person in frame: full body of Aria, strikingly beautiful leading-lady with camera-ready harmonious features and emotionally accessible warmth, standing head to toe in a tailored charcoal blazer with gold hoop earrings, poised feminine silhouette and quietly determined posture, studio boardroom background softly out of focus, warm 85mm cinematic elevated realism, 9:16",
+      "expression_sheet_prompt": "solo portrait, exactly one person in frame: expression sheet of Aria, a strikingly beautiful leading-lady with luminous realistic skin and camera-ready facial harmony — open warmth, determined hope, restrained tears, relieved smile — identical mole, shoulder-length dark waves, soft warm lighting and romantic-drama emotional access across every panel, 9:16",
+      "outfit_sheet_prompt": "solo portrait, exactly one person in frame: outfit sheet of Aria, an exceptionally beautiful leading-lady with emotionally magnetic screen presence, showing her signature charcoal blazer, an elegant evening dress, and a refined casual knit in three side-by-side poses, same face/hair identity anchors, warm cinematic color grade, 9:16",
+      "turnaround_prompt": "solo portrait, exactly one person in frame: 360-degree turnaround of Aria, strikingly beautiful camera-ready leading-lady with harmonious facial proportions, luminous skin, mole under left eye, shoulder-length dark waves, and tailored charcoal blazer held constant across front, three-quarter, profile, and back-of-head angles, warm romantic-drama lighting, 9:16",
+      "negative_prompt": "cheap fashion-catalog look, flat corporate headshot, plastic skin, exaggerated pageant styling, overfilled lips, extreme contour, uncanny perfection, severe executive portrait with no emotional warmth, predatory gaze, elegant menace, quiet calculation, villain energy, high-contrast thriller color grade, no extra fingers, no identity drift, no wardrobe change, no other people, no second person, no children, no extra person, no crowd, no background figures, no hands of others",
       "attachment_package": [
         {
           "asset_type": "primary_portrait",

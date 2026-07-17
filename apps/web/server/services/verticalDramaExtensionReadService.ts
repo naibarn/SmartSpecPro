@@ -22,6 +22,7 @@ import {
   mediaAssets,
 } from "../../drizzle/schema";
 import { resolveTenantIdVarchar } from "./tenantContext";
+import { estimateVerticalDramaSpeechSeconds } from "../../shared/verticalDramaSeries/dialogueQuality";
 import type {
   VerticalDramaShotgrid,
   VerticalDramaStartFramePlan,
@@ -397,9 +398,12 @@ export interface DramaSeriesEpisodeDetail {
 }
 
 /**
- * Projects the minimal dialogue data required by the extension. Durations are
- * returned only when they exist in the authored audio plan; clip-only dialogue
- * intentionally has no derived duration.
+ * Projects the minimal dialogue data required by the extension. When an authored
+ * audio plan exists its real per-line durations win; otherwise (clip-only
+ * dialogue, i.e. before the dialogue-audio stage has run) we fall back to the
+ * canonical text-based speech estimate so the extension can still show an
+ * approximate speaking length instead of "ยังไม่มีเวลาพูด". This matches the
+ * estimate the web workspace's density meter already shows for the same lines.
  */
 export function projectDramaShotDialogueLinesForExtension(input: {
   dialogueAudioPlan: unknown;
@@ -451,7 +455,7 @@ export function projectDramaShotDialogueLinesForExtension(input: {
         : "ไม่ระบุผู้พูด",
       emotion: typeof line.emotion === "string" && line.emotion.trim() ? line.emotion.trim() : null,
       text,
-      durationSeconds: null,
+      durationSeconds: estimateVerticalDramaSpeechSeconds(text),
     }];
   });
 }

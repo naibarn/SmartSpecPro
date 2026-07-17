@@ -83,6 +83,7 @@ import {
 } from "../verticalDramaStoryBible";
 import { renderCriteriaVersionMarker } from "../verticalDramaQualityCriteria";
 import { renderAudienceAgeRatingBlock } from "@shared/verticalDramaSeries/audienceAgeRating";
+import { NARRATIVE_ROLE_VALUES, ROLE_TIER_VALUES } from "@shared/verticalDramaSeries/narrativeRole";
 
 function baseParams(overrides: Record<string, unknown> = {}) {
   return {
@@ -217,6 +218,73 @@ describe("generateStoryBible — user premise (F132A)", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* Lenient narrativeRole/roleTier (2026-07-14 recurring failure fix — same   */
+/* root cause as preset synthesis: `buildPrompts` never listed the allowed   */
+/* enum values, so gpt-5.4-nano title-cased/invented labels like             */
+/* "Protagonist"/"Tier-1"/"Love Interest" and schema validation failed the   */
+/* whole response).                                                          */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBible — lenient narrativeRole/roleTier", () => {
+  it("prompt rules list every NARRATIVE_ROLE_VALUES and ROLE_TIER_VALUES value so the model never has to guess", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams());
+    const systemPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[0].content as string;
+
+    for (const value of NARRATIVE_ROLE_VALUES) {
+      expect(systemPrompt).toContain(value);
+    }
+    expect(systemPrompt).toContain("roleTier");
+    for (const value of ROLE_TIER_VALUES) {
+      expect(systemPrompt).toContain(value);
+    }
+  });
+
+  it("succeeds and normalizes a title-cased/invented enum response instead of failing schema validation (matches the observed production failure: 'Protagonist'/'Tier-1'/'Love Interest')", async () => {
+    mockLlmResponse({
+      expandedSeasonArc: "A grand season arc",
+      refinedCharacters: [
+        {
+          name: "Aria",
+          role: "นางเอก",
+          description: "The protagonist",
+          narrativeRole: "Protagonist",
+          roleTier: "Tier-1",
+        },
+        {
+          name: "Nate",
+          role: "พระรอง",
+          description: "Her ally",
+          narrativeRole: "Love Interest",
+          roleTier: "second_lead_male",
+        },
+      ],
+      episodeBreakdown: [
+        { episodeNumber: 1, workingTitle: "Ep1", logline: "Logline 1", keyBeats: ["Beat 1"] },
+      ],
+    });
+
+    const result = await generateStoryBible(baseParams());
+
+    const aria = result.expanded.refinedCharacters.find(c => c.name === "Aria")!;
+    // "Protagonist" -> lowercase-preprocess recovery -> "protagonist" (kept, not overridden).
+    expect(aria.narrativeRole).toBe("protagonist");
+    // "Tier-1" is not a valid roleTier even lowercased -> undefined -> backfilled
+    // from the free-text role "นางเอก" via normalizeExpandedCharacterRoles/normalizeLegacyRole.
+    expect(aria.roleTier).toBe("lead_female");
+
+    const nate = result.expanded.refinedCharacters.find(c => c.name === "Nate")!;
+    // "Love Interest" is not a valid narrativeRole even lowercased -> undefined
+    // -> backfilled from the free-text role "พระรอง".
+    expect(nate.narrativeRole).toBe("secondary_lead");
+    // Already a valid lowercase value -> kept as-is.
+    expect(nate.roleTier).toBe("second_lead_male");
+
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* F132A — user premise threading (generateStoryBibleDeep)                   */
 /* -------------------------------------------------------------------------- */
 
@@ -233,6 +301,8 @@ function nineShots(): Record<string, unknown>[] {
   return Array.from({ length: 9 }, (_, i) => ({
     shot_number: i + 1,
     summary: `Shot ${i + 1}`,
+    characters: [{ name: "A", emotion: "calm" }],
+    location_key: "loc-default",
     dialogue_lines: [{ speaker: "A", line: "สวัสดีเพื่อนที่รักของฉัน" }],
   }));
 }

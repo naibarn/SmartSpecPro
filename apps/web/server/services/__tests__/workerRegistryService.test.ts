@@ -6,6 +6,7 @@ import type {
   WorkerJobEventPayload,
   WorkerRegistrationPayload,
 } from "../../../shared/workerRuntime";
+import { auditLogger } from "../auditLogger";
 
 const { mockGetDb } = vi.hoisted(() => {
   process.env.JWT_SECRET = "test-jwt-secret-for-worker-registry-service";
@@ -1545,6 +1546,53 @@ describe("workerRegistryService", () => {
       expect(repo.tryClaimJob).toHaveBeenCalledTimes(1);
     });
 
+    it("Feature 135 section 12: worker_job_claimed audit metadata is enriched with connectionId + traceId for a hermes_* job", async () => {
+      const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob({ instructionsJson: { traceId: "trace-claim-1" } });
+      const repo = hermesWorkerRepo(job);
+
+      await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: ["hermes_media"] },
+        },
+        { repo } as any,
+      );
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: "worker_job_claimed",
+          metadata: expect.objectContaining({ connectionId: "conn-1", traceId: "trace-claim-1" }),
+        }),
+      );
+      spy.mockRestore();
+    });
+
+    it("Feature 135 section 12 regression: a non-hermes job's worker_job_claimed emission is byte-identical to before (no connectionId/traceId keys)", async () => {
+      const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+      const { claimWorkerJob } = await import("../workerRegistryService");
+      const job = hermesJob({ jobType: "hyperframes_final_composite", capabilityRequirementsJson: {} });
+      const repo = hermesWorkerRepo(job);
+
+      await claimWorkerJob(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          workerId: "worker-1",
+          payload: { maxJobs: 1, capabilityHints: [] },
+        },
+        { repo } as any,
+      );
+
+      const claimCall = spy.mock.calls.find((call) => (call[0] as { eventType?: string }).eventType === "worker_job_claimed");
+      expect(claimCall).toBeDefined();
+      const metadata = (claimCall![0] as { metadata: Record<string, unknown> }).metadata;
+      expect(metadata).not.toHaveProperty("connectionId");
+      expect(metadata).not.toHaveProperty("traceId");
+      spy.mockRestore();
+    });
+
     it("no-availability regression: a worker with empty capabilityHints still claims a DIFFERENT, unrelated job when a mismatched hermes job is also in its candidate pool", async () => {
       const { claimWorkerJob } = await import("../workerRegistryService");
       const hermesCandidate = hermesJob({ id: "job-hermes-mismatch" });
@@ -1598,6 +1646,100 @@ describe("workerRegistryService", () => {
         expect.any(String),
         expect.any(Date),
       );
+    });
+  });
+
+  describe("Feature 135 section 12 — terminal audit enrichment", () => {
+    function buildTerminalJob(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "job-hermes-terminal-1",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "hermes_agent_gateway",
+        jobType: "hermes_media_image_generate",
+        status: "running",
+        capabilityRequirementsJson: { connectionId: "conn-terminal-1" },
+        instructionsJson: { traceId: "trace-terminal-1" },
+        outputJson: { assignmentAttempt: "attempt_active" },
+        leaseOwnerToken: "lease-1",
+        leaseExpiresAt: new Date("2030-04-06T00:05:00.000Z"),
+        ...overrides,
+      };
+    }
+
+    function buildTerminalRepo(job: ReturnType<typeof buildTerminalJob>) {
+      return {
+        getJobById: vi.fn().mockResolvedValue(job),
+        listJobEvents: vi.fn().mockResolvedValue([]),
+        insertJobEvent: vi.fn().mockResolvedValue({ id: "event-1" }),
+        updateJob: vi.fn().mockImplementation(async (_jobId: string, values: Record<string, unknown>) => ({
+          ...job,
+          ...values,
+        })),
+      };
+    }
+
+    it("enriches worker_job_completed metadata with connectionId + traceId for a hermes_media_* job", async () => {
+      const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+      const { recordWorkerJobEvent } = await import("../workerRegistryService");
+      const job = buildTerminalJob();
+      const repo = buildTerminalRepo(job);
+
+      await recordWorkerJobEvent(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          jobId: job.id,
+          payload: {
+            eventType: "job.completed",
+            payloadJson: {},
+            sequenceNumber: 1,
+            leaseOwnerToken: "lease-1",
+            assignmentAttempt: "attempt_active",
+          } as any,
+        },
+        { repo } as any,
+      );
+
+      const completedCall = spy.mock.calls.find((call) => (call[0] as { eventType?: string }).eventType === "worker_job_completed");
+      expect(completedCall).toBeDefined();
+      expect((completedCall![0] as { metadata: Record<string, unknown> }).metadata).toMatchObject({
+        connectionId: "conn-terminal-1",
+        traceId: "trace-terminal-1",
+      });
+      spy.mockRestore();
+    });
+
+    it("regression: a non-hermes job's terminal emission is byte-identical to before (no connectionId/traceId keys)", async () => {
+      const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+      const { recordWorkerJobEvent } = await import("../workerRegistryService");
+      const job = buildTerminalJob({
+        jobType: "hyperframes_final_composite",
+        capabilityRequirementsJson: {},
+        instructionsJson: {},
+      });
+      const repo = buildTerminalRepo(job);
+
+      await recordWorkerJobEvent(
+        {
+          auth: { tenantId: "tenant-1", workerId: "worker-1", runtimeType: "hermes_agent_gateway" } as any,
+          jobId: job.id,
+          payload: {
+            eventType: "job.completed",
+            payloadJson: {},
+            sequenceNumber: 1,
+            leaseOwnerToken: "lease-1",
+            assignmentAttempt: "attempt_active",
+          } as any,
+        },
+        { repo } as any,
+      );
+
+      const completedCall = spy.mock.calls.find((call) => (call[0] as { eventType?: string }).eventType === "worker_job_completed");
+      expect(completedCall).toBeDefined();
+      const metadata = (completedCall![0] as { metadata: Record<string, unknown> }).metadata;
+      expect(metadata).not.toHaveProperty("connectionId");
+      expect(metadata).not.toHaveProperty("traceId");
+      spy.mockRestore();
     });
   });
 

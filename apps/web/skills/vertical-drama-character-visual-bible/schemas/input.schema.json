@@ -15,6 +15,43 @@
     "story_context": {
       "type": "string"
     },
+    "characters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["character_id", "name"],
+        "properties": {
+          "character_id": { "type": "string" },
+          "name": { "type": "string" },
+          "role": { "type": "string" },
+          "narrative_role": {
+            "type": "string",
+            "enum": ["protagonist", "co_protagonist", "antagonist", "secondary_lead", "supporting", "ensemble", "minor"]
+          },
+          "role_tier": {
+            "type": "string",
+            "enum": [
+              "lead_female", "lead_male", "lead_nonbinary", "lead_child_female", "lead_child_male",
+              "lead_teen_female", "lead_teen_male", "second_lead_female", "second_lead_male",
+              "villain_female_open", "villain_male_open", "villain_female_hidden", "villain_male_hidden",
+              "rival_female", "rival_male", "parent_mother", "parent_father", "elder_matriarch",
+              "elder_patriarch", "grandmother", "grandfather", "great_grandmother", "great_grandfather",
+              "student_primary_female", "student_primary_male", "student_lower_secondary_female",
+              "student_lower_secondary_male", "student_upper_secondary_female", "student_upper_secondary_male",
+              "university_female", "university_male", "intern_female", "intern_male", "support_memorable",
+              "background_character", "same_person_variant", "age_stage_variant", "twin_variant", "other"
+            ],
+            "description": "Canonical narrative/visual role tier from the application roster; occupation never substitutes for this field."
+          },
+          "occupation": { "type": "string" },
+          "role_visual_intent": { "type": "object", "additionalProperties": true },
+          "role_review_status": { "type": "string", "enum": ["ready", "needs_role_review"] },
+          "description": { "type": "string" }
+        }
+      }
+    },
     "style_preset": {
       "type": "string",
       "enum": [
@@ -220,6 +257,12 @@
     "custom_instruction": {
       "type": "string",
       "description": "Raw, unvalidated, user-typed free-text visual brief for THIS generation only. It may describe framing, pose, crop, composition, mood, outfit, colors, props, setting, lighting, or other visible details — ground truth the skill cannot invent, never a pre-authored instruction. Woven naturally into the prompt fields it genuinely affects, per skill.md's 'Custom instruction' section. ALWAYS subordinate to identity-lock/reference-lock/role-tier/child-safety rules; only conflicting aspects are dropped or safely reinterpreted. Absent = legacy/default behavior, unchanged."
+    },
+    "portrait_candidate_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Optional first-portrait casting mode. When present, return exactly this many visibly different people in portrait_candidate_batch. When absent, the normal five-prompt Character Visual Bible output remains unchanged."
     },
     "character_design_context": {
       "type": "object",

@@ -53,6 +53,10 @@ vi.mock("../verticalDramaLlmModelPolicy", () => ({
     (_seriesId: number, autoFallback: () => Promise<string | null>) => autoFallback(),
   ),
 }));
+const { mockAuditLog } = vi.hoisted(() => ({ mockAuditLog: vi.fn() }));
+vi.mock("../auditLogger", () => ({
+  auditLogger: { log: mockAuditLog },
+}));
 const { mockGetPrimaryPortraitUrl } = vi.hoisted(() => ({
   mockGetPrimaryPortraitUrl: vi.fn(),
 }));
@@ -64,13 +68,19 @@ import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
 import {
   generateCharacterVisualPrompts,
+  generateCharacterPortraitCandidates,
+  findLeadPromptQualityIssues,
+  findPortraitCandidateDiversityIssues,
   resolveCharacterRoleTier,
   extractAgeFromDescription,
   detectChildGenderHint,
   readPresetVisualIdentityFromBible,
   pickMatchingCharacterArchetype,
   buildCharacterVisualPromptsUserPrompt,
+  buildCharacterPortraitCandidatesUserPrompt,
   buildCharacterVisualBibleSnapshot,
+  normalizeCharacterVisualBibleDnaKeys,
+  normalizeCharacterVisualBibleAuthoritativeEvidence,
   resolveFaceSourceReferenceForCharacter,
 } from "../verticalDramaCharacterImageGeneration";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
@@ -188,23 +198,49 @@ function validCharacter(
   characterId = "char-1",
   roleTier: Parameters<typeof validDesignDna>[0] = "lead_female",
 ) {
+  const leadLanguage =
+    roleTier === "lead_male"
+      ? "exceptionally handsome leading-man, harmonious masculine features, camera-ready warm trustworthy magnetism"
+      : roleTier === "lead"
+        ? "exceptionally beautiful and handsome camera-ready lead, magnetic romantic-drama presence"
+        : "strikingly beautiful leading-lady, harmonious facial proportions, camera-ready emotionally magnetic beauty";
+  const leadNegativeGuards =
+    roleTier === "child"
+      ? ""
+      : ", predatory gaze, elegant menace, quiet calculation, villain energy, high-contrast thriller color grade";
   return {
     character_id: characterId,
     name: "Alice",
     visual_identity_summary: "Tall, dark hair, trench coat",
     character_design_dna: validDesignDna(roleTier),
-    primary_portrait_prompt: "A portrait of Alice, tall with dark hair, wearing a trench coat",
+    primary_portrait_prompt:
+      roleTier === "child"
+        ? "A portrait of Alice, tall with dark hair, wearing a trench coat"
+        : `Cinematic portrait of Alice, ${leadLanguage}, tall with dark hair, wearing a trench coat`,
     // These four are now REQUIRED (vertical-drama-skill-first-architecture
     // plan, Phase 2, item 3 — no more code-authored fallback), so every
     // success-path mock response must supply them with real, distinct,
     // non-empty content.
-    turnaround_prompt: "360 turnaround of Alice, consistent identity anchors, tall with dark hair",
-    full_body_prompt: "Full body of Alice, standing pose, head to toe visible, trench coat",
-    expression_sheet_prompt: "Expression sheet of Alice: neutral, happy, surprised, sad",
-    outfit_sheet_prompt: "Outfit sheet of Alice wearing her signature trench coat",
+    turnaround_prompt:
+      roleTier === "child"
+        ? "360 turnaround of Alice, consistent identity anchors, tall with dark hair"
+        : `360 turnaround of Alice, ${leadLanguage}, consistent identity anchors, tall with dark hair`,
+    full_body_prompt:
+      roleTier === "child"
+        ? "Full body of Alice, standing pose, head to toe visible, trench coat"
+        : `Full body of Alice, ${leadLanguage}, standing pose, head to toe visible, trench coat`,
+    expression_sheet_prompt:
+      roleTier === "child"
+        ? "Expression sheet of Alice: neutral, happy, surprised, sad"
+        : `Expression sheet of Alice, ${leadLanguage}: neutral, happy, surprised, sad`,
+    outfit_sheet_prompt:
+      roleTier === "child"
+        ? "Outfit sheet of Alice wearing her signature trench coat"
+        : `Outfit sheet of Alice, ${leadLanguage}, wearing her signature trench coat`,
     negative_prompt:
       "blurry, low quality, no other people, no second person, no children, no extra person, " +
-      "no crowd, no background figures, no hands of others",
+      "no crowd, no background figures, no hands of others" +
+      leadNegativeGuards,
     attachment_package: [{ type: "reference", value: "x" }],
   };
 }
@@ -215,6 +251,100 @@ function validOutput(characters = [validCharacter()]) {
     characters,
     plain_text_summary: "Summary text",
     storyboard_attachment_manifest: {},
+  };
+}
+
+function validPortraitCandidate(candidateId: string, index: number) {
+  const dna = structuredClone(validDesignDna("lead_female"));
+  const identities = [
+    {
+      facial_geometry: "long oval face with a tapered chin and high cheekbones",
+      eyes_and_gaze: "wide-set round almond eyes with a candid luminous gaze",
+      brows: "soft arched brows with a slightly lifted right tail",
+      nose: "slender high bridge with a softly rounded tip",
+      lips_and_smile: "full lower lip with a restrained dimpled smile",
+      hair: "long chestnut braid with loose face-framing wisps",
+      silhouette: "soft braid over one shoulder and an open-collar silhouette",
+      signature: "a tiny pearl pendant and a visible right-cheek dimple",
+    },
+    {
+      facial_geometry: "compact heart-shaped face with broad cheekbones",
+      eyes_and_gaze: "deep-set upturned eyes with direct playful warmth",
+      brows: "straight dense brows with a low confident set",
+      nose: "short straight bridge with a defined narrow tip",
+      lips_and_smile: "wide cupid-bow lips with an asymmetric half smile",
+      hair: "sleek chin-length black bob tucked behind one ear",
+      silhouette: "clean graphic bob above a structured collar",
+      signature: "a small beauty mark below the left eye and sculptural silver ear cuff",
+    },
+    {
+      facial_geometry: "soft-square face with a strong jaw and rounded chin",
+      eyes_and_gaze: "close-set monolid eyes with calm vulnerable intensity",
+      brows: "fine gently descending brows with a higher left brow",
+      nose: "low broad bridge with a softly flared base",
+      lips_and_smile: "narrow upper lip and generous lower lip with a shy closed smile",
+      hair: "voluminous shoulder-length waves with an off-center part",
+      silhouette: "airy waves framing a long relaxed neckline",
+      signature: "one copper hairpin and a faint scar through the left brow",
+    },
+    {
+      facial_geometry: "narrow diamond face with sharp cheekbones and a pointed chin",
+      eyes_and_gaze: "large hooded eyes with a steady thoughtful gaze",
+      brows: "bold feathered brows with a flat even set",
+      nose: "straight medium bridge with a slightly upturned tip",
+      lips_and_smile: "balanced lips with a wide open confident smile",
+      hair: "tightly coiled crop with faded temples and a sculpted top",
+      silhouette: "cropped coils above a high mandarin collar",
+      signature: "a single gold nose stud and a freckle cluster across the nose bridge",
+    },
+    {
+      facial_geometry: "round full face with soft cheeks and a gently receding chin",
+      eyes_and_gaze: "downturned wide eyes with a dreamy unguarded gaze",
+      brows: "thin high-arched brows with a dramatic peak",
+      nose: "petite button nose with a rounded soft tip",
+      lips_and_smile: "small heart-shaped lips with a closed dimpled smile",
+      hair: "waist-length straight platinum hair with a blunt fringe",
+      silhouette: "long straight curtain of hair over a wide boat neckline",
+      signature: "twin braided temple strands and a teardrop mole under the right eye",
+    },
+  ] as const;
+  const identity = identities[index % identities.length]!;
+  Object.assign(dna.face_identity, {
+    facial_geometry: identity.facial_geometry,
+    eyes_and_gaze: identity.eyes_and_gaze,
+    brows: identity.brows,
+    nose: identity.nose,
+    lips_and_smile: identity.lips_and_smile,
+    hair: identity.hair,
+  });
+  dna.recall_stack.silhouette = identity.silhouette;
+  dna.anti_clone_checks.signature_difference = identity.signature;
+  return {
+    candidate_id: candidateId,
+    character_id: "char-1",
+    visual_identity_summary: `${identity.facial_geometry}; ${identity.signature}`,
+    character_design_dna: dna,
+    primary_portrait_prompt:
+      `solo cinematic vertical portrait of Alice, strikingly beautiful leading-lady, ` +
+      `camera-ready emotionally magnetic beauty, ${identity.facial_geometry}, ${identity.eyes_and_gaze}, ` +
+      `${identity.hair}, approachable heroic warmth, premium romantic-drama still, 85mm lens, 9:16`,
+    negative_prompt:
+      "advertising model, catalog pose, influencer portrait, predatory gaze, elegant menace, villain energy, extra people",
+  };
+}
+
+function validPortraitCandidateBatch(count = 3) {
+  return {
+    contract_version: 1,
+    portrait_candidate_batch: {
+      character_id: "char-1",
+      shared_visual_language:
+        "premium cinematic vertical-drama still, emotionally magnetic casting, natural skin, 85mm lens, warm rim light",
+      candidates: Array.from({ length: count }, (_, index) =>
+        validPortraitCandidate(`candidate-${index + 1}`, index),
+      ),
+    },
+    plain_text_summary: "Three equally compelling but visibly different leading-lady identities.",
   };
 }
 
@@ -494,6 +624,504 @@ describe("detectChildGenderHint", () => {
   });
 });
 
+describe("findLeadPromptQualityIssues", () => {
+  it("flags an under-cast male lead even when the prompt says merely ruggedly handsome", () => {
+    const character = validCharacter("char-1", "lead_male");
+    character.primary_portrait_prompt =
+      "cinematic portrait of a ruggedly handsome former bodyguard, stoic, dark t-shirt, high-contrast cinematic lighting";
+    character.turnaround_prompt = character.primary_portrait_prompt;
+    character.full_body_prompt = character.primary_portrait_prompt;
+    character.expression_sheet_prompt = character.primary_portrait_prompt;
+    character.outfit_sheet_prompt = character.primary_portrait_prompt;
+    character.negative_prompt = "plastic skin, no other people";
+
+    const issues = findLeadPromptQualityIssues(character, "lead_male");
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "primary_portrait_prompt" }),
+        expect.objectContaining({ field: "negative_prompt" }),
+      ]),
+    );
+  });
+
+  it("flags heroine prompts that combine thriller/villain grammar with insufficient emotional access", () => {
+    const character = validCharacter();
+    const drifted =
+      "cinematic portrait of a beautiful CEO, sharp observant eyes, micro-frown, high-contrast thriller color grade, elegant menace";
+    character.primary_portrait_prompt = drifted;
+    character.turnaround_prompt = drifted;
+    character.full_body_prompt = drifted;
+    character.expression_sheet_prompt = drifted;
+    character.outfit_sheet_prompt = drifted;
+
+    const issues = findLeadPromptQualityIssues(character, "lead_female");
+
+    expect(issues.some((issue) => /villain-coded/i.test(issue.message))).toBe(true);
+  });
+
+  it("does not apply the lead beauty floor to a supporting character", () => {
+    const character = validCharacter("char-1", "support");
+    expect(findLeadPromptQualityIssues(character, "support")).toEqual([]);
+  });
+
+  it("allows a de-glammed lead in costume/full-body/outfit sheets as long as the primary portrait stays camera-ready (2026-07-14 beggar-outfit case)", () => {
+    const character = validCharacter("char-1", "lead_male");
+    // Primary portrait keeps the camera-ready lead beauty language (unchanged
+    // from validCharacter). The costume/full-body/outfit/expression sheets show
+    // the requested de-glam beggar look with NO beauty adjectives — heroic and
+    // sympathetic (not villain-coded), just poor/worn.
+    const beggarSheet =
+      "full-body shot of the weary former bodyguard in tattered beggar rags, torn filthy layered clothes, " +
+      "frayed hems, hunched exhausted posture, kind sorrowful open expression, muddy alley, overcast light, 85mm, 9:16";
+    character.turnaround_prompt = beggarSheet;
+    character.full_body_prompt = beggarSheet;
+    character.expression_sheet_prompt = beggarSheet;
+    character.outfit_sheet_prompt = beggarSheet;
+
+    const issues = findLeadPromptQualityIssues(character, "lead_male");
+
+    // The de-glam sheets no longer raise a "camera-ready lead beauty" issue...
+    expect(issues.some((issue) => /camera-ready lead beauty/i.test(issue.message))).toBe(false);
+    // ...and no villain-coded flag either (the look is sympathetic, not menacing).
+    expect(issues.some((issue) => /villain-coded/i.test(issue.message))).toBe(false);
+  });
+
+  it("still flags an under-cast PRIMARY portrait even when the other sheets are de-glammed", () => {
+    const character = validCharacter("char-1", "lead_male");
+    // The face anchor itself is plain/ordinary — this must still be caught.
+    character.primary_portrait_prompt =
+      "cinematic portrait of an ordinary tired man, plain features, dark t-shirt, overcast light";
+
+    const issues = findLeadPromptQualityIssues(character, "lead_male");
+
+    expect(
+      issues.some(
+        (issue) =>
+          issue.field === "primary_portrait_prompt" &&
+          /camera-ready lead beauty/i.test(issue.message),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("portrait candidate batch contract", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({
+      metadata: {} as any,
+      content: "System prompt body",
+    });
+  });
+
+  it("serializes the requested 1-5 count and the visible-casting output contract", () => {
+    const prompt = buildCharacterPortraitCandidatesUserPrompt({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+      portraitCandidateCount: 3,
+    });
+
+    expect(prompt).toContain('"portrait_candidate_count": 3');
+    expect(prompt).toContain("portrait_candidate_batch");
+    expect(prompt).toMatch(/different people|different faces/i);
+    expect(prompt).toMatch(/same premium visual language/i);
+  });
+
+  it("enumerates the complete required Character DNA key contract in candidate prompts", () => {
+    const prompt = buildCharacterPortraitCandidatesUserPrompt({
+      ...baseParams({ role: "พระเอก", roleTier: "lead_male" }),
+      portraitCandidateCount: 3,
+    });
+
+    for (const key of [
+      "series_dna_alignment",
+      "costume_grammar",
+      "public_mask",
+      "hidden_truth",
+      "narrative_promise",
+      "attractive_contradiction",
+      "forbidden_drift",
+      "anti_clone_checks",
+      "comparison_evidence",
+    ]) {
+      expect(prompt).toContain(key);
+    }
+    expect(prompt).toContain(
+      "distinct_facial_dimensions, distinct_hair_dimensions, distinct_body_language_dimensions, signature_difference",
+    );
+    expect(prompt).toMatch(/never use an empty object or omit a required DNA key/i);
+  });
+
+  it("accepts candidates that differ across face geometry, hair, and signature identity", () => {
+    expect(
+      findPortraitCandidateDiversityIssues(
+        validPortraitCandidateBatch(3).portrait_candidate_batch.candidates,
+      ),
+    ).toEqual([]);
+  });
+
+  it("rejects clone-like candidates even when prompt wording and candidate ids differ", () => {
+    const first = validPortraitCandidate("candidate-1", 0);
+    const clone = {
+      ...structuredClone(first),
+      candidate_id: "candidate-2",
+      primary_portrait_prompt: `${first.primary_portrait_prompt}, alternate office background`,
+    };
+
+    expect(findPortraitCandidateDiversityIssues([first, clone])).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          candidateIds: ["candidate-1", "candidate-2"],
+          message: expect.stringMatching(/3 of 5 facial dimensions/i),
+        }),
+      ]),
+    );
+  });
+
+  it("generates all candidates in one LLM call and deducts prompt credits once", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecute.mockResolvedValue(successResponse(validPortraitCandidateBatch(3)));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+      portraitCandidateCount: 3,
+    });
+
+    expect(result.candidates).toHaveLength(3);
+    expect(result.candidates.map((candidate) => candidate.candidateId)).toEqual([
+      "candidate-1",
+      "candidate-2",
+      "candidate-3",
+    ]);
+    expect(result.candidates[0]?.visualBibleSnapshot.designDna.faceIdentity.hair).toContain(
+      "braid",
+    );
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("coerces a batch where every candidate mis-reports candidate_direction_count as the batch size (5) back to 3", async () => {
+    // Exact 2026-07-14 user bug: requesting 5 portrait faces made the model
+    // report `candidate_direction_count: 5` for all 5 candidates, and the strict
+    // `z.literal(3)` failed the whole batch ("Invalid literal value, expected 3"
+    // for candidates 0..4). 3 faces coincidentally matched the literal and always
+    // passed. The count is a fixed methodology constant, so it must coerce to 3.
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const batch = structuredClone(validPortraitCandidateBatch(5));
+    for (const candidate of batch.portrait_candidate_batch.candidates) {
+      (candidate.character_design_dna.comparison_evidence
+        .candidate_direction_count as number) = 5;
+    }
+    mockExecute.mockResolvedValue(successResponse(batch));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+      portraitCandidateCount: 5,
+    });
+
+    expect(result.candidates).toHaveLength(5);
+    for (const candidate of result.candidates) {
+      expect(
+        candidate.visualBibleSnapshot.designDna.comparisonEvidence.candidateDirectionCount,
+      ).toBe(3);
+    }
+    expect(mockExecute).toHaveBeenCalledTimes(1); // no wasted schema retry
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts the lean candidate contract without plain_text_summary", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const { plain_text_summary: _omitted, ...leanBatch } = validPortraitCandidateBatch(2);
+    mockExecute.mockResolvedValue(successResponse(leanBatch));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+      portraitCandidateCount: 2,
+    });
+
+    expect(result.candidates).toHaveLength(2);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries an incomplete candidate DNA response with the missing-key validation guidance", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const incomplete = structuredClone(validPortraitCandidateBatch(2));
+    delete (incomplete.portrait_candidate_batch.candidates[0]!.character_design_dna as any)
+      .series_dna_alignment;
+    delete (incomplete.portrait_candidate_batch.candidates[0]!.character_design_dna as any)
+      .anti_clone_checks;
+    mockExecute
+      .mockResolvedValueOnce(successResponse(incomplete))
+      .mockResolvedValueOnce(successResponse(validPortraitCandidateBatch(2)));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+      portraitCandidateCount: 2,
+    });
+
+    expect(result.candidates).toHaveLength(2);
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    const retryCall = mockExecute.mock.calls[1][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(retryCall.messages.map((message) => message.content).join("\n")).toContain(
+      "series_dna_alignment",
+    );
+    expect(retryCall.messages.map((message) => message.content).join("\n")).toContain(
+      "anti_clone_checks",
+    );
+  });
+
+  it("permits an explicit legacy-DNA recast without leaking the old face lock into the prompt", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const context = partialHistoryContext();
+    context.approvedDesignDna = buildCharacterVisualBibleSnapshot({
+      character: validCharacter(),
+      model: "legacy-face-marker-model",
+      createdAt: "2026-07-13T00:00:00.000Z",
+    }).designDna;
+    context.approvedDesignDna.faceIdentity.hair = "LEGACY_FACE_LOCK_MARKER";
+    mockExecute.mockResolvedValue(successResponse(validPortraitCandidateBatch(2)));
+
+    await generateCharacterPortraitCandidates({
+      ...baseParams({
+        role: "นางเอก",
+        roleTier: "lead_female",
+        characterDesignContext: context,
+      }),
+      portraitCandidateCount: 2,
+      allowLegacyApprovedDesignDnaReplacement: true,
+    });
+
+    const callArgs = mockExecute.mock.calls[0][0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    expect(callArgs.messages.map((message) => message.content).join("\n")).not.toContain(
+      "LEGACY_FACE_LOCK_MARKER",
+    );
+  });
+
+  // 2026-07-14 regression — ticket #48, trace D7aSElXewya2W7VkTntQP: the
+  // model is instructed the input `role_tier` is an authoritative fact and
+  // echoes it back verbatim, but a character's STORED role tier is the
+  // canonical fine-grained `RoleTier` (narrativeRole.ts), not this module's
+  // own coarse output vocabulary — so a canonical echo like
+  // `second_lead_male` / `villain_male_hidden` used to hard-fail schema
+  // validation (`Invalid enum value`) and, even if the enum were widened,
+  // would still fail `isCompatibleReportedRoleTier`'s coarse comparison.
+  describe("canonical fine-grained role_tier echoes (ticket #48)", () => {
+    it("accepts a candidate that echoes the canonical second_lead_male tier for a second_lead_male character", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      const character = validCharacter("char-1", "lead_male");
+      (character.character_design_dna as any).role_tier = "second_lead_male";
+      mockExecute.mockResolvedValue(
+        successResponse({
+          contract_version: 1,
+          portrait_candidate_batch: {
+            character_id: "char-1",
+            shared_visual_language:
+              "premium cinematic vertical-drama still, natural skin, 85mm lens",
+            candidates: [
+              {
+                candidate_id: "candidate-1",
+                character_id: character.character_id,
+                visual_identity_summary: character.visual_identity_summary,
+                character_design_dna: character.character_design_dna,
+                primary_portrait_prompt: character.primary_portrait_prompt,
+                negative_prompt: character.negative_prompt,
+              },
+            ],
+          },
+        }),
+      );
+
+      const result = await generateCharacterPortraitCandidates({
+        ...baseParams({ role: "รองพระเอก", roleTier: "second_lead_male" }),
+        portraitCandidateCount: 1,
+      });
+
+      expect(result.candidates).toHaveLength(1);
+      expect(mockExecute).toHaveBeenCalledTimes(1); // no schema-validation retry
+    });
+
+    // Regression — bug #65, trace qhBfZtjVm-lbG9W7uxaQ1: a `second_lead_male`
+    // candidate scored `pass` WITHOUT structured history used to 500 the whole
+    // batch. `mapCharacterDesignDna` folded `second_lead_male` -> `lead_male`
+    // (the compatibility prompt bucket), which then tripped the schema's
+    // primary-adult-lead "structured history" gate — even though the DTO's own
+    // coarse vocabulary has a distinct, ungated `second_lead` value. It now maps
+    // to `second_lead` and the batch succeeds untouched.
+    it("does not 500 a second_lead candidate scored pass without structured history (bug #65) — maps to the ungated second_lead tier", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      const character = validCharacter("char-1", "lead_male");
+      (character.character_design_dna as any).role_tier = "second_lead_male";
+      character.character_design_dna.scores.threshold_status = "pass";
+      character.character_design_dna.comparison_evidence = {
+        candidate_direction_count: 3,
+        current_cast_compared: 1,
+        recent_series_compared: 1,
+        prior_lead_dna_compared: 0,
+        history_completeness: "none",
+      };
+      mockExecute.mockResolvedValue(
+        successResponse({
+          contract_version: 1,
+          portrait_candidate_batch: {
+            character_id: "char-1",
+            shared_visual_language:
+              "premium cinematic vertical-drama still, natural skin, 85mm lens",
+            candidates: [
+              {
+                candidate_id: "candidate-1",
+                character_id: character.character_id,
+                visual_identity_summary: character.visual_identity_summary,
+                character_design_dna: character.character_design_dna,
+                primary_portrait_prompt: character.primary_portrait_prompt,
+                negative_prompt: character.negative_prompt,
+              },
+            ],
+          },
+        }),
+      );
+
+      const result = await generateCharacterPortraitCandidates({
+        ...baseParams({ role: "รองพระเอก", roleTier: "second_lead_male" }),
+        portraitCandidateCount: 1,
+      });
+
+      expect(result.candidates).toHaveLength(1);
+      expect(result.candidates[0]?.visualBibleSnapshot.designDna.roleTier).toBe("second_lead");
+      // A second lead is NOT an adult lead for the gate → status left untouched.
+      expect(result.candidates[0]?.visualBibleSnapshot.designDna.scores.thresholdStatus).toBe(
+        "pass",
+      );
+      expect(mockExecute).toHaveBeenCalledTimes(1); // no schema-validation retry/500
+    });
+
+    // Same root cause, broader class: a TRUE adult lead scored `pass` without
+    // structured history also used to hard-fail the batch parse (the graceful
+    // pass->provisional coercion lived only in the later reconcile path). It is
+    // now coerced in the batch path too — candidate returned, labeled provisional.
+    it("coerces a true adult lead scored pass without structured history to provisional instead of 500-ing the batch", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      const character = validCharacter("char-1", "lead_male");
+      character.character_design_dna.scores.threshold_status = "pass";
+      character.character_design_dna.comparison_evidence = {
+        candidate_direction_count: 3,
+        current_cast_compared: 1,
+        recent_series_compared: 1,
+        prior_lead_dna_compared: 0,
+        history_completeness: "partial",
+      };
+      mockExecute.mockResolvedValue(
+        successResponse({
+          contract_version: 1,
+          portrait_candidate_batch: {
+            character_id: "char-1",
+            shared_visual_language:
+              "premium cinematic vertical-drama still, natural skin, 85mm lens",
+            candidates: [
+              {
+                candidate_id: "candidate-1",
+                character_id: character.character_id,
+                visual_identity_summary: character.visual_identity_summary,
+                character_design_dna: character.character_design_dna,
+                primary_portrait_prompt: character.primary_portrait_prompt,
+                negative_prompt: character.negative_prompt,
+              },
+            ],
+          },
+        }),
+      );
+
+      const result = await generateCharacterPortraitCandidates({
+        ...baseParams({ role: "พระเอก", roleTier: "lead_male" }),
+        portraitCandidateCount: 1,
+      });
+
+      expect(result.candidates).toHaveLength(1);
+      expect(result.candidates[0]?.visualBibleSnapshot.designDna.roleTier).toBe("lead_male");
+      expect(result.candidates[0]?.visualBibleSnapshot.designDna.scores.thresholdStatus).toBe(
+        "provisional",
+      );
+      expect(mockExecute).toHaveBeenCalledTimes(1); // no schema-validation retry/500
+    });
+
+    it("accepts a candidate that echoes the canonical villain_male_hidden tier for a villain_male character", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      const character = validCharacter("char-1", "villain_male");
+      (character.character_design_dna as any).role_tier = "villain_male_hidden";
+      mockExecute.mockResolvedValue(
+        successResponse({
+          contract_version: 1,
+          portrait_candidate_batch: {
+            character_id: "char-1",
+            shared_visual_language:
+              "premium cinematic vertical-drama still, natural skin, 85mm lens",
+            candidates: [
+              {
+                candidate_id: "candidate-1",
+                character_id: character.character_id,
+                visual_identity_summary: character.visual_identity_summary,
+                character_design_dna: character.character_design_dna,
+                primary_portrait_prompt: character.primary_portrait_prompt,
+                negative_prompt: character.negative_prompt,
+              },
+            ],
+          },
+        }),
+      );
+
+      const result = await generateCharacterPortraitCandidates({
+        ...baseParams({ role: "ตัวร้ายชาย", roleTier: "villain_male_hidden" }),
+        portraitCandidateCount: 1,
+      });
+
+      expect(result.candidates).toHaveLength(1);
+      expect(mockExecute).toHaveBeenCalledTimes(1); // no schema-validation retry
+    });
+
+    it("still rejects a genuinely incompatible role tier (expected lead_female, reported villain_male_open)", async () => {
+      mockHasEnoughCredits.mockResolvedValue(true);
+      const character = validCharacter("char-1", "lead_female");
+      (character.character_design_dna as any).role_tier = "villain_male_open";
+      mockExecute.mockResolvedValue(
+        successResponse({
+          contract_version: 1,
+          portrait_candidate_batch: {
+            character_id: "char-1",
+            shared_visual_language:
+              "premium cinematic vertical-drama still, natural skin, 85mm lens",
+            candidates: [
+              {
+                candidate_id: "candidate-1",
+                character_id: character.character_id,
+                visual_identity_summary: character.visual_identity_summary,
+                character_design_dna: character.character_design_dna,
+                primary_portrait_prompt: character.primary_portrait_prompt,
+                negative_prompt: character.negative_prompt,
+              },
+            ],
+          },
+        }),
+      );
+
+      await expect(
+        generateCharacterPortraitCandidates({
+          ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+          portraitCandidateCount: 1,
+        }),
+      ).rejects.toThrow(VdSchemaValidationError);
+      expect(mockDeductCredits).not.toHaveBeenCalled();
+    });
+  });
+});
+
 // `getRoleTierAppearanceDirective`/`getRoleTierNegativeTerms` were removed
 // (vertical-drama-skill-first-architecture plan, Phase 2, item 1) — the
 // TypeScript `ROLE_TIER_DIRECTIVES`/`ROLE_TIER_NEGATIVE_TERMS` tables they
@@ -520,6 +1148,25 @@ describe("generateCharacterVisualPrompts", () => {
     });
   });
 
+  it("repairs omitted non-identity envelope fields without weakening character validation", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const {
+      plain_text_summary: _summary,
+      storyboard_attachment_manifest: _manifest,
+      ...essentialOutput
+    } = validOutput();
+    mockExecute.mockResolvedValue(successResponse(essentialOutput));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(result.raw.plain_text_summary).toContain("Alice");
+    expect(result.raw.storyboard_attachment_manifest).toEqual({});
+    expect(result.visualBibleSnapshot.designDna.faceIdentity.hair).toBe(
+      validCharacter().character_design_dna.face_identity.hair,
+    );
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
   it("happy path: valid LLM response projects portrait/negative prompt, deducts credits once", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockExecute.mockResolvedValue(successResponse(validOutput()));
@@ -527,7 +1174,7 @@ describe("generateCharacterVisualPrompts", () => {
     const result = await generateCharacterVisualPrompts(baseParams());
 
     expect(result.portraitPrompt).toBe(
-      "A portrait of Alice, tall with dark hair, wearing a trench coat",
+      "Cinematic portrait of Alice, strikingly beautiful leading-lady, harmonious facial proportions, camera-ready emotionally magnetic beauty, tall with dark hair, wearing a trench coat",
     );
     expect(result.negativePrompt).toContain("blurry, low quality");
     expect(result.negativePrompt).toContain("no other people");
@@ -542,6 +1189,164 @@ describe("generateCharacterVisualPrompts", () => {
         metadata: expect.objectContaining({ characterId: 7, seriesId: 42 }),
       }),
     );
+  });
+
+  it("retries a heroine/hero prompt that undershoots star beauty or drifts into villain grammar", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const drifted = validCharacter("char-1", "lead_male");
+    const driftedPrompt =
+      "cinematic vertical portrait of a ruggedly handsome former military bodyguard, stoic and quietly intense, sharp predatory gaze, high-contrast thriller color grade, dark t-shirt, 9:16";
+    drifted.primary_portrait_prompt = driftedPrompt;
+    drifted.turnaround_prompt = driftedPrompt;
+    drifted.full_body_prompt = driftedPrompt;
+    drifted.expression_sheet_prompt = driftedPrompt;
+    drifted.outfit_sheet_prompt = driftedPrompt;
+    drifted.negative_prompt = "plastic skin, no other people";
+    const corrected = validCharacter("char-1", "lead_male");
+    mockExecute
+      .mockResolvedValueOnce(successResponse(validOutput([drifted])))
+      .mockResolvedValueOnce(successResponse(validOutput([corrected])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ role: "พระเอก", description: "อดีตบอดี้การ์ดผู้ปกป้องครอบครัว" }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(result.portraitPrompt).toContain("exceptionally handsome leading-man");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the female-lead QC repair guidance back to the skill after the screenshot-shaped failure", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const drifted = validCharacter("char-1", "lead_female");
+    const driftedPrompt =
+      "cinematic vertical portrait of พิมพ์ดาว, beautiful CEO, sharp observant almond eyes, micro-frown tension, high-contrast thriller color grade, elegant menace, midnight blue blazer, 9:16";
+    drifted.primary_portrait_prompt = driftedPrompt;
+    drifted.turnaround_prompt = driftedPrompt;
+    drifted.full_body_prompt = driftedPrompt;
+    drifted.expression_sheet_prompt = driftedPrompt;
+    drifted.outfit_sheet_prompt = driftedPrompt;
+    drifted.negative_prompt = "plastic skin, no other people";
+    const corrected = validCharacter("char-1", "lead_female");
+    mockExecute
+      .mockResolvedValueOnce(successResponse(validOutput([drifted])))
+      .mockResolvedValueOnce(successResponse(validOutput([corrected])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ role: "นางเอก", name: "พิมพ์ดาว" }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    const retryUserMessage = mockExecute.mock.calls[1][0].messages.find(
+      (message: { role: string }) => message.role === "user",
+    );
+    expect(retryUserMessage.content).toContain("villain-coded visual grammar");
+    expect(retryUserMessage.content).toContain("camera-ready lead beauty");
+    expect(result.portraitPrompt).toContain("strikingly beautiful leading-lady");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("canonicalizes known camelCase Character DNA aliases without retrying or inventing values", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const character = validCharacter() as any;
+    character.character_design_dna.bodyLanguage = {
+      posture: "upright without rigidity",
+      gesturePattern: "hands stay still until challenged",
+      movementRhythm: "measured then suddenly decisive",
+      tensionTell: "thumb presses against index finger",
+    };
+    delete character.character_design_dna.body_language;
+    character.character_design_dna.recallStack = {
+      face: "higher left brow and delayed blink",
+      silhouette: "long trench over narrow trousers",
+      color: "ink navy with oxidized gold",
+      behavior: "still hands before decisive movement",
+      emotionalHook: "competence shielding grief",
+    };
+    delete character.character_design_dna.recall_stack;
+    character.character_design_dna.narrativePromise =
+      character.character_design_dna.narrative_promise;
+    delete character.character_design_dna.narrative_promise;
+    character.character_design_dna.attractiveContradiction =
+      character.character_design_dna.attractive_contradiction;
+    delete character.character_design_dna.attractive_contradiction;
+    character.character_design_dna.forbiddenDrift =
+      character.character_design_dna.forbidden_drift;
+    delete character.character_design_dna.forbidden_drift;
+    mockExecute.mockResolvedValue(successResponse(validOutput([character])));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(result.visualBibleSnapshot.designDna.bodyLanguage).toEqual({
+      posture: "upright without rigidity",
+      gesturePattern: "hands stay still until challenged",
+      movementRhythm: "measured then suddenly decisive",
+      tensionTell: "thumb presses against index finger",
+    });
+    expect(result.visualBibleSnapshot.designDna.recallStack.emotionalHook).toBe(
+      "competence shielding grief",
+    );
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "skill_execute",
+        metadata: expect.objectContaining({
+          operation: "normalize_character_dna_keys",
+          characterKey: "char-1",
+          corrections: expect.arrayContaining([
+            expect.objectContaining({
+              alias: "movementRhythm",
+              canonical: "movement_rhythm",
+              collision: false,
+            }),
+            expect.objectContaining({
+              alias: "emotionalHook",
+              canonical: "emotional_hook",
+              collision: false,
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("keeps canonical snake_case values on alias collisions and does not mutate raw output", () => {
+    const raw = validOutput() as any;
+    raw.characters[0].character_design_dna.body_language.movementRhythm = "alias value";
+    const canonicalValue = raw.characters[0].character_design_dna.body_language.movement_rhythm;
+
+    const normalized = normalizeCharacterVisualBibleDnaKeys(raw);
+    const output = normalized.output as ReturnType<typeof validOutput>;
+
+    expect(output.characters[0].character_design_dna.body_language.movement_rhythm).toBe(
+      canonicalValue,
+    );
+    expect(raw.characters[0].character_design_dna.body_language.movementRhythm).toBe(
+      "alias value",
+    );
+    expect(normalized.corrections).toContainEqual(
+      expect.objectContaining({
+        alias: "movementRhythm",
+        canonical: "movement_rhythm",
+        collision: true,
+      }),
+    );
+  });
+
+  it("does not synthesize a genuinely missing creative Character DNA field", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const character = validCharacter() as any;
+    delete character.character_design_dna.body_language.movement_rhythm;
+    const response = successResponse(validOutput([character]));
+    mockExecute.mockResolvedValue(response);
+
+    await expect(generateCharacterVisualPrompts(baseParams())).rejects.toThrow(
+      /movement_rhythm.*Required/,
+    );
+    // 1 initial + VD_SCHEMA_MAX_RETRIES (2) corrective retries before it throws.
+    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
   it("includes the character's description (age/gender/core traits) in the LLM user prompt", async () => {
@@ -610,7 +1415,7 @@ describe("generateCharacterVisualPrompts", () => {
     const callArgs = mockExecute.mock.calls[0][0] as { messages: Array<{ role: string; content: string }> };
     const userMessage = callArgs.messages.find((m) => m.role === "user")!.content;
     expect(userMessage).toContain('"role": "พระเอก"');
-    expect(userMessage).toMatch(/Derive this character's role\s+tier/i);
+    expect(userMessage).toMatch(/canonical narrative_role and\s+role_tier fields are authoritative/i);
   });
 
   it("does NOT inject the solo-portrait rule or cinematic-language guidance into the LLM user prompt (Phase 2 item 2 — relocated to skill.md)", async () => {
@@ -657,13 +1462,17 @@ describe("generateCharacterVisualPrompts", () => {
     const result = await generateCharacterVisualPrompts(baseParams());
 
     expect(result.turnaroundPrompt).toBe(
-      "360 turnaround of Alice, consistent identity anchors, tall with dark hair",
+      "360 turnaround of Alice, strikingly beautiful leading-lady, harmonious facial proportions, camera-ready emotionally magnetic beauty, consistent identity anchors, tall with dark hair",
     );
     expect(result.fullBodyPrompt).toBe(
-      "Full body of Alice, standing pose, head to toe visible, trench coat",
+      "Full body of Alice, strikingly beautiful leading-lady, harmonious facial proportions, camera-ready emotionally magnetic beauty, standing pose, head to toe visible, trench coat",
     );
-    expect(result.expressionSheetPrompt).toBe("Expression sheet of Alice: neutral, happy, surprised, sad");
-    expect(result.outfitSheetPrompt).toBe("Outfit sheet of Alice wearing her signature trench coat");
+    expect(result.expressionSheetPrompt).toBe(
+      "Expression sheet of Alice, strikingly beautiful leading-lady, harmonious facial proportions, camera-ready emotionally magnetic beauty: neutral, happy, surprised, sad",
+    );
+    expect(result.outfitSheetPrompt).toBe(
+      "Outfit sheet of Alice, strikingly beautiful leading-lady, harmonious facial proportions, camera-ready emotionally magnetic beauty, wearing her signature trench coat",
+    );
   });
 
   it.each([
@@ -732,16 +1541,132 @@ describe("generateCharacterVisualPrompts", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
-  it("does not let the skill falsify server-derived comparison counts or history completeness", async () => {
+  it("normalizes server-derived comparison evidence without retrying the otherwise valid response", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
-    mockExecute.mockResolvedValue(successResponse(validOutput()));
+    const character = validCharacter();
+    character.character_design_dna.comparison_evidence = {
+      candidate_direction_count: 3,
+      current_cast_compared: 1,
+      recent_series_compared: 1,
+      prior_lead_dna_compared: 5,
+      history_completeness: "structured",
+    };
+    mockExecute.mockResolvedValue(successResponse(validOutput([character])));
 
-    await expect(
-      generateCharacterVisualPrompts(
-        baseParams({ characterDesignContext: partialHistoryContext() }),
-      ),
-    ).rejects.toThrow(VdSchemaValidationError);
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ characterDesignContext: partialHistoryContext() }),
+    );
+
+    expect(result.visualBibleSnapshot.designDna.comparisonEvidence).toEqual({
+      candidateDirectionCount: 3,
+      currentCastCompared: 1,
+      recentSeriesCompared: 1,
+      priorLeadDnaCompared: 0,
+      historyCompleteness: "partial",
+    });
+    expect(result.visualBibleSnapshot.designDna.scores.thresholdStatus).toBe("provisional");
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "skill_execute",
+        metadata: expect.objectContaining({
+          operation: "normalize_character_comparison_evidence",
+          seriesId: 42,
+          characterKey: "char-1",
+          corrections: [
+            {
+              field: "prior_lead_dna_compared",
+              reported: 5,
+              authoritative: 0,
+            },
+            {
+              field: "history_completeness",
+              reported: "structured",
+              authoritative: "partial",
+            },
+            {
+              field: "threshold_status",
+              reported: "pass",
+              authoritative: "provisional",
+            },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it("coerces a mis-reported candidate direction count back to the canonical 3 instead of hard-failing", async () => {
+    // Regression for the 2026-07-14 "5 faces errors, 3 always passes" bug: when
+    // a portrait batch of 5 is requested the model reports the batch size (5) for
+    // this fixed methodology constant. A strict `z.literal(3)` hard-failed the
+    // whole generation; now a mis-reported value coerces to the canonical 3.
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const character = validCharacter();
+    (character.character_design_dna.comparison_evidence.candidate_direction_count as number) = 5;
+    mockExecute.mockResolvedValue(successResponse(validOutput([character])));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(
+      result.visualBibleSnapshot.designDna.comparisonEvidence.candidateDirectionCount,
+    ).toBe(3);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps normalization immutable and never promotes a structured-history status", () => {
+    const character = validCharacter();
+    character.character_design_dna.scores.threshold_status = "provisional";
+    const raw = validOutput([character]);
+
+    const result = normalizeCharacterVisualBibleAuthoritativeEvidence(raw, "char-1", {
+      candidateDirectionCount: 3,
+      currentCastCompared: 6,
+      recentSeriesCompared: 4,
+      priorLeadDnaCompared: 7,
+      historyCompleteness: "structured",
+    });
+    const normalizedCharacter = (result.output as ReturnType<typeof validOutput>).characters[0];
+
+    expect(normalizedCharacter.character_design_dna.scores.threshold_status).toBe("provisional");
+    expect(raw.characters[0].character_design_dna.scores.threshold_status).toBe("provisional");
+    expect(result.output).not.toBe(raw);
+    expect(result.corrections).toEqual([]);
+  });
+
+  it("preserves redesign_required while correcting partial-history evidence", () => {
+    const character = validCharacter();
+    character.character_design_dna.scores.threshold_status = "redesign_required";
+    const raw = validOutput([character]);
+
+    const result = normalizeCharacterVisualBibleAuthoritativeEvidence(raw, "char-1", {
+      candidateDirectionCount: 3,
+      currentCastCompared: 1,
+      recentSeriesCompared: 1,
+      priorLeadDnaCompared: 0,
+      historyCompleteness: "partial",
+    });
+    const normalizedCharacter = (result.output as ReturnType<typeof validOutput>).characters[0];
+
+    expect(normalizedCharacter.character_design_dna.scores.threshold_status).toBe(
+      "redesign_required",
+    );
+    expect(normalizedCharacter.character_design_dna.comparison_evidence).toEqual(
+      expect.objectContaining({
+        current_cast_compared: 1,
+        recent_series_compared: 1,
+        prior_lead_dna_compared: 0,
+        history_completeness: "partial",
+      }),
+    );
+    expect(raw.characters[0].character_design_dna.comparison_evidence).toEqual(
+      expect.objectContaining({
+        current_cast_compared: 6,
+        recent_series_compared: 4,
+        prior_lead_dna_compared: 7,
+        history_completeness: "structured",
+      }),
+    );
   });
 
   it("accepts comparison evidence when it exactly matches the bounded server context", async () => {
@@ -765,7 +1690,7 @@ describe("generateCharacterVisualPrompts", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps an adult lead provisional when fewer than three structured archive series exist", async () => {
+  it("downgrades an adult lead to provisional when structured archive history is unavailable", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     const character = validCharacter();
     character.character_design_dna.comparison_evidence = {
@@ -778,12 +1703,13 @@ describe("generateCharacterVisualPrompts", () => {
     character.character_design_dna.scores.threshold_status = "pass";
     mockExecute.mockResolvedValue(successResponse(validOutput([character])));
 
-    await expect(
-      generateCharacterVisualPrompts(
-        baseParams({ characterDesignContext: partialHistoryContext() }),
-      ),
-    ).rejects.toThrow(VdSchemaValidationError);
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ characterDesignContext: partialHistoryContext() }),
+    );
+
+    expect(result.visualBibleSnapshot.designDna.scores.thresholdStatus).toBe("provisional");
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("rejects identity drift when an approved Character DNA is already canonical", async () => {
@@ -816,6 +1742,37 @@ describe("generateCharacterVisualPrompts", () => {
       ),
     ).rejects.toThrow(VdSchemaValidationError);
     expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
+  it("allows a wardrobe change on an approved character without flagging identity drift (beggar-outfit variant)", async () => {
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const approvedCharacter = validCharacter();
+    const context = partialHistoryContext();
+    context.approvedDesignDna = buildCharacterVisualBibleSnapshot({
+      character: approvedCharacter,
+      model: "gpt-4o-mini",
+      createdAt: "2026-07-13T00:00:00.000Z",
+    }).designDna;
+    // Same identity (face/body/recall untouched) — ONLY the costume changes to
+    // the requested de-glam beggar wardrobe. Since `costume_grammar` is no longer
+    // part of the identity fingerprint, this must NOT trip the drift guard.
+    const variantCharacter = validCharacter();
+    variantCharacter.character_design_dna.costume_grammar =
+      "filthy tattered beggar rags, frayed hems, patched sackcloth layers, mud-caked and threadbare";
+    variantCharacter.character_design_dna.comparison_evidence = {
+      candidate_direction_count: 3,
+      current_cast_compared: 1,
+      recent_series_compared: 1,
+      prior_lead_dna_compared: 0,
+      history_completeness: "partial",
+    };
+    variantCharacter.character_design_dna.scores.threshold_status = "provisional";
+    mockExecute.mockResolvedValue(successResponse(validOutput([variantCharacter])));
+
+    await expect(
+      generateCharacterVisualPrompts(baseParams({ characterDesignContext: context })),
+    ).resolves.toEqual(expect.objectContaining({ portraitPrompt: expect.any(String) }));
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("passes bounded series, current-cast, and recent-lead evidence as structured facts", () => {
@@ -874,6 +1831,9 @@ describe("generateCharacterVisualPrompts", () => {
         },
       }),
     );
+    expect(prompt).toContain("OUTPUT KEY CONTRACT");
+    expect(prompt).toContain("must use snake_case");
+    expect(prompt).toContain("never copy camelCase");
 
     expect(prompt).toContain('"character_design_context"');
     expect(prompt).toContain("Bangkok legal underworld");

@@ -12,6 +12,7 @@
     "seasonArc",
     "tone",
     "cliffhangerStyle",
+    "creatorSummary",
     "characters",
     "visualBible",
     "mixRecipe",
@@ -49,12 +50,35 @@
       "type": "string",
       "minLength": 1
     },
+    "creatorSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "whatItIsAbout",
+        "protagonistAndGoal",
+        "conflictAndDiscovery",
+        "centralMystery",
+        "decisionNotes"
+      ],
+      "properties": {
+        "whatItIsAbout": { "type": "string", "minLength": 1, "maxLength": 700 },
+        "protagonistAndGoal": { "type": "string", "minLength": 1, "maxLength": 700 },
+        "conflictAndDiscovery": { "type": "string", "minLength": 1, "maxLength": 700 },
+        "centralMystery": { "type": "string", "minLength": 1, "maxLength": 700 },
+        "decisionNotes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "type": "string", "minLength": 1, "maxLength": 700 }
+        }
+      }
+    },
     "characters": {
       "type": "array",
       "minItems": 3,
       "items": {
         "type": "object",
-        "required": ["name", "role", "description"],
+        "required": ["name", "role", "narrativeRole", "roleTier", "occupation", "description"],
         "additionalProperties": true,
         "properties": {
           "name": {
@@ -66,6 +90,28 @@
             "minLength": 1
           },
           "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "narrativeRole": {
+            "type": "string",
+            "enum": ["protagonist", "co_protagonist", "antagonist", "secondary_lead", "supporting", "ensemble", "minor"]
+          },
+          "roleTier": {
+            "type": "string",
+            "enum": [
+              "lead_female", "lead_male", "lead_nonbinary", "lead_child_female", "lead_child_male",
+              "lead_teen_female", "lead_teen_male", "second_lead_female", "second_lead_male",
+              "villain_female_open", "villain_male_open", "villain_female_hidden", "villain_male_hidden",
+              "rival_female", "rival_male", "parent_mother", "parent_father", "elder_matriarch",
+              "elder_patriarch", "grandmother", "grandfather", "great_grandmother", "great_grandfather",
+              "student_primary_female", "student_primary_male", "student_lower_secondary_female",
+              "student_lower_secondary_male", "student_upper_secondary_female", "student_upper_secondary_male",
+              "university_female", "university_male", "intern_female", "intern_male", "support_memorable",
+              "background_character", "same_person_variant", "age_stage_variant", "twin_variant", "other"
+            ]
+          },
+          "occupation": {
             "type": "string",
             "minLength": 1
           }

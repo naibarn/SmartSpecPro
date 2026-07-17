@@ -252,8 +252,49 @@ describe("deriveVerticalDramaCapabilities", () => {
       expect(caps.maxReferenceImages).toBeUndefined();
     });
 
-    it("image models never set maxReferenceImages (only verticalDramaReady applies)", () => {
+    it("byte-identical: an image model with no configJson.maxReferenceImages signal still resolves to undefined (regression guard)", () => {
       const caps = deriveVerticalDramaCapabilities({ type: "image", aspectRatios: ["9:16"] });
+      expect(caps.maxReferenceImages).toBeUndefined();
+      expect(caps.verticalDramaReady).toBe(true);
+    });
+
+    it("byte-identical: an image model with an empty configJson still resolves maxReferenceImages to undefined", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: ["9:16"],
+        configJson: {},
+      });
+      expect(caps.maxReferenceImages).toBeUndefined();
+    });
+
+    it("latent-bug fix: an image model that DOES declare configJson.maxReferenceImages now surfaces it (previously always undefined)", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: ["9:16"],
+        configJson: { maxReferenceImages: 10 },
+      });
+      expect(caps.maxReferenceImages).toBe(10);
+      // verticalDramaReady logic is unchanged by this fix — still 9:16-only.
+      expect(caps.verticalDramaReady).toBe(true);
+    });
+
+    it("the static google-banana-2-lite catalog entry (configJson.maxReferenceImages: 10) now resolves a defined maxReferenceImages via deriveVerticalDramaCapabilities", () => {
+      const staticModel = getStaticModelById("google-banana-2-lite");
+      expect(staticModel?.configJson?.maxReferenceImages).toBe(10);
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: staticModel?.aspectRatios,
+        configJson: staticModel?.configJson,
+      });
+      expect(caps.maxReferenceImages).toBe(10);
+    });
+
+    it("treats a non-numeric configJson.maxReferenceImages on an image model as unknown (undefined), mirroring the video branch", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: ["9:16"],
+        configJson: { maxReferenceImages: "not-a-number" },
+      });
       expect(caps.maxReferenceImages).toBeUndefined();
     });
   });

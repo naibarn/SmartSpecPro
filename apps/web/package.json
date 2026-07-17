@@ -53,6 +53,7 @@
     "seed:smartaihub:intent-pages": "tsx scripts/seed-smartaihub-intent-pages.ts",
     "seed:smartaihub:extra": "tsx scripts/seed-extra-pages.ts",
     "backfill:credit-sources": "tsx scripts/backfill-credit-transaction-sources.ts",
+    "backfill:grok-native-audio": "tsx scripts/backfill-grok-native-audio.ts",
     "backfill:library-knowledge": "node --import tsx scripts/backfill-library-knowledge.ts",
     "verify:library-knowledge": "node --import tsx scripts/verify-library-knowledge-migrations.ts",
     "verify:auto-team-work-request": "tsx scripts/verify-auto-team-work-request-readiness.ts",

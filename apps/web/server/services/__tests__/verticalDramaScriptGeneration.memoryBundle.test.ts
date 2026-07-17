@@ -194,7 +194,8 @@ describe("generateEpisodeScript — truncated-JSON retry (shares executeJsonPlan
 
     await expect(generateEpisodeScript(baseParams())).rejects.toThrow();
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(2);
+    // 1 initial + VD_SCHEMA_MAX_RETRIES (2) corrective retries
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });

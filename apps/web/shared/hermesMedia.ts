@@ -401,6 +401,16 @@ export function maskTokenLike(value: string | null | undefined): string {
 export const HERMES_DEVICE_CODE_EVENT_TYPE = "hermes_device_code" as const;
 export const HERMES_AUTHORIZED_EVENT_TYPE = "hermes_authorized" as const;
 export const HERMES_CONNECTION_SETTLED_EVENT_TYPE = "hermes_connection_settled" as const;
+/** Section 12 (code review fix) — durable, DB-level idempotency marker for
+ *  `recordHermesUsage` (`hermesMediaObservability.ts`), independent of the
+ *  Redis `hermes:usage:recorded:<jobId>` key: a `worker_job_events` row of
+ *  this type is checked BEFORE inserting a `provider_usage_log` row, so a
+ *  Redis outage during the (up to ~60s) window between a job's completion
+ *  and the sweep's next tick degrades to "usage delayed" rather than
+ *  "usage duplicated" — not a full atomic guarantee (no unique DB
+ *  constraint backs this without a migration; see the doc comment on
+ *  `recordHermesUsage`), but a real, durable second gate. */
+export const HERMES_MEDIA_USAGE_RECORDED_EVENT_TYPE = "hermes_media_usage_recorded" as const;
 
 export const hermesDeviceCodeEventPayloadSchema = z
   .object({

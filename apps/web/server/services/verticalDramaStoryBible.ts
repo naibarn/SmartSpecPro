@@ -52,6 +52,15 @@ import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+import {
+  lenientNarrativeRoleSchema,
+  lenientRoleTierSchema,
+  normalizeLegacyRole,
+  NARRATIVE_ROLE_VALUES,
+  ROLE_TIER_VALUES,
+  type NarrativeRole,
+  type RoleTier,
+} from "@shared/verticalDramaSeries/narrativeRole";
 /**
  * Series-level audience age rating (Phase 1 of a 2-phase feature — later
  * phases thread it into per-episode stages). Imported directly from its own
@@ -65,6 +74,21 @@ import {
   renderAudienceAgeRatingBlock,
   type AudienceAgeRating,
 } from "@shared/verticalDramaSeries/audienceAgeRating";
+/**
+ * Series memory (`planning/vd-series-memory-and-lineage/plan.md` Stage
+ * 1.2/1.3) — `resolveEpisodeMemoryBlock` turns each drafted episode's
+ * OPTIONAL raw `episode_memory` LLM value into a trustworthy
+ * `VdEpisodeMemory`, tolerantly (never throws — see that function's own doc
+ * comment). Called from `extractDramaturgyStructureFields` below, the ONE
+ * shared choke point every deep-draft construction site (standard chunk
+ * loop, premium gate/revise/sweep) already routes through, so this feature
+ * needs no other touch point in this file's premium pipeline.
+ */
+import {
+  resolveEpisodeMemoryBlock,
+  type VdEpisodeMemoryFallbackContext,
+} from "./verticalDramaSeriesMemoryProjection";
+import type { VdEpisodeMemory } from "@shared/verticalDramaSeries/seriesMemoryState";
 // Story-density reform (spec §7.7, section-13, added 2026-07-07) — imported
 // DIRECTLY from the submodule (not the shared barrel) per section-13: this
 // is the ONE canonical source for the content-budget/breakdown-versioning
@@ -281,11 +305,36 @@ const shotContractSchema = z
 export type VdSceneContract = z.infer<typeof shotContractSchema>;
 
 /**
+ * Production-grade full-story generation (spec
+ * `planning/vertical-drama-full-story-production-grade`, added 2026-07-13) —
+ * one character visible in a shot, with an explicit emotional state. `name`
+ * is expected to match the character bible verbatim (checked by the
+ * deterministic completeness gate, NOT this schema — see
+ * `computeShotCompletenessViolations`); this schema only validates shape.
+ */
+const shotDraftCharacterSchema = z
+  .object({
+    name: z.string().min(1),
+    emotion: z.string().min(1),
+    emotion_after: z.string().min(1).optional(),
+  })
+  .passthrough();
+
+export type VdDeepDraftShotCharacter = z.infer<typeof shotDraftCharacterSchema>;
+
+/**
  * One of the 9 numbered shots in a deep-drafted episode. `silence_intent`
  * reuses the canonical enum from `contentBudget.ts` (spec §7.7.2 Layer 3) —
  * never re-declared here — for shots that are intentionally visual-only
  * (e.g. a bare animal/ambient sound must be a silence-intent shot, never a
  * dialogue line — see `enforceEpisodeShotDraftSpeakability` below).
+ *
+ * `characters`/`location_key` (production-grade full-story generation, added
+ * 2026-07-13) are OPTIONAL here — this base schema is ALSO the tolerant
+ * READ-path schema for stored shot drafts (`readItemShotDrafts` below), so a
+ * pre-existing series bible (drafted before this feature) must keep parsing
+ * unchanged. They are made REQUIRED only for a FRESH deep-draft chunk
+ * generation via `deepDraftRequiredShotSchema` further below — never here.
  */
 const shotDraftSchema = z
   .object({
@@ -309,6 +358,10 @@ const shotDraftSchema = z
     tie_in: shotDraftTieInSchema.optional(),
     /** Feature 132 §6.1 (F132C) — see `shotContractSchema`'s own doc comment. Absent on every shot from a flag-off/legacy response. */
     contract: shotContractSchema.optional(),
+    /** Production-grade full-story generation — see this schema's own doc comment above. */
+    characters: z.array(shotDraftCharacterSchema).optional(),
+    /** Production-grade full-story generation — see this schema's own doc comment above. */
+    location_key: z.string().min(1).max(64).optional(),
   })
   .passthrough();
 
@@ -359,6 +412,14 @@ export type VdDeepDraftWarning = {
    * don't sufficiently cover `params.userPremise`. Only ever present when
    * `userPremise` was supplied this run — see
    * `appendDeepDraftPremiseCoverageWarning`.
+   * `"shot_completeness_violation"` (production-grade full-story generation,
+   * added 2026-07-13) — a deterministic completeness-gate violation
+   * (missing/unknown character, invalid `location_key`, or a duplicate/
+   * colliding `new_locations` declaration) that survived the ONE corrective
+   * retry the standard-mode chunk loop issues — see
+   * `computeShotCompletenessViolations`/`computeNewLocationDeclarationViolations`.
+   * Chunk-level violations (e.g. a bad `new_locations` entry) use
+   * `episodeNumber: 0, shotNumber: 0`.
    */
   reason:
     | "nonverbal_line"
@@ -366,7 +427,8 @@ export type VdDeepDraftWarning = {
     | "silence_intent_conflict"
     | "episode_missing_after_retry"
     | "tie_in_placement_mismatch"
-    | "premise_coverage_low";
+    | "premise_coverage_low"
+    | "shot_completeness_violation";
 };
 
 /* -------------------------------------------------------------------------- */
@@ -381,7 +443,16 @@ export type VdDeepDraftWarning = {
 /* shapes — this block only defines the shapes themselves.                    */
 /* -------------------------------------------------------------------------- */
 
-/** The judged dimensions, in prompt/response order (owner-approved design point 2c; Feature 132 scorecard v3 adds the last four). */
+/**
+ * The judged dimensions, in prompt/response order (owner-approved design
+ * point 2c; Feature 132 scorecard v3 adds dimensions 9-12; production-grade
+ * full-story generation, plan
+ * `planning/vertical-drama-full-story-production-grade`, added 2026-07-13,
+ * adds the final two — `shot_completeness`/`dialogue_accessibility`,
+ * matching the `vertical-drama-season-dramaturgy-critic` skill's Mode 2
+ * dimensions 13-14 exactly, per that skill.md's own
+ * "Keep this dimension list in sync" note).
+ */
 export const VD_PREMIUM_DRAFT_SCORE_DIMENSIONS = [
   "hook_strength",
   "reversal_sharpness",
@@ -395,6 +466,8 @@ export const VD_PREMIUM_DRAFT_SCORE_DIMENSIONS = [
   "character_consistency",
   "evidence_payoff",
   "threat_escalation",
+  "shot_completeness",
+  "dialogue_accessibility",
 ] as const;
 
 export type VdPremiumDraftScoreDimension =
@@ -423,6 +496,10 @@ const premiumScoreDimensionsShape = {
   character_consistency: z.number().min(1).max(5),
   evidence_payoff: z.number().min(1).max(5),
   threat_escalation: z.number().min(1).max(5),
+  /** Production-grade full-story generation, added 2026-07-13 — see `VD_PREMIUM_DRAFT_SCORE_DIMENSIONS`'s own doc comment. */
+  shot_completeness: z.number().min(1).max(5),
+  /** Production-grade full-story generation, added 2026-07-13 — see `VD_PREMIUM_DRAFT_SCORE_DIMENSIONS`'s own doc comment. */
+  dialogue_accessibility: z.number().min(1).max(5),
   overall: z.number().min(1).max(5),
 };
 
@@ -463,6 +540,13 @@ const draftScorecardSchema = z
       premiumScoreDimensionsShape.character_consistency.optional(),
     evidence_payoff: premiumScoreDimensionsShape.evidence_payoff.optional(),
     threat_escalation: premiumScoreDimensionsShape.threat_escalation.optional(),
+    // Production-grade full-story generation, added 2026-07-13 — same
+    // "required for fresh payloads, optional for reading persisted
+    // (pre-existing) scorecards" convention as the 4 Feature 132 v3
+    // dimensions immediately above.
+    shot_completeness: premiumScoreDimensionsShape.shot_completeness.optional(),
+    dialogue_accessibility:
+      premiumScoreDimensionsShape.dialogue_accessibility.optional(),
     ...premiumTieInNaturalnessShape,
     judgedAtRound: z.number().int().nonnegative(),
   })
@@ -603,6 +687,19 @@ export const episodeBreakdownItemSchema = z.object({
    * resolve the season (feeds the `finale_no_price_paid` check).
    */
   price_paid: z.string().min(1).optional(),
+  /**
+   * Series memory (Stage 1.2/1.3, added 2026-07-17) — an OPTIONAL per-episode
+   * memory block (`recap`/`canonicalFacts`/relationship state/open threads/
+   * knowledge changes). Deliberately typed `z.unknown()` here, NOT a strict
+   * shape: this schema must stay byte-compatible with every legacy/partial
+   * response (same "optional/superset" convention as every sibling field
+   * above), and — per the documented weak-model JSON failure class — a
+   * malformed nested block must NEVER fail this whole episode item's parse.
+   * `resolveEpisodeMemoryBlock` (`verticalDramaSeriesMemoryProjection.ts`)
+   * owns the ACTUAL strict validation + deterministic fallback, applied once
+   * per episode inside `extractDramaturgyStructureFields` below.
+   */
+  episode_memory: z.unknown().optional(),
 });
 
 /**
@@ -631,6 +728,15 @@ const expandedStoryBibleSchema = z.object({
         name: z.string().min(1),
         role: z.string().min(1),
         description: z.string().min(1),
+        // Lenient LLM-response schemas (2026-07-14 recurring-failure fix —
+        // same root cause as preset synthesis: the prompt never listed the
+        // allowed enum values, so the model title-cased/invented labels like
+        // "Protagonist"/"Tier-1"/"Love Interest"). A pure-casing miss still
+        // parses; anything else degrades to `undefined` and is backfilled by
+        // `normalizeExpandedCharacterRoles` below via `normalizeLegacyRole`.
+        narrativeRole: lenientNarrativeRoleSchema,
+        roleTier: lenientRoleTierSchema,
+        occupation: z.string().min(1).optional(),
       })
     )
     .min(1),
@@ -641,6 +747,21 @@ const expandedStoryBibleSchema = z.object({
 export type ExpandedVerticalDramaStoryBible = z.infer<
   typeof expandedStoryBibleSchema
 >;
+
+function normalizeExpandedCharacterRoles(
+  characters: ExpandedVerticalDramaStoryBible["refinedCharacters"],
+): ExpandedVerticalDramaStoryBible["refinedCharacters"] {
+  return characters.map(character => {
+    if (character.narrativeRole && character.roleTier) return character;
+    const legacy = normalizeLegacyRole(character.role);
+    return {
+      ...character,
+      narrativeRole: character.narrativeRole ?? legacy.narrativeRole ?? undefined,
+      roleTier: character.roleTier ?? legacy.roleTier ?? undefined,
+      occupation: character.occupation ?? character.role,
+    };
+  });
+}
 
 /** Mirrors the pipeline's own `VD_SCHEMA_VALIDATION_FAILED` convention for LLM-output parse failures. */
 export class VdSchemaValidationError extends Error {
@@ -862,6 +983,116 @@ export const VD_COMPACT_JSON_INSTRUCTION =
 const VD_RETRY_STRICT_INSTRUCTION =
   "Your previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text). Do not truncate — if needed, shorten prose fields to fit, but every object/array must be properly closed. Output exactly ONE JSON object and nothing after it.";
 
+function validationIssuePaths(issues: unknown): string[] {
+  const maybeIssues =
+    issues &&
+    typeof issues === "object" &&
+    "issues" in issues &&
+    Array.isArray((issues as { issues?: unknown }).issues)
+      ? (issues as { issues: unknown[] }).issues
+      : [];
+  return maybeIssues.slice(0, 16).map(issue => {
+    if (!issue || typeof issue !== "object") return "(root)";
+    const rawPath = (issue as { path?: unknown }).path;
+    if (!Array.isArray(rawPath) || rawPath.length === 0) return "(root)";
+    return rawPath
+      .slice(0, 16)
+      .map(segment => String(segment).replace(/[^A-Za-z0-9_-]/g, "?").slice(0, 80))
+      .join(".");
+  });
+}
+
+/**
+ * Return bounded, non-content-bearing guidance for a schema retry.
+ *
+ * Zod issue messages are normally code-authored, but custom refinements may
+ * include model/user-derived text. Echoing them verbatim into the next model
+ * turn would both waste tokens and create a prompt-injection/data-reflection
+ * path. Keep the exact path (already sanitized above), map messages to stable
+ * code-authored diagnostics, and cap the guidance before sending it back to
+ * the skill.
+ */
+function validationIssueGuidance(issues: unknown): string[] {
+  const maybeIssues =
+    issues &&
+    typeof issues === "object" &&
+    "issues" in issues &&
+    Array.isArray((issues as { issues?: unknown }).issues)
+      ? (issues as { issues: unknown[] }).issues
+      : [];
+
+  return maybeIssues.slice(0, 8).flatMap(issue => {
+    if (!issue || typeof issue !== "object") return [];
+    const record = issue as { path?: unknown; message?: unknown };
+    const rawPath =
+      Array.isArray(record.path) && record.path.length > 0
+        ? record.path
+            .slice(0, 16)
+            .map(segment =>
+              String(segment).replace(/[^A-Za-z0-9_-]/g, "?").slice(0, 80),
+            )
+            .join(".")
+        : "(root)";
+    if (typeof record.message !== "string" || record.message.trim().length === 0) {
+      return [`${rawPath}: invalid value`];
+    }
+
+    const message = record.message
+      .replace(/[\r\n\u0000-\u001f\u007f]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Preserve the three skill-owned lead QC rules as stable, code-authored
+    // guidance. Do not interpolate the raw message: a custom refinement can
+    // contain model/user text, including prompt-injection instructions.
+    let safeMessage: string;
+    if (/prompt contains villain-coded visual grammar/i.test(message)) {
+      safeMessage =
+        "Lead prompt contains villain-coded visual grammar; keep the face open, emotionally accessible, and heroic/romantic, and move thriller tension into setting or posture.";
+    } else if (/prompt must contain unmistakable camera-ready lead beauty language/i.test(message)) {
+      safeMessage =
+        "Lead prompt must contain unmistakable camera-ready lead beauty language: include a role-specific star marker and at least two appeal signals.";
+    } else if (/negative_prompt must include at least two role-drift guards/i.test(message)) {
+      safeMessage =
+        "Lead negative_prompt must include at least two role-drift guards for villain gaze, menace, calculation, or thriller-grade drift.";
+    } else if (/invalid enum value/i.test(message)) {
+      // Root cause fix (2026-07-14 recurring preset synthesis failure): never
+      // echo the received value or the raw zod enum-value list back to the
+      // model — that list can be huge (e.g. 38 roleTier values) and blows up
+      // the retry prompt; the caller's own request rules already carry the
+      // canonical allowed-value list (see `buildUserPrompt`/`buildUserPromptV2`
+      // in verticalDramaPresetSynthesis.ts) — point the model back at it.
+      safeMessage =
+        "Value must be EXACTLY one of the allowed values listed for this field in the contract rules — copy one verbatim; never invent a new label.";
+    } else if (/^required$/i.test(message)) {
+      safeMessage = "Required value is missing.";
+    } else if (/^invalid value$/i.test(message)) {
+      safeMessage = "Value is invalid for the schema.";
+    } else {
+      safeMessage = "Value failed schema validation; regenerate a valid value for this exact path.";
+    }
+    return [`${rawPath}: ${safeMessage}`];
+  });
+}
+
+function buildSchemaRetryInstruction(error: unknown): string {
+  if (error instanceof VdSchemaValidationError) {
+    const paths = validationIssuePaths(error.issues);
+    if (paths.length > 0) {
+      const guidance = validationIssueGuidance(error.issues);
+      return [
+        "Your previous response was valid JSON but failed schema validation.",
+        `Correct these exact paths: ${paths.join(", ")}.`,
+        guidance.length > 0
+          ? `Validation guidance (follow as contract rules; do not copy diagnostic text into output): ${guidance.join(" | ")}.`
+          : "",
+        "Return the COMPLETE object, not a patch. Preserve every required property name and its exact casing from the schema; do not rename keys. Return ONLY one valid compact JSON object with no markdown or commentary.",
+      ].filter(Boolean).join(" ");
+    }
+  }
+  return VD_RETRY_STRICT_INSTRUCTION;
+}
+
 /**
  * Phase A reliability fix (root cause: 2026-07-09 kie_ai outage — every call
  * hung on `llmRouter.ts`'s 120s `AbortController` timeout with
@@ -870,7 +1101,7 @@ const VD_RETRY_STRICT_INSTRUCTION =
  * thrown planning-call error into one of three buckets so callers can decide
  * whether a bounded retry is safe:
  *  - `"schema"` — the LLM responded but its JSON failed zod validation
- *    (`VdSchemaValidationError`); only ever retried by the stricter-
+ *    (`VdSchemaValidationError`); only ever retried by the schema-aware
  *    instruction/higher-token-ceiling path below, never by the transient
  *    backoff retry.
  *  - `"transient"` — network/timeout/rate-limit/upstream-5xx failures that a
@@ -945,9 +1176,26 @@ export function classifyVerticalDramaLlmError(error: unknown): VdLlmErrorClass {
 /** Bounded backoff schedule (ms) for `"transient"`-classified retries in `executeJsonPlanningCallWithRetry` — see `classifyVerticalDramaLlmError`. */
 const VD_TRANSIENT_RETRY_BACKOFFS_MS = [5_000, 15_000];
 
-/** Hard ceiling on TOTAL LLM calls a single `executeJsonPlanningCallWithRetry` invocation may make: 1 initial + at most 1 schema-retry + at most `VD_TRANSIENT_RETRY_BACKOFFS_MS.length` transient-retries. */
+/**
+ * Max `"schema"`-classified corrective retries per invocation (raised from 1
+ * to 2 on 2026-07-14). Root cause: the cheapest 1M-context "thinking" model
+ * the quality selector picks (currently `google/gemini-3.1-flash-lite`)
+ * intermittently emits STRUCTURALLY-broken JSON on the large character-DNA /
+ * story-bible schemas — e.g. a bare `[` where a property name belongs
+ * (`…}, ["comparison_evidence": …`, traceId YOssAyUK2yYngkwJqqMoD) — and the
+ * failure is stochastic per generation (`finishReason: "stop"`, well under the
+ * token ceiling, so NOT truncation and NOT repairable by string surgery). A
+ * single corrective retry meant "both attempts glitch → hard error to the
+ * user"; a second independent regeneration converts the large majority of
+ * these rare-but-fatal glitches into a clean success. Schema-VALIDATION
+ * failures (contract violations, not parse errors) also benefit — the model
+ * simply gets one more shot at the exact-issue-path instruction.
+ */
+const VD_SCHEMA_MAX_RETRIES = 2;
+
+/** Hard ceiling on TOTAL LLM calls a single `executeJsonPlanningCallWithRetry` invocation may make: 1 initial + at most `VD_SCHEMA_MAX_RETRIES` schema-retries + at most `VD_TRANSIENT_RETRY_BACKOFFS_MS.length` transient-retries. */
 const VD_PLANNING_CALL_MAX_ATTEMPTS =
-  1 + 1 + VD_TRANSIENT_RETRY_BACKOFFS_MS.length;
+  1 + VD_SCHEMA_MAX_RETRIES + VD_TRANSIENT_RETRY_BACKOFFS_MS.length;
 
 function vdSleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -962,12 +1210,17 @@ function vdSleep(ms: number): Promise<void> {
  * Two INDEPENDENT (orthogonal) retry mechanisms, both against the SAME model
  * (never switches models — vertical drama and the wider app never
  * auto-switch a model chosen for a call):
- *  1. **Schema retry** (original behavior) — on a `"schema"`-classified
- *     failure (JSON-parse/zod-validation), retries AT MOST ONCE with (a) the
- *     same system+user prompt plus one appended strict-JSON instruction
- *     message, and (b) a higher `maxTokens` ceiling (`retryMaxTokens`,
- *     defaults to `Math.max(params.maxTokens * 2, 16000)` when omitted) so a
- *     previously-truncated multi-shot payload has more room to complete.
+ *  1. **Schema retry** — on a `"schema"`-classified failure
+ *     (JSON-parse/zod-validation), retries up to `VD_SCHEMA_MAX_RETRIES` (2)
+ *     times with (a) the same system+user prompt plus one appended
+ *     strict-JSON instruction message, and (b) a higher `maxTokens` ceiling
+ *     (`retryMaxTokens`, defaults to `Math.max(params.maxTokens * 2, 16000)`
+ *     when omitted) so a previously-truncated multi-shot payload has more room
+ *     to complete. The 2nd retry (raised from 1 on 2026-07-14) exists because
+ *     the cheapest 1M-context "thinking" model the quality selector picks
+ *     emits stochastic STRUCTURALLY-broken JSON on the large character-DNA /
+ *     story-bible schemas — a second independent regeneration usually clears
+ *     it (see `VD_SCHEMA_MAX_RETRIES`).
  *  2. **Transient retry** (Phase A reliability fix, added 2026-07-09) — on a
  *     `"transient"`-classified failure (network/timeout/rate-limit/upstream
  *     5xx — see `classifyVerticalDramaLlmError`), retries with the SAME
@@ -1048,7 +1301,7 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
 
   let currentUserPrompt = params.userPrompt;
   let currentMaxTokens = params.maxTokens;
-  let usedSchemaRetry = false;
+  let schemaRetriesUsed = 0;
   let transientRetriesUsed = 0;
   let attemptNumber = 0;
 
@@ -1069,22 +1322,29 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
 
-      // Schema retry (original behavior) — at most ONE stricter-instruction
-      // + higher-token-ceiling retry, only for JSON-parse/schema failures.
+      // Schema retry — up to `VD_SCHEMA_MAX_RETRIES` higher-token-ceiling
+      // retries. Malformed JSON receives the compact/non-truncation
+      // instruction; valid JSON that fails validation receives bounded exact
+      // issue paths plus sanitized guidance so skill-owned quality gates can
+      // be repaired without echoing values. Each retry rebuilds from the base
+      // `params.userPrompt` + the fresh error's instruction (never compounds
+      // prior retry text), so a 2nd corrective attempt is a clean, independent
+      // regeneration — the reliability lever for the weak selected model's
+      // stochastic structural-JSON glitches (see `VD_SCHEMA_MAX_RETRIES`).
       if (
         classification === "schema" &&
-        !usedSchemaRetry &&
+        schemaRetriesUsed < VD_SCHEMA_MAX_RETRIES &&
         attemptNumber < VD_PLANNING_CALL_MAX_ATTEMPTS
       ) {
-        usedSchemaRetry = true;
+        schemaRetriesUsed++;
         debugError(
           "vd_planning_retry",
-          `${params.label}: attempt ${attemptNumber} failed schema validation for model ${params.model}, retrying once with stricter instruction + higher token ceiling`,
+          `${params.label}: attempt ${attemptNumber} failed schema validation for model ${params.model}, retrying with stricter instruction + higher token ceiling (schema retry ${schemaRetriesUsed}/${VD_SCHEMA_MAX_RETRIES})`,
           { message: errorMessage }
         );
         currentMaxTokens =
           params.retryMaxTokens ?? Math.max(params.maxTokens * 2, 16000);
-        currentUserPrompt = `${params.userPrompt}\n\n${VD_RETRY_STRICT_INSTRUCTION}`;
+        currentUserPrompt = `${params.userPrompt}\n\n${buildSchemaRetryInstruction(error)}`;
         continue;
       }
 
@@ -1206,8 +1466,8 @@ function buildPrompts(params: GenerateStoryBibleParams): {
   const trimmedUserPremise = params.userPremise?.trim();
 
   const responseShape = trimmedUserPremise
-    ? '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}], "premise_coverage": {"sufficient": boolean, "note": string}}'
-    : '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}';
+    ? '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}], "premise_coverage": {"sufficient": boolean, "note": string}}'
+    : '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}';
 
   const systemPrompt = [
     renderCriteriaVersionMarker(),
@@ -1220,6 +1480,9 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     "Every story beat, character, and plot element you generate MUST honor the AUDIENCE AGE RATING (HARD CONSTRAINT) block given in the user message below — treat it as a non-negotiable content boundary, exactly like the JSON response shape.",
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
     responseShape,
+    "For every refined character, assign exactly one canonical narrativeRole and roleTier from the supplied role taxonomy. Keep the legacy role field as a human-readable occupation or free-text descriptor; never use an occupation alone as the narrative role. If the story does not establish the narrative role, use the safest supporting/other tier and make the ambiguity explicit in the description rather than inventing a lead or villain.",
+    `"narrativeRole" MUST be exactly one of: ${NARRATIVE_ROLE_VALUES.join(", ")}.`,
+    `"roleTier" MUST be exactly one of: ${ROLE_TIER_VALUES.join(", ")}. Copy one value verbatim — never invent a new label; lowercase snake_case only.`,
     `"episodeBreakdown" must contain exactly ${params.targetEpisodeCount} Sub-episode entries, numbered 1..${params.targetEpisodeCount} in order, each with 3-5 short keyBeats.`,
     speechBudgetEnabled
       ? `Each Sub-episode is a fixed ${episodeDurationSeconds}-second short video that must carry AT LEAST ${minEpisodeSpeechSeconds} seconds of spoken dialogue (the platform's minimum speech-coverage floor) — plan enough plot/conflict per Sub-episode to genuinely fill that budget instead of padding a thin Sub-episode afterward. Each entry in "episodeBreakdown" must ALSO include a "contentBudget" object: {"beatCount": number (5-7 story beats), "estimatedSpeechSeconds": number (this Sub-episode's planned total spoken-dialogue seconds, >= ${minEpisodeSpeechSeconds}), "conflictLevel": integer 1-5 (this Sub-episode's position on the SEASON'S escalation curve — start low in early Sub-episodes and rise toward 5 near the finale; never flat across the season), "reversalTarget": integer (at least 2 reversals planned for this Sub-episode), "arcThreads": string[] (season threads this Sub-episode advances)}.`
@@ -1365,9 +1628,13 @@ export async function generateStoryBible(
   // same "additive, never present unless a premise was given" contract the
   // deterministic heuristic used to provide.
   const premiseCoverage = validatedData.premise_coverage;
+  const expanded = {
+    ...validatedData,
+    refinedCharacters: normalizeExpandedCharacterRoles(validatedData.refinedCharacters),
+  };
 
   return {
-    expanded: validatedData,
+    expanded,
     creditsUsed,
     model,
     ...(premiseCoverage && !premiseCoverage.sufficient
@@ -1935,6 +2202,171 @@ export function buildDeepDraftMissingEpisodesRetryInstruction(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Deterministic per-shot completeness gate (production-grade full-story      */
+/* generation, plan `planning/vertical-drama-full-story-production-grade`,    */
+/* added 2026-07-13)                                                          */
+/*                                                                            */
+/* Facts-only, code-only checks — NO LLM call, NO creative judgment (creative */
+/* rules live in the `vertical-drama-full-story-architect` skill, per project */
+/* policy). `characters`/`location_key` PRESENCE is already enforced by       */
+/* `deepDraftRequiredShotSchema` at parse time for a fresh generation — these */
+/* checks cover what a zod schema cannot: whether a character NAME matches   */
+/* the season's character bible, and whether a `location_key` actually       */
+/* resolves against the known (existing + this-run-declared) location roster.*/
+/* Both context sets are OPTIONAL: omitting one only disables ITS OWN         */
+/* membership check (every other check still runs) — this keeps every caller */
+/* that doesn't yet thread character/location context byte-identical (no     */
+/* violations ever reported for the checks it opted out of).                 */
+/* -------------------------------------------------------------------------- */
+
+export type VdDeepDraftCompletenessViolation = {
+  /** `0` for a chunk-level (not one specific episode's) violation — e.g. a bad `new_locations` entry. */
+  episodeNumber: number;
+  /** `0` for an episode-level (not one specific shot's) violation. */
+  shotNumber: number;
+  message: string;
+};
+
+export interface VdDeepDraftCompletenessGateContext {
+  /** Character names from the series' character bible (`readBibleRefinedCharacters`). Omit to skip the character-name-membership check. */
+  characterBibleNames?: ReadonlySet<string>;
+  /** Existing (DB) + already-accepted-this-run `new_locations` keys. Omit to skip the `location_key`-membership check. */
+  knownLocationKeys?: ReadonlySet<string>;
+}
+
+/**
+ * Per-episode shot completeness: every shot's `characters[]` (when present —
+ * schema already guarantees `.min(1)` for a fresh deep-draft generation, so
+ * an empty array here only happens for a caller reading tolerant/legacy
+ * data) has every character's `name` in the character bible (when
+ * `context.characterBibleNames` is given), and every shot's `location_key`
+ * (when present) resolves against `context.knownLocationKeys` (when given).
+ */
+export function computeShotCompletenessViolations(
+  episodeNumber: number,
+  shotDrafts: VdDeepDraftShotDraft[],
+  context: VdDeepDraftCompletenessGateContext = {}
+): VdDeepDraftCompletenessViolation[] {
+  const violations: VdDeepDraftCompletenessViolation[] = [];
+  for (const shot of shotDrafts) {
+    const characters = shot.characters ?? [];
+    if (characters.length === 0) {
+      violations.push({
+        episodeNumber,
+        shotNumber: shot.shot_number,
+        message: `Episode ${episodeNumber} shot ${shot.shot_number} has no "characters" — every shot must list who is in it, each with an explicit "emotion".`,
+      });
+    } else {
+      for (const character of characters) {
+        // Defense-in-depth — the fresh-generation schema already requires a
+        // non-blank `emotion` (`.min(1)`), but this deterministic check also
+        // covers tolerant/legacy-read data (`shotDraftSchema`'s base,
+        // optional-field shape) where a stored character could lack one.
+        if (!character.emotion || character.emotion.trim().length === 0) {
+          violations.push({
+            episodeNumber,
+            shotNumber: shot.shot_number,
+            message: `Episode ${episodeNumber} shot ${shot.shot_number}: character "${character.name}" is missing an "emotion".`,
+          });
+        }
+        if (
+          context.characterBibleNames &&
+          !context.characterBibleNames.has(character.name)
+        ) {
+          violations.push({
+            episodeNumber,
+            shotNumber: shot.shot_number,
+            message: `Episode ${episodeNumber} shot ${shot.shot_number}: character "${character.name}" is not in the character bible — use an existing character's exact name, never invent a new one.`,
+          });
+        }
+      }
+    }
+
+    const locationKey = shot.location_key?.trim();
+    if (!locationKey) {
+      violations.push({
+        episodeNumber,
+        shotNumber: shot.shot_number,
+        message: `Episode ${episodeNumber} shot ${shot.shot_number} has no "location_key".`,
+      });
+    } else if (
+      context.knownLocationKeys &&
+      !context.knownLocationKeys.has(locationKey)
+    ) {
+      violations.push({
+        episodeNumber,
+        shotNumber: shot.shot_number,
+        message: `Episode ${episodeNumber} shot ${shot.shot_number}: location_key "${locationKey}" is neither an existing location nor declared in this response's "new_locations".`,
+      });
+    }
+  }
+  return violations;
+}
+
+/**
+ * Validates a chunk's declared `new_locations` array against the known
+ * (existing + already-accepted-this-run) location keys: flags a duplicate
+ * key declared twice in the SAME array, and a key that collides with an
+ * ALREADY-EXISTING location (should have been reused via `location_key`
+ * instead of redeclared). `acceptedKeys` is every OTHER declared key —
+ * safe to merge into the known-location roster for subsequent chunks/rounds.
+ * `knownLocationKeys` omitted entirely disables the collision check (only
+ * within-array duplicates are still checked) — mirrors
+ * `computeShotCompletenessViolations`'s own "omit to skip that one check"
+ * contract.
+ */
+export function computeNewLocationDeclarationViolations(
+  newLocations: ReadonlyArray<{ location_key: string }>,
+  knownLocationKeys: ReadonlySet<string> | undefined
+): {
+  violations: VdDeepDraftCompletenessViolation[];
+  acceptedKeys: Set<string>;
+} {
+  const violations: VdDeepDraftCompletenessViolation[] = [];
+  const acceptedKeys = new Set<string>();
+  const seen = new Set<string>();
+  for (const loc of newLocations) {
+    const key = loc.location_key?.trim();
+    if (!key) continue;
+    if (seen.has(key)) {
+      violations.push({
+        episodeNumber: 0,
+        shotNumber: 0,
+        message: `"new_locations" declares "${key}" more than once — declare each new location ONCE.`,
+      });
+      continue;
+    }
+    seen.add(key);
+    if (knownLocationKeys?.has(key)) {
+      violations.push({
+        episodeNumber: 0,
+        shotNumber: 0,
+        message: `"new_locations" declares "${key}" as new, but it already exists — reuse it via "location_key" instead of redeclaring it.`,
+      });
+      continue;
+    }
+    acceptedKeys.add(key);
+  }
+  return { violations, acceptedKeys };
+}
+
+/**
+ * Appended to a chunk's user prompt for the ONE corrective retry the
+ * standard-mode chunk loop issues when `computeShotCompletenessViolations`/
+ * `computeNewLocationDeclarationViolations` find a violation — same
+ * "same prompt + one appended instruction" shape as
+ * `buildDeepDraftMissingEpisodesRetryInstruction` (and combinable with it in
+ * the SAME retry call, see `generateStoryBibleDeep`'s main loop).
+ */
+export function buildDeepDraftCompletenessRetryInstruction(
+  violations: VdDeepDraftCompletenessViolation[]
+): string {
+  return `Your previous response failed these completeness checks: ${violations
+    .map(v => v.message)
+    .join(" ")} Return the COMPLETE response again with every issue above fixed — keep everything else that already works.`;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Deep story drafts — active-version metadata + summary reads (W10-A)        */
 /* -------------------------------------------------------------------------- */
 
@@ -2066,18 +2498,55 @@ function buildDeepDraftContinuityRecap(
 }
 
 /**
- * Requires exactly `shotDrafts` on top of the base (byte-compatible)
- * `episodeBreakdownItemSchema` — used ONLY to validate a fresh deep-draft
- * chunk LLM response, never for reading stored data (that stays tolerant via
- * `readItemShotDrafts` above).
+ * Production-grade full-story generation, added 2026-07-13 — the STRICT
+ * per-shot shape required of a FRESH deep-draft/revise LLM response:
+ * `characters` (>=1, each with a required `emotion`) and `location_key` are
+ * REQUIRED here (unlike the tolerant base `shotDraftSchema`, which keeps
+ * both optional for the stored-data read path — see that schema's own doc
+ * comment). Used ONLY inside `deepDraftChunkEpisodeItemSchema` below.
+ */
+const deepDraftRequiredShotSchema = shotDraftSchema.extend({
+  characters: z.array(shotDraftCharacterSchema).min(1),
+  location_key: z.string().min(1).max(64),
+});
+
+/**
+ * Requires exactly `shotDrafts` (using the STRICT per-shot shape above) on
+ * top of the base (byte-compatible) `episodeBreakdownItemSchema` — used ONLY
+ * to validate a fresh deep-draft chunk/revise LLM response, never for reading
+ * stored data (that stays tolerant via `readItemShotDrafts` above).
  */
 const deepDraftChunkEpisodeItemSchema = episodeBreakdownItemSchema.extend({
-  shotDrafts: z.array(shotDraftSchema).length(VD_DEEP_DRAFT_SHOTS_PER_EPISODE),
+  shotDrafts: z
+    .array(deepDraftRequiredShotSchema)
+    .length(VD_DEEP_DRAFT_SHOTS_PER_EPISODE),
 });
+
+/**
+ * Production-grade full-story generation, added 2026-07-13 — one NEW
+ * location a deep-draft/revise response declares (see the
+ * `vertical-drama-full-story-architect` skill's "New locations" hard
+ * requirement). `.passthrough()` mirrors this file's own tolerant-superset
+ * convention for every other LLM-facing object schema.
+ */
+const newLocationDeclarationSchema = z
+  .object({
+    location_key: z.string().min(1).max(64),
+    name: z.string().min(1),
+    description: z.string().min(1),
+    environment: z.string().min(1),
+    time_of_day: z.string().min(1).optional(),
+    mood: z.string().min(1).optional(),
+  })
+  .passthrough();
+
+export type VdDeclaredLocation = z.infer<typeof newLocationDeclarationSchema>;
 
 const deepDraftChunkResponseSchema = z.object({
   episodeBreakdown: z.array(deepDraftChunkEpisodeItemSchema).min(1),
   open_threads: z.array(z.string().min(1)).optional(),
+  /** Production-grade full-story generation — optional: absent/`[]` means this chunk needed no new location. */
+  new_locations: z.array(newLocationDeclarationSchema).optional(),
 });
 
 type DeepDraftChunkResponse = z.infer<typeof deepDraftChunkResponseSchema>;
@@ -2378,6 +2847,35 @@ export function reconcileTieInDraftMarking(
   return { warnings, mismatchCount: warnings.length };
 }
 
+/**
+ * Production-grade full-story generation, added 2026-07-13 — renders the
+ * "EXISTING LOCATIONS" FACT block for `buildDeepDraftPrompts`'s userPrompt
+ * (and `buildPremiumRevisePrompts`'s, which shares the same contract). `null`
+ * (renders nothing, `.filter(Boolean)` drops it) when `locations` is
+ * `undefined` — every caller that predates this field stays byte-identical.
+ * An empty (but DEFINED) array still renders a block stating there is
+ * nothing to reuse yet, so a caller that DOES thread location context always
+ * gets an honest instruction either way — see `buildDeepDraftPrompts`'s own
+ * `knownLocations` doc comment.
+ */
+function buildKnownLocationsPromptBlock(
+  locations:
+    | Array<{ locationKey: string; name: string; description?: string }>
+    | undefined
+): string | null {
+  if (!locations) return null;
+  if (locations.length === 0) {
+    return 'EXISTING LOCATIONS: none declared yet for this series — every location this response uses must be declared in "new_locations".';
+  }
+  return `EXISTING LOCATIONS (reuse one of these "location_key" values whenever the shot's location genuinely matches; declare a NEW location in "new_locations" only when none of these fit): ${JSON.stringify(
+    locations.map(l => ({
+      location_key: l.locationKey,
+      name: l.name,
+      description: l.description ?? null,
+    }))
+  )}`;
+}
+
 function buildDeepDraftPrompts(params: {
   title: string;
   locale: VerticalDramaSeriesLocale;
@@ -2431,6 +2929,22 @@ function buildDeepDraftPrompts(params: {
    * into the standard-mode per-chunk loop below (see `generateStoryBibleDeep`).
    */
   audienceAgeRating?: AudienceAgeRating;
+  /**
+   * Production-grade full-story generation, added 2026-07-13 — the series'
+   * currently-known location roster (existing DB rows + any `new_locations`
+   * already accepted earlier THIS run), rendered as an "EXISTING LOCATIONS"
+   * FACT block so the model reuses an established `location_key` instead of
+   * inventing a duplicate. Optional — `undefined` (every caller that
+   * predates this field) renders NO such block at all, byte-identical to
+   * before this feature existed; an EMPTY array still renders the block
+   * (stating there is nothing to reuse yet), so callers that DO thread
+   * location context always get an honest instruction either way.
+   */
+  knownLocations?: Array<{
+    locationKey: string;
+    name: string;
+    description?: string;
+  }>;
 }): { systemPrompt: string; userPrompt: string } {
   const langInstruction =
     params.locale === "th"
@@ -2463,14 +2977,21 @@ function buildDeepDraftPrompts(params: {
 
   const systemPrompt = [
     renderCriteriaVersionMarker(),
-    "You are a vertical-drama (short-form mobile drama series) shot-dialogue writer.",
+    // Production-grade full-story generation, added 2026-07-13 — the sole
+    // author of creative-authorship/craft-rule content (role framing, shot
+    // completeness w/ characters+emotion+location, new-location declaration,
+    // dialogue accessibility, dramaturgy craft rules) — REPLACES this
+    // function's previous inline "You are a vertical-drama... shot-dialogue
+    // writer" role line + `VD_NATURAL_THAI_DIALOGUE_RULES` (both project
+    // policy: creative judgment lives in the skill, TS only computes facts
+    // and the mechanical/config instructions below).
+    loadFullStoryArchitectSkillSystemPrompt(),
     `For EACH Sub-episode listed below, write a draft of EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} numbered shots ("shot_number" 1-${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}, in order) with speakable dialogue that fills that shot's speech budget.`,
     langInstruction,
     // Series-level audience age rating (Phase 1) — firm, unconditional
     // instruction; the actual constraint block is rendered in the user
     // message below (see `audienceAgeRatingBlockForDeepDraft`).
     "Every shot, dialogue line, and situation you draft MUST honor the AUDIENCE AGE RATING (HARD CONSTRAINT) block given in the user message below — treat it as a non-negotiable content boundary, exactly like the JSON response shape.",
-    params.locale === "th" ? VD_NATURAL_THAI_DIALOGUE_RULES : null,
     'SPEAKABILITY RULES (hard requirement): every "line" must be literally speakable as written — no wrapping quote marks, no parenthetical stage direction, no symbols (~ * [ ] / ` < > _), no em-dash as a spoken beat (use a comma instead), at most one "…" per line, no emoji. Put delivery/emotion notes in the separate "delivery" field, NEVER inside "line" itself. A shot that is only an animal/ambient sound or otherwise wordless must set "silence_intent" instead of writing the sound as a dialogue line.',
     'A shot must NEVER set BOTH "silence_intent" and one or more "dialogue_lines" — pick exactly one: give it real speakable dialogue, or mark it "silence_intent" only if it truly has no speech at all.',
     `Per-shot speech budget for the standard 60-second/${VD_DEEP_DRAFT_SHOTS_PER_EPISODE}-shot episode profile: ${perShotBandText}. Give each speaking shot enough "dialogue_lines" to reach its target — do not leave a speaking shot underfilled.`,
@@ -2486,9 +3007,10 @@ function buildDeepDraftPrompts(params: {
     buildTieInDraftSystemBlock(params.tieInDraftContext),
     buildSceneContractPromptBlock(params.sceneContractsEnabled),
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}], "open_threads": string[]}`,
-    `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts".`,
+    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}], "open_threads": string[], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
+    `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts", and EVERY shot's "characters" (>= 1) and "location_key" filled in per this system prompt's shot-completeness/new-location rules.`,
     '"open_threads" must be the UPDATED list of unresolved plot threads/hooks after these episodes: carry forward every thread you were given that is still open, add any new thread you introduce, and drop any thread you fully resolve.',
+    '"new_locations" must contain EVERY location this response uses that is not already in the "EXISTING LOCATIONS" list given in the user message — omit the key entirely (or return an empty array) when no new location is needed this chunk.',
   ]
     .filter(Boolean)
     .join("\n");
@@ -2528,6 +3050,10 @@ function buildDeepDraftPrompts(params: {
     params.openThreads
   );
 
+  const knownLocationsBlock = buildKnownLocationsPromptBlock(
+    params.knownLocations
+  );
+
   const userPrompt = [
     userPremiseBlockForDeepDraft,
     audienceAgeRatingBlockForDeepDraft,
@@ -2535,6 +3061,7 @@ function buildDeepDraftPrompts(params: {
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
     recapText,
+    knownLocationsBlock,
     `Already-planned episodes to draft shots for: ${JSON.stringify(episodesPayload)}`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -2662,6 +3189,75 @@ export interface GenerateStoryBibleDeepParams {
    * series' actual chosen tier.
    */
   audienceAgeRating?: AudienceAgeRating;
+  /**
+   * Production-grade full-story generation, added 2026-07-13 — this series'
+   * already-known location roster (existing `vertical_drama_locations` DB
+   * rows), threaded straight through to `buildDeepDraftPrompts`'s
+   * `knownLocations` (STANDARD mode) / `buildPremiumRevisePrompts`'s
+   * `knownLocations` (PREMIUM mode) and the deterministic completeness
+   * gate's `location_key`-membership check (`computeShotCompletenessViolations`).
+   * Optional — `undefined` (every caller that predates this field) disables
+   * BOTH the "EXISTING LOCATIONS" prompt block and the location-membership
+   * check (only presence of `location_key` is still enforced, by the
+   * schema), so this is byte-identical to before this feature existed. Grows
+   * across this run's own chunks as `new_locations` are accepted — the
+   * caller only ever supplies the PRE-RUN baseline here.
+   */
+  existingLocations?: Array<{
+    locationKey: string;
+    name: string;
+    description?: string;
+  }>;
+  /**
+   * Production-grade full-story generation, added 2026-07-13 — this series'
+   * character-bible names (`readBibleRefinedCharacters`), used ONLY by the
+   * deterministic completeness gate's character-name-membership check.
+   * Optional — `undefined` (every caller that predates this field) disables
+   * that one check (a shot's `characters[].name` is still required to be
+   * present/non-empty, by the schema).
+   */
+  characterBibleNames?: string[];
+  /**
+   * Resilient resume (added 2026-07-14, `planning/vertical-drama-deep-story-
+   * resilient-resume/plan.md`) — episodes already drafted by an EARLIER
+   * (interrupted or already-completed) run, unioned back onto this run's
+   * result so they're returned untouched without re-drafting/re-charging
+   * them. Supported by BOTH modes: standard mode (see `generateStoryBibleDeep`'s
+   * mode switch) seeds these straight into its `draftedItems` accumulator;
+   * `generateStoryBibleDeepPremium` filters them out of the episodes it
+   * processes and unions them back onto its OWN result at the very end
+   * (after its per-episode `Map` accumulator is finalized) — see that
+   * function's own doc comment for why the union happens later there.
+   * Optional — omitting it (every caller that predates this field) is
+   * BYTE-IDENTICAL to before this feature existed.
+   */
+  resumeDraftedItems?: DeepDraftedEpisodeItem[];
+  /**
+   * Resilient resume — episode numbers to SKIP entirely: no prompt is built,
+   * no LLM call is made, and no credits are deducted for them. The caller
+   * (`routers/verticalDramaSeries.ts`) computes this as the union of (a) any
+   * episode in the active breakdown that already carries a valid 9-shot
+   * `shotDrafts` at job start, and (b) `completedEpisodeNumbers` from a
+   * resumed Redis job-record checkpoint. Supported by BOTH modes — see
+   * `resumeDraftedItems`'s own doc comment. Optional — omitting it is
+   * BYTE-IDENTICAL to before this feature existed (every episode in
+   * `params.episodes` gets drafted, exactly like today).
+   */
+  alreadyDraftedEpisodeNumbers?: number[];
+  /**
+   * Resilient resume — fired after EACH chunk's drafts are finalized, with
+   * ONLY that chunk's freshly-drafted items (never the resumed ones).
+   * Standard mode fires it right where the chunk's items are appended to its
+   * running `draftedItems` accumulator; `generateStoryBibleDeepPremium` fires
+   * it after every SUCCESSFUL `applyChunkResult` call (both the main
+   * fan-out chunk loop and its per-episode split-retry fallback — never for
+   * the missing-episode/failing branch). Mirrors `onProgress`'s
+   * "fire-and-forget, additive, no-op when absent" contract exactly — the
+   * caller wires this to a checkpoint writer (`verticalDramaStoryJobs.ts`'s
+   * `persistCheckpoint`) so a mid-run crash after this chunk survives a
+   * same-jobId BullMQ redelivery. Supported by BOTH modes.
+   */
+  onChunkComplete?: (chunkDraftedItems: DeepDraftedEpisodeItem[]) => void;
 }
 
 /**
@@ -2726,6 +3322,23 @@ export type DeepDraftedEpisodeItem = {
   protagonist_stake?: string;
   world_rules?: VdWorldRule[];
   price_paid?: string;
+  /**
+   * Series memory (`planning/vd-series-memory-and-lineage/plan.md` Stage
+   * 1.2/1.3, added 2026-07-17) — this episode's resolved memory block
+   * (recap + canonical facts + relationship state + open/resolved threads +
+   * knowledge changes), always populated by `extractDramaturgyStructureFields`
+   * for every FRESHLY drafted episode (at minimum via
+   * `resolveEpisodeMemoryBlock`'s deterministic recap-only fallback when the
+   * LLM omitted/broke `episode_memory` — see that function's own doc
+   * comment). Optional on this TYPE only for backward-compat with items
+   * constructed by code that predates this feature (a resumed checkpoint's
+   * `draftedItems` from an older run, or the plain `generateStoryBible`
+   * response, never carries it). Consumed by
+   * `persistDeepDraftEpisodeMemories` (`verticalDramaSeriesMemoryProjection.ts`),
+   * called from `runGenerateStoryBibleDeepJob`/`runExtendStoryDraftHorizonJob`
+   * (`server/routers/verticalDramaSeries.ts`).
+   */
+  episodeMemory?: VdEpisodeMemory;
 };
 
 /**
@@ -2736,6 +3349,25 @@ export type DeepDraftedEpisodeItem = {
  * file's established "omit, don't null" convention for optional fields).
  * Shared by BOTH standard mode's chunk loop and premium mode's gating step
  * below, so both pipelines read these fields identically.
+ *
+ * Series memory (Stage 1.2/1.3, added 2026-07-17) — ALSO the single choke
+ * point every deep-draft construction site routes through, so it is where
+ * `episodeMemory` is resolved (raw `episode_memory` -> trustworthy
+ * `VdEpisodeMemory`, ALWAYS present, never omitted — unlike the 5 fields
+ * above, which stay legitimately optional). Accepts EITHER shape for the
+ * memory field:
+ *  - `episode_memory` (snake_case, `unknown`) — a FRESH raw LLM response
+ *    (`PremiumRawEpisode`/a standard-mode chunk item) that has not been
+ *    resolved yet.
+ *  - `episodeMemory` (camelCase, already a `VdEpisodeMemory`) — an object
+ *    that already went through this function once (e.g. `PremiumGatedEpisode`
+ *    read again when building `PremiumEpisodeState`) — passed through
+ *    unchanged, never re-resolved.
+ * `episodeNumber`/`logline`/`keyBeats`/`cliffhanger_line` are the fallback
+ * context `resolveEpisodeMemoryBlock` needs when the block is absent/invalid
+ * — every raw episode item this function is ever called with carries them
+ * (required fields on `episodeBreakdownItemSchema`), so the fallback recap is
+ * always buildable.
  */
 function extractDramaturgyStructureFields(raw: {
   antagonist_tactics?: string[];
@@ -2743,6 +3375,12 @@ function extractDramaturgyStructureFields(raw: {
   protagonist_stake?: string;
   world_rules?: VdWorldRule[];
   price_paid?: string;
+  episode_memory?: unknown;
+  episodeMemory?: VdEpisodeMemory;
+  episodeNumber?: number;
+  logline?: string;
+  keyBeats?: string[];
+  cliffhanger_line?: string;
 }): Pick<
   DeepDraftedEpisodeItem,
   | "antagonist_tactics"
@@ -2750,7 +3388,18 @@ function extractDramaturgyStructureFields(raw: {
   | "protagonist_stake"
   | "world_rules"
   | "price_paid"
+  | "episodeMemory"
 > {
+  const resolvedEpisodeMemory: VdEpisodeMemory | undefined =
+    raw.episodeMemory ??
+    (typeof raw.episodeNumber === "number"
+      ? resolveEpisodeMemoryBlock(raw.episode_memory, {
+          episodeNumber: raw.episodeNumber,
+          logline: raw.logline,
+          keyBeats: raw.keyBeats,
+          cliffhangerLine: raw.cliffhanger_line,
+        } satisfies VdEpisodeMemoryFallbackContext)
+      : undefined);
   return {
     ...(raw.antagonist_tactics
       ? { antagonist_tactics: raw.antagonist_tactics }
@@ -2763,6 +3412,7 @@ function extractDramaturgyStructureFields(raw: {
       : {}),
     ...(raw.world_rules ? { world_rules: raw.world_rules } : {}),
     ...(raw.price_paid ? { price_paid: raw.price_paid } : {}),
+    ...(resolvedEpisodeMemory ? { episodeMemory: resolvedEpisodeMemory } : {}),
   };
 }
 
@@ -2773,6 +3423,8 @@ type DramaturgyStructureFieldsLike = {
   protagonist_stake?: string;
   world_rules?: VdWorldRule[];
   price_paid?: string;
+  /** Series memory (Stage 1.2/1.3) — see `PremiumDramaturgyStructureFields`'s own doc comment. */
+  episodeMemory?: VdEpisodeMemory;
 };
 
 /**
@@ -2782,6 +3434,13 @@ type DramaturgyStructureFieldsLike = {
  * `buildPremiumRevisePrompts`), but a lenient model can still omit one —
  * this stops that from silently erasing already-known season structure.
  * `newer` always wins when it actually has a value for a given field.
+ *
+ * `episodeMemory` follows the SAME "newer wins, else keep prior" rule —
+ * `newer.episodeMemory` is populated by `extractDramaturgyStructureFields`
+ * for EVERY freshly-gated response (always resolved, at minimum to the
+ * deterministic recap-only fallback), so in practice it always wins here;
+ * the `prior` fallback exists only as defense-in-depth against a future
+ * caller that constructs `newer` some other way.
  */
 function mergeDramaturgyStructureFields(
   newer: DramaturgyStructureFieldsLike,
@@ -2812,6 +3471,11 @@ function mergeDramaturgyStructureFields(
       ? { price_paid: newer.price_paid }
       : prior.price_paid
         ? { price_paid: prior.price_paid }
+        : {}),
+    ...(newer.episodeMemory
+      ? { episodeMemory: newer.episodeMemory }
+      : prior.episodeMemory
+        ? { episodeMemory: prior.episodeMemory }
         : {}),
   };
 }
@@ -2856,6 +3520,17 @@ export interface GenerateStoryBibleDeepResult {
    * reconciled") whenever tie-in draft awareness was active.
    */
   tieInMismatchCount?: number;
+  /**
+   * Production-grade full-story generation, added 2026-07-13 — every NEW
+   * location this run's chunks declared and the deterministic gate accepted
+   * (deduped by `location_key`, excluding any that collided with an
+   * ALREADY-EXISTING key — see `computeNewLocationDeclarationViolations`).
+   * Always `[]` (never `undefined`), same "no null-check needed" convention
+   * as `warnings`/`missingEpisodes` above. The router persists these into
+   * `vertical_drama_locations` after the bible write succeeds — see
+   * `runGenerateStoryBibleDeepJob`.
+   */
+  newLocations: VdDeclaredLocation[];
 }
 
 /**
@@ -2904,10 +3579,47 @@ export async function generateStoryBibleDeep(
       warnings: [],
       finalOpenThreads: params.priorRecap?.openThreads ?? [],
       missingEpisodes: [],
+      newLocations: [],
     };
   }
 
-  const chunkSizes = computeDeepDraftChunkSizes(episodes.length);
+  // Resilient resume (added 2026-07-14) — remove any episode the caller
+  // already knows is drafted (resumed checkpoint and/or already-drafted
+  // bible state) from the set this run will actually process: it gets no
+  // prompt, no LLM call, and no credit deduction. `resumedDraftedItems`
+  // seeds the `draftedItems` accumulator below so the FINAL result still
+  // returns the full (resumed + newly drafted) union — see
+  // `GenerateStoryBibleDeepParams.resumeDraftedItems`'s own doc comment.
+  // Both fields are additive/optional: omitting them makes
+  // `episodesToProcess`/`resumedDraftedItems` byte-identical to `episodes`/
+  // `[]`, i.e. this whole block is a no-op for every caller that predates
+  // this feature.
+  const alreadyDraftedEpisodeSet = new Set(
+    params.alreadyDraftedEpisodeNumbers ?? []
+  );
+  const episodesToProcess = alreadyDraftedEpisodeSet.size
+    ? episodes.filter(ep => !alreadyDraftedEpisodeSet.has(ep.episodeNumber))
+    : episodes;
+  const resumedDraftedItems = params.resumeDraftedItems ?? [];
+
+  if (episodesToProcess.length === 0) {
+    // Every requested episode was already drafted (full resume) — nothing
+    // left to draft this run. Return the resumed items as the complete,
+    // honest result (no chunks run, no credits spent).
+    return {
+      draftedItems: resumedDraftedItems,
+      chunkSizes: [],
+      partial: false,
+      creditsUsed: 0,
+      model: "",
+      warnings: [],
+      finalOpenThreads: params.priorRecap?.openThreads ?? [],
+      missingEpisodes: [],
+      newLocations: [],
+    };
+  }
+
+  const chunkSizes = computeDeepDraftChunkSizes(episodesToProcess.length);
   const totalEstimate =
     chunkSizes.length * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE;
   const hasCredits = await hasEnoughCredits(params.userId, totalEstimate);
@@ -2929,7 +3641,10 @@ export async function generateStoryBibleDeep(
       ? resolveVerticalDramaFormatProfile(params.totalEpisodeCount)
       : undefined;
 
-  const draftedItems: DeepDraftedEpisodeItem[] = [];
+  // Resilient resume — seed the accumulator with what an earlier run already
+  // drafted so the final result stays the full union; `resumedDraftedItems`
+  // is `[]` for every caller that predates this feature (byte-identical).
+  const draftedItems: DeepDraftedEpisodeItem[] = [...resumedDraftedItems];
   const warnings: VdDeepDraftWarning[] = [];
   const completedChunkSizes: number[] = [];
   const missingEpisodes: number[] = [];
@@ -2941,9 +3656,27 @@ export async function generateStoryBibleDeep(
   let failureMessage: string | undefined;
   let chunkIndex = 0;
 
+  // Production-grade full-story generation, added 2026-07-13 — see
+  // `GenerateStoryBibleDeepParams.existingLocations`/`characterBibleNames`'s
+  // own doc comments. `characterBibleNameSet`/`knownLocationKeySet` stay
+  // `undefined` (disabling their respective completeness-gate check) when
+  // the caller doesn't supply that context; `knownLocationsForPrompt` grows
+  // across this run's own chunks as `new_locations` are accepted, so a later
+  // chunk can reuse a location an earlier chunk in THIS run just declared.
+  const characterBibleNameSet = params.characterBibleNames?.length
+    ? new Set(params.characterBibleNames)
+    : undefined;
+  const knownLocationKeySet = params.existingLocations
+    ? new Set(params.existingLocations.map(l => l.locationKey))
+    : undefined;
+  let knownLocationsForPrompt = params.existingLocations
+    ? [...params.existingLocations]
+    : undefined;
+  const collectedNewLocations: VdDeclaredLocation[] = [];
+
   for (const size of chunkSizes) {
     chunkIndex += 1;
-    const chunkEpisodes = episodes.slice(cursor, cursor + size);
+    const chunkEpisodes = episodesToProcess.slice(cursor, cursor + size);
     cursor += size;
     const requestedEpisodeNumbers = chunkEpisodes.map(ep => ep.episodeNumber);
 
@@ -2969,6 +3702,7 @@ export async function generateStoryBibleDeep(
       userPremise: params.userPremise,
       sceneContractsEnabled: params.sceneContractsEnabled,
       audienceAgeRating: params.audienceAgeRating,
+      knownLocations: knownLocationsForPrompt,
     });
 
     try {
@@ -3012,20 +3746,79 @@ export async function generateStoryBibleDeep(
         first.data.episodeBreakdown
       );
       let chunkOpenThreads = first.data.open_threads ?? openThreads;
+      let chunkNewLocationsRaw: VdDeclaredLocation[] =
+        first.data.new_locations ?? [];
+
+      // Production-grade full-story generation, added 2026-07-13 —
+      // deterministic completeness gate (facts only, NO extra LLM call):
+      // validates this chunk's `new_locations` declarations against the
+      // known roster, then every returned shot's `characters`/`location_key`
+      // against the known roster + this chunk's OWN (still-being-validated)
+      // `new_locations`. Reuses the SAME "one corrective retry" mechanism as
+      // the missing-episode fix immediately below.
+      const gateChunkCompleteness = (
+        items: typeof reconciled.items,
+        newLocationsRaw: VdDeclaredLocation[]
+      ): VdDeepDraftCompletenessViolation[] => {
+        const { violations: newLocationViolations, acceptedKeys } =
+          computeNewLocationDeclarationViolations(
+            newLocationsRaw,
+            knownLocationKeySet
+          );
+        const combinedKnownKeys = knownLocationKeySet
+          ? new Set([...knownLocationKeySet, ...acceptedKeys])
+          : undefined;
+        const shotViolations = items.flatMap(item =>
+          computeShotCompletenessViolations(
+            item.episodeNumber,
+            item.shotDrafts,
+            {
+              characterBibleNames: characterBibleNameSet,
+              knownLocationKeys: combinedKnownKeys,
+            }
+          )
+        );
+        return [...newLocationViolations, ...shotViolations];
+      };
+
+      let completenessViolations = gateChunkCompleteness(
+        reconciled.items,
+        chunkNewLocationsRaw
+      );
 
       // Live-bug fix (chunk under-count no longer accepted silently, added
-      // 2026-07-08): the chunk's returned episode set didn't exactly match
-      // what was requested (missing/extra/duplicate) — issue ONE corrective
-      // retry of the SAME chunk (same prompt + an explicit instruction
-      // naming the missing episode numbers), reusing the exact
+      // 2026-07-08), EXTENDED (production-grade full-story generation,
+      // 2026-07-13) to ALSO cover the deterministic completeness gate above:
+      // the chunk's returned episode set didn't exactly match what was
+      // requested (missing/extra/duplicate) OR failed a completeness check —
+      // issue ONE corrective retry of the SAME chunk (same prompt + an
+      // explicit instruction naming the missing episode numbers AND/OR the
+      // completeness violations), reusing the exact
       // `executeJsonPlanningCallWithRetry` call shape every chunk call
       // already uses. Best-effort: if this retry call itself fails outright
       // (network/still-malformed-after-ITS-OWN-internal-retry), this simply
-      // keeps the first attempt's (still incomplete) result — never throws
-      // away what the first attempt DID successfully draft.
-      if (reconciled.missingEpisodeNumbers.length > 0) {
+      // keeps the first attempt's (still incomplete/imperfect) result —
+      // never throws away what the first attempt DID successfully draft.
+      if (
+        reconciled.missingEpisodeNumbers.length > 0 ||
+        completenessViolations.length > 0
+      ) {
         try {
-          const retryUserPrompt = `${userPrompt}\n\n${buildDeepDraftMissingEpisodesRetryInstruction(reconciled.missingEpisodeNumbers)}`;
+          const retryInstructionParts = [
+            reconciled.missingEpisodeNumbers.length > 0
+              ? buildDeepDraftMissingEpisodesRetryInstruction(
+                  reconciled.missingEpisodeNumbers
+                )
+              : null,
+            completenessViolations.length > 0
+              ? buildDeepDraftCompletenessRetryInstruction(
+                  completenessViolations
+                )
+              : null,
+          ]
+            .filter((part): part is string => Boolean(part))
+            .join("\n\n");
+          const retryUserPrompt = `${userPrompt}\n\n${retryInstructionParts}`;
           const retry = await executeJsonPlanningCallWithRetry({
             model,
             systemPrompt,
@@ -3056,6 +3849,7 @@ export async function generateStoryBibleDeep(
               seriesId: params.seriesId,
               chunkEpisodeNumbers: requestedEpisodeNumbers,
               missingEpisodeNumbers: reconciled.missingEpisodeNumbers,
+              completenessViolationCount: completenessViolations.length,
               inputTokens: retryUsage?.prompt_tokens ?? 0,
               outputTokens: retryUsage?.completion_tokens ?? 0,
             },
@@ -3073,6 +3867,16 @@ export async function generateStoryBibleDeep(
             [...retry.data.episodeBreakdown, ...first.data.episodeBreakdown]
           );
           chunkOpenThreads = retry.data.open_threads ?? chunkOpenThreads;
+          chunkNewLocationsRaw = retry.data.new_locations ?? chunkNewLocationsRaw;
+          // Re-run the SAME gate over the retry's result — this is the FINAL
+          // check for this chunk (only ONE corrective retry is ever issued);
+          // any violation still present after this is accepted and recorded
+          // as a `"shot_completeness_violation"` warning further below,
+          // never a second retry.
+          completenessViolations = gateChunkCompleteness(
+            reconciled.items,
+            chunkNewLocationsRaw
+          );
         } catch (retryError) {
           debugError(
             "vd_deep_draft_missing_episode_retry",
@@ -3085,6 +3889,44 @@ export async function generateStoryBibleDeep(
             }
           );
         }
+      }
+
+      // Production-grade full-story generation — record any SURVIVING
+      // completeness violation as a non-fatal warning (never blocks the
+      // run), then accept this chunk's validated `new_locations` into the
+      // running known-location roster for subsequent chunks.
+      for (const violation of completenessViolations) {
+        warnings.push({
+          episodeNumber: violation.episodeNumber,
+          shotNumber: violation.shotNumber,
+          reason: "shot_completeness_violation",
+        });
+      }
+      const { acceptedKeys: chunkAcceptedLocationKeys } =
+        computeNewLocationDeclarationViolations(
+          chunkNewLocationsRaw,
+          knownLocationKeySet
+        );
+      const chunkAcceptedLocations = chunkNewLocationsRaw.filter(loc =>
+        chunkAcceptedLocationKeys.has(loc.location_key)
+      );
+      if (chunkAcceptedLocations.length > 0) {
+        collectedNewLocations.push(...chunkAcceptedLocations);
+        if (knownLocationKeySet) {
+          for (const key of chunkAcceptedLocationKeys) {
+            knownLocationKeySet.add(key);
+          }
+        }
+        knownLocationsForPrompt = knownLocationsForPrompt
+          ? [
+              ...knownLocationsForPrompt,
+              ...chunkAcceptedLocations.map(loc => ({
+                locationKey: loc.location_key,
+                name: loc.name,
+                description: loc.description,
+              })),
+            ]
+          : undefined;
       }
 
       if (reconciled.items.length === 0) {
@@ -3117,6 +3959,10 @@ export async function generateStoryBibleDeep(
       );
 
       draftedItems.push(...chunkDrafted);
+      // Resilient resume — fire-and-forget checkpoint hook, THIS chunk's
+      // items only (never the resumed ones already seeded above). No-op
+      // when absent, same "additive, never awaited" contract as `onProgress`.
+      params.onChunkComplete?.(chunkDrafted);
       recapItems = [
         ...recapItems,
         ...chunkDrafted.map((drafted): DeepDraftRecapEpisode => {
@@ -3186,6 +4032,19 @@ export async function generateStoryBibleDeep(
     openThreads
   );
 
+  // Production-grade full-story generation — final dedupe safety net (the
+  // per-chunk gate already prevents duplicates within/against the known
+  // roster whenever `knownLocationKeySet` is defined; this also protects a
+  // caller that omitted `existingLocations` entirely, where no cross-chunk
+  // roster was tracked).
+  const dedupedNewLocations: VdDeclaredLocation[] = [];
+  const seenNewLocationKeys = new Set<string>();
+  for (const loc of collectedNewLocations) {
+    if (seenNewLocationKeys.has(loc.location_key)) continue;
+    seenNewLocationKeys.add(loc.location_key);
+    dedupedNewLocations.push(loc);
+  }
+
   return {
     draftedItems,
     chunkSizes: completedChunkSizes,
@@ -3195,6 +4054,7 @@ export async function generateStoryBibleDeep(
     warnings: warningsWithPremiseCoverage,
     finalOpenThreads: openThreads,
     missingEpisodes,
+    newLocations: dedupedNewLocations,
     ...(partial && failureMessage ? { error: failureMessage } : {}),
     ...(params.tieInDraftContext
       ? { tieInMismatchCount: tieInReconciliation.mismatchCount }
@@ -3245,8 +4105,16 @@ export async function generateStoryBibleDeep(
 /** Exactly 3 lens-differentiated candidates are drafted per chunk (owner-approved design point 2a). */
 export const VD_PREMIUM_DRAFT_CANDIDATE_COUNT = 3;
 
-/** At most this many targeted-revise rounds run per chunk (owner-approved design point 2e). */
-export const VD_PREMIUM_DRAFT_MAX_REVISE_ROUNDS = 2;
+/**
+ * At most this many targeted-revise rounds run per chunk (owner-approved
+ * design point 2e). Raised 2 -> 4 (production-grade full-story generation,
+ * plan `planning/vertical-drama-full-story-production-grade`, 2026-07-13) —
+ * "loop engineering with more rounds... revise the weakest until the
+ * scorecard passes the threshold BEFORE returning" (long processing time is
+ * acceptable; no second improvement pass afterwards). Regression guard and
+ * keep-best-version behavior are UNCHANGED.
+ */
+export const VD_PREMIUM_DRAFT_MAX_REVISE_ROUNDS = 4;
 
 /** An episode's `overall` score must reach this to be considered "at floor" (owner-approved design point 2e). */
 export const VD_PREMIUM_DRAFT_MIN_OVERALL = 4;
@@ -3277,19 +4145,25 @@ const VD_PREMIUM_DRAFT_LENS_LABELS = [
 
 /**
  * Premium pre-check call estimate (owner-approved design point 5) — a
- * conservative FLAT per-chunk estimate, not an exact sum: 6 calls/chunk
- * (3 fan-out + 1 judge + an average of ~1.5 revise-round call-pairs, rounded
- * up for headroom) plus a flat 2 for the ONE-TIME season continuity sweep (1
- * sweep-detect call + 1 spot-revise/re-judge pair, collapsed to 2 since the
- * spot-revise/re-judge pair only runs when the sweep actually finds an
- * issue). The REAL cost is always the sum of the per-call
- * `calculateCreditsForLLM` amounts actually deducted (`deductPremiumCall`) —
- * this estimate only gates the upfront `hasEnoughCredits` pre-check,
- * mirroring every other Vertical Drama planning call site's conservative
- * pre-check convention.
+ * conservative FLAT per-chunk estimate, not an exact sum: 10 calls/chunk
+ * (3 fan-out + 1 judge + an average of ~3 revise-round call-pairs, rounded
+ * up for headroom against `VD_PREMIUM_DRAFT_MAX_REVISE_ROUNDS`) plus a flat 2
+ * for the ONE-TIME season continuity sweep (1 sweep-detect call + 1
+ * spot-revise/re-judge pair, collapsed to 2 since the spot-revise/re-judge
+ * pair only runs when the sweep actually finds an issue). The REAL cost is
+ * always the sum of the per-call `calculateCreditsForLLM` amounts actually
+ * deducted (`deductPremiumCall`) — this estimate only gates the upfront
+ * `hasEnoughCredits` pre-check, mirroring every other Vertical Drama
+ * planning call site's conservative pre-check convention.
+ *
+ * Updated 4/chunk -> 10/chunk (production-grade full-story generation,
+ * 2026-07-13) alongside `VD_PREMIUM_DRAFT_MAX_REVISE_ROUNDS` 2 -> 4: 3
+ * fan-out + 1 judge = 4 calls, plus up to 4 revise-round pairs (8 calls) —
+ * averaged down to ~3 pairs (6 calls) for headroom since most chunks pass
+ * floor checks in fewer rounds, giving 4 + 6 = 10.
  */
 export function estimatePremiumDeepDraftCalls(chunkCount: number): number {
-  return Math.max(0, chunkCount) * 6 + 2;
+  return Math.max(0, chunkCount) * 10 + 2;
 }
 
 /** `Record<dimension, score>` shape shared by judge/re-judge scores AND the persisted scorecard — used for floor checks, feedback text, and scorecard construction. Persisted legacy scorecards may omit newer v3 dimensions. */
@@ -3312,9 +4186,19 @@ type PremiumScoreLike = Partial<
  * episodes for a per-candidate count. (Beat-count/reversal-marker counting
  * from shot summaries is deliberately NOT attempted here — too unreliable a
  * signal, per owner-approved design point 2b.)
+ *
+ * Production-grade full-story generation, added 2026-07-13 — `item`'s
+ * OPTIONAL `completenessViolations` (see
+ * `computeShotCompletenessViolations`/`computeNewLocationDeclarationViolations`)
+ * adds ONE violation per entry, straight onto the same sum. Omitted entirely
+ * (every pre-existing caller) contributes `0`, so this is byte-identical to
+ * before this field existed.
  */
 export function computePremiumGateViolationCount(
-  items: Array<{ draftCompleteness: VdDeepDraftCompleteness }>
+  items: Array<{
+    draftCompleteness: VdDeepDraftCompleteness;
+    completenessViolations?: VdDeepDraftCompletenessViolation[];
+  }>
 ): number {
   return items.reduce((sum, item) => {
     const c = item.draftCompleteness;
@@ -3323,6 +4207,7 @@ export function computePremiumGateViolationCount(
     if (!c.allSpeakable) violations += 1;
     if (c.coverageStatus === "error") violations += 2;
     else if (c.coverageStatus === "warning") violations += 1;
+    violations += item.completenessViolations?.length ?? 0;
     return sum + violations;
   }, 0);
 }
@@ -3491,6 +4376,8 @@ const premiumRejudgeResponseSchema = z
 /** Revise responses (targeted per-chunk AND season-sweep spot-revise) reuse the exact chunk-generation episode shape. */
 const premiumReviseResponseSchema = z.object({
   episodeBreakdown: z.array(deepDraftChunkEpisodeItemSchema).min(1),
+  /** Production-grade full-story generation, added 2026-07-13 — a revise round MAY also declare a new location a fixed shot now needs. */
+  new_locations: z.array(newLocationDeclarationSchema).optional(),
 });
 
 type PremiumRawEpisode = z.infer<typeof deepDraftChunkEpisodeItemSchema>;
@@ -3546,6 +4433,8 @@ type PremiumDramaturgyStructureFields = {
   protagonist_stake?: string;
   world_rules?: VdWorldRule[];
   price_paid?: string;
+  /** Series memory (Stage 1.2/1.3) — see `DeepDraftedEpisodeItem.episodeMemory`'s own doc comment. */
+  episodeMemory?: VdEpisodeMemory;
 };
 
 /** One fan-out (or revise) candidate's SINGLE episode after deterministic gating (owner-approved design point 2b) — pre-judge. */
@@ -3559,6 +4448,8 @@ type PremiumGatedEpisode = {
   draftCompleteness: VdDeepDraftCompleteness;
   gateViolations: number;
   localWarnings: VdDeepDraftWarning[];
+  /** Production-grade full-story generation, added 2026-07-13 — see `computeShotCompletenessViolations`. */
+  completenessViolations: VdDeepDraftCompletenessViolation[];
 } & PremiumDramaturgyStructureFields;
 
 /** The CURRENT best version of a single episode as the per-chunk/sweep pipeline progresses (winner, then possibly revised). */
@@ -3569,6 +4460,8 @@ type PremiumEpisodeState = {
   draftCompleteness: VdDeepDraftCompleteness;
   draftScorecard: VdPremiumDraftScorecard;
   localWarnings: VdDeepDraftWarning[];
+  /** Production-grade full-story generation, added 2026-07-13 — see `computeShotCompletenessViolations`. */
+  completenessViolations: VdDeepDraftCompletenessViolation[];
 } & PremiumDramaturgyStructureFields;
 
 /* -------------------------------------------------------------------------- */
@@ -3580,9 +4473,16 @@ type PremiumEpisodeState = {
  * (`enforceEpisodeShotDraftSpeakability` + `computeDraftCompleteness`) over a
  * raw fan-out/revise LLM response's `episodeBreakdown` — any freshly
  * generated shot content always goes through this before being trusted.
+ *
+ * Production-grade full-story generation, added 2026-07-13 — `context`
+ * (optional, same "omit to skip that one check" contract as
+ * `computeShotCompletenessViolations`) threads the character-bible/
+ * known-location facts into the SAME deterministic gate standard mode uses,
+ * per episode — its violation count is folded into `gateViolations`.
  */
 function gateRawPremiumEpisodes(
-  rawEpisodeBreakdown: PremiumRawEpisode[]
+  rawEpisodeBreakdown: PremiumRawEpisode[],
+  context: VdDeepDraftCompletenessGateContext = {}
 ): PremiumGatedEpisode[] {
   return rawEpisodeBreakdown.map(raw => {
     const localWarnings: VdDeepDraftWarning[] = [];
@@ -3594,6 +4494,11 @@ function gateRawPremiumEpisodes(
       .slice()
       .sort((a, b) => a.shot_number - b.shot_number);
     const draftCompleteness = computeDraftCompleteness(cleaned);
+    const completenessViolations = computeShotCompletenessViolations(
+      raw.episodeNumber,
+      cleaned,
+      context
+    );
     return {
       episodeNumber: raw.episodeNumber,
       workingTitle: raw.workingTitle,
@@ -3602,8 +4507,11 @@ function gateRawPremiumEpisodes(
       shotDrafts: cleaned,
       cliffhanger_line: raw.cliffhanger_line,
       draftCompleteness,
-      gateViolations: computePremiumGateViolationCount([{ draftCompleteness }]),
+      gateViolations: computePremiumGateViolationCount([
+        { draftCompleteness, completenessViolations },
+      ]),
       localWarnings,
+      completenessViolations,
       ...extractDramaturgyStructureFields(raw),
     };
   });
@@ -3803,6 +4711,75 @@ function loadDramaturgyCriticSkillSystemPrompt(): string {
 }
 
 /**
+ * Production-grade full-story generation
+ * (`planning/vertical-drama-full-story-production-grade`, added 2026-07-13)
+ * — the `vertical-drama-full-story-architect` skill's system prompt, now the
+ * sole author of `buildDeepDraftPrompts`'s creative-authorship/craft-rule
+ * content (role framing, shot-completeness contract, dialogue-accessibility
+ * rule, craft requirements) — per project policy, creative judgment lives in
+ * the skill, TS only computes facts and orchestrates. Mirrors
+ * `loadDramaturgyCriticSkillSystemPrompt` immediately above (same
+ * resolve -> read -> parse -> cache shape), PLUS appends the skill's
+ * `references/production-grade-vertical-drama.md` reference document under a
+ * `"REFERENCE: Production-Grade Vertical Drama Guidelines"` separator line
+ * (the skill.md body itself names this exact heading — see that file's own
+ * "A full production-grade craft guideline document is appended..." note).
+ * The reference file is read best-effort: its absence does not fail
+ * generation, only omits the appended section (the skill.md body alone is
+ * still a complete, useful system prompt).
+ */
+const FULL_STORY_ARCHITECT_SKILL_FOLDER_PATH = path.join(
+  "skills",
+  "vertical-drama-full-story-architect"
+);
+const FULL_STORY_ARCHITECT_REFERENCE_RELATIVE_PATH = path.join(
+  "references",
+  "production-grade-vertical-drama.md"
+);
+const FULL_STORY_ARCHITECT_REFERENCE_HEADER =
+  "REFERENCE: Production-Grade Vertical Drama Guidelines";
+
+let cachedFullStoryArchitectSystemPrompt: string | null = null;
+
+function loadFullStoryArchitectSkillSystemPrompt(): string {
+  if (cachedFullStoryArchitectSystemPrompt)
+    return cachedFullStoryArchitectSystemPrompt;
+
+  for (const dir of resolveSkillDirCandidates(
+    FULL_STORY_ARCHITECT_SKILL_FOLDER_PATH
+  )) {
+    const manifestPath = resolveSkillManifestPath(dir);
+    if (manifestPath && fs.existsSync(manifestPath)) {
+      const raw = fs.readFileSync(manifestPath, "utf-8");
+      const { content } = parseSkillFile(raw);
+      if (content && content.trim().length > 0) {
+        const referencePath = path.join(
+          dir,
+          FULL_STORY_ARCHITECT_REFERENCE_RELATIVE_PATH
+        );
+        let referenceContent = "";
+        try {
+          if (fs.existsSync(referencePath)) {
+            referenceContent = fs.readFileSync(referencePath, "utf-8").trim();
+          }
+        } catch {
+          // Best-effort — see this function's own doc comment.
+          referenceContent = "";
+        }
+        cachedFullStoryArchitectSystemPrompt = referenceContent
+          ? `${content}\n\n${FULL_STORY_ARCHITECT_REFERENCE_HEADER}\n${referenceContent}`
+          : content;
+        return cachedFullStoryArchitectSystemPrompt;
+      }
+    }
+  }
+
+  throw new Error(
+    `Could not locate skill.md for "vertical-drama-full-story-architect" under any known skills directory`
+  );
+}
+
+/**
  * Duplicated verbatim from `buildDeepDraftPrompts`'s inline speakability
  * rules (NOT extracted into a shared const) so that function's own source
  * stays completely untouched — this file's standard-mode byte-identity
@@ -3978,6 +4955,25 @@ function buildPremiumRejudgePrompts(params: {
   return { systemPrompt, userPrompt };
 }
 
+/**
+ * Series memory (Stage 1.2/1.3, added 2026-07-17) — strips `episodeMemory`
+ * before a `DramaturgyStructureFieldsLike` value is embedded into a premium
+ * revise/sweep prompt payload (`buildPremiumRevisePrompts`'s `currentStructure`
+ * field below). That prompt's documented shape/instructions only ever
+ * mention the 5 legacy structural fields (see its own system-prompt line);
+ * embedding the (potentially large) resolved memory block there would
+ * silently inflate every premium revise call's token cost with no
+ * corresponding instruction telling the model what to do with it. The
+ * STATE object (`PremiumGatedEpisode`/`PremiumEpisodeState`) still carries
+ * `episodeMemory` untouched — this only scrubs the PROMPT-payload copy.
+ */
+function omitEpisodeMemoryForPrompt(
+  structure: DramaturgyStructureFieldsLike
+): Omit<DramaturgyStructureFieldsLike, "episodeMemory"> {
+  const { episodeMemory: _episodeMemory, ...rest } = structure;
+  return rest;
+}
+
 function buildPremiumRevisePrompts(params: {
   title: string;
   locale: VerticalDramaSeriesLocale;
@@ -4001,6 +4997,12 @@ function buildPremiumRevisePrompts(params: {
   }>;
   /** Task #22 — see `buildDeepDraftPrompts`'s own doc comment; threaded through so a below-floor episode's revise call stays tie-in-aware. */
   tieInDraftContext?: VdTieInDraftContext;
+  /** Production-grade full-story generation — see `buildDeepDraftPrompts`'s own `knownLocations` doc comment; threaded through so a revise call still only reuses/declares valid location keys. */
+  knownLocations?: Array<{
+    locationKey: string;
+    name: string;
+    description?: string;
+  }>;
 }): { systemPrompt: string; userPrompt: string } {
   const langInstruction =
     params.locale === "th"
@@ -4014,14 +5016,16 @@ function buildPremiumRevisePrompts(params: {
     params.locale === "th" ? VD_NATURAL_THAI_DIALOGUE_RULES : null,
     VD_PREMIUM_SPEAKABILITY_RULES,
     VD_PREMIUM_NO_SILENCE_INTENT_WITH_DIALOGUE_RULE,
+    'Each shot\'s "currentDraft" already carries its "characters" (each with "emotion") and "location_key" — carry them forward UNCHANGED unless the feedback specifically calls for a fix to a character/emotion/location, in which case update ONLY what the feedback names; every revised shot MUST still include both fields exactly like the JSON response shape requires.',
     'Each Sub-episode\'s "currentStructure" (when given) is its already-recorded antagonist_tactics/character_decisions/protagonist_stake/world_rules/price_paid — carry each forward UNCHANGED in your revised entry unless the feedback specifically calls for updating that one, in which case update ONLY that field.',
     buildTieInDraftSystemBlock(params.tieInDraftContext),
     params.tieInDraftContext
       ? 'If an episode\'s "currentDraft" already has a shot marked "tie_in.has_product_moment": true and the feedback does not ask you to change the product placement, KEEP that SAME shot marked (refine it — e.g. making it feel more organic — only if the feedback calls for that) — do not move the placement to a different shot or drop it.'
       : null,
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}]}`,
+    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
     `"episodeBreakdown" must contain exactly ${params.episodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts".`,
+    '"new_locations" is OPTIONAL — include it ONLY if a fix requires a location not already in "EXISTING LOCATIONS" or already declared for this episode.',
   ]
     .filter(Boolean)
     .join("\n");
@@ -4029,6 +5033,10 @@ function buildPremiumRevisePrompts(params: {
   const recapText = buildDeepDraftContinuityRecap(
     params.recapItems,
     params.openThreads
+  );
+
+  const knownLocationsBlock = buildKnownLocationsPromptBlock(
+    params.knownLocations
   );
 
   const episodesPayload = params.episodes.map(e => ({
@@ -4042,12 +5050,16 @@ function buildPremiumRevisePrompts(params: {
       shots: e.currentShotDrafts.map(shot => ({
         shot_number: shot.shot_number,
         summary: shot.summary,
+        characters: shot.characters ?? [],
+        location_key: shot.location_key ?? null,
         dialogue_lines: shot.dialogue_lines,
         silence_intent: shot.silence_intent,
         ...(shot.tie_in ? { tie_in: shot.tie_in } : {}),
       })),
     },
-    currentStructure: e.currentStructure ?? null,
+    currentStructure: e.currentStructure
+      ? omitEpisodeMemoryForPrompt(e.currentStructure)
+      : null,
     ...(buildTieInDraftEpisodePayloadField(
       params.tieInDraftContext,
       e.sourceItem.episodeNumber
@@ -4066,6 +5078,7 @@ function buildPremiumRevisePrompts(params: {
     params.genre ? `Genre: ${params.genre}` : null,
     params.tone ? `Tone: ${params.tone}` : null,
     recapText,
+    knownLocationsBlock,
     `Episodes to revise (current draft + feedback to address): ${JSON.stringify(episodesPayload)}`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -4180,6 +5193,12 @@ async function callPremiumFanoutCandidate(
     userPremise?: string;
     /** Feature 132 §6 (F132C) — see `buildDeepDraftPrompts`'s own doc comment; threaded straight through. */
     sceneContractsEnabled?: boolean;
+    /** Production-grade full-story generation — see `buildDeepDraftPrompts`'s own `knownLocations` doc comment; threaded straight through. */
+    knownLocations?: Array<{
+      locationKey: string;
+      name: string;
+      description?: string;
+    }>;
   }
 ) {
   const base = buildDeepDraftPrompts(params);
@@ -4284,6 +5303,8 @@ type PremiumChunkResult = {
   firstPassGatePassFlags: boolean[];
   /** Live-bug fix (added 2026-07-08) — requested episode numbers still missing after the winner + revise loop + ONE corrective retry; empty when every requested episode was recovered. See `generateStoryBibleDeep`'s standard-mode loop for the same fix. */
   missingEpisodeNumbers: number[];
+  /** Production-grade full-story generation, added 2026-07-13 — every NEW location this chunk's WINNING candidate (+ its revise rounds + missing-episode recovery) declared and the gate accepted, in declaration order. */
+  newLocations: VdDeclaredLocation[];
 };
 
 async function runPremiumChunk(
@@ -4309,9 +5330,61 @@ async function runPremiumChunk(
     userPremise?: string;
     /** Feature 132 §6 (F132C) — threaded to the fan-out candidates and the missing-episode recovery retry below; also gates the contract deterministic-gate check further below. */
     sceneContractsEnabled?: boolean;
+    /** Production-grade full-story generation — see `buildDeepDraftPrompts`'s own `knownLocations` doc comment; threaded to the fan-out candidates, the revise calls, and the deterministic completeness gate below. Mutated in place (append-only) as this chunk's OWN `new_locations` are accepted, so later revise rounds in this SAME chunk see them too. */
+    knownLocations?: Array<{
+      locationKey: string;
+      name: string;
+      description?: string;
+    }>;
+    /** Production-grade full-story generation — see `GenerateStoryBibleDeepParams.characterBibleNames`'s own doc comment; threaded to the deterministic completeness gate below. */
+    characterBibleNames?: string[];
   },
   callAccounting: PremiumCallAccounting
 ): Promise<PremiumChunkResult> {
+  const characterBibleNameSet = params.characterBibleNames?.length
+    ? new Set(params.characterBibleNames)
+    : undefined;
+  // Production-grade full-story generation — this chunk's OWN running known-
+  // location roster, seeded from `params.knownLocations` (the run's roster as
+  // of the START of this chunk) and grown in place as THIS chunk's candidates/
+  // revise rounds accept new declarations — mirrors `generateStoryBibleDeep`'s
+  // standard-mode `knownLocationKeySet`/`collectedNewLocations` pairing.
+  const knownLocationKeySet = params.knownLocations
+    ? new Set(params.knownLocations.map(l => l.locationKey))
+    : undefined;
+  let knownLocationsForPrompt = params.knownLocations
+    ? [...params.knownLocations]
+    : undefined;
+  const chunkNewLocations: VdDeclaredLocation[] = [];
+  const acceptChunkNewLocations = (
+    newLocationsRaw: VdDeclaredLocation[]
+  ): Set<string> => {
+    const { acceptedKeys } = computeNewLocationDeclarationViolations(
+      newLocationsRaw,
+      knownLocationKeySet
+    );
+    const accepted = newLocationsRaw.filter(loc =>
+      acceptedKeys.has(loc.location_key)
+    );
+    if (accepted.length > 0) {
+      chunkNewLocations.push(...accepted);
+      if (knownLocationKeySet) {
+        for (const key of acceptedKeys) knownLocationKeySet.add(key);
+      }
+      knownLocationsForPrompt = knownLocationsForPrompt
+        ? [
+            ...knownLocationsForPrompt,
+            ...accepted.map(loc => ({
+              locationKey: loc.location_key,
+              name: loc.name,
+              description: loc.description,
+            })),
+          ]
+        : undefined;
+    }
+    return acceptedKeys;
+  };
+
   // Task #22 — `true` only when this run has a tie-in context AND that
   // episode's placement is planned; used below to decide when a worst-case
   // fallback scorecard should ALSO stamp `tie_in_naturalness: 1`.
@@ -4378,15 +5451,35 @@ async function runPremiumChunk(
     callAccounting.addCall();
   }
 
-  // 2. DETERMINISTIC GATES — no extra LLM call.
+  // 2. DETERMINISTIC GATES — no extra LLM call. Production-grade full-story
+  // generation — ALSO validates each candidate's OWN `new_locations` against
+  // the chunk's known roster (not yet mutated by any candidate — a losing
+  // candidate's declarations must never pollute the shared roster; only the
+  // WINNER's are accepted, below) and folds any violation into that
+  // candidate's `gateViolationCount`.
   const gatedCandidates = fulfilled.map(({ index, data }) => {
-    const episodes = gateRawPremiumEpisodes(data.episodeBreakdown);
-    const gateViolationCount = computePremiumGateViolationCount(episodes);
+    const candidateNewLocationsRaw = data.new_locations ?? [];
+    const { violations: newLocationViolations, acceptedKeys } =
+      computeNewLocationDeclarationViolations(
+        candidateNewLocationsRaw,
+        knownLocationKeySet
+      );
+    const combinedKnownKeys = knownLocationKeySet
+      ? new Set([...knownLocationKeySet, ...acceptedKeys])
+      : undefined;
+    const episodes = gateRawPremiumEpisodes(data.episodeBreakdown, {
+      characterBibleNames: characterBibleNameSet,
+      knownLocationKeys: combinedKnownKeys,
+    });
+    const gateViolationCount =
+      computePremiumGateViolationCount(episodes) +
+      newLocationViolations.length;
     return {
       index,
       episodes,
       openThreads: data.open_threads ?? params.openThreads,
       gateViolationCount,
+      newLocationsRaw: candidateNewLocationsRaw,
     };
   });
 
@@ -4453,6 +5546,12 @@ async function runPremiumChunk(
   const winnerIndex = selectPremiumDraftWinnerIndex(candidateStats);
   const winner = gatedCandidates.find(c => c.index === winnerIndex)!;
 
+  // Production-grade full-story generation — accept ONLY the WINNING
+  // candidate's `new_locations` into this chunk's shared known-location
+  // roster (a losing candidate's declarations are discarded along with the
+  // rest of its content).
+  acceptChunkNewLocations(winner.newLocationsRaw);
+
   const firstPassGatePassFlags = winner.episodes.map(
     ep => ep.gateViolations === 0
   );
@@ -4472,6 +5571,7 @@ async function runPremiumChunk(
         ? scoreToScorecard(score, 0)
         : worstCasePremiumScorecard(0, isEpisodeTieInPlaced(ep.episodeNumber)),
       localWarnings: ep.localWarnings,
+      completenessViolations: ep.completenessViolations,
       ...extractDramaturgyStructureFields(ep),
     });
   }
@@ -4483,7 +5583,12 @@ async function runPremiumChunk(
       ep =>
         !meetsPremiumDraftFloor(ep.draftScorecard, params.formatProfile) ||
         (params.sceneContractsEnabled &&
-          !meetsPremiumDraftContractFloor(ep.shotDrafts))
+          !meetsPremiumDraftContractFloor(ep.shotDrafts)) ||
+        // Production-grade full-story generation — an episode with a
+        // surviving deterministic completeness violation (missing/unknown
+        // character, invalid location_key) is ALWAYS revised, regardless of
+        // its judged score.
+        ep.completenessViolations.length > 0
     );
     if (belowFloor.length === 0) break; // stop early — every episode already passes floors.
     roundsUsed = round;
@@ -4492,7 +5597,16 @@ async function runPremiumChunk(
       sourceItem: findPremiumSourceItem(params.chunkEpisodes, ep.episodeNumber),
       currentShotDrafts: ep.shotDrafts,
       currentCliffhangerLine: ep.cliffhanger_line,
-      feedback: composePremiumScoreFeedback(ep.draftScorecard),
+      feedback: [
+        composePremiumScoreFeedback(ep.draftScorecard),
+        ep.completenessViolations.length > 0
+          ? buildDeepDraftCompletenessRetryInstruction(
+              ep.completenessViolations
+            )
+          : null,
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join(" "),
       currentStructure: extractDramaturgyStructureFields(ep),
     }));
     const belowFloorEpisodeNumbers = belowFloor
@@ -4519,6 +5633,7 @@ async function runPremiumChunk(
         label: `Premium deep draft revise round ${round}`,
         episodes: reviseEpisodesInput,
         tieInDraftContext: params.tieInDraftContext,
+        knownLocations: knownLocationsForPrompt,
       });
     } catch (err) {
       // Phase A reliability fix (added 2026-07-09) — was a bare `catch {}`
@@ -4543,8 +5658,15 @@ async function runPremiumChunk(
       callAccounting.addCall();
     }
 
+    // Production-grade full-story generation — accept this revise round's
+    // own `new_locations` into the SAME shared roster (mutates
+    // `knownLocationKeySet`/`knownLocationsForPrompt` in place) BEFORE
+    // gating the revised episodes, so a location this round just declared
+    // resolves as valid for its own shots.
+    acceptChunkNewLocations(reviseResult.data.new_locations ?? []);
     const revisedGated = gateRawPremiumEpisodes(
-      reviseResult.data.episodeBreakdown
+      reviseResult.data.episodeBreakdown,
+      { characterBibleNames: characterBibleNameSet, knownLocationKeys: knownLocationKeySet }
     );
 
     let rejudgeResult;
@@ -4611,6 +5733,7 @@ async function runPremiumChunk(
         draftCompleteness: revisedEp.draftCompleteness,
         draftScorecard: newScorecard,
         localWarnings: revisedEp.localWarnings,
+        completenessViolations: revisedEp.completenessViolations,
         ...mergeDramaturgyStructureFields(revisedEp, prior),
       });
     }
@@ -4648,6 +5771,7 @@ async function runPremiumChunk(
         tieInDraftContext: params.tieInDraftContext,
         userPremise: params.userPremise,
         sceneContractsEnabled: params.sceneContractsEnabled,
+        knownLocations: knownLocationsForPrompt,
       });
       const retryUserPrompt = `${base.userPrompt}\n\n${buildDeepDraftMissingEpisodesRetryInstruction(missingEpisodeNumbers)}`;
       const { data: retryData, response: retryResponse } =
@@ -4671,10 +5795,14 @@ async function runPremiumChunk(
       callAccounting.addCredits(credits);
       callAccounting.addCall();
 
+      acceptChunkNewLocations(retryData.new_locations ?? []);
       const recoveredRaw = retryData.episodeBreakdown.filter(ep =>
         missingEpisodeNumbers.includes(ep.episodeNumber)
       );
-      const recovered = gateRawPremiumEpisodes(recoveredRaw);
+      const recovered = gateRawPremiumEpisodes(recoveredRaw, {
+        characterBibleNames: characterBibleNameSet,
+        knownLocationKeys: knownLocationKeySet,
+      });
       for (const ep of recovered) {
         if (currentByEpisode.has(ep.episodeNumber)) continue; // defensive — recoveredRaw is already filtered to missing-only.
         currentByEpisode.set(ep.episodeNumber, {
@@ -4693,6 +5821,7 @@ async function runPremiumChunk(
             isEpisodeTieInPlaced(ep.episodeNumber)
           ),
           localWarnings: ep.localWarnings,
+          completenessViolations: ep.completenessViolations,
           ...extractDramaturgyStructureFields(ep),
         });
       }
@@ -4736,6 +5865,7 @@ async function runPremiumChunk(
     roundsUsed,
     firstPassGatePassFlags,
     missingEpisodeNumbers,
+    newLocations: chunkNewLocations,
   };
 }
 
@@ -4767,9 +5897,23 @@ async function runPremiumSeasonSweep(
     // revise and was never scored on `tie_in_naturalness` during rejudge.
     // Mirrors `runPremiumChunk`'s own `tieInDraftContext` plumbing exactly.
     tieInDraftContext?: VdTieInDraftContext;
+    /** Production-grade full-story generation — see `buildDeepDraftPrompts`'s own `knownLocations` doc comment; threaded to the spot-revise call and its gate. */
+    knownLocations?: Array<{
+      locationKey: string;
+      name: string;
+      description?: string;
+    }>;
+    /** Production-grade full-story generation — see `GenerateStoryBibleDeepParams.characterBibleNames`'s own doc comment. */
+    characterBibleNames?: string[];
   },
   callAccounting: PremiumCallAccounting
 ): Promise<{ issuesFound: number }> {
+  const characterBibleNameSet = params.characterBibleNames?.length
+    ? new Set(params.characterBibleNames)
+    : undefined;
+  const knownLocationKeySet = params.knownLocations
+    ? new Set(params.knownLocations.map(l => l.locationKey))
+    : undefined;
   const digestEpisodes = [...params.byEpisode.values()]
     .sort((a, b) => a.episodeNumber - b.episodeNumber)
     .map(ep => {
@@ -4865,6 +6009,7 @@ async function runPremiumSeasonSweep(
       label: "Premium deep draft season sweep spot-revise",
       episodes: reviseEpisodesInput,
       tieInDraftContext: params.tieInDraftContext,
+      knownLocations: params.knownLocations,
     });
   } catch (err) {
     // Phase A reliability fix (added 2026-07-09) — was a bare `catch {}`
@@ -4888,8 +6033,21 @@ async function runPremiumSeasonSweep(
     callAccounting.addCall();
   }
 
+  // Production-grade full-story generation — a spot-revise CAN declare a new
+  // location; accept it into the local known-key set before gating (this
+  // sweep's own accepted new locations are NOT surfaced to the caller today —
+  // they were already implicitly available from the run's earlier chunks, so
+  // this is best-effort validation only, not a second `newLocations` source).
+  if (knownLocationKeySet && reviseResult.data.new_locations) {
+    const { acceptedKeys } = computeNewLocationDeclarationViolations(
+      reviseResult.data.new_locations,
+      knownLocationKeySet
+    );
+    for (const key of acceptedKeys) knownLocationKeySet.add(key);
+  }
   const revisedGated = gateRawPremiumEpisodes(
-    reviseResult.data.episodeBreakdown
+    reviseResult.data.episodeBreakdown,
+    { characterBibleNames: characterBibleNameSet, knownLocationKeys: knownLocationKeySet }
   );
 
   let rejudgeResult;
@@ -4951,6 +6109,7 @@ async function runPremiumSeasonSweep(
       draftCompleteness: revisedEp.draftCompleteness,
       draftScorecard: newScorecard,
       localWarnings: revisedEp.localWarnings,
+      completenessViolations: revisedEp.completenessViolations,
       ...mergeDramaturgyStructureFields(revisedEp, prior),
     });
   }
@@ -4988,10 +6147,61 @@ async function generateStoryBibleDeepPremium(
       warnings: [],
       finalOpenThreads: params.priorRecap?.openThreads ?? [],
       missingEpisodes: [],
+      newLocations: [],
     };
   }
 
-  const chunkSizes = computePremiumDeepDraftChunkSizes(episodes.length);
+  // Resilient resume (added 2026-07-14, `planning/vertical-drama-deep-story-
+  // resilient-resume/plan.md`) — mirrors `generateStoryBibleDeep`'s (standard
+  // mode) identical resume/skip block above: remove any episode the caller
+  // already knows is drafted (resumed checkpoint and/or already-drafted
+  // bible state) from the set THIS run will actually process — it gets no
+  // chunk, no `runPremiumChunk` call, and no credit deduction.
+  // `resumedDraftedItems` is unioned back onto the result at the very end
+  // (after `finalStates` is built) rather than seeded into a growing
+  // accumulator like standard mode, since premium mode's own accumulator
+  // (`allDraftedByEpisode`) also drives the season sweep/`premiumMetrics`,
+  // which must stay scoped to episodes THIS run actually (re)drafted — a
+  // resumed episode was already swept in whatever earlier run produced it.
+  // Both fields are additive/optional: omitting them makes
+  // `episodesToProcess`/`resumedDraftedItems` byte-identical to `episodes`/
+  // `[]`, i.e. this whole block is a no-op for every caller that predates
+  // this feature.
+  const alreadyDraftedEpisodeSet = new Set(
+    params.alreadyDraftedEpisodeNumbers ?? []
+  );
+  const episodesToProcess = alreadyDraftedEpisodeSet.size
+    ? episodes.filter(ep => !alreadyDraftedEpisodeSet.has(ep.episodeNumber))
+    : episodes;
+  const resumedDraftedItems = params.resumeDraftedItems ?? [];
+
+  if (episodesToProcess.length === 0) {
+    // Every requested episode was already drafted (full resume) — nothing
+    // left to draft this run. Return the resumed items as the complete,
+    // honest result (no chunks run, no credits spent, no sweep).
+    return {
+      draftedItems: resumedDraftedItems,
+      chunkSizes: [],
+      partial: false,
+      creditsUsed: 0,
+      model: "",
+      warnings: [],
+      finalOpenThreads: params.priorRecap?.openThreads ?? [],
+      premiumMetrics: {
+        mode: "premium",
+        candidateCount: VD_PREMIUM_DRAFT_CANDIDATE_COUNT,
+        roundsUsedPerChunk: [],
+        firstPassGatePassRate: 0,
+        episodesBelowFloorAfter: 0,
+        sweepIssuesFound: 0,
+        callsMade: 0,
+      },
+      missingEpisodes: [],
+      newLocations: [],
+    };
+  }
+
+  const chunkSizes = computePremiumDeepDraftChunkSizes(episodesToProcess.length);
   const totalEstimate =
     estimatePremiumDeepDraftCalls(chunkSizes.length) *
     VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE;
@@ -5032,6 +6242,15 @@ async function generateStoryBibleDeepPremium(
   let failureMessage: string | undefined;
   let chunkIndex = 0;
 
+  // Production-grade full-story generation, added 2026-07-13 — see
+  // `generateStoryBibleDeep`'s (standard mode) identical setup; grows across
+  // this run's own chunks as each `runPremiumChunk` call's `newLocations` are
+  // accepted, so a later chunk sees an earlier chunk's declarations too.
+  let knownLocationsForPrompt = params.existingLocations
+    ? [...params.existingLocations]
+    : undefined;
+  const collectedNewLocations: VdDeclaredLocation[] = [];
+
   const callAccounting: PremiumCallAccounting = {
     addCredits: amount => {
       totalCreditsUsed += amount;
@@ -5040,6 +6259,20 @@ async function generateStoryBibleDeepPremium(
       callsMade += 1;
     },
   };
+
+  // Resilient resume — shared by the per-chunk `onChunkComplete` hook below
+  // AND the finalization step further down (`finalStates.map(...)`), so both
+  // read the SAME `PremiumEpisodeState` -> `DeepDraftedEpisodeItem` mapping.
+  const premiumStateToDraftedItem = (
+    state: PremiumEpisodeState
+  ): DeepDraftedEpisodeItem => ({
+    episodeNumber: state.episodeNumber,
+    shotDrafts: state.shotDrafts,
+    cliffhanger_line: state.cliffhanger_line,
+    draftCompleteness: state.draftCompleteness,
+    draftScorecard: state.draftScorecard,
+    ...extractDramaturgyStructureFields(state),
+  });
 
   const applyChunkResult = (
     chunkResult: PremiumChunkResult,
@@ -5056,6 +6289,24 @@ async function generateStoryBibleDeepPremium(
     completedChunkSizes.push(chunkResult.episodeStates.length);
     roundsUsedPerChunk.push(chunkResult.roundsUsed);
     firstPassGateFlags.push(...chunkResult.firstPassGatePassFlags);
+
+    // Production-grade full-story generation — grow the running known-
+    // location roster with THIS chunk's accepted `new_locations` so the NEXT
+    // chunk (which reads `knownLocationsForPrompt` when it's built below)
+    // can reuse them.
+    if (chunkResult.newLocations.length > 0) {
+      collectedNewLocations.push(...chunkResult.newLocations);
+      knownLocationsForPrompt = knownLocationsForPrompt
+        ? [
+            ...knownLocationsForPrompt,
+            ...chunkResult.newLocations.map(loc => ({
+              locationKey: loc.location_key,
+              name: loc.name,
+              description: loc.description,
+            })),
+          ]
+        : undefined;
+    }
 
     if (chunkResult.missingEpisodeNumbers.length === 0) {
       return true;
@@ -5076,7 +6327,7 @@ async function generateStoryBibleDeepPremium(
 
   for (const size of chunkSizes) {
     chunkIndex += 1;
-    const chunkEpisodes = episodes.slice(cursor, cursor + size);
+    const chunkEpisodes = episodesToProcess.slice(cursor, cursor + size);
     cursor += size;
 
     try {
@@ -5097,6 +6348,8 @@ async function generateStoryBibleDeepPremium(
           tieInDraftContext: params.tieInDraftContext,
           userPremise: params.userPremise,
           sceneContractsEnabled: params.sceneContractsEnabled,
+          knownLocations: knownLocationsForPrompt,
+          characterBibleNames: params.characterBibleNames,
         },
         callAccounting
       );
@@ -5106,6 +6359,13 @@ async function generateStoryBibleDeepPremium(
         // past an actual gap" reasoning as standard mode's loop.
         break;
       }
+      // Resilient resume — fire-and-forget checkpoint hook, THIS chunk's
+      // items only (never the resumed ones), fired only after a SUCCESSFUL
+      // `applyChunkResult` (never for the missing-episode/failing branch).
+      // Mirrors standard mode's identical `onChunkComplete` call.
+      params.onChunkComplete?.(
+        chunkResult.episodeStates.map(premiumStateToDraftedItem)
+      );
     } catch (error) {
       if (chunkEpisodes.length > 1) {
         let splitFailure: unknown = null;
@@ -5129,6 +6389,8 @@ async function generateStoryBibleDeepPremium(
                 tieInDraftContext: params.tieInDraftContext,
                 userPremise: params.userPremise,
                 sceneContractsEnabled: params.sceneContractsEnabled,
+                knownLocations: knownLocationsForPrompt,
+                characterBibleNames: params.characterBibleNames,
               },
               callAccounting
             );
@@ -5136,6 +6398,12 @@ async function generateStoryBibleDeepPremium(
               splitFailure = new Error(failureMessage);
               break;
             }
+            // Resilient resume — same per-chunk checkpoint hook as the main
+            // fan-out call site above, for the split-retry (per-episode)
+            // path.
+            params.onChunkComplete?.(
+              singleResult.episodeStates.map(premiumStateToDraftedItem)
+            );
           } catch (singleError) {
             splitFailure = singleError;
             break;
@@ -5181,9 +6449,11 @@ async function generateStoryBibleDeepPremium(
         locale: params.locale,
         genre: params.genre,
         tone: params.tone,
-        allEpisodes: episodes,
+        allEpisodes: episodesToProcess,
         byEpisode: allDraftedByEpisode,
         tieInDraftContext: params.tieInDraftContext,
+        knownLocations: knownLocationsForPrompt,
+        characterBibleNames: params.characterBibleNames,
       },
       callAccounting
     );
@@ -5193,16 +6463,41 @@ async function generateStoryBibleDeepPremium(
   const finalStates = [...allDraftedByEpisode.values()].sort(
     (a, b) => a.episodeNumber - b.episodeNumber
   );
-  const draftedItems: DeepDraftedEpisodeItem[] = finalStates.map(state => ({
-    episodeNumber: state.episodeNumber,
-    shotDrafts: state.shotDrafts,
-    cliffhanger_line: state.cliffhanger_line,
-    draftCompleteness: state.draftCompleteness,
-    draftScorecard: state.draftScorecard,
-    ...extractDramaturgyStructureFields(state),
-  }));
+  const newlyDraftedItems: DeepDraftedEpisodeItem[] = finalStates.map(
+    premiumStateToDraftedItem
+  );
+
+  // Resilient resume — union the resumed (already-drafted-in-a-prior-run)
+  // episodes back onto this run's freshly-drafted items, so the FINAL result
+  // is the full (resumed + new) set — same contract as standard mode's
+  // `GenerateStoryBibleDeepResult.draftedItems`. Deduped by `episodeNumber`
+  // (newly-drafted wins on any collision, though by construction the two
+  // sets never actually overlap — a resumed episode number was excluded
+  // from `episodesToProcess` above, so `allDraftedByEpisode`/`finalStates`
+  // can never contain one), sorted ascending.
+  const draftedByEpisodeNumber = new Map<number, DeepDraftedEpisodeItem>();
+  for (const item of resumedDraftedItems) {
+    draftedByEpisodeNumber.set(item.episodeNumber, item);
+  }
+  for (const item of newlyDraftedItems) {
+    draftedByEpisodeNumber.set(item.episodeNumber, item);
+  }
+  const draftedItems: DeepDraftedEpisodeItem[] = [
+    ...draftedByEpisodeNumber.values(),
+  ].sort((a, b) => a.episodeNumber - b.episodeNumber);
   const warnings = [
     ...finalStates.flatMap(state => state.localWarnings),
+    // Production-grade full-story generation — surviving per-episode
+    // completeness violations (missing/unknown character, invalid
+    // location_key) surface as `"shot_completeness_violation"` warnings,
+    // mirroring standard mode's identical conversion.
+    ...finalStates.flatMap(state =>
+      state.completenessViolations.map(violation => ({
+        episodeNumber: violation.episodeNumber,
+        shotNumber: violation.shotNumber,
+        reason: "shot_completeness_violation" as const,
+      }))
+    ),
     ...missingEpisodeWarnings,
   ];
 
@@ -5236,6 +6531,16 @@ async function generateStoryBibleDeepPremium(
     openThreads
   );
 
+  // Production-grade full-story generation — final dedupe safety net, same
+  // as `generateStoryBibleDeep`'s (standard mode) identical step.
+  const dedupedNewLocations: VdDeclaredLocation[] = [];
+  const seenNewLocationKeys = new Set<string>();
+  for (const loc of collectedNewLocations) {
+    if (seenNewLocationKeys.has(loc.location_key)) continue;
+    seenNewLocationKeys.add(loc.location_key);
+    dedupedNewLocations.push(loc);
+  }
+
   return {
     draftedItems,
     chunkSizes: completedChunkSizes,
@@ -5246,6 +6551,7 @@ async function generateStoryBibleDeepPremium(
     finalOpenThreads: openThreads,
     premiumMetrics,
     missingEpisodes,
+    newLocations: dedupedNewLocations,
     ...(partial && failureMessage ? { error: failureMessage } : {}),
     ...(params.tieInDraftContext
       ? { tieInMismatchCount: tieInReconciliation.mismatchCount }
@@ -5648,9 +6954,42 @@ const bibleRefinedCharacterSchema = z
     name: z.string().min(1),
     role: z.string().optional(),
     description: z.string().optional(),
+    // Lenient (2026-07-14 fix): this is a documented "tolerant read of a
+    // stored bible" — a persisted `narrativeRole`/`roleTier` value that
+    // predates the enum values changing (or was written by a model that
+    // guessed wrong) must degrade to `undefined`, never fail the whole
+    // array via `bibleRefinedCharacterArraySchema`'s `safeParse` below.
+    narrativeRole: lenientNarrativeRoleSchema,
+    roleTier: lenientRoleTierSchema,
+    occupation: z.string().optional(),
   })
   .passthrough();
 const bibleRefinedCharacterArraySchema = z.array(bibleRefinedCharacterSchema);
+
+export type VdBibleRefinedCharacter = {
+  name: string;
+  role?: string;
+  description?: string;
+  narrativeRole?: NarrativeRole;
+  roleTier?: RoleTier;
+  occupation?: string;
+};
+
+/**
+ * Read the complete canonical character profiles persisted in the story
+ * bible. This is intentionally tolerant for legacy bibles: malformed or
+ * missing optional role fields are preserved as absent so callers can mark
+ * the durable roster for review rather than inventing a role.
+ */
+export function readBibleRefinedCharacterProfiles(
+  bible: Record<string, unknown> | null | undefined,
+): VdBibleRefinedCharacter[] {
+  const raw = (bible as { refinedCharacters?: unknown } | null | undefined)
+    ?.refinedCharacters;
+  if (raw === undefined) return [];
+  const parsed = bibleRefinedCharacterArraySchema.safeParse(raw);
+  return parsed.success ? parsed.data : [];
+}
 
 /** One roster entry `analyzeSeasonDramaturgy`/`critiqueSeasonDrafts` evaluate for late-intro/zero-agency signals. */
 export type VdDramaturgyRosterCharacter = { name: string };
@@ -5666,11 +7005,7 @@ export type VdDramaturgyRosterCharacter = { name: string };
 export function readBibleRefinedCharacters(
   bible: Record<string, unknown> | null | undefined
 ): VdDramaturgyRosterCharacter[] {
-  const raw = (bible as { refinedCharacters?: unknown } | null | undefined)
-    ?.refinedCharacters;
-  if (raw === undefined) return [];
-  const parsed = bibleRefinedCharacterArraySchema.safeParse(raw);
-  return parsed.success ? parsed.data.map(c => ({ name: c.name })) : [];
+  return readBibleRefinedCharacterProfiles(bible).map(c => ({ name: c.name }));
 }
 
 /* -------------------------------------------------------------------------- */

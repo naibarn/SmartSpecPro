@@ -392,4 +392,26 @@ describe("seedCharactersFromDraft — presetCharacterProfiles merge", () => {
     expect(insertedRows[0].data.speechProfile).toBeUndefined();
     expect(insertedRows[0].data.description).toBe("the lead detective");
   });
+
+  it("persists canonical role fields from a structured preset profile", async () => {
+    mockDb.insert.mockReturnValueOnce(insertChain([]));
+
+    await seedCharactersFromDraft("tenant-1", 42, 10, "Mai — ซีอีโอหญิง: นางเอกของเรื่อง", [
+      {
+        name: "Mai",
+        narrativeRole: "protagonist",
+        roleTier: "lead_female",
+        occupation: "ซีอีโอหญิง",
+      },
+    ]);
+
+    const insertedRows = mockDb.insert.mock.results[0].value.values.mock.calls[0][0];
+    expect(insertedRows[0]).toMatchObject({
+      narrativeRole: "protagonist",
+      roleTier: "lead_female",
+      occupation: "ซีอีโอหญิง",
+      roleProvenance: "ai_assigned",
+      roleReviewStatus: "ready",
+    });
+  });
 });

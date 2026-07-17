@@ -76,6 +76,7 @@ import { HERMES_WORKER_ONLINE_STALE_MS } from "./hermesConnectionService";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import type { TenantFeatureFlags } from "../../shared/featureFlags";
 import { debugError } from "../_core/logger";
+import { auditHermesAdmissionRejected, auditHermesSubmit } from "./hermesMediaObservability";
 
 type WorkerJobRecord = Record<string, any>;
 type HermesConnectionAssetType = "image" | "video";
@@ -628,6 +629,18 @@ export async function queueHermesMediaJob(
   // callers via a Postgres advisory transaction lock so the count-check and
   // the insert happen as one indivisible unit.
   const lockKeys = buildHermesAdmissionLockKeys(connection.id, requestedByUserId);
+  // Feature 135 section 12 (code review fix) — reuse the frozen contract's
+  // OWN `traceId` (minted per-call by every VD/media router call site, e.g.
+  // `crypto.randomUUID()`) as the audit traceId, rather than minting a
+  // SECOND, different value from `getTraceId()`. Before this fix,
+  // `inputJson.traceId` (the contract) and `instructionsJson.traceId` (the
+  // audit chain) were two different values with the same field name on the
+  // same row — the contract's traceId was write-only dead data, and the
+  // CLAUDE.md "grep by traceId" protocol only worked from one of the two
+  // fields. Persisted into `instructionsJson.traceId` below so
+  // claim/terminal/usage emissions (which run outside the original request
+  // context) can reuse the SAME value the contract already carries.
+  const enqueueTraceId = parsedContract.traceId;
   return repo.withAdmissionLock(lockKeys, async () => {
     const admissionResult: HermesAdmissionResult = await admissionFn(
       {
@@ -643,6 +656,14 @@ export async function queueHermesMediaJob(
       const detail = admissionResult.retryAfterSeconds
         ? `retry after ${admissionResult.retryAfterSeconds}s`
         : undefined;
+      auditHermesAdmissionRejected({
+        traceId: enqueueTraceId,
+        userId: requestedByUserId,
+        tenantId,
+        connectionId: connection.id,
+        code: admissionResult.code,
+        retryAfterSeconds: admissionResult.retryAfterSeconds,
+      });
       throw hermesTypedError(admissionResult.code, admissionHttpCodeFor(admissionResult.code), detail);
     }
 
@@ -685,11 +706,24 @@ export async function queueHermesMediaJob(
         instructionsJson: {
           intent: jobType,
           requiredProgressStages: [...HERMES_MEDIA_REQUIRED_PROGRESS_STAGES],
+          traceId: enqueueTraceId,
           ...(billing ? { workerBilling: buildWorkerBillingMetadata(billing) } : {}),
         },
         timeoutSeconds,
         retryPolicyJson: { maxAttempts: 2, backoffSeconds: 30 },
         idempotencyKey: idempotencyKeyToUse,
+      });
+
+      auditHermesSubmit({
+        traceId: enqueueTraceId,
+        userId: requestedByUserId,
+        tenantId,
+        jobId: job.id,
+        jobType,
+        connectionId: connection.id,
+        scope: connection.scope,
+        operation: rawInput.operation,
+        batchSize,
       });
 
       return { created: true, taskId: `hermes_${job.id}`, job };

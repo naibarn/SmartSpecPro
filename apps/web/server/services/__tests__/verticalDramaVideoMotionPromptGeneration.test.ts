@@ -81,6 +81,8 @@ import {
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
   generateVerticalDramaShotVideoPrompt,
   generateVerticalDramaShotVideoPromptSpeakerSwitch,
+  buildNativeDialogueVerbatimBlock,
+  appendMissingDialogueVerbatim,
   RateLimitExceededError,
   type VideoMotionPromptPackProjection,
   type GenerateVerticalDramaShotVideoPromptParams,
@@ -371,7 +373,8 @@ describe("generateVideoMotionPromptPack", () => {
       VdSchemaValidationError,
     );
 
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // 1 initial + VD_SCHEMA_MAX_RETRIES (2) corrective retries
+    expect(mockExecute).toHaveBeenCalledTimes(3);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
@@ -484,13 +487,17 @@ describe("generateVideoMotionPromptPack", () => {
 
   it("throws VdSchemaValidationError (does not silently persist an empty pack) when BOTH the first attempt and the retry are truncated", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
-    mockExecute.mockResolvedValueOnce(truncatedResponse()).mockResolvedValueOnce(truncatedResponse());
+    mockExecute
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(truncatedResponse())
+      .mockResolvedValueOnce(truncatedResponse());
 
     await expect(generateVideoMotionPromptPack(baseParams())).rejects.toThrow(
       VdSchemaValidationError,
     );
 
-    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // 1 initial + VD_SCHEMA_MAX_RETRIES (2) corrective retries
+    expect(mockExecute).toHaveBeenCalledTimes(3);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
@@ -842,6 +849,46 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     } as any);
   });
 
+  // Named speaker attribution (2026-07-15) — the dialogue fact must attribute
+  // each line to the resolved DISPLAY NAME (`speakerName`) so the skill matches
+  // it to the named character reference images, never the raw `characterKey`.
+  function extractUserPromptText(): string {
+    const userMessage = mockExecute.mock.calls[0][0].messages.find(
+      (m: any) => m.role === "user",
+    );
+    return typeof userMessage.content === "string"
+      ? userMessage.content
+      : userMessage.content.map((c: any) => c.text ?? "").join("\n");
+  }
+
+  it("dialogue fact attributes each line to the resolved speaker DISPLAY NAME (speakerName), not the raw characterKey", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        shotContext: {
+          description: "A character stands in a kitchen",
+          camera: "medium shot",
+          dialogueLines: [
+            { characterKey: "char_kla", speakerName: "กล้า", lineTh: "ภูมิ เคยเห็นรูปนี้ไหม" },
+          ],
+        },
+      }),
+    );
+
+    const content = extractUserPromptText();
+    expect(content).toContain('1. กล้า: "ภูมิ เคยเห็นรูปนี้ไหม"');
+    expect(content).not.toContain('char_kla: "ภูมิ เคยเห็นรูปนี้ไหม"');
+  });
+
+  it("dialogue fact falls back to characterKey when no speakerName is resolved (byte-identical to before)", async () => {
+    mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+    await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+
+    expect(extractUserPromptText()).toContain('1. alice: "Hello there"');
+  });
+
   it("byte-identical-when-omitted: vision content array matches today's single-image shape, and the prompt text carries no character-reference fact line, when characterReferenceImages is absent", async () => {
     mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
 
@@ -949,6 +996,92 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
     const secondImages = imagesInCall(1);
     expect(firstImages).toHaveLength(2); // base start frame + 1 character reference
     expect(secondImages).toEqual(firstImages);
+  });
+
+  it("deterministically appends every source dialogue line when the native-audio compliance retry still omits it", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      nativeAudioDialogue: true,
+      supportsNativeAudio: true,
+    } as any);
+    mockExecute.mockResolvedValue(
+      successResponse(
+        shotVideoPromptOutput({
+          prompt: "Alice speaks softly without quoting the transcript.",
+        }),
+      ),
+    );
+
+    const result = await generateVerticalDramaShotVideoPrompt(
+      baseShotVideoPromptParams({
+        shotContext: {
+          description: "Alice answers",
+          dialogueLines: [
+            { characterKey: "alice", lineTh: "First line" },
+            { characterKey: "alice", lineTh: "Second line" },
+            { characterKey: "bob", lineTh: "Third line" },
+          ],
+        },
+      }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // Lip-sync discipline fix — the deterministic block now attributes each
+    // line by speaker (falling back to bare `characterKey` here, since this
+    // test doesn't supply `speakerName`) and includes the SILENT LISTENER
+    // rules header (2 distinct speakers: alice, bob).
+    expect(result.prompt).toContain("Native dialogue (verbatim)");
+    expect(result.prompt).toContain("SILENT LISTENER");
+    expect(result.prompt).toContain('alice: "First line"');
+    expect(result.prompt).toContain('alice: "Second line"');
+    expect(result.prompt).toContain('bob: "Third line"');
+  });
+
+  it("builds the native dialogue block in source order without deduplicating repeats", () => {
+    const result = buildNativeDialogueVerbatimBlock([
+      { lineTh: "พูดซ้ำ" },
+      { lineTh: "พูดซ้ำ" },
+      { lineTh: "ประโยคสุดท้าย" },
+    ]);
+    const lines = result.split("\n").slice(1);
+    expect(lines).toEqual(['"พูดซ้ำ"', '"พูดซ้ำ"', '"ประโยคสุดท้าย"']);
+  });
+
+  it("removes a compliant LLM quote before appending the sole canonical dialogue block", () => {
+    const result = appendMissingDialogueVerbatim(
+      'Alice leans closer and says “Hello there” with a calm smile.',
+      [{ lineTh: "Hello there" }],
+    );
+
+    expect(result).toContain('Native dialogue (verbatim)');
+    expect(result).toContain('"Hello there"');
+    expect(result.match(/Hello there/g)).toHaveLength(1);
+    expect(result).toContain("[spoken text: use canonical dialogue below]");
+  });
+
+  it("attributes each line by resolved speakerName and appends the lip-sync rules block idempotently (find, strip, re-append)", () => {
+    const dialogueLines = [
+      { characterKey: "character-1", speakerName: "กล้า", lineTh: "ถือขนมไปไหน" },
+      { characterKey: "character-2", speakerName: "หนูนา", lineTh: "จะเอาไปให้ยาย" },
+    ];
+    const first = appendMissingDialogueVerbatim(
+      "Kla walks into the kitchen.",
+      dialogueLines,
+      { dialogueLanguageName: "Thai", establishedCharacterCount: 2 },
+    );
+    expect(first).toContain('กล้า: "ถือขนมไปไหน"');
+    expect(first).toContain('หนูนา: "จะเอาไปให้ยาย"');
+    expect(first).toContain("SILENT LISTENER");
+
+    // Idempotent: re-running against the ALREADY-appended prompt finds and
+    // strips the previous block (via the stable marker) before re-appending
+    // a fresh one — never doubling up.
+    const second = appendMissingDialogueVerbatim(first, dialogueLines, {
+      dialogueLanguageName: "Thai",
+      establishedCharacterCount: 2,
+    });
+    expect(second.match(/Native dialogue \(verbatim\)/g)).toHaveLength(1);
+    expect(second.match(/ถือขนมไปไหน/g)).toHaveLength(1);
+    expect(second.match(/จะเอาไปให้ยาย/g)).toHaveLength(1);
   });
 
   it("fact-line-only-when-non-empty: omits the character-reference-images fact line from the prompt text when the array is explicitly empty", async () => {
@@ -1135,6 +1268,211 @@ describe("generateVerticalDramaShotVideoPrompt (per-shot image-grounded prompt, 
       expect(secondImages).toEqual(firstImages);
     });
   });
+
+  // Synopsis grounding + silence signal
+  // (`planning/vd-video-prompt-skill-first/plan.md` Phases 1a/2) —
+  // `canonicalShotSummary`/`beatIsSilent` fact lines on `shotContext`.
+  describe("canonicalShotSummary / beatIsSilent (synopsis grounding + silence signal, planning/vd-video-prompt-skill-first/plan.md)", () => {
+    it("byte-identical-when-omitted: no AUTHORITATIVE SHOT BEAT / SILENT BEAT fact lines when both fields are absent", async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+      await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content[0].text).not.toContain("AUTHORITATIVE SHOT BEAT");
+      expect(userMessage.content[0].text).not.toContain("SILENT BEAT");
+    });
+
+    it("injects the AUTHORITATIVE SHOT BEAT fact line, verbatim, BEFORE the shot description fact when canonicalShotSummary is present", async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          shotContext: {
+            canonicalShotSummary: "The character silently reads a text message on their phone.",
+            description: "A character stands in a kitchen",
+            camera: "medium shot",
+            dialogueLines: [{ characterKey: "alice", lineTh: "Hello there" }],
+          },
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      const text = userMessage.content[0].text as string;
+      expect(text).toContain(
+        "AUTHORITATIVE SHOT BEAT (story overview — the single source of truth for what visibly happens in this shot; ground the video motion in THIS; when it conflicts with the shorter shot description below, follow this): The character silently reads a text message on their phone.",
+      );
+      const beatIndex = text.indexOf("AUTHORITATIVE SHOT BEAT");
+      const descriptionIndex = text.indexOf("Shot description:");
+      expect(beatIndex).toBeGreaterThan(-1);
+      expect(descriptionIndex).toBeGreaterThan(-1);
+      expect(beatIndex).toBeLessThan(descriptionIndex);
+    });
+
+    it("omits the AUTHORITATIVE SHOT BEAT fact line when canonicalShotSummary is an empty/whitespace-only string", async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          shotContext: {
+            canonicalShotSummary: "   ",
+            description: "A character stands in a kitchen",
+          },
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content[0].text).not.toContain("AUTHORITATIVE SHOT BEAT");
+    });
+
+    it("injects the SILENT BEAT fact line, verbatim, ahead of the dialogue block when beatIsSilent is true", async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput({ dialogue: [] })));
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          shotContext: {
+            beatIsSilent: true,
+            description: "A character reads a phone message silently",
+          },
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      const text = userMessage.content[0].text as string;
+      expect(text).toContain(
+        'SILENT BEAT (MANDATORY): this shot is intentionally silent — no character speaks aloud. Express the beat purely through action, expression, and camera. Return "dialogue" as [] and do NOT write any spoken line, lip-sync direction, or verbatim dialogue block.',
+      );
+      const silentIndex = text.indexOf("SILENT BEAT");
+      const dialogueBlockIndex = text.indexOf("Dialogue for this shot");
+      expect(silentIndex).toBeGreaterThan(-1);
+      expect(dialogueBlockIndex).toBeGreaterThan(-1);
+      expect(silentIndex).toBeLessThan(dialogueBlockIndex);
+    });
+
+    it("generation-time silence enforcement: an LLM-invented dialogue line on a silent beat never triggers the native-audio compliance retry or the deterministic stitch", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        nativeAudioDialogue: true,
+        supportsNativeAudio: false,
+      } as any);
+      // The model disobeys the SILENT BEAT instruction and invents a line —
+      // must never be treated as "required" dialogue to retry/stitch for.
+      mockExecute.mockResolvedValue(
+        successResponse(
+          shotVideoPromptOutput({
+            prompt: "The character looks at their phone, expression unreadable.",
+            dialogue: [{ characterKey: "alice", lineTh: "Invented line the model made up." }],
+          }),
+        ),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseShotVideoPromptParams({
+          shotContext: {
+            beatIsSilent: true,
+            description: "A character reads a phone message silently",
+          },
+        }),
+      );
+
+      // Only ONE call — the compliance-correction retry never fired.
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+      // Nothing was stitched in — the model's own (non-dialogue) prose is
+      // returned untouched (trimmed only).
+      expect(result.prompt).toBe(
+        "The character looks at their phone, expression unreadable.",
+      );
+      expect(result.prompt).not.toContain("Native dialogue (verbatim)");
+    });
+  });
+
+  // Vision fallback surface (`planning/vd-video-prompt-skill-first/plan.md`
+  // Phase 1b) — a visible server-log signal instead of a silent guess.
+  describe("vision fallback surface (planning/vd-video-prompt-skill-first/plan.md Phase 1b)", () => {
+    it("logs a [vd_video_prompt] warning with seriesId/episodeId/shotNumber when the resolved model has no vision", async () => {
+      mockSelectBestLlmModel.mockReturnValue(undefined as any);
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[vd_video_prompt] generated WITHOUT vision (no vision-capable model enabled) — model relied on imagePrompt text proxy only",
+        { seriesId: 42, episodeId: 7, shotNumber: 3 },
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("does not log the vision-fallback warning when the resolved model DOES have vision", async () => {
+      mockExecute.mockResolvedValue(successResponse(shotVideoPromptOutput()));
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+  });
+
+  // Skill-first stitching gate (`planning/vd-video-prompt-skill-first/
+  // plan.md` Phase 3a) — `appendMissingDialogueVerbatim` is a GATED safety
+  // net, not an unconditional re-stitch.
+  describe("skill-first stitching gate (planning/vd-video-prompt-skill-first/plan.md Phase 3a)", () => {
+    it("trusts an already-compliant skill-first prompt: does NOT strip+re-append the canonical block when the model's own prose already embeds every dialogue line verbatim", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        nativeAudioDialogue: true,
+        supportsNativeAudio: false,
+      } as any);
+      mockExecute.mockResolvedValue(
+        successResponse(
+          shotVideoPromptOutput({
+            prompt: 'Alice leans in and says "Hello there" with a warm smile, her eyes soft.',
+          }),
+        ),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+
+      // Only ONE call — the compliance-correction retry never fired (the
+      // model was already compliant).
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+      // The model's own coherent prose is left as-is — no canonical block
+      // stripped/re-appended on top of it.
+      expect(result.prompt).toBe(
+        'Alice leans in and says "Hello there" with a warm smile, her eyes soft.',
+      );
+      expect(result.prompt).not.toContain("Native dialogue (verbatim)");
+      expect(result.prompt.match(/Hello there/g)).toHaveLength(1);
+    });
+
+    it("still applies the deterministic safety net when the model's prompt does NOT embed the dialogue verbatim (weak-model regression guard, unchanged from before this fix)", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        nativeAudioDialogue: true,
+        supportsNativeAudio: false,
+      } as any);
+      // Both the first attempt AND the compliance retry stay non-compliant.
+      mockExecute.mockResolvedValue(
+        successResponse(
+          shotVideoPromptOutput({
+            prompt: "Alice speaks softly, mouth moving in sync with her words.",
+          }),
+        ),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(baseShotVideoPromptParams());
+
+      expect(mockExecute).toHaveBeenCalledTimes(2); // first attempt + compliance retry
+      expect(result.prompt).toContain("Native dialogue (verbatim)");
+      expect(result.prompt).toContain('"Hello there"');
+    });
+  });
 });
 
 describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch consolidated prompt, 2026-07-11 redesign)", () => {
@@ -1231,6 +1569,23 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     expect(result.durationSeconds).toBe(10); // 3 + 5 + 2
     expect(result.creditsUsed).toBe(9);
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries native-audio non-compliance and deterministically preserves every timed speaker line", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      nativeAudioDialogue: true,
+      supportsNativeAudio: true,
+    } as any);
+    mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+    const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+      baseSpeakerSwitchParams(),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(result.prompt).toContain('"Why didn\'t you tell me?"');
+    expect(result.prompt).toContain('"I was going to."');
+    expect(result.prompt).toContain('"That\'s not good enough."');
   });
 
   it("orders distinctSpeakerCharacterKeys with the anchor (first window) speaker first, then each subsequent NEW speaker in first-appearance order, without duplicates", async () => {
@@ -1440,6 +1795,105 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
       expect(userMessage.content[0].text).toContain(
         "Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: Kitchen.",
       );
+    });
+  });
+
+  // Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
+  // Phase 1a) — same fact-line contract as
+  // `generateVerticalDramaShotVideoPrompt`'s identical coverage above,
+  // mirrored for the speaker-switch builder. `beatIsSilent` is not
+  // separately covered here — see this shape's own doc comment (a split
+  // only happens when dialogue requires cutting between 2-3 speakers, so a
+  // genuinely silent shot never reaches this path).
+  describe("canonicalShotSummary (synopsis grounding, planning/vd-video-prompt-skill-first/plan.md)", () => {
+    it("byte-identical-when-omitted: no AUTHORITATIVE SHOT BEAT fact line when absent", async () => {
+      mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+      await generateVerticalDramaShotVideoPromptSpeakerSwitch(baseSpeakerSwitchParams());
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      expect(userMessage.content[0].text).not.toContain("AUTHORITATIVE SHOT BEAT");
+    });
+
+    it("injects the AUTHORITATIVE SHOT BEAT fact line, verbatim, BEFORE the shot description fact when present", async () => {
+      mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+      await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+        baseSpeakerSwitchParams({
+          shotContext: {
+            canonicalShotSummary: "Alice and Bob argue over a secret Bob has been keeping.",
+            description: "Two characters argue in a kitchen",
+            camera: "medium two-shot",
+            dialogueLines: [
+              { characterKey: "alice", lineTh: "Why didn't you tell me?" },
+              { characterKey: "bob", lineTh: "I was going to." },
+              { characterKey: "alice", lineTh: "That's not good enough." },
+            ],
+          },
+        }),
+      );
+
+      const userMessage = mockExecute.mock.calls[0][0].messages.find(
+        (m: any) => m.role === "user",
+      );
+      const text = userMessage.content[0].text as string;
+      expect(text).toContain(
+        "AUTHORITATIVE SHOT BEAT (story overview — the single source of truth for what visibly happens in this shot; ground the video motion in THIS; when it conflicts with the shorter shot description below, follow this): Alice and Bob argue over a secret Bob has been keeping.",
+      );
+      const beatIndex = text.indexOf("AUTHORITATIVE SHOT BEAT");
+      const descriptionIndex = text.indexOf("Shot description:");
+      expect(beatIndex).toBeGreaterThan(-1);
+      expect(descriptionIndex).toBeGreaterThan(-1);
+      expect(beatIndex).toBeLessThan(descriptionIndex);
+    });
+  });
+
+  // Skill-first stitching gate (`planning/vd-video-prompt-skill-first/
+  // plan.md` Phase 3a) — mirrors the single-shot builder's identical gate.
+  describe("skill-first stitching gate (planning/vd-video-prompt-skill-first/plan.md Phase 3a)", () => {
+    it("trusts an already-compliant skill-first prompt: does NOT strip+re-append the canonical block when the model's own prose already embeds every segment's dialogue verbatim", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        nativeAudioDialogue: true,
+        supportsNativeAudio: false,
+      } as any);
+      mockExecute.mockResolvedValue(
+        successResponse(
+          speakerSwitchOutput({
+            prompt:
+              'Alice snaps, "Why didn\'t you tell me?" Bob mutters, "I was going to." Alice fires back, "That\'s not good enough."',
+          }),
+        ),
+      );
+
+      const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+        baseSpeakerSwitchParams(),
+      );
+
+      expect(mockExecute).toHaveBeenCalledTimes(1); // no compliance retry
+      expect(result.prompt).toBe(
+        'Alice snaps, "Why didn\'t you tell me?" Bob mutters, "I was going to." Alice fires back, "That\'s not good enough."',
+      );
+      expect(result.prompt).not.toContain("Native dialogue (verbatim)");
+      expect(result.prompt.match(/Why didn't you tell me\?/g)).toHaveLength(1);
+    });
+
+    it("still applies the deterministic safety net when the model's prompt does NOT embed every segment's dialogue verbatim (weak-model regression guard, unchanged from before this fix)", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        nativeAudioDialogue: true,
+        supportsNativeAudio: true,
+      } as any);
+      mockExecute.mockResolvedValue(successResponse(speakerSwitchOutput()));
+
+      const result = await generateVerticalDramaShotVideoPromptSpeakerSwitch(
+        baseSpeakerSwitchParams(),
+      );
+
+      expect(mockExecute).toHaveBeenCalledTimes(2); // first attempt + compliance retry
+      expect(result.prompt).toContain('"Why didn\'t you tell me?"');
+      expect(result.prompt).toContain('"I was going to."');
+      expect(result.prompt).toContain('"That\'s not good enough."');
     });
   });
 });

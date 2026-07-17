@@ -118,3 +118,29 @@ describe("RenderJobsPage — remotion_render_video jobType", () => {
     expect(screen.getAllByText("some_other_job_type").length).toBeGreaterThan(0);
   });
 });
+
+describe("RenderJobsPage — Feature 135 (Hermes Grok media worker) section 12 job type labels", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    detailQueryMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+    cancelMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+  });
+
+  it.each([
+    ["hermes_media_image_generate", "สร้างภาพ (Grok ผ่าน Hermes)"],
+    ["hermes_media_video_generate", "สร้างวิดีโอ (Grok ผ่าน Hermes)"],
+    ["hermes_connection_authorize", "เชื่อมต่อบัญชี Grok (Hermes)"],
+    ["hermes_connection_probe", "ตรวจสอบการเชื่อมต่อ Grok (Hermes)"],
+    ["hermes_connection_disconnect", "ยกเลิกการเชื่อมต่อ Grok (Hermes)"],
+  ] as const)("renders the Thai label for %s", (jobType, label) => {
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, id: `job-${jobType}`, jobType }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    render(<RenderJobsPage />);
+    expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+  });
+});

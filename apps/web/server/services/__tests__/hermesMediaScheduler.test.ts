@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   defaultHermesSchedulerRepo,
@@ -7,6 +7,7 @@ import {
   type QueueHermesMediaJobDeps,
   type QueueHermesMediaJobInput,
 } from "../hermesMediaScheduler";
+import { auditLogger } from "../auditLogger";
 import type { HermesAdmissionResult } from "../hermesMediaAdmission";
 import type { HermesWorkerSettings } from "../hermesWorkerSettings";
 import type { HermesProviderConnection, Worker } from "../../../drizzle/schema";
@@ -685,6 +686,65 @@ describe("queueHermesMediaJob — return shape", () => {
     const result = await queueHermesMediaJob(buildInput(), deps);
     expect(result.taskId).toBe("hermes_job-42");
     expect(result.created).toBe(true);
+  });
+});
+
+describe("queueHermesMediaJob — section 12 audit + traceId wiring", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("stamps instructionsJson.traceId at enqueue and emits hermes_media_job_submitted with the same traceId", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const deps = buildDeps();
+
+    const result = await queueHermesMediaJob(buildInput({ traceId: "trace-contract-1" }), deps);
+
+    const insertJobMock = (deps.repo as HermesSchedulerRepository).insertJob as ReturnType<typeof vi.fn>;
+    const insertedValues = insertJobMock.mock.calls[0][0] as Record<string, any>;
+    const stampedTraceId = insertedValues.instructionsJson.traceId;
+    expect(typeof stampedTraceId).toBe("string");
+    expect(stampedTraceId.length).toBeGreaterThan(0);
+
+    // Code review FIX 3 — the audit traceId (instructionsJson.traceId) MUST
+    // be the exact SAME value as the contract's own traceId
+    // (inputJson.traceId, minted per-call by each VD/media router site) —
+    // one value written to both places, never two different traceIds with
+    // the same field name on the same row.
+    expect(stampedTraceId).toBe("trace-contract-1");
+    expect(insertedValues.inputJson.traceId).toBe("trace-contract-1");
+    expect(insertedValues.instructionsJson.traceId).toBe(insertedValues.inputJson.traceId);
+
+    const submitCall = spy.mock.calls.find(
+      (call) => (call[0] as { eventType?: string }).eventType === "hermes_media_job_submitted",
+    );
+    expect(submitCall).toBeDefined();
+    const entry = submitCall![0] as { traceId: string; metadata: Record<string, unknown> };
+    expect(entry.traceId).toBe(stampedTraceId);
+    expect(entry.metadata).toMatchObject({
+      jobId: result.job.id,
+      jobType: expect.any(String),
+      connectionId: "conn-1",
+      scope: "server_personal",
+      operation: "image.generate",
+    });
+    expect(entry.metadata).not.toHaveProperty("prompt");
+    expect(entry.metadata).not.toHaveProperty("url");
+  });
+
+  it("emits hermes_media_admission_rejected with the exact rejection code and never inserts a job", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const deps = buildDeps({ admissionResult: { ok: false, code: "HERMES_RATE_LIMITED", retryAfterSeconds: 30 } });
+
+    await expect(queueHermesMediaJob(buildInput(), deps)).rejects.toThrow(/HERMES_RATE_LIMITED/);
+
+    expect((deps.repo as HermesSchedulerRepository).insertJob).not.toHaveBeenCalled();
+    const rejectedCall = spy.mock.calls.find(
+      (call) => (call[0] as { eventType?: string }).eventType === "hermes_media_admission_rejected",
+    );
+    expect(rejectedCall).toBeDefined();
+    const entry = rejectedCall![0] as { metadata: Record<string, unknown> };
+    expect(entry.metadata).toMatchObject({ code: "HERMES_RATE_LIMITED", retryAfterSeconds: 30, connectionId: "conn-1" });
   });
 });
 

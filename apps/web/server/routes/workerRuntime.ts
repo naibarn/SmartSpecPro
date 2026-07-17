@@ -25,6 +25,7 @@ import {
   mintHermesMediaReferenceUrls,
 } from "../services/hermesMediaAdapter";
 import { finalizeHermesMediaArtifact } from "../services/hermesMediaFinalizeService";
+import { settleHermesConnectionJob } from "../services/hermesConnectionJobs";
 import {
   delegatedSessionRequestSchema,
   delegatedWorkerCallbackPayloadSchema,
@@ -1480,6 +1481,37 @@ export function registerWorkerRuntimeRoutes(
             // loose `Record<string, any>` row shape — cast to the strict
             // Drizzle row type at this one crossing point.
             await finalizeHermesMediaArtifact({ job, artifact: result.artifact as unknown as WorkerArtifact });
+
+            // Feature 135 section 12 (code review fix) — settle THIS job
+            // immediately after finalize moves it to `completed`, through
+            // the SAME `settleHermesConnectionJob` the 60s sweep uses: fee
+            // reconciliation + usage row/quota bump (via
+            // `onTerminalHermesMediaJob`) AND appending the
+            // `hermes_connection_settled` worker_job_events marker.
+            // Writing that marker HERE (not only from the sweep) is what
+            // makes `listTerminalUnsettledHermesJobs` correctly exclude
+            // this job on the sweep's next tick — before this fix, NO path
+            // ever marked a job settled except the sweep itself, so every
+            // completed job sat "unsettled" for up to 60s and was
+            // re-processed (re-invoking `recordHermesUsage`) on the very
+            // next tick, making a Redis hiccup during that window a
+            // routine double-usage-row / double-quota-bump risk rather
+            // than a rare one. The sweep is now a genuine backstop for
+            // jobs THIS call didn't reach (a crash between finalize and
+            // here, or a true lease-expiry completion this route never
+            // observes at all) — not the only place settlement happens.
+            // Re-fetches the row so the `status === "completed"` gates
+            // inside see the POST-finalize state (`job` above was read
+            // BEFORE finalize ran). Never throws into this route — a
+            // settlement failure must not un-complete the job (§4.2).
+            try {
+              const completedJob = await defaultHermesMediaAdapterRepo.getJobById(req.params.jobId);
+              if (completedJob) {
+                await settleHermesConnectionJob(completedJob);
+              }
+            } catch (settleError) {
+              debugError("workerRuntime", `Failed to settle hermes job ${req.params.jobId} after finalize`, settleError);
+            }
           } catch (finalizeError) {
             // finalizeHermesMediaArtifact already fails the job internally
             // (typed failureReason) on a validation/safety-gate rejection —

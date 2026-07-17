@@ -445,6 +445,7 @@ describe("getEpisodeDetail — episodeDraftAvailable (W10-B)", () => {
       {
         shotNumber: 4,
         summary: "พี่วินโรยโกโก้บนมือทุกคน ใบข้าวหัวเราะตอนเห็นคราบเต็มมือ",
+        dialogueLines: [],
       },
     ]);
   });

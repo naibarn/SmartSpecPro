@@ -80,6 +80,20 @@ async function findRelatedIncident(title: string, tenantId?: string | null): Pro
 }
 
 /**
+ * Admin notifications for auto-filed (system) tickets share a groupKey so
+ * repeats of the same error merge into one notification (occurrenceCount++)
+ * instead of flooding the admin inbox. Human feedback always notifies fresh.
+ * The 50-char title prefix mirrors findDuplicate's dedup window.
+ */
+export function adminNotificationGroupKey(ticket: {
+  submittedByType: string | null;
+  title: string;
+}): string | undefined {
+  if (ticket.submittedByType === "human") return undefined;
+  return `feedback-auto:${ticket.title.slice(0, 50).toLowerCase()}`;
+}
+
+/**
  * Auto-process a newly submitted feedback ticket.
  * Updates the ticket with classification, dedup, and correlation results.
  */
@@ -108,7 +122,12 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
     relatedIncidentId,
   };
 
-  // Update ticket with processing results
+  // Update ticket with processing results.
+  // Human-submitted feedback must stay in "new" status until a real admin
+  // acts on it — auto-flipping it to triaged/duplicate made the admin hub
+  // permanently show "0 new" and hid genuine user reports behind auto noise.
+  // Classification/dedup results are still recorded as advisory metadata.
+  const isHuman = ticket.submittedByType === "human";
   await db
     .update(feedbackTickets)
     .set({
@@ -117,8 +136,12 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
       autoSummary: result.autoSummary,
       duplicateOf: result.duplicateOf,
       relatedIncidentId: result.relatedIncidentId,
-      status: result.duplicateOf ? "duplicate" : "triaged",
-      triagedAt: new Date(),
+      ...(isHuman
+        ? {}
+        : {
+            status: result.duplicateOf ? "duplicate" : "triaged",
+            triagedAt: new Date(),
+          }),
       updatedAt: new Date(),
     })
     .where(eq(feedbackTickets.id, ticketId));
@@ -142,6 +165,7 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
       await createNotification({
         db,
         userId: admin.id,
+        groupKey: adminNotificationGroupKey(ticket),
         type: "alert",
         title: `New Feedback: ${ticket.title.slice(0, 80)}`,
         content: `[${ticket.ticketType}] ${result.autoSummary ?? ticket.title}\nTicket #${ticketId}`,

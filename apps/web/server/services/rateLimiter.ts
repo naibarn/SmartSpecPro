@@ -91,10 +91,25 @@ export function createRateLimiter(name: string, config: RateLimiterConfig) {
     getResetTime(key: string): number {
       const entries = limiters.get(name)!;
       const entry = entries.get(key);
-      if (!entry || entry.timestamps.length === 0) return 0;
+      if (!entry) return 0;
+
+      const now = Date.now();
+
+      // An active explicit block is the real gate: when the block lifts,
+      // `isAllowed` clears the sliding window and permits the next request
+      // immediately, so the block's remaining time — not the window — is the
+      // true wait. `blockDurationMs` and `windowMs` are independent and the
+      // block can be shorter than the window; the old window-only calc then
+      // reported 0 (or a too-small value) while the caller was still blocked,
+      // surfacing a misleading "try again in 0 seconds".
+      if (entry.blocked && entry.blockedUntil && entry.blockedUntil > now) {
+        return entry.blockedUntil - now;
+      }
+
+      if (entry.timestamps.length === 0) return 0;
 
       const oldestTimestamp = Math.min(...entry.timestamps);
-      const resetTime = oldestTimestamp + config.windowMs - Date.now();
+      const resetTime = oldestTimestamp + config.windowMs - now;
 
       return Math.max(0, resetTime);
     },
@@ -132,7 +147,14 @@ export const skillExecutionLimiter = createRateLimiter("skill-execution", {
 
 export const mediaGenerationLimiter = createRateLimiter("media-generation", {
   windowMs: 300000, // 5 minutes
-  maxRequests: 20, // 20 generations per 5 minutes
+  // Raised 20 -> 100: this single bucket is shared across ALL media-generation
+  // activity for a user (image gen, character portraits, storyboard, and the
+  // Vertical Drama video-motion-prompt-pack, which checks the limiter once
+  // per shot AND per clip). A single sub-episode alone bursts ~18-20 calls, so
+  // 20/5min tripped almost immediately. 100/5min covers a realistic burst
+  // while still capping runaway abuse (per-call credit checks remain the real
+  // cost gate).
+  maxRequests: 100, // 100 generations per 5 minutes
   blockDurationMs: 120000, // Block for 2 minutes if exceeded
 });
 

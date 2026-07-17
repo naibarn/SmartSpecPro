@@ -1,10 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   adminDisableHermesConnection,
   adminSetHermesQuota,
   buildAuthorizeJobInsert,
   disconnectHermesConnection,
+  getHermesAdminOverview,
   getHermesAvailability,
   getHermesConnectStatus,
   getHermesConnection,
@@ -18,7 +19,12 @@ import {
   type HermesConnectionRepo,
 } from "../hermesConnectionService";
 import type { HermesProviderConnection, Worker, WorkerJob, WorkerJobEvent } from "../../../drizzle/schema";
-import { HERMES_CONNECTION_AUTH_JOB_TYPE, HERMES_CONNECTION_PROBE_JOB_TYPE } from "../../../shared/workerRuntime";
+import {
+  HERMES_CONNECTION_AUTH_JOB_TYPE,
+  HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
+  HERMES_CONNECTION_PROBE_JOB_TYPE,
+} from "../../../shared/workerRuntime";
+import { auditLogger } from "../auditLogger";
 
 const NOW = new Date("2026-06-01T12:00:00.000Z");
 const TENANT_ID = "tenant-1";
@@ -1034,5 +1040,219 @@ describe("getHermesAvailability", () => {
     (deps.settings!.getHermesWorkerSettings as any).mockResolvedValue({ enabled: true, sharedPoolEnabled: true, serverPersonalEnabled: false, privateEnabled: true, videoEnabled: true, sharedWorkerId: "worker-1" });
     const result = await getHermesAvailability({ tenantId: TENANT_ID }, deps);
     expect(result.scopes).toEqual({ serverShared: true, serverPersonal: false, privateWorker: true });
+  });
+});
+
+describe("getHermesAdminOverview", () => {
+  it("groups connections per scope with usedToday/queueDepth and a typed settings snapshot", async () => {
+    const sharedConn = buildConnectionRow({ id: "conn-shared", scope: "server_shared", dailyJobQuota: 10 });
+    const personalConn = buildConnectionRow({ id: "conn-personal", scope: "server_personal", ownerUserId: OTHER_USER_ID });
+    const deps = buildDeps({
+      findConnections: vi.fn().mockResolvedValue([sharedConn, personalConn]),
+      findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow()),
+    }) as any;
+    deps.getUsedToday = vi.fn().mockImplementation(async (connectionId: string) => (connectionId === "conn-shared" ? 4 : 0));
+    deps.getQueueDepth = vi.fn().mockImplementation(async (connectionId: string) => (connectionId === "conn-shared" ? 2 : 0));
+
+    const result = await getHermesAdminOverview({ tenantId: TENANT_ID }, deps);
+
+    const sharedGroup = result.scopes.find((group) => group.scope === "server_shared");
+    expect(sharedGroup?.connections).toHaveLength(1);
+    expect(sharedGroup?.connections[0]).toMatchObject({ id: "conn-shared", usedToday: 4, queueDepth: 2, dailyJobQuota: 10 });
+
+    const personalGroup = result.scopes.find((group) => group.scope === "server_personal");
+    expect(personalGroup?.connections).toHaveLength(1);
+    expect(personalGroup?.connections[0]).toMatchObject({ id: "conn-personal", usedToday: 0, queueDepth: 0 });
+
+    const privateGroup = result.scopes.find((group) => group.scope === "private_worker");
+    expect(privateGroup?.connections).toEqual([]);
+
+    expect(result.settings).toMatchObject({
+      hermesWorkerEnabled: true,
+      sharedPoolEnabled: true,
+      serverPersonalEnabled: true,
+      privateEnabled: true,
+      videoEnabled: true,
+      sharedPoolFeeCredits: 0,
+      minHermesVersion: "",
+    });
+  });
+
+  it("never includes raw system_settings rows — only the typed snapshot fields", async () => {
+    const deps = buildDeps({ findConnections: vi.fn().mockResolvedValue([]) }) as any;
+    const result = await getHermesAdminOverview({ tenantId: TENANT_ID }, deps);
+    expect(Object.keys(result.settings).sort()).toEqual(
+      [
+        "hermesWorkerEnabled",
+        "sharedPoolEnabled",
+        "serverPersonalEnabled",
+        "privateEnabled",
+        "videoEnabled",
+        "sharedPoolFeeCredits",
+        "minHermesVersion",
+      ].sort(),
+    );
+  });
+});
+
+describe("Feature 135 section 12 — connection lifecycle audit events", () => {
+  const baseParams = {
+    tenantId: TENANT_ID,
+    userId: USER_ID,
+    isAdmin: false,
+    scope: "server_personal" as const,
+    consentAcknowledged: true,
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("startHermesConnect emits hermes_connection_connect_started on success", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const deps = buildDeps({ findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow()) });
+
+    await startHermesConnect(baseParams, deps);
+
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "hermes_connection_connect_started",
+        userId: USER_ID,
+        metadata: expect.objectContaining({ tenantId: TENANT_ID, scope: "server_personal" }),
+      }),
+    );
+  });
+
+  it("settleHermesConnectionFromControlJob(authorize, success) emits hermes_connection_authorized", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const row = buildConnectionRow({ status: "pending" });
+    let state = row;
+    const deps = buildDeps({
+      findConnectionById: vi.fn().mockImplementation(async () => state),
+      updateConnection: vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      }),
+    });
+
+    await settleHermesConnectionFromControlJob(
+      { connectionId: row.id, job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "completed", outputJson: {} } },
+      deps,
+    );
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ eventType: "hermes_connection_authorized" }));
+  });
+
+  it("settleHermesConnectionFromControlJob(probe, entitlementRestricted) emits hermes_connection_entitlement_restricted", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const row = buildConnectionRow({ status: "authorized" });
+    let state = row;
+    const deps = buildDeps({
+      findConnectionById: vi.fn().mockImplementation(async () => state),
+      updateConnection: vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      }),
+    });
+
+    await settleHermesConnectionFromControlJob(
+      {
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_PROBE_JOB_TYPE, status: "completed", outputJson: { entitlementRestricted: true } },
+      },
+      deps,
+    );
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ eventType: "hermes_connection_entitlement_restricted" }));
+  });
+
+  it("settleHermesConnectionFromControlJob(disconnect, success) emits hermes_connection_disconnected", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const row = buildConnectionRow({ status: "authorized" });
+    let state = row;
+    const deps = buildDeps({
+      findConnectionById: vi.fn().mockImplementation(async () => state),
+      updateConnection: vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      }),
+    });
+
+    await settleHermesConnectionFromControlJob(
+      { connectionId: row.id, job: { jobType: HERMES_CONNECTION_DISCONNECT_JOB_TYPE, status: "completed" } },
+      deps,
+    );
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ eventType: "hermes_connection_disconnected" }));
+  });
+
+  it("code review FIX 4: settleHermesConnectionFromControlJob(authorize, failure) emits hermes_connection_reauth_required", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const row = buildConnectionRow({ status: "pending" });
+    let state = row;
+    const deps = buildDeps({
+      findConnectionById: vi.fn().mockImplementation(async () => state),
+      updateConnection: vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      }),
+    });
+
+    await settleHermesConnectionFromControlJob(
+      {
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_AUTH_JOB_TYPE, status: "failed", failureReason: "oauth_denied" },
+      },
+      deps,
+    );
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ eventType: "hermes_connection_reauth_required" }));
+  });
+
+  it("code review FIX 4: settleHermesConnectionFromControlJob(probe, failure classified reauth_required) emits hermes_connection_reauth_required", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const row = buildConnectionRow({ status: "authorized" });
+    let state = row;
+    const deps = buildDeps({
+      findConnectionById: vi.fn().mockImplementation(async () => state),
+      updateConnection: vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      }),
+    });
+
+    await settleHermesConnectionFromControlJob(
+      {
+        connectionId: row.id,
+        job: { jobType: HERMES_CONNECTION_PROBE_JOB_TYPE, status: "failed", failureReason: "reauth_required" },
+      },
+      deps,
+    );
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ eventType: "hermes_connection_reauth_required" }));
+  });
+
+  it("adminDisableHermesConnection emits hermes_connection_revoked", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const row = buildConnectionRow({ status: "authorized", assignedWorkerId: null });
+    const deps = buildDeps({
+      findConnectionById: vi.fn().mockResolvedValue(row),
+      updateConnection: vi.fn().mockResolvedValue({ ...row, status: "disconnected" }),
+    });
+
+    await adminDisableHermesConnection({ tenantId: TENANT_ID, connectionId: row.id }, deps);
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ eventType: "hermes_connection_revoked" }));
+  });
+
+  it("no connection-lifecycle emission ever includes a device userCode/verificationUrl", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    const deps = buildDeps({ findWorkerById: vi.fn().mockResolvedValue(buildWorkerRow()) });
+    await startHermesConnect(baseParams, deps);
+
+    for (const call of spy.mock.calls) {
+      const metadata = (call[0] as { metadata?: Record<string, unknown> }).metadata ?? {};
+      expect(JSON.stringify(metadata)).not.toMatch(/userCode|verificationUrl/i);
+    }
   });
 });

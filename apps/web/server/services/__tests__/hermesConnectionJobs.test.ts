@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   enqueueHermesConnectionControlJob,
@@ -18,6 +18,12 @@ import {
 } from "../../../shared/workerRuntime";
 import { HERMES_CONNECTION_SETTLED_EVENT_TYPE } from "../../../shared/hermesMedia";
 import type { HermesProviderConnection, Worker, WorkerJob } from "../../../drizzle/schema";
+import { auditLogger } from "../auditLogger";
+
+vi.mock("../hermesMediaObservability", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../hermesMediaObservability")>();
+  return { ...actual, recordHermesUsage: vi.fn().mockResolvedValue(undefined) };
+});
 
 const NOW = new Date("2026-06-01T12:00:00.000Z");
 const TENANT_ID = "tenant-1";
@@ -710,6 +716,96 @@ describe("runHermesConnectionSettlementTick", () => {
 
     expect(repo.appendJobEvent).toHaveBeenCalledTimes(1);
     expect(repo.updateConnectionRow).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Feature 135 section 12 — onTerminalHermesMediaJob observability wiring", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("emits hermes_connection_entitlement_restricted when a media job failure is classified entitlement_restricted", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    let state = buildConnectionRow({ status: "authorized" });
+    const repo = buildRepo({
+      findConnectionById: vi.fn().mockImplementation(async () => state),
+      updateConnectionRow: vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      }),
+    });
+    const job = buildWorkerJob({
+      jobType: HERMES_MEDIA_IMAGE_JOB_TYPE,
+      status: "failed",
+      failureReason: "entitlement_restricted",
+      capabilityRequirementsJson: {},
+      inputJson: { connectionId: "conn-1" },
+    });
+
+    await onTerminalHermesMediaJob(job, { repo });
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ eventType: "hermes_connection_entitlement_restricted" }));
+    spy.mockRestore();
+  });
+
+  it("code review FIX 4: emits hermes_connection_reauth_required when a media job failure is classified reauth_required", async () => {
+    const spy = vi.spyOn(auditLogger, "log").mockImplementation(() => {});
+    let state = buildConnectionRow({ status: "authorized" });
+    const repo = buildRepo({
+      findConnectionById: vi.fn().mockImplementation(async () => state),
+      updateConnectionRow: vi.fn().mockImplementation(async ({ values }) => {
+        state = { ...state, ...values };
+        return state;
+      }),
+    });
+    const job = buildWorkerJob({
+      jobType: HERMES_MEDIA_IMAGE_JOB_TYPE,
+      status: "failed",
+      failureReason: "reauth_required",
+      capabilityRequirementsJson: {},
+      inputJson: { connectionId: "conn-1" },
+    });
+
+    await onTerminalHermesMediaJob(job, { repo });
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ eventType: "hermes_connection_reauth_required" }));
+    spy.mockRestore();
+  });
+
+  it("calls recordHermesUsage for a completed hermes_media_* job (terminal sweep path)", async () => {
+    const { recordHermesUsage } = await import("../hermesMediaObservability");
+    const repo = buildRepo();
+    const job = buildWorkerJob({
+      jobType: HERMES_MEDIA_IMAGE_JOB_TYPE,
+      status: "completed",
+      capabilityRequirementsJson: { connectionId: "conn-1" },
+      inputJson: { settings: { model: "grok-image-1" } },
+      instructionsJson: {},
+    });
+
+    await onTerminalHermesMediaJob(job, { repo });
+
+    expect(recordHermesUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ job: expect.objectContaining({ id: job.id, status: "completed" }), feeCreditsKept: 0 }),
+    );
+  });
+
+  it("does not call recordHermesUsage's completion path for a failed job (feeCreditsKept forced to 0, still gated inside recordHermesUsage by status)", async () => {
+    const { recordHermesUsage } = await import("../hermesMediaObservability");
+    const repo = buildRepo();
+    const job = buildWorkerJob({
+      jobType: HERMES_MEDIA_IMAGE_JOB_TYPE,
+      status: "failed",
+      failureReason: "ffmpeg exited with code 1",
+      capabilityRequirementsJson: {},
+      inputJson: { connectionId: "conn-1" },
+    });
+
+    await onTerminalHermesMediaJob(job, { repo });
+
+    expect(recordHermesUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ feeCreditsKept: 0 }),
+    );
   });
 });
 

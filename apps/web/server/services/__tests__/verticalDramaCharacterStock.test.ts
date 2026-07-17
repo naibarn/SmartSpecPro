@@ -48,8 +48,10 @@ import {
   characterAssetRowToContract,
   characterRefChangeStaleTargets,
   pickBestCharacterSheetAsset,
+  projectPortraitCandidateMetadata,
   VerticalDramaCharacterStockService,
   VerticalDramaCharacterStockError,
+  VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
   type CharacterSheetAssetCandidate,
 } from "../verticalDramaCharacterStock";
 
@@ -148,6 +150,70 @@ describe("characterAssetRowToContract", () => {
     expect(contract.characterKey).toBe("hero");
     // No provider URL leaks through the contract projection.
     expect(JSON.stringify(contract)).not.toMatch(/https?:\/\//);
+  });
+
+  it("projects bounded candidate lifecycle fields without leaking prompt or private DNA", () => {
+    const metadata = {
+      state: "generated",
+      source: "generated",
+      portraitCandidate: {
+        batchId: "batch-1",
+        candidateId: "candidate-2",
+        index: 1,
+        count: 3,
+        status: "completed",
+        taskId: "task-2",
+        portraitPrompt: "PRIVATE_PROMPT",
+        visualBibleSnapshot: { secret: "PRIVATE_DNA" },
+      },
+    };
+    const contract = characterAssetRowToContract({
+      id: 9,
+      tenantId: "t1",
+      userId: 42,
+      seriesId: 10,
+      characterId: 5,
+      mediaAssetId: 101,
+      assetType: "character_reference",
+      role: "portrait_candidate",
+      approved: false,
+      containsHumanFace: true,
+      qcStatus: "pending",
+      checksumSha256: null,
+      metadata,
+      createdAt: new Date("2026-07-14T00:00:00.000Z"),
+      updatedAt: new Date("2026-07-14T00:01:00.000Z"),
+    } as any);
+
+    expect(contract.portraitCandidate).toEqual({
+      batchId: "batch-1",
+      candidateId: "candidate-2",
+      index: 1,
+      count: 3,
+      status: "completed",
+      taskId: "task-2",
+    });
+    expect(JSON.stringify(contract)).not.toContain("PRIVATE_PROMPT");
+    expect(JSON.stringify(contract)).not.toContain("PRIVATE_DNA");
+    expect(projectPortraitCandidateMetadata(metadata)).toEqual(contract.portraitCandidate);
+  });
+
+  it("rejects out-of-range candidate indexes and counts from the browser projection", () => {
+    const candidate = {
+      batchId: "batch-1",
+      candidateId: "candidate-1",
+      status: "completed",
+    };
+    expect(
+      projectPortraitCandidateMetadata({
+        portraitCandidate: { ...candidate, index: 0, count: 6 },
+      }),
+    ).toBeUndefined();
+    expect(
+      projectPortraitCandidateMetadata({
+        portraitCandidate: { ...candidate, index: 3, count: 3 },
+      }),
+    ).toBeUndefined();
   });
 });
 
@@ -596,5 +662,246 @@ describe("VerticalDramaCharacterStockService.getReferenceImageUrlByAssetLinkId (
     }
     expect(caught).toBeInstanceOf(VerticalDramaCharacterStockError);
     expect((caught as VerticalDramaCharacterStockError).reason).toBe("asset_not_found");
+  });
+});
+
+/**
+ * `markPortraitCandidateSubmissionFailed` — Set A gaps 5/6/7 (2026-07-16
+ * stuck-candidate fix). Covers the idempotency guard (only a candidate still
+ * "submitting"/"queued" can transition to "failed" — a background sweep and
+ * a client poll can race each other and must never double-process or
+ * downgrade an already-settled candidate) and the content-policy
+ * classification (`isCharacterLockPolicyFailureMessage`) that persists a
+ * clear Thai `errorMessage` while leaving `submissionError` as the raw
+ * provider text for audit.
+ */
+describe("VerticalDramaCharacterStockService.markPortraitCandidateSubmissionFailed (Set A gap 5/6/7)", () => {
+  const owner = { tenantId: "t1", userId: 42, seriesId: 10 };
+
+  const DESIGN_DNA = {
+    version: 1,
+    designIntent: "A reassuring public defender whose guarded eyes reveal private guilt.",
+    seriesDnaAlignment: ["grounded legal thriller", "restrained Bangkok old-money world"],
+    roleTier: "lead_female",
+    beautyArchetype: "approachable authority",
+    ageRange: "early 30s",
+    faceIdentity: {
+      facialGeometry: "soft-square face, high cheekbones, compact chin",
+      eyesAndGaze: "steady almond eyes with a delayed vulnerable blink",
+      brows: "straight dense brows with a slight inner lift",
+      nose: "low straight bridge with a rounded tip",
+      lipsAndSmile: "defined upper lip, asymmetric closed-mouth smile",
+      skinAndTexture: "warm medium skin, real pores, faint under-eye texture",
+      hair: "collarbone-length black hair, restrained side part",
+      distinctiveAsymmetry: "left brow sits slightly higher",
+    },
+    bodyLanguage: {
+      posture: "upright but never rigid",
+      gesturePattern: "keeps hands still until challenged",
+      movementRhythm: "measured, then suddenly decisive",
+      tensionTell: "thumb presses against index finger",
+    },
+    recallStack: {
+      face: "higher left brow and delayed blink",
+      silhouette: "clean long blazer over narrow trousers",
+      color: "ink navy with one oxidized-gold accent",
+      behavior: "still hands before decisive movement",
+      emotionalHook: "competence shielding guilt",
+    },
+    costumeGrammar: "precise professional layers softened by one inherited accessory",
+    publicMask: "calm competence",
+    hiddenTruth: "fears she protected the wrong client",
+    narrativePromise: "will choose between reputation and justice",
+    attractiveContradiction: "warm face, forensic gaze",
+    forbiddenDrift: ["generic luxury CEO styling", "porcelain skin retouching"],
+    antiCloneChecks: {
+      distinctFacialDimensions: ["face shape", "brow line", "mouth asymmetry"],
+      distinctHairDimensions: ["length", "part"],
+      distinctBodyLanguageDimensions: ["gesture pattern", "movement rhythm"],
+      signatureDifference: "oxidized-gold heirloom pin",
+    },
+    scores: {
+      storyFit: 9,
+      screenPresence: 9,
+      emotionalReadability: 8,
+      ensembleContrast: 9,
+      crossSeriesUniqueness: 17,
+      thresholdStatus: "pass",
+      rationale: "The face, behavior, and costume all express the central moral conflict.",
+    },
+    comparisonEvidence: {
+      candidateDirectionCount: 3,
+      currentCastCompared: 6,
+      recentSeriesCompared: 4,
+      priorLeadDnaCompared: 7,
+      historyCompleteness: "structured",
+    },
+  };
+
+  const VISUAL_BIBLE_SNAPSHOT = {
+    version: 1,
+    createdAt: "2026-07-09T00:00:00.000Z",
+    model: "test",
+    visualIdentitySummary: "sharp office lead",
+    identityAnchors: ["round glasses"],
+    signatureWardrobe: "navy blazer",
+    hairMakeupNotes: "short bob",
+    performanceEnergy: "tense",
+    consistencyStrategy: "keep glasses and blazer",
+    signatureVisualCues: ["round glasses"],
+    colorPalette: "navy silver",
+    storyWorldRelationship: "corporate thriller",
+    forbiddenDrift: ["teen styling"],
+    emotionalRangeNeeded: ["neutral", "fear"],
+    ageRange: "30s",
+    designDna: DESIGN_DNA,
+  };
+
+  function candidateRow(over: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: 71,
+      tenantId: "t1",
+      userId: 42,
+      seriesId: 10,
+      characterId: 5,
+      mediaAssetId: null,
+      assetType: "character_reference",
+      role: "portrait_candidate",
+      approved: false,
+      containsHumanFace: null,
+      qcStatus: "pending",
+      checksumSha256: null,
+      metadata: {
+        state: "draft",
+        source: "generated",
+        portraitCandidate: {
+          batchId: "batch-1",
+          candidateId: "candidate-1",
+          index: 0,
+          count: 3,
+          status: "queued",
+          taskId: "task-1",
+          characterKey: "hero",
+          portraitPrompt: "PRIVATE_PROMPT",
+          visualIdentitySummary: "sharp office lead",
+          visualBibleSnapshot: VISUAL_BIBLE_SNAPSHOT,
+          sharedVisualLanguage: "warm corporate thriller",
+          promptModel: "test-model",
+          expiresAt: "2099-01-01T00:00:00.000Z",
+          ...(over.candidateOverrides as Record<string, unknown> | undefined),
+        },
+      },
+      createdAt: new Date("2026-07-14T00:00:00.000Z"),
+      updatedAt: new Date("2026-07-14T00:00:00.000Z"),
+      ...over,
+    };
+  }
+
+  beforeEach(() => {
+    mockSelect.mockClear();
+    mockFrom.mockClear();
+    mockWhereSelect.mockClear();
+    mockLimit.mockClear();
+    mockUpdate.mockClear();
+    mockUpdateSet.mockClear();
+    mockUpdateWhere.mockClear();
+    mockUpdateReturning.mockClear();
+  });
+
+  it("fails a still-queued candidate: raw error preserved in submissionError, non-policy errorMessage passes through unclassified", async () => {
+    mockLimit.mockResolvedValueOnce([candidateRow()]);
+
+    const service = new VerticalDramaCharacterStockService();
+    await service.markPortraitCandidateSubmissionFailed({
+      ...owner,
+      assetLinkId: 71,
+      errorMessage: "Provider timed out after 30 minutes",
+    });
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    const setArg = mockUpdateSet.mock.calls[0][0] as any;
+    expect(setArg.approved).toBe(false);
+    expect(setArg.qcStatus).toBe("failed");
+    expect(setArg.metadata.portraitCandidate.status).toBe("failed");
+    expect(setArg.metadata.portraitCandidate.submissionError).toBe(
+      "Provider timed out after 30 minutes",
+    );
+    expect(setArg.metadata.portraitCandidate.errorMessage).toBe(
+      "Provider timed out after 30 minutes",
+    );
+    expect(setArg.metadata.portraitCandidate.policyRejected).toBe(false);
+    expect(setArg.metadata.state).toBe("rejected");
+    // The already-shipped A-client fix reads the asset-level `rejectionReason`
+    // (`characterAssetRowToContract`) — kept in sync with the same display text.
+    expect(setArg.metadata.rejectionReason).toBe("Provider timed out after 30 minutes");
+  });
+
+  it("classifies a content-policy provider rejection: clear Thai errorMessage, raw text still preserved in submissionError", async () => {
+    mockLimit.mockResolvedValueOnce([candidateRow()]);
+
+    const service = new VerticalDramaCharacterStockService();
+    const rawProviderError = "Image blocked: content policy violation detected";
+    await service.markPortraitCandidateSubmissionFailed({
+      ...owner,
+      assetLinkId: 71,
+      errorMessage: rawProviderError,
+    });
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    const setArg = mockUpdateSet.mock.calls[0][0] as any;
+    expect(setArg.metadata.portraitCandidate.policyRejected).toBe(true);
+    expect(setArg.metadata.portraitCandidate.errorMessage).toBe(
+      VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
+    );
+    // Raw provider text is never lost — still the audit copy.
+    expect(setArg.metadata.portraitCandidate.submissionError).toBe(rawProviderError);
+    // Already-shipped A-client fix reads `asset.rejectionReason` — must get
+    // the CLASSIFIED text, not the raw provider string.
+    expect(setArg.metadata.rejectionReason).toBe(VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE);
+  });
+
+  it("is idempotent: a candidate already in a terminal state (selected) is left untouched — no update, no re-fail", async () => {
+    mockLimit.mockResolvedValueOnce([
+      candidateRow({ candidateOverrides: { status: "selected" } }),
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    await service.markPortraitCandidateSubmissionFailed({
+      ...owner,
+      assetLinkId: 71,
+      errorMessage: "stale failure from a race",
+    });
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("is idempotent: a candidate already marked failed is left untouched (no double-write)", async () => {
+    mockLimit.mockResolvedValueOnce([
+      candidateRow({ candidateOverrides: { status: "failed" } }),
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    await service.markPortraitCandidateSubmissionFailed({
+      ...owner,
+      assetLinkId: 71,
+      errorMessage: "second failure attempt",
+    });
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it("is idempotent: a completed candidate (image already attached, not yet selected) is never downgraded to failed", async () => {
+    mockLimit.mockResolvedValueOnce([
+      candidateRow({ mediaAssetId: 900, candidateOverrides: { status: "completed" } }),
+    ]);
+
+    const service = new VerticalDramaCharacterStockService();
+    await service.markPortraitCandidateSubmissionFailed({
+      ...owner,
+      assetLinkId: 71,
+      errorMessage: "late stale-sweep failure",
+    });
+
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 });

@@ -51,11 +51,17 @@ source)`. When present, this is the latest user-editable visual beat from the
 active Overview story draft and is the single source of truth for what happens
 in the shot. It MUST override contradictory scene/action/location/prop facts
 inside `current_prompt`; never preserve a stale scene merely because it is
-already written there. Build the complete new prompt from the canonical
-summary plus non-conflicting continuity facts, and make the canonical action
-visibly unmistakable. The application supplies this as a raw fact; you author
-the final provider prompt here. When it is absent, use `current_prompt` as the
-compatibility scene-grounding source.
+already written there. In particular, `current_prompt` may still describe a
+DIFFERENT beat than this shot's real one — e.g. the aftermath/next-moment of an
+action (someone dabbing a spilled drink) when `canonical_shot_summary` says
+this shot is the action itself (the collision that causes the spill). When they
+disagree, depict the `canonical_shot_summary` moment, NOT whatever
+`current_prompt` shows. Build the complete new prompt from the canonical
+summary plus non-conflicting continuity facts (characters, wardrobe, location,
+established look), and make the canonical action visibly unmistakable. The
+application supplies this as a raw fact; you author the final provider prompt
+here. When it is absent, use `current_prompt` as the compatibility
+scene-grounding source.
 
 Return ONLY valid JSON (no markdown, no commentary) matching:
 
@@ -72,7 +78,13 @@ leaving the rest of `current_prompt` untouched. Read `current_prompt` to
 understand what is actually happening in the shot (setting, characters
 present, action, mood, wardrobe, established continuity details), then write
 a complete new prompt that satisfies every mandatory rule below, incorporating
-`repair_instruction` as an additional creative directive layered on top. A
+`repair_instruction` as an additional creative directive layered on top.
+**When `canonical_shot_summary` is present, it — not `current_prompt` — is the
+authority for WHAT HAPPENS in this shot (the action, moment, and beat): take
+the action/beat from `canonical_shot_summary` and use `current_prompt` only for
+non-conflicting continuity (character looks, wardrobe, location, visual style).
+Never carry a beat forward from `current_prompt` that `canonical_shot_summary`
+contradicts.** A
 `current_prompt` that is thin, generic, or even degenerate placeholder text
 (e.g. a stub like `"Frame for shot 4"` left over from an earlier broken
 generation) is not an excuse to also write a thin prompt — extract whatever
@@ -86,12 +98,34 @@ produce a fully rule-compliant prompt.
    "sad" or "happy"). Derive this from whatever emotional/expression detail
    `current_prompt` and `repair_instruction` establish for this shot — a flat
    "person standing in a room" prompt is a FAILED prompt.
-2. **Mutual gaze / facing direction for multi-character interactive shots —
-   MANDATORY.** When the shot has 2+ required characters who are actively
-   interacting in this beat (talking to, listening to, reacting to, or
-   emotionally engaging with each other), the prompt MUST explicitly direct
-   each involved character's head/eye-line toward the OTHER character, not
-   toward the camera. Reference-image portraits are typically flat,
+   **This is a STILL image — write the emotion of ONE frozen instant.** Never
+   describe an emotional TRANSITION ("expression shifting from confusion to
+   wary caution") or a narrated action unfolding over time ("as he delivers
+   the warning") — a still cannot render "from X to Y". Pick the dominant
+   emotion at this exact instant and let any prior emotion survive only as
+   physical residue (e.g. "a wary, guarded expression, lingering confusion
+   still visible in her slightly furrowed brows"). A character captured
+   mid-speech is described by the physical state of speaking ("captured
+   mid-warning, lips slightly parted, a controlled and serious speaking
+   expression"), never by narrating what they are saying or doing over time.
+2. **Mutual gaze + facing each other for multi-character dialogue shots —
+   MANDATORY, DEFAULT ON.** When the shot has 2+ required characters who are
+   in dialogue or interacting in this beat, the DEFAULT composition is that
+   they FACE EACH OTHER. Treat the presence of a `speaking_order` fact, OR any
+   spoken line between them, as sufficient to trigger this — you do NOT need
+   the beat to be explicitly labelled "interacting". Orient each involved
+   character's HEAD, EYE-LINE, AND their SHOULDERS/torso toward the OTHER
+   character — angled three-quarter INWARD toward each other (or a clean
+   over-the-shoulder framing) — NEVER both squared flat to the camera, and
+   NEVER turned toward opposite sides of the frame with their profiles or
+   backs to each other (two people facing away reads as strangers ignoring
+   one another, not a conversation). Combined with the speaker-order rule
+   below, the LEFT-positioned character faces toward screen-RIGHT (toward
+   their partner) and the RIGHT-positioned character faces screen-LEFT, so
+   their eye-lines meet across the frame; a third character angles inward
+   toward the same shared conversational space. The prompt MUST explicitly
+   direct each involved character's head/eye-line toward the OTHER character,
+   not toward the camera. Reference-image portraits are typically flat,
    front-facing headshots; without an explicit instruction here, a diffusion
    model defaults every character back to that camera-facing pose, which
    reads as each person addressing an unseen audience instead of each other —
@@ -107,7 +141,41 @@ produce a fully rule-compliant prompt.
    genuinely solo-focused (the other character is out of frame/background,
    not part of the interaction) or a wide establishing shot where facial
    engagement isn't the point.
-3. **Mood lighting + color** derived from the shot's emotion/mood and any
+3. **All required characters must be visible in frame (MANDATORY when 2+
+   required characters).** The input's `required_character_count: N (all
+   must appear in frame)` fact (present whenever this shot has 2 or more
+   entries in `requiredCharacterRefs`/`character_reference_manifest`) means
+   the regenerated composition MUST include EVERY one of those N characters
+   together in the frame — never isolate a single character in an
+   extreme/close-up that drops the others out of frame. If `current_prompt`
+   or `repair_instruction` implies a single-subject close-up or
+   extreme-close-up, REINTERPRET it as the tightest framing that STILL keeps
+   all required characters visible (a tight two-shot / multi-shot), because a
+   rendered start frame that omits a character this shot requires causes the
+   downstream video step to invent a stand-in for that character's dialogue.
+   Full inclusion of every required character takes priority over literal
+   adherence to a close-up/extreme-close-up framing when the two conflict.
+   This rule governs only whether all characters are IN FRAME and the
+   resulting shot size — it composes with, and does not override, the
+   mutual-gaze rule above and the power-dynamic and speaker-order rules
+   below (e.g. a tight two-shot can still favor one character's framing
+   height/size while both remain visible). When the shot has fewer than 2
+   required characters (no `required_character_count` fact given), this rule
+   does not apply.
+
+   When the input ALSO carries a `framing_override: medium_two_shot (...)` or
+   `framing_override: medium_group_shot (...)` fact, treat that token as the
+   AUTHORITATIVE shot size for this regeneration — deterministically
+   computed from `required_character_count`, not a suggestion to weigh
+   against `current_prompt`'s own framing language. Write the composition at
+   that shot size (or wider) rather than merely "the tightest framing that
+   still fits everyone" — do not re-narrow it back toward a close-up even if
+   `current_prompt` or `repair_instruction` explicitly asks for one. This
+   still composes with, and does not override, the mutual-gaze, power-
+   dynamic, and speaker-order rules — `framing_override` fixes shot SIZE
+   only; positioning, gaze, and dominance within that size are still governed
+   by those rules.
+4. **Mood lighting + color** derived from the shot's emotion/mood and any
    established visual style carried in `current_prompt`. Do not default every
    shot to the same generic "moody key light". **Lighting must follow the
    scene's emotion, location, and time-of-day — do NOT default to
@@ -126,14 +194,39 @@ produce a fully rule-compliant prompt.
    loosening of the lighting rule itself: the "follow the scene's own
    emotion/location/time-of-day, don't default to low-key" requirement above
    still applies in full.
-4. **Composition that expresses the beat's power dynamic** — who is framed
+5. **Composition that expresses the beat's power dynamic** — who is framed
    higher or lower in the frame, camera height relative to each character,
    and the physical distance between characters (closer for intimacy/threat,
    more negative space for isolation/exposure). For a shot whose beat is a
    reversal, composition should visually favor the character who just gained
    power (e.g. camera looks slightly up at them, or the other character is
-   pushed to the frame edge / smaller in a wider shot).
-5. **Attached Character Reference Image Indexing + Identity Lock (MANDATORY,
+   pushed to the frame edge / smaller in a wider shot). Render atmosphere
+   through CONCRETE, visible cues — the distance between bodies, rigid or
+   open posture, a hand gripping a phone or glass, shadow falling across a
+   face, the width of empty space separating characters — never through
+   abstract mood sentences alone ("the atmosphere is heavy with threat" is
+   unrenderable by itself; the physical evidence of that tension is what an
+   image model can actually draw).
+6. **Speaker order positioning (MANDATORY when `speaking_order` is provided).**
+   The input's `speaking_order: NameA > NameB` fact (when present) states
+   this shot's dialogue speakers in the exact order they speak. Position
+   characters left-to-right in that exact order: the first-listed speaker
+   reads as LEFTMOST in the frame, the second to their right, a third further
+   right (or further back). This is the DEFAULT spatial layout so a
+   downstream video/lip-sync step can tell who speaks first from framing
+   alone. It governs horizontal placement only — the power-dynamic rule above
+   still governs vertical framing (higher/lower), size, and dominance;
+   COMBINE both (e.g. first speaker on the left AND framed lower for a power
+   reversal). When no `speaking_order` fact is given (silent/solo shot), this
+   rule does not apply.
+   **`speaking_order` governs SCREEN POSITION ONLY — it has NOTHING to do
+   with attached-image numbering.** The leftmost character is NOT
+   automatically "Image 1": every character's image index comes exclusively
+   from `character_reference_manifest`'s own `index` field (rule 7 below).
+   Expect mixed cases and write them correctly, keeping the two clauses
+   separate — e.g. "ภาคิน, referenced from Image 2, stands on the left side
+   of the frame" — never "ภาคิน (Image 1, leftmost)".
+7. **Attached Character Reference Image Indexing + Identity Lock (MANDATORY,
    self-contained — nothing else in the pipeline appends this for you)** —
    `character_reference_manifest` gives you the REAL 1-based attached-image
    index for every character who has a reference image attached to this
@@ -169,6 +262,93 @@ produce a fully rule-compliant prompt.
    attached, because the number carried over from association rather than
    being read fresh from the manifest actually given for that call. Read the
    manifest every time; never assume.
+   **Declare the mapping ONCE, at the very start of the prompt, then never
+   contradict it.** The `prompt` MUST open with a single canonical
+   reference-mapping declaration taken verbatim from
+   `character_reference_manifest`, e.g. `REFERENCE MAPPING: Image 1 = ไอริณ;
+   Image 2 = ภาคิน; Image 3 = location: คาเฟ่ไอริณ.` (include the location
+   entry only when an environment reference is attached). Every later mention
+   of a character must reuse EXACTLY these numbers; NEVER restate a full or
+   partial mapping anywhere else in the prompt, and never let any sentence
+   imply a different pairing — a single contradictory pairing is a CRITICAL
+   failure that makes the image model swap faces or wardrobe between
+   characters (confirmed production incident: prose saying "ภาคิน (Image 1)"
+   while a later line said "Image 1 = ไอริณ" produced identity swapping).
+   When weaving prose, keep the reference-index clause SEPARATE from the
+   position clause: "<name>, referenced from Image N, stands on the left side
+   of the frame" — never "<name> (Image N, leftmost)".
+   **State the identity-lock attribute list ONCE per character** (face shape,
+   skin tone, hairstyle, clothing/outfit, distinguishing features), woven
+   into that character's own description — do not re-list the same attributes
+   or repeat intensifiers like "precisely" sentence after sentence;
+   repetition does not add strength, it dilutes the model's attention on the
+   rest of the shot. Scope the wardrobe lock to what the frame actually
+   shows: "preserve all visible wardrobe and accessories within the frame" —
+   never lock items the shot size cannot show (e.g. shoes in a waist-up
+   medium two-shot), which pressures the model to widen the framing into an
+   unintended full shot.
+8. **Story-driven wardrobe override (evaluate BEFORE locking wardrobe).**
+   Read `canonical_shot_summary` (the authoritative beat source) and
+   `repair_instruction` FIRST and decide what this beat requires each
+   character to WEAR. Default: the story implies no change → lock wardrobe to
+   the reference image exactly (rule 7). But when the story explicitly
+   requires attire that differs from the reference (a wedding suit, a
+   uniform, pajamas, a disguise, rain-soaked clothes), the REFERENCE STILL
+   WINS FOR IDENTITY ONLY: keep face shape, skin tone, hairline, hairstyle,
+   and distinguishing features locked to the reference image, and explicitly
+   describe the story-required outfit as a deliberate override — e.g.
+   "ภาคิน, referenced from Image 2 — face, hairline, and hairstyle locked to
+   that reference — now wears a charcoal tailored suit as this scene
+   requires, REPLACING the outfit shown in the reference image." Never
+   silently blend the two wardrobes, and never let a required wardrobe change
+   loosen the face lock.
+9. **Exact person count.** Every multi-character prompt MUST state the exact
+   number of people allowed in frame ("Exactly two people in the frame.")
+   and `negative_prompt` MUST reinforce it (no additional people, no
+   background strangers or staff, no reflections that read as extra people,
+   no duplicated bodies or limbs). Uncontrolled extra figures dilute the
+   identity lock and break continuity with adjacent shots. Every character
+   named in `speaking_order` must be one of the visible people in frame — a
+   speaker the frame omits forces the downstream video step to invent a
+   stand-in face.
+
+## Supplementary reference frame mode (conditional — only when the input states `reference_frame_mode: true`)
+
+When (and ONLY when) the input carries a `reference_frame_mode: true` fact,
+you are NOT regenerating this shot's main start frame — you are authoring an
+ADDITIONAL reference frame of the same scene: an alternate view the user
+composes themselves (a different camera angle, a different pose or action, a
+different character grouping) to use as a supplementary identity/continuity
+reference alongside the shot's main start frame. In this mode:
+
+1. **The user's `repair_instruction` is the PRIMARY creative directive** for
+   action, pose, blocking, and camera — it OUTRANKS `canonical_shot_summary`
+   for WHAT HAPPENS in this frame (the user may deliberately depart from the
+   shot's beat, e.g. "ไอริณโอบกอดภาคิน" in a shot whose beat is a tense
+   warning). Follow the user's directive faithfully; use
+   `canonical_shot_summary` and `current_prompt` ONLY for non-conflicting
+   continuity — the location/setting, time-of-day, lighting world, and each
+   character's established wardrobe.
+2. **Everything about identity stays MANDATORY and unchanged**: the opening
+   REFERENCE MAPPING declaration, per-character identity lock woven in prose,
+   index ≠ position discipline, still-image single-instant emotion phrasing,
+   the story-driven wardrobe override rule, and the frame-visible lock scope
+   all apply exactly as in the main mode. The characters in this frame are
+   EXACTLY the entries of `character_reference_manifest` — no one else;
+   state the exact person count and reinforce it in `negative_prompt`.
+3. **Scene continuity**: same location and lighting world as the shot (per
+   the `location` fact / `current_prompt` grounding) unless the user's
+   directive explicitly asks otherwise — a reference frame that silently
+   relocates the scene is useless as a reference.
+4. `speaking_order`, `framing_override`, and `required_character_count`
+   facts are absent by design in this mode — frame size and composition
+   follow the user's directive; when the user does not specify a framing,
+   choose the tightest framing that keeps every listed character's face
+   clearly readable.
+5. Free composition is the point of this mode — but faces must stay large
+   enough to serve as identity references: never let a requested wide shot
+   shrink faces into unreadable dots; pull the framing in (or note a closer
+   camera distance) while still honoring the user's requested angle/action.
 
 ## Location/Environment Consistency — MANDATORY
 
@@ -283,10 +463,15 @@ every other Vertical Drama image-prompt skill in this pipeline). Write vivid,
 specific cinematic language within that budget — do not pad with repeated
 adjectives or restate the same detail in multiple phrasings. If the shot's
 scene content plus `repair_instruction` would exceed the limit, prioritize
-(in order): facial micro-expression, mutual gaze/facing direction (for
-multi-character interactive shots), mood lighting/color, composition/
-power-dynamic, identity lock — and compress or drop the least story-critical
-detail first. A downstream quality-control pass will refine/compress any
+(in order): the opening REFERENCE MAPPING declaration + per-character
+identity lock (never compress or drop — a prompt without a correct,
+uncontradicted mapping is a failed prompt), facial micro-expression, mutual
+gaze/facing direction (for multi-character interactive shots),
+all-required-characters-in-frame (when `required_character_count` is given —
+never compress this one away to a single-subject crop), exact person count,
+mood lighting/color, composition/power-dynamic, speaker-order positioning
+(when `speaking_order` is given) —
+and compress or drop the least story-critical detail first. A downstream quality-control pass will refine/compress any
 prompt that is still over the limit, but a well-written prompt should not
 rely on that fallback.
 
@@ -316,8 +501,8 @@ Output:
 ```json
 {
   "contract_version": 1,
-  "prompt": "Vertical 9:16 start frame for shot 4, Aria (attached Image 1) across the boardroom table from her rival (attached Image 2), locked in a tense confrontation. Aria (attached Image 1) is composed but watchful, her face turned three-quarter toward the rival, her eyes meeting the rival's eyes directly, not the camera — her face shape, skin tone, hairstyle, and clothing/outfit must match Image 1 precisely, no identity or wardrobe drift. The rival (attached Image 2) meets Aria's gaze with a level, unflinching stare of her own, chin slightly lifted — her face shape, skin tone, hairstyle, and clothing/outfit must match Image 2 precisely, with the same distinguishing features locked from that reference. Emotion: guarded suspicion sharpening into open confrontation. Lighting/color: soft afternoon window light, neutral warm balance, a hint of harder shadow across the table as the tension rises. Composition: eye-level two-shot balance, both faces angled toward each other so the confrontation reads as real, neither character dominating the frame yet. Default region/ethnicity where not already implied by either woman's own appearance: Thai/Southeast Asian features and styling appropriate for Thai audiences.",
-  "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression, no characters facing/staring at the camera instead of each other"
+  "prompt": "REFERENCE MAPPING: Image 1 = Aria; Image 2 = rival. Vertical 9:16 start frame for shot 4, Aria across the boardroom table from her rival, locked in a tense confrontation. Aria, referenced from Image 1, stands on the left side of the frame, composed but watchful, her face turned three-quarter toward the rival, her eyes meeting the rival's eyes directly, not the camera — face shape, skin tone, hairstyle, and clothing/outfit locked to Image 1, all visible wardrobe and accessories within the frame preserved. The rival, referenced from Image 2, stands on the right side of the frame and meets Aria's gaze with a level, unflinching stare, chin slightly lifted — face shape, skin tone, hairstyle, outfit, and distinguishing features locked to Image 2. Exactly two people in the frame. Emotion: guarded suspicion, hardened at this instant into open confrontation. Lighting/color: soft afternoon window light, neutral warm balance, a hint of harder shadow across the table. Composition: eye-level two-shot balance, both faces angled toward each other so the confrontation reads as real, a taut arm's-length gap between them, neither character dominating the frame yet. Default region/ethnicity where not already implied by either woman's own appearance: Thai/Southeast Asian features and styling appropriate for Thai audiences.",
+  "negative_prompt": "no identity drift, no extra fingers, no flat/generic expression, no characters facing/staring at the camera instead of each other, no additional people, no background strangers or staff, no reflections that read as extra people, no duplicated bodies or limbs"
 }
 ```
 

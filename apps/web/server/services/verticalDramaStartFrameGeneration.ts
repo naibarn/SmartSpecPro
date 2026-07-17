@@ -44,6 +44,8 @@ import {
 } from "@shared/verticalDramaSeries/characterLock";
 import {
   buildCharacterIdentityMapBlock,
+  findCharacterImageIndexMappingMismatches,
+  type CharacterImageIndexMappingMismatch,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
 // Prompt-language directive (shared-field fix — this was previously wired
@@ -86,6 +88,70 @@ export class RateLimitExceededError extends Error {
     );
     this.name = "RateLimitExceededError";
   }
+}
+
+/**
+ * Thrown by `generateStartFrameShotPrompt` (`planning/
+ * vd-start-frame-reference-mapping/plan.md` Phase 2, 2026-07-16) when the
+ * skill's authored prompt still contains an EXPLICIT "Image N ↔ character
+ * name" claim that contradicts `characterReferenceManifest` after one
+ * deterministic corrective retry — see `findCharacterImageIndexMappingMismatches`'s
+ * doc comment for exactly what counts as a contradiction. Mirrors
+ * `VdSchemaValidationError`'s style (a `code`, plus the raw mismatches for
+ * callers/logs that want the detail). The router's `generateShotStartFramePrompt`
+ * catches this and maps it to a `PRECONDITION_FAILED` with a Thai
+ * instruction to regenerate the shot's prompt — a contradictory prompt is
+ * NEVER persisted onto `startFramePlan.frames[]`.
+ */
+export class VdReferenceMappingError extends Error {
+  code = "VD_REFERENCE_MAPPING_MISMATCH" as const;
+  constructor(
+    message: string,
+    public mismatches: CharacterImageIndexMappingMismatch[],
+  ) {
+    super(message);
+    this.name = "VdReferenceMappingError";
+  }
+}
+
+/** `Image N = name` formatting for one reference, sorted by index — used to state the REQUIRED mapping in a corrective retry instruction. */
+function formatReferenceMappingLine(
+  references: readonly { imageIndex: number; characterName: string }[],
+): string {
+  return references
+    .slice()
+    .sort((a, b) => a.imageIndex - b.imageIndex)
+    .map((r) => `Image ${r.imageIndex} = ${r.characterName}`)
+    .join("; ");
+}
+
+/** Human-readable summary of detected contradictions, for a corrective retry instruction. */
+function formatMappingMismatchSummary(
+  mismatches: readonly CharacterImageIndexMappingMismatch[],
+): string {
+  return mismatches
+    .map(
+      (m) =>
+        `"${m.characterName}" was claimed at Image ${m.claimedImageIndex} but must be Image ${m.expectedImageIndex}`,
+    )
+    .join("; ");
+}
+
+/**
+ * Deterministic corrective addition appended to a single-shot user prompt on
+ * a reference-mapping retry — states the REQUIRED mapping and exactly what
+ * was wrong, so the retry is a targeted fix rather than a blind
+ * regeneration.
+ */
+function buildReferenceMappingCorrectiveInstruction(
+  references: readonly { imageIndex: number; characterName: string }[],
+  mismatches: readonly CharacterImageIndexMappingMismatch[],
+): string {
+  return [
+    `REFERENCE MAPPING CORRECTION (MANDATORY): the previous attempt stated a wrong character-to-image mapping (${formatMappingMismatchSummary(mismatches)}).`,
+    `The REQUIRED mapping is: ${formatReferenceMappingLine(references)}.`,
+    `State this mapping ONCE, exactly as given, and do not restate a different mapping anywhere else in the prompt.`,
+  ].join("\n");
 }
 
 const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-shot-start-frame-render");
@@ -293,6 +359,27 @@ export interface GenerateStartFrameRenderPlanParams {
      * as before this field existed (byte-identical regression guard).
      */
     location?: { name: string; description: string; hasReferenceImage: boolean };
+    /**
+     * Speaker-order composition fix — this shot's dialogue speakers, in
+     * delivery order, deduped to first appearance (e.g. `["ฝ้าย",
+     * "ใบข้าว"]`), resolved by the caller from the SAME dialogue source the
+     * video path uses (`resolveShotDialogueLines()` in
+     * `verticalDramaEpisodes.ts`) — see that router's `generateRealStartFramePlan`
+     * doc comment for exactly which source this reads at batch-generation
+     * time (the storyboard/start-frame stage runs BEFORE
+     * `dialogue_audio_plan`/`video_motion_prompt_pack` exist, so the deep-
+     * drafted shot's own `dialogue_lines[]` — the Overview page's canonical
+     * source — is the only reliable source available here). Threaded to the
+     * skill as a `speaking_order:` fact so it can position the first speaker
+     * leftmost (see `vertical-drama-shot-start-frame-render/skill.md`'s new
+     * "Speaker order positioning" rule). Optional — omitted for any shot
+     * with no resolvable dialogue (silent/solo shot, or dialogue not
+     * drafted yet), in which case `buildStartFrameRenderPlanUserPrompt`
+     * renders that shot's line exactly as before this field existed
+     * (byte-identical regression guard — same convention as `location`
+     * immediately above).
+     */
+    speakingOrder?: string[];
   }>;
   /**
    * Series-level default region/ethnicity look for every rendered person
@@ -338,6 +425,92 @@ export interface GenerateStartFrameRenderPlanParams {
   episodePlanContext?: string;
 }
 
+/**
+ * Single-subject / isolating shot-size tokens that CANNOT physically frame
+ * 2+ people. Matched case-insensitively against a `_`/`-`/space-normalized
+ * form of each comma-separated `cameraSetup` token (so
+ * `"Extreme Close-Up"`, `"extreme_close_up"`, and `"EXTREME-CLOSE-UP"` all
+ * match the same set entry). Keys here are the ALREADY-normalized form
+ * (lowercased, `_`/`-`/whitespace stripped) — see `normalizeShotSizeToken`.
+ */
+const SINGLE_SUBJECT_SHOT_SIZE_TOKENS = new Set([
+  "extremecloseup",
+  "extremecloseupshot",
+  "closeup",
+  "closeupshot",
+  "bigcloseup",
+  "tightcloseup",
+  "macro",
+  "ecu",
+  "cu",
+  "choker",
+]);
+
+function normalizeShotSizeToken(token: string): string {
+  return token.trim().toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+/**
+ * The single widened multi-character framing token for N required
+ * characters — the shared decision `remapCameraSetupForRequiredCharacters`
+ * (batch render-plan camera-token remap, below) and
+ * `buildStartFrameShotPromptUserPrompt`'s `framing_override` fact (per-shot
+ * regen path — see that builder's doc comment; it has no `cameraSetup`
+ * string to remap, so it emits this same token directly instead) both widen
+ * to, kept in one place so neither path can silently drift out of sync with
+ * the other. Callers must gate on `requiredCharacterCount >= 2` themselves —
+ * this function does not validate that precondition.
+ */
+function widenedMultiCharacterFramingToken(requiredCharacterCount: number): string {
+  return requiredCharacterCount >= 3 ? "medium_group_shot" : "medium_two_shot";
+}
+
+/**
+ * Multi-character close-up conflict fix (root cause of "2 characters listed
+ * but the image renders only one person" — see this file's own doc comment
+ * at the top and `requiredCharactersSuffix` below). A close-up/extreme-
+ * close-up physically cannot contain 2+ people in frame; previously the raw
+ * `cameraSetup` string (e.g. `"extreme_close_up, high_angle, fast_push_in"`)
+ * was interpolated verbatim into the planning prompt, leaving the
+ * "extreme_close_up + 2 characters" conflict entirely to best-effort LLM
+ * prose. This function deterministically widens ONLY the isolating
+ * shot-size token — angle/movement tokens and everything else in
+ * `cameraSetup` (delimiter/spacing style included) are left untouched.
+ *
+ * `cameraSetup` is a comma-joined string with the shot-size token first (see
+ * `verticalDramaEpisodePipeline.ts:2904-2910`), e.g. for a 2-character shot:
+ * `"extreme_close_up, high_angle, fast_push_in"` ->
+ * `"medium_two_shot, high_angle, fast_push_in"`.
+ *
+ * Pure and byte-identical when `requiredCharacterCount < 2` (returns the
+ * input unchanged) or when no single-subject token is present (e.g. already
+ * `"medium"`/`"wide"` — also returned unchanged).
+ */
+export function remapCameraSetupForRequiredCharacters(
+  cameraSetup: string,
+  requiredCharacterCount: number,
+): string {
+  if (requiredCharacterCount < 2) return cameraSetup;
+  const widened = widenedMultiCharacterFramingToken(requiredCharacterCount);
+  let replaced = false;
+  const remapped = cameraSetup
+    .split(",")
+    .map((rawToken) => {
+      if (replaced) return rawToken;
+      if (!SINGLE_SUBJECT_SHOT_SIZE_TOKENS.has(normalizeShotSizeToken(rawToken))) {
+        return rawToken;
+      }
+      replaced = true;
+      // Preserve the token's surrounding whitespace so the original
+      // delimiter/spacing style (", " vs ",") is untouched.
+      const leading = rawToken.match(/^\s*/)?.[0] ?? "";
+      const trailing = rawToken.match(/\s*$/)?.[0] ?? "";
+      return `${leading}${widened}${trailing}`;
+    })
+    .join(",");
+  return replaced ? remapped : cameraSetup;
+}
+
 export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRenderPlanParams): string {
   const promptLanguage = params.promptLanguage ?? "en";
   const promptLanguageName = VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES[promptLanguage];
@@ -360,9 +533,42 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
       const canonicalSource = s.canonicalShotSummary
         ? ` | CANONICAL SHOT SOURCE (must follow): ${s.canonicalShotSummary}`
         : "";
-      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${s.cameraSetup} | characters: ${
+      // Speaker-order composition fix — additive; only appended when this
+      // shot carries a resolved `speakingOrder`, so a shot with none
+      // produces the exact same line as before this field existed
+      // (byte-identical regression guard). Mirrors `locationSuffix`'s own
+      // conditional-suffix convention immediately above.
+      const speakingOrderSuffix = s.speakingOrder?.length
+        ? ` | speaking_order: ${s.speakingOrder.join(" > ")} (first speaker leftmost)`
+        : "";
+      // Multi-character frame-inclusion fix — additive; only appended when
+      // this shot requires 2+ characters, so a solo/no-character shot
+      // produces the exact same line as before this field existed
+      // (byte-identical regression guard). Mirrors `speakingOrderSuffix`'s
+      // own conditional-suffix convention immediately above. TS emits only
+      // the factual required-character count — the creative "must include
+      // ALL of them, reinterpret a close-up if needed" rule lives in
+      // `vertical-drama-shot-start-frame-render/skill.md`'s new "All
+      // required characters must be visible in frame" rule.
+      const requiredCharactersSuffix =
+        s.characterIds.length >= 2
+          ? ` | required_characters: ${s.characterIds.length} (frame must include ALL)`
+          : "";
+      // Deterministic camera remap (multi-character close-up conflict fix) —
+      // when this shot requires 2+ characters, widen an isolating
+      // close-up-class shot-size token to a group framing BEFORE it ever
+      // reaches the LLM prompt, rather than leaving the conflict to
+      // best-effort prose. Byte-identical to the raw `s.cameraSetup` for
+      // any shot with < 2 required characters. See
+      // `remapCameraSetupForRequiredCharacters`'s doc comment for the full
+      // root-cause writeup.
+      const remappedCameraSetup = remapCameraSetupForRequiredCharacters(
+        s.cameraSetup,
+        s.characterIds.length,
+      );
+      return `- Shot ${s.shotNumber} (${s.durationSeconds}s): ${s.description} | camera: ${remappedCameraSetup} | characters: ${
         s.characterIds.length ? s.characterIds.join(", ") : "(none)"
-      }${locationSuffix}${canonicalSource}`;
+      }${locationSuffix}${canonicalSource}${speakingOrderSuffix}${requiredCharactersSuffix}`;
     })
     .join("\n");
 
@@ -426,6 +632,107 @@ export function buildStartFrameRenderPlanUserPrompt(params: GenerateStartFrameRe
  * `generateStoryboardShotgrid`'s check-credits -> call -> deduct-credits
  * convention.
  */
+/**
+ * One shot's reference-mapping contradiction, surfaced to the caller as a
+ * non-blocking warning (`planning/vd-start-frame-reference-mapping/plan.md`
+ * Phase 2, batch path, 2026-07-16) — mirrors
+ * `findMissingCharacterIdentityWarnings`'s existing "warn, never fail the
+ * whole 9-shot plan for one shot's phrasing" convention exactly, so
+ * `verticalDramaEpisodePipeline.ts` can surface both through the same
+ * `stageQcWarnings` channel.
+ */
+export interface VdReferenceMappingWarning {
+  shotNumber: number;
+  characterName: string;
+  claimedImageIndex: number;
+  expectedImageIndex: number;
+}
+
+/**
+ * Per-shot ground-truth references for the batch reference-mapping
+ * validator — `imageIndex` = 1-based POSITION in that shot's own
+ * `characterIds` list (the same order `projectStartFramePlan` trusts as
+ * `requiredCharacterRefs`, and the same order the real paid render later
+ * attaches reference images in), `characterName` resolved via `characters`
+ * (characterKey → name). A `characterIds` entry with no matching/named
+ * character row is skipped entirely (nothing reliable to validate against
+ * for that slot) rather than guessed at.
+ */
+function buildBatchReferenceMappingReferences(
+  storyboardShots: GenerateStartFrameRenderPlanParams["storyboardShots"],
+  characters: readonly VerticalDramaCharacterDescriptorSource[],
+): Map<number, Array<{ imageIndex: number; characterName: string }>> {
+  const nameByCharacterKey = new Map<string, string>();
+  for (const character of characters) {
+    const name = character.name?.trim();
+    if (name) nameByCharacterKey.set(character.characterKey, name);
+  }
+
+  const referencesByShotNumber = new Map<
+    number,
+    Array<{ imageIndex: number; characterName: string }>
+  >();
+  for (const shot of storyboardShots) {
+    const references = shot.characterIds
+      .map((characterKey, index) => {
+        const characterName = nameByCharacterKey.get(characterKey);
+        return characterName ? { imageIndex: index + 1, characterName } : null;
+      })
+      .filter((r): r is { imageIndex: number; characterName: string } => Boolean(r));
+    if (references.length > 0) referencesByShotNumber.set(shot.shotNumber, references);
+  }
+  return referencesByShotNumber;
+}
+
+/** Run the shared validator against every shot request that has resolvable ground-truth references. */
+function findBatchReferenceMappingIssues(
+  requests: readonly { shot_number: number; prompt: string }[],
+  referencesByShotNumber: Map<number, Array<{ imageIndex: number; characterName: string }>>,
+): VdReferenceMappingWarning[] {
+  const issues: VdReferenceMappingWarning[] = [];
+  for (const request of requests) {
+    const references = referencesByShotNumber.get(request.shot_number);
+    if (!references || references.length === 0) continue;
+    const mismatches = findCharacterImageIndexMappingMismatches(request.prompt, references);
+    for (const mismatch of mismatches) {
+      issues.push({ shotNumber: request.shot_number, ...mismatch });
+    }
+  }
+  return issues;
+}
+
+/**
+ * Deterministic corrective addition appended to the batch user prompt on a
+ * reference-mapping retry — lists every offending shot + its required
+ * mapping, so the retry is a targeted per-shot fix rather than a blind
+ * regeneration of all 9 shots.
+ */
+function buildBatchReferenceMappingCorrectiveInstruction(
+  issues: readonly VdReferenceMappingWarning[],
+): string {
+  const issuesByShot = new Map<number, VdReferenceMappingWarning[]>();
+  for (const issue of issues) {
+    const list = issuesByShot.get(issue.shotNumber) ?? [];
+    list.push(issue);
+    issuesByShot.set(issue.shotNumber, list);
+  }
+  const lines = Array.from(issuesByShot.entries())
+    .sort(([a], [b]) => a - b)
+    .map(
+      ([shotNumber, shotIssues]) =>
+        `- Shot ${shotNumber}: ${formatMappingMismatchSummary(shotIssues)}`,
+    );
+  return [
+    `REFERENCE MAPPING CORRECTION (MANDATORY): the previous attempt stated a wrong ` +
+      `character-to-image mapping on these shots — fix ONLY the mapping claim in each, ` +
+      `do not otherwise rewrite the shot:`,
+    ...lines,
+    `Every shot's "Image N ↔ name" claim must exactly match that shot's own reference-` +
+      `image attachment order (index = position in that shot's own "characters:" list) ` +
+      `and must be stated ONCE, never restated differently elsewhere in that shot's prompt.`,
+  ].join("\n");
+}
+
 export async function generateStartFrameRenderPlan(
   params: GenerateStartFrameRenderPlanParams,
 ): Promise<{
@@ -433,6 +740,8 @@ export async function generateStartFrameRenderPlan(
   raw: StartFrameRenderPlanOutput;
   creditsUsed: number;
   model: string;
+  /** Present only when an EXPLICIT reference-mapping contradiction survives the one corrective retry — see `VdReferenceMappingWarning`'s doc comment. */
+  referenceMappingWarnings?: VdReferenceMappingWarning[];
 }> {
   // Rate limiting — reuses the shared `mediaGenerationLimiter` (this is a
   // paid LLM call, same per-user cap as `media.ts`'s generation mutations).
@@ -492,6 +801,75 @@ export async function generateStartFrameRenderPlan(
     },
   });
 
+  // Reference Mapping Validator + one corrective retry, batch path
+  // (`planning/vd-start-frame-reference-mapping/plan.md` Phase 2, RC3 fix,
+  // 2026-07-16) — validate EVERY shot's own EXPLICIT "Image N ↔ name" claims
+  // against that shot's real attachment order (`storyboardShots[].characterIds`
+  // position). Unlike the per-shot generator, a single mismatched shot must
+  // NOT fail the whole 9-shot batch: issue at most one corrective retry of
+  // the ENTIRE call (bounded cost — never more than one extra LLM call per
+  // batch), then accept whatever comes back and surface any STILL-mismatched
+  // shots as non-blocking `referenceMappingWarnings` (same "warn, don't
+  // fail" convention as `findMissingCharacterIdentityWarnings`).
+  let planData = validatedData;
+  const referencesByShotNumber = buildBatchReferenceMappingReferences(
+    params.storyboardShots,
+    params.characters ?? [],
+  );
+  let referenceMappingIssues = findBatchReferenceMappingIssues(
+    planData.start_frame_requests,
+    referencesByShotNumber,
+  );
+  if (referenceMappingIssues.length > 0) {
+    debugError(
+      "vd_start_frame_render_plan",
+      `Start-frame render plan (episode #${params.episodeId}): ${referenceMappingIssues.length} ` +
+        `shot(s) have a character-to-image mapping that contradicts their own attachment ` +
+        `order — retrying the whole plan once with a corrective instruction.`,
+      { episodeId: params.episodeId, issues: referenceMappingIssues },
+    );
+    const correctiveUserPrompt = `${userPrompt}\n\n${buildBatchReferenceMappingCorrectiveInstruction(
+      referenceMappingIssues,
+    )}`;
+    const retry = await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt,
+      userPrompt: correctiveUserPrompt,
+      temperature: 0.7,
+      userId: params.userId,
+      maxTokens: 16000,
+      schema: startFrameRenderPlanOutputSchema,
+      label: "Start-frame render plan (reference-mapping retry)",
+    });
+    const retryUsage = retry.response.usage;
+    const retryCreditsUsed = calculateCreditsForLLM(
+      retryUsage?.prompt_tokens ?? 0,
+      retryUsage?.completion_tokens ?? 0,
+      model,
+    );
+    await deductCredits({
+      userId: params.userId,
+      tenantId: params.tenantId,
+      amount: retryCreditsUsed,
+      description: `Vertical Drama — start-frame render plan reference-mapping retry (episode #${params.episodeId})`,
+      sourceType: "skill",
+      metadata: {
+        model,
+        llmModel: model,
+        feature: "vertical_drama_series",
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        inputTokens: retryUsage?.prompt_tokens ?? 0,
+        outputTokens: retryUsage?.completion_tokens ?? 0,
+      },
+    });
+    planData = retry.data;
+    referenceMappingIssues = findBatchReferenceMappingIssues(
+      planData.start_frame_requests,
+      referencesByShotNumber,
+    );
+  }
+
   const shotCharacterIdsByShotNumber = new Map(
     params.storyboardShots.map((s) => [s.shotNumber, s.characterIds]),
   );
@@ -501,13 +879,21 @@ export async function generateStartFrameRenderPlan(
       .map((s) => [s.shotNumber, s.canonicalShotSummary!.trim()]),
   );
   const plan = projectStartFramePlan(
-    validatedData,
+    planData,
     params.selectedImageModelId ?? "dry-run-image-model",
     shotCharacterIdsByShotNumber,
     canonicalShotSummaryByShotNumber,
   );
 
-  return { plan, raw: validatedData, creditsUsed, model };
+  return {
+    plan,
+    raw: planData,
+    creditsUsed,
+    model,
+    ...(referenceMappingIssues.length > 0
+      ? { referenceMappingWarnings: referenceMappingIssues }
+      : {}),
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -716,6 +1102,34 @@ export interface GenerateStartFrameShotPromptParams {
    * producing a byte-identical prompt.
    */
   location?: { name: string; description: string; hasReferenceImage: boolean };
+  /**
+   * Speaker-order composition fix — same shape/rationale as
+   * `GenerateStartFrameRenderPlanParams.storyboardShots[].speakingOrder`
+   * above, singular here since this generator handles exactly one shot at a
+   * time. Optional — omitted for any shot with no resolvable dialogue,
+   * producing a byte-identical prompt.
+   */
+  speakingOrder?: string[];
+  /**
+   * User-controlled supplementary reference frames
+   * (`planning/vd-start-frame-reference-mapping/plan.md` Phase 6) — set
+   * `true` by `generateShotReferenceFramePrompt`
+   * (`server/routers/verticalDramaEpisodes.ts`) ONLY; every other caller
+   * omits it, producing a byte-identical prompt (same conditional-line
+   * convention as `speakingOrder` above). When `true`,
+   * `buildStartFrameShotPromptUserPrompt` emits a `reference_frame_mode:
+   * true` fact line immediately after `repair_instruction` — the skill's own
+   * "Supplementary reference frame mode" section (added to
+   * `vertical-drama-shot-start-frame-prompt/skill.md` in Phase 6b) reads that
+   * fact + `repair_instruction` (the user's free-text directive) together to
+   * let the directive OUTRANK `canonical_shot_summary` for action/pose/camera
+   * while every other identity/mapping/continuity rule still applies
+   * unchanged. This flag changes ONLY which skill section governs the
+   * output's creative content — the mapping validator, one corrective retry,
+   * and fail-closed `VdReferenceMappingError` behavior below apply
+   * identically in this mode.
+   */
+  referenceFrameMode?: boolean;
   idempotencyKey?: string;
 }
 
@@ -740,12 +1154,27 @@ export function buildStartFrameShotPromptUserPrompt(
     })
     .join("\n");
 
+  // Multi-character frame-inclusion fix — `requiredCharacterRefs` (the
+  // authoritative "who must appear" list) is preferred when present; falls
+  // back to the reference-image manifest's length otherwise. See the
+  // `requiredCharacterCount` fact line below.
+  const requiredCharacterCount =
+    params.requiredCharacterRefs?.length ?? params.characterReferenceManifest.length;
+
   return [
     `contract_version: 1`,
     `shot_number: ${params.shotNumber}`,
     `current_prompt: ${params.currentPrompt}`,
     `current_negative_prompt: ${params.currentNegativePrompt || "(none)"}`,
     `repair_instruction: ${params.instruction?.trim() || "(none)"}`,
+    // User-controlled supplementary reference frames (Phase 6) — additive;
+    // `null` (filtered out entirely, same convention as `speakingOrder`
+    // below) when `referenceFrameMode` is absent, so every pre-existing
+    // caller produces the exact same prompt as before this field existed
+    // (byte-identical regression guard). See `GenerateStartFrameShotPromptParams
+    // .referenceFrameMode`'s own doc comment for what this fact means to the
+    // skill.
+    params.referenceFrameMode ? `reference_frame_mode: true` : null,
     params.canonicalShotSummary?.trim()
       ? `canonical_shot_summary (authoritative Overview source): ${params.canonicalShotSummary.trim()}`
       : null,
@@ -775,6 +1204,49 @@ export function buildStartFrameShotPromptUserPrompt(
             ? " [has an approved reference image — environment lock applies]"
             : ""
         }`
+      : null,
+    // Speaker-order composition fix — additive; `null` (filtered out
+    // entirely, same convention as `location` immediately above) when
+    // `speakingOrder` is absent/empty, so a call without it produces the
+    // exact same prompt as before this field existed.
+    params.speakingOrder?.length
+      ? `speaking_order: ${params.speakingOrder.join(" > ")} (first speaker leftmost)`
+      : null,
+    // Multi-character frame-inclusion fix — same shape/rationale as the
+    // batch builder's `requiredCharactersSuffix` above. `null` (filtered out
+    // entirely, same convention as `speakingOrder` immediately above) when
+    // the shot has fewer than 2 required characters, so a solo-character
+    // call produces the exact same prompt as before this field existed
+    // (byte-identical regression guard). Derived from what's already on
+    // `params` — no new caller param needed: `requiredCharacterRefs` (the
+    // authoritative "who must appear" list) when present, else the length of
+    // `characterReferenceManifest`. TS emits only the factual count — the
+    // creative "must include ALL of them" rule lives in
+    // `vertical-drama-shot-start-frame-prompt/skill.md`'s new "All required
+    // characters must be visible in frame" rule.
+    requiredCharacterCount >= 2
+      ? `required_character_count: ${requiredCharacterCount} (all must appear in frame)`
+      : null,
+    // Deterministic per-shot camera-framing fix — the per-shot sibling of
+    // the batch builder's `remapCameraSetupForRequiredCharacters`
+    // (`buildStartFrameRenderPlanUserPrompt` above). Root cause: a 2+
+    // required-character shot regenerated via THIS path ("ให้ AI ปรับ")
+    // could still come back as an isolating close-up because this builder
+    // never receives (and the batch remap never runs against) a
+    // `cameraSetup` value at all — the fix there only ever reached the
+    // batch render-plan call. Rather than thread a `cameraSetup` string
+    // through just to remap it, this emits the same widened-framing
+    // decision directly as an authoritative `framing_override` fact
+    // (`widenedMultiCharacterFramingToken` — the exact function
+    // `remapCameraSetupForRequiredCharacters` uses internally, so neither
+    // path's widening decision can drift out of sync with the other).
+    // `skill.md`'s "All required characters must be visible in frame" rule
+    // treats this fact as authoritative shot-size when present. `null`
+    // (filtered out entirely, same convention as `required_character_count`
+    // immediately above) for any shot with < 2 required characters — byte-
+    // identical regression guard.
+    requiredCharacterCount >= 2
+      ? `framing_override: ${widenedMultiCharacterFramingToken(requiredCharacterCount)} (${requiredCharacterCount} required characters must ALL be visible — do not isolate one in a close-up)`
       : null,
     // Shared-field prompt-language fix — same field/default/wording
     // convention as `verticalDramaVideoMotionPromptGeneration.ts`'s
@@ -890,6 +1362,94 @@ export async function generateStartFrameShotPrompt(
     );
     outputPrompt = params.currentPrompt;
     outputNegativePrompt = params.currentNegativePrompt;
+  }
+
+  // Reference Mapping Validator + one corrective retry (`planning/
+  // vd-start-frame-reference-mapping/plan.md` Phase 2, RC3 fix, 2026-07-16)
+  // — validate the authored prompt's own EXPLICIT "Image N ↔ name" claims
+  // against `characterReferenceManifest` (the SAME order the real paid
+  // render will attach reference images in — see the router's
+  // `reorderShotCharacterRefEntriesByKeyOrder` fix). On a mismatch, issue
+  // ONE deterministic corrective retry (same "retry once, bill the retry
+  // separately" convention `verticalDramaStoryBible.ts`'s deep-draft-chunk
+  // missing-episode retry already established) rather than silently
+  // persisting a self-contradictory prompt.
+  const referenceMappingReferences = params.characterReferenceManifest.map((entry) => ({
+    imageIndex: entry.index,
+    characterName: entry.name,
+  }));
+  let referenceMappingMismatches = findCharacterImageIndexMappingMismatches(
+    outputPrompt,
+    referenceMappingReferences,
+  );
+  if (referenceMappingMismatches.length > 0) {
+    debugError(
+      "vd_shot_start_frame_prompt",
+      `Start-frame shot prompt (shot ${params.shotNumber}): authored prompt's own ` +
+        `"Image N" claims contradict the reference manifest — retrying once with a ` +
+        `corrective instruction.`,
+      { shotNumber: params.shotNumber, mismatches: referenceMappingMismatches },
+    );
+    const correctiveUserPrompt = `${userPrompt}\n\n${buildReferenceMappingCorrectiveInstruction(
+      referenceMappingReferences,
+      referenceMappingMismatches,
+    )}`;
+    const retry = await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt,
+      userPrompt: correctiveUserPrompt,
+      temperature: 0.7,
+      userId: params.userId,
+      maxTokens: 3000,
+      schema: startFrameShotPromptOutputSchema,
+      label: `Start-frame shot prompt (shot ${params.shotNumber}, reference-mapping retry)`,
+    });
+    const retryUsage = retry.response.usage;
+    const retryCreditsUsed = calculateCreditsForLLM(
+      retryUsage?.prompt_tokens ?? 0,
+      retryUsage?.completion_tokens ?? 0,
+      model,
+    );
+    await deductCredits({
+      userId: params.userId,
+      tenantId: params.tenantId,
+      amount: retryCreditsUsed,
+      description: `Vertical Drama — start-frame shot prompt reference-mapping retry (episode #${params.episodeId}, shot #${params.shotNumber})`,
+      sourceType: "skill",
+      metadata: {
+        model,
+        llmModel: model,
+        feature: "vertical_drama_series",
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        shotNumber: params.shotNumber,
+        inputTokens: retryUsage?.prompt_tokens ?? 0,
+        outputTokens: retryUsage?.completion_tokens ?? 0,
+      },
+    });
+
+    outputPrompt = retry.data.prompt;
+    outputNegativePrompt = retry.data.negative_prompt ?? "";
+    if (
+      inputHadChildSafetyDirective &&
+      !CHILD_SAFETY_DIRECTIVE_MARKER.test(outputPrompt)
+    ) {
+      outputPrompt = params.currentPrompt;
+      outputNegativePrompt = params.currentNegativePrompt;
+    }
+
+    referenceMappingMismatches = findCharacterImageIndexMappingMismatches(
+      outputPrompt,
+      referenceMappingReferences,
+    );
+    if (referenceMappingMismatches.length > 0) {
+      throw new VdReferenceMappingError(
+        `Start-frame shot prompt (shot ${params.shotNumber}): authored prompt's own ` +
+          `"Image N" claims still contradict the reference manifest after one ` +
+          `corrective retry (${formatMappingMismatchSummary(referenceMappingMismatches)})`,
+        referenceMappingMismatches,
+      );
+    }
   }
 
   return {

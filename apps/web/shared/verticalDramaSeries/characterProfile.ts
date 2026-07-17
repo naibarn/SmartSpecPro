@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { speechProfileSchema } from "./speechProfile";
 import { verticalDramaConsistencyLedgerSchema } from "./consistencyLedger";
+import {
+  narrativeRoleSchema,
+  roleProvenanceSchema,
+  roleReviewStatusSchema,
+  roleTierSchema,
+  roleVisualIntentSchema,
+} from "./narrativeRole";
 
 const boundedDnaText = z.string().trim().min(1).max(1_000);
 const boundedDnaList = z.array(boundedDnaText).max(12);
@@ -14,6 +21,15 @@ const distinctDnaDimensionList = (minimum: number) =>
       });
     }
   });
+
+export const verticalDramaCharacterNarrativeRoleFieldsSchema = z.object({
+  narrativeRole: narrativeRoleSchema.nullable().optional(),
+  roleTier: roleTierSchema.nullable().optional(),
+  occupation: z.string().trim().max(160).nullable().optional(),
+  roleVisualIntent: roleVisualIntentSchema.nullable().optional(),
+  roleProvenance: roleProvenanceSchema.nullable().optional(),
+  roleReviewStatus: roleReviewStatusSchema.nullable().optional(),
+});
 
 export const verticalDramaCharacterDesignDnaSchema = z
   .object({
@@ -79,7 +95,12 @@ export const verticalDramaCharacterDesignDnaSchema = z
       rationale: boundedDnaText,
     }),
     comparisonEvidence: z.object({
-      candidateDirectionCount: z.literal(3),
+      // Fixed methodology constant (3 reference comparison directions), never
+      // the portrait batch size — defensively coerce a mis-reported count back
+      // to 3 (see the matching note in verticalDramaCharacterImageGeneration.ts's
+      // `characterDesignDnaOutputSchema`; a 5-candidate batch made the model
+      // report `5` here and hard-fail).
+      candidateDirectionCount: z.literal(3).catch(3),
       currentCastCompared: z.number().int().min(0).max(29),
       recentSeriesCompared: z.number().int().min(0).max(5),
       priorLeadDnaCompared: z.number().int().min(0).max(10),

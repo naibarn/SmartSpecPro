@@ -4,12 +4,22 @@
   "title": "Character Visual Bible Output (upstream parity)",
   "type": "object",
   "additionalProperties": true,
-  "required": [
-    "visual_bible_summary",
-    "characters",
-    "plain_text_summary",
-    "storyboard_attachment_manifest",
-    "contract_version"
+  "oneOf": [
+    {
+      "required": [
+        "visual_bible_summary",
+        "characters",
+        "plain_text_summary",
+        "storyboard_attachment_manifest",
+        "contract_version"
+      ]
+    },
+    {
+      "required": [
+        "portrait_candidate_batch",
+        "contract_version"
+      ]
+    }
   ],
   "properties": {
     "contract_version": {
@@ -252,6 +262,42 @@
           "negative_prompt",
           "attachment_package"
         ]
+      }
+    },
+    "portrait_candidate_batch": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Lean user-visible first-portrait casting output, returned only when portrait_candidate_count is present.",
+      "required": ["character_id", "shared_visual_language", "candidates"],
+      "properties": {
+        "character_id": { "type": "string" },
+        "shared_visual_language": { "type": "string" },
+        "candidates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "candidate_id",
+              "character_id",
+              "visual_identity_summary",
+              "character_design_dna",
+              "primary_portrait_prompt"
+            ],
+            "properties": {
+              "candidate_id": { "type": "string" },
+              "character_id": { "type": "string" },
+              "visual_identity_summary": { "type": "string" },
+              "character_design_dna": {
+                "$ref": "#/properties/characters/items/properties/character_design_dna"
+              },
+              "primary_portrait_prompt": { "type": "string" },
+              "negative_prompt": { "type": "string" }
+            }
+          }
+        }
       }
     },
     "plain_text_summary": {

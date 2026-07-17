@@ -22,6 +22,7 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { getOpsIncidentGuidance } from "@/lib/opsMonitoringGuidance";
 import { ContextEngineEvaluationDashboard } from "@/components/admin/ContextEngineEvaluationDashboard";
 import { KnowledgeVaultReadinessDashboard } from "@/components/admin/KnowledgeVaultReadinessDashboard";
+import { HermesFleetBadge, HermesWorkerAdminPanel } from "@/components/admin/HermesWorkerAdminPanel";
 import {
   ArrowLeft,
   RefreshCw,
@@ -236,6 +237,8 @@ type WorkerFleetRow = {
   workerAccessPolicyPreset: string | null;
   workerAccessPolicyScopeCount: number;
   workerAccessPolicyQuotaDisplayLabel: string;
+  /** Feature 135 section 12 — pure projection of `capabilitiesJson.hermesMedia`. */
+  hermes?: { ready: boolean; version: string | null };
 };
 type WorkerDiagnosticsSnapshot = {
   workerId: string;
@@ -3113,6 +3116,11 @@ export default function AdminMonitoring() {
               )}
             </div>
 
+            {/* Feature 135 section 12 — Hermes Grok media worker admin
+                overview, mounted adjacent to the worker-fleet section it
+                complements. Read-only; see HermesWorkerAdminPanel.tsx. */}
+            <HermesWorkerAdminPanel />
+
             {workerFleetQuery.isLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -3163,6 +3171,7 @@ export default function AdminMonitoring() {
                           {humanizeMachineLabel(worker.compatibilityState)}
                         </Badge>
                         {worker.revokedAt ? <Badge variant="destructive">Revoked</Badge> : null}
+                        {worker.hermes ? <HermesFleetBadge hermes={worker.hermes} workerId={worker.id} /> : null}
                       </div>
                       <p className="text-xs text-muted-foreground">{worker.externalReference}</p>
                       <p className="text-xs text-muted-foreground">

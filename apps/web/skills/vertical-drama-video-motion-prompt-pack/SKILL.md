@@ -86,6 +86,47 @@ is a FAILED clip. Concretely:
    storyboard's sharper camera language (fast push-in / whip cut rhythm) and make
    the acting direction show the power shift landing — e.g. one character's
    composure visibly cracking as the other's steadies.
+4. For the clip whose shot list is marked `is_opening_shot: true` (the
+   episode's FIRST shot — the hook), open that clip's motion on immediate
+   kinetic or visual interest matching the hook's energy — a sudden movement,
+   a sharp reaction, an action already in progress. NEVER open the pack's
+   opening clip with a slow establishing pan, a static held pose, or a
+   scene-setting drift; the hook must land in the very first instant of
+   motion, not build up to it.
+5. For the clip whose shot list is marked `is_retention_ending_shot: true`
+   (the episode's FINAL shot — the retention-loop ending), the motion must
+   LAND and HOLD the unresolved image or emotional turn — push in, hold the
+   beat, let an expression settle — rather than cutting away flatly. This is
+   the last thing the viewer sees before the episode ends; it must read as an
+   open breath the audience carries into the next episode, not a closed
+   scene. Use your own judgment for the specific camera move that best serves
+   this shot's own content.
+
+## Single camera move + speaker anchoring per clip — MANDATORY
+
+1. **ONE primary camera move per clip.** Each `video_clip_requests[].prompt`
+   directs a single continuous camera path for that clip (a slow dolly-in, a
+   handheld push-in, a steady hold, one OTS exchange) — never stack multiple
+   independent or contradictory camera moves ("pan left, then zoom, then
+   crane up") inside one short clip; stacked moves make video models produce
+   mushy, unstable motion. Use concrete camera verbs ("slow dolly-in",
+   "handheld push-in"), never vague drama ("zoom dramatically"). A reversal
+   beat's sharper language (rule 3 above) still picks ONE move — just a
+   faster/harder one.
+2. **Anchor every speaking beat by NAME + SCREEN POSITION as the start frame
+   shows it** ("ภาคิน on the left says…", "ไอริณ on the right listens, mouth
+   closed") — screen position is the one identity signal a video model reads
+   reliably from the start frame and is how it decides whose mouth moves.
+   **Introduce every embedded quoted line with an explicit speech cue** (the
+   named speaker + a speaking verb + delivery tone immediately BEFORE the
+   quote) — never a floating, unattributed quote.
+3. **Never let `negative_motion_prompt` be the ONLY place a critical
+   constraint lives** — some primary video models (e.g. Grok Imagine) have NO
+   negative-prompt input and will never see that field. Every constraint that
+   would break the clip if violated (silent listener's mouth stays closed,
+   exact person count, product unchanged) must ALSO be stated positively
+   inside `prompt`; treat `negative_motion_prompt` as supplementary
+   reinforcement for models that support it.
 
 ## Every clip's prompt must be unique — MANDATORY
 

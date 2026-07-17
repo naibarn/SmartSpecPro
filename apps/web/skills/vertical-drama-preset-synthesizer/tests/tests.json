@@ -18,6 +18,7 @@
     "logline",
     "mainPlot",
     "seasonArc",
+    "creatorSummary",
     "tone",
     "cliffhangerStyle",
     "characters",
@@ -29,6 +30,7 @@
   "pinned_literals": {
     "contract_version": 1
   },
+  "supported_output_contract_versions": [1, 2],
   "fixtures": {
     "pass_input": "fixtures/pass.input.json",
     "pass_output": "fixtures/pass.output.json",
@@ -39,6 +41,7 @@
     "output.schema.json parses",
     "pass.output.json contains all required top-level fields",
     "pinned literal constraints hold in pass.output.json",
+    "every character includes canonical narrativeRole, roleTier, and separate occupation",
     "fail.output.json violates at least one declared constraint",
     "scripts/verify.sh runs without provider credentials"
   ]

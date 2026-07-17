@@ -56,10 +56,26 @@ import { debugError } from "../_core/logger";
 // section-02 Finding 8) — every §11 consumer prompt must embed this greppable
 // marker; `verticalDramaQualityCriteria.agreement.test.ts` checks for it.
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
+import {
+  normalizeLegacyRole,
+  lenientNarrativeRoleSchema,
+  lenientRoleTierSchema,
+  NARRATIVE_ROLE_VALUES,
+  ROLE_TIER_VALUES,
+  type NarrativeRole,
+  type RoleTier,
+} from "@shared/verticalDramaSeries/narrativeRole";
 
 const SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-preset-synthesizer");
 const MIN_SELECTIONS = 2;
 const MAX_SELECTIONS = 5;
+const V2_SKILL_CONTRACT_MARKERS = [
+  "Mix and Match v2",
+  "contract_version",
+  "blendFacets",
+  "presetId",
+  "kept",
+] as const;
 
 let cachedSystemPrompt: string | null = null;
 
@@ -83,10 +99,45 @@ function loadSkillSystemPrompt(): string {
   );
 }
 
+// `narrativeRole`/`roleTier` use the shared LLM-response-lenient schemas
+// (`@shared/verticalDramaSeries/narrativeRole`) rather than hard-required
+// enums. Root cause (2026-07-14 recurring preset synthesis failure): the
+// model was never told the allowed enum values (see the `rules` entries
+// added in `buildUserPrompt`/`buildUserPromptV2` below), so it regularly
+// guessed unrecognized/miscased labels (e.g. "second_lead", "Protagonist",
+// "love_interest") and failed the whole draft on both the first attempt AND
+// the schema-retry. A pure-casing miss now still parses (lowercase
+// preprocess); anything else degrades to `undefined` instead of throwing —
+// `normalizeSynthesizedCharacters` already backfills it from the free-text
+// `role` via `normalizeLegacyRole`.
 const synthesizedCharacterSchema = z.object({
   name: z.string().min(1),
   role: z.string().min(1),
   description: z.string().min(1),
+  narrativeRole: lenientNarrativeRoleSchema,
+  roleTier: lenientRoleTierSchema,
+  occupation: z.string().min(1),
+});
+
+const creatorFacingCopySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(700)
+  .refine(
+    value =>
+      !/(?:blendFacets|facetAssignments|primaryFlavor|supportingFlavors|contract_version|preset[_ -]?id|json|snake[_ -]?case)/i.test(
+        value
+      ),
+    "Creator-facing copy must not expose synthesis metadata",
+  );
+
+const creatorSummarySchema = z.object({
+  whatItIsAbout: creatorFacingCopySchema,
+  protagonistAndGoal: creatorFacingCopySchema,
+  conflictAndDiscovery: creatorFacingCopySchema,
+  centralMystery: creatorFacingCopySchema,
+  decisionNotes: z.array(creatorFacingCopySchema).min(1).max(4),
 });
 
 const synthesizedWarningSchema = z.object({
@@ -103,6 +154,7 @@ const synthesizedPresetDraftSchema = z.object({
   seasonArc: z.string().min(1),
   tone: z.string().min(1).max(160),
   cliffhangerStyle: z.string().min(1).max(200),
+  creatorSummary: creatorSummarySchema,
   characters: z.array(synthesizedCharacterSchema).min(3).max(8),
   visualBible: z.string().min(1),
   mixRecipe: z
@@ -126,7 +178,14 @@ export interface PresetSynthesisPresetInput {
   seasonArc: string;
   tone: string;
   cliffhangerStyle: string;
-  characters: Array<{ name: string; role: string; description: string }>;
+  characters: Array<{
+    name: string;
+    role: string;
+    description: string;
+    narrativeRole?: NarrativeRole | null;
+    roleTier?: RoleTier | null;
+    occupation?: string | null;
+  }>;
   visualBible: string;
 }
 
@@ -161,10 +220,41 @@ export class PresetSynthesisInputError extends Error {
   }
 }
 
+/**
+ * Guards the skill-first boundary for the v2 branch. The v2 request contract
+ * must live in the loaded skill bundle; a user-prompt-only v2 addition is not
+ * sufficient because the skill's v1 instructions would otherwise conflict
+ * with it and repeatedly produce a v1-shaped response.
+ */
+export function assertPresetSynthesizerSkillSupportsV2(systemPrompt: string): void {
+  const missing = V2_SKILL_CONTRACT_MARKERS.filter(marker => !systemPrompt.includes(marker));
+  if (missing.length > 0) {
+    throw new Error(
+      `vertical-drama-preset-synthesizer skill is missing its v2 output contract markers: ${missing.join(", ")}`,
+    );
+  }
+}
+
 function clampText(value: string | undefined, maxLength: number): string | undefined {
   const trimmed = value?.trim();
   if (!trimmed) return undefined;
   return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed;
+}
+
+function normalizeSynthesizedCharacters(
+  characters: SynthesizedGenrePresetDraft["characters"],
+): SynthesizedGenrePresetDraft["characters"] {
+  return characters.map((character) => {
+    const legacy = normalizeLegacyRole(character.role);
+    const narrativeRole = character.narrativeRole ?? legacy.narrativeRole ?? undefined;
+    const roleTier = character.roleTier ?? legacy.roleTier ?? undefined;
+    return {
+      ...character,
+      narrativeRole,
+      roleTier,
+      occupation: character.occupation ?? character.role,
+    };
+  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -467,6 +557,8 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
       "Use compact JSON only.",
       `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
+      `Every character's "narrativeRole" MUST be exactly one of: ${NARRATIVE_ROLE_VALUES.join(", ")}.`,
+      `Every character's "roleTier" MUST be exactly one of: ${ROLE_TIER_VALUES.join(", ")}. Copy one value verbatim — never invent a new label.`,
     ],
   };
 
@@ -477,7 +569,7 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
     "Synthesize a new Vertical Drama Series genre preset from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
-    '{"contract_version":1,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"characters":[{"name":string,"role":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}]}',
+    '{"contract_version":1,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}]}',
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -526,7 +618,11 @@ export async function synthesizeVerticalDramaPreset(
     label: "Preset synthesis",
   });
 
-  const { draft: clampedDraft } = clampDraftForCreateSeries(synthesizedDraft);
+  const normalizedDraft = {
+    ...synthesizedDraft,
+    characters: normalizeSynthesizedCharacters(synthesizedDraft.characters),
+  };
+  const { draft: clampedDraft } = clampDraftForCreateSeries(normalizedDraft);
   const draft = appendPremiseCoverageWarning(clampedDraft, params.userPremise);
 
   const usage = response.usage;
@@ -735,7 +831,16 @@ const synthesizedVisualIdentityDraftSchema = z.object({
 const synthesizedPresetDraftV2Schema = synthesizedPresetDraftSchema.extend({
   contract_version: z.literal(2),
   blendFacets: z.array(verticalDramaBlendFacetEntrySchema).min(1),
-  visualIdentity: synthesizedVisualIdentityDraftSchema.optional(),
+  // Secondary cause of the 2026-07-14 recurring failure: the "Return exactly
+  // this JSON shape" contract string always included `visualIdentity`, which
+  // contradicted the rule above telling the model to omit it when no preset
+  // supplies visual-identity context — the model then emitted an empty-string
+  // `visualIdentity` object that failed `.min(1)`. The shape line is now
+  // conditional (see `buildUserPromptV2`), but this field stays lenient too:
+  // a malformed/empty `visualIdentity` degrades to absent rather than failing
+  // the whole draft (`assembleFinalVisualIdentity` already returns `undefined`
+  // when either side is missing).
+  visualIdentity: synthesizedVisualIdentityDraftSchema.optional().catch(undefined),
 });
 
 type SynthesizedGenrePresetDraftV2Raw = z.infer<typeof synthesizedPresetDraftV2Schema>;
@@ -892,8 +997,19 @@ function buildUserPromptV2(args: {
       "Use compact JSON only.",
       `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
+      `Every character's "narrativeRole" MUST be exactly one of: ${NARRATIVE_ROLE_VALUES.join(", ")}.`,
+      `Every character's "roleTier" MUST be exactly one of: ${ROLE_TIER_VALUES.join(", ")}. Copy one value verbatim — never invent a new label.`,
     ],
   };
+
+  // The "Return exactly this JSON shape" contract line must never advertise a
+  // "visualIdentity" member when there is no merged visual-identity context
+  // to build it from — the rules above already tell the model to omit it in
+  // that case, and a shape line that still lists it caused the model to emit
+  // an empty-string `visualIdentity` object that failed schema validation.
+  const jsonShape = mergedVisualIdentity
+    ? '{"contract_version":2,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}],"visualIdentity":{"styleName":string,"lighting":string,"cameraGrammar":string,"characterArchetypes":[{"role":string,"look":string}],"positiveFragments":[string]}}'
+    : '{"contract_version":2,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"creatorSummary":{"whatItIsAbout":string,"protagonistAndGoal":string,"conflictAndDiscovery":string,"centralMystery":string,"decisionNotes":[string]},"characters":[{"name":string,"role":string,"narrativeRole":string,"roleTier":string,"occupation":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}]}';
 
   return [
     renderCriteriaVersionMarker(),
@@ -902,7 +1018,7 @@ function buildUserPromptV2(args: {
     "Synthesize a new Vertical Drama Series genre preset (Mix and Match v2 — verifiable blend) from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
-    '{"contract_version":2,"title":string,"category":string,"logline":string,"mainPlot":string,"seasonArc":string,"tone":string,"cliffhangerStyle":string,"characters":[{"name":string,"role":string,"description":string}],"visualBible":string,"mixRecipe":{"primaryFlavor":string,"supportingFlavors":[string],"rationale":string},"warnings":[{"code":string,"message":string}],"blendFacets":[{"facet":string,"contributions":[{"presetId":string,"element":string,"kept":boolean}]}],"visualIdentity":{"styleName":string,"lighting":string,"cameraGrammar":string,"characterArchetypes":[{"role":string,"look":string}],"positiveFragments":[string]}}',
+    jsonShape,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -982,6 +1098,7 @@ export async function synthesizeVerticalDramaPresetV2(
 
   const model = await resolveStoryBibleModel();
   const systemPrompt = loadSkillSystemPrompt();
+  assertPresetSynthesizerSkillSupportsV2(systemPrompt);
 
   const facetAssignments = buildFacetAssignments(
     selections,
@@ -1066,6 +1183,10 @@ export async function synthesizeVerticalDramaPresetV2(
     }
   }
 
+  finalRawDraft = {
+    ...finalRawDraft,
+    characters: normalizeSynthesizedCharacters(finalRawDraft.characters),
+  };
   const warnings = [...finalRawDraft.warnings];
   if (blendReport.underBlended.length > 0) {
     const names = blendReport.underBlended.map((id) => presetTitleById.get(id) ?? id).join(", ");

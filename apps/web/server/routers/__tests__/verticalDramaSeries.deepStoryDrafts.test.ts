@@ -456,7 +456,10 @@ describe("generateStoryBibleDeep — mutation: enqueue + dedupe", () => {
       input: { seriesId: "10", horizonEpisodes: 2, idempotencyKey: "key-1", mode: "premium" },
     });
 
-    expect(result).toEqual({ jobId: "job-1", deduped: false });
+    // Silent-no-op fix (plan `planning/vertical-drama-deep-draft-update-all-noop`,
+    // 2026-07-14) — the return shape gained `alreadyComplete` so the client can
+    // distinguish an enqueued run from the "nothing left to draft" short-circuit.
+    expect(result).toEqual({ jobId: "job-1", deduped: false, alreadyComplete: false });
     expect(mockEnqueueVerticalDramaStoryJob).toHaveBeenCalledWith({
       kind: "deep_generate",
       seriesId: 10,
@@ -475,7 +478,38 @@ describe("generateStoryBibleDeep — mutation: enqueue + dedupe", () => {
 
     const result = await router.generateStoryBibleDeep({ ctx: ctx(), input: { seriesId: "10" } });
 
-    expect(result).toEqual({ jobId: "existing-job", deduped: true });
+    expect(result).toEqual({ jobId: "existing-job", deduped: true, alreadyComplete: false });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("alreadyComplete short-circuit: when every episode within the horizon already has shot drafts, returns { jobId: null, alreadyComplete: true } WITHOUT enqueuing or charging credits", async () => {
+    // Silent-no-op fix (plan `planning/vertical-drama-deep-draft-update-all-noop`,
+    // 2026-07-14) — the exact scenario that read as "the button just stops":
+    // a large series whose resolved horizon is fully covered by already-drafted
+    // episodes must NOT enqueue a doomed job that makes zero LLM calls.
+    const fullyDraftedRow = {
+      id: 10,
+      tenantId: "tenant-1",
+      userId: 42,
+      targetEpisodeCount: 3,
+      bible: {
+        episodeBreakdown: [
+          { ...plannedItem(1), shotDrafts: NINE_SHOTS },
+          { ...plannedItem(2), shotDrafts: NINE_SHOTS },
+          { ...plannedItem(3), shotDrafts: NINE_SHOTS },
+        ],
+      },
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([fullyDraftedRow]));
+
+    const result = await router.generateStoryBibleDeep({
+      ctx: ctx(),
+      input: { seriesId: "10", horizonEpisodes: 3 },
+    });
+
+    expect(result).toEqual({ jobId: null, deduped: false, alreadyComplete: true });
+    expect(mockEnqueueVerticalDramaStoryJob).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
     expect(mockDb.update).not.toHaveBeenCalled();
   });
 });

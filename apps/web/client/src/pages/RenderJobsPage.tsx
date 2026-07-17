@@ -57,6 +57,14 @@ const STATUS_OPTIONS = [
  */
 const JOB_TYPE_LABELS: Record<string, string> = {
   remotion_render_video: "เรนเดอร์วิดีโอ Remotion",
+  // Feature 135 (Hermes Grok media worker) section 12 — Thai labels for the
+  // hermes job types; `workerJobs` router already lists these jobs, no
+  // other change needed here.
+  hermes_media_image_generate: "สร้างภาพ (Grok ผ่าน Hermes)",
+  hermes_media_video_generate: "สร้างวิดีโอ (Grok ผ่าน Hermes)",
+  hermes_connection_authorize: "เชื่อมต่อบัญชี Grok (Hermes)",
+  hermes_connection_probe: "ตรวจสอบการเชื่อมต่อ Grok (Hermes)",
+  hermes_connection_disconnect: "ยกเลิกการเชื่อมต่อ Grok (Hermes)",
 };
 
 function formatJobType(jobType: string): string {

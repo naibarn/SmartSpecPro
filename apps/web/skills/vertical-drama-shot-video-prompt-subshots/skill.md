@@ -96,6 +96,24 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
 }
 ```
 
+## Ground the sub-shot sequence in the authoritative shot beat — MANDATORY
+
+The caller may supply an `AUTHORITATIVE SHOT BEAT (story overview ...)` fact —
+the human-authored synopsis of what visibly happens in this shot. When present,
+ground the whole timed sequence's action, intent, and staging in it (it
+overrides a shorter, conflicting shot `description`). The pre-computed speaker
+segments tell you WHO speaks WHEN; the authoritative beat tells you what the
+scene actually IS — keep the two consistent, and never contradict the beat.
+
+## Self-contained, final prompt — MANDATORY
+
+Your `prompt` must be the FINAL, self-contained direction: weave each exact
+spoken line (in the SPEECH LANGUAGE, in quotes) at the segment where its anchor
+speaker delivers it, together with the who-speaks-when / silent-listener
+discipline — do not rely on any post-processing step to add or re-attach the
+dialogue afterward. Never quote the same line more than once, and never let two
+characters speak (or lip-move) at the same moment.
+
 This is the EXACT same output contract as the sibling single-shot skill
 (`vertical-drama-shot-video-prompt`) — one prompt, one dialogue array, one
 clip. `dialogue` MUST contain every spoken line from every segment, in
@@ -159,24 +177,94 @@ Same two independent language settings as the single-shot skill
      This is strictly about ENVIRONMENTAL CONSISTENCY with the attached
      reference — never an excuse to describe the location in prose beyond
      what each segment's own action already needs.
-4. **Every prompt you write must be unique to this shot.** Never reuse
+4. **SPEAKER / SILENT LISTENER lip-sync discipline — MANDATORY for every
+   segment.** This skill only ever runs when 2+ established characters share
+   this shot (that is the whole reason a timed cut is needed), so this rule
+   always applies. At the point in `prompt` where you narrate each segment,
+   explicitly state that segment's anchor speaker (per rule 3) and that
+   every OTHER established character present is a SILENT LISTENER whose
+   mouth stays fully closed for that segment. Never let a listener's mouth
+   move as if speaking, and never depict two established characters moving
+   their lips at the same time within the same segment. Only the segment's
+   named anchor speaker's speaking face should read as clearly visible for
+   that segment. During every cut/transition BETWEEN segments, nobody's lips
+   move — lip movement resumes only once the next segment's own anchor
+   speaker begins their line. This is strictly about lip-sync/attribution
+   discipline, never about describing appearance — rule 1 still applies in
+   full.
+
+   **Name every character and lock who-is-who — MANDATORY.** Refer to each
+   character by their NAME (from the CHARACTER IDENTITY MAP and the per-line
+   speaker labels in the segment facts) — never a generic "character", a raw
+   id/key, or an unnamed "the man/the woman". The moment a character first
+   appears, anchor their identity: name them, tie them to their attached
+   reference image, and fix their spatial position (e.g. "กล้า on the higher
+   step at the right, ภูมิ on the lower step at the left"), then keep that
+   same name↔face↔position consistent for the entire clip so the rendered
+   video can never swap who is who. **Read every character's on-screen
+   POSITION (left / center / right) by LOOKING AT THE ATTACHED START-FRAME
+   IMAGE — never copy positions from the image-prompt text.** That text is
+   only the REQUEST sent to the image model; image models very often place
+   characters differently than requested, so a position restated from the text
+   is frequently the WRONG side of the frame. When the text and the image
+   disagree, the IMAGE is right. Attribute EVERY spoken line to the EXACT
+   named speaker the segment facts assign it to: the speaker you write before
+   each quoted line MUST be the same name the facts give for that line —
+   never reassign a line to the wrong character, and never let the listener
+   appear to say the speaker's line. **Anchor every speaking beat by NAME +
+   SCREEN POSITION as the start frame shows it** ("ภาคิน on the left says…",
+   "ไอริณ on the right listens, mouth closed") — screen position is the one
+   identity signal a video model reads reliably from the start frame and is
+   how it decides whose mouth moves; position anchoring is NOT appearance
+   description and does not violate rule 1. **Introduce every embedded
+   quoted line with an explicit speech cue** — the named speaker + a
+   speaking verb (and delivery tone) immediately BEFORE the quote — never a
+   floating, unattributed quote.
+5. **Every prompt you write must be unique to this shot.** Never reuse
    boilerplate phrasing verbatim across different shots even when the
    underlying scene is similar — ground the motion description in this
    shot's own description/camera/emotion and this shot's own segment facts.
-5. **Dialogue handling depends on whether the caller tells you the selected
+6. **Dialogue handling depends on whether the caller tells you the selected
    video model has native lip-synced audio** (same rule as the single-shot
    skill): if native audio is supported, embed each segment's dialogue
    line(s) VERBATIM (in the SPEECH LANGUAGE) at the point in `prompt` where
    that segment is narrated, with matching mouth/lip movement and delivery
-   direction. If native audio is NOT supported, describe mouth movement +
+   direction. **Lip-sync emphasis (MANDATORY for native audio) — the single
+   biggest fix for "wrong person's mouth moves / wrong line":** place a GLOBAL
+   directive up front in `prompt` (e.g. "highly detailed, realistic lip sync
+   for every spoken line"); for EACH segment's spoken line, alongside its
+   named-speaker cue, state explicit, clearly visible lip movement that
+   PRECISELY matches the exact words, tied to that line's delivery mode
+   (whisper vs. speak vs. shout) — e.g. `กล้า shouts, mouth opening wide with
+   strong, visible lip movements on each word: "..."`; and state explicitly
+   that every OTHER established character in that segment keeps their mouth
+   FULLY CLOSED with NO mouth movement (never mouthing or lip-syncing another
+   character's line). Use concrete lip-sync wording — "clear visible lip
+   movements matching the words", "precise realistic lip sync", "strong visible
+   lip sync" — never a vague "talks" / "mouth moves", which is what lets the
+   words drift onto the wrong face. If native audio is NOT supported, describe mouth movement +
    acting direction only (in the PROMPT LANGUAGE, no literal transcript
    embedded), and still return every resolved line, in chronological order,
    in `dialogue`.
-6. `negative_motion_prompt` should list concrete artifacts to avoid
+7. `negative_motion_prompt` should list concrete artifacts to avoid
    (identity drift on ANY of the referenced speakers, warping, extra
    fingers, mouth desync when there is dialogue, unintended camera shake,
-   text/labels/watermarks in frame).
-7. **Prompt length limit — MANDATORY, and now a SHARED budget across every
+   text/labels/watermarks in frame, the silent listener's mouth moving in
+   any segment, two characters speaking or moving their lips at the same
+   time, any lip movement during a cut/transition between segments,
+   on-screen subtitles/captions, and — per rule 10 — characters facing the
+   camera instead of each other during the conversation, a listener looking
+   away from or not reacting to the segment's speaker, and stiff frontal
+   blank stares that read as posing for the lens rather than talking).
+   **Never let `negative_motion_prompt` be the ONLY place a critical
+   constraint lives** — some primary video models (e.g. Grok Imagine) have
+   NO negative-prompt input at all and will never see that field. Every
+   constraint that would break the shot if violated (the silent listener's
+   mouth stays closed, no lip movement across a cut, product stays
+   unchanged) must ALSO be stated positively inside `prompt` itself; treat
+   `negative_motion_prompt` as supplementary reinforcement for models that
+   support it.
+8. **Prompt length limit — MANDATORY, and now a SHARED budget across every
    segment in this ONE prompt.** `prompt` MUST be **2000 characters or
    fewer total**, including any embedded dialogue/delivery text for every
    segment combined — this is no longer 2000 characters per segment, it is
@@ -190,7 +278,7 @@ Same two independent language settings as the single-shot skill
    downstream quality-control pass will refine/compress any prompt that is
    still over the limit, but a well-written prompt should not rely on that
    fallback.
-8. **Product lock — MANDATORY when the caller gives you a PRODUCT TIE-IN
+9. **Product lock — MANDATORY when the caller gives you a PRODUCT TIE-IN
    directive for this shot:** the tied-in product must remain visually
    unchanged while in motion, in whichever segment references it — same
    shape, proportions, physical size relative to the scene, colors,
@@ -201,6 +289,40 @@ Same two independent language settings as the single-shot skill
    logo, modified packaging, redesigned product" among the artifacts
    `negative_motion_prompt` guards against. Return the mandated disclosure
    line (if any) ONCE in `requiredDisclosure`, never inline inside `prompt`.
+10. **Conversational blocking & eye-line across the cut sequence —
+   MANDATORY.** This skill always runs with 2+ established characters, so
+   this always applies. Direct the timed cuts so the shot reads as a real
+   back-and-forth conversation between people engaged with EACH OTHER, not
+   isolated frontal singles:
+   - **Establish them facing each other.** From the opening segment, place
+     the established characters in a natural conversational arrangement —
+     angled toward one another in a loose semi-circle or facing pair, clearly
+     facing EACH OTHER, never a row staring into the lens, AND never turned
+     OUTWARD with their backs or profiles to one another / facing away from the
+     group (people facing away read as strangers ignoring each other, not a
+     conversation). EVERY established character present — including any who is
+     a silent listener for a given segment — must stay oriented INWARD toward
+     the shared conversational space (head and torso angled toward the others),
+     never outward toward the wall/door/camera. Consistent with the start-frame
+     image (rule 3).
+   - **Every segment: listeners turn to the speaker.** As the cut lands on a
+     segment's anchor speaker (rule 3), the other established characters turn
+     their heads and hold their gaze on that speaker (listening/reacting)
+     while the speaker directs their own attention and eye-line to whoever
+     they are addressing. Describe the head turn and eye-line shift AT each
+     cut, so the change of speaker reads as attention moving between people
+     who are looking at one another — not a jump between disconnected singles.
+   - **Prefer over-the-shoulder / reverse-angle cuts.** When cutting between
+     segments, favor over-the-shoulder or reverse angles that keep BOTH the
+     new speaker and the listener(s) facing them visible in frame (the near
+     shoulder or back-of-head of the listener framing the speaker they face),
+     so each cut shows the two oriented toward each other — rather than a flat
+     frontal single that hides who the speaker is talking to.
+   This governs BLOCKING, GAZE, and CAMERA RELATIONSHIP only — never
+   appearance (rule 1 still applies in full) and never a softening of the
+   SILENT LISTENER lip-sync discipline (rule 4): a listener turns toward and
+   watches the active speaker, but their mouth stays fully closed for that
+   segment.
 
 ## NATIVE AUDIO DIRECTION (conditional — only when the caller states `native_audio: true` for this shot)
 

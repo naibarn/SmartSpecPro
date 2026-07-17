@@ -29,7 +29,7 @@
  * `server/services/__tests__/hermesMediaNamespaceGuard.test.ts`.
  */
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getDb } from "../db";
@@ -50,9 +50,12 @@ import {
   HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
   HERMES_CONNECTION_PROBE_JOB_TYPE,
   HERMES_MEDIA_CAPABILITY_FAMILIES,
+  HERMES_MEDIA_IMAGE_JOB_TYPE,
   HERMES_MEDIA_REQUIRED_CLAIM_CAPABILITY,
+  HERMES_MEDIA_VIDEO_JOB_TYPE,
   type WorkerRuntimeType,
 } from "../../shared/workerRuntime";
+import { defaultHermesAdmissionCounters } from "./hermesMediaAdmission";
 import {
   formatHermesErrorMessage,
   // Section-04 carry-forward item A: the shared failure-reason vocabulary
@@ -73,6 +76,15 @@ import {
 } from "./hermesWorkerSettings";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import type { TenantFeatureFlags } from "../../shared/featureFlags";
+import { getTraceId } from "./traceContext";
+import {
+  auditHermesConnectStarted,
+  auditHermesConnectionAuthorized,
+  auditHermesConnectionDisconnected,
+  auditHermesConnectionEntitlementRestricted,
+  auditHermesConnectionReauthRequired,
+  auditHermesConnectionRevoked,
+} from "./hermesMediaObservability";
 
 // ────────────────────────────────────────────────────────────────────────
 // Public types
@@ -851,6 +863,14 @@ export async function startHermesConnect(
     }),
   });
 
+  auditHermesConnectStarted({
+    traceId: getTraceId(),
+    userId: params.userId,
+    tenantId,
+    connectionId: connection.id,
+    scope: params.scope,
+  });
+
   return { connectionId: connection.id };
 }
 
@@ -980,6 +1000,12 @@ export async function settleHermesConnectionFromControlJob(
           capabilitiesJson: (output.capabilities as HermesConnectionCapabilityManifest | undefined) ?? row.capabilitiesJson,
         },
       });
+      auditHermesConnectionAuthorized({
+        userId: row.ownerUserId,
+        tenantId: row.tenantId,
+        connectionId: row.id,
+        scope: row.scope,
+      });
     } else {
       const reason = mapAuthFailureReasonToErrorCode({ status: params.job.status, failureReason: params.job.failureReason });
       await repo.updateConnection({
@@ -988,6 +1014,21 @@ export async function settleHermesConnectionFromControlJob(
           status: "error",
           metadataJson: { ...(row.metadataJson ?? {}), lastError: reason },
         },
+      });
+      // Code review FIX 4 — a failed FIRST authorize attempt is, from an
+      // operator's perspective, the same "this connection requires user
+      // action to fix" signal as a later reauth_required demotion, even
+      // though the row's `status` column lands on the distinct "error"
+      // value here (never-yet-authorized) rather than "reauth_required"
+      // (previously-authorized, now invalidated). Previously this branch
+      // mutated connection state with NO audit event at all — the most
+      // common real-world connection break (an admin debugging "why did
+      // this stop working") had nothing to find.
+      auditHermesConnectionReauthRequired({
+        userId: row.ownerUserId,
+        tenantId: row.tenantId,
+        connectionId: row.id,
+        scope: row.scope,
       });
     }
     return;
@@ -1004,6 +1045,12 @@ export async function settleHermesConnectionFromControlJob(
             entitlementStatus: typeof output.entitlementStatus === "string" ? output.entitlementStatus : "restricted",
             lastProbeAt: nowDate,
           },
+        });
+        auditHermesConnectionEntitlementRestricted({
+          userId: row.ownerUserId,
+          tenantId: row.tenantId,
+          connectionId: row.id,
+          scope: row.scope,
         });
         return;
       }
@@ -1034,6 +1081,12 @@ export async function settleHermesConnectionFromControlJob(
           metadataJson: { ...(row.metadataJson ?? {}), lastError: classification.errorCode },
         },
       });
+      auditHermesConnectionEntitlementRestricted({
+        userId: row.ownerUserId,
+        tenantId: row.tenantId,
+        connectionId: row.id,
+        scope: row.scope,
+      });
       return;
     }
     if (classification.outcome === "reauth_required") {
@@ -1043,6 +1096,16 @@ export async function settleHermesConnectionFromControlJob(
           status: "reauth_required",
           metadataJson: { ...(row.metadataJson ?? {}), lastError: classification.errorCode },
         },
+      });
+      // Code review FIX 4 — the actual most-common provider-side
+      // revocation signal (an expired/invalidated OAuth session detected
+      // by a probe) previously mutated the connection's status with NO
+      // audit event at all.
+      auditHermesConnectionReauthRequired({
+        userId: row.ownerUserId,
+        tenantId: row.tenantId,
+        connectionId: row.id,
+        scope: row.scope,
       });
       return;
     }
@@ -1064,6 +1127,12 @@ export async function settleHermesConnectionFromControlJob(
       await repo.updateConnection({
         connectionId: row.id,
         values: { status: "disconnected", disconnectedAt: nowDate },
+      });
+      auditHermesConnectionDisconnected({
+        userId: row.ownerUserId,
+        tenantId: row.tenantId,
+        connectionId: row.id,
+        scope: row.scope,
       });
     }
   }
@@ -1206,6 +1275,117 @@ export async function adminListHermesConnections(
   return results;
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// getHermesAdminOverview (Feature 135 section 12)
+// ────────────────────────────────────────────────────────────────────────
+
+const HERMES_ADMIN_OVERVIEW_JOB_TYPES = [HERMES_MEDIA_IMAGE_JOB_TYPE, HERMES_MEDIA_VIDEO_JOB_TYPE] as const;
+const HERMES_ADMIN_OVERVIEW_TERMINAL_STATUSES = ["completed", "failed", "canceled", "expired"] as const;
+const HERMES_ADMIN_OVERVIEW_SCOPE_ORDER: HermesConnectionScope[] = [
+  "server_shared",
+  "server_personal",
+  "private_worker",
+];
+
+/** Non-terminal `hermes_media_*` `worker_jobs` count for one connection —
+ *  the same "queue depth" shape the scheduler's auto-pick uses, but
+ *  counting every non-terminal status (not just `queued`). */
+async function defaultCountNonTerminalHermesJobsForConnection(connectionId: string): Promise<number> {
+  const db = getDb();
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(workerJobs)
+    .where(and(
+      inArray(workerJobs.jobType, [...HERMES_ADMIN_OVERVIEW_JOB_TYPES]),
+      notInArray(workerJobs.status, [...HERMES_ADMIN_OVERVIEW_TERMINAL_STATUSES]),
+      sql`(${workerJobs.capabilityRequirementsJson}->>'connectionId') = ${connectionId}`,
+    ));
+  return row?.count ?? 0;
+}
+
+export interface HermesAdminOverviewConnectionEntry extends SafeHermesConnection {
+  usedToday: number;
+  queueDepth: number;
+}
+
+export interface HermesAdminOverviewScopeGroup {
+  scope: HermesConnectionScope;
+  connections: HermesAdminOverviewConnectionEntry[];
+}
+
+/** Typed values only — NEVER a raw `system_settings` dump. */
+export interface HermesAdminOverviewSettingsSnapshot {
+  hermesWorkerEnabled: boolean;
+  sharedPoolEnabled: boolean;
+  serverPersonalEnabled: boolean;
+  privateEnabled: boolean;
+  videoEnabled: boolean;
+  sharedPoolFeeCredits: number;
+  minHermesVersion: string;
+}
+
+export interface HermesAdminOverview {
+  scopes: HermesAdminOverviewScopeGroup[];
+  settings: HermesAdminOverviewSettingsSnapshot;
+}
+
+export interface HermesAdminOverviewDeps extends HermesConnectionDeps {
+  getQueueDepth?(connectionId: string): Promise<number>;
+  getUsedToday?(connectionId: string, dateKey: string): Promise<number>;
+}
+
+/**
+ * Composes section-03's `adminListHermesConnections` with per-connection
+ * `usedToday` (the section-05 daily quota counter — read only, never
+ * incremented here) and `queueDepth` (non-terminal `worker_jobs` count),
+ * plus a settings snapshot from `getHermesWorkerSettings()`. Backs the
+ * `hermesConnections.adminOverview` router procedure.
+ */
+export async function getHermesAdminOverview(
+  params: { tenantId: string },
+  deps: HermesAdminOverviewDeps = {},
+): Promise<HermesAdminOverview> {
+  const resolved = resolveDeps(deps);
+  const tenantId = tenantRequired(params.tenantId);
+  const getQueueDepth = deps.getQueueDepth ?? defaultCountNonTerminalHermesJobsForConnection;
+  const getUsedToday = deps.getUsedToday ?? defaultHermesAdmissionCounters.getDailyQuotaUsage;
+
+  const connections = await adminListHermesConnections({ tenantId }, deps);
+  const dateKey = resolved.now().toISOString().slice(0, 10);
+
+  const grouped = new Map<HermesConnectionScope, HermesAdminOverviewConnectionEntry[]>(
+    HERMES_ADMIN_OVERVIEW_SCOPE_ORDER.map((scope) => [scope, []]),
+  );
+
+  for (const connection of connections) {
+    const [usedToday, queueDepth] = await Promise.all([
+      getUsedToday(connection.id, dateKey),
+      getQueueDepth(connection.id),
+    ]);
+    const bucket = grouped.get(connection.scope) ?? [];
+    bucket.push({ ...connection, usedToday, queueDepth });
+    grouped.set(connection.scope, bucket);
+  }
+
+  const settings = await resolved.settings.getHermesWorkerSettings();
+
+  return {
+    scopes: HERMES_ADMIN_OVERVIEW_SCOPE_ORDER.map((scope) => ({
+      scope,
+      connections: grouped.get(scope) ?? [],
+    })),
+    settings: {
+      hermesWorkerEnabled: settings.enabled,
+      sharedPoolEnabled: settings.sharedPoolEnabled,
+      serverPersonalEnabled: settings.serverPersonalEnabled,
+      privateEnabled: settings.privateEnabled,
+      videoEnabled: settings.videoEnabled,
+      sharedPoolFeeCredits: settings.sharedPoolFeeCredits,
+      minHermesVersion: settings.minHermesVersion,
+    },
+  };
+}
+
 export async function adminSetHermesQuota(
   params: { tenantId: string; connectionId: string; dailyJobQuota: number | null },
   deps: HermesConnectionDeps = {},
@@ -1261,4 +1441,16 @@ export async function adminDisableHermesConnection(
       }));
     }
   }
+
+  // Admin-initiated forced disable — distinct from a self-service
+  // `disconnectHermesConnection` (which completes via the settlement seam
+  // above and emits `hermes_connection_disconnected`). This mutation is
+  // synchronous and immediate regardless of whether a disconnect job could
+  // be enqueued, so the audit event is emitted here directly.
+  auditHermesConnectionRevoked({
+    userId: row.ownerUserId,
+    tenantId: row.tenantId,
+    connectionId: row.id,
+    scope: row.scope,
+  });
 }

@@ -48,6 +48,16 @@ import {
 // from. The mouth-movement-only branch (`buildMouthMovementOnlyClause`)
 // never embeds a literal transcript at all, so it needs no sanitization.
 import { sanitizeSpeakableLineForDelivery } from "@shared/verticalDramaSeries/dialogueQuality";
+// Skill-first stitching / render-time idempotency
+// (`planning/vd-video-prompt-skill-first/plan.md` Phase 3b) — reused from
+// the generation-time module (single source of truth for "does this prompt
+// already embed every dialogue line verbatim?", see that export's own doc
+// comment) so this render-time formatter never appends a second dialogue
+// clause on top of a clip prompt that already carries the lines verbatim
+// (e.g. an already-compliant skill-first `clip.prompt`, or a clip formatted
+// a second time). One-directional import only (this module is never
+// imported back by the generation module) — no circular dependency.
+import { promptEmbedsDialogueVerbatim } from "./verticalDramaVideoMotionPromptGeneration";
 
 /* -------------------------------------------------------------------------- */
 /* Input contracts                                                            */
@@ -70,6 +80,16 @@ export interface VerticalDramaClipDialogueLine {
   delivery?: VerticalDramaClipDialogueDelivery;
   /** What the character is really thinking/feeling underneath the literal words. */
   subtext?: string;
+  /**
+   * Speaker-attributed lip-sync discipline fix — the speaker's DISPLAY name
+   * (e.g. `"กล้า"`), when the caller has already resolved it from the
+   * series' character roster (mirrors the `name || characterKey` fallback
+   * pattern used across this codebase). Optional/omitted by every caller
+   * that hasn't threaded roster names through yet — `buildNativeDialogueVerbatimBlock`
+   * falls back to `characterKey` in that case. See
+   * `@shared/verticalDramaSeries/nativeDialogue.ts`'s own doc comment.
+   */
+  speakerName?: string;
 }
 
 /** The minimal clip shape the formatter needs — a subset of `VideoMotionPromptPackProjection.clips[number]`. */
@@ -331,10 +351,25 @@ export function formatVideoClipRequest(
       `Use the attached first image as the exact start frame and visual source of truth — continue motion from it; keep faces, wardrobe, set and composition identical. ${finalPrompt}`.trim();
   }
 
+  // Silence-aware / idempotent dialogue clause
+  // (`planning/vd-video-prompt-skill-first/plan.md` Phase 3b) — (a) an empty
+  // `dialogueLines` (silent clip, or a stale/never-resolved guess the caller
+  // chose not to pass) appends nothing at all, unchanged from before this
+  // fix (the whole block is gated on `dialogueLines.length > 0`); (b) when
+  // `finalPrompt` (the persisted `clip.prompt`, possibly already an
+  // already-compliant skill-first composition from the generation-time
+  // service) already embeds every line verbatim, do NOT append a second
+  // clause on top — `promptEmbedsDialogueVerbatim` is the same reusable
+  // "does this text already carry every line?" check the generation-time
+  // module uses for its own stitching gate, so both layers agree on what
+  // counts as "already embedded".
   if (dialogueLines.length > 0) {
+    const dialogueAlreadyEmbedded = promptEmbedsDialogueVerbatim(finalPrompt, dialogueLines);
     if (nativeAudioDialogue) {
-      const clause = buildNativeDialogueClause(dialogueLines, dialogueLanguageName);
-      finalPrompt = `${finalPrompt} ${clause}`.trim();
+      if (!dialogueAlreadyEmbedded) {
+        const clause = buildNativeDialogueClause(dialogueLines, dialogueLanguageName);
+        finalPrompt = `${finalPrompt} ${clause}`.trim();
+      }
       if (dialogueLanguage === "th" && params.thaiAccent) {
         const accentDirective = `${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every spoken line.`;
         finalPrompt = `${finalPrompt} ${accentDirective}`.trim();
@@ -342,8 +377,10 @@ export function formatVideoClipRequest(
       generateAudio = true;
       ttsFallback = false;
     } else {
-      const clause = buildMouthMovementOnlyClause(dialogueLines, dialogueLanguageName);
-      finalPrompt = `${finalPrompt} ${clause}`.trim();
+      if (!dialogueAlreadyEmbedded) {
+        const clause = buildMouthMovementOnlyClause(dialogueLines, dialogueLanguageName);
+        finalPrompt = `${finalPrompt} ${clause}`.trim();
+      }
       generateAudio = false;
       ttsFallback = true;
     }
