@@ -10,6 +10,10 @@
  * `server/services/__tests__/hermesMediaNamespaceGuard.test.ts`, which also
  * walks this directory.
  */
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+
 import {
   HERMES_AUTHORIZED_EVENT_TYPE,
   HERMES_DEVICE_CODE_EVENT_TYPE,
@@ -24,6 +28,8 @@ import {
   parseHermesAuthStatusOutput,
   parseHermesDeviceCodeOutput,
 } from "./hermesCliParsers";
+import { buildArgv, buildPromptEnvelope } from "./hermesInvocation";
+import { collectOutputs, HermesOutputError, type FfprobeCheckResult } from "./outputCollector";
 
 export interface HermesSpawnResult {
   exitCode: number | null;
@@ -47,6 +53,30 @@ export interface ConnectionControlDeps {
   /** NEVER given device-code values (userCode/verificationUrl) — spec §16. */
   logger: { info(msg: string): void; warn(msg: string): void };
   clock?: () => Date;
+  /**
+   * Feature 135 §6.1 — optional deps for the live "test generation"
+   * liveness check (`ConnectionControlInput.testGeneration`). Every field
+   * below is OPTIONAL and defaults to a safe, no-real-network / fail-closed
+   * behavior, so every existing caller/test — none of which ever sets
+   * `testGeneration` — is completely unaffected (byte-identical behavior).
+   */
+  /** Defaults to the global `fetch`. Only used if the CLI reports a
+   *  generated asset via a `MEDIA:`/`MEDIA_TAGS:` URL signal. */
+  fetchImpl?: typeof fetch;
+  /** Defaults to a fail-closed stub (no video validation) — a real
+   *  `ffprobe` implementation must be injected for a video test to ever
+   *  succeed, consistent with `outputCollector.ts`'s own documented
+   *  fail-closed default. */
+  ffprobeImpl?: (filePath: string) => Promise<FfprobeCheckResult>;
+  /** Root directory under which a throwaway scratch workspace is created
+   *  (`fs.mkdtemp`) for the duration of ONE generation test and destroyed
+   *  immediately after output collection — defaults to `os.tmpdir()`.
+   *  NEVER the real job workspace root or any Hermes profile directory. */
+  testWorkspaceRoot?: string;
+  /** Defaults to `"print_mode"` — matches the production default
+   *  (`JobHandlersConfig.invocationTemplate`) for the real media-job spawn
+   *  shape this liveness check deliberately mirrors. */
+  invocationTemplate?: "print_mode" | "chat_fallback";
 }
 
 export type HermesControlOutcome =
@@ -62,12 +92,25 @@ export type HermesControlOutcome =
        *  the legacy substring heuristics. */
       failureReason: HermesControlFailureReason;
       diagnostic: string;
+      /** Feature 135 §6.1 — present ONLY when this failure originated from
+       *  the OPTIONAL generation-liveness sub-step of
+       *  `runHermesConnectionProbe` AND the preceding auth-status/tools/
+       *  version steps had already succeeded — lets the caller still
+       *  persist the already-known-good manifest (with `lastGenerationTest`
+       *  recorded) instead of losing it just because the optional liveness
+       *  check failed. Absent for every other failure path (unchanged). */
+      manifest?: HermesConnectionCapabilityManifest;
     };
 
 export interface ConnectionControlInput {
   connectionId: string;
   profileReference: string;
   timeoutSeconds: number;
+  /** Feature 135 §6.1 — optional live "test generation" liveness check,
+   *  appended AFTER the existing auth-status/tools/version probe steps
+   *  (`runHermesConnectionProbe` only). Absent => today's behavior,
+   *  byte-identical (see the regression test asserting this). */
+  testGeneration?: "image" | "video";
 }
 
 const FAILURE_REASON_TO_ERROR_CODE: Record<HermesControlFailureReason, HermesMediaErrorCode> = {
@@ -129,6 +172,174 @@ function classifyAndBuildFailure(
     failureReason: reason,
     diagnostic: buildDiagnostic(reason, stdout, stderr),
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §6.1 — live "test generation" liveness check.
+// ────────────────────────────────────────────────────────────────────────
+
+/** Hard per-step bounds (spec-requested): 120s for an image test, 240s for a
+ *  video test — deliberately smaller than `HERMES_CONNECTION_PROBE_TIMEOUT_
+ *  SECONDS` (300s) so a hung generation test cannot itself force the whole
+ *  probe job into lease/timeout expiry. */
+const GENERATION_TEST_TIMEOUT_MS: Record<"image" | "video", number> = {
+  image: 120_000,
+  video: 240_000,
+};
+
+/** A tiny, fixed, non-adversarial prompt — this is a liveness/entitlement
+ *  check, never a real user request. Zero references (both `image.generate`
+ *  and `video.generate` allow 0..0 references per `HERMES_OPERATION_
+ *  REFERENCE_BOUNDS`), smallest output count (1). */
+const GENERATION_TEST_PROMPT =
+  "SmartSpecPro connectivity check: generate one minimal test asset, then stop.";
+
+interface GenerationTestRecord {
+  assetType: "image" | "video";
+  ok: boolean;
+  at: string;
+  errorCode?: HermesMediaErrorCode;
+}
+
+interface GenerationTestResult {
+  record: GenerationTestRecord;
+  /** Set only when the generation attempt failed — lets the caller decide
+   *  whether to fail the OVERALL probe outcome (entitlement/reauth) or
+   *  merely annotate the manifest (other/transient failures still flow
+   *  through the SAME vocabulary — no new codes). */
+  failure?: { errorCode: HermesMediaErrorCode; failureReason: HermesControlFailureReason; diagnostic: string };
+}
+
+async function createThrowawayTestWorkspace(
+  root: string,
+): Promise<{ outputDir: string; tmpDir: string; cleanup(): Promise<void> }> {
+  const base = await fs.mkdtemp(path.join(root, "hermes-gen-test-"));
+  const outputDir = path.join(base, "output");
+  const tmpDir = path.join(base, "tmp");
+  await fs.mkdir(outputDir, { recursive: true });
+  await fs.mkdir(tmpDir, { recursive: true });
+  return {
+    outputDir,
+    tmpDir,
+    cleanup: async () => {
+      await fs.rm(base, { recursive: true, force: true }).catch(() => {});
+    },
+  };
+}
+
+/**
+ * Runs ONE minimal, bounded, best-effort real generation through the exact
+ * same envelope/argv shape the real media-job spawn uses (`buildPromptEnvelope`
+ * / `buildArgv`), via the SAME `deps.spawnHermes` contract every other probe
+ * step already uses (no new spawn machinery). Any produced artifact is
+ * collected ONLY to prove a signal exists — via `collectOutputs`, reusing the
+ * exact same magic-byte/ffprobe validation the real media pipeline
+ * applies — then the throwaway scratch workspace is deleted immediately.
+ * This function NEVER uploads, registers, or finalizes anything: those
+ * capabilities are simply not present in `ConnectionControlDeps` at all, so
+ * there is no code path here that could reach them even accidentally.
+ *
+ * Best-effort by construction: every failure mode (non-zero exit / timeout-
+ * kill / output-collection rejection / an unexpected thrown error) is
+ * classified into the existing vocabulary and returned — this function
+ * itself never throws.
+ */
+async function runGenerationLivenessTest(
+  assetType: "image" | "video",
+  input: ConnectionControlInput,
+  deps: ConnectionControlDeps,
+  clock: () => Date,
+): Promise<GenerationTestResult> {
+  const startedAt = clock();
+  const failRecord = (errorCode: HermesMediaErrorCode): GenerationTestRecord => ({
+    assetType,
+    ok: false,
+    at: clock().toISOString(),
+    errorCode,
+  });
+
+  let workspace: { outputDir: string; tmpDir: string; cleanup(): Promise<void> } | null = null;
+  try {
+    // Created BEFORE the envelope/argv are built so the CLI is told the
+    // REAL absolute output directory to write into (the fake-CLI fixture
+    // used by this section's tests ignores this text entirely and is
+    // driven purely by its injected scenario — but a real Hermes CLI needs
+    // a genuine path here).
+    workspace = await createThrowawayTestWorkspace(deps.testWorkspaceRoot ?? os.tmpdir());
+
+    const envelope = buildPromptEnvelope(
+      {
+        operation: `${assetType}.generate`,
+        prompt: GENERATION_TEST_PROMPT,
+        references: [],
+      },
+      { jobId: `hermes-test-${input.connectionId}`, outputDir: workspace.outputDir },
+    );
+    const argv = buildArgv({
+      profile: { profileArg: input.profileReference },
+      operation: `${assetType}.generate`,
+      template: deps.invocationTemplate ?? "print_mode",
+      enableFileToolset: false,
+      envelope,
+    });
+
+    const spawnResult = await deps.spawnHermes(argv, {
+      timeoutMs: GENERATION_TEST_TIMEOUT_MS[assetType],
+      onStdoutLine: () => {},
+    });
+
+    if (spawnResult.exitCode !== 0) {
+      const classified = classifyAndBuildFailure(spawnResult.stdout, spawnResult.stderr);
+      return {
+        record: failRecord(classified.errorCode),
+        failure: {
+          errorCode: classified.errorCode,
+          failureReason: classified.failureReason,
+          diagnostic: classified.diagnostic,
+        },
+      };
+    }
+
+    try {
+      await collectOutputs({
+        invocation: { stdout: spawnResult.stdout },
+        workspace: { outputDir: workspace.outputDir, tmpDir: workspace.tmpDir },
+        cacheDirs: [],
+        jobWindow: { startedAt, endedAt: clock() },
+        expected: { kind: assetType, count: 1 },
+        fetchImpl: deps.fetchImpl,
+        ffprobeImpl: deps.ffprobeImpl,
+      });
+      return { record: { assetType, ok: true, at: clock().toISOString() } };
+    } catch (error) {
+      const errorCode: HermesMediaErrorCode =
+        error instanceof HermesOutputError ? error.code : "HERMES_PROCESS_FAILED";
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        record: failRecord(errorCode),
+        failure: {
+          errorCode,
+          failureReason: "process_failed",
+          diagnostic: `generation_test_output_invalid: ${maskTokenLike(message)}`,
+        },
+      };
+    }
+  } catch (error) {
+    // Defense-in-depth — this liveness check must classify, never throw.
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      record: failRecord("HERMES_PROCESS_FAILED"),
+      failure: {
+        errorCode: "HERMES_PROCESS_FAILED",
+        failureReason: "process_failed",
+        diagnostic: `generation_test_unexpected_error: ${maskTokenLike(message)}`,
+      },
+    };
+  } finally {
+    // Always discard the throwaway workspace — never uploaded, never
+    // registered, never finalized; best-effort, never throws.
+    await workspace?.cleanup();
+  }
 }
 
 /**
@@ -248,6 +459,47 @@ export async function runHermesConnectionProbe(
     authStatus,
     probedAt: clock().toISOString(),
   });
+
+  // Feature 135 §6.1 — optional live "test generation" liveness check.
+  // Absent `testGeneration` => every line below is skipped, so this branch
+  // can never change behavior for any existing caller/test (regression gate
+  // asserts byte-identical output for the absent case).
+  if (input.testGeneration) {
+    const testOutcome = await runGenerationLivenessTest(input.testGeneration, input, deps, clock);
+    const manifestWithTest: HermesConnectionCapabilityManifest = {
+      ...manifest,
+      lastGenerationTest: testOutcome.record,
+    };
+
+    if (testOutcome.failure) {
+      deps.logger.warn(
+        `hermes_connection_probe: generation test failed for connection ${input.connectionId} (${testOutcome.failure.errorCode})`,
+      );
+      // Only entitlement/reauth classifications flip the OVERALL probe
+      // outcome to a failure (mirroring the existing auth-status/tools
+      // 403-classification behavior above) — a transient/process-level
+      // generation-test failure still leaves the probe itself successful
+      // (auth/tools/version all genuinely succeeded), with the failure
+      // recorded in `manifest.lastGenerationTest` for the UI instead.
+      if (
+        testOutcome.failure.failureReason === "entitlement_restricted"
+        || testOutcome.failure.failureReason === "reauth_required"
+        || testOutcome.failure.failureReason === "oauth_session_expired"
+        || testOutcome.failure.failureReason === "oauth_denied"
+      ) {
+        return {
+          ok: false,
+          errorCode: testOutcome.failure.errorCode,
+          failureReason: testOutcome.failure.failureReason,
+          diagnostic: testOutcome.failure.diagnostic,
+          manifest: manifestWithTest,
+        };
+      }
+    }
+
+    deps.logger.info(`hermes_connection_probe: completed for connection ${input.connectionId}`);
+    return { ok: true, accountHint: authStatus.accountHint, manifest: manifestWithTest };
+  }
 
   deps.logger.info(`hermes_connection_probe: completed for connection ${input.connectionId}`);
   return { ok: true, accountHint: authStatus.accountHint, manifest };

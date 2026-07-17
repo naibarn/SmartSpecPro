@@ -1,4 +1,7 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
+import fsPromises from "node:fs/promises";
+import path from "node:path";
 import readline from "node:readline";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -457,5 +460,206 @@ describe("runHermesConnectionDisconnect", () => {
 
     expect(profileOps.removeProfile).toHaveBeenCalledTimes(1);
     expect(outcome).toMatchObject({ ok: false, errorCode: "HERMES_REAUTH_REQUIRED", failureReason: "reauth_required" });
+  });
+});
+
+// ============================================================
+// Feature 135 §6.1 — optional live "test generation" liveness check.
+//
+// Why this exists: `probe` alone proves the OAuth session is valid and which
+// media tools are credential-gated-visible. It does NOT prove a generation
+// succeeds — and spec §12.3/§19 document the real failure mode as a 403 from
+// xAI AFTER a successful OAuth login (subscription tiers without OAuth API
+// entitlement). Without this, a user discovers that only when their first
+// real VD generation fails.
+// ============================================================
+
+/** Smallest valid PNG (1x1) — magic bytes + dimensions must survive the
+ *  real output collector's validation for the success path to be reachable. */
+const PNG_1X1 = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+function buildStubDeps(spawnHermes: ConnectionControlDeps["spawnHermes"]): ConnectionControlDeps {
+  return {
+    spawnHermes,
+    postEvent: vi.fn().mockResolvedValue(undefined),
+    profileOps: buildProfileOps(),
+    logger: buildLogger(),
+    clock: () => NOW,
+  };
+}
+
+/** auth status -> tools -> version all succeed; the 4th spawn is the
+ *  generation test, whose result each test below controls. */
+function stubProbeSpawns(generationResult: Partial<HermesSpawnResult>) {
+  const calls: string[][] = [];
+  const spawnHermes = vi.fn(async (args: string[]) => {
+    calls.push(args);
+    if (args.includes("status")) {
+      return { exitCode: 0, stdout: "Status: authenticated\nAccount: grok-fan@example.com\n", stderr: "" };
+    }
+    if (args.includes("tools")) {
+      return { exitCode: 0, stdout: "Available tools:\n- image.generate\n- video.generate\n", stderr: "" };
+    }
+    if (args.includes("--version")) {
+      return { exitCode: 0, stdout: "hermes-cli 0.18.2\n", stderr: "" };
+    }
+    return { exitCode: 0, stdout: "", stderr: "", ...generationResult } as HermesSpawnResult;
+  });
+  return { spawnHermes: spawnHermes as unknown as ConnectionControlDeps["spawnHermes"], calls };
+}
+
+describe("runHermesConnectionProbe — testGeneration liveness check (§6.1)", () => {
+  it("is byte-identical to a plain probe when testGeneration is absent (no extra spawn, no lastGenerationTest)", async () => {
+    const { spawnHermes, calls } = stubProbeSpawns({});
+    const deps = buildStubDeps(spawnHermes);
+
+    const outcome = await runHermesConnectionProbe(
+      { connectionId: "conn-1", profileReference: "conn_conn-1", timeoutSeconds: 30 },
+      deps,
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) {
+      expect(outcome.manifest?.lastGenerationTest).toBeUndefined();
+    }
+    // auth status + tools + version only — the generation spawn never happens.
+    expect(calls).toHaveLength(3);
+    expect(calls.some((c) => c.includes("-z") || c.includes("chat"))).toBe(false);
+  });
+
+  it("image test success records lastGenerationTest ok and keeps the probe successful", async () => {
+    // The liveness check does NOT trust exit code 0 — it runs the real
+    // output collector, so a "success" must produce a genuinely valid image
+    // on disk. Emulate a real CLI: parse the output directory out of the
+    // envelope and write a minimal valid PNG there.
+    const calls: string[][] = [];
+    const spawnHermes = vi.fn(async (args: string[]) => {
+      calls.push(args);
+      if (args.includes("status")) {
+        return { exitCode: 0, stdout: "Status: authenticated\nAccount: grok-fan@example.com\n", stderr: "" };
+      }
+      if (args.includes("tools")) {
+        return { exitCode: 0, stdout: "Available tools:\n- image.generate\n- video.generate\n", stderr: "" };
+      }
+      if (args.includes("--version")) {
+        return { exitCode: 0, stdout: "hermes-cli 0.18.2\n", stderr: "" };
+      }
+      const envelope = args.find((a) => a.includes("Output directory:")) ?? "";
+      const outputDir = /Output directory: (.+)/.exec(envelope)?.[1]?.trim() ?? "";
+      if (!outputDir) throw new Error("test stub could not find the output directory in the envelope");
+      const file = path.join(outputDir, "liveness.png");
+      fs.writeFileSync(file, PNG_1X1);
+      return {
+        exitCode: 0,
+        stdout: `SMARTSPECPRO_RESULT_BEGIN\n{"status":"ok","files":["${file}"]}\nSMARTSPECPRO_RESULT_END\n`,
+        stderr: "",
+      };
+    });
+    const deps = buildStubDeps(spawnHermes as unknown as ConnectionControlDeps["spawnHermes"]);
+
+    const outcome = await runHermesConnectionProbe(
+      { connectionId: "conn-1", profileReference: "conn_conn-1", timeoutSeconds: 30, testGeneration: "image" },
+      deps,
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) {
+      expect(outcome.manifest?.lastGenerationTest).toMatchObject({
+        assetType: "image",
+        ok: true,
+        at: NOW.toISOString(),
+      });
+    }
+    // The 4th spawn is the generation attempt, and it must never enable the
+    // `file` toolset (spec §16 — prompt-injection blast radius). Assert the
+    // flag's value rather than searching the whole argv: the envelope text
+    // legitimately contains the word "files" in its result-marker contract.
+    expect(calls).toHaveLength(4);
+    const generateArgv = calls[3];
+    expect(generateArgv[generateArgv.indexOf("--toolsets") + 1]).toBe("image_gen");
+  });
+
+  it("xAI 403 during the test -> entitlement_restricted classification flips the probe outcome (this is THE documented failure mode)", async () => {
+    const { spawnHermes } = stubProbeSpawns({
+      exitCode: 1,
+      stderr: "xAI API error: 403 Forbidden — your subscription does not include API access",
+    });
+    const deps = buildStubDeps(spawnHermes);
+
+    const outcome = await runHermesConnectionProbe(
+      { connectionId: "conn-1", profileReference: "conn_conn-1", timeoutSeconds: 30, testGeneration: "image" },
+      deps,
+    );
+
+    expect(outcome).toMatchObject({
+      ok: false,
+      errorCode: "HERMES_ENTITLEMENT_RESTRICTED",
+      failureReason: "entitlement_restricted",
+    });
+    // The manifest still rides along so the UI can show what was learned.
+    expect((outcome as { manifest?: unknown }).manifest).toBeDefined();
+    if (!outcome.ok) {
+      expect(outcome.manifest?.lastGenerationTest).toMatchObject({
+        assetType: "image",
+        ok: false,
+        errorCode: "HERMES_ENTITLEMENT_RESTRICTED",
+      });
+    }
+  });
+
+  it("a transient/process-level test failure records the failure but leaves the probe successful (auth + tools genuinely worked)", async () => {
+    const { spawnHermes } = stubProbeSpawns({
+      exitCode: 1,
+      stderr: "hermes: unexpected internal error while rendering",
+    });
+    const deps = buildStubDeps(spawnHermes);
+
+    const outcome = await runHermesConnectionProbe(
+      { connectionId: "conn-1", profileReference: "conn_conn-1", timeoutSeconds: 30, testGeneration: "image" },
+      deps,
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) {
+      expect(outcome.manifest?.lastGenerationTest).toMatchObject({ assetType: "image", ok: false });
+      expect(outcome.manifest?.lastGenerationTest?.errorCode).toBeDefined();
+    }
+  });
+
+  it("a timeout (exitCode null) is recorded as a typed test failure, not a crash", async () => {
+    const { spawnHermes } = stubProbeSpawns({ exitCode: null, stdout: "", stderr: "" });
+    const deps = buildStubDeps(spawnHermes);
+
+    const outcome = await runHermesConnectionProbe(
+      { connectionId: "conn-1", profileReference: "conn_conn-1", timeoutSeconds: 30, testGeneration: "video" },
+      deps,
+    );
+
+    expect(outcome.ok).toBe(true);
+    if (outcome.ok) {
+      expect(outcome.manifest?.lastGenerationTest).toMatchObject({ assetType: "video", ok: false });
+    }
+  });
+
+  it("never uploads or registers the produced artifact — it is a liveness check, not a Library asset", async () => {
+    const { spawnHermes } = stubProbeSpawns({
+      exitCode: 0,
+      stdout: "SMARTSPECPRO_RESULT_BEGIN\n{\"status\":\"completed\"}\nSMARTSPECPRO_RESULT_END\n",
+    });
+    const deps = buildStubDeps(spawnHermes);
+
+    await runHermesConnectionProbe(
+      { connectionId: "conn-1", profileReference: "conn_conn-1", timeoutSeconds: 30, testGeneration: "image" },
+      deps,
+    );
+
+    // ConnectionControlDeps has no artifact-upload surface at all, and the
+    // handler must not have reached for one: the only outward call is the
+    // device-code/authorized event poster, which a probe never uses.
+    expect(deps.postEvent).not.toHaveBeenCalled();
+    expect(Object.keys(deps)).not.toContain("uploadArtifact");
   });
 });

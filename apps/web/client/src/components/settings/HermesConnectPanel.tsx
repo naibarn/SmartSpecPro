@@ -29,8 +29,8 @@ import {
   Shield,
   Trash2,
 } from "lucide-react";
-import { hermesErrorCopy } from "@shared/hermesMedia";
-import { presentHermesError } from "@/lib/hermesErrorPresentation";
+import { hermesErrorCopy, type HermesMediaErrorCode } from "@shared/hermesMedia";
+import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 
 type HermesScope = "server_shared" | "server_personal" | "private_worker";
 
@@ -69,6 +69,26 @@ function formatThaiDateTime(value: string | null | undefined): string | null {
   }).format(date);
 }
 
+/** Renders `capabilitySummary.lastGenerationTest` (Feature 135 §6.1) as a
+ *  single Thai line for the capability summary — success gets the probed
+ *  timestamp via `formatThaiDateTime`; failure resolves the frozen error
+ *  code to its human Thai copy via `presentHermesError` (never a bare code).
+ *  Returns `null` when no test has ever been run for the connection. */
+function formatLastGenerationTestLine(
+  test: HermesConnectionRow["capabilitySummary"]["lastGenerationTest"],
+): string | null {
+  if (!test) return null;
+  const assetLabel = test.assetType === "image" ? "ภาพ" : "วิดีโอ";
+  if (test.ok) {
+    const at = formatThaiDateTime(test.at);
+    return at ? `ทดสอบสร้าง${assetLabel}สำเร็จ ${at} น.` : `ทดสอบสร้าง${assetLabel}สำเร็จ`;
+  }
+  const presentation = presentHermesError({ errorCode: test.errorCode });
+  return presentation
+    ? `ทดสอบสร้าง${assetLabel}ไม่สำเร็จ: ${presentation.th}`
+    : `ทดสอบสร้าง${assetLabel}ไม่สำเร็จ`;
+}
+
 /** mm:ss countdown to `expiresAt` (or a fixed "expired" string past zero).
  *  Pure/exported for direct unit testing without mounting the device-code
  *  screen. */
@@ -102,6 +122,14 @@ interface HermesConnectionRow {
     imageEnabled: boolean;
     videoEnabled: boolean;
     maxEditReferences: number | null;
+    /** Feature 135 §6.1 — most recent live "test generation" liveness-check
+     *  result for this connection, `null` when one has never been run. */
+    lastGenerationTest: {
+      assetType: "image" | "video";
+      ok: boolean;
+      at: string;
+      errorCode?: HermesMediaErrorCode;
+    } | null;
   };
   dailyJobQuota: number | null;
   createdAt: string;
@@ -200,7 +228,18 @@ export function HermesConnectPanel() {
       toast.success("ตรวจสอบการเชื่อมต่อแล้ว");
       await utils.hermesConnections.listConnections.invalidate();
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error) => {
+      // A live test-generation call can hit HERMES_RATE_LIMITED (with a
+      // retryAfterSeconds hint) or any other typed code, not just the plain
+      // probe's connection errors — route through the same
+      // presentHermesError/formatHermesErrorForToast path every other
+      // Hermes surface in this codebase uses instead of leaking the raw
+      // "[HERMES_X] ..." message.
+      const hermesPresentation = presentHermesError(error);
+      toast.error(
+        hermesPresentation ? formatHermesErrorForToast(hermesPresentation, "th") : error.message,
+      );
+    },
   });
   const adminSetQuota = trpc.hermesConnections.adminSetQuota.useMutation({
     onSuccess: async () => {
@@ -308,7 +347,11 @@ export function HermesConnectPanel() {
             ยังไม่มีบัญชี Grok ที่เชื่อมต่อ
           </div>
         ) : (
-          connectionRows.map((row) => (
+          connectionRows.map((row) => {
+            const lastGenerationTestLine = formatLastGenerationTestLine(
+              row.capabilitySummary.lastGenerationTest,
+            );
+            return (
             <div
               key={row.id}
               className="rounded-md border p-3"
@@ -332,6 +375,16 @@ export function HermesConnectPanel() {
                   ? ` · ตรวจสอบล่าสุด ${formatThaiDateTime(row.capabilitySummary.probedAt)} น.`
                   : ""}
               </div>
+              {lastGenerationTestLine ? (
+                <div
+                  className={`mt-1 text-xs ${
+                    row.capabilitySummary.lastGenerationTest?.ok ? "text-emerald-600" : "text-red-600"
+                  }`}
+                  data-testid={`hermes-generation-test-result-${row.id}`}
+                >
+                  {lastGenerationTestLine}
+                </div>
+              ) : null}
               <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
                 <label className="flex items-center gap-1.5">
                   <input
@@ -351,9 +404,37 @@ export function HermesConnectPanel() {
                   />
                   ค่าเริ่มต้น (วิดีโอ)
                 </label>
-                <Button size="sm" variant="outline" onClick={() => probe.mutate({ connectionId: row.id })}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={probe.isPending}
+                  onClick={() => probe.mutate({ connectionId: row.id })}
+                >
+                  {probe.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
                   ตรวจสอบ
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={probe.isPending}
+                  data-testid={`hermes-test-image-button-${row.id}`}
+                  onClick={() => probe.mutate({ connectionId: row.id, testGeneration: "image" })}
+                >
+                  {probe.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                  ทดสอบสร้างภาพ
+                </Button>
+                {row.capabilitySummary.videoEnabled ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={probe.isPending}
+                    data-testid={`hermes-test-video-button-${row.id}`}
+                    onClick={() => probe.mutate({ connectionId: row.id, testGeneration: "video" })}
+                  >
+                    {probe.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                    ทดสอบสร้างวิดีโอ
+                  </Button>
+                ) : null}
                 <Button
                   size="sm"
                   variant="outline"
@@ -410,7 +491,8 @@ export function HermesConnectPanel() {
                 </div>
               ) : null}
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

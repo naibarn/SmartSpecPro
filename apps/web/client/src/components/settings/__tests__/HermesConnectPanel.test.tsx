@@ -320,6 +320,129 @@ describe("HermesConnectPanel", () => {
     expect(setDefaultMutate).toHaveBeenCalledWith({ connectionId: "conn-1", assetType: "image" });
   });
 
+  it("wires the test-generation buttons to probe with testGeneration, and keeps the plain probe button free of it (regression)", () => {
+    const probeMutate = vi.fn();
+    mockProbe.mockReturnValue({ mutate: probeMutate, isPending: false });
+    mockListConnections.mockReturnValue({
+      data: [baseConnectionRow()],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HermesConnectPanel />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^ตรวจสอบ$/ }));
+    expect(probeMutate).toHaveBeenCalledWith({ connectionId: "conn-1" });
+
+    fireEvent.click(screen.getByTestId("hermes-test-image-button-conn-1"));
+    expect(probeMutate).toHaveBeenCalledWith({ connectionId: "conn-1", testGeneration: "image" });
+
+    fireEvent.click(screen.getByTestId("hermes-test-video-button-conn-1"));
+    expect(probeMutate).toHaveBeenCalledWith({ connectionId: "conn-1", testGeneration: "video" });
+  });
+
+  it("hides the video test-generation button when videoEnabled is false, shows it when true", () => {
+    mockListConnections.mockReturnValue({
+      data: [
+        baseConnectionRow({
+          id: "conn-novideo",
+          capabilitySummary: {
+            probedAt: null,
+            imageEnabled: true,
+            videoEnabled: false,
+            maxEditReferences: null,
+            lastGenerationTest: null,
+          },
+        }),
+      ],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    const { rerender } = render(<HermesConnectPanel />);
+    expect(screen.getByTestId("hermes-test-image-button-conn-novideo")).toBeDefined();
+    expect(screen.queryByTestId("hermes-test-video-button-conn-novideo")).toBeNull();
+
+    mockListConnections.mockReturnValue({
+      data: [baseConnectionRow({ id: "conn-withvideo" })],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    rerender(<HermesConnectPanel />);
+    expect(screen.getByTestId("hermes-test-video-button-conn-withvideo")).toBeDefined();
+  });
+
+  it("renders a success line with the timestamp for a passing lastGenerationTest", () => {
+    const at = new Date().toISOString();
+    mockListConnections.mockReturnValue({
+      data: [
+        baseConnectionRow({
+          id: "conn-tested-ok",
+          capabilitySummary: {
+            probedAt: null,
+            imageEnabled: true,
+            videoEnabled: true,
+            maxEditReferences: null,
+            lastGenerationTest: { assetType: "image", ok: true, at },
+          },
+        }),
+      ],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HermesConnectPanel />);
+
+    const result = screen.getByTestId("hermes-generation-test-result-conn-tested-ok");
+    expect(result.textContent).toMatch(/ทดสอบสร้างภาพสำเร็จ/);
+    expect(result.textContent).toMatch(/น\./);
+  });
+
+  it("renders the human Thai message (not the bare code) for a failing lastGenerationTest", () => {
+    mockListConnections.mockReturnValue({
+      data: [
+        baseConnectionRow({
+          id: "conn-tested-fail",
+          capabilitySummary: {
+            probedAt: null,
+            imageEnabled: true,
+            videoEnabled: true,
+            maxEditReferences: null,
+            lastGenerationTest: {
+              assetType: "image",
+              ok: false,
+              at: new Date().toISOString(),
+              errorCode: "HERMES_ENTITLEMENT_RESTRICTED",
+            },
+          },
+        }),
+      ],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HermesConnectPanel />);
+
+    const result = screen.getByTestId("hermes-generation-test-result-conn-tested-fail");
+    expect(result.textContent).toMatch(/xAI ยังไม่อนุญาตให้บัญชีนี้ใช้การสร้างสื่อผ่าน OAuth API/);
+    expect(result.textContent).not.toMatch(/HERMES_ENTITLEMENT_RESTRICTED/);
+  });
+
+  it("disables the probe/test-generation buttons while probe is pending", () => {
+    mockProbe.mockReturnValue({ mutate: vi.fn(), isPending: true });
+    mockListConnections.mockReturnValue({
+      data: [baseConnectionRow()],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<HermesConnectPanel />);
+
+    expect(screen.getByRole("button", { name: /ตรวจสอบ/ })).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("hermes-test-image-button-conn-1")).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("hermes-test-video-button-conn-1")).toHaveProperty("disabled", true);
+  });
+
   it("renders the entitlement_restricted spec copy with a reconnect affordance", () => {
     mockListConnections.mockReturnValue({
       data: [baseConnectionRow({ id: "conn-restricted", status: "entitlement_restricted" })],

@@ -150,6 +150,27 @@ export interface HermesConnectionCapabilityManifest {
     >
   >;
   models: { image: string[]; video: string[] };
+  /**
+   * Feature 135 §6.1 — result of the most recent live "test generation"
+   * liveness check for this connection (the UI's "Test image generation /
+   * Test video generation" affordance), if one has ever been run. This is a
+   * REAL (bounded, best-effort, discarded-artifact) generation attempt, not
+   * just an auth/tools-listing probe — it is the only signal that actually
+   * proves generation succeeds rather than merely that the OAuth session is
+   * valid (spec §12.3/§19: OAuth login can succeed while xAI still returns
+   * 403 on generation for accounts without OAuth API entitlement).
+   *
+   * Purely additive/optional — absent on every manifest that predates this
+   * field, and every existing manifest-consuming test/caller is unaffected.
+   */
+  lastGenerationTest?: {
+    assetType: "image" | "video";
+    ok: boolean;
+    at: string;
+    /** Only present when `ok` is false. One of the frozen 22 codes — never
+     *  a newly-invented one. */
+    errorCode?: HermesMediaErrorCode;
+  };
 }
 
 /** Exactly the 22 codes of spec §13.7, in table order. */

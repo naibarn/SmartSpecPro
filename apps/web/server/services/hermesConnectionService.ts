@@ -110,6 +110,16 @@ export interface SafeHermesConnection {
     imageEnabled: boolean;
     videoEnabled: boolean;
     maxEditReferences: number | null;
+    /** Feature 135 §6.1 — most recent live "test generation" liveness-check
+     *  result, if one has ever been run for this connection. Additive/
+     *  optional projection of `HermesConnectionCapabilityManifest.
+     *  lastGenerationTest` — `null` when the manifest carries none. */
+    lastGenerationTest: {
+      assetType: "image" | "video";
+      ok: boolean;
+      at: string;
+      errorCode?: HermesMediaErrorCode;
+    } | null;
   };
   dailyJobQuota: number | null;
   createdAt: string;
@@ -238,13 +248,14 @@ function buildCapabilitySummary(
   manifest: HermesConnectionCapabilityManifest | null | undefined,
 ): SafeHermesConnection["capabilitySummary"] {
   if (!manifest) {
-    return { probedAt: null, imageEnabled: false, videoEnabled: false, maxEditReferences: null };
+    return { probedAt: null, imageEnabled: false, videoEnabled: false, maxEditReferences: null, lastGenerationTest: null };
   }
   return {
     probedAt: manifest.probedAt ?? null,
     imageEnabled: isAssetTypeEnabledInManifest(manifest, "image"),
     videoEnabled: isAssetTypeEnabledInManifest(manifest, "video"),
     maxEditReferences: manifest.operations?.["image.edit"]?.maxReferences ?? null,
+    lastGenerationTest: manifest.lastGenerationTest ?? null,
   };
 }
 
@@ -424,6 +435,7 @@ function buildControlJobInsert(
   jobType: string,
   timeoutSeconds: number,
   params: BuildJobInsertParams,
+  extraInput: Record<string, unknown> = {},
 ): InsertWorkerJob {
   return {
     tenantId: params.tenantId,
@@ -446,6 +458,7 @@ function buildControlJobInsert(
       connectionId: params.connectionId,
       profileReference: params.profileReference,
       timeoutSeconds,
+      ...extraInput,
     },
     timeoutSeconds,
   };
@@ -459,11 +472,21 @@ export function buildAuthorizeJobInsert(params: BuildJobInsertParams): InsertWor
   );
 }
 
-export function buildProbeJobInsert(params: BuildJobInsertParams): InsertWorkerJob {
+export function buildProbeJobInsert(
+  params: BuildJobInsertParams & { testGeneration?: "image" | "video" },
+): InsertWorkerJob {
   return buildControlJobInsert(
     HERMES_CONNECTION_PROBE_JOB_TYPE,
     HERMES_CONNECTION_PROBE_TIMEOUT_SECONDS,
     params,
+    // Feature 135 §6.1 — threaded through to `jobHandlers.ts`'s
+    // `handleControlJob` (out of this file's touch scope — see the backend
+    // agent's DEVIATIONS note) which must read `input.testGeneration` and
+    // forward it into `ConnectionControlInput` for
+    // `runHermesConnectionProbe` to actually run the live generation test.
+    // Absent when `testGeneration` is undefined — existing probe-job insert
+    // shape is otherwise byte-identical.
+    params.testGeneration ? { testGeneration: params.testGeneration } : {},
   );
 }
 
@@ -1071,6 +1094,14 @@ export async function settleHermesConnectionFromControlJob(
       status: params.job.status,
       failureReason: params.job.failureReason,
     });
+    // Feature 135 §6.1 — a failed probe can still carry a manifest (e.g.
+    // the auth-status/tools/version steps succeeded but the OPTIONAL
+    // generation-liveness sub-step is what actually failed) — preserve it
+    // (with `lastGenerationTest` recorded) instead of dropping it just
+    // because the overall job is classified a failure. Falls back to the
+    // row's existing manifest when the job output carries none.
+    const capabilitiesFromFailure =
+      (output.capabilities as HermesConnectionCapabilityManifest | undefined) ?? row.capabilitiesJson;
     if (classification.outcome === "entitlement_restricted") {
       await repo.updateConnection({
         connectionId: row.id,
@@ -1078,6 +1109,7 @@ export async function settleHermesConnectionFromControlJob(
           status: "entitlement_restricted",
           entitlementStatus: "restricted",
           lastProbeAt: nowDate,
+          capabilitiesJson: capabilitiesFromFailure,
           metadataJson: { ...(row.metadataJson ?? {}), lastError: classification.errorCode },
         },
       });
@@ -1094,6 +1126,7 @@ export async function settleHermesConnectionFromControlJob(
         connectionId: row.id,
         values: {
           status: "reauth_required",
+          capabilitiesJson: capabilitiesFromFailure,
           metadataJson: { ...(row.metadataJson ?? {}), lastError: classification.errorCode },
         },
       });
@@ -1115,6 +1148,7 @@ export async function settleHermesConnectionFromControlJob(
     await repo.updateConnection({
       connectionId: row.id,
       values: {
+        capabilitiesJson: capabilitiesFromFailure,
         metadataJson: { ...(row.metadataJson ?? {}), lastError: classification.errorCode },
       },
     });
@@ -1215,8 +1249,27 @@ export async function disconnectHermesConnection(
   }));
 }
 
+/** Feature 135 §6.1 — a live generation test burns real Grok quota; cap it
+ *  to one attempt per connection per this window. */
+export const HERMES_GENERATION_TEST_COOLDOWN_MS = 5 * 60 * 1000;
+
+function readLastGenerationTestAt(metadataJson: unknown): number | null {
+  const value = (metadataJson as Record<string, unknown> | null | undefined)?.lastGenerationTestAt;
+  if (typeof value !== "string") return null;
+  const parsedMs = Date.parse(value);
+  return Number.isFinite(parsedMs) ? parsedMs : null;
+}
+
 export async function probeHermesConnection(
-  params: { tenantId: string; userId: number; isAdmin: boolean; connectionId: string },
+  params: {
+    tenantId: string;
+    userId: number;
+    isAdmin: boolean;
+    connectionId: string;
+    /** Feature 135 §6.1 — optional live "test generation" liveness check
+     *  (spec §6.1 UI affordance), appended to this same probe job. */
+    testGeneration?: "image" | "video";
+  },
   deps: HermesConnectionDeps = {},
 ): Promise<void> {
   const resolved = resolveDeps(deps);
@@ -1234,6 +1287,31 @@ export async function probeHermesConnection(
     });
   }
 
+  if (params.testGeneration) {
+    if (params.testGeneration === "video") {
+      const settings = await readSettingsFailClosed(resolved.settings);
+      if (!settings || !settings.videoEnabled) {
+        throw hermesTypedError("HERMES_DISABLED", "FORBIDDEN", "video test generation is disabled");
+      }
+    }
+
+    // Cost/abuse guard — a live test burns real Grok quota. One test per
+    // connection per `HERMES_GENERATION_TEST_COOLDOWN_MS` (5 minutes).
+    const lastAtMs = readLastGenerationTestAt(row.metadataJson);
+    const nowMsForCooldown = resolved.now().getTime();
+    if (lastAtMs !== null) {
+      const elapsedMs = nowMsForCooldown - lastAtMs;
+      if (elapsedMs < HERMES_GENERATION_TEST_COOLDOWN_MS) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((HERMES_GENERATION_TEST_COOLDOWN_MS - elapsedMs) / 1000));
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: formatHermesErrorMessage("HERMES_RATE_LIMITED", "test generation cooldown active"),
+          cause: { retryAfterSeconds },
+        });
+      }
+    }
+  }
+
   if (!row.assignedWorkerId) {
     throw hermesTypedError("HERMES_WORKER_UNAVAILABLE", "PRECONDITION_FAILED", "no assigned worker");
   }
@@ -1243,6 +1321,20 @@ export async function probeHermesConnection(
     throw hermesTypedError("HERMES_WORKER_UNAVAILABLE", "PRECONDITION_FAILED", "assigned worker offline");
   }
 
+  if (params.testGeneration) {
+    // Record the cooldown marker BEFORE enqueueing — a burst of concurrent
+    // probe calls (e.g. a double-click) must not all slip through before
+    // any of them lands the marker. Best-effort: a failure here must not
+    // block the probe itself.
+    await resolved.repo.updateConnection({
+      tenantId,
+      connectionId: row.id,
+      values: {
+        metadataJson: { ...(row.metadataJson ?? {}), lastGenerationTestAt: nowDate.toISOString() },
+      },
+    }).catch(() => {});
+  }
+
   await resolved.repo.insertWorkerJob(buildProbeJobInsert({
     tenantId,
     connectionId: row.id,
@@ -1250,6 +1342,7 @@ export async function probeHermesConnection(
     runtimeType: worker.runtimeType,
     requestedByUserId: params.userId,
     profileReference: row.profileReference,
+    testGeneration: params.testGeneration,
   }));
 }
 

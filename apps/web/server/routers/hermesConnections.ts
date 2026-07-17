@@ -112,12 +112,19 @@ export const hermesConnectionsRouter = router({
     })),
 
   probe: protectedProcedure
-    .input(z.object({ connectionId: z.string() }))
+    .input(z.object({
+      connectionId: z.string(),
+      // Feature 135 §6.1 — optional live "test generation" liveness check,
+      // appended to this SAME probe job (no new procedure — keeps
+      // admin/ownership gating identical to a plain probe).
+      testGeneration: assetTypeSchema.optional(),
+    }))
     .mutation(({ ctx, input }) => probeHermesConnection({
       tenantId: tenantRequiredFromCtx(ctx),
       userId: ctx.user.id,
       isAdmin: isAdminCtx(ctx),
       connectionId: input.connectionId,
+      testGeneration: input.testGeneration,
     })),
 
   adminList: adminProcedure
