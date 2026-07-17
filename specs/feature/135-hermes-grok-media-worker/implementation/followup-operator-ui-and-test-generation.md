@@ -1,11 +1,28 @@
-# Feature 135 — two follow-ups left uncommitted (2026-07-17)
+# Feature 135 — two follow-ups (2026-07-17) — BOTH LANDED
 
-Both were interrupted by a sustained Anthropic API 529 outage (6 consecutive
-agent kills), not by any design or code problem. **The work is on disk,
-unstaged** — pick it up with the context below; nothing needs re-discovery.
+**Status: done and committed.** Follow-up A → `c142d9860`, follow-up B →
+`8fe4fcb65`. Feature 135 is now 20 commits, `d499ae00c` … `8fe4fcb65`; see
+`usage.md`. The rest of this file is kept as the as-built record of what each
+follow-up was and how the two blockers were actually resolved.
 
-Everything else in Feature 135 is committed and green: 18 commits,
-`d499ae00c` … `f9d87442f`. See `usage.md`.
+## How the blockers resolved
+
+- **A's hanging test:** the extraction diagnosed below was applied.
+  `HermesInfrastructureSettingsCard.tsx` now owns the state/fields/handlers and
+  takes the settings rows as props; `InfrastructureSettingsPanel.tsx` keeps the
+  query and renders the card in one hunk. The rewritten
+  `__tests__/HermesInfrastructureSettingsCard.test.tsx` mounts the card by props
+  and runs **6/6 in ~3s** (was exit 124 at 400s+). All 15 keys still write
+  through the generic `updateSetting`. The superseded
+  `InfrastructureSettingsPanel.hermes.test.tsx` was removed, not left to rot.
+- **B's success-path test:** `runGenerationLivenessTest` deliberately does not
+  trust exit code 0 — it runs the real `collectOutputs`, so the stub CLI must
+  emit the genuine result-marker contract
+  (`{"status":"ok","files":[…]}` — *not* `status:"completed"`/`output_files`)
+  **and** write a real file into the envelope's `Output directory:`. The fake
+  CLI fixture's `generate` branch only *prints* `WORKSPACE_FILES:` text; it
+  writes nothing, so a success-path test must stub `spawnHermes` and write the
+  file itself. Final: **22/22** handler tests, **25/25** panel tests.
 
 ---
 
