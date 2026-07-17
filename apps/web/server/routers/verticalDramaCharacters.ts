@@ -507,10 +507,33 @@ export async function resolveVdCharacterMcpTransportMetadata(params: {
     argumentShape,
   }) ?? rawProviderModelId;
 
-  // NOTE: deliberately no "mcpConnectionId is required" pre-check — see the
-  // matching comment in `verticalDramaEpisodes.ts`. `resolveMediaTransport`
-  // auto-resolves the caller's own eligible connection and raises a precise
-  // error itself when there genuinely is none / the choice is ambiguous.
+  // HARD GUARD — an MCP render bills the user's own connected provider
+  // account, so the account must be one the caller explicitly picked. Never
+  // relax this into `resolveMediaTransport`'s auto-resolution: that silently
+  // selects the billed account on the caller's behalf. Every client surface
+  // that can reach here shows an MCP connection picker and gates on it
+  // (`requireMcpConnectionOrToast`), so a missing id means the model's
+  // transport was mis-detected client-side, not that the user lacks an
+  // account — fail loudly rather than bill a guessed account.
+  //
+  // Known gap this guard exposes rather than hides: `shouldUseMcpTransport`
+  // above also routes on id shape (`resolveMcpRouteFromModelId`), which
+  // claims the bare `magnific/*` prefix — but that family is the DIRECT
+  // Magnific REST integration (`configJson.endpoint`, creditCost > 0, billed
+  // in SmartSpec credits), not MCP; only `magnific-mcp/*` is. The client
+  // reads only `configJson.transport` (`shared/mediaModelTransport.ts`), so
+  // it correctly calls those models gateway_api and renders no MCP picker,
+  // and they reach here with no id and throw. That predates this guard (the
+  // same throw existed before 085aea098 removed it) and the fix belongs in
+  // `resolveMcpRouteFromModelId` — do NOT "fix" it by marking those rows
+  // `transport: "mcp"`, which would misroute REST models onto MCP accounts.
+  if (!params.mcpConnectionId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `"${params.modelId}" requires a connected MCP provider account. Connect a ${providerKey} MCP account first, then re-select this model.`,
+    });
+  }
+
   return resolveMediaTransport({
     tenantId: params.tenantId,
     actorUserId: params.actorUserId,
