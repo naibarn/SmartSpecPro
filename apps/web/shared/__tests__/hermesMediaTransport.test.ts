@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   getMediaModelTransportLabel,
+  modelUsesHermesTransport,
+  modelUsesMcpTransport,
   resolveMediaModelTransportConfig,
 } from "../mediaModelTransport";
 
@@ -62,5 +64,20 @@ describe("hermes_worker transport resolution (Feature 135)", () => {
     expect(config.transport).toBe("gateway_api");
     expect(config.creditSource).toBe("smartspec_credits");
     expect(getMediaModelTransportLabel(config)).toBe("API");
+  });
+
+  describe("modelUsesHermesTransport / modelUsesMcpTransport (section-10 gating helpers)", () => {
+    it("modelUsesHermesTransport is true only for a hermes_worker configJson", () => {
+      expect(modelUsesHermesTransport({ transport: "hermes_worker" })).toBe(true);
+      expect(modelUsesHermesTransport({ transport: "mcp" })).toBe(false);
+      expect(modelUsesHermesTransport({})).toBe(false);
+      expect(modelUsesHermesTransport(undefined)).toBe(false);
+    });
+
+    it("modelUsesMcpTransport is true only for an mcp configJson (regression)", () => {
+      expect(modelUsesMcpTransport({ transport: "mcp" })).toBe(true);
+      expect(modelUsesMcpTransport({ transport: "hermes_worker" })).toBe(false);
+      expect(modelUsesMcpTransport({})).toBe(false);
+    });
   });
 });

@@ -272,7 +272,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       ).not.toBeInTheDocument();
     });
 
-    it("DOES show the quality-mode picker (debt-item-5, 2026-07-08) — defaults to standard, leaving it untouched sends no `mode` key", async () => {
+    it("DOES show the quality-mode picker (debt-item-5, 2026-07-08) — defaults to premium (production-grade full-story generation upgrade, 2026-07-13), leaving it untouched sends mode: 'premium'", async () => {
       render(
         <VerticalDramaDeepStoryDraftsActions
           lang="th"
@@ -292,7 +292,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         screen.getByTestId("vd-deep-story-drafts-mode")
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("radio", { name: "มาตรฐาน (เร็ว ประหยัด)" })
+        screen.getByRole("radio", { name: "คิดหลายรอบ (พรีเมียม) — แนะนำ" })
       ).toHaveAttribute("aria-checked", "true");
 
       fireEvent.click(
@@ -305,11 +305,10 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         string,
         unknown
       >;
-      expect(deepInput.mode).toBeUndefined();
-      expect("mode" in deepInput).toBe(false);
+      expect(deepInput.mode).toBe("premium");
     });
 
-    it("selecting premium at the no-plan bootstrap threads mode: 'premium' into the CHAINED generateStoryBibleDeep call (debt-item-5)", async () => {
+    it("selecting standard at the no-plan bootstrap threads mode: 'standard' into the CHAINED generateStoryBibleDeep call (2026-07-13 — mode is now always sent explicitly, never omitted)", async () => {
       const callOrder: string[] = [];
       const onGenerateStoryBible = vi.fn(async () => {
         callOrder.push("story");
@@ -340,7 +339,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         screen.queryByTestId("vd-deep-story-drafts-scope")
       ).not.toBeInTheDocument();
       fireEvent.click(
-        screen.getByRole("radio", { name: "คิดหลายรอบ (พรีเมียม)" })
+        screen.getByRole("radio", { name: "มาตรฐาน (เร็ว ประหยัด)" })
       );
       fireEvent.click(
         screen.getByTestId("vd-deep-story-drafts-confirm-submit")
@@ -353,7 +352,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       const input = mockGenerateMutateAsync.mock.calls[0][0] as {
         mode?: string;
       };
-      expect(input.mode).toBe("premium");
+      expect(input.mode).toBe("standard");
     });
 
     it("confirming chains onGenerateStoryBible THEN generateStoryBibleDeep, in order, with a fresh idempotency key", async () => {
@@ -923,7 +922,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
    * default/selected submit payloads, and the dialog-reopen reset).
    */
   describe("premium mode picker (W11-B, hasPlan=true)", () => {
-    it("opens the confirm dialog WITH the mode radio, defaulting to 'standard'", () => {
+    it("opens the confirm dialog WITH the mode radio, defaulting to 'premium' (production-grade full-story generation upgrade, 2026-07-13)", () => {
       render(
         <VerticalDramaDeepStoryDraftsActions
           lang="th"
@@ -944,10 +943,10 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         name: "มาตรฐาน (เร็ว ประหยัด)",
       });
       const premiumRadio = screen.getByRole("radio", {
-        name: "คิดหลายรอบ (พรีเมียม)",
+        name: "คิดหลายรอบ (พรีเมียม) — แนะนำ",
       });
-      expect(standardRadio).toHaveAttribute("aria-checked", "true");
-      expect(premiumRadio).toHaveAttribute("aria-checked", "false");
+      expect(standardRadio).toHaveAttribute("aria-checked", "false");
+      expect(premiumRadio).toHaveAttribute("aria-checked", "true");
     });
 
     it("is a real role=radiogroup with 2 role=radio options (a11y convention, matches the scope group)", () => {
@@ -985,11 +984,11 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       fireEvent.click(
         screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
       );
-      // horizon=12 -> rounds(chunks)=ceil(12/5)=3 -> premium estimate = 3*6+2 = 20.
-      expect(screen.getByText(/\(~20 ครั้งเรียก\)/)).toBeInTheDocument();
+      // horizon=12 -> rounds(chunks)=ceil(12/5)=3 -> premium estimate = 3*10+2 = 32.
+      expect(screen.getByText(/~32 ครั้งเรียก\)/)).toBeInTheDocument();
     });
 
-    it("default (standard) confirm sends generateStoryBibleDeep WITHOUT a `mode` key (omit-for-standard convention)", async () => {
+    it("default (premium) confirm sends generateStoryBibleDeep WITH mode: 'premium' (production-grade full-story generation upgrade, 2026-07-13 — mode is always sent explicitly now)", async () => {
       render(
         <VerticalDramaDeepStoryDraftsActions
           lang="th"
@@ -1002,37 +1001,6 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       );
       fireEvent.click(
         screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
-      );
-      fireEvent.click(
-        screen.getByTestId("vd-deep-story-drafts-confirm-submit")
-      );
-
-      await waitFor(() =>
-        expect(mockGenerateMutateAsync).toHaveBeenCalledTimes(1)
-      );
-      const input = mockGenerateMutateAsync.mock.calls[0][0] as Record<
-        string,
-        unknown
-      >;
-      expect("mode" in input).toBe(false);
-    });
-
-    it("selecting premium + keep scope sends generateStoryBibleDeep WITH mode: 'premium'", async () => {
-      render(
-        <VerticalDramaDeepStoryDraftsActions
-          lang="th"
-          seriesId="10"
-          readOnly={false}
-          targetEpisodeCount={10}
-          hasPlan={true}
-          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
-        />
-      );
-      fireEvent.click(
-        screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
-      );
-      fireEvent.click(
-        screen.getByRole("radio", { name: "คิดหลายรอบ (พรีเมียม)" })
       );
       fireEvent.click(
         screen.getByTestId("vd-deep-story-drafts-confirm-submit")
@@ -1045,6 +1013,36 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         mode?: string;
       };
       expect(input.mode).toBe("premium");
+    });
+
+    it("selecting standard + keep scope sends generateStoryBibleDeep WITH mode: 'standard'", async () => {
+      render(
+        <VerticalDramaDeepStoryDraftsActions
+          lang="th"
+          seriesId="10"
+          readOnly={false}
+          targetEpisodeCount={10}
+          hasPlan={true}
+          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
+        />
+      );
+      fireEvent.click(
+        screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
+      );
+      fireEvent.click(
+        screen.getByRole("radio", { name: "มาตรฐาน (เร็ว ประหยัด)" })
+      );
+      fireEvent.click(
+        screen.getByTestId("vd-deep-story-drafts-confirm-submit")
+      );
+
+      await waitFor(() =>
+        expect(mockGenerateMutateAsync).toHaveBeenCalledTimes(1)
+      );
+      const input = mockGenerateMutateAsync.mock.calls[0][0] as {
+        mode?: string;
+      };
+      expect(input.mode).toBe("standard");
     });
 
     it("selecting premium + rewrite scope threads mode: 'premium' into the CHAINED generateStoryBibleDeep call", async () => {
@@ -1065,9 +1063,6 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         screen.getByRole("radio", { name: /คิดโครงเรื่องใหม่ทั้งหมด/ })
       );
       fireEvent.click(
-        screen.getByRole("radio", { name: "คิดหลายรอบ (พรีเมียม)" })
-      );
-      fireEvent.click(
         screen.getByTestId("vd-deep-story-drafts-confirm-submit")
       );
 
@@ -1080,7 +1075,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       expect(input.mode).toBe("premium");
     });
 
-    it("reopening the dialog after selecting premium resets the mode back to 'standard' (predictable default, mirrors scope)", () => {
+    it("reopening the dialog after selecting standard resets the mode back to 'premium' (predictable default, mirrors scope)", () => {
       render(
         <VerticalDramaDeepStoryDraftsActions
           lang="th"
@@ -1095,9 +1090,6 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
       );
       fireEvent.click(
-        screen.getByRole("radio", { name: "คิดหลายรอบ (พรีเมียม)" })
-      );
-      fireEvent.click(
         screen.getByRole("radio", { name: "มาตรฐาน (เร็ว ประหยัด)" })
       );
       fireEvent.click(
@@ -1108,7 +1100,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         screen.getByRole("button", { name: /อัปเดตเนื้อเรื่องละเอียดทุกตอน/ })
       );
       expect(
-        screen.getByRole("radio", { name: "มาตรฐาน (เร็ว ประหยัด)" })
+        screen.getByRole("radio", { name: "คิดหลายรอบ (พรีเมียม) — แนะนำ" })
       ).toHaveAttribute("aria-checked", "true");
     });
   });
@@ -1296,29 +1288,29 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         screen.getByRole("radio", { name: "มาตรฐาน (เร็ว ประหยัด)" })
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("radio", { name: "คิดหลายรอบ (พรีเมียม)" })
+        screen.getByRole("radio", { name: "คิดหลายรอบ (พรีเมียม) — แนะนำ" })
       ).toBeInTheDocument();
     });
 
-    it("the defaults (keep + standard) are visibly checked on open: aria-checked=true AND the selected card styling", () => {
+    it("the defaults (keep + premium) are visibly checked on open: aria-checked=true AND the selected card styling (production-grade full-story generation upgrade, 2026-07-13 — mode default flipped from standard to premium)", () => {
       openDialogWithPlan();
       const keepRadio = screen.getByRole("radio", {
         name: /เก็บโครงเรื่องเดิม/,
       });
-      const standardRadio = screen.getByRole("radio", {
-        name: "มาตรฐาน (เร็ว ประหยัด)",
+      const premiumRadio = screen.getByRole("radio", {
+        name: "คิดหลายรอบ (พรีเมียม) — แนะนำ",
       });
       expect(keepRadio).toHaveAttribute("aria-checked", "true");
-      expect(standardRadio).toHaveAttribute("aria-checked", "true");
+      expect(premiumRadio).toHaveAttribute("aria-checked", "true");
 
       const keepCard = keepRadio.closest("label");
-      const standardCard = standardRadio.closest("label");
+      const premiumCard = premiumRadio.closest("label");
       expect(keepCard).toHaveClass(
         "border-2",
         "border-primary",
         "bg-primary/5"
       );
-      expect(standardCard).toHaveClass(
+      expect(premiumCard).toHaveClass(
         "border-2",
         "border-primary",
         "bg-primary/5"
@@ -1328,23 +1320,23 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       const rewriteRadio = screen.getByRole("radio", {
         name: /คิดโครงเรื่องใหม่ทั้งหมด/,
       });
-      const premiumRadio = screen.getByRole("radio", {
-        name: "คิดหลายรอบ (พรีเมียม)",
+      const standardRadio = screen.getByRole("radio", {
+        name: "มาตรฐาน (เร็ว ประหยัด)",
       });
       expect(rewriteRadio).toHaveAttribute("aria-checked", "false");
-      expect(premiumRadio).toHaveAttribute("aria-checked", "false");
+      expect(standardRadio).toHaveAttribute("aria-checked", "false");
       expect(rewriteRadio.closest("label")).toHaveClass(
         "border",
         "border-border",
         "bg-background"
       );
       expect(rewriteRadio.closest("label")).not.toHaveClass("border-primary");
-      expect(premiumRadio.closest("label")).toHaveClass(
+      expect(standardRadio.closest("label")).toHaveClass(
         "border",
         "border-border",
         "bg-background"
       );
-      expect(premiumRadio.closest("label")).not.toHaveClass("border-primary");
+      expect(standardRadio.closest("label")).not.toHaveClass("border-primary");
     });
 
     it("selected card styling toggles when a different option is chosen, in BOTH the scope and mode groups", () => {
@@ -1367,12 +1359,12 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         name: "มาตรฐาน (เร็ว ประหยัด)",
       });
       const premiumRadio = screen.getByRole("radio", {
-        name: "คิดหลายรอบ (พรีเมียม)",
+        name: "คิดหลายรอบ (พรีเมียม) — แนะนำ",
       });
-      fireEvent.click(premiumRadio);
-      expect(premiumRadio.closest("label")).toHaveClass("border-primary");
-      expect(standardRadio.closest("label")).not.toHaveClass("border-primary");
-      expect(standardRadio.closest("label")).toHaveClass(
+      fireEvent.click(standardRadio);
+      expect(standardRadio.closest("label")).toHaveClass("border-primary");
+      expect(premiumRadio.closest("label")).not.toHaveClass("border-primary");
+      expect(premiumRadio.closest("label")).toHaveClass(
         "border-border",
         "bg-background"
       );

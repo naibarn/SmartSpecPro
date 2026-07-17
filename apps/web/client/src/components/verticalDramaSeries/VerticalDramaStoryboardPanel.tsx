@@ -80,6 +80,8 @@ import ModelSelectorDialog, {
   type MediaModel,
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { HermesConnectionPicker } from "@/components/media/HermesConnectionPicker";
+import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGES,
@@ -112,10 +114,20 @@ import {
   type VdLocale,
 } from "./verticalDramaWorkspaceCopy";
 import {
+  deepStoryDraftsDialogueLineText,
+  deepStoryDraftsSilenceIntentLabel,
+  type VerticalDramaLang,
+} from "./verticalDramaCopy";
+import {
   VerticalDramaTieInReportCard,
   type VerticalDramaTieInReportView,
   type VerticalDramaSeasonTieInPlacementView,
 } from "./VerticalDramaTieInReportCard";
+import {
+  VerticalDramaReferenceFrameDialog,
+  type VerticalDramaReferenceFrameCharacterOption,
+  type VerticalDramaReferenceFramePromptResult,
+} from "./VerticalDramaReferenceFrameDialog";
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
@@ -151,6 +163,13 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 const EMPTY_SHOT_NUMBER_SET: ReadonlySet<number> = new Set();
+/** Stable empty default for `angleGridAssetsByShotNumber` (Phase 5d) —
+ *  avoids creating a fresh `{}` literal on every render as the prop default,
+ *  same convention as `EMPTY_SHOT_NUMBER_SET` above. */
+const EMPTY_ANGLE_GRID_ASSETS_BY_SHOT: Record<
+  number,
+  Array<{ mediaAssetId: number; url: string }>
+> = {};
 /** Client-side sanity cap for the "upload video file per shot" feature
  *  (2026-07-07 upgrade) — the actual server-side cap on
  *  `/api/media-jobs/upload` is 2GB (`MAX_UPLOAD_SIZE` in
@@ -287,7 +306,11 @@ export interface VerticalDramaShotReferenceView {
     | "history"
     | "library"
     | "upload"
-    | "previous_main";
+    | "previous_main"
+    // Phase 6 (`planning/vd-start-frame-reference-mapping/plan.md`) —
+    // user-controlled supplementary reference frame, linked once
+    // `generateShotReferenceFrameImage` completes.
+    | "reference_frame";
   sortOrder: number;
   thumbnailUrl?: string | null;
 }
@@ -776,8 +799,18 @@ interface VerticalDramaStoryboardPanelProps {
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
   motionPromptPack?: VerticalDramaMotionPromptPackView | null;
-  /** Latest active Overview shot summaries; preferred over stale storyboard text. */
-  canonicalShotDrafts?: Array<{ shotNumber: number; summary: string }>;
+  /** Latest active Overview shot summaries; preferred over stale storyboard text.
+   *  `dialogueLines`/`silenceIntent` (2026-07-14) are the SAME canonical
+   *  per-shot dialogue shown on the Overview page ("หน้ารวม") — used here to
+   *  render a read-only dialogue preview on each shot card immediately after
+   *  the 9-shot storyboard is generated, before any motion-prompt-pack clip
+   *  (and its editable `ClipDialogueBox`) exists. */
+  canonicalShotDrafts?: Array<{
+    shotNumber: number;
+    summary: string;
+    dialogueLines: Array<{ speaker: string; line: string }>;
+    silenceIntent?: string;
+  }>;
   assetUrls?: VerticalDramaAssetUrlMap;
   /** Every series character's current approved portrait, keyed by character
    *  key — joined per-shot against `shot.required_character_refs` so each
@@ -879,6 +912,13 @@ interface VerticalDramaStoryboardPanelProps {
    *  exist, so no extra gating needed here beyond the prop being present). */
   onGenerateVideoPromptPack?: () => void;
   generatingVideoPromptPack?: boolean;
+  /** "Repair missing characters" (episode-level) — union-merges any roster
+   *  character who speaks per a shot's resolved dialogue but is missing
+   *  from that shot's `requiredCharacterRefs`. Free (no LLM/credits), no
+   *  confirm dialog needed, never removes an existing ref. Shown alongside
+   *  `onGenerateVideoPromptPack` once frames exist. */
+  onRepairMissingShotCharacters?: () => void;
+  repairingMissingShotCharacters?: boolean;
   /** Renders a real AI image for this shot from its approved prompt (spends credits). */
   onGenerateStartFrameImage?: (shotNumber: number) => void;
   /** Every shot number currently rendering — a Set since "generate all" can
@@ -913,6 +953,22 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     originalIndex: number
   ) => void;
+  /**
+   * Persisted "backup alternate-angle stills" for this shot (Phase 5d,
+   * `planning/vd-start-frame-reference-mapping/plan.md`, client half) —
+   * `getEpisodeDetail.angleGridAssetsByShotNumber` verbatim (server-resolved
+   * URLs, oldest-first per that mutation's `.slice(-5)` append order; this
+   * panel reverses for most-recent-first display). A shot with no recorded
+   * grids is simply absent as a key. */
+  angleGridAssetsByShotNumber?: Record<
+    number,
+    Array<{ mediaAssetId: number; url: string }>
+  >;
+  /** User picked a stored grid thumbnail to reopen — the caller loads
+   *  `url` into the SAME `angleVariationGridUrlByShot`/picker flow a
+   *  freshly-completed grid uses, so it can be re-split and a cell picked
+   *  via the existing `onPickAngleVariationCandidate` path. */
+  onOpenStoredAngleGrid?: (shotNumber: number, url: string) => void;
 
   /* ---- Phase 1.3 — episode-level model selection ---- */
   /** Vertical-drama-ready image models for the header's image-model selector. */
@@ -933,6 +989,18 @@ interface VerticalDramaStoryboardPanelProps {
    *  key where possible so a connection picked there carries over here. */
   mcpConnectionId?: string | null;
   onSelectMcpConnection?: (connectionId: string | null) => void;
+  /** Group id for the currently-selected SHARED MCP connection (null/undefined
+   *  for a personal connection) — mirrors `mcpConnectionId`'s caller-owned
+   *  persistence, threaded through so `McpConnectionPicker` can disambiguate
+   *  a connection id that appears once as personal and again as shared. */
+  mcpSharedGroupId?: number | null;
+  onSelectMcpSharedGroup?: (groupId: number | null) => void;
+  /** Feature 135 (Hermes/Grok media worker) — sibling of `mcpConnectionId`
+   *  above for the `"hermes_worker"` transport. Mutually exclusive with the
+   *  MCP fields (a model row resolves to exactly one transport); no shared-
+   *  group dimension. */
+  hermesConnectionId?: string | null;
+  onHermesConnectionChange?: (connectionId: string | null) => void;
 
   /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ----
    *  Shown only when the currently-selected image/video model has
@@ -1004,6 +1072,29 @@ interface VerticalDramaStoryboardPanelProps {
   /** Non-null while a `onUseShotReferenceAsMain` promotion is in flight for
    *  this shot, so the strip can show a spinner and disable other actions. */
   usingShotReferenceAsMainForShot?: number | null;
+
+  /* ---- Phase 6c — user-controlled supplementary reference frames
+     (`planning/vd-start-frame-reference-mapping/plan.md`, Phase 6) ---- */
+  /** Step 1: author ONE reference-frame prompt (`generateShotReferenceFramePrompt`)
+   *  — does NOT touch `startFramePlan`/spend render credits. Returns `null`
+   *  on failure (the caller has already shown a toast); the dialog stays on
+   *  the selection step in that case. */
+  onGenerateReferenceFramePrompt?: (args: {
+    shotNumber: number;
+    characterKeys: string[];
+    instruction: string;
+  }) => Promise<VerticalDramaReferenceFramePromptResult | null>;
+  generatingReferenceFramePromptForShot?: ReadonlySet<number>;
+  /** Step 2: paid render of the user-confirmed (possibly hand-edited) prompt
+   *  (`generateShotReferenceFrameImage` + poll + `linkShotReference({source:
+   *  "reference_frame"})`). Returns `true` on success (closes the dialog). */
+  onGenerateReferenceFrameImage?: (args: {
+    shotNumber: number;
+    prompt: string;
+    negativePrompt?: string;
+    characterKeys: string[];
+  }) => Promise<boolean>;
+  generatingReferenceFrameImageForShot?: ReadonlySet<number>;
 
   /* ---- Phase 3.4 — dialogue box ---- */
   /** Saves an edited dialogue line for a clip (free — routed through the
@@ -1332,6 +1423,8 @@ export function VerticalDramaStoryboardPanel({
   onEditStartFramePrompt,
   onGenerateVideoPromptPack,
   generatingVideoPromptPack = false,
+  onRepairMissingShotCharacters,
+  repairingMissingShotCharacters = false,
   onGenerateStartFrameImage,
   generatingStartFrameImageForShot = EMPTY_SHOT_NUMBER_SET,
   onGenerateAllStartFrameImages,
@@ -1341,6 +1434,8 @@ export function VerticalDramaStoryboardPanel({
   onPickAngleVariationCandidate,
   onDismissAngleVariations,
   onDeleteAngleVariationCandidate,
+  angleGridAssetsByShotNumber = EMPTY_ANGLE_GRID_ASSETS_BY_SHOT,
+  onOpenStoredAngleGrid,
   imageModels = [],
   videoModels = [],
   selectedImageModelId = "",
@@ -1350,6 +1445,10 @@ export function VerticalDramaStoryboardPanel({
   modelsLoading = false,
   mcpConnectionId = null,
   onSelectMcpConnection,
+  mcpSharedGroupId = null,
+  onSelectMcpSharedGroup,
+  hermesConnectionId = null,
+  onHermesConnectionChange,
   selectedImageResolution = "",
   selectedVideoResolution = "",
   onSelectImageResolution,
@@ -1368,6 +1467,10 @@ export function VerticalDramaStoryboardPanel({
   addingShotReferenceForShot = EMPTY_SHOT_NUMBER_SET,
   onUseShotReferenceAsMain,
   usingShotReferenceAsMainForShot = null,
+  onGenerateReferenceFramePrompt,
+  generatingReferenceFramePromptForShot = EMPTY_SHOT_NUMBER_SET,
+  onGenerateReferenceFrameImage,
+  generatingReferenceFrameImageForShot = EMPTY_SHOT_NUMBER_SET,
   onSaveClipDialogue,
   savingDialogueForClip = null,
   onRegenerateClipDialogue,
@@ -1526,6 +1629,23 @@ export function VerticalDramaStoryboardPanel({
   const mcpProviderKey =
     (imageModelUsesMcp ? selectedImageModelTransport.providerKey : undefined) ??
     (videoModelUsesMcp ? selectedVideoModelTransport.providerKey : undefined);
+  /** Feature 135 (Hermes/Grok media worker) — sibling of the MCP gate above.
+   *  Mutually exclusive per model row with `imageModelUsesMcp`/
+   *  `videoModelUsesMcp` (a row resolves to exactly one transport), so at
+   *  most one connection picker ever renders for a given asset type. */
+  const imageModelUsesHermes =
+    Boolean(selectedImageModelId) &&
+    selectedImageModelTransport.transport === "hermes_worker";
+  const videoModelUsesHermes =
+    Boolean(selectedVideoModelId) &&
+    selectedVideoModelTransport.transport === "hermes_worker";
+  const anyModelUsesHermes = imageModelUsesHermes || videoModelUsesHermes;
+  const hermesNeededForLabel = [
+    imageModelUsesHermes ? (selectedImageModel?.name ?? t2.imageModel) : null,
+    videoModelUsesHermes ? (selectedVideoModel?.name ?? t2.videoModel) : null,
+  ]
+    .filter((v): v is string => Boolean(v))
+    .join(" · ");
   const [confirming, setConfirming] = useState(false);
   /** Confirm-gate for "re-assemble" (destructive overwrite of the existing
    *  compiled video) — mirrors `confirmingRegenerateVideoForClip`'s
@@ -1593,6 +1713,11 @@ export function VerticalDramaStoryboardPanel({
   const [characterRefPickerDraft, setCharacterRefPickerDraft] = useState<
     string[]
   >([]);
+  /** Shot number currently showing the supplementary reference-frame dialog
+   *  (Phase 6c, `planning/vd-start-frame-reference-mapping/plan.md`) — same
+   *  single-open-at-a-time convention as `characterRefPickerForShot` above. */
+  const [referenceFrameDialogForShot, setReferenceFrameDialogForShot] =
+    useState<number | null>(null);
   /** Shot number currently showing the per-shot LOCATION override picker
    *  (Phase D, `planning/polished-toasting-gadget.md`) — unlike
    *  `characterRefPickerForShot`/`characterRefPickerDraft` above, a pick
@@ -1923,6 +2048,17 @@ export function VerticalDramaStoryboardPanel({
     canonicalShotDrafts
       .filter(draft => draft.summary.trim().length > 0)
       .map(draft => [draft.shotNumber, draft.summary.trim()] as const)
+  );
+  // Canonical per-shot dialogue (2026-07-14) — same source as the Overview
+  // page, used as a read-only preview fallback until a motion-prompt-pack
+  // clip with dialogue exists for the shot (see `ClipDialogueBox` below).
+  const canonicalDialogueByShot = new Map(
+    canonicalShotDrafts
+      .filter(
+        draft =>
+          (draft.dialogueLines?.length ?? 0) > 0 || Boolean(draft.silenceIntent)
+      )
+      .map(draft => [draft.shotNumber, draft] as const)
   );
   const frameByShot = new Map<number, VerticalDramaStartFramePlanFrame>();
   for (const frame of startFramePlan?.frames ?? []) {
@@ -2292,6 +2428,43 @@ export function VerticalDramaStoryboardPanel({
                 </label>
               ) : null}
             </div>
+            {/* Explicit "you must pick a model" notices — the picker
+              buttons above already turn amber when empty, but that alone
+              was too subtle (product feedback 2026-07-15). These are
+              additive to the disabled-button + tooltip guards elsewhere in
+              this panel, not a replacement. */}
+            {onSelectImageModel && !selectedImageModelId ? (
+              <div
+                className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                data-testid="vd-storyboard-image-model-required-notice"
+              >
+                <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                <span>{t2.imageModelRequiredNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsImageModelDialogOpen(true)}
+                  className="ml-auto rounded-md border border-amber-400/60 bg-background px-2 py-1 text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                >
+                  {t2.selectModelCta}
+                </button>
+              </div>
+            ) : null}
+            {onSelectVideoModel && !selectedVideoModelId ? (
+              <div
+                className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                data-testid="vd-storyboard-video-model-required-notice"
+              >
+                <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                <span>{t2.videoModelRequiredNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setIsVideoModelDialogOpen(true)}
+                  className="ml-auto rounded-md border border-amber-400/60 bg-background px-2 py-1 text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                >
+                  {t2.selectModelCta}
+                </button>
+              </div>
+            ) : null}
             <p className="text-xs text-muted-foreground">
               {t2.modelChangeNote}
             </p>
@@ -2353,8 +2526,36 @@ export function VerticalDramaStoryboardPanel({
                 <McpConnectionPicker
                   value={mcpConnectionId}
                   onChange={onSelectMcpConnection}
+                  sharedGroupId={mcpSharedGroupId}
+                  onSharedGroupChange={onSelectMcpSharedGroup}
                   assetType={imageModelUsesMcp ? "image" : "video"}
                   providerKey={mcpProviderKey}
+                />
+              </div>
+            ) : null}
+
+            {/* Feature 135 — Hermes/Grok connection row, mutually exclusive
+                with the MCP row above (a model row resolves to exactly one
+                transport, so the two pickers never render simultaneously). */}
+            {anyModelUsesHermes && onHermesConnectionChange ? (
+              <div className="space-y-1 border-t border-border/60 pt-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    บัญชี Grok (Hermes)
+                  </span>
+                  {hermesNeededForLabel ? (
+                    <Badge variant="outline" className="px-1 py-0 text-[9px]">
+                      {vdCopyWithCount(
+                        t2.mcpConnectionNeededFor,
+                        hermesNeededForLabel
+                      )}
+                    </Badge>
+                  ) : null}
+                </div>
+                <HermesConnectionPicker
+                  value={hermesConnectionId}
+                  onChange={onHermesConnectionChange}
+                  assetType={imageModelUsesHermes ? "image" : "video"}
                 />
               </div>
             ) : null}
@@ -2593,6 +2794,10 @@ export function VerticalDramaStoryboardPanel({
               variant="outline"
               className="gap-1.5"
               onClick={() => setConfirmingGenerateAllImages(true)}
+              disabled={!selectedImageModelId}
+              title={
+                !selectedImageModelId ? t2.selectImageModelFirst : undefined
+              }
               data-testid="vd-storyboard-generate-all-images"
             >
               <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
@@ -2722,7 +2927,10 @@ export function VerticalDramaStoryboardPanel({
               variant="outline"
               className="gap-1.5"
               onClick={() => setConfirmingVideoPromptPack(true)}
-              disabled={generatingVideoPromptPack}
+              disabled={generatingVideoPromptPack || !selectedVideoModelId}
+              title={
+                !selectedVideoModelId ? t2.selectVideoModelFirst : undefined
+              }
               data-testid="vd-generate-video-prompt-pack"
             >
               {generatingVideoPromptPack ? (
@@ -2738,6 +2946,33 @@ export function VerticalDramaStoryboardPanel({
                 : t2.generateVideoPromptPackWholeEpisode}
             </Button>
           )}
+        </div>
+      ) : null}
+
+      {onRepairMissingShotCharacters && startFramePlan?.frames?.length ? (
+        <div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={onRepairMissingShotCharacters}
+            disabled={repairingMissingShotCharacters}
+            data-testid="vd-repair-missing-shot-characters"
+          >
+            {repairingMissingShotCharacters ? (
+              <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Users aria-hidden="true" className="h-3.5 w-3.5" />
+            )}
+            {repairingMissingShotCharacters
+              ? t(locale, "กำลังซ่อม…", "Repairing…")
+              : t(
+                  locale,
+                  "ซ่อมตัวละครที่ขาด (อัตโนมัติ)",
+                  "Repair missing characters"
+                )}
+          </Button>
         </div>
       ) : null}
 
@@ -2885,6 +3120,12 @@ export function VerticalDramaStoryboardPanel({
                       variant="outline"
                       className="w-full gap-1 text-xs"
                       onClick={() => onOpenRepairImageDialog(shotNumber)}
+                      disabled={!selectedImageModelId}
+                      title={
+                        !selectedImageModelId
+                          ? t2.selectImageModelFirst
+                          : undefined
+                      }
                       data-testid={`vd-storyboard-repair-image-${shotNumber}`}
                     >
                       <Wand2 aria-hidden="true" className="h-3 w-3" />
@@ -2950,9 +3191,15 @@ export function VerticalDramaStoryboardPanel({
                         onClick={() =>
                           setChoosingGenerateModeForShot(shotNumber)
                         }
-                        disabled={generatingPromptAndImageForShot.has(
-                          shotNumber
-                        )}
+                        disabled={
+                          generatingPromptAndImageForShot.has(shotNumber) ||
+                          !selectedImageModelId
+                        }
+                        title={
+                          !selectedImageModelId
+                            ? t2.selectImageModelFirst
+                            : undefined
+                        }
                         data-testid={`vd-storyboard-one-click-generate-${shotNumber}`}
                       >
                         {generatingPromptAndImageForShot.has(shotNumber) ? (
@@ -3028,9 +3275,15 @@ export function VerticalDramaStoryboardPanel({
                         variant="outline"
                         className="w-full gap-1 text-xs"
                         onClick={() => setConfirmingImageForShot(shotNumber)}
-                        disabled={generatingStartFrameImageForShot.has(
-                          shotNumber
-                        )}
+                        disabled={
+                          generatingStartFrameImageForShot.has(shotNumber) ||
+                          !selectedImageModelId
+                        }
+                        title={
+                          !selectedImageModelId
+                            ? t2.selectImageModelFirst
+                            : undefined
+                        }
                         data-testid={`vd-generate-image-${shotNumber}`}
                       >
                         {generatingStartFrameImageForShot.has(shotNumber) ? (
@@ -3105,7 +3358,13 @@ export function VerticalDramaStoryboardPanel({
                         }
                         disabled={
                           generatingAngleVariationsForShot === shotNumber ||
-                          splittingShot === shotNumber
+                          splittingShot === shotNumber ||
+                          !selectedImageModelId
+                        }
+                        title={
+                          !selectedImageModelId
+                            ? t2.selectImageModelFirst
+                            : undefined
                         }
                         data-testid={`vd-generate-angles-${shotNumber}`}
                       >
@@ -3122,6 +3381,146 @@ export function VerticalDramaStoryboardPanel({
                       </Button>
                     )
                   ) : null}
+
+                  {/* Stored angle-grid re-open (Phase 5d, `planning/vd-
+                    start-frame-reference-mapping/plan.md`) — up to 5
+                    previously-generated 3x3 grids for this shot, most-recent
+                    first (server appends+caps oldest-first via `.slice(-5)`,
+                    reversed here for display). Selecting one loads it into
+                    the SAME `angleVariationGridUrlByShot`/picker flow a
+                    freshly-completed grid uses. */}
+                  {angleGridAssetsByShotNumber[shotNumber]?.length ? (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        {t2.storedAngleGridsLabel}
+                      </span>
+                      <div
+                        className="flex flex-wrap items-center gap-1"
+                        data-testid={`vd-stored-angle-grids-${shotNumber}`}
+                      >
+                        {[...angleGridAssetsByShotNumber[shotNumber]]
+                          .reverse()
+                          .map(asset => (
+                            <button
+                              key={asset.mediaAssetId}
+                              type="button"
+                              className="h-9 w-9 shrink-0 overflow-hidden rounded border border-border hover:border-primary"
+                              title={t2.storedAngleGridsHint}
+                              onClick={() =>
+                                onOpenStoredAngleGrid?.(shotNumber, asset.url)
+                              }
+                              data-testid={`vd-stored-angle-grid-${shotNumber}-${asset.mediaAssetId}`}
+                            >
+                              <img
+                                src={asset.url}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Supplementary reference-frame generation (Phase 6c,
+                    `planning/vd-start-frame-reference-mapping/plan.md`) —
+                    user-controlled extra reference frames beyond the shot's
+                    main start frame, placed next to the reference drop-zone
+                    (immediately below) per the feature's own design. */}
+                  {onGenerateReferenceFramePrompt &&
+                  onGenerateReferenceFrameImage
+                    ? (() => {
+                        const referenceFrameShotCharacterKeys =
+                          frame?.requiredCharacterRefs !== undefined
+                            ? frame.requiredCharacterRefs
+                            : shot.required_character_refs?.length
+                              ? shot.required_character_refs
+                              : (shot.characters ?? []);
+                        const referenceFrameCharacterOptions: VerticalDramaReferenceFrameCharacterOption[] =
+                          Object.entries(characterPortraits).map(
+                            ([key, portrait]) => ({
+                              key,
+                              name: portrait.name,
+                              portraitUrl: portrait.portraitUrl,
+                            })
+                          );
+                        const referenceFramesForShot = (
+                          shotReferencesByShot[shotNumber] ?? []
+                        ).filter(r => r.source === "reference_frame");
+                        const referenceFrameCount =
+                          referenceFramesForShot.length;
+                        const referenceFrameAtCap = referenceFrameCount >= 10;
+                        return (
+                          <div className="flex flex-col gap-1">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="w-full gap-1 text-xs"
+                              onClick={() =>
+                                setReferenceFrameDialogForShot(shotNumber)
+                              }
+                              disabled={
+                                referenceFrameAtCap ||
+                                generatingReferenceFramePromptForShot.has(
+                                  shotNumber
+                                ) ||
+                                generatingReferenceFrameImageForShot.has(
+                                  shotNumber
+                                )
+                              }
+                              title={
+                                referenceFrameAtCap
+                                  ? t2.referenceFrameCapReached
+                                  : undefined
+                              }
+                              data-testid={`vd-generate-reference-frame-${shotNumber}`}
+                            >
+                              <Sparkles
+                                aria-hidden="true"
+                                className="h-3 w-3"
+                              />
+                              {t2.referenceFrameGenerateButton}
+                            </Button>
+                            <GeneratedReferenceFrameRow
+                              t={t2}
+                              shotNumber={shotNumber}
+                              frames={[...referenceFramesForShot].reverse()}
+                            />
+                            {referenceFrameDialogForShot === shotNumber ? (
+                              <VerticalDramaReferenceFrameDialog
+                                locale={locale}
+                                open
+                                onOpenChange={open => {
+                                  if (!open)
+                                    setReferenceFrameDialogForShot(null);
+                                }}
+                                shotNumber={shotNumber}
+                                characterOptions={
+                                  referenceFrameCharacterOptions
+                                }
+                                defaultSelectedKeys={
+                                  referenceFrameShotCharacterKeys
+                                }
+                                existingCount={referenceFrameCount}
+                                generatingPrompt={generatingReferenceFramePromptForShot.has(
+                                  shotNumber
+                                )}
+                                generatingImage={generatingReferenceFrameImageForShot.has(
+                                  shotNumber
+                                )}
+                                onGeneratePrompt={args =>
+                                  onGenerateReferenceFramePrompt(args)
+                                }
+                                onConfirmRender={args =>
+                                  onGenerateReferenceFrameImage(args)
+                                }
+                              />
+                            ) : null}
+                          </div>
+                        );
+                      })()
+                    : null}
 
                   {/* Reference strip (Phase 2.5) — additional images sent
                     alongside the approved start frame to video generation,
@@ -3398,7 +3797,15 @@ export function VerticalDramaStoryboardPanel({
                               }
                               disabled={
                                 !clip.prompt?.trim() ||
-                                generatingVideoClipForClip.has(clip.clipNumber)
+                                generatingVideoClipForClip.has(
+                                  clip.clipNumber
+                                ) ||
+                                !selectedVideoModelId
+                              }
+                              title={
+                                !selectedVideoModelId
+                                  ? t2.selectVideoModelFirst
+                                  : undefined
                               }
                               data-testid={`vd-storyboard-regenerate-video-${clip.clipNumber}`}
                             >
@@ -3488,10 +3895,10 @@ export function VerticalDramaStoryboardPanel({
                     if (keys.length === 0 && !onSetShotCharacterReferences)
                       return null;
                     return (
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-start gap-2.5">
                         <Users
                           aria-hidden="true"
-                          className="h-3.5 w-3.5 text-muted-foreground"
+                          className="mt-2 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                         />
                         {keys.map(key => {
                           const portrait = characterPortraits[key];
@@ -3499,7 +3906,7 @@ export function VerticalDramaStoryboardPanel({
                             <button
                               key={key}
                               type="button"
-                              className="group relative flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pl-0.5 pr-2 text-xs hover:bg-muted disabled:cursor-default disabled:opacity-100 data-[dragover=true]:ring-2 data-[dragover=true]:ring-primary"
+                              className="group relative flex w-16 flex-col items-center gap-1 rounded-lg border border-border bg-muted/40 p-1 text-center text-xs hover:bg-muted disabled:cursor-default disabled:opacity-100 data-[dragover=true]:ring-2 data-[dragover=true]:ring-primary"
                               onClick={() =>
                                 portrait?.characterId &&
                                 onChangeCharacterReference?.(
@@ -3557,10 +3964,10 @@ export function VerticalDramaStoryboardPanel({
                             >
                               {droppingCharacterReferenceFor ===
                               portrait?.characterId ? (
-                                <span className="absolute inset-0 z-10 flex items-center justify-center rounded-full bg-black/50">
+                                <span className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-black/50">
                                   <Loader2
                                     aria-hidden="true"
-                                    className="h-3 w-3 animate-spin text-white"
+                                    className="h-4 w-4 animate-spin text-white"
                                   />
                                 </span>
                               ) : null}
@@ -3568,21 +3975,23 @@ export function VerticalDramaStoryboardPanel({
                                 <img
                                   src={portrait.portraitUrl}
                                   alt={portrait.name}
-                                  className="h-5 w-5 rounded-full object-cover"
+                                  className="aspect-[3/4] w-full rounded-md object-cover object-top"
                                 />
                               ) : (
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[9px] text-muted-foreground">
+                                <span className="flex aspect-[3/4] w-full items-center justify-center rounded-md bg-muted text-muted-foreground">
                                   ?
                                 </span>
                               )}
-                              <span>{portrait?.name ?? key}</span>
+                              <span className="w-full truncate leading-tight">
+                                {portrait?.name ?? key}
+                              </span>
                             </button>
                           );
                         })}
                         {onSetShotCharacterReferences ? (
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                            className="flex aspect-[3/4] w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                             onClick={() => {
                               setCharacterRefPickerDraft(keys);
                               setCharacterRefPickerForShot(shotNumber);
@@ -3591,7 +4000,7 @@ export function VerticalDramaStoryboardPanel({
                             aria-label={t2.shotCharacterRefEditLabel}
                             data-testid={`vd-storyboard-character-ref-edit-${shotNumber}`}
                           >
-                            <Pencil aria-hidden="true" className="h-3 w-3" />
+                            <Pencil aria-hidden="true" className="h-4 w-4" />
                           </button>
                         ) : null}
                       </div>
@@ -3657,14 +4066,14 @@ export function VerticalDramaStoryboardPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         {thumbnailUrl ? (
                           <span
-                            className="flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-0.5 pl-0.5 pr-2 text-xs"
+                            className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-1 pr-2.5 text-xs"
                             title={descriptionTooltip}
                             data-testid={`vd-storyboard-location-chip-${shotNumber}`}
                           >
                             <img
                               src={thumbnailUrl}
                               alt={displayName}
-                              className="h-5 w-8 rounded object-cover"
+                              className="h-16 w-24 rounded-md object-cover"
                             />
                             {displayName}
                           </span>
@@ -3987,12 +4396,17 @@ export function VerticalDramaStoryboardPanel({
                               }
                               disabled={
                                 !asset?.url ||
-                                generatingShotVideoPromptForShot.has(shotNumber)
+                                generatingShotVideoPromptForShot.has(
+                                  shotNumber
+                                ) ||
+                                !selectedVideoModelId
                               }
                               title={
                                 !asset?.url
                                   ? t2.generateShotVideoPromptNeedsImage
-                                  : undefined
+                                  : !selectedVideoModelId
+                                    ? t2.selectVideoModelFirst
+                                    : undefined
                               }
                               data-testid={`vd-storyboard-generate-shot-video-prompt-${shotNumber}`}
                             >
@@ -4035,8 +4449,17 @@ export function VerticalDramaStoryboardPanel({
                         {/* Dialogue box (Phase 3.4) — surfaces
                           `clip.dialogue[]`, synced automatically from
                           `dialogueAudioPlan` onto the motion prompt pack when
-                          it's generated. */}
-                        {clip ? (
+                          it's generated. Until that clip exists (or exists
+                          but has no dialogue yet), fall back (2026-07-14) to
+                          a READ-ONLY preview of the canonical per-shot
+                          dialogue — the same source the Overview page shows
+                          — so the writer can verify dialogue right after the
+                          9-shot storyboard is generated, instead of only
+                          after clicking "สร้างพรอมต์วิดีโอ". Shot-level (not
+                          per-clip), so it only renders on the first loop
+                          iteration, same convention as the shot-level
+                          "Generate video prompt" button above. */}
+                        {clip && (clip.dialogue?.length ?? 0) > 0 ? (
                           <ClipDialogueBox
                             locale={locale}
                             t={t2}
@@ -4089,6 +4512,47 @@ export function VerticalDramaStoryboardPanel({
                               shotNumber
                             )}
                           />
+                        ) : clipIndex === 0 &&
+                          canonicalDialogueByShot.has(shotNumber) ? (
+                          (() => {
+                            const canonicalDialogue =
+                              canonicalDialogueByShot.get(shotNumber)!;
+                            return (
+                              <div
+                                className="mt-1 flex flex-col gap-1.5 rounded-md bg-muted/50 p-2"
+                                data-testid={`vd-storyboard-canonical-dialogue-${shotNumber}`}
+                              >
+                                <span className="text-xs font-medium text-foreground">
+                                  {t2.canonicalDialoguePreviewLabel}
+                                </span>
+                                {canonicalDialogue.dialogueLines.length > 0 ? (
+                                  <ul className="flex flex-col gap-1">
+                                    {canonicalDialogue.dialogueLines.map(
+                                      (line, idx) => (
+                                        <li
+                                          key={idx}
+                                          className="rounded border border-border bg-background p-1.5 text-xs text-foreground"
+                                        >
+                                          {deepStoryDraftsDialogueLineText(
+                                            locale as VerticalDramaLang,
+                                            line.speaker,
+                                            line.line
+                                          )}
+                                        </li>
+                                      )
+                                    )}
+                                  </ul>
+                                ) : canonicalDialogue.silenceIntent ? (
+                                  <p className="text-xs italic text-muted-foreground">
+                                    {deepStoryDraftsSilenceIntentLabel(
+                                      locale as VerticalDramaLang,
+                                      canonicalDialogue.silenceIntent as VerticalDramaSilenceIntent
+                                    )}
+                                  </p>
+                                ) : null}
+                              </div>
+                            );
+                          })()
                         ) : null}
 
                         {/* Video clip generation (`generateVideoClip`) —
@@ -4113,7 +4577,13 @@ export function VerticalDramaStoryboardPanel({
                                   !clip.prompt?.trim() ||
                                   generatingVideoClipForClip.has(
                                     clip.clipNumber
-                                  )
+                                  ) ||
+                                  !selectedVideoModelId
+                                }
+                                title={
+                                  !selectedVideoModelId
+                                    ? t2.selectVideoModelFirst
+                                    : undefined
                                 }
                                 data-testid={`vd-storyboard-generate-video-${clip.clipNumber}`}
                               >
@@ -5188,6 +5658,30 @@ function formatShotNumberRanges(shotNumbers: number[]): string {
  * to close the review loop explicitly rather than relying on `linkAsset`'s
  * side-effect alone.
  */
+
+/** Intentionally the SAME localStorage key as
+ *  `VerticalDramaLocationStockPanel.tsx`'s own
+ *  `VD_LOCATION_IMAGE_MODEL_STORAGE_KEY` (not a new per-surface key) so a
+ *  model picked on either the ฉาก (Location) tab or this storyboard's
+ *  Location Visual Bible card is remembered as one shared "location image
+ *  model" default. */
+const VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY =
+  "smartspec_vd_location_image_model";
+
+/** True when `generateLocationImage`'s error indicates the server rejected
+ *  the request over a missing/invalid `selectedImageModelId` — the
+ *  fail-closed "no model selected" `BAD_REQUEST` thrown by
+ *  `resolveCharacterImageModelId` (server: `verticalDramaLocations.ts`).
+ *  Matches on the `BAD_REQUEST` error code first, falling back to the
+ *  bilingual message text for callers that only pass `{ message }`. */
+function isLocationBibleImageModelSelectionError(
+  err: { message?: string; data?: { code?: string } } | null | undefined
+): boolean {
+  if (err?.data?.code === "BAD_REQUEST") return true;
+  const message = err?.message ?? "";
+  return /เลือกโมเดลภาพ/.test(message) || /image model/i.test(message);
+}
+
 function VerticalDramaLocationsBibleCard({
   seriesId,
   locale,
@@ -5218,18 +5712,71 @@ function VerticalDramaLocationsBibleCard({
   const invalidate = () =>
     void utils.verticalDramaLocations.list.invalidate({ seriesId });
 
-  const onError = (err: { message?: string }) =>
+  const onError = (err: { message?: string }) => {
+    // Feature 135 section-10 review fix: a `[HERMES_X] ...` prefixed message
+    // (pinned server wire convention, `shared/hermesMedia.ts`) renders via
+    // `presentHermesError`/`formatHermesErrorForToast` instead of leaking
+    // the raw bracketed English string; every other message keeps its exact
+    // pre-existing `||` fallback semantics.
+    const presentation = presentHermesError(err ?? null);
     toast.error(
-      err?.message || t(locale, "เกิดข้อผิดพลาด", "Something went wrong")
+      presentation
+        ? formatHermesErrorForToast(presentation, locale)
+        : err?.message || t(locale, "เกิดข้อผิดพลาด", "Something went wrong")
     );
+  };
 
   const previewMutation =
     trpc.verticalDramaLocations.previewLocationPrompt.useMutation({
       onError,
     });
+
+  /** Image-model picker for the "Generate" action below — required by the
+   *  server's `selectedImageModelId` (see this file's
+   *  `isLocationBibleImageModelSelectionError` doc comment). Persisted
+   *  under the SAME localStorage key as the ฉาก (Location) tab's own
+   *  picker (`VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY`), so a model
+   *  chosen on either surface is remembered as one shared default. */
+  const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
+  const [selectedImageModelId, setSelectedImageModelId] = useState(() => {
+    // Best-effort read — localStorage can throw (SecurityError in blocked
+    // storage) even during this initial render; never crash the panel over a
+    // convenience cache.
+    try {
+      return localStorage.getItem(VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const handleSelectImageModel = (modelId: string) => {
+    // State update FIRST so a localStorage failure (e.g. QuotaExceededError on
+    // a heavy user whose storage is full) can never block the selection — the
+    // cache write is best-effort.
+    setSelectedImageModelId(modelId);
+    try {
+      localStorage.setItem(VD_LOCATION_BIBLE_IMAGE_MODEL_STORAGE_KEY, modelId);
+    } catch {
+      /* storage full/blocked — cache is best-effort, ignore */
+    }
+  };
+  const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
+  const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModel[];
+  const selectedImageModelRecord = imageModels.find(
+    m => m.modelId === selectedImageModelId
+  );
+  const onGenerateError = (err: { message?: string }) => {
+    onError(err);
+    if (
+      isLocationBibleImageModelSelectionError(
+        err as { message?: string; data?: { code?: string } }
+      )
+    ) {
+      setIsModelDialogOpen(true);
+    }
+  };
   const generateMutation =
     trpc.verticalDramaLocations.generateLocationImage.useMutation({
-      onError,
+      onError: onGenerateError,
     });
   // No hook-level `onError` on the resolve/link/approve trio — all three
   // are only ever awaited inside `handleApprove`'s own try/catch below,
@@ -5294,14 +5841,21 @@ function VerticalDramaLocationsBibleCard({
           return;
         }
         if (status === "failed") {
-          const errorMessage = (task as { errorMessage?: string } | null)
-            ?.errorMessage;
+          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
+          const errorMessage = failedTask?.errorMessage;
+          // Feature 135 section-10 review fix: prefer the typed hermes
+          // presentation (reads `MediaTask.errorCode`, section-06) when this
+          // was a hermes_ task; every other/legacy task keeps the exact
+          // pre-existing bilingual "<generic>: <errorMessage>" format.
+          const hermesPresentation = presentHermesError(failedTask);
           toast.error(
-            t(
-              locale,
-              `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`,
-              `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`
-            )
+            hermesPresentation
+              ? formatHermesErrorForToast(hermesPresentation, locale)
+              : t(
+                  locale,
+                  `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`,
+                  `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`
+                )
           );
           return;
         }
@@ -5342,6 +5896,17 @@ function VerticalDramaLocationsBibleCard({
   const handleGenerate = (locationId: string, locationKey: string) => {
     const preview = previewByKey[locationKey];
     if (!preview) return;
+    if (!selectedImageModelId) {
+      toast.error(
+        t(
+          locale,
+          "กรุณาเลือกโมเดลภาพก่อนสร้าง",
+          "Select an image model before generating."
+        )
+      );
+      setIsModelDialogOpen(true);
+      return;
+    }
     setRenderingKey(locationKey);
     generateMutation.mutate(
       {
@@ -5351,6 +5916,12 @@ function VerticalDramaLocationsBibleCard({
         ...(preview.negativePrompt
           ? { approvedNegativePrompt: preview.negativePrompt }
           : {}),
+        // Always sent — the server now REJECTS image generation without an
+        // explicit `selectedImageModelId` (fail-closed, see
+        // `isLocationBibleImageModelSelectionError`'s doc comment above).
+        // Safe to assert non-empty here: the guard above already returned
+        // early when it was blank.
+        selectedImageModelId,
       },
       {
         onSuccess: res => void pollLocationImageTask(res.taskId, locationKey),
@@ -5545,10 +6116,36 @@ function VerticalDramaLocationsBibleCard({
                         size="sm"
                         variant="outline"
                         className="gap-1.5"
+                        onClick={() => setIsModelDialogOpen(true)}
+                        data-testid={`vd-location-bible-choose-model-${locationKey}`}
+                      >
+                        <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+                        {selectedImageModelId
+                          ? `${t(locale, "โมเดล", "Model")}: ${selectedImageModelRecord?.name ?? selectedImageModelId}`
+                          : t(
+                              locale,
+                              "เลือกโมเดลภาพ",
+                              "Select image model"
+                            )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5"
                         onClick={() =>
                           handleGenerate(roster.locationId, locationKey)
                         }
-                        disabled={isRendering}
+                        disabled={isRendering || !selectedImageModelId}
+                        title={
+                          selectedImageModelId
+                            ? undefined
+                            : t(
+                                locale,
+                                "เลือกโมเดลภาพก่อนสร้าง",
+                                "Select an image model first"
+                              )
+                        }
                         data-testid={`vd-location-generate-image-${locationKey}`}
                       >
                         {isRendering ? (
@@ -5602,6 +6199,16 @@ function VerticalDramaLocationsBibleCard({
           );
         })}
       </div>
+
+      <ModelSelectorDialog
+        open={isModelDialogOpen}
+        onOpenChange={setIsModelDialogOpen}
+        models={imageModels}
+        selectedModelId={selectedImageModelId}
+        onSelect={handleSelectImageModel}
+        mediaType="image"
+        isLoading={imageModelsQuery.isLoading}
+      />
     </div>
   );
 }
@@ -5633,13 +6240,26 @@ function ModelPickerButton({
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-start gap-1 rounded-md border border-border bg-background px-3 py-2 text-left hover:border-primary/60 hover:bg-muted/40"
+      className={cn(
+        "flex flex-col items-start gap-1 rounded-md border px-3 py-2 text-left",
+        model
+          ? "border-border bg-background hover:border-primary/60 hover:bg-muted/40"
+          : "border-amber-400/60 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/60"
+      )}
       data-testid={testId}
     >
       <span className="text-[11px] font-medium text-muted-foreground">
         {label}
       </span>
-      <span className="text-xs font-medium">
+      <span
+        className={cn(
+          "flex items-center gap-1 text-xs font-medium",
+          model ? undefined : "text-amber-800 dark:text-amber-200"
+        )}
+      >
+        {model ? null : (
+          <AlertTriangle aria-hidden="true" className="h-3 w-3 shrink-0" />
+        )}
         {model ? model.name : t2.chooseModel}
       </span>
       {model ? (
@@ -7042,6 +7662,80 @@ function ShotReferenceStrip({
           images={references
             .filter(r => r.thumbnailUrl)
             .map(r => ({ src: r.thumbnailUrl as string, alt: t2.references }))}
+          initialIndex={lightboxIndex}
+          open={lightboxIndex != null}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Growing row of this shot's user-generated supplementary reference frames
+ *  (Phase 6c, `planning/vd-start-frame-reference-mapping/plan.md`) — a
+ *  DISTINCT row from `ShotReferenceStrip` above (design decision (a) in the
+ *  plan: a labeled row filtered to `source === "reference_frame"`, not
+ *  folded into the general strip), same chip-sized-thumbnail +
+ *  click-to-fullscreen (`ImageLightbox`) treatment. `frames` is passed in
+ *  ALREADY ordered most-recent-first by the caller (server persists
+ *  oldest-first; reversed for display, same convention as the Phase 5d
+ *  stored angle-grids row). Renders nothing when there are no frames yet —
+ *  the row only appears once the first reference frame has been generated,
+ *  hence "growing". */
+function GeneratedReferenceFrameRow({
+  t: t2,
+  shotNumber,
+  frames,
+}: {
+  t: ReturnType<typeof vdCopy>;
+  shotNumber: number;
+  frames: VerticalDramaShotReferenceView[];
+}) {
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  if (frames.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] font-medium text-muted-foreground">
+        {t2.referenceFrameRowLabel}{" "}
+        <span className="text-muted-foreground/70">
+          ({vdCopyWithCount(t2.referenceFrameCountLabel, frames.length)})
+        </span>
+      </span>
+      <div
+        className="flex flex-wrap items-center gap-1"
+        title={t2.referenceFrameRowHint}
+        data-testid={`vd-reference-frame-row-${shotNumber}`}
+      >
+        {frames.map((ref, idx) => (
+          <button
+            key={ref.referenceId}
+            type="button"
+            className="h-9 w-9 shrink-0 overflow-hidden rounded border border-border hover:border-primary"
+            onClick={() => setLightboxIndex(idx)}
+            data-testid={`vd-reference-frame-thumb-${shotNumber}-${ref.referenceId}`}
+          >
+            {ref.thumbnailUrl ? (
+              <img
+                src={ref.thumbnailUrl}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-muted text-[8px] text-muted-foreground">
+                {t2.referenceFrameRowLabel}
+              </div>
+            )}
+          </button>
+        ))}
+      </div>
+      {lightboxIndex != null ? (
+        <ImageLightbox
+          images={frames
+            .filter(r => r.thumbnailUrl)
+            .map(r => ({
+              src: r.thumbnailUrl as string,
+              alt: t2.referenceFrameRowLabel,
+            }))}
           initialIndex={lightboxIndex}
           open={lightboxIndex != null}
           onClose={() => setLightboxIndex(null)}

@@ -122,6 +122,7 @@ import type {
   VerticalDramaTieInReportView,
   VerticalDramaSeasonTieInPlacementView,
 } from "./VerticalDramaTieInReportCard";
+import type { VerticalDramaReferenceFramePromptResult } from "./VerticalDramaReferenceFrameDialog";
 import type { VdWizardPerShotDialoguePreviewShot } from "./VerticalDramaProductionWizard";
 import {
   VerticalDramaEpisodePlanPanel,
@@ -346,8 +347,16 @@ export interface VerticalDramaStoryboardPanelData {
   storyboard?: VerticalDramaStoryboardView | null;
   startFramePlan?: VerticalDramaStartFramePlanView | null;
   motionPromptPack?: VerticalDramaMotionPromptPackView | null;
-  /** Latest active Overview shot summaries; preferred over stale storyboard text. */
-  canonicalShotDrafts?: Array<{ shotNumber: number; summary: string }>;
+  /** Latest active Overview shot summaries; preferred over stale storyboard text.
+   *  `dialogueLines`/`silenceIntent` (2026-07-14) mirror
+   *  `VerticalDramaStoryboardPanelProps.canonicalShotDrafts` exactly — this is
+   *  purely a pass-through prop bag, so the shape must stay identical. */
+  canonicalShotDrafts?: Array<{
+    shotNumber: number;
+    summary: string;
+    dialogueLines: Array<{ speaker: string; line: string }>;
+    silenceIntent?: string;
+  }>;
   assetUrls?: VerticalDramaAssetUrlMap;
   loading?: boolean;
   error?: string | null;
@@ -375,6 +384,11 @@ export interface VerticalDramaStoryboardPanelData {
    *  `dialogue_audio_plan` then `video_motion_prompt_pack` for real. */
   onGenerateVideoPromptPack?: () => void;
   generatingVideoPromptPack?: boolean;
+  /** Repairs every shot's `requiredCharacterRefs` by union-merging in any
+   *  roster character who speaks per that shot's resolved dialogue but is
+   *  missing a reference slot. Free (no LLM/credits), never removes. */
+  onRepairMissingShotCharacters?: () => void;
+  repairingMissingShotCharacters?: boolean;
   /** Renders a real AI image for this shot from its approved prompt. */
   onGenerateStartFrameImage?: (shotNumber: number) => void;
   /** Every shot number currently submitted/polling — a Set (not a single
@@ -423,6 +437,15 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     originalIndex: number
   ) => void;
+  /** Persisted "backup alternate-angle stills" per shot (Phase 5d,
+   *  `planning/vd-start-frame-reference-mapping/plan.md`) — mirrors
+   *  `VerticalDramaStoryboardPanelProps.angleGridAssetsByShotNumber`
+   *  verbatim (pure pass-through). */
+  angleGridAssetsByShotNumber?: Record<
+    number,
+    Array<{ mediaAssetId: number; url: string }>
+  >;
+  onOpenStoredAngleGrid?: (shotNumber: number, url: string) => void;
 
   /* ---- Phase 1.3 — episode-level model selection ---- */
   imageModels?: VerticalDramaCapableModel[];
@@ -436,6 +459,15 @@ export interface VerticalDramaStoryboardPanelData {
    *  Magnific etc., creditCost 0). Persisted by the caller (localStorage). */
   mcpConnectionId?: string | null;
   onSelectMcpConnection?: (connectionId: string | null) => void;
+  /** Group id for the currently-selected SHARED MCP connection — see
+   *  `VerticalDramaStoryboardPanel`'s prop of the same name. */
+  mcpSharedGroupId?: number | null;
+  onSelectMcpSharedGroup?: (groupId: number | null) => void;
+  /** Feature 135 (Hermes/Grok media worker) — sibling of `mcpConnectionId`
+   *  above; pure pass-through to `VerticalDramaStoryboardPanel`'s prop of
+   *  the same name. */
+  hermesConnectionId?: string | null;
+  onHermesConnectionChange?: (connectionId: string | null) => void;
 
   /* ---- Resolution selector (storyboard-complete plan Phase 6.2) ---- */
   selectedImageResolution?: string;
@@ -465,6 +497,23 @@ export interface VerticalDramaStoryboardPanelData {
   addingShotReferenceForShot?: ReadonlySet<number>;
   onUseShotReferenceAsMain?: (shotNumber: number, mediaAssetId: string) => void;
   usingShotReferenceAsMainForShot?: number | null;
+
+  /* ---- Phase 6c — user-controlled supplementary reference frames
+     (`planning/vd-start-frame-reference-mapping/plan.md`, Phase 6) — mirrors
+     `VerticalDramaStoryboardPanelProps` verbatim (pure pass-through). */
+  onGenerateReferenceFramePrompt?: (args: {
+    shotNumber: number;
+    characterKeys: string[];
+    instruction: string;
+  }) => Promise<VerticalDramaReferenceFramePromptResult | null>;
+  generatingReferenceFramePromptForShot?: ReadonlySet<number>;
+  onGenerateReferenceFrameImage?: (args: {
+    shotNumber: number;
+    prompt: string;
+    negativePrompt?: string;
+    characterKeys: string[];
+  }) => Promise<boolean>;
+  generatingReferenceFrameImageForShot?: ReadonlySet<number>;
 
   /* ---- Phase 3.4 — dialogue box ---- */
   onSaveClipDialogue?: (
@@ -743,6 +792,32 @@ export interface VerticalDramaEpisodeWorkspaceProps {
   className?: string;
 }
 
+/** Best-effort localStorage access. Reads/writes here are only a CONVENIENCE
+ *  cache (remembered "Advanced stages" disclosure open-state per series) —
+ *  never the source of truth. They MUST NOT throw: `localStorage.setItem`
+ *  raises `QuotaExceededError` when the origin's storage is full (common for
+ *  heavy users) and `getItem`/`setItem` raise `SecurityError` in
+ *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
+ *  the whole click handler BEFORE the real (state) action fired. Swallow the
+ *  error and let the real action proceed. */
+function safeStorageGet(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* quota exceeded / storage blocked — cache is best-effort, ignore */
+  }
+}
+
 function stageStatusFor(
   states: VerticalDramaEpisodeWorkspaceProps["stageStates"],
   stage: VerticalDramaPipelineStage
@@ -965,14 +1040,14 @@ export function VerticalDramaEpisodeWorkspace({
     )
       return;
     setAdvancedStagesOpen(
-      window.localStorage.getItem(advancedStagesStorageKey) === "true"
+      safeStorageGet(advancedStagesStorageKey) === "true"
     );
   }, [productionWizardEnabled, advancedStagesStorageKey]);
 
   function handleAdvancedStagesOpenChange(next: boolean) {
     setAdvancedStagesOpen(next);
     if (advancedStagesStorageKey && typeof window !== "undefined") {
-      window.localStorage.setItem(advancedStagesStorageKey, String(next));
+      safeStorageSet(advancedStagesStorageKey, String(next));
     }
   }
 
@@ -1136,6 +1211,12 @@ export function VerticalDramaEpisodeWorkspace({
           onEditStartFramePrompt={storyboardPanel?.onEditStartFramePrompt}
           onGenerateVideoPromptPack={storyboardPanel?.onGenerateVideoPromptPack}
           generatingVideoPromptPack={storyboardPanel?.generatingVideoPromptPack}
+          onRepairMissingShotCharacters={
+            storyboardPanel?.onRepairMissingShotCharacters
+          }
+          repairingMissingShotCharacters={
+            storyboardPanel?.repairingMissingShotCharacters
+          }
           onGenerateStartFrameImage={storyboardPanel?.onGenerateStartFrameImage}
           generatingStartFrameImageForShot={
             storyboardPanel?.generatingStartFrameImageForShot
@@ -1180,6 +1261,10 @@ export function VerticalDramaEpisodeWorkspace({
           onDeleteAngleVariationCandidate={
             storyboardPanel?.onDeleteAngleVariationCandidate
           }
+          angleGridAssetsByShotNumber={
+            storyboardPanel?.angleGridAssetsByShotNumber
+          }
+          onOpenStoredAngleGrid={storyboardPanel?.onOpenStoredAngleGrid}
           imageModels={storyboardPanel?.imageModels}
           videoModels={storyboardPanel?.videoModels}
           selectedImageModelId={storyboardPanel?.selectedImageModelId}
@@ -1189,6 +1274,10 @@ export function VerticalDramaEpisodeWorkspace({
           modelsLoading={storyboardPanel?.modelsLoading}
           mcpConnectionId={storyboardPanel?.mcpConnectionId}
           onSelectMcpConnection={storyboardPanel?.onSelectMcpConnection}
+          mcpSharedGroupId={storyboardPanel?.mcpSharedGroupId}
+          onSelectMcpSharedGroup={storyboardPanel?.onSelectMcpSharedGroup}
+          hermesConnectionId={storyboardPanel?.hermesConnectionId}
+          onHermesConnectionChange={storyboardPanel?.onHermesConnectionChange}
           selectedImageResolution={storyboardPanel?.selectedImageResolution}
           selectedVideoResolution={storyboardPanel?.selectedVideoResolution}
           onSelectImageResolution={storyboardPanel?.onSelectImageResolution}
@@ -1212,6 +1301,18 @@ export function VerticalDramaEpisodeWorkspace({
           onUseShotReferenceAsMain={storyboardPanel?.onUseShotReferenceAsMain}
           usingShotReferenceAsMainForShot={
             storyboardPanel?.usingShotReferenceAsMainForShot
+          }
+          onGenerateReferenceFramePrompt={
+            storyboardPanel?.onGenerateReferenceFramePrompt
+          }
+          generatingReferenceFramePromptForShot={
+            storyboardPanel?.generatingReferenceFramePromptForShot
+          }
+          onGenerateReferenceFrameImage={
+            storyboardPanel?.onGenerateReferenceFrameImage
+          }
+          generatingReferenceFrameImageForShot={
+            storyboardPanel?.generatingReferenceFrameImageForShot
           }
           onSaveClipDialogue={storyboardPanel?.onSaveClipDialogue}
           savingDialogueForClip={storyboardPanel?.savingDialogueForClip}
@@ -1860,6 +1961,14 @@ export function VerticalDramaEpisodeWorkspace({
                         mcpConnectionId={storyboardPanel?.mcpConnectionId}
                         onSelectMcpConnection={
                           storyboardPanel?.onSelectMcpConnection
+                        }
+                        mcpSharedGroupId={storyboardPanel?.mcpSharedGroupId}
+                        onSelectMcpSharedGroup={
+                          storyboardPanel?.onSelectMcpSharedGroup
+                        }
+                        hermesConnectionId={storyboardPanel?.hermesConnectionId}
+                        onHermesConnectionChange={
+                          storyboardPanel?.onHermesConnectionChange
                         }
                         qualityReview={storyboardPanel?.qualityReview}
                         onRunQualityReview={storyboardPanel?.onRunQualityReview}

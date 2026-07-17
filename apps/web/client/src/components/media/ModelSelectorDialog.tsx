@@ -319,17 +319,31 @@ function ModelCard({ model, isSelected, onSelect }: ModelCardProps) {
                 {modeLabel}
               </Badge>
             )}
-            <Badge
-              variant={transportConfig.transport === "mcp" ? "default" : "outline"}
-              className={cn(
-                "text-[10px] px-1.5 py-0",
-                transportConfig.transport === "mcp"
-                  ? "bg-sky-500 text-white"
-                  : "border-slate-300 bg-white text-slate-600",
-              )}
-            >
-              {getMediaModelTransportLabel(transportConfig)}
-            </Badge>
+            {transportConfig.transport === "hermes_worker" ? (
+              // Feature 135 — distinct badge for the Hermes/Grok transport
+              // arm. Deliberately never reuses `getMediaModelTransportLabel`'s
+              // bare "Hermes" string here — the display name must always read
+              // "Grok via Hermes" (never bare "Grok Imagine", which is the
+              // separate kie.ai model row).
+              <Badge
+                variant="default"
+                className="text-[10px] px-1.5 py-0 bg-violet-500 text-white"
+              >
+                Grok via Hermes
+              </Badge>
+            ) : (
+              <Badge
+                variant={transportConfig.transport === "mcp" ? "default" : "outline"}
+                className={cn(
+                  "text-[10px] px-1.5 py-0",
+                  transportConfig.transport === "mcp"
+                    ? "bg-sky-500 text-white"
+                    : "border-slate-300 bg-white text-slate-600",
+                )}
+              >
+                {getMediaModelTransportLabel(transportConfig)}
+              </Badge>
+            )}
             {model.isDefault && (
               <Badge className="bg-yellow-100 text-yellow-800 text-[10px] px-1.5 py-0">
                 <Star className="h-3 w-3 mr-0.5 inline" />

@@ -285,6 +285,11 @@ export const VD_COPY = {
       "Select an MCP connection before using this image model.",
     mcpConnectionMissingToastVideo:
       "Select an MCP connection before using this video model.",
+    imageModelRequiredNotice:
+      "No image model selected — choose a model before you can generate.",
+    videoModelRequiredNotice:
+      "No video model selected — choose a model before you can generate.",
+    selectModelCta: "Select model",
 
     /* ---- Shot reference strip (Phase 2.5) ---- */
     references: "References",
@@ -305,6 +310,38 @@ export const VD_COPY = {
     addAsReferences: "Add as references ({n})",
     pickBestAngleTitle: "Pick the best angle",
     angleTileCount: "{n} tiles",
+    /* ---- Stored angle-grid re-open (Phase 5d, `planning/vd-start-frame-
+       reference-mapping/plan.md`) ---- */
+    storedAngleGridsLabel: "Saved grids",
+    storedAngleGridsHint: "Reopen a previously generated 3x3 grid",
+
+    /* ---- Supplementary reference-frame dialog (Phase 6c, `planning/vd-
+       start-frame-reference-mapping/plan.md`) — user-controlled extra
+       reference frames beyond the shot's main start frame. ---- */
+    referenceFrameGenerateButton: "Generate reference frame (AI)",
+    referenceFrameDialogTitle: "Generate a reference frame",
+    referenceFrameDialogHint:
+      "Pick which characters appear, then describe the pose, camera angle, or action — the app writes a full image prompt for you to review before rendering.",
+    referenceFrameCharactersLabel: "Characters in this frame",
+    referenceFrameNoPortraitHint: "No character portrait yet",
+    referenceFrameInstructionLabel: "Directive (pose / camera / action)",
+    referenceFrameInstructionPlaceholder:
+      "e.g. ไอริณโอบกอดภาคิน / side camera angle / ภาคินยืนหันหลังให้กล้อง",
+    referenceFrameGeneratePromptButton: "Generate prompt",
+    referenceFrameGeneratingPrompt: "Writing prompt…",
+    referenceFramePromptLabel: "Generated prompt (editable)",
+    referenceFrameNegativePromptLabel: "Negative prompt (optional)",
+    referenceFrameBackToSelection: "Back to selection",
+    referenceFrameConfirmRenderButton: "Generate image",
+    referenceFrameGeneratingImage: "Rendering…",
+    referenceFrameCreditsNote: "Credits used to author this prompt: {n}",
+    referenceFrameCountLabel: "{n}/10 reference frames",
+    referenceFrameCapReached:
+      "This shot already has 10 reference frames — remove one before generating another.",
+    referenceFrameRowLabel: "Generated reference frames",
+    referenceFrameRowHint: "Extra reference frames for this shot — click to view full size.",
+    referenceFrameRenderSuccess: "Reference frame generated.",
+    referenceFrameRenderFailed: "Failed to generate the reference frame.",
 
     /* ---- Upload video file per shot (externally-generated clip) ---- */
     uploadVideoClip: "Upload video",
@@ -453,6 +490,13 @@ export const VD_COPY = {
     usedVisionNote: "Analyzed from the actual image",
     generateVideoPromptPackWholeEpisode:
       "Generate video prompts for the whole Sub-episode",
+
+    /* ---- Model-selection required (server now fail-closed, no silent
+       DEFAULT_MODELS fallback) — disabled-button tooltips for every
+       generate control that needs an explicit episode-level model pick
+       first. */
+    selectImageModelFirst: "Select an image model first.",
+    selectVideoModelFirst: "Select a video model first.",
 
     /* ---- Regenerate clip dialogue (2026-07-07 unusable-dialogue fix) ---- */
     regenerateClipDialogue: "Generate new dialogue (AI)",
@@ -937,6 +981,11 @@ export const VD_COPY = {
       "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลภาพนี้",
     mcpConnectionMissingToastVideo:
       "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลวิดีโอนี้",
+    imageModelRequiredNotice:
+      "ยังไม่ได้เลือกโมเดลภาพ — กรุณาเลือกโมเดลก่อนจึงจะสร้างภาพได้",
+    videoModelRequiredNotice:
+      "ยังไม่ได้เลือกโมเดลวิดีโอ — กรุณาเลือกโมเดลก่อนจึงจะสร้างวิดีโอได้",
+    selectModelCta: "เลือกโมเดล",
 
     /* ---- Shot reference strip (Phase 2.5) ---- */
     references: "ภาพอ้างอิง",
@@ -957,6 +1006,38 @@ export const VD_COPY = {
     addAsReferences: "เพิ่มเป็นภาพอ้างอิง ({n})",
     pickBestAngleTitle: "เลือกมุมกล้องที่ดีที่สุด",
     angleTileCount: "{n} ภาพ",
+    /* ---- Stored angle-grid re-open (Phase 5d, `planning/vd-start-frame-
+       reference-mapping/plan.md`) ---- */
+    storedAngleGridsLabel: "กริดที่สร้างไว้",
+    storedAngleGridsHint: "เปิดกริด 3x3 ที่เคยสร้างไว้อีกครั้ง",
+
+    /* ---- Supplementary reference-frame dialog (Phase 6c, `planning/vd-
+       start-frame-reference-mapping/plan.md`) — user-controlled extra
+       reference frames beyond the shot's main start frame. ---- */
+    referenceFrameGenerateButton: "สร้างเฟรมอ้างอิง (AI)",
+    referenceFrameDialogTitle: "สร้างเฟรมอ้างอิง",
+    referenceFrameDialogHint:
+      "เลือกตัวละครที่ปรากฏในเฟรม แล้วพิมพ์อธิบายท่าทาง มุมกล้อง หรือแอ็กชัน — ระบบจะเขียน prompt ภาพให้ตรวจสอบก่อนสั่งเรนเดอร์",
+    referenceFrameCharactersLabel: "ตัวละครในเฟรมนี้",
+    referenceFrameNoPortraitHint: "ยังไม่มีภาพตัวละคร",
+    referenceFrameInstructionLabel: "คำสั่ง (ท่าทาง / มุมกล้อง / แอ็กชัน)",
+    referenceFrameInstructionPlaceholder:
+      "เช่น: ไอริณโอบกอดภาคิน / มุมกล้องด้านข้าง / ภาคินยืนหันหลังให้กล้อง",
+    referenceFrameGeneratePromptButton: "สร้าง prompt",
+    referenceFrameGeneratingPrompt: "กำลังเขียน prompt…",
+    referenceFramePromptLabel: "prompt ที่สร้าง (แก้ไขได้)",
+    referenceFrameNegativePromptLabel: "negative prompt (ถ้ามี)",
+    referenceFrameBackToSelection: "กลับไปแก้ไขตัวเลือก",
+    referenceFrameConfirmRenderButton: "สร้างภาพ",
+    referenceFrameGeneratingImage: "กำลังเรนเดอร์…",
+    referenceFrameCreditsNote: "เครดิตที่ใช้สร้าง prompt: {n}",
+    referenceFrameCountLabel: "{n}/10 เฟรมอ้างอิง",
+    referenceFrameCapReached:
+      "ช็อตนี้มีเฟรมอ้างอิงครบ 10 ภาพแล้ว — ลบภาพเก่าก่อนสร้างใหม่",
+    referenceFrameRowLabel: "เฟรมอ้างอิงที่สร้างไว้",
+    referenceFrameRowHint: "เฟรมอ้างอิงเพิ่มเติมของช็อตนี้ — คลิกเพื่อดูขนาดเต็ม",
+    referenceFrameRenderSuccess: "สร้างเฟรมอ้างอิงสำเร็จ",
+    referenceFrameRenderFailed: "สร้างเฟรมอ้างอิงไม่สำเร็จ",
 
     /* ---- Upload video file per shot (externally-generated clip) ---- */
     uploadVideoClip: "อัปโหลดวิดีโอ",
@@ -1097,6 +1178,8 @@ export const VD_COPY = {
     generateShotVideoPromptNeedsImage: "ต้องมีภาพหลักของช็อตก่อน",
     generateShotVideoPromptFailed: "สร้างพรอมต์วิดีโอไม่สำเร็จ",
     usedVisionNote: "วิเคราะห์จากภาพจริง",
+    selectImageModelFirst: "เลือกโมเดลภาพก่อนสร้าง",
+    selectVideoModelFirst: "เลือกโมเดลวิดีโอก่อนสร้าง",
 
     /* ---- Regenerate clip dialogue (2026-07-07 unusable-dialogue fix) ---- */
     regenerateClipDialogue: "สร้างบทพูดใหม่ (AI)",

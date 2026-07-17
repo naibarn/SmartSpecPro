@@ -322,6 +322,19 @@ export const verticalDramaCopy = {
     th: "ใช้เวลานานเกินไป ลองตรวจสอบภายหลัง",
     en: "Taking too long — check back later.",
   },
+  /**
+   * Resilient-resume upgrade (2026-07-14, see
+   * `planning/vertical-drama-deep-story-resilient-resume/plan.md` item D) —
+   * shown as an INFO toast (not error) when the client's poll budget for
+   * `deep_generate`/`extend` is exhausted while the job is still
+   * queued/running. Distinct from `storyJobTimeoutError`, which stays an
+   * error toast for `onNotFound` (a genuinely missing job record) and for
+   * `VerticalDramaImproveScriptCard.tsx`'s own timeout path.
+   */
+  storyJobStillRunningBackground: {
+    th: "งานยังทำงานอยู่เบื้องหลัง ระบบจะแจ้งเตือนเมื่อเสร็จ — เปิดหน้านี้ค้างไว้หรือกลับมาดูภายหลังได้",
+    en: "Still working in the background — we'll notify you when it's done. You can keep this page open or come back later.",
+  },
 
   deepStoryDraftsShotViewerToggle: {
     th: "ดูร่าง 9 ช็อต + บทพูด",
@@ -351,6 +364,16 @@ export const verticalDramaCopy = {
     th: "สถานะความครบถ้วนของบทพูด",
     en: "Dialogue completeness status",
   },
+  /**
+   * Production-grade full-story generation upgrade (2026-07-13) — per-shot
+   * `characters` chip group aria-label in the shot viewer. Only rendered
+   * when a shot's `characters` array is present (optional/additive; absent
+   * for drafts generated before this field existed).
+   */
+  deepStoryDraftsShotCharactersGroupLabel: {
+    th: "ตัวละครในช็อตนี้",
+    en: "Characters in this shot",
+  },
 
   /* ---------------------------------------------------------------------- */
   /* Consolidated primary action (spec addendum, added 2026-07-08) — kills   */
@@ -367,6 +390,18 @@ export const verticalDramaCopy = {
   deepStoryDraftsUpdateCta: {
     th: "อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย (9 ช็อต + บทพูด)",
     en: "Update detailed story for every Sub-episode (9 shots + dialogue)",
+  },
+  /**
+   * Large-series no-op fix (2026-07-14, see
+   * `planning/vertical-drama-deep-draft-update-all-noop/plan.md`) — shown
+   * when `generateStoryBibleDeep` returns `{ jobId: null, alreadyComplete:
+   * true }` (every requested episode already has a detailed draft, so there
+   * was nothing left to enqueue). Info tone, not error/success — nothing ran,
+   * but nothing is wrong either.
+   */
+  deepStoryDraftsAlreadyCompleteInfo: {
+    th: "ทุกตอนย่อยมีร่างละเอียดครบแล้ว ไม่มีตอนที่ต้องสร้างเพิ่ม",
+    en: "Every Sub-episode already has a detailed draft — nothing left to generate.",
   },
   deepStoryDraftsScopeGroupLabel: {
     th: "ขอบเขตการสร้าง",
@@ -414,9 +449,17 @@ export const verticalDramaCopy = {
     th: "ร่างรอบเดียวต่อชุดตอนย่อย ไม่มีการตรวจซ้ำหรือซ่อมอัตโนมัติ",
     en: "Drafts once per chunk of Sub-episodes — no re-checking or auto-repair.",
   },
+  /**
+   * Default mode as of the production-grade full-story generation upgrade
+   * (2026-07-13, `planning/vertical-drama-full-story-production-grade/plan.md`)
+   * — the confirm dialog now preselects "premium" every time it opens (see
+   * `VerticalDramaDeepStoryDraftsActions`'s `openConfirmDialog`), so the
+   * label calls this out as the recommended choice; the user can still
+   * switch to "standard" explicitly.
+   */
   deepStoryDraftsModePremiumLabel: {
-    th: "คิดหลายรอบ (พรีเมียม)",
-    en: "Multi-round thinking (premium)",
+    th: "คิดหลายรอบ (พรีเมียม) — แนะนำ",
+    en: "Multi-round thinking (premium) — recommended",
   },
   deepStoryDraftsExtendPremiumCheckboxLabel: {
     th: "ใช้โหมดพรีเมียมสำหรับการขยายนี้",
@@ -1036,7 +1079,7 @@ export function deepStoryDraftsSilenceIntentLabel(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Premium multi-round drafts (W11-A/W11-B) — the 8 judged dimensions +       */
+/* Premium multi-round drafts (W11-A/W11-B) — the 14 judged dimensions +      */
 /* interpolated scorecard/mode-picker Copy Contract strings.                  */
 /*                                                                            */
 /* `PREMIUM_DRAFT_SCORE_DIMENSIONS` mirrors the server's own                  */
@@ -1059,12 +1102,18 @@ export const PREMIUM_DRAFT_SCORE_DIMENSIONS = [
   "cliffhanger_strength",
   "continuity_with_recap",
   "season_cohesion",
+  "clarity",
+  "character_consistency",
+  "evidence_payoff",
+  "threat_escalation",
+  "shot_completeness",
+  "dialogue_accessibility",
 ] as const;
 
 export type VerticalDramaPremiumDraftScoreDimension =
   (typeof PREMIUM_DRAFT_SCORE_DIMENSIONS)[number];
 
-/** Bilingual labels for the 8 premium-draft judged dimensions (spec W11-A/W11-B). */
+/** Bilingual labels for the 14 premium-draft judged dimensions (spec W11-A/W11-B; `shot_completeness`/`dialogue_accessibility` added in the 2026-07-13 production-grade full-story upgrade). */
 export const deepStoryDraftsPremiumDimensionCopy: Record<
   VerticalDramaPremiumDraftScoreDimension,
   { th: string; en: string }
@@ -1083,6 +1132,21 @@ export const deepStoryDraftsPremiumDimensionCopy: Record<
     en: "Continuity with recap",
   },
   season_cohesion: { th: "ความกลมกลืนกับภาพรวมซีซั่น", en: "Season cohesion" },
+  clarity: { th: "ความชัดเจนเข้าใจง่าย", en: "Clarity" },
+  character_consistency: {
+    th: "ความสม่ำเสมอของตัวละคร",
+    en: "Character consistency",
+  },
+  evidence_payoff: { th: "การจ่ายผลของเบาะแส", en: "Evidence payoff" },
+  threat_escalation: { th: "การยกระดับภัยคุกคาม", en: "Threat escalation" },
+  shot_completeness: {
+    th: "ความครบถ้วนของช็อต (ตัวละคร/อารมณ์/สถานที่)",
+    en: "Shot completeness",
+  },
+  dialogue_accessibility: {
+    th: "ความเข้าใจง่ายของบทพูด",
+    en: "Dialogue accessibility",
+  },
 };
 
 /** Defensive lookup mirroring `arcDriftReasonLabel`/`deepStoryDraftsSilenceIntentLabel` — unknown values fall back to the raw code, never throws. */
@@ -1126,14 +1190,96 @@ export function deepStoryDraftsScorecardBelowFloorDimText(
     : `Still below floor: ${label} ${formatted}/5`;
 }
 
-/** Copy Contract: "แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~{callEstimate} ครั้งเรียก)" — premium mode's one-line hint in the confirm dialog's mode picker (call estimate mirrors the server's `estimatePremiumDeepDraftCalls`, DISPLAY MATH ONLY). */
+/**
+ * Copy Contract: "ระบบจะแตกร่างหลายแบบ ให้ AI ตรวจให้คะแนน และวนแก้จนผ่านเกณฑ์
+ * ก่อนส่งกลับ (ใช้เวลานานขึ้น ~{callEstimate} ครั้งเรียก)" — premium mode's
+ * one-line hint in the confirm dialog's mode picker (call estimate mirrors
+ * the server's `estimatePremiumDeepDraftCalls`, DISPLAY MATH ONLY). Updated
+ * for the production-grade full-story generation upgrade (2026-07-13) — this
+ * is now the DEFAULT-selected mode, so the hint spells out the full
+ * fan-out/judge/revise loop and its longer runtime rather than the older,
+ * terser "3 takes" phrasing.
+ */
 export function deepStoryDraftsModePremiumHintText(
   lang: VerticalDramaLang,
   callEstimate: number
 ): string {
   return lang === "th"
-    ? `แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~${callEstimate} ครั้งเรียก)`
-    : `Writes 3 different takes, checks each one, and auto-repairs weak spots (~${callEstimate} calls)`;
+    ? `ระบบจะแตกร่างหลายแบบ ให้ AI ตรวจให้คะแนน และวนแก้จนผ่านเกณฑ์ก่อนส่งกลับ (ใช้เวลานานขึ้น ~${callEstimate} ครั้งเรียก)`
+    : `The system drafts several takes, has AI score them, and revises until they pass before returning (takes longer, ~${callEstimate} calls)`;
+}
+
+/**
+ * Copy Contract: "ฉาก: {locationKey}" — a shot draft's `location_key` (spec
+ * `planning/vertical-drama-full-story-production-grade/plan.md`'s "Data
+ * contract"), shown as a compact read-only line in the shot viewer. Only
+ * ever rendered when the field is present — absent for drafts generated
+ * before this field existed.
+ */
+export function deepStoryDraftsShotLocationText(
+  lang: VerticalDramaLang,
+  locationKey: string
+): string {
+  return lang === "th" ? `ฉาก: ${locationKey}` : `Location: ${locationKey}`;
+}
+
+/**
+ * Copy Contract: "{name} — {emotion}", or "{name} — {emotion} → {emotionAfter}"
+ * when the shot's per-character `emotion_after` is present (the character's
+ * emotion shifts within the shot) — one chip per shot character in the shot
+ * viewer.
+ */
+export function deepStoryDraftsShotCharacterChipText(
+  lang: VerticalDramaLang,
+  name: string,
+  emotion: string,
+  emotionAfter?: string
+): string {
+  const base = `${name} — ${emotion}`;
+  return emotionAfter ? `${base} → ${emotionAfter}` : base;
+}
+
+/**
+ * Copy Contract: "เพิ่มฉากใหม่ {n} ฉาก" — appended to the deep-draft success
+ * toast when this run's `new_locations` (per-chunk, persisted server-side
+ * into `vertical_drama_locations`) actually created new location rows.
+ * Reads the job result's `createdLocations` count defensively — see
+ * `resolveDeepDraftCreatedLocationsCount` in `VerticalDramaDeepStoryDraftsPanel.tsx`.
+ */
+export function deepStoryDraftsNewLocationsCreatedText(
+  lang: VerticalDramaLang,
+  count: number
+): string {
+  return lang === "th"
+    ? `เพิ่มฉากใหม่ ${count} ฉาก`
+    : `Added ${count} new location${count === 1 ? "" : "s"}`;
+}
+
+/**
+ * Set B (`vd-stuck-generation-and-lost-characters` plan, 2026-07-16) — Copy
+ * Contract: "สร้างตัวละครใหม่ {n} ตัวจากเนื้อเรื่อง — ต้องตั้งค่า DNA/ภาพ",
+ * appended (as a SEPARATE toast, composing with — never overwriting —
+ * `deepStoryDraftsNewLocationsCreatedText`'s own toast) when this run's
+ * `ensureRosterCharactersFromStory` auto-registered one or more
+ * dialogue-speaker/shot-character rows (`data.source:
+ * "auto_registered_from_story"`, `needsSetup: true`). Reads the job
+ * result's `createdCharacters` count defensively — see
+ * `resolveDeepDraftCreatedCharactersSummary` in
+ * `VerticalDramaDeepStoryDraftsPanel.tsx`. `names` is optional (bounded,
+ * best-effort) and appended in parentheses only when at least one name is
+ * available — never renders an empty "()" suffix.
+ */
+export function deepStoryDraftsNewCharactersCreatedText(
+  lang: VerticalDramaLang,
+  count: number,
+  names?: string[]
+): string {
+  const base =
+    lang === "th"
+      ? `สร้างตัวละครใหม่ ${count} ตัวจากเนื้อเรื่อง — ต้องตั้งค่า DNA/ภาพ`
+      : `Created ${count} new character${count === 1 ? "" : "s"} from the story — needs DNA/portrait setup`;
+  const shownNames = names?.filter(name => name.trim().length > 0) ?? [];
+  return shownNames.length > 0 ? `${base} (${shownNames.join(", ")})` : base;
 }
 
 /* -------------------------------------------------------------------------- */

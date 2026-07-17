@@ -11,6 +11,7 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ImageIcon,
+  AlertCircle,
   Loader2,
   Maximize2,
   Minimize2,
@@ -56,6 +57,7 @@ import type {
   VerticalDramaPresetMixWeight,
   VerticalDramaPresetVisualIdentity,
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import type { NarrativeRole, RoleTier } from "@shared/verticalDramaSeries/narrativeRole";
 import {
   AUDIENCE_AGE_RATINGS,
   AUDIENCE_AGE_RATING_LABELS,
@@ -101,6 +103,16 @@ interface WizardState {
   tone: string;
   cliffhangerStyle: string;
   characters: string;
+  /** Structured role facts retained alongside the free-text draft so preset
+   * roles survive the wizard serialization step. */
+  characterProfiles?: Array<{
+    name: string;
+    role: string;
+    description: string;
+    narrativeRole?: string;
+    roleTier?: string;
+    occupation?: string;
+  }>;
   /**
    * Location Visual Bible (dedicated series tab + wizard seed field) —
    * free-form "one location per line" draft, same shape/convention as
@@ -217,12 +229,7 @@ export function CreateSeriesWizard({
         );
       },
       onError: (err: { message?: string }) => {
-        toast.error(
-          err?.message ||
-            (lang === "th"
-              ? "ผสมแนวเรื่องไม่สำเร็จ ลองลดจำนวนแนวหรือใส่บริบทให้ชัดขึ้น"
-              : "Could not mix these story flavors. Try fewer flavors or clearer context.")
-        );
+        toast.error(formatPresetSynthesisError(err, lang));
       },
     });
 
@@ -288,6 +295,17 @@ export function CreateSeriesWizard({
         .map(c => `${c.name} — ${c.role}: ${c.description}`)
         .join("\n")
     );
+    set(
+      "characterProfiles",
+      preset.characters.map(c => ({
+        name: c.name,
+        role: c.role,
+        description: c.description,
+        narrativeRole: c.narrativeRole,
+        roleTier: c.roleTier,
+        occupation: c.occupation,
+      })),
+    );
     set("visualBible", preset.visualBible);
     // Spec §8.2.2.A flow-through rule (section-15) — remembered so `create`
     // can additively stamp this preset's `visualIdentityJson` (if any) into
@@ -316,6 +334,14 @@ export function CreateSeriesWizard({
       characters: draft.characters
         .map(c => `${c.name} — ${c.role}: ${c.description}`)
         .join("\n"),
+      characterProfiles: draft.characters.map(c => ({
+        name: c.name,
+        role: c.role,
+        description: c.description,
+        narrativeRole: c.narrativeRole,
+        roleTier: c.roleTier,
+        occupation: c.occupation,
+      })),
       visualBible: draft.visualBible,
       // An AI-mixed draft is not itself a single stored preset row — clear
       // any single-preset `appliedPresetId` a prior "Use this preset" click
@@ -372,6 +398,10 @@ export function CreateSeriesWizard({
       );
       return;
     }
+    // Clear the previous response/error before a new request so a stale draft
+    // cannot look like the result of the current selection and no refresh is
+    // needed to recover the wizard state after a failed request.
+    synthesizePresetMutation.reset();
     synthesizePresetMutation.mutate({
       locale: lang,
       selectedPresetIds: mixPresetIds,
@@ -458,6 +488,7 @@ export function CreateSeriesWizard({
               visualStyle: form.visualBible,
               cliffhangerStyle: form.cliffhangerStyle,
               charactersDraft: form.characters,
+              characterProfiles: form.characterProfiles,
               locationsDraft: form.locations,
             }
           : undefined,
@@ -562,6 +593,11 @@ export function CreateSeriesWizard({
             onMixWeightChange={setMixWeight}
             mixDraft={synthesizePresetMutation.data?.draft}
             mixDraftLoading={synthesizePresetMutation.isPending}
+            mixDraftError={
+              synthesizePresetMutation.error
+                ? formatPresetSynthesisError(synthesizePresetMutation.error, lang)
+                : undefined
+            }
             onToggleMixPreset={toggleMixPreset}
             onToggleMixCategory={toggleMixCategory}
             onSynthesizePreset={handleSynthesizePreset}
@@ -643,6 +679,9 @@ interface GenrePresetCharacter {
   name: string;
   role: string;
   description: string;
+  narrativeRole?: NarrativeRole;
+  roleTier?: RoleTier;
+  occupation?: string;
 }
 
 interface GenrePreset {
@@ -677,6 +716,13 @@ interface SynthesizedGenrePresetDraftBase {
   seasonArc: string;
   tone: string;
   cliffhangerStyle: string;
+  creatorSummary?: {
+    whatItIsAbout: string;
+    protagonistAndGoal: string;
+    conflictAndDiscovery: string;
+    centralMystery: string;
+    decisionNotes: string[];
+  };
   characters: GenrePresetCharacter[];
   visualBible: string;
   mixRecipe?: {
@@ -710,6 +756,35 @@ type SynthesizedGenrePresetDraft =
   | SynthesizedGenrePresetDraftV1
   | SynthesizedGenrePresetDraftV2;
 
+function formatPresetSynthesisError(
+  error: unknown,
+  lang: "th" | "en",
+): string {
+  const raw =
+    typeof error === "object" && error !== null && "message" in error
+      ? String((error as { message?: unknown }).message ?? "")
+      : "";
+  const normalized = raw.toLowerCase();
+  if (/credit|เครดิต|insufficient/.test(normalized)) {
+    return lang === "th"
+      ? "เครดิตไม่พอสำหรับการผสมเรื่อง — ตรวจเครดิตแล้วลองใหม่"
+      : "Not enough credits to mix the story — check credits and try again.";
+  }
+  if (/timeout|timed out|network|upstream|rate limit|429|502|503|504/.test(normalized)) {
+    return lang === "th"
+      ? "การเชื่อมต่อบริการ AI ขัดข้องชั่วคราว — กดลองใหม่ได้โดยไม่ต้องรีเฟรชหน้า"
+      : "The AI service is temporarily unavailable — retry without refreshing the page.";
+  }
+  if (/schema|json|validation|unprocessable|preset synthesis/.test(normalized)) {
+    return lang === "th"
+      ? "AI สร้าง draft ที่อ่านได้ไม่ครบ ระบบยังไม่ได้ใช้ draft นี้ — กดลองใหม่ได้"
+      : "The AI draft was incomplete or unreadable. It was not applied — retry to generate a new draft.";
+  }
+  return lang === "th"
+    ? "ผสมแนวเรื่องไม่สำเร็จ — กดลองใหม่ได้โดยไม่ต้องรีเฟรชหน้า"
+    : "The story mix failed — retry without refreshing the page.";
+}
+
 interface MarketplaceProductOption {
   id: string;
   productName: string;
@@ -739,6 +814,7 @@ function WizardStep({
   onMixWeightChange,
   mixDraft,
   mixDraftLoading,
+  mixDraftError,
   onToggleMixPreset,
   onToggleMixCategory,
   onSynthesizePreset,
@@ -768,6 +844,7 @@ function WizardStep({
   onMixWeightChange: (id: string, weight: VerticalDramaPresetMixWeight) => void;
   mixDraft?: SynthesizedGenrePresetDraft;
   mixDraftLoading: boolean;
+  mixDraftError?: string;
   onToggleMixPreset: (id: string) => void;
   onToggleMixCategory: (category: string) => void;
   onSynthesizePreset: () => void;
@@ -841,6 +918,7 @@ function WizardStep({
               onWeightChange={onMixWeightChange}
               draft={mixDraft}
               loading={mixDraftLoading}
+              errorMessage={mixDraftError}
               onTogglePreset={onToggleMixPreset}
               onToggleCategory={onToggleMixCategory}
               onGenerate={onSynthesizePreset}
@@ -1057,7 +1135,13 @@ function WizardStep({
           >
             <Textarea
               value={form.characters}
-              onChange={e => set("characters", e.target.value)}
+              onChange={e => {
+                set("characters", e.target.value);
+                // Any free-text edit invalidates the structured preset
+                // alignment; the server will normalize explicit role words
+                // from the edited draft and mark ambiguous rows for review.
+                set("characterProfiles", undefined);
+              }}
               rows={6}
             />
             {/* F132F (spec 132 §7.3, added 2026-07-09) — this freeform textarea
@@ -1434,6 +1518,7 @@ function MixAndMatchPresetPanel({
   onWeightChange,
   draft,
   loading,
+  errorMessage,
   onTogglePreset,
   onToggleCategory,
   onGenerate,
@@ -1458,6 +1543,7 @@ function MixAndMatchPresetPanel({
   onWeightChange: (id: string, weight: VerticalDramaPresetMixWeight) => void;
   draft?: SynthesizedGenrePresetDraft;
   loading: boolean;
+  errorMessage?: string;
   onTogglePreset: (id: string) => void;
   onToggleCategory: (category: string) => void;
   onGenerate: () => void;
@@ -1468,6 +1554,11 @@ function MixAndMatchPresetPanel({
   hasUserPremise?: boolean;
 }) {
   const th = lang === "th";
+  // Local-only category filter (purely a UI aid — never touches which
+  // categories are actually SELECTED for the mix). Matches against the raw
+  // slug plus BOTH the Thai and English labels so a search works regardless
+  // of the current UI language.
+  const [categorySearch, setCategorySearch] = useState("");
   const selectionCount = selectedPresetIds.length;
   const canApplySingle = selectionCount === 1 && !loading;
   const canGenerate = selectionCount >= 2 && selectionCount <= 5 && !loading;
@@ -1480,6 +1571,19 @@ function MixAndMatchPresetPanel({
     },
     {}
   );
+  const categorySearchQuery = categorySearch.trim().toLowerCase();
+  const visibleCategories = categorySearchQuery
+    ? categories.filter(
+        category =>
+          category.toLowerCase().includes(categorySearchQuery) ||
+          genrePresetCategoryLabel(category, "th")
+            .toLowerCase()
+            .includes(categorySearchQuery) ||
+          genrePresetCategoryLabel(category, "en")
+            .toLowerCase()
+            .includes(categorySearchQuery)
+      )
+    : categories;
   const filteredPresets = presets.filter(preset => {
     if (selectedPresetIdSet.has(preset.id)) return true;
     const matchesCategory =
@@ -1563,35 +1667,60 @@ function MixAndMatchPresetPanel({
               : `${selectedCategories.length} filter categories`}
           </p>
         </div>
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            value={categorySearch}
+            onChange={e => setCategorySearch(e.target.value)}
+            placeholder={
+              th ? "ค้นหาหมวดแนวเรื่อง…" : "Search categories…"
+            }
+            className="h-9 pl-9 text-xs"
+            aria-label={th ? "ค้นหาหมวดแนวเรื่อง" : "Search categories"}
+          />
+        </div>
+        {/* Capped at 3 columns on purpose: a 4th column squeezes the long Thai
+            category labels past the button edge on tablet widths. */}
         <div
           className={cn(
-            "grid grid-cols-2 gap-1.5 overflow-y-auto rounded-lg border bg-background p-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5",
+            "grid grid-cols-2 gap-1.5 overflow-y-auto rounded-lg border bg-background p-2 sm:grid-cols-3",
             expanded ? "max-h-[18rem]" : "max-h-[14rem]"
           )}
         >
-          {categories.map(category => {
-            const selected = selectedCategories.includes(category);
-            const count = categoryCounts[category] ?? 0;
-            return (
-              <button
-                key={category}
-                type="button"
-                onClick={() => onToggleCategory(category)}
-                aria-pressed={selected}
-                className={cn(
-                  "min-h-8 rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  selected
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "bg-background hover:bg-accent"
-                )}
-              >
-                {genrePresetCategoryLabel(category, lang)}
-                {count > 0 && (
-                  <span className="ml-1 opacity-70">({count})</span>
-                )}
-              </button>
-            );
-          })}
+          {visibleCategories.length > 0 ? (
+            visibleCategories.map(category => {
+              const selected = selectedCategories.includes(category);
+              const count = categoryCounts[category] ?? 0;
+              return (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => onToggleCategory(category)}
+                  aria-pressed={selected}
+                  className={cn(
+                    "min-h-8 break-words rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    selected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-accent"
+                  )}
+                >
+                  {genrePresetCategoryLabel(category, lang)}
+                  {count > 0 && (
+                    <span className="ml-1 opacity-70">({count})</span>
+                  )}
+                </button>
+              );
+            })
+          ) : (
+            <p className="col-span-full py-4 text-center text-xs text-muted-foreground">
+              {th
+                ? `ไม่พบหมวดที่ตรงกับ “${categorySearch.trim()}”`
+                : `No categories match “${categorySearch.trim()}”`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -1789,6 +1918,28 @@ function MixAndMatchPresetPanel({
         )}
       </div>
 
+      {errorMessage && (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{errorMessage}</span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onGenerate}
+            disabled={loading}
+            className="shrink-0"
+          >
+            {th ? "ลองสร้างใหม่" : "Retry"}
+          </Button>
+        </div>
+      )}
+
       {selectionCount === 0 && (
         <p className="text-xs text-muted-foreground">
           {th
@@ -1813,11 +1964,53 @@ function MixAndMatchPresetPanel({
                   {draft.characters.length} {th ? "ตัวละคร" : "characters"}
                 </Badge>
               </div>
-              {draft.mixRecipe?.rationale && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {draft.mixRecipe.rationale}
-                </p>
-              )}
+              {(() => {
+                const summary = draft.creatorSummary ?? {
+                  whatItIsAbout: draft.logline,
+                  protagonistAndGoal: draft.mainPlot,
+                  conflictAndDiscovery: draft.seasonArc,
+                  centralMystery: draft.cliffhangerStyle,
+                  decisionNotes: [
+                    th
+                      ? "ตรวจสอบตัวนำ เป้าหมาย และปมของเรื่องก่อนใช้ draft"
+                      : "Review the protagonist, goal, and central mystery before applying this draft.",
+                  ],
+                };
+                const summaryRows = [
+                  [th ? "เรื่องนี้เกี่ยวกับอะไร" : "What the story is about", summary.whatItIsAbout],
+                  [th ? "ตัวนำและเป้าหมาย" : "Protagonist and goal", summary.protagonistAndGoal],
+                  [th ? "ความขัดแย้งและสิ่งที่พบ" : "Conflict and discovery", summary.conflictAndDiscovery],
+                  [th ? "ปมสำคัญของเรื่อง" : "Central mystery", summary.centralMystery],
+                ] as const;
+                return (
+                  <div
+                    data-testid="vd-creator-summary"
+                    className="mt-3 grid gap-2 rounded-md border border-primary/20 bg-primary/5 p-3"
+                  >
+                    <p className="text-xs font-semibold text-foreground">
+                      {th ? "สรุปเรื่องก่อนยืนยัน" : "Story summary before applying"}
+                    </p>
+                    <div className="grid gap-2">
+                      {summaryRows.map(([label, value]) => (
+                        <div key={label} className="grid gap-0.5">
+                          <p className="text-[11px] font-medium text-foreground/80">{label}</p>
+                          <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid gap-1">
+                      <p className="text-[11px] font-medium text-foreground/80">
+                        {th ? "สิ่งที่ควรรู้ก่อนตัดสินใจ" : "Know before deciding"}
+                      </p>
+                      <ul className="list-disc space-y-0.5 pl-4 text-xs leading-relaxed text-muted-foreground">
+                        {summary.decisionNotes.map((note, index) => (
+                          <li key={`${index}-${note}`}>{note}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              })()}
               {draft.contract_version === 2 && draft.visualIdentity && (
                 <div className="mt-2">
                   <p className="text-xs font-medium">
@@ -1856,15 +2049,20 @@ function MixAndMatchPresetPanel({
             </div>
           )}
           {draft.contract_version === 2 && (
-            <div className="mt-3">
-              <VerticalDramaBlendReportPanel
-                lang={lang}
-                blendReport={draft.blendReport}
-                presetOrder={selectedPresetIds}
-                presetTitleById={presetTitleById}
-                onAdjustWeights={scrollToWeights}
-              />
-            </div>
+            <details className="mt-3 rounded-md border bg-muted/20 p-2">
+              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                {th ? "รายละเอียดการผสม (สำหรับตรวจสอบเท่านั้น)" : "Blend details (technical)"}
+              </summary>
+              <div className="pt-2">
+                <VerticalDramaBlendReportPanel
+                  lang={lang}
+                  blendReport={draft.blendReport}
+                  presetOrder={selectedPresetIds}
+                  presetTitleById={presetTitleById}
+                  onAdjustWeights={scrollToWeights}
+                />
+              </div>
+            </details>
           )}
         </div>
       )}

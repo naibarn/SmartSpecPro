@@ -24,11 +24,11 @@
  * `VerticalDramaCharacterStockPanel.tsx`'s own: `trpc.mediaModels.list`,
  * `ModelSelectorDialog`, and (for MCP-transport models) `McpConnectionPicker`
  * — the SAME reusable components the character tab uses, not new ones.
- * Unlike the character tab's `requireModelSelected()` hard gate, this panel
- * deliberately does NOT force a pick: an unselected model silently falls
- * back to `DEFAULT_MODELS.image` server-side (`resolveCharacterImageModelId`
- * in `verticalDramaLocations.ts`), preserving today's zero-choice behavior
- * for a user who never opens the picker — the picker is purely additive.
+ * Like the character tab's `requireModelSelected()` hard gate, this panel
+ * ALSO force-blocks generation until a model is picked — an unselected
+ * model no longer silently falls back to `DEFAULT_MODELS.image`
+ * server-side; the client-side gate opens the picker dialog instead (see
+ * `requireModelSelected()` below, cloned from the character tab's own).
  *
  * Consumes only `trpc.verticalDramaLocations.*`. There is currently no
  * "create location" procedure on that router — the roster is populated
@@ -68,6 +68,8 @@ import ModelSelectorDialog, {
   type MediaModel,
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { HermesConnectionPicker } from "@/components/media/HermesConnectionPicker";
+import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 
 /* -------------------------------------------------------------------------- */
@@ -96,17 +98,70 @@ const VD_LOCATION_IMAGE_MODEL_STORAGE_KEY = "smartspec_vd_location_image_model";
  *  write, so a connection picked on any surface carries over automatically. */
 const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
 
-function readStoredMcpConnectionId(): string | null {
+/** Best-effort localStorage access. Reads/writes here are only a CONVENIENCE
+ *  cache (remembered model/MCP-connection defaults) — never the source of
+ *  truth. They MUST NOT throw: `localStorage.setItem` raises
+ *  `QuotaExceededError` when the origin's storage is full (common for heavy
+ *  users) and `getItem`/`setItem` raise `SecurityError` in
+ *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
+ *  the whole click handler BEFORE the real (state/mutation) action fired.
+ *  Swallow the error and let the real action proceed. */
+function safeStorageGet(key: string): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(MCP_CONNECTION_ID_STORAGE_KEY) || null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* quota exceeded / storage blocked — cache is best-effort, ignore */
+  }
+}
+
+function safeStorageRemove(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* storage blocked — best-effort, ignore */
+  }
+}
+
+function readStoredMcpConnectionId(): string | null {
+  return safeStorageGet(MCP_CONNECTION_ID_STORAGE_KEY);
 }
 
 function storeMcpConnectionId(connectionId: string | null): void {
-  if (typeof window === "undefined") return;
   if (connectionId) {
-    window.localStorage.setItem(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
+    safeStorageSet(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
   } else {
-    window.localStorage.removeItem(MCP_CONNECTION_ID_STORAGE_KEY);
+    safeStorageRemove(MCP_CONNECTION_ID_STORAGE_KEY);
+  }
+}
+
+/** Feature 135 (Hermes/Grok media worker) — shared Hermes-connection
+ *  localStorage key, same cross-surface carry-over convention as
+ *  `MCP_CONNECTION_ID_STORAGE_KEY` above (shared with
+ *  `VerticalDramaCharacterStockPanel.tsx`/`VerticalDramaEpisodePage.tsx`).
+ *  Exported (unlike the MCP helpers above) so the storage contract is
+ *  directly unit-testable. */
+export const HERMES_CONNECTION_ID_STORAGE_KEY = "smartspec_hermes_connection_id";
+
+export function readStoredHermesConnectionId(): string | null {
+  return safeStorageGet(HERMES_CONNECTION_ID_STORAGE_KEY);
+}
+
+export function storeHermesConnectionId(connectionId: string | null): void {
+  if (connectionId) {
+    safeStorageSet(HERMES_CONNECTION_ID_STORAGE_KEY, connectionId);
+  } else {
+    safeStorageRemove(HERMES_CONNECTION_ID_STORAGE_KEY);
   }
 }
 
@@ -153,7 +208,30 @@ export function resolveLocationMutationErrorMessage(
   err: { message?: string } | null | undefined,
   lang: Lang,
 ): string {
+  // Feature 135 section-10 review fix: a `[HERMES_X] ...` prefixed message
+  // (pinned server wire convention, `shared/hermesMedia.ts`) renders via
+  // `presentHermesError`/`formatHermesErrorForToast` instead of leaking the
+  // raw bracketed English string; every other message (including an
+  // explicit empty string) is unaffected — `presentHermesError` returns
+  // `null` for them.
+  const presentation = presentHermesError(err ?? null);
+  if (presentation) return formatHermesErrorForToast(presentation, lang);
   return err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong");
+}
+
+/** True when `generateLocationImage`'s `onError` message indicates the
+ *  server rejected the request over `selectedImageModelId` — the fail-
+ *  closed "no model selected" `BAD_REQUEST` thrown by
+ *  `resolveEpisodeImageModelId`/its location-router equivalent (server:
+ *  `verticalDramaLocations.ts`), or its sibling "unknown"/"disabled" model
+ *  messages. Byte-identical convention to
+ *  `VerticalDramaCharacterStockPanel.tsx`'s own
+ *  `isImageModelSelectionError`. */
+export function isLocationImageModelSelectionError(
+  err: { message?: string } | null | undefined,
+): boolean {
+  const message = err?.message ?? "";
+  return /เลือกโมเดลภาพ/.test(message) || /image model/i.test(message);
 }
 
 /** Bilingual summary toast copy for a `detectLocationsNow` success response —
@@ -210,6 +288,35 @@ export function sortLocationCandidatesForGallery<T extends { isPrimary: boolean 
   const primary = assets.filter(a => a.isPrimary);
   const rest = assets.filter(a => !a.isPrimary);
   return [...primary, ...rest];
+}
+
+/**
+ * Builds the transport-connection fields for `generateLocationImage`'s
+ * mutation input — extracted so the conditional-spread rule is directly
+ * unit-testable without mounting the component (Feature 135, section-10
+ * §4.4). Mirrors `VerticalDramaCharacterStockPanel.tsx`'s own
+ * `buildCharacterPromptConfirmPayload` transport-field rule: `mcpConnectionId`
+ * (+ `sharedGroupId`) iff `imageModelUsesMcp && mcpConnectionId`;
+ * `hermesConnectionId` iff `imageModelUsesHermes && hermesConnectionId` AND
+ * the MCP fields were not emitted (a model row resolves to exactly one
+ * transport, so the two are always mutually exclusive in practice — this
+ * guard just makes that invariant hold even if a caller passed both flags).
+ */
+export function buildLocationGenerateImageTransportFields(params: {
+  imageModelUsesMcp: boolean;
+  mcpConnectionId?: string | null;
+  sharedGroupId?: number | null;
+  imageModelUsesHermes: boolean;
+  hermesConnectionId?: string | null;
+}): { mcpConnectionId?: string; sharedGroupId?: number; hermesConnectionId?: string } {
+  const usesMcp = params.imageModelUsesMcp && Boolean(params.mcpConnectionId);
+  return {
+    ...(usesMcp ? { mcpConnectionId: params.mcpConnectionId as string } : {}),
+    ...(usesMcp && params.sharedGroupId != null ? { sharedGroupId: params.sharedGroupId } : {}),
+    ...(params.imageModelUsesHermes && params.hermesConnectionId && !usesMcp
+      ? { hermesConnectionId: params.hermesConnectionId }
+      : {}),
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -297,11 +404,24 @@ export function VerticalDramaLocationStockPanel({
    *  this file's own top-of-file doc comment. */
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [selectedImageModelId, setSelectedImageModelId] = useState(
-    () => localStorage.getItem(VD_LOCATION_IMAGE_MODEL_STORAGE_KEY) || "",
+    () => safeStorageGet(VD_LOCATION_IMAGE_MODEL_STORAGE_KEY) || "",
   );
   const handleSelectImageModel = (modelId: string) => {
     setSelectedImageModelId(modelId);
-    localStorage.setItem(VD_LOCATION_IMAGE_MODEL_STORAGE_KEY, modelId);
+    safeStorageSet(VD_LOCATION_IMAGE_MODEL_STORAGE_KEY, modelId);
+  };
+  /** Same toast as `onError`, plus reopens the model-picker dialog when the
+   *  server rejected the request specifically for a missing/invalid
+   *  `selectedImageModelId` (see `isLocationImageModelSelectionError`). In
+   *  normal use `requireModelSelected()` (below) already blocks the click
+   *  before `generateMutation` ever fires, so this is a defense-in-depth
+   *  path (stale selection, model disabled between pick and generate,
+   *  etc.) — never swallows the server's bilingual message. Byte-identical
+   *  convention to `VerticalDramaCharacterStockPanel.tsx`'s own
+   *  `onImageModelError`. */
+  const onImageModelError = (err: { message?: string }) => {
+    onError(err);
+    if (isLocationImageModelSelectionError(err)) setIsModelDialogOpen(true);
   };
   const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
   const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModel[];
@@ -317,22 +437,60 @@ export function VerticalDramaLocationStockPanel({
       configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
     }).transport === "mcp";
   const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(readStoredMcpConnectionId);
+  const [mcpSharedGroupId, setMcpSharedGroupId] = useState<number | null>(null);
   const handleSelectMcpConnection = (connectionId: string | null) => {
     setMcpConnectionIdState(connectionId);
     storeMcpConnectionId(connectionId);
+    if (!connectionId) setMcpSharedGroupId(null);
   };
+  /** Blocks generation client-side with a toast instead of silently falling
+   *  back to a server default model — cloned from
+   *  `VerticalDramaCharacterStockPanel.tsx`'s own `requireModelSelected()`
+   *  (same copy, same "open the picker dialog" follow-up). Called before
+   *  `requireMcpConnectionOrToast()` in every generate entry point, matching
+   *  the character tab's gate ordering. */
+  const requireModelSelected = (): boolean => {
+    if (selectedImageModelId) return true;
+    toast.info(
+      t(lang, "กรุณาเลือกโมเดลสร้างภาพก่อน", "Please choose an image model first"),
+    );
+    setIsModelDialogOpen(true);
+    return false;
+  };
+
   /** Blocks generation client-side with a toast instead of letting the
    *  server throw BAD_REQUEST — same convention as
    *  `VerticalDramaCharacterStockPanel.tsx`'s own
-   *  `requireMcpConnectionOrToast`. Unlike that gate's sibling
-   *  `requireModelSelected()`, there is deliberately no equivalent gate for
-   *  "no model chosen at all" here — an empty selection is a valid, silently
-   *  defaulted choice for this panel (see this file's own top-of-file doc
-   *  comment), not an error state. */
+   *  `requireMcpConnectionOrToast`. */
   const requireMcpConnectionOrToast = (): boolean => {
     if (!imageModelUsesMcp || mcpConnectionId) return true;
     toast.error(
       t(lang, "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลนี้", "Select an MCP connection before using this image model."),
+    );
+    return false;
+  };
+
+  /** Feature 135 (Hermes/Grok media worker) — sibling of `imageModelUsesMcp`
+   *  above; mutually exclusive with it (a model row resolves to exactly one
+   *  transport). */
+  const imageModelUsesHermes =
+    Boolean(selectedImageModelId) &&
+    resolveMediaModelTransportConfig({
+      provider: selectedImageModelRecord?.provider,
+      modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
+      configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+    }).transport === "hermes_worker";
+  const [hermesConnectionId, setHermesConnectionIdState] = useState<string | null>(readStoredHermesConnectionId);
+  const handleSelectHermesConnection = (connectionId: string | null) => {
+    setHermesConnectionIdState(connectionId);
+    storeHermesConnectionId(connectionId);
+  };
+  /** Same convention as `requireMcpConnectionOrToast` above, for the Hermes
+   *  transport arm. */
+  const requireHermesConnectionOrToast = (): boolean => {
+    if (!imageModelUsesHermes || hermesConnectionId) return true;
+    toast.error(
+      t(lang, "ต้องเลือกบัญชี Grok (Hermes) ก่อนใช้โมเดลนี้", "Select a Grok (Hermes) connection before using this image model."),
     );
     return false;
   };
@@ -414,7 +572,9 @@ export function VerticalDramaLocationStockPanel({
    * (simpler than that card's `locationKey` join — this panel reads straight
    * off the roster, no storyboard `distinct_locations` join needed). */
   const previewMutation = trpc.verticalDramaLocations.previewLocationPrompt.useMutation({ onError });
-  const generateMutation = trpc.verticalDramaLocations.generateLocationImage.useMutation({ onError });
+  const generateMutation = trpc.verticalDramaLocations.generateLocationImage.useMutation({
+    onError: onImageModelError,
+  });
   // No hook-level `onError` on the resolve/link/approve trio — all three are
   // only ever awaited inside `handleApprove`'s own try/catch below, which
   // already surfaces exactly one toast on failure; a hook-level `onError`
@@ -472,13 +632,21 @@ export function VerticalDramaLocationStockPanel({
           return;
         }
         if (status === "failed") {
-          const errorMessage = (task as { errorMessage?: string } | null)?.errorMessage;
+          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
+          const errorMessage = failedTask?.errorMessage;
+          // Feature 135 section-10 review fix: prefer the typed hermes
+          // presentation (reads `MediaTask.errorCode`, section-06) when this
+          // was a hermes_ task; every other/legacy task keeps the exact
+          // pre-existing bilingual "<generic>: <errorMessage>" format.
+          const hermesPresentation = presentHermesError(failedTask);
           toast.error(
-            t(
-              lang,
-              `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`,
-              `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`,
-            ),
+            hermesPresentation
+              ? formatHermesErrorForToast(hermesPresentation, lang)
+              : t(
+                  lang,
+                  `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`,
+                  `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`,
+                ),
           );
           return;
         }
@@ -512,7 +680,9 @@ export function VerticalDramaLocationStockPanel({
   const handleGenerate = (location: VdLocationListItem) => {
     const preview = previewByLocationId[location.locationId];
     if (!preview) return;
+    if (!requireModelSelected()) return;
     if (!requireMcpConnectionOrToast()) return;
+    if (!requireHermesConnectionOrToast()) return;
     setRenderingLocationId(location.locationId);
     generateMutation.mutate(
       {
@@ -520,8 +690,20 @@ export function VerticalDramaLocationStockPanel({
         locationId: location.locationId,
         approvedPrompt: preview.prompt,
         ...(preview.negativePrompt ? { approvedNegativePrompt: preview.negativePrompt } : {}),
-        ...(selectedImageModelId ? { selectedImageModelId } : {}),
-        ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+        // Always sent (never conditionally spread) — the server now
+        // REJECTS image generation without an explicit
+        // `selectedImageModelId` (fail-closed, no more silent
+        // `DEFAULT_MODELS.image` fallback). Safe to assert non-empty here:
+        // `requireModelSelected()` above already returned early when it was
+        // blank.
+        selectedImageModelId,
+        ...buildLocationGenerateImageTransportFields({
+          imageModelUsesMcp,
+          mcpConnectionId,
+          sharedGroupId: mcpSharedGroupId,
+          imageModelUsesHermes,
+          hermesConnectionId,
+        }),
       },
       {
         onSuccess: (res) => void pollLocationImageTask(res.taskId, location.locationId),
@@ -1014,10 +1196,40 @@ export function VerticalDramaLocationStockPanel({
                     </Button>
                   </div>
 
+                  {!selectedImageModelId && (
+                    /* Explicit "you must pick a model" notice — the
+                      generate button below is already disabled with a
+                      hover tooltip, but that alone was too subtle
+                      (product feedback 2026-07-15). Additive, not a
+                      replacement for the disabled-button guard. */
+                    <div
+                      className="flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                      data-testid={`vd-location-image-model-required-notice-${selectedLocation.locationId}`}
+                    >
+                      <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+                      <span>
+                        {t(
+                          lang,
+                          "ยังไม่ได้เลือกโมเดลภาพ — กรุณาเลือกโมเดลก่อนจึงจะสร้างภาพได้",
+                          "No image model selected — choose a model before you can generate.",
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsModelDialogOpen(true)}
+                        className="ml-auto rounded-md border border-amber-400/60 bg-background px-2 py-1 text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                      >
+                        {t(lang, "เลือกโมเดล", "Select model")}
+                      </button>
+                    </div>
+                  )}
+
                   {imageModelUsesMcp && (
                     <McpConnectionPicker
                       value={mcpConnectionId}
                       onChange={handleSelectMcpConnection}
+                      sharedGroupId={mcpSharedGroupId}
+                      onSharedGroupChange={setMcpSharedGroupId}
                       assetType="image"
                       providerKey={
                         resolveMediaModelTransportConfig({
@@ -1027,6 +1239,23 @@ export function VerticalDramaLocationStockPanel({
                         }).providerKey ?? undefined
                       }
                     />
+                  )}
+
+                  {/* Feature 135 — Hermes/Grok connection picker, mutually
+                      exclusive with the MCP picker above. */}
+                  {imageModelUsesHermes && (
+                    <div className="space-y-1">
+                      <HermesConnectionPicker
+                        value={hermesConnectionId}
+                        onChange={handleSelectHermesConnection}
+                        assetType="image"
+                      />
+                      {!hermesConnectionId ? (
+                        <p className="text-xs text-amber-600" data-testid="hermes-connection-required-hint">
+                          {t(lang, "เลือกบัญชี Grok ก่อน", "Select a Grok connection first")}
+                        </p>
+                      ) : null}
+                    </div>
                   )}
 
                   {candidateForSelected ? (
@@ -1073,7 +1302,12 @@ export function VerticalDramaLocationStockPanel({
                         variant="outline"
                         className="w-fit gap-1.5"
                         onClick={() => handleGenerate(selectedLocation)}
-                        disabled={isRenderingSelected}
+                        disabled={isRenderingSelected || !selectedImageModelId}
+                        title={
+                          selectedImageModelId
+                            ? undefined
+                            : t(lang, "เลือกโมเดลภาพก่อนสร้าง", "Select an image model first")
+                        }
                         data-testid={`vd-location-generate-image-${selectedLocation.locationId}`}
                       >
                         {isRenderingSelected ? (

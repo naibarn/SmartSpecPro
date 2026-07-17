@@ -245,4 +245,66 @@ describe("VerticalDramaStoryboardPanel — angle-variation (3x3) picker", () => 
       });
     });
   });
+
+  /** Phase 5d (`planning/vd-start-frame-reference-mapping/plan.md`, client
+   *  half) — persisted "backup alternate-angle stills" per shot, reopenable
+   *  from a compact thumbnail row independent of the live picker state. */
+  describe("stored angle-grid re-open (Phase 5d)", () => {
+    it("does not render the stored-grids row when angleGridAssetsByShotNumber has no entries for the shot", () => {
+      render(<VerticalDramaStoryboardPanel {...(baseProps() as any)} />);
+      expect(
+        screen.queryByTestId("vd-stored-angle-grids-1")
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders one thumbnail per stored grid, most-recent first", () => {
+      render(
+        <VerticalDramaStoryboardPanel
+          {...(baseProps({
+            angleGridAssetsByShotNumber: {
+              1: [
+                { mediaAssetId: 101, url: "https://cdn/grid-101.jpg" },
+                { mediaAssetId: 102, url: "https://cdn/grid-102.jpg" },
+              ],
+            },
+          }) as any)}
+        />
+      );
+      const row = screen.getByTestId("vd-stored-angle-grids-1");
+      expect(row).toBeInTheDocument();
+      expect(
+        screen.getByTestId("vd-stored-angle-grid-1-102")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("vd-stored-angle-grid-1-101")
+      ).toBeInTheDocument();
+      // Most-recent (last in the persisted array, id 102) renders first.
+      const buttons = row.querySelectorAll("button");
+      expect(buttons[0].getAttribute("data-testid")).toBe(
+        "vd-stored-angle-grid-1-102"
+      );
+      expect(buttons[1].getAttribute("data-testid")).toBe(
+        "vd-stored-angle-grid-1-101"
+      );
+    });
+
+    it("selecting a stored grid thumbnail calls onOpenStoredAngleGrid with the shot number and url", () => {
+      const onOpenStoredAngleGrid = vi.fn();
+      render(
+        <VerticalDramaStoryboardPanel
+          {...(baseProps({
+            angleGridAssetsByShotNumber: {
+              1: [{ mediaAssetId: 101, url: "https://cdn/grid-101.jpg" }],
+            },
+            onOpenStoredAngleGrid,
+          }) as any)}
+        />
+      );
+      fireEvent.click(screen.getByTestId("vd-stored-angle-grid-1-101"));
+      expect(onOpenStoredAngleGrid).toHaveBeenCalledWith(
+        1,
+        "https://cdn/grid-101.jpg"
+      );
+    });
+  });
 });

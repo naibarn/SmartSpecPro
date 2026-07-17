@@ -9,6 +9,7 @@ import {
   deepStoryDraftsGeneratedSuccessText,
   deepStoryDraftsHorizonCountText,
   deepStoryDraftsModePremiumHintText,
+  deepStoryDraftsNewCharactersCreatedText,
   deepStoryDraftsPartialWarningText,
   deepStoryDraftsPremiumDimensionCopy,
   deepStoryDraftsPremiumDimensionLabel,
@@ -339,20 +340,20 @@ describe("Premium mode-picker copy (W11-B)", () => {
     }
   });
 
-  it("matches the literal 'มาตรฐาน (เร็ว ประหยัด)' / 'คิดหลายรอบ (พรีเมียม)' Copy Contract labels", () => {
+  it("matches the literal 'มาตรฐาน (เร็ว ประหยัด)' / 'คิดหลายรอบ (พรีเมียม) — แนะนำ' Copy Contract labels (updated 2026-07-13: premium is now the recommended default, see the production-grade full-story generation upgrade plan)", () => {
     expect(verticalDramaCopy.deepStoryDraftsModeStandardLabel.th).toBe(
       "มาตรฐาน (เร็ว ประหยัด)"
     );
     expect(verticalDramaCopy.deepStoryDraftsModePremiumLabel.th).toBe(
-      "คิดหลายรอบ (พรีเมียม)"
+      "คิดหลายรอบ (พรีเมียม) — แนะนำ"
     );
   });
 });
 
 describe("deepStoryDraftsModePremiumHintText", () => {
-  it("renders the exact 'แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~{n} ครั้งเรียก)' Copy Contract shape", () => {
+  it("renders the exact 'ระบบจะแตกร่างหลายแบบ ให้ AI ตรวจให้คะแนน และวนแก้จนผ่านเกณฑ์ก่อนส่งกลับ (ใช้เวลานานขึ้น ~{n} ครั้งเรียก)' Copy Contract shape (updated 2026-07-13)", () => {
     expect(deepStoryDraftsModePremiumHintText("th", 8)).toBe(
-      "แตก 3 มุมเขียน ตรวจ ซ่อมอัตโนมัติ (~8 ครั้งเรียก)"
+      "ระบบจะแตกร่างหลายแบบ ให้ AI ตรวจให้คะแนน และวนแก้จนผ่านเกณฑ์ก่อนส่งกลับ (ใช้เวลานานขึ้น ~8 ครั้งเรียก)"
     );
   });
 
@@ -393,7 +394,7 @@ describe("deepStoryDraftsScorecardOverallBadgeText", () => {
 });
 
 describe("PREMIUM_DRAFT_SCORE_DIMENSIONS / deepStoryDraftsPremiumDimensionCopy", () => {
-  it("has exactly the 8 owner-approved dimensions, in prompt/response order", () => {
+  it("has exactly the 14 server dimensions, in prompt/response order", () => {
     expect(PREMIUM_DRAFT_SCORE_DIMENSIONS).toEqual([
       "hook_strength",
       "reversal_sharpness",
@@ -403,6 +404,12 @@ describe("PREMIUM_DRAFT_SCORE_DIMENSIONS / deepStoryDraftsPremiumDimensionCopy",
       "cliffhanger_strength",
       "continuity_with_recap",
       "season_cohesion",
+      "clarity",
+      "character_consistency",
+      "evidence_payoff",
+      "threat_escalation",
+      "shot_completeness",
+      "dialogue_accessibility",
     ]);
   });
 
@@ -673,5 +680,48 @@ describe("storyJobProgressText", () => {
         episodesDone: [3, 4],
       })
     ).toBe("รอบเรียก 1/2 · กำลังซ่อมตอนย่อย 3, 4");
+  });
+});
+
+/**
+ * Set B (`vd-stuck-generation-and-lost-characters` plan, 2026-07-16) — Copy
+ * Contract regression coverage; `VerticalDramaDeepStoryDraftsPanel.tsx`
+ * renders this verbatim as a toast composing alongside (never overwriting)
+ * `deepStoryDraftsNewLocationsCreatedText`'s own toast.
+ */
+describe("deepStoryDraftsNewCharactersCreatedText", () => {
+  it("renders the exact Copy Contract string in Thai with no names", () => {
+    expect(deepStoryDraftsNewCharactersCreatedText("th", 2)).toBe(
+      "สร้างตัวละครใหม่ 2 ตัวจากเนื้อเรื่อง — ต้องตั้งค่า DNA/ภาพ"
+    );
+  });
+
+  it("renders an English equivalent with correct pluralization", () => {
+    expect(deepStoryDraftsNewCharactersCreatedText("en", 1)).toBe(
+      "Created 1 new character from the story — needs DNA/portrait setup"
+    );
+    expect(deepStoryDraftsNewCharactersCreatedText("en", 3)).toBe(
+      "Created 3 new characters from the story — needs DNA/portrait setup"
+    );
+  });
+
+  it("appends the names in parentheses when provided", () => {
+    expect(
+      deepStoryDraftsNewCharactersCreatedText("th", 2, ["ป้าแก้ว", "ลุงมี"])
+    ).toBe(
+      "สร้างตัวละครใหม่ 2 ตัวจากเนื้อเรื่อง — ต้องตั้งค่า DNA/ภาพ (ป้าแก้ว, ลุงมี)"
+    );
+  });
+
+  it("omits the parentheses entirely when names is undefined or empty/whitespace-only", () => {
+    expect(deepStoryDraftsNewCharactersCreatedText("th", 1)).toBe(
+      "สร้างตัวละครใหม่ 1 ตัวจากเนื้อเรื่อง — ต้องตั้งค่า DNA/ภาพ"
+    );
+    expect(deepStoryDraftsNewCharactersCreatedText("th", 1, [])).toBe(
+      "สร้างตัวละครใหม่ 1 ตัวจากเนื้อเรื่อง — ต้องตั้งค่า DNA/ภาพ"
+    );
+    expect(deepStoryDraftsNewCharactersCreatedText("th", 1, ["   "])).toBe(
+      "สร้างตัวละครใหม่ 1 ตัวจากเนื้อเรื่อง — ต้องตั้งค่า DNA/ภาพ"
+    );
   });
 });

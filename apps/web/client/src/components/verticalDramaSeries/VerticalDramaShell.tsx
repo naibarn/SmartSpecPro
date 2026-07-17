@@ -54,6 +54,32 @@ import {
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "verticalDrama:sidebarCollapsed";
 const DESKTOP_SIDEBAR_BREAKPOINT_PX = 1280; // Tailwind `xl:`
 
+/** Best-effort localStorage access. Reads/writes here are only a CONVENIENCE
+ *  cache (remembered sidebar-collapsed preference) — never the source of
+ *  truth. They MUST NOT throw: `localStorage.setItem` raises
+ *  `QuotaExceededError` when the origin's storage is full (common for heavy
+ *  users) and `getItem`/`setItem` raise `SecurityError` in
+ *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
+ *  the whole click handler BEFORE the real (state) action fired. Swallow the
+ *  error and let the real action proceed. */
+function safeStorageGet(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* quota exceeded / storage blocked — cache is best-effort, ignore */
+  }
+}
+
 interface VerticalDramaShellContextValue {
   openCreateWizard: () => void;
 }
@@ -77,6 +103,7 @@ interface SidebarSeriesItem {
   status: string;
   nextEpisodeNumber: number;
   episodeCount: number;
+  targetEpisodeCount?: number | null;
   pendingApprovalCount: number;
   thumbnailUrl?: string | null;
 }
@@ -114,7 +141,7 @@ export function VerticalDramaShell({
   // Default expanded on desktop/tablet-landscape, collapsed elsewhere — unless
   // the user already made an explicit choice (persisted across the 3 pages).
   useEffect(() => {
-    const stored = window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+    const stored = safeStorageGet(SIDEBAR_COLLAPSED_STORAGE_KEY);
     if (stored != null) {
       setIsSidebarCollapsed(stored === "true");
     } else if (window.innerWidth >= DESKTOP_SIDEBAR_BREAKPOINT_PX) {
@@ -124,7 +151,7 @@ export function VerticalDramaShell({
 
   const setCollapsed = (value: boolean) => {
     setIsSidebarCollapsed(value);
-    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(value));
+    safeStorageSet(SIDEBAR_COLLAPSED_STORAGE_KEY, String(value));
   };
 
   const listQuery = trpc.verticalDramaSeries.list.useQuery(
@@ -274,8 +301,11 @@ export function VerticalDramaShell({
                       )}
                     </span>
                     <span className="truncate pl-4 text-xs text-muted-foreground">
-                      {statusLabel} · SUB-EP {item.nextEpisodeNumber}/
-                      {item.episodeCount}
+                      {statusLabel} · SUB-EP {item.episodeCount}
+                      {typeof item.targetEpisodeCount === "number" &&
+                      item.targetEpisodeCount > 0
+                        ? `/${item.targetEpisodeCount}`
+                        : ""}
                     </span>
                   </span>
                 </button>

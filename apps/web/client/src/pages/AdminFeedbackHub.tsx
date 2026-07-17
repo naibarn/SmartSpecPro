@@ -56,6 +56,12 @@ export default function AdminFeedbackHub() {
     undefined
   );
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined);
+  // Source of the ticket: real user feedback ("human") vs auto-filed system
+  // error reports ("system"). Default to "human" so genuine user feedback is
+  // surfaced first instead of being buried under machine-generated noise.
+  const [sourceFilter, setSourceFilter] = useState<
+    "human" | "system" | undefined
+  >("human");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
   // Deep-link: auto-select ticket from ?ticketId=X
@@ -76,6 +82,7 @@ export default function AdminFeedbackHub() {
   const ticketsQuery = trpc.feedback.list.useQuery({
     status: statusFilter as any,
     ticketType: typeFilter as any,
+    submittedByType: sourceFilter,
     limit: 50,
   });
   const ticketDetailQuery = trpc.feedback.getTicket.useQuery(
@@ -394,6 +401,36 @@ export default function AdminFeedbackHub() {
       <div className="flex h-[calc(100vh-65px)]">
         {/* Left: Ticket list */}
         <div className="w-[400px] border-r bg-white/50 flex flex-col">
+          {/* Source tabs — separate genuine user feedback from auto system reports */}
+          <div className="p-3 pb-0 flex gap-1">
+            {(
+              [
+                { key: "human", label: "User Feedback", count: stats?.human },
+                { key: "system", label: "System / Auto", count: stats?.system },
+                { key: undefined, label: "All", count: stats?.total },
+              ] as const
+            ).map(tab => {
+              const active = sourceFilter === tab.key;
+              return (
+                <button
+                  key={tab.label}
+                  type="button"
+                  onClick={() => setSourceFilter(tab.key)}
+                  className={`flex-1 text-xs font-medium rounded-md px-2 py-1.5 transition-colors ${
+                    active
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
+                      : "text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                  }`}
+                >
+                  {tab.label}
+                  {tab.count != null && (
+                    <span className="ml-1 opacity-70">({tab.count})</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Filters */}
           <div className="p-3 border-b flex gap-2">
             <Select

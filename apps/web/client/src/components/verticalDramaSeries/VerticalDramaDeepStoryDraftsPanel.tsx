@@ -65,20 +65,26 @@
  * PREMIUM MULTI-ROUND DRAFTS (W11-B, added 2026-07-08) — surfaces the W11-A
  * `mode: "standard" | "premium"` server pipeline:
  *  - `VerticalDramaDeepStoryDraftsActions`'s confirm dialog gains a quality
- *    `RadioGroup` (default "standard"), rendered UNCONDITIONALLY (debt-item-5,
- *    2026-07-08 — previously nested inside the `hasPlan &&` slot the scope
- *    radio occupies, so it was never offered at the no-plan bootstrap even
- *    though `runChain` — the chain `hasPlan: false` always uses — already
- *    threads `mode` into `generateStoryBibleDeep`'s input exactly like
+ *    `RadioGroup`, rendered UNCONDITIONALLY (debt-item-5, 2026-07-08 —
+ *    previously nested inside the `hasPlan &&` slot the scope radio
+ *    occupies, so it was never offered at the no-plan bootstrap even though
+ *    `runChain` — the chain `hasPlan: false` always uses — already threads
+ *    `mode` into `generateStoryBibleDeep`'s input exactly like
  *    `runDeepDraftOnly` does). Applies uniformly to both scope choices
- *    (keep/rewrite) when `hasPlan` is true, and resets to "standard" every
- *    time the dialog (re)opens, exactly like `scope` does.
+ *    (keep/rewrite) when `hasPlan` is true. DEFAULTS TO "premium" (changed
+ *    2026-07-13, production-grade full-story generation upgrade — was
+ *    "standard") and resets to "premium" every time the dialog (re)opens,
+ *    exactly like `scope` resets to "keep".
  *    The separate "extend by N more" CTA has no confirm dialog to host a
  *    RadioGroup in, so it gets its own small, ordinary (non-auto-resetting)
- *    "use premium" checkbox instead (owner-approved simplification).
- *    `mode` is omitted from the mutation input entirely for "standard" (not
- *    sent as `mode: "standard"`) — matches the router's own
- *    `mode.optional()` + `?? "standard"` default convention.
+ *    "use premium" checkbox instead (owner-approved simplification;
+ *    unaffected by the 2026-07-13 default change above — it still defaults
+ *    unchecked/"standard").
+ *    `mode` is now ALWAYS sent explicitly on the mutation input (changed
+ *    2026-07-13 — previously omitted entirely for "standard" to match the
+ *    router's own `mode.optional()` + `?? "standard"` default convention;
+ *    now sent explicitly so the user's actual choice is unambiguous
+ *    regardless of what the router's own default resolves to).
  *  - `VerticalDramaDeepStoryDraftEpisodeDetail` gains a per-episode
  *    scorecard header badge + expandable below-floor dimension rows, read
  *    from the (optional) `draftScorecard` field W11-A's premium pipeline
@@ -150,10 +156,14 @@ import {
   deepStoryDraftsGeneratedSuccessText,
   deepStoryDraftsHorizonCountText,
   deepStoryDraftsModePremiumHintText,
+  deepStoryDraftsNewCharactersCreatedText,
+  deepStoryDraftsNewLocationsCreatedText,
   deepStoryDraftsPartialWarningText,
   deepStoryDraftsScopeKeepHintText,
   deepStoryDraftsScorecardBelowFloorDimText,
   deepStoryDraftsScorecardOverallBadgeText,
+  deepStoryDraftsShotCharacterChipText,
+  deepStoryDraftsShotLocationText,
   deepStoryDraftsShotSummaryLabel,
   deepStoryDraftsSilenceIntentLabel,
   deepStoryDraftsSpeechSecondsBadgeText,
@@ -276,8 +286,28 @@ export interface VerticalDramaStoryJobStatusLike {
 
 /** Default 2.5s interval — same cadence `pollVideoClipTask` uses. */
 const STORY_JOB_POLL_INTERVAL_MS = 2500;
-/** 240 attempts * 2.5s = 10 minutes — generous headroom for a multi-chunk premium run; a genuinely stuck job still surfaces a "taking too long" toast instead of polling forever. */
-const STORY_JOB_POLL_MAX_ATTEMPTS = 240;
+/**
+ * 4320 attempts * 2.5s = 3 hours (raised from 30 minutes/720 attempts —
+ * resilient-resume upgrade, 2026-07-14, see
+ * `planning/vertical-drama-deep-story-resilient-resume/plan.md` item D) — now
+ * matches `VerticalDramaImproveScriptCard.tsx`'s own `IMPROVE_SCRIPT_POLL_MAX_ATTEMPTS`
+ * budget. The premium quality-loop (fan-out + LLM-judge + targeted-revise, now
+ * the default mode for `deep_generate`/`extend`, see
+ * `VerticalDramaDeepStoryDraftsActions`'s `mode` default below) budgets more
+ * revise rounds (`VD_PREMIUM_DRAFT_MAX_REVISE_ROUNDS` 2 -> 4 server-side) and,
+ * combined with the server-side incremental checkpoint + BullMQ auto-retry
+ * (items A/C of the same plan), a run can legitimately span hours across
+ * redeliveries/restarts without ever having actually failed. Applies to every
+ * caller of `pollVerticalDramaStoryJob` that does not pass its own
+ * `maxAttempts` (`deep_generate`/`extend` here AND the refresh-safe resume
+ * effect below, which shares this same default) — `VerticalDramaImproveScriptCard.tsx`
+ * passes its own explicit `maxAttempts` and is unaffected. Exhausting this
+ * budget no longer means "stuck" — the job is very likely still running in
+ * the background; `onTimeout` below reflects that with an info toast, not an
+ * error one (the refresh-safe resume effect keeps re-attaching polling on
+ * reload, and the server sends its own completion notification regardless).
+ */
+const STORY_JOB_POLL_MAX_ATTEMPTS = 4320;
 
 export async function pollVerticalDramaStoryJob(args: {
   fetchStatus: () => Promise<VerticalDramaStoryJobStatusLike | null>;
@@ -363,6 +393,23 @@ const shotDraftTieInSchema = z
   })
   .passthrough();
 
+/**
+ * Production-grade full-story generation upgrade (2026-07-13, see
+ * `planning/vertical-drama-full-story-production-grade/plan.md`'s "Data
+ * contract") — client-side mirror of the server's per-shot `characters[]`
+ * entry: `name`/`emotion` from the Character Bible, plus an optional
+ * `emotion_after` when the shot shifts the character's emotion mid-shot.
+ * `.passthrough()` (tolerant superset), same convention as every other
+ * schema in this file.
+ */
+const shotDraftCharacterSchema = z
+  .object({
+    name: z.string().min(1),
+    emotion: z.string().min(1),
+    emotion_after: z.string().optional(),
+  })
+  .passthrough();
+
 const shotDraftSchema = z
   .object({
     shot_number: z.number().int().min(1).max(DEEP_DRAFT_SHOTS_PER_EPISODE),
@@ -371,6 +418,24 @@ const shotDraftSchema = z
     silence_intent: z.enum(VERTICAL_DRAMA_SILENCE_INTENTS).optional(),
     /** Task #22 — see `shotDraftTieInSchema`'s own doc comment. */
     tie_in: shotDraftTieInSchema.optional(),
+    /**
+     * Production-grade full-story generation upgrade (2026-07-13) —
+     * required server-side for NEW generations (min 1 character per shot,
+     * names from the Character Bible), but OPTIONAL here: drafts stored
+     * before this field existed predate it entirely, and this schema is the
+     * tolerant client-side READ path for both old and new data (see
+     * `readDeepDraftShotDrafts`'s own doc comment on tolerant reads).
+     */
+    characters: z.array(shotDraftCharacterSchema).optional(),
+    /**
+     * Production-grade full-story generation upgrade (2026-07-13) — the
+     * shot's location slug, matching either an existing
+     * `vertical_drama_locations` row or one declared via this run's
+     * `new_locations` (server-persisted; see `deepStoryDraftsNewLocationsCreatedText`
+     * for how the client surfaces that count). Optional for the same
+     * old-draft-tolerance reason as `characters` above.
+     */
+    location_key: z.string().optional(),
   })
   .passthrough();
 
@@ -386,10 +451,13 @@ const draftCompletenessSchema = z
   .passthrough();
 
 /**
- * Client-side mirror of the server's `draftScorecardSchema` (W11-A
- * `verticalDramaStoryBible.ts`) — same shape (the 8
+ * Client-side mirror of the server's `draftScorecardSchema`
+ * (`verticalDramaStoryBible.ts`) — same shape (the 14
  * `PREMIUM_DRAFT_SCORE_DIMENSIONS`, each 1-5, plus `overall` 1-5 and
- * `judgedAtRound`), `.passthrough()` (tolerant superset).
+ * `judgedAtRound`), `.passthrough()` (tolerant superset). `shot_completeness`
+ * and `dialogue_accessibility` are `.optional()` here so a legacy scorecard
+ * persisted before the 2026-07-13 upgrade (which lacks them) still parses —
+ * matching the server's own optional read of these two dimensions.
  */
 const draftScorecardSchema = z
   .object({
@@ -401,12 +469,20 @@ const draftScorecardSchema = z
     cliffhanger_strength: z.number().min(1).max(5),
     continuity_with_recap: z.number().min(1).max(5),
     season_cohesion: z.number().min(1).max(5),
+    clarity: z.number().min(1).max(5).optional(),
+    character_consistency: z.number().min(1).max(5).optional(),
+    evidence_payoff: z.number().min(1).max(5).optional(),
+    threat_escalation: z.number().min(1).max(5).optional(),
+    shot_completeness: z.number().min(1).max(5).optional(),
+    dialogue_accessibility: z.number().min(1).max(5).optional(),
     overall: z.number().min(1).max(5),
     judgedAtRound: z.number().int().nonnegative(),
   })
   .passthrough();
 
 export type VerticalDramaDeepDraftShotDialogueLine = z.infer<typeof shotDialogueLineSchema>;
+/** Production-grade full-story generation upgrade (2026-07-13) — see `shotDraftCharacterSchema`'s own doc comment. */
+export type VerticalDramaDeepDraftShotCharacter = z.infer<typeof shotDraftCharacterSchema>;
 export type VerticalDramaDeepDraftShotDraft = z.infer<typeof shotDraftSchema>;
 export type VerticalDramaDeepDraftCompleteness = z.infer<typeof draftCompletenessSchema>;
 export type VerticalDramaDeepDraftCoverageStatus = VerticalDramaDeepDraftCompleteness["coverageStatus"];
@@ -578,18 +654,22 @@ export function toManualDialogueEditLineInput(row: ManualDialogueEditDraftLine):
 }
 
 /**
- * Default deep-draft horizon for DISPLAY purposes only — mirrors the
- * server's `resolveDeepDraftHorizon(undefined, totalEpisodes)` for the
- * no-override case (the Overview surface never lets the caller pick a
- * custom horizon). The real horizon is always resolved and enforced
- * server-side; this is only used to preview "how many episodes will be
- * drafted" in the confirm dialog before the mutation is sent.
+ * Default deep-draft horizon for DISPLAY purposes only — large-series no-op
+ * fix (2026-07-14, see
+ * `planning/vertical-drama-deep-draft-update-all-noop/plan.md`): the primary
+ * CTA now always passes `horizonEpisodes: totalEpisodes` (see
+ * `runDeepDraftOnly`/`runChain` below), so it drafts ALL episodes regardless
+ * of series size — this preview must mirror that, always returning
+ * `safeTotalEpisodes` with no large-series cap. (Previously capped at
+ * `DEEP_DRAFT_DEFAULT_HORIZON_FOR_LARGE_SERIES` for series above
+ * `DEEP_DRAFT_HORIZON_ALL_THRESHOLD`, which made this preview — and the real
+ * mutation, before this fix — silently stop at 3 episodes forever on large
+ * series.) The real horizon is still resolved and enforced server-side; this
+ * is only used to preview "how many episodes will be drafted" in the confirm
+ * dialog before the mutation is sent.
  */
 export function computeDeepDraftDisplayHorizon(totalEpisodes: number): number {
-  const safeTotalEpisodes = Math.max(0, Math.floor(totalEpisodes || 0));
-  return safeTotalEpisodes <= DEEP_DRAFT_HORIZON_ALL_THRESHOLD
-    ? safeTotalEpisodes
-    : Math.min(DEEP_DRAFT_DEFAULT_HORIZON_FOR_LARGE_SERIES, safeTotalEpisodes);
+  return Math.max(0, Math.floor(totalEpisodes || 0));
 }
 
 /** `ceil(horizonEpisodes / DEEP_DRAFT_EPISODES_PER_CALL)` — display math only. */
@@ -605,13 +685,76 @@ export function sumDeepDraftChunkSizes(chunkSizes: number[] | null | undefined):
 }
 
 /**
+ * Production-grade full-story generation upgrade (2026-07-13) — tolerant
+ * read of a `generateStoryBibleDeep`/`extendStoryDraftHorizon` job result's
+ * new-location count, appended to the success toast via
+ * `deepStoryDraftsNewLocationsCreatedText`. The backend persists a chunk's
+ * `new_locations` (this run's Data Contract, see
+ * `planning/vertical-drama-full-story-production-grade/plan.md`) into
+ * `vertical_drama_locations` via `verticalDramaLocationReconciliation.ts`'s
+ * `createdLocations`/`reusedLocations` upsert shape. The job result exposes
+ * this as a numeric `createdLocationCount` (the server's
+ * `GenerateStoryBibleDeepResult`/job-result field); this reads it
+ * defensively and also tolerates a legacy `createdLocations` array shape, so
+ * an older/not-yet-updated result simply has neither field and this returns
+ * `0` (never throws, never a hard failure) — mirrors this file's own
+ * "never throw" tolerant-read convention (`readDeepDraftShotDrafts` et al.).
+ */
+export function resolveDeepDraftCreatedLocationsCount(result: unknown): number {
+  const record = result as
+    | { createdLocationCount?: unknown; createdLocations?: unknown }
+    | null
+    | undefined;
+  const count = record?.createdLocationCount;
+  if (typeof count === "number" && Number.isFinite(count) && count > 0) {
+    return Math.floor(count);
+  }
+  const raw = record?.createdLocations;
+  return Array.isArray(raw) ? raw.length : 0;
+}
+
+/**
+ * Set B (`vd-stuck-generation-and-lost-characters` plan, 2026-07-16) —
+ * tolerant read of a `generateStoryBibleDeep`/`extendStoryDraftHorizon` job
+ * result's `createdCharacters: { count, names }` field (server's
+ * `VdDeepDraftCreatedCharactersSummary`, `verticalDramaSeries.ts`) — the
+ * story-introduced dialogue speakers/shot characters
+ * `ensureRosterCharactersFromStory` auto-registered this run, each landing
+ * with `needsSetup: true` (no DNA/portrait yet). Mirrors
+ * `resolveDeepDraftCreatedLocationsCount`'s own "never throw" tolerant-read
+ * convention — an older/not-yet-updated result simply has no
+ * `createdCharacters` field and this returns `{ count: 0, names: [] }`
+ * rather than throwing.
+ */
+export function resolveDeepDraftCreatedCharactersSummary(
+  result: unknown
+): { count: number; names: string[] } {
+  const record = result as
+    | { createdCharacters?: { count?: unknown; names?: unknown } }
+    | null
+    | undefined;
+  const raw = record?.createdCharacters;
+  const count =
+    typeof raw?.count === "number" && Number.isFinite(raw.count) && raw.count > 0
+      ? Math.floor(raw.count)
+      : 0;
+  const names = Array.isArray(raw?.names)
+    ? raw.names.filter((n): n is string => typeof n === "string")
+    : [];
+  return { count, names };
+}
+
+/**
  * Mirror of the server's `estimatePremiumDeepDraftCalls`
- * (`chunkCount*6+2` — W11-A `verticalDramaStoryBible.ts`) — DISPLAY MATH
- * ONLY; the server independently deducts real credits per actual call made
- * (`deductPremiumCall`), never from this estimate.
+ * (`chunkCount*10+2` — `verticalDramaStoryBible.ts`) — DISPLAY MATH ONLY; the
+ * server independently deducts real credits per actual call made
+ * (`deductPremiumCall`), never from this estimate. Kept in sync with the
+ * server's `4/chunk -> 10/chunk` bump (production-grade full-story
+ * generation, 2026-07-13) so the pre-check estimate shown here never
+ * under-states what the server's `hasEnoughCredits` gate actually requires.
  */
 export function computePremiumDeepDraftCallEstimate(chunkCount: number): number {
-  return Math.max(0, chunkCount) * 6 + 2;
+  return Math.max(0, chunkCount) * 10 + 2;
 }
 
 /**
@@ -622,9 +765,21 @@ export function computePremiumDeepDraftCallEstimate(chunkCount: number): number 
 export function selectBelowFloorPremiumDimensions(
   scorecard: VerticalDramaDeepDraftScorecard,
 ): Array<{ dimension: VerticalDramaPremiumDraftScoreDimension; score: number }> {
-  return PREMIUM_DRAFT_SCORE_DIMENSIONS.filter(
-    (dimension) => scorecard[dimension] < PREMIUM_DRAFT_MIN_DIMENSION,
-  ).map((dimension) => ({ dimension, score: scorecard[dimension] }));
+  // A dimension absent from a legacy scorecard (the six added after the
+  // original 8 are `.optional()` in `draftScorecardSchema`) is simply not
+  // judged below-floor — never crash on `undefined < n`, never surface a
+  // phantom "0" row.
+  const below: Array<{
+    dimension: VerticalDramaPremiumDraftScoreDimension;
+    score: number;
+  }> = [];
+  for (const dimension of PREMIUM_DRAFT_SCORE_DIMENSIONS) {
+    const score = scorecard[dimension];
+    if (typeof score === "number" && score < PREMIUM_DRAFT_MIN_DIMENSION) {
+      below.push({ dimension, score });
+    }
+  }
+  return below;
 }
 
 /**
@@ -785,7 +940,13 @@ export function VerticalDramaDeepStoryDraftsActions({
   const utils = trpc.useUtils();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [scope, setScope] = useState<VerticalDramaDeepDraftScope>("keep");
-  const [mode, setMode] = useState<VerticalDramaDeepStoryDraftMode>("standard");
+  // Production-grade full-story generation upgrade (2026-07-13) — defaults
+  // to "premium" (was "standard"): the quality-loop pipeline (fan-out +
+  // LLM-judge + targeted-revise) is now the recommended default for this
+  // CTA; the user can still switch back to "standard" in the mode picker
+  // below. Resets to "premium" every time the dialog (re)opens, same as
+  // `scope` resets to "keep" — see `openConfirmDialog`.
+  const [mode, setMode] = useState<VerticalDramaDeepStoryDraftMode>("premium");
   // Extend has no confirm dialog to reset on (re)open, so this is an
   // ordinary, non-auto-resetting checkbox — see module header doc comment.
   const [extendPremium, setExtendPremium] = useState(false);
@@ -863,6 +1024,10 @@ export function VerticalDramaDeepStoryDraftsActions({
             chunkSizes: number[];
             /** Task #22 — see `GenerateStoryBibleDeepResult.tieInMismatchCount`'s own doc comment; `undefined` when tie-in draft awareness was not active this run. */
             tieInMismatchCount?: number;
+            /** Production-grade full-story generation upgrade (2026-07-13) — see `resolveDeepDraftCreatedLocationsCount`'s own doc comment; read defensively via that helper, never accessed directly. */
+            createdLocationCount?: unknown;
+            /** Set B (`vd-stuck-generation-and-lost-characters` plan) — see `resolveDeepDraftCreatedCharactersSummary`'s own doc comment; read defensively via that helper, never accessed directly. */
+            createdCharacters?: unknown;
           };
           toast.success(deepStoryDraftsGeneratedSuccessText(lang, sumDeepDraftChunkSizes(data.chunkSizes)));
           // Task #22 — appended ONLY when this run actually threaded tie-in
@@ -874,6 +1039,32 @@ export function VerticalDramaDeepStoryDraftsActions({
               toast.info(tieInDraftFullyReconciledText(lang));
             }
           }
+          // Production-grade full-story generation upgrade (2026-07-13) —
+          // appended ONLY when this run's chunk(s) actually declared new
+          // locations that got persisted into Tab ฉาก; silently skipped
+          // (never a falsy "0 ฉาก" toast) otherwise, including on a backend
+          // build that doesn't expose `createdLocations` on the result yet.
+          const createdLocationsCount = resolveDeepDraftCreatedLocationsCount(data);
+          if (createdLocationsCount > 0) {
+            toast.info(deepStoryDraftsNewLocationsCreatedText(lang, createdLocationsCount));
+          }
+          // Set B (`vd-stuck-generation-and-lost-characters` plan) — a
+          // SEPARATE toast.info call, composing with (never overwriting)
+          // the locations toast above: both can fire in the same run since
+          // a chunk can introduce new locations AND new dialogue-speaker
+          // characters at once. Silently skipped (never a falsy "0 ตัว"
+          // toast) when nothing was auto-registered this run.
+          const createdCharactersSummary =
+            resolveDeepDraftCreatedCharactersSummary(data);
+          if (createdCharactersSummary.count > 0) {
+            toast.info(
+              deepStoryDraftsNewCharactersCreatedText(
+                lang,
+                createdCharactersSummary.count,
+                createdCharactersSummary.names
+              )
+            );
+          }
           setPartialHorizonEndEpisode(data.partial ? data.horizonEndEpisode : null);
           invalidateSeries();
         },
@@ -882,7 +1073,12 @@ export function VerticalDramaDeepStoryDraftsActions({
             kind === "extend" ? verticalDramaCopy.deepStoryDraftsExtendError : verticalDramaCopy.deepStoryDraftsGenerateError;
           toast.error(error || pickCopy(lang, fallback));
         },
-        onTimeout: () => toast.error(pickCopy(lang, verticalDramaCopy.storyJobTimeoutError)),
+        // Resilient-resume upgrade (see `STORY_JOB_POLL_MAX_ATTEMPTS`'s doc
+        // comment above) — exhausting the poll budget is NOT a failure, the
+        // job is almost certainly still running server-side. Info tone, not
+        // error: the refresh-safe resume effect re-attaches on reload and
+        // the server's own completion notification still fires.
+        onTimeout: () => toast.info(pickCopy(lang, verticalDramaCopy.storyJobStillRunningBackground)),
         onNotFound: () => toast.error(pickCopy(lang, verticalDramaCopy.storyJobTimeoutError)),
       });
     } finally {
@@ -908,10 +1104,12 @@ export function VerticalDramaDeepStoryDraftsActions({
 
   /**
    * Deep-draft phase only — the pre-consolidation behavior, still used as-is
-   * for the "keep the plot" scope. `mode` (W11-B) is omitted entirely for
-   * "standard" — matches the router's own `mode.optional()` default
-   * convention, and keeps this call byte-identical to before W11-B when the
-   * quality picker is left at its default.
+   * for the "keep the plot" scope. `mode` is now ALWAYS sent explicitly
+   * (production-grade full-story generation upgrade, 2026-07-13) rather than
+   * omitted for "standard" — the picker's default flipped to "premium" (see
+   * the `mode` state doc comment above), and sending the user's actual
+   * choice explicitly keeps this call correct regardless of what the
+   * router's own omitted-`mode` default resolves to server-side.
    *
    * Async story jobs (#28) — awaits the FULL submit -> poll -> terminal
    * lifecycle (not just the enqueue round-trip), so `isMutating`/the button
@@ -919,12 +1117,27 @@ export function VerticalDramaDeepStoryDraftsActions({
    */
   const runDeepDraftOnly = async () => {
     try {
-      const { jobId } = await generateMutation.mutateAsync({
+      // Large-series no-op fix (2026-07-14, see
+      // `planning/vertical-drama-deep-draft-update-all-noop/plan.md`) —
+      // always request the FULL horizon (`totalEpisodes`), not the server's
+      // large-series default of 3, so this CTA actually drafts every
+      // Sub-episode instead of silently capping at 3 forever. Omitted when
+      // `totalEpisodes` isn't known yet (0), matching the router's own
+      // `horizonEpisodes.optional()` fallback.
+      const res = await generateMutation.mutateAsync({
         seriesId,
         idempotencyKey: crypto.randomUUID(),
-        ...(mode === "premium" ? { mode } : {}),
+        mode,
+        ...(totalEpisodes > 0 ? { horizonEpisodes: totalEpisodes } : {}),
       });
-      await pollStoryJob(jobId, "deep_generate");
+      if (!res.jobId) {
+        // `alreadyComplete` — every requested episode already has a
+        // detailed draft, so the server enqueued nothing. Nothing to poll.
+        toast.info(pickCopy(lang, verticalDramaCopy.deepStoryDraftsAlreadyCompleteInfo));
+        invalidateSeries();
+        return;
+      }
+      await pollStoryJob(res.jobId, "deep_generate");
     } catch {
       // Enqueue-level error toast already shown by generateMutation's own onError.
     }
@@ -940,8 +1153,10 @@ export function VerticalDramaDeepStoryDraftsActions({
    * retry, surfaced via this component's own existing deep-draft error toast.
    * `mode` (W11-B) threads the same way as `runDeepDraftOnly` above —
    * including for `hasPlan: false`, now that the picker is offered at
-   * bootstrap too (debt-item-5, 2026-07-08); `mode` still stays "standard"
-   * (omitted) whenever the user leaves the picker at its default.
+   * bootstrap too (debt-item-5, 2026-07-08); ALWAYS sent explicitly
+   * (production-grade full-story generation upgrade, 2026-07-13 — see
+   * `runDeepDraftOnly`'s own doc comment on why it's no longer omitted for
+   * "standard").
    */
   const runChain = async () => {
     setChainPhase("story");
@@ -953,12 +1168,24 @@ export function VerticalDramaDeepStoryDraftsActions({
     }
     setChainPhase("deep");
     try {
-      const { jobId } = await generateMutation.mutateAsync({
+      // Large-series no-op fix (2026-07-14, see
+      // `planning/vertical-drama-deep-draft-update-all-noop/plan.md`) — same
+      // full-horizon request as `runDeepDraftOnly` above, so the "rewrite
+      // everything" chain also drafts every Sub-episode instead of capping
+      // at 3 on large series.
+      const res = await generateMutation.mutateAsync({
         seriesId,
         idempotencyKey: crypto.randomUUID(),
-        ...(mode === "premium" ? { mode } : {}),
+        mode,
+        ...(totalEpisodes > 0 ? { horizonEpisodes: totalEpisodes } : {}),
       });
-      await pollStoryJob(jobId, "deep_generate");
+      if (!res.jobId) {
+        // `alreadyComplete` — nothing left to draft (see `runDeepDraftOnly`).
+        toast.info(pickCopy(lang, verticalDramaCopy.deepStoryDraftsAlreadyCompleteInfo));
+        invalidateSeries();
+        return;
+      }
+      await pollStoryJob(res.jobId, "deep_generate");
     } catch {
       // Error toast already shown by generateMutation's own onError, or by pollStoryJob's onFailed.
     } finally {
@@ -976,7 +1203,9 @@ export function VerticalDramaDeepStoryDraftsActions({
 
   const openConfirmDialog = () => {
     setScope("keep");
-    setMode("standard");
+    // Production-grade full-story generation upgrade (2026-07-13) — premium
+    // (quality-loop) is now the default, see the `mode` state doc comment.
+    setMode("premium");
     setConfirmOpen(true);
   };
 
@@ -1773,6 +2002,49 @@ export function VerticalDramaDeepStoryDraftEpisodeDetail({
                     </Badge>
                   )}
                 </div>
+
+                {/*
+                  Production-grade full-story generation upgrade
+                  (2026-07-13) — per-shot location + character/emotion
+                  preview. Rendered regardless of `isEditingThisShot` (unlike
+                  the silence-intent/dialogue-lines block below) since these
+                  are read-only context the user may still want visible while
+                  editing dialogue. Both fields are OPTIONAL — absent for
+                  drafts generated before this field existed, in which case
+                  neither block renders (no empty chrome).
+                */}
+                {shot.location_key && (
+                  <p
+                    className="mt-0.5 text-[11px] text-muted-foreground"
+                    data-testid={`vd-deep-story-draft-shot-location-${episodeNumber}-${shot.shot_number}`}
+                  >
+                    {deepStoryDraftsShotLocationText(lang, shot.location_key)}
+                  </p>
+                )}
+                {shot.characters && shot.characters.length > 0 && (
+                  <div
+                    role="group"
+                    aria-label={pickCopy(lang, verticalDramaCopy.deepStoryDraftsShotCharactersGroupLabel)}
+                    className="mt-1 flex flex-wrap gap-1"
+                    data-testid={`vd-deep-story-draft-shot-characters-${episodeNumber}-${shot.shot_number}`}
+                  >
+                    {shot.characters.map((character, i) => (
+                      <Badge
+                        key={`${character.name}-${i}`}
+                        variant="outline"
+                        className="text-[10px]"
+                        data-testid={`vd-deep-story-draft-shot-character-${episodeNumber}-${shot.shot_number}-${i}`}
+                      >
+                        {deepStoryDraftsShotCharacterChipText(
+                          lang,
+                          character.name,
+                          character.emotion,
+                          character.emotion_after,
+                        )}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
                 {isEditingThisShot ? (
                   <ManualDialogueEditShotForm

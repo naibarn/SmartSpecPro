@@ -4,6 +4,7 @@ import {
   buildCreateCharacterTwinInput,
   buildDetectCharacterVariantsSummaryMessage,
   buildPreviewCharacterPromptInput,
+  isFirstPortraitCandidateEligible,
   resolveVdCharacterMutationErrorMessage,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
 
@@ -192,6 +193,48 @@ describe("buildPreviewCharacterPromptInput", () => {
       characterId: "5",
       customInstruction: "หน้าตรง ภาพเต็มตัว",
     });
+  });
+
+  it("includes the optional first-portrait candidate count", () => {
+    expect(
+      buildPreviewCharacterPromptInput({
+        seriesId: "10",
+        characterId: "5",
+        customInstruction: "",
+        portraitCandidateCount: 5,
+      })
+    ).toEqual({ seriesId: "10", characterId: "5", portraitCandidateCount: 5 });
+  });
+});
+
+describe("isFirstPortraitCandidateEligible", () => {
+  const character = { characterId: "5", data: {} };
+
+  it("allows a standalone character with no primary portrait", () => {
+    expect(isFirstPortraitCandidateEligible(character, [])).toBe(true);
+  });
+
+  it("allows a legacy character with saved DNA but no primary portrait", () => {
+    expect(
+      isFirstPortraitCandidateEligible(
+        { characterId: "5", data: { visualBible: { version: 1 } } },
+        [],
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects characters with a primary portrait or face-link relationship", () => {
+    expect(
+      isFirstPortraitCandidateEligible(character, [
+        { characterId: "5", role: "primary_portrait" } as any,
+      ])
+    ).toBe(false);
+    expect(
+      isFirstPortraitCandidateEligible(
+        { characterId: "5", parentCharacterId: "2", data: {} },
+        []
+      )
+    ).toBe(false);
   });
 });
 

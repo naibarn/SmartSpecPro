@@ -199,11 +199,12 @@ describe("McpConnectPanel", () => {
     render(<McpConnectPanel defaultTab="sharing" />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Group for Magnific")).toHaveValue("7");
-      expect(screen.getByLabelText("Daily use limit for Magnific")).toHaveValue("100");
-      expect(screen.getByLabelText("Concurrency limit for Magnific")).toHaveValue("10");
+      expect(screen.getByText("Tiktok Group")).toBeDefined();
+      expect(screen.getByLabelText("Daily use limit for Magnific (Tiktok Group)")).toHaveValue("100");
+      expect(screen.getByLabelText("Concurrency limit for Magnific (Tiktok Group)")).toHaveValue("10");
     });
-    expect(screen.getByRole("button", { name: /Save Magnific/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Save Magnific \(Tiktok Group\)/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Stop sharing Magnific \(Tiktok Group\)/i })).toBeDefined();
   });
 
   it("can stop sharing one provider without changing another provider share", async () => {
@@ -261,8 +262,8 @@ describe("McpConnectPanel", () => {
     });
 
     render(<McpConnectPanel defaultTab="sharing" />);
-    await waitFor(() => expect(screen.getByRole("button", { name: /Stop sharing Magnific/i })).toBeDefined());
-    fireEvent.click(screen.getByRole("button", { name: /Stop sharing Magnific/i }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Stop sharing Magnific \(Tiktok Group\)/i })).toBeDefined());
+    fireEvent.click(screen.getByRole("button", { name: /Stop sharing Magnific \(Tiktok Group\)/i }));
 
     expect(mutate).toHaveBeenCalledWith(
       expect.objectContaining({ connectionId: "conn-magnific", groupId: 7, enabled: false }),
@@ -329,12 +330,236 @@ describe("McpConnectPanel", () => {
     render(<McpConnectPanel defaultTab="sharing" />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Group for Magnific")).toHaveValue("");
-      expect(screen.getByLabelText("Daily use limit for Magnific")).toHaveValue("");
-      expect(screen.getByLabelText("Concurrency limit for Magnific")).toHaveValue("");
-      expect(screen.getByLabelText("Group for Higgsfield")).toHaveValue("7");
+      // Magnific's share is disabled -> no editable row, group 7 still selectable in its Add dropdown.
+      expect(screen.queryByLabelText("Daily use limit for Magnific (Tiktok Group)")).toBeNull();
+      const magnificGroupOptions = screen.getByLabelText("Group for Magnific") as HTMLSelectElement;
+      expect(Array.from(magnificGroupOptions.options).map((option) => option.value)).toContain("7");
+
+      // Higgsfield's share is enabled -> editable row exists, group 7 no longer offered in its Add dropdown.
+      expect(screen.getByLabelText("Daily use limit for Higgsfield (Tiktok Group)")).toHaveValue("100");
+      const higgsfieldGroupOptions = screen.getByLabelText("Group for Higgsfield") as HTMLSelectElement;
+      expect(Array.from(higgsfieldGroupOptions.options).map((option) => option.value)).not.toContain("7");
     });
     expect(screen.queryByRole("button", { name: /Stop sharing Magnific/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /Stop sharing Higgsfield \(Tiktok Group\)/i })).toBeDefined();
     expect(screen.getByText("1 active share policy record(s)")).toBeDefined();
+  });
+
+  it("renders two rows for a connection with two enabled group shares and stops only the targeted group", async () => {
+    const mutate = vi.fn();
+    mockUpdateShare.mockReturnValue({ mutate, mutateAsync: vi.fn().mockResolvedValue({}), isPending: false });
+    mockGroupsList.mockReturnValue({
+      data: [
+        { id: 7, name: "Tiktok Group" },
+        { id: 9, name: "Cinema Group" },
+      ],
+      isLoading: false,
+    });
+    mockListConnections.mockReturnValue({
+      data: [
+        {
+          id: "conn-magnific",
+          providerKey: "magnific",
+          providerDisplayName: "Magnific",
+          providerAccountLabel: "magnific account",
+          displayName: "Magnific",
+          connectionScope: "personal",
+          status: "connected",
+        },
+      ],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mockListShares.mockReturnValue({
+      data: [
+        {
+          id: "share-magnific-tiktok",
+          connectionId: "conn-magnific",
+          groupId: 7,
+          enabled: true,
+          allowedAssetTypes: ["image", "video"],
+          dailyUseLimit: 50,
+          concurrencyLimit: 5,
+          requiresVideoApproval: true,
+        },
+        {
+          id: "share-magnific-cinema",
+          connectionId: "conn-magnific",
+          groupId: 9,
+          enabled: true,
+          allowedAssetTypes: ["image"],
+          dailyUseLimit: null,
+          concurrencyLimit: null,
+          requiresVideoApproval: false,
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(<McpConnectPanel defaultTab="sharing" />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Daily use limit for Magnific (Tiktok Group)")).toHaveValue("50");
+      expect(screen.getByLabelText("Daily use limit for Magnific (Cinema Group)")).toHaveValue("");
+    });
+    expect(screen.getByText("2 active share policy record(s)")).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: /Stop sharing Magnific \(Cinema Group\)/i }));
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionId: "conn-magnific",
+        groupId: 9,
+        enabled: false,
+        allowedAssetTypes: ["image"],
+      }),
+      expect.any(Object),
+    );
+    expect(mutate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ groupId: 7, enabled: false }),
+      expect.any(Object),
+    );
+  });
+
+  it("keeps each group's form values independent when shares refetch (no cross-group overwrite)", async () => {
+    mockGroupsList.mockReturnValue({
+      data: [
+        { id: 7, name: "Tiktok Group" },
+        { id: 9, name: "Cinema Group" },
+      ],
+      isLoading: false,
+    });
+    mockListConnections.mockReturnValue({
+      data: [
+        {
+          id: "conn-magnific",
+          providerKey: "magnific",
+          providerDisplayName: "Magnific",
+          providerAccountLabel: "magnific account",
+          displayName: "Magnific",
+          connectionScope: "personal",
+          status: "connected",
+        },
+      ],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    // First render: only group 7 is shared (enabled), with saved limits.
+    mockListShares.mockReturnValue({
+      data: [
+        {
+          id: "share-magnific-tiktok",
+          connectionId: "conn-magnific",
+          groupId: 7,
+          enabled: true,
+          allowedAssetTypes: ["image", "video"],
+          dailyUseLimit: 50,
+          concurrencyLimit: 5,
+          requiresVideoApproval: true,
+        },
+      ],
+      isLoading: false,
+    });
+
+    const { rerender } = render(<McpConnectPanel defaultTab="sharing" />);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Daily use limit for Magnific (Tiktok Group)")).toHaveValue("50");
+    });
+
+    // Simulate a refetch (e.g. after saving group 9) that now returns a newer,
+    // first-iterated disabled row for group 9 alongside the still-enabled group 7 row.
+    // Group 7's hydrated form must not be reset by group 9's disabled row.
+    mockListShares.mockReturnValue({
+      data: [
+        {
+          id: "share-magnific-cinema",
+          connectionId: "conn-magnific",
+          groupId: 9,
+          enabled: false,
+          allowedAssetTypes: ["image"],
+          dailyUseLimit: null,
+          concurrencyLimit: null,
+          requiresVideoApproval: false,
+        },
+        {
+          id: "share-magnific-tiktok",
+          connectionId: "conn-magnific",
+          groupId: 7,
+          enabled: true,
+          allowedAssetTypes: ["image", "video"],
+          dailyUseLimit: 50,
+          concurrencyLimit: 5,
+          requiresVideoApproval: true,
+        },
+      ],
+      isLoading: false,
+    });
+    rerender(<McpConnectPanel defaultTab="sharing" />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Daily use limit for Magnific (Tiktok Group)")).toHaveValue("50");
+      expect(screen.getByLabelText("Concurrency limit for Magnific (Tiktok Group)")).toHaveValue("5");
+    });
+    // Group 9 is disabled, so it must not render an editable row of its own.
+    expect(screen.queryByLabelText("Daily use limit for Magnific (Cinema Group)")).toBeNull();
+    expect(screen.getByText("1 active share policy record(s)")).toBeDefined();
+  });
+
+  it("round-trips the owner-approval-for-video checkbox into the updateShare payload", async () => {
+    const mutate = vi.fn();
+    mockUpdateShare.mockReturnValue({ mutate, mutateAsync: vi.fn().mockResolvedValue({}), isPending: false });
+    mockGroupsList.mockReturnValue({ data: [{ id: 7, name: "Tiktok Group" }], isLoading: false });
+    mockListConnections.mockReturnValue({
+      data: [
+        {
+          id: "conn-magnific",
+          providerKey: "magnific",
+          providerDisplayName: "Magnific",
+          providerAccountLabel: "magnific account",
+          displayName: "Magnific",
+          connectionScope: "personal",
+          status: "connected",
+        },
+      ],
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    mockListShares.mockReturnValue({
+      data: [
+        {
+          id: "share-magnific-tiktok",
+          connectionId: "conn-magnific",
+          groupId: 7,
+          enabled: true,
+          allowedAssetTypes: ["image", "video"],
+          dailyUseLimit: null,
+          concurrencyLimit: null,
+          requiresVideoApproval: true,
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(<McpConnectPanel defaultTab="sharing" />);
+    await waitFor(() => {
+      expect(screen.getByLabelText("Daily use limit for Magnific (Tiktok Group)")).toHaveValue("");
+    });
+
+    const approvalCheckbox = screen.getByLabelText("Owner approval required for video for Magnific (Tiktok Group)");
+    expect(approvalCheckbox).toBeChecked();
+    fireEvent.click(approvalCheckbox);
+    expect(approvalCheckbox).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: /Save Magnific \(Tiktok Group\)/i }));
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        connectionId: "conn-magnific",
+        groupId: 7,
+        requiresVideoApproval: false,
+      }),
+      expect.any(Object),
+    );
   });
 });

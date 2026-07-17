@@ -7,7 +7,11 @@ const mockSynthesizeMutate = vi.fn();
 const mockGenerateStoryMutate = vi.fn();
 const mockCreateMutate = vi.fn();
 
-let mockSynthesizeMutationState: { data: unknown; isPending: boolean } = {
+let mockSynthesizeMutationState: {
+  data: unknown;
+  isPending: boolean;
+  error?: { message?: string };
+} = {
   data: undefined,
   isPending: false,
 };
@@ -31,6 +35,10 @@ vi.mock("@/lib/trpc", () => ({
           get isPending() {
             return mockSynthesizeMutationState.isPending;
           },
+          get error() {
+            return mockSynthesizeMutationState.error;
+          },
+          reset: vi.fn(),
         }),
       },
       generateStoryBible: {
@@ -276,6 +284,66 @@ describe("CreateSeriesWizard — Preset Mix v2 (weights, blend report, identity 
     expect(
       screen.getByText(/preset 'Preset Two' ยังไม่ถูกผสมจริง/)
     ).toBeInTheDocument();
+  });
+
+  it("renders a creator-readable synopsis and keeps technical blend details collapsed", () => {
+    mockSynthesizeMutationState = {
+      data: {
+        draft: {
+          contract_version: 2,
+          title: "เรื่องที่อ่านเข้าใจ",
+          category: "sci_fi_mecha",
+          logline: "fallback",
+          mainPlot: "fallback",
+          seasonArc: "fallback",
+          tone: "tone",
+          cliffhangerStyle: "cliff",
+          creatorSummary: {
+            whatItIsAbout: "ร้านเล็กกำลังสู้เพื่อรักษาชุมชน",
+            protagonistAndGoal: "ฟ้าต้องกอบกู้ร้านของแม่เพื่อไม่ให้ทุกคนต้องย้ายออก",
+            conflictAndDiscovery: "เธอพบคู่แข่งและหลักฐานการซื้อพื้นที่",
+            centralMystery: "ใครกำลังบงการการซื้อพื้นที่",
+            decisionNotes: ["ร้านเป็นแกนเรื่อง", "ปมจะคลี่คลายในช่วงท้าย"],
+          },
+          characters: [{ name: "ฟ้า", role: "นางเอก", description: "desc" }],
+          visualBible: "visual",
+          mixRecipe: { rationale: "technical rationale" },
+          warnings: [],
+          blendReport: {
+            contractVersion: 2,
+            facets: [],
+            contributionCoverage: {},
+            minFacetsPerPreset: 2,
+            underBlended: [],
+          },
+        },
+        creditsUsed: 1,
+        model: "test-model",
+      },
+      isPending: false,
+    };
+    renderWizard();
+
+    expect(screen.getByTestId("vd-creator-summary")).toBeInTheDocument();
+    expect(screen.getByText("ร้านเล็กกำลังสู้เพื่อรักษาชุมชน")).toBeInTheDocument();
+    expect(screen.queryByText("technical rationale")).not.toBeInTheDocument();
+    expect(screen.getByText("รายละเอียดการผสม (สำหรับตรวจสอบเท่านั้น)")).toBeInTheDocument();
+  });
+
+  it("shows a retryable synthesis error without asking the creator to refresh", () => {
+    mockSynthesizeMutationState = {
+      data: undefined,
+      isPending: false,
+      error: { message: "Preset synthesis response failed schema validation" },
+    };
+    renderWizard();
+    selectCategoryAndPresets(["1", "2"]);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "AI สร้าง draft ที่อ่านได้ไม่ครบ"
+    );
+    expect(screen.getByRole("button", { name: "ลองสร้างใหม่" })).toBeInTheDocument();
+    expect(screen.queryByText(/รีเฟรชหน้า/)).not.toBeInTheDocument();
   });
 
   it("renders no blend-report chrome for a v1 (flag-off) draft response — shipped Mix and Match UI unchanged", () => {

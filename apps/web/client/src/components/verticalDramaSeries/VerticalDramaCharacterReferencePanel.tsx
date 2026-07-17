@@ -79,9 +79,34 @@ const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
 type HistoryScope = "series" | "all";
 const HISTORY_SCOPE_STORAGE_KEY = "vd-reference-panel-history-scope";
 
-function readStoredHistoryScope(): HistoryScope | null {
+/** Best-effort localStorage access. Reads/writes here are only a CONVENIENCE
+ *  cache (remembered history-scope preference) — never the source of truth.
+ *  They MUST NOT throw: `localStorage.setItem` raises `QuotaExceededError`
+ *  when the origin's storage is full (common for heavy users) and
+ *  `getItem`/`setItem` raise `SecurityError` in sandboxed/blocked-storage
+ *  contexts. An unguarded throw here used to abort the whole handler/effect
+ *  BEFORE the real (state) action fired. Swallow the error and let the real
+ *  action proceed. */
+function safeStorageGet(key: string): string | null {
   if (typeof window === "undefined") return null;
-  const raw = window.localStorage.getItem(HISTORY_SCOPE_STORAGE_KEY);
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* quota exceeded / storage blocked — cache is best-effort, ignore */
+  }
+}
+
+function readStoredHistoryScope(): HistoryScope | null {
+  const raw = safeStorageGet(HISTORY_SCOPE_STORAGE_KEY);
   return raw === "series" || raw === "all" ? raw : null;
 }
 
@@ -291,7 +316,7 @@ export function VerticalDramaCharacterReferencePanel({
     () => readStoredHistoryScope() ?? "series"
   );
   useEffect(() => {
-    window.localStorage.setItem(HISTORY_SCOPE_STORAGE_KEY, historyScope);
+    safeStorageSet(HISTORY_SCOPE_STORAGE_KEY, historyScope);
   }, [historyScope]);
 
   const historyQuery = trpc.media.listTasks.useQuery(

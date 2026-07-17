@@ -73,6 +73,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
 import { McpConnectPanel } from '@/components/settings/McpConnectPanel';
+import { HermesConnectPanel } from '@/components/settings/HermesConnectPanel';
 import { McpServersSettingsPanel } from '@/components/settings/McpServersSettingsPanel';
 import { MarketplaceConnectorSettingsPanel } from '@/components/settings/MarketplaceConnectorSettingsPanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
@@ -2528,6 +2529,7 @@ export default function Settings() {
                   <UploadPostGatewayPanel tenantId={user.currentTenantId ?? null} />
                   <MarketplaceConnectorSettingsPanel />
                   <McpConnectPanel />
+                  <HermesConnectPanel />
                   <McpServersSettingsPanel />
                   <GoogleDrivePanel />
                   <OneDrivePanel />

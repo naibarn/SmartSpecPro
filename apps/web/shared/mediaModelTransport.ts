@@ -72,3 +72,20 @@ export function getMediaModelTransportLabel(config: MediaModelTransportConfig): 
   if (config.transport === "hermes_worker") return "Hermes";
   return config.transport === "mcp" ? "MCP" : "API";
 }
+
+/**
+ * Feature 135 (Hermes Grok media worker) client gating helper — true when a
+ * model row's `configJson` resolves to `hermes_worker` transport. Pure and
+ * shared so every surface (model-picker badge, VD stock panels, EpisodePage,
+ * StoryboardPanel) computes the same gate identically instead of re-deriving
+ * `resolveMediaModelTransportConfig(...).transport === "hermes_worker"` ad
+ * hoc at each call site.
+ */
+export function modelUsesHermesTransport(configJson?: unknown): boolean {
+  return resolveMediaModelTransportConfig({ configJson }).transport === "hermes_worker";
+}
+
+/** Same convention for MCP-transport gating (regression parity helper). */
+export function modelUsesMcpTransport(configJson?: unknown): boolean {
+  return resolveMediaModelTransportConfig({ configJson }).transport === "mcp";
+}

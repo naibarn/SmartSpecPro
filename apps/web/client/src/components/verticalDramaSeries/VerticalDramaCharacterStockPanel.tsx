@@ -14,7 +14,7 @@
  *  - inline Thai/English copy driven by the shared language hook.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -81,17 +81,81 @@ import ModelSelectorDialog, {
   type MediaModel,
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { HermesConnectionPicker } from "@/components/media/HermesConnectionPicker";
+import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import { MediaPromptPreview } from "@/components/chat/MediaPromptPreview";
 import { ImageLightbox } from "@/components/chat/media/ImageLightbox";
+import { AspectRatio } from "@astryxdesign/core/AspectRatio";
+import { Grid } from "@astryxdesign/core/Grid";
+import { SelectableCard } from "@astryxdesign/core/SelectableCard";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
 import { splitImage, type SplitResult } from "@/lib/imageGridSplitter";
-import type { VerticalDramaCharacterAsset } from "@shared/verticalDramaSeries/characterAssets";
+import type {
+  VerticalDramaCharacterAsset,
+  VdCharacterNeedsSetupReason,
+} from "@shared/verticalDramaSeries/characterAssets";
 import type { VerticalDramaApprovedCharacterDesignSnapshot } from "@shared/verticalDramaSeries/characterProfile";
 import {
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN,
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH,
   normalizeTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import {
+  ROLE_TIER_LABELS,
+  ROLE_TIER_VALUES,
+  roleTierToNarrativeRole,
+  type RoleTier,
+} from "@shared/verticalDramaSeries/narrativeRole";
+import {
+  isCharacterLockPolicyFailureMessage,
+  VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
+} from "@shared/verticalDramaSeries/characterLock";
+
+function getCanonicalRoleLabel(
+  roleTier: string | null | undefined,
+  lang: "th" | "en",
+): string | null {
+  if (!roleTier || !(roleTier in ROLE_TIER_LABELS)) return null;
+  const label = ROLE_TIER_LABELS[roleTier as keyof typeof ROLE_TIER_LABELS];
+  return lang === "th" ? label.th : label.en;
+}
+
+/**
+ * Set B (`vd-stuck-generation-and-lost-characters` plan, 2026-07-16) —
+ * composes the roster "needs setup" badge label from a character's
+ * `needsSetupReasons` (`VdCharacterNeedsSetupReason[]`, computed
+ * server-side by `characterRowToDto`/`computeCharacterNeedsSetupReasons`;
+ * see that function's own doc comment for what each reason means).
+ * `"auto_registered_from_story"` always wins — it's the single most
+ * actionable message (the row exists only because the deep-draft LLM
+ * introduced this character; nothing has been done on it yet) — otherwise
+ * composes from whichever of `missing_portrait`/`missing_dna` apply so a
+ * manually-created character missing just one of the two still gets a
+ * precise label instead of the generic auto-registered one. Falls back to
+ * a generic label for the (should-be-impossible) case of `needsSetup: true`
+ * with an empty reasons array, rather than rendering nothing.
+ */
+export function needsSetupBadgeLabel(
+  lang: "th" | "en",
+  reasons: readonly VdCharacterNeedsSetupReason[],
+): string {
+  if (reasons.includes("auto_registered_from_story")) {
+    return lang === "th"
+      ? "auto-สร้างจากเรื่อง — ยังต้องทำ DNA/ภาพ"
+      : "Auto-created from story — needs DNA/portrait";
+  }
+  const parts: string[] = [];
+  if (reasons.includes("missing_portrait")) {
+    parts.push(lang === "th" ? "ยังไม่มีภาพ" : "no portrait");
+  }
+  if (reasons.includes("missing_dna")) {
+    parts.push(lang === "th" ? "ยังไม่มี DNA" : "no DNA");
+  }
+  if (parts.length === 0) {
+    return lang === "th" ? "ยังต้องตั้งค่า" : "Needs setup";
+  }
+  return `${lang === "th" ? "ยังต้องตั้งค่า" : "Needs setup"}: ${parts.join(", ")}`;
+}
 
 /**
  * Best-effort character description for display — mirrors the server-side
@@ -119,17 +183,76 @@ export const VD_CHARACTER_IMAGE_POLL_MAX_ATTEMPTS = Math.ceil(
  *  either surface carries over automatically. */
 const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
 
-function readStoredMcpConnectionId(): string | null {
+/** Best-effort localStorage access. Reads/writes here are only a CONVENIENCE
+ *  cache (remembered model/MCP-connection defaults) — never the source of
+ *  truth. They MUST NOT throw: `localStorage.setItem` raises
+ *  `QuotaExceededError` when the origin's storage is full (common for heavy
+ *  users) and `getItem`/`setItem` raise `SecurityError` in
+ *  sandboxed/blocked-storage contexts. An unguarded throw here used to abort
+ *  the whole click handler BEFORE the real (state/mutation) action fired.
+ *  Swallow the error and let the real action proceed. */
+function safeStorageGet(key: string): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(MCP_CONNECTION_ID_STORAGE_KEY) || null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* quota exceeded / storage blocked — cache is best-effort, ignore */
+  }
+}
+
+function safeStorageRemove(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* storage blocked — best-effort, ignore */
+  }
+}
+
+function readStoredMcpConnectionId(): string | null {
+  return safeStorageGet(MCP_CONNECTION_ID_STORAGE_KEY);
 }
 
 function storeMcpConnectionId(connectionId: string | null): void {
-  if (typeof window === "undefined") return;
   if (connectionId) {
-    window.localStorage.setItem(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
+    safeStorageSet(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
   } else {
-    window.localStorage.removeItem(MCP_CONNECTION_ID_STORAGE_KEY);
+    safeStorageRemove(MCP_CONNECTION_ID_STORAGE_KEY);
+  }
+}
+
+/** Feature 135 (Hermes/Grok media worker) — shared Hermes-connection
+ *  localStorage key, same cross-surface carry-over convention as
+ *  `MCP_CONNECTION_ID_STORAGE_KEY` above: this key is shared with
+ *  `VerticalDramaLocationStockPanel.tsx` and `VerticalDramaEpisodePage.tsx`
+ *  so a connection picked on any surface carries over automatically. */
+export const HERMES_CONNECTION_ID_STORAGE_KEY = "smartspec_hermes_connection_id";
+
+/** Exported (unlike its MCP sibling above) so the storage contract is
+ *  directly unit-testable — see
+ *  `__tests__/VerticalDramaCharacterStockPanel.hermesConnection.test.ts`. */
+export function readStoredHermesConnectionId(): string | null {
+  return safeStorageGet(HERMES_CONNECTION_ID_STORAGE_KEY);
+}
+
+/** State-first ordering: callers always update React state BEFORE calling
+ *  this (see `handleSelectHermesConnection`) — this write is a best-effort
+ *  cache only and must never block/throw the real action (memory: the
+ *  QuotaExceeded incident that once blocked model selection). */
+export function storeHermesConnectionId(connectionId: string | null): void {
+  if (connectionId) {
+    safeStorageSet(HERMES_CONNECTION_ID_STORAGE_KEY, connectionId);
+  } else {
+    safeStorageRemove(HERMES_CONNECTION_ID_STORAGE_KEY);
   }
 }
 
@@ -432,6 +555,12 @@ export interface VdRosterCharacterFields {
   parentCharacterId?: string;
   variantLabel?: string;
   sharesFaceWithCharacterId?: string;
+  /** Set B (`vd-stuck-generation-and-lost-characters` plan) — DTO
+   *  completeness signal (`characterRowToDto`'s `needsSetup`/
+   *  `needsSetupReasons`); optional here so plain fixtures without it keep
+   *  working. */
+  needsSetup?: boolean;
+  needsSetupReasons?: VdCharacterNeedsSetupReason[];
 }
 
 export interface VdRosterEntry<T extends VdRosterCharacterFields> {
@@ -485,6 +614,36 @@ export function buildCharacterRosterEntries<T extends VdRosterCharacterFields>(
         ? characters.find(other => other.characterId === c.sharesFaceWithCharacterId)?.name
         : undefined,
     }));
+}
+
+/**
+ * Set B (`vd-stuck-generation-and-lost-characters` plan) — narrows roster
+ * entries down to only the ones the user still needs to finish (a
+ * story-introduced character with no DNA/portrait yet, or any other
+ * `needsSetup` reason). An entry counts if its own top-level character OR
+ * any nested variant row still needs setup, so a variant needing work is
+ * never hidden behind an otherwise-complete parent card. Pure/derived —
+ * mirrors `buildCharacterRosterEntries`'s own testing convention.
+ */
+export function filterRosterEntriesNeedingSetup<T extends VdRosterCharacterFields>(
+  entries: VdRosterEntry<T>[]
+): VdRosterEntry<T>[] {
+  return entries.filter(
+    entry =>
+      entry.character.needsSetup === true ||
+      entry.variants.some(v => v.needsSetup === true)
+  );
+}
+
+/**
+ * Set B — total character ROWS (not roster entries; every top-level
+ * character AND every variant row counts individually) still needing
+ * setup, for the roster filter toggle's "(N)" count.
+ */
+export function countCharactersNeedingSetup<T extends { needsSetup?: boolean }>(
+  characters: T[]
+): number {
+  return characters.filter(c => c.needsSetup === true).length;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -589,6 +748,7 @@ export interface VdPreviewCharacterPromptInput {
   seriesId: string;
   characterId: string;
   customInstruction?: string;
+  portraitCandidateCount?: number;
 }
 
 /** Builds the `previewCharacterPrompt` mutation payload from the optional
@@ -601,13 +761,66 @@ export function buildPreviewCharacterPromptInput(params: {
   seriesId: string;
   characterId: string;
   customInstruction: string;
+  portraitCandidateCount?: number;
 }): VdPreviewCharacterPromptInput {
   const customInstruction = params.customInstruction.trim();
   return {
     seriesId: params.seriesId,
     characterId: params.characterId,
     ...(customInstruction ? { customInstruction } : {}),
+    ...(params.portraitCandidateCount
+      ? { portraitCandidateCount: params.portraitCandidateCount }
+      : {}),
   };
+}
+
+export function isFirstPortraitCandidateEligible(
+  character: {
+    characterId: string;
+    parentCharacterId?: string;
+    sharesFaceWithCharacterId?: string;
+    data?: Record<string, unknown>;
+  },
+  assets: VerticalDramaCharacterAsset[],
+): boolean {
+  if (character.parentCharacterId || character.sharesFaceWithCharacterId) return false;
+  // Legacy stories may already contain a saved visual bible even though no
+  // portrait was ever rendered. Candidate casting is gated by the actual
+  // primary portrait lifecycle, not by that legacy planning snapshot.
+  return !assets.some(
+    (asset) =>
+      asset.characterId === character.characterId && asset.role === "primary_portrait",
+  );
+}
+
+type VdPortraitCandidateUiStatus =
+  | "previewed"
+  | "submitting"
+  | "queued"
+  | "completed"
+  | "failed"
+  | "selected"
+  | "superseded";
+
+interface VdPortraitCandidateUiItem {
+  assetLinkId: string;
+  candidateId: string;
+  index: number;
+  portraitPrompt?: string;
+  negativePrompt?: string;
+  visualIdentitySummary?: string;
+  status: VdPortraitCandidateUiStatus;
+  taskId?: string;
+  imageUrl?: string;
+  errorMessage?: string;
+}
+
+interface VdPortraitCandidateUiBatch {
+  batchId: string;
+  characterId: string;
+  sharedVisualLanguage?: string;
+  model?: string;
+  candidates: VdPortraitCandidateUiItem[];
 }
 
 export interface VdCharacterPromptConfirmPayload<TSnapshot> {
@@ -616,8 +829,18 @@ export interface VdCharacterPromptConfirmPayload<TSnapshot> {
   approvedPrompt: string;
   approvedNegativePrompt?: string;
   approvedDesignSnapshot?: TSnapshot;
-  selectedImageModelId?: string;
+  // Required (not optional) — the server now REJECTS image generation
+  // without an explicit model (fail-closed, no more silent
+  // `DEFAULT_MODELS.image` fallback). `buildCharacterPromptConfirmPayload`'s
+  // only caller (`handleCharacterPromptConfirm`) guards on
+  // `requireModelSelected()` immediately before calling this, so it always
+  // has a non-empty value to pass in.
+  selectedImageModelId: string;
   mcpConnectionId?: string;
+  sharedGroupId?: number;
+  /** Feature 135 — Hermes/Grok media worker transport. Mutually exclusive
+   *  with `mcpConnectionId` (a model row resolves to exactly one transport). */
+  hermesConnectionId?: string;
   referenceAssetLinkId?: string;
 }
 
@@ -634,9 +857,16 @@ export function buildCharacterPromptConfirmPayload<TSnapshot>(params: {
   editedPrompt: string;
   negativePrompt?: string;
   approvedDesignSnapshot?: TSnapshot;
-  selectedImageModelId?: string | null;
+  // Required — see `VdCharacterPromptConfirmPayload.selectedImageModelId`'s
+  // own doc comment for why this is no longer optional.
+  selectedImageModelId: string;
   imageModelUsesMcp: boolean;
   mcpConnectionId?: string | null;
+  sharedGroupId?: number | null;
+  /** Feature 135 — Hermes/Grok media worker transport gate, sibling of
+   *  `imageModelUsesMcp`. */
+  imageModelUsesHermes?: boolean;
+  hermesConnectionId?: string | null;
   referenceAssetLinkId?: string | null;
 }): {
   payload: VdCharacterPromptConfirmPayload<TSnapshot>;
@@ -660,11 +890,22 @@ export function buildCharacterPromptConfirmPayload<TSnapshot>(params: {
       ...(carriesApprovedDna
         ? { approvedDesignSnapshot: params.approvedDesignSnapshot }
         : {}),
-      ...(params.selectedImageModelId
-        ? { selectedImageModelId: params.selectedImageModelId }
-        : {}),
+      // Always sent (never conditionally spread) — see this function's
+      // param doc comment.
+      selectedImageModelId: params.selectedImageModelId,
       ...(params.imageModelUsesMcp && params.mcpConnectionId
         ? { mcpConnectionId: params.mcpConnectionId }
+        : {}),
+      ...(params.imageModelUsesMcp && params.mcpConnectionId && params.sharedGroupId != null
+        ? { sharedGroupId: params.sharedGroupId }
+        : {}),
+      // Defensively mutually exclusive with `mcpConnectionId` above even if
+      // a caller passed both flags true — a model row resolves to exactly
+      // one transport, so the MCP field (if present) always wins.
+      ...(params.imageModelUsesHermes &&
+      params.hermesConnectionId &&
+      !(params.imageModelUsesMcp && params.mcpConnectionId)
+        ? { hermesConnectionId: params.hermesConnectionId }
         : {}),
       ...(params.referenceAssetLinkId
         ? { referenceAssetLinkId: params.referenceAssetLinkId }
@@ -709,12 +950,39 @@ export function buildDetectCharacterVariantsSummaryMessage(
  *  testable (e.g. that `deleteCharacter`'s PRECONDITION_FAILED Thai message
  *  passes straight through unmodified) without needing a full component
  *  render. Byte-identical logic to what `onError` inlined before this
- *  extraction. */
+ *  extraction — EXCEPT (Feature 135 section-10 review fix) a `[HERMES_X] ...`
+ *  prefixed message (the pinned server wire convention, `shared/hermesMedia.ts`)
+ *  is now rendered via `presentHermesError`/`formatHermesErrorForToast`
+ *  instead of leaking the raw bracketed English string; every other message
+ *  (including this file's own pre-existing test fixtures) passes through
+ *  completely unchanged — `presentHermesError` returns `null` for them. */
 export function resolveVdCharacterMutationErrorMessage(
   err: { message?: string } | null | undefined,
   lang: Lang
 ): string {
+  const presentation = presentHermesError(err ?? null);
+  if (presentation) return formatHermesErrorForToast(presentation, lang);
   return err?.message ?? t(lang, "เกิดข้อผิดพลาด", "Something went wrong");
+}
+
+/** True when a generate-image mutation's `onError` message indicates the
+ *  server rejected the request over `selectedImageModelId` — either the
+ *  fail-closed "no model selected" `BAD_REQUEST` thrown by
+ *  `resolveCharacterImageModelId` (server: `verticalDramaCharacters.ts`), or
+ *  its sibling "unknown"/"disabled" model messages. Used to additionally
+ *  reopen the model-picker dialog instead of just toasting, since a plain
+ *  toast leaves the user stuck without a next step. Matched on message
+ *  content (not `error.data.code`, which stays `BAD_REQUEST` for plenty of
+ *  unrelated validation failures too) — exported so it's unit-testable
+ *  against the exact server copy without mounting the component. */
+export function isImageModelSelectionError(
+  err: { message?: string } | null | undefined
+): boolean {
+  const message = err?.message ?? "";
+  return (
+    /เลือกโมเดลภาพ/.test(message) ||
+    /image model/i.test(message)
+  );
 }
 
 function extractCharacterDescriptionForDisplay(
@@ -852,6 +1120,129 @@ export function formStateToSpeechProfile(
 
 type Lang = "th" | "en";
 const t = (lang: Lang, th: string, en: string) => (lang === "th" ? th : en);
+
+/* -------------------------------------------------------------------------- */
+/* Portrait candidate — pure helpers                                         */
+/* (planning/vd-stuck-generation-and-lost-characters/plan.md, Set A —         */
+/* stuck / policy-rejected character portrait candidates never clear)        */
+/* -------------------------------------------------------------------------- */
+
+/** Once a candidate reaches one of these it is final; only an
+ *  equally-or-more-final durable status should ever move it — never a stale
+ *  in-memory non-terminal status (see `mergeDurablePortraitCandidateStatus`). */
+export const VD_PORTRAIT_CANDIDATE_TERMINAL_STATUSES: ReadonlySet<VdPortraitCandidateUiStatus> =
+  new Set(["completed", "failed", "selected", "superseded"]);
+
+/**
+ * Set A fix #1: previously a 30-min poll timeout only fired a toast and left
+ * the card frozen on "กำลังสร้าง…" forever
+ * (`VerticalDramaCharacterStockPanel.tsx`'s old `pollPortraitCandidateTask`
+ * timeout branch). This builds the terminal-`failed` patch that function now
+ * applies via `updatePortraitCandidateUi` so the card visibly stops instead
+ * of hanging.
+ */
+export function buildPortraitCandidateTimeoutPatch(
+  lang: Lang,
+): Pick<VdPortraitCandidateUiItem, "status" | "errorMessage"> {
+  return {
+    status: "failed",
+    errorMessage: t(
+      lang,
+      "ใช้เวลานานเกินไป — กรุณาลองใหม่",
+      "Taking too long — please retry."
+    ),
+  };
+}
+
+/**
+ * Set A fix #2 (the core bug): merges the durable (server-persisted) view of
+ * a portrait candidate onto the in-memory (locally-polled) one. Previously
+ * only a durable `selected`/`superseded` was ever copied from `saved`, so a
+ * durable `failed` (e.g. corrected by a background reconciler, or set from
+ * another browser tab) never advanced a frozen in-memory `queued`/
+ * `submitting` card — the rejection never surfaced in this tab.
+ *
+ * Rules:
+ *  - `saved.status` of `selected`/`superseded` always wins — unchanged from
+ *    the pre-fix behavior (another tab's selection outcome must always be
+ *    reflected here, even over a locally `completed` candidate).
+ *  - A durable `failed`/`completed` also now advances the card, but ONLY
+ *    when the in-memory status is not already terminal itself — an
+ *    already-final local state (e.g. this tab's own poll just settled it,
+ *    or `buildPortraitCandidateTimeoutPatch` already marked it `failed`) is
+ *    never downgraded by a differently-terminal saved status.
+ */
+export function mergeDurablePortraitCandidateStatus(
+  candidate: VdPortraitCandidateUiItem,
+  saved: VdPortraitCandidateUiItem | undefined,
+): VdPortraitCandidateUiItem {
+  if (!saved) return candidate;
+  const merged: VdPortraitCandidateUiItem = {
+    ...candidate,
+    ...(saved.taskId && !candidate.taskId ? { taskId: saved.taskId } : {}),
+    ...(saved.imageUrl && !candidate.imageUrl ? { imageUrl: saved.imageUrl } : {}),
+  };
+  if (saved.status === "selected" || saved.status === "superseded") {
+    return { ...merged, status: saved.status };
+  }
+  const inMemoryIsTerminal = VD_PORTRAIT_CANDIDATE_TERMINAL_STATUSES.has(candidate.status);
+  if (!inMemoryIsTerminal && (saved.status === "failed" || saved.status === "completed")) {
+    return {
+      ...merged,
+      status: saved.status,
+      ...(saved.status === "failed" && saved.errorMessage
+        ? { errorMessage: saved.errorMessage }
+        : {}),
+    };
+  }
+  return merged;
+}
+
+/**
+ * Set A fix #3 "Cancel" pure helper: optimistically drops a candidate from
+ * its in-memory batch so the card disappears immediately, before the
+ * `deleteAsset` round-trip + query invalidation land.
+ */
+export function removePortraitCandidateFromBatch(
+  batch: VdPortraitCandidateUiBatch,
+  assetLinkId: string,
+): VdPortraitCandidateUiBatch {
+  return {
+    ...batch,
+    candidates: batch.candidates.filter(candidate => candidate.assetLinkId !== assetLinkId),
+  };
+}
+
+/**
+ * Set A fix #4 gate. `generatePortraitCandidateBatch`'s server input has no
+ * `softenLevel` field yet (verified against
+ * `server/routers/verticalDramaCharacters.ts:909-920`, 2026-07-16) — unlike
+ * `generateStartFrameImage`/`generateShotImageAction`, which do accept one
+ * and drive `pollStartFrameTask`'s auto-soften in
+ * `VerticalDramaEpisodePage.tsx`. Until the server candidate-submit path
+ * accepts a `softenLevel`, this always returns `false`, so a
+ * policy-classified candidate failure surfaces its message on the card and
+ * relies on the manual Retry button (fix #3) instead of an automatic
+ * resubmit.
+ *
+ * TODO(soften): once the server accepts `softenLevel` on
+ * `generatePortraitCandidateBatch`, flip `PORTRAIT_CANDIDATE_SOFTEN_SUPPORTED`
+ * to `true`, thread a `softenLevel` parameter through
+ * `pollPortraitCandidateTask` (mirroring `pollStartFrameTask`'s signature),
+ * and resubmit via `generatePortraitCandidateBatchMutation` with
+ * `softenLevel + 1` exactly like `pollStartFrameTask` does.
+ */
+const PORTRAIT_CANDIDATE_SOFTEN_SUPPORTED = false;
+export function shouldAutoSoftenPortraitCandidate(
+  errorMessage: string | undefined,
+  softenLevel: number,
+): boolean {
+  return (
+    PORTRAIT_CANDIDATE_SOFTEN_SUPPORTED &&
+    isCharacterLockPolicyFailureMessage(errorMessage) &&
+    softenLevel < VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL
+  );
+}
 
 /**
  * Character Design Bible sheet formats (vertical-drama-character-sheet-
@@ -1017,6 +1408,7 @@ export function VerticalDramaCharacterStockPanel({
   const [newName, setNewName] = useState("");
   const [newKey, setNewKey] = useState("");
   const [newRole, setNewRole] = useState("");
+  const [newRoleTier, setNewRoleTier] = useState<RoleTier | "">("");
   /** Newly-generated portrait URLs keyed by characterId — only populated for
    *  this session's freshly-generated images (see `generateImageMutation`).
    *  Pre-existing assets without a resolvable URL keep their plain-text
@@ -1136,6 +1528,20 @@ export function VerticalDramaCharacterStockPanel({
    *  and the detail-panel textarea for the same character. */
   const [customInstructionByCharacter, setCustomInstructionByCharacter] =
     useState<Record<string, string>>({});
+  const [portraitCandidateCountByCharacter, setPortraitCandidateCountByCharacter] =
+    useState<Record<string, number>>({});
+  const [portraitCandidateBatches, setPortraitCandidateBatches] = useState<
+    Record<string, VdPortraitCandidateUiBatch>
+  >({});
+  const [pollingPortraitCandidateAssetIds, setPollingPortraitCandidateAssetIds] =
+    useState<Set<string>>(new Set());
+  const resumedPortraitCandidateTasksRef = useRef<Set<string>>(new Set());
+  /** Set A fix #3: assetLinkIds currently mid-Retry (from the fresh
+   *  single-candidate preview call through the batch-submit mutation) — used
+   *  only to disable that one candidate's Retry button against double-clicks
+   *  while the round-trip is in flight. */
+  const [retryingPortraitCandidateAssetIds, setRetryingPortraitCandidateAssetIds] =
+    useState<Set<string>>(new Set());
 
   /** Persistent right-side sidebar column (Library / History / Grid cutter
    *  reference picker) — mirrors Media Studio's own collapsible right panel
@@ -1152,11 +1558,11 @@ export function VerticalDramaCharacterStockPanel({
    *  the user doesn't have to re-pick a model every single generate. */
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
   const [selectedImageModelId, setSelectedImageModelId] = useState(
-    () => localStorage.getItem(VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY) || ""
+    () => safeStorageGet(VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY) || ""
   );
   const handleSelectImageModel = (modelId: string) => {
     setSelectedImageModelId(modelId);
-    localStorage.setItem(VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY, modelId);
+    safeStorageSet(VD_CHARACTER_IMAGE_MODEL_STORAGE_KEY, modelId);
   };
   const imageModelsQuery = trpc.mediaModels.list.useQuery({ type: "image" });
   const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModel[];
@@ -1178,9 +1584,11 @@ export function VerticalDramaCharacterStockPanel({
   const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(
     readStoredMcpConnectionId
   );
+  const [mcpSharedGroupId, setMcpSharedGroupId] = useState<number | null>(null);
   const handleSelectMcpConnection = (connectionId: string | null) => {
     setMcpConnectionIdState(connectionId);
     storeMcpConnectionId(connectionId);
+    if (!connectionId) setMcpSharedGroupId(null);
   };
   /** Blocks generation client-side with a toast instead of letting the
    *  server throw BAD_REQUEST — same convention as
@@ -1192,6 +1600,38 @@ export function VerticalDramaCharacterStockPanel({
         lang,
         "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลนี้",
         "Select an MCP connection before using this image model."
+      )
+    );
+    return false;
+  };
+
+  /** Feature 135 (Hermes/Grok media worker) — sibling of `imageModelUsesMcp`
+   *  above. Mutually exclusive: a model row resolves to exactly one
+   *  transport, so at most one of `imageModelUsesMcp`/`imageModelUsesHermes`
+   *  is ever true. */
+  const imageModelUsesHermes =
+    Boolean(selectedImageModelId) &&
+    resolveMediaModelTransportConfig({
+      provider: selectedImageModelRecord?.provider,
+      modelId: selectedImageModelRecord?.modelId ?? selectedImageModelId,
+      configJson: selectedImageModelRecord?.configJson as Record<string, unknown> | undefined,
+    }).transport === "hermes_worker";
+  const [hermesConnectionId, setHermesConnectionIdState] = useState<string | null>(
+    readStoredHermesConnectionId
+  );
+  const handleSelectHermesConnection = (connectionId: string | null) => {
+    setHermesConnectionIdState(connectionId);
+    storeHermesConnectionId(connectionId);
+  };
+  /** Same convention as `requireMcpConnectionOrToast` above, for the Hermes
+   *  transport arm. */
+  const requireHermesConnectionOrToast = (): boolean => {
+    if (!imageModelUsesHermes || hermesConnectionId) return true;
+    toast.error(
+      t(
+        lang,
+        "ต้องเลือกบัญชี Grok (Hermes) ก่อนใช้โมเดลนี้",
+        "Select a Grok (Hermes) connection before using this image model."
       )
     );
     return false;
@@ -1237,6 +1677,20 @@ export function VerticalDramaCharacterStockPanel({
   const onError = (err: { message?: string }) =>
     toast.error(resolveVdCharacterMutationErrorMessage(err, lang));
 
+  /** Same toast as `onError`, plus reopens the model-picker dialog when the
+   *  server rejected the request specifically for a missing/invalid
+   *  `selectedImageModelId` (see `isImageModelSelectionError`). Used on the
+   *  three mutations that now require that field:
+   *  `generateImageMutation`/`generateSheetMutation`/
+   *  `generatePortraitCandidateBatchMutation`. In normal use
+   *  `requireModelSelected()` already blocks the click before any of these
+   *  fire, so this is a defense-in-depth path (stale selection, disabled
+   *  model, etc.) — never swallows the server's bilingual message. */
+  const onImageModelError = (err: { message?: string }) => {
+    onError(err);
+    if (isImageModelSelectionError(err)) setIsModelDialogOpen(true);
+  };
+
   /* ---- W12-B voice chain — per-character voice casting ----
    * Series-scoped (not per-character), so this query is fetched once
    * regardless of which character is selected — `listVoiceCatalog`'s own
@@ -1273,6 +1727,15 @@ export function VerticalDramaCharacterStockPanel({
       onSuccess: () => {
         invalidate();
         toast.success(t(lang, "บันทึกโปรไฟล์เสียงพูดแล้ว", "Speech profile saved"));
+      },
+      onError,
+    });
+
+  const updateCharacterRoleMutation =
+    trpc.verticalDramaCharacters.updateCharacter.useMutation({
+      onSuccess: () => {
+        invalidate();
+        toast.success(t(lang, "บันทึกบทบาทตัวละครแล้ว", "Narrative role saved"));
       },
       onError,
     });
@@ -1471,6 +1934,7 @@ export function VerticalDramaCharacterStockPanel({
         setNewName("");
         setNewKey("");
         setNewRole("");
+        setNewRoleTier("");
         setSelectedCharacterId(res.character.characterId);
         invalidate();
         toast.success(t(lang, "เพิ่มตัวละครแล้ว", "Character added"));
@@ -1720,9 +2184,17 @@ export function VerticalDramaCharacterStockPanel({
           return;
         }
         if (status === "failed") {
-          const errorMessage = (task as { errorMessage?: string } | null)?.errorMessage;
+          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
+          const errorMessage = failedTask?.errorMessage;
+          // Feature 135 section-10 review fix: prefer the typed hermes
+          // presentation (reads `MediaTask.errorCode`, section-06) when this
+          // was a hermes_ task; every other/legacy task falls through to the
+          // exact pre-existing bilingual "<generic>: <errorMessage>" format.
+          const hermesPresentation = presentHermesError(failedTask);
           toast.error(
-            t(lang, `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`, `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`)
+            hermesPresentation
+              ? formatHermesErrorForToast(hermesPresentation, lang)
+              : t(lang, `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`, `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`)
           );
           return;
         }
@@ -1761,7 +2233,7 @@ export function VerticalDramaCharacterStockPanel({
           res.creditsUsed.promptGeneration
         );
       },
-      onError,
+      onError: onImageModelError,
     });
 
   /**
@@ -1809,6 +2281,211 @@ export function VerticalDramaCharacterStockPanel({
           res.assetRole,
           res.creditsUsed?.promptGeneration ?? 0,
           res.assetMetadata
+        );
+      },
+      onError: onImageModelError,
+    });
+
+  const settlePortraitCandidateMutation =
+    trpc.verticalDramaCharacters.settlePortraitCandidate.useMutation();
+
+  const updatePortraitCandidateUi = (
+    characterId: string,
+    assetLinkId: string,
+    patch: Partial<VdPortraitCandidateUiItem>,
+  ) => {
+    setPortraitCandidateBatches(prev => {
+      const batch = prev[characterId];
+      if (!batch) return prev;
+      return {
+        ...prev,
+        [characterId]: {
+          ...batch,
+          candidates: batch.candidates.map(candidate =>
+            candidate.assetLinkId === assetLinkId
+              ? { ...candidate, ...patch }
+              : candidate
+          ),
+        },
+      };
+    });
+  };
+
+  async function pollPortraitCandidateTask(
+    characterId: string,
+    assetLinkId: string,
+    taskId?: string,
+  ) {
+    if (pollingPortraitCandidateAssetIds.has(assetLinkId)) return;
+    setPollingPortraitCandidateAssetIds(prev => new Set(prev).add(assetLinkId));
+    try {
+      for (
+        let attempt = 0;
+        attempt < VD_CHARACTER_IMAGE_POLL_MAX_ATTEMPTS;
+        attempt += 1
+      ) {
+        const result = await settlePortraitCandidateMutation.mutateAsync({
+          seriesId,
+          assetLinkId,
+          ...(taskId ? { taskId } : {}),
+        });
+        if (result.status === "completed") {
+          updatePortraitCandidateUi(characterId, assetLinkId, {
+            status: "completed",
+            taskId: result.taskId,
+            imageUrl: result.imageUrl,
+          });
+          await invalidate();
+          return;
+        }
+        if (result.status === "failed") {
+          // Set A fix #4: `shouldAutoSoftenPortraitCandidate` mirrors
+          // `pollStartFrameTask`'s auto-soften gate (VerticalDramaEpisodePage.tsx)
+          // but is currently ALWAYS `false` — the server's
+          // `generatePortraitCandidateBatch` input has no `softenLevel` field
+          // yet (see that function's own doc comment / `TODO(soften)`), so no
+          // auto-resubmit fires here. A policy-classified failure still gets
+          // its own toast pointing at the manual Retry button below instead
+          // of a silent generic failure message.
+          const willAutoSoften = shouldAutoSoftenPortraitCandidate(
+            result.errorMessage,
+            0,
+          );
+          if (
+            !willAutoSoften &&
+            isCharacterLockPolicyFailureMessage(result.errorMessage)
+          ) {
+            toast.error(
+              t(
+                lang,
+                "ผู้ให้บริการปฏิเสธภาพนี้ตามนโยบายเนื้อหา กด “ลองใหม่” เพื่อสร้างใหม่",
+                "The provider rejected this image under content policy. Tap Retry to generate again."
+              )
+            );
+          }
+          updatePortraitCandidateUi(characterId, assetLinkId, {
+            status: "failed",
+            taskId: result.taskId,
+            errorMessage: result.errorMessage,
+          });
+          await invalidate();
+          return;
+        }
+        updatePortraitCandidateUi(characterId, assetLinkId, {
+          status: "queued",
+          taskId: result.taskId,
+        });
+        await new Promise(resolve =>
+          setTimeout(resolve, VD_CHARACTER_IMAGE_POLL_INTERVAL_MS)
+        );
+      }
+      // Set A fix #1: previously this only toasted, leaving the card frozen
+      // on "กำลังสร้าง…" forever — now also patches a terminal `failed`
+      // status (with a Retry button available once rendered) via
+      // `buildPortraitCandidateTimeoutPatch`.
+      updatePortraitCandidateUi(
+        characterId,
+        assetLinkId,
+        buildPortraitCandidateTimeoutPatch(lang),
+      );
+      toast.error(
+        t(
+          lang,
+          "ภาพตัวเลือกใช้เวลานานเกินไป ระบบจะเก็บงานไว้ให้ตรวจสอบภายหลัง",
+          "Candidate generation is taking longer than expected; the task remains saved for later review."
+        )
+      );
+    } catch (error) {
+      // Same Set A fix #1 rationale: a thrown poll error (network failure,
+      // etc.) must also leave a terminal state, not just an errorMessage on
+      // an otherwise still-"queued"-looking card.
+      updatePortraitCandidateUi(characterId, assetLinkId, {
+        status: "failed",
+        errorMessage: error instanceof Error ? error.message : "Polling failed",
+      });
+    } finally {
+      setPollingPortraitCandidateAssetIds(prev => {
+        const next = new Set(prev);
+        next.delete(assetLinkId);
+        return next;
+      });
+    }
+  }
+
+  const generatePortraitCandidateBatchMutation =
+    trpc.verticalDramaCharacters.generatePortraitCandidateBatch.useMutation({
+      onSuccess: (result, variables) => {
+        setPortraitCandidateBatches(prev => {
+          const batch = prev[variables.characterId];
+          if (!batch) return prev;
+          const submitted = new Map(
+            result.candidates.map(candidate => [candidate.assetLinkId, candidate]),
+          );
+          return {
+            ...prev,
+            [variables.characterId]: {
+              ...batch,
+              model: result.model,
+              candidates: batch.candidates.map(candidate => {
+                const next = submitted.get(candidate.assetLinkId);
+                return next
+                  ? {
+                      ...candidate,
+                      status: next.status,
+                      taskId: next.taskId,
+                      errorMessage: next.errorMessage,
+                    }
+                  : candidate;
+              }),
+            },
+          };
+        });
+        for (const candidate of result.candidates) {
+          if (
+            candidate.status === "queued" &&
+            !resumedPortraitCandidateTasksRef.current.has(candidate.assetLinkId)
+          ) {
+            resumedPortraitCandidateTasksRef.current.add(candidate.assetLinkId);
+            void pollPortraitCandidateTask(
+              variables.characterId,
+              candidate.assetLinkId,
+              candidate.taskId,
+            );
+          }
+        }
+      },
+      onError: onImageModelError,
+    });
+
+  const selectPortraitCandidateMutation =
+    trpc.verticalDramaCharacters.selectPortraitCandidate.useMutation({
+      onSuccess: async (result, variables) => {
+        setPortraitCandidateBatches(prev => {
+          const batch = prev[variables.characterId];
+          if (!batch) return prev;
+          return {
+            ...prev,
+            [variables.characterId]: {
+              ...batch,
+              candidates: batch.candidates.map(candidate => ({
+                ...candidate,
+                status:
+                  candidate.assetLinkId === variables.assetLinkId
+                    ? "selected"
+                    : candidate.status === "selected"
+                      ? "superseded"
+                      : candidate.status,
+              })),
+            },
+          };
+        });
+        await invalidate();
+        toast.success(
+          t(
+            lang,
+            "เลือกภาพหลักและล็อก Character DNA แล้ว",
+            "Primary portrait selected and Character DNA locked."
+          )
         );
       },
       onError,
@@ -1867,16 +2544,52 @@ export function VerticalDramaCharacterStockPanel({
   const startCharacterPromptPreview = (characterId: string) => {
     if (!requireModelSelected()) return;
     if (!requireMcpConnectionOrToast()) return;
+    if (!requireHermesConnectionOrToast()) return;
+    const character = characters.find(
+      (candidate: VdCharacterListItem) => candidate.characterId === characterId
+    );
+    const useCandidateBatch = Boolean(
+      character && isFirstPortraitCandidateEligible(character, assets)
+    );
+    if (useCandidateBatch) setSelectedCharacterId(characterId);
     setPendingPreviewTarget({ characterId });
     previewCharacterPromptMutation.mutate(
       buildPreviewCharacterPromptInput({
         seriesId,
         characterId,
         customInstruction: customInstructionByCharacter[characterId] ?? "",
+        ...(useCandidateBatch
+          ? {
+              portraitCandidateCount:
+                portraitCandidateCountByCharacter[characterId] ?? 3,
+            }
+          : {}),
       }),
       {
         onSuccess: res => {
           setPendingPreviewTarget(null);
+          if (res.mode === "candidate_batch") {
+            setPendingCharacterPromptPreview(null);
+            setPortraitCandidateBatches(prev => ({
+              ...prev,
+              [characterId]: {
+                batchId: res.batchId,
+                characterId,
+                sharedVisualLanguage: res.sharedVisualLanguage,
+                model: res.model,
+                candidates: res.candidates.map(candidate => ({
+                  assetLinkId: candidate.assetLinkId,
+                  candidateId: candidate.candidateId,
+                  index: candidate.index,
+                  portraitPrompt: candidate.portraitPrompt,
+                  negativePrompt: candidate.negativePrompt,
+                  visualIdentitySummary: candidate.visualIdentitySummary,
+                  status: "previewed",
+                })),
+              },
+            }));
+            return;
+          }
           setPendingCharacterPromptPreview({
             characterId,
             portraitPrompt: res.portraitPrompt,
@@ -1899,6 +2612,12 @@ export function VerticalDramaCharacterStockPanel({
    *  re-charging) its own internal prompt-generation step. */
   const handleCharacterPromptConfirm = (editedPrompt: string) => {
     if (!pendingCharacterPromptPreview) return;
+    // Defense in depth: `startCharacterPromptPreview` already gated on
+    // `requireModelSelected()` before this preview was ever generated, but
+    // re-check here too — the preview step + user review can take a while,
+    // and the server now REJECTS (BAD_REQUEST, no more silent
+    // `DEFAULT_MODELS.image` fallback) if `selectedImageModelId` is blank.
+    if (!requireModelSelected()) return;
     const {
       characterId,
       portraitPrompt,
@@ -1915,6 +2634,9 @@ export function VerticalDramaCharacterStockPanel({
       selectedImageModelId,
       imageModelUsesMcp,
       mcpConnectionId,
+      sharedGroupId: mcpSharedGroupId,
+      imageModelUsesHermes,
+      hermesConnectionId,
       referenceAssetLinkId: referenceOverrideByCharacter[characterId] ?? null,
     });
     setPendingCharacterPromptPreview(null);
@@ -1937,6 +2659,159 @@ export function VerticalDramaCharacterStockPanel({
   const handleCharacterPromptCancel = () =>
     setPendingCharacterPromptPreview(null);
 
+  const handlePortraitCandidateBatchConfirm = (characterId: string) => {
+    const batch = portraitCandidateBatches[characterId];
+    if (
+      !batch ||
+      !requireModelSelected() ||
+      !requireMcpConnectionOrToast() ||
+      !requireHermesConnectionOrToast()
+    )
+      return;
+    setPortraitCandidateBatches(prev => ({
+      ...prev,
+      [characterId]: {
+        ...batch,
+        candidates: batch.candidates.map(candidate => ({
+          ...candidate,
+          status: "submitting",
+        })),
+      },
+    }));
+    generatePortraitCandidateBatchMutation.mutate({
+      seriesId,
+      characterId,
+      batchId: batch.batchId,
+      // Always sent (never conditionally spread) — the server now REJECTS
+      // image generation without an explicit `selectedImageModelId` (fail-
+      // closed, no more silent `DEFAULT_MODELS.image` fallback). Safe to
+      // assert non-empty here: `requireModelSelected()` above already
+      // returned early when it was blank.
+      selectedImageModelId,
+      ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+      ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
+        ? { sharedGroupId: mcpSharedGroupId }
+        : {}),
+      ...(imageModelUsesHermes && hermesConnectionId ? { hermesConnectionId } : {}),
+    });
+  };
+
+  const handlePortraitCandidateBatchCancel = (characterId: string) =>
+    setPortraitCandidateBatches(prev => {
+      const next = { ...prev };
+      delete next[characterId];
+      return next;
+    });
+
+  /**
+   * Set A fix #3 "Cancel" — per-candidate affordance for a stuck
+   * `queued`/`submitting` or a terminal `failed` candidate. Deletes the
+   * asset outright (`deleteAssetMutation`, already wired above with
+   * `invalidate()` + a success toast in its own `useMutation` options) and
+   * clears this tab's ephemeral polling/resume-guard state for it, plus
+   * optimistically drops it from the in-memory batch via
+   * `removePortraitCandidateFromBatch` so the card disappears immediately
+   * instead of waiting on the round-trip.
+   */
+  const cancelPortraitCandidate = (characterId: string, assetLinkId: string) => {
+    setPollingPortraitCandidateAssetIds(prev => {
+      if (!prev.has(assetLinkId)) return prev;
+      const next = new Set(prev);
+      next.delete(assetLinkId);
+      return next;
+    });
+    resumedPortraitCandidateTasksRef.current.delete(assetLinkId);
+    setPortraitCandidateBatches(prev => {
+      const batch = prev[characterId];
+      if (!batch) return prev;
+      return {
+        ...prev,
+        [characterId]: removePortraitCandidateFromBatch(batch, assetLinkId),
+      };
+    });
+    deleteAssetMutation.mutate({ seriesId, assetLinkId });
+  };
+
+  /**
+   * Set A fix #3 "Retry" — there is no per-slot resubmit endpoint server-
+   * side: `claimPortraitCandidateBatch` requires EVERY row sharing a
+   * `batchId` to still be at `status: "previewed"`
+   * (`server/services/verticalDramaCharacterStock.ts:636-698`), so replaying
+   * the SAME `batchId` after the first `generatePortraitCandidateBatch` call
+   * always throws `candidate_batch_claimed` — a single failed slot can never
+   * be resubmitted in place through that endpoint. The closest existing
+   * mechanism (per the plan's explicit fallback instruction): request a
+   * fresh single-candidate preview (`portraitCandidateCount: 1`) and
+   * immediately submit ITS new batch through the exact same
+   * `generatePortraitCandidateBatchMutation` path the normal "Generate all"
+   * button uses. A new `batchId` naturally gives the server a fresh
+   * idempotency key (`${batchId}:${candidateId}`,
+   * `server/routers/verticalDramaCharacters.ts:1035`). The failed candidate
+   * itself is left as-is (still visible, still Cancel-able) — Retry does not
+   * couple a delete into the resubmit, so a resubmit failure never loses the
+   * user's only record of what happened.
+   */
+  const retryPortraitCandidate = (characterId: string, assetLinkId: string) => {
+    if (!requireModelSelected()) return;
+    if (!requireMcpConnectionOrToast()) return;
+    if (!requireHermesConnectionOrToast()) return;
+    setRetryingPortraitCandidateAssetIds(prev => new Set(prev).add(assetLinkId));
+    const clearRetrying = () =>
+      setRetryingPortraitCandidateAssetIds(prev => {
+        if (!prev.has(assetLinkId)) return prev;
+        const next = new Set(prev);
+        next.delete(assetLinkId);
+        return next;
+      });
+    previewCharacterPromptMutation.mutate(
+      buildPreviewCharacterPromptInput({
+        seriesId,
+        characterId,
+        customInstruction: customInstructionByCharacter[characterId] ?? "",
+        portraitCandidateCount: 1,
+      }),
+      {
+        onSuccess: res => {
+          if (res.mode !== "candidate_batch" || res.candidates.length === 0) {
+            clearRetrying();
+            return;
+          }
+          setPortraitCandidateBatches(prev => ({
+            ...prev,
+            [characterId]: {
+              batchId: res.batchId,
+              characterId,
+              sharedVisualLanguage: res.sharedVisualLanguage,
+              model: res.model,
+              candidates: res.candidates.map(candidate => ({
+                assetLinkId: candidate.assetLinkId,
+                candidateId: candidate.candidateId,
+                index: candidate.index,
+                portraitPrompt: candidate.portraitPrompt,
+                negativePrompt: candidate.negativePrompt,
+                visualIdentitySummary: candidate.visualIdentitySummary,
+                status: "submitting",
+              })),
+            },
+          }));
+          generatePortraitCandidateBatchMutation.mutate({
+            seriesId,
+            characterId,
+            batchId: res.batchId,
+            selectedImageModelId,
+            ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+            ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
+              ? { sharedGroupId: mcpSharedGroupId }
+              : {}),
+            ...(imageModelUsesHermes && hermesConnectionId ? { hermesConnectionId } : {}),
+          });
+          clearRetrying();
+        },
+        onError: clearRetrying,
+      }
+    );
+  };
+
   const isPreviewLoadingFor = (characterId: string) =>
     previewCharacterPromptMutation.isPending &&
     pendingPreviewTarget?.characterId === characterId;
@@ -1945,7 +2820,10 @@ export function VerticalDramaCharacterStockPanel({
     isPreviewLoadingFor(characterId) ||
     (generateImageMutation.isPending &&
       generateImageMutation.variables?.characterId === characterId) ||
-    pollingCharacters.has(pollingCharacterKey(characterId, "primary_portrait"));
+    pollingCharacters.has(pollingCharacterKey(characterId, "primary_portrait")) ||
+    (portraitCandidateBatches[characterId]?.candidates.some(candidate =>
+      ["submitting", "queued"].includes(candidate.status)
+    ) ?? false);
 
   /** Covers the merged sheet-generation mutation regardless of which
    *  `sheetType` was requested — i.e. regardless of whether the resulting
@@ -2156,6 +3034,25 @@ export function VerticalDramaCharacterStockPanel({
   const manifest = listQuery.data?.manifest;
   const assets = (manifest?.assets ?? []) as VerticalDramaCharacterAsset[];
 
+  useEffect(() => {
+    for (const asset of assets) {
+      const candidate = asset.portraitCandidate;
+      if (
+        !candidate?.taskId ||
+        !["queued", "submitting"].includes(candidate.status) ||
+        resumedPortraitCandidateTasksRef.current.has(asset.assetLinkId)
+      ) {
+        continue;
+      }
+      resumedPortraitCandidateTasksRef.current.add(asset.assetLinkId);
+      void pollPortraitCandidateTask(
+        asset.characterId,
+        asset.assetLinkId,
+        candidate.taskId,
+      );
+    }
+  }, [assets]);
+
   /**
    * Best-effort roster-card thumbnail for a character: the `primary_portrait`
    * asset in `approved` state if present, else the most recently updated
@@ -2217,6 +3114,22 @@ export function VerticalDramaCharacterStockPanel({
     () => buildCharacterRosterEntries(characters as VdCharacterListItem[]),
     [characters]
   );
+  /** Set B (`vd-stuck-generation-and-lost-characters` plan) — roster filter
+   *  toggle state: off by default (full roster shown, matching this panel's
+   *  existing behavior), flips to only `needsSetup` rows when the user
+   *  taps the count chip above the list. */
+  const [showOnlyNeedsSetup, setShowOnlyNeedsSetup] = useState(false);
+  const needsSetupCount = useMemo(
+    () => countCharactersNeedingSetup(characters as VdCharacterListItem[]),
+    [characters]
+  );
+  const visibleRosterEntries = useMemo(
+    () =>
+      showOnlyNeedsSetup
+        ? filterRosterEntriesNeedingSetup(rosterEntries)
+        : rosterEntries,
+    [showOnlyNeedsSetup, rosterEntries]
+  );
   const effectiveSelectedId = useMemo(() => {
     if (
       selectedCharacterId &&
@@ -2270,6 +3183,76 @@ export function VerticalDramaCharacterStockPanel({
       a => effectiveSelectedId != null && a.characterId === effectiveSelectedId
     )
   );
+  const selectedCharacterSupportsCandidateBatch = Boolean(
+    selectedCharacter && isFirstPortraitCandidateEligible(selectedCharacter, assets)
+  );
+  const selectedPortraitCandidateBatches = useMemo(() => {
+    if (!selectedCharacter) return [] as VdPortraitCandidateUiBatch[];
+    const characterId = selectedCharacter.characterId;
+    const durableAssets = [...assets]
+      .filter(
+        asset => asset.characterId === characterId && Boolean(asset.portraitCandidate)
+      )
+      .sort(
+        (left, right) =>
+          new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+      );
+    const groups = new Map<string, VdPortraitCandidateUiBatch>();
+    for (const asset of durableAssets) {
+      const candidate = asset.portraitCandidate!;
+      const batch: VdPortraitCandidateUiBatch = groups.get(candidate.batchId) ?? {
+        batchId: candidate.batchId,
+        characterId,
+        candidates: [],
+      };
+      batch.candidates.push({
+        assetLinkId: asset.assetLinkId,
+        candidateId: candidate.candidateId,
+        index: candidate.index,
+        status: candidate.status,
+        taskId: candidate.taskId,
+        imageUrl: asset.thumbnailUrl,
+        // Set A fix #2: the only durable place a candidate-submission
+        // failure message currently lands is the asset-level
+        // `rejectionReason` (see `characterAssetRowToContract`,
+        // `server/services/verticalDramaCharacterStock.ts:290-318`) —
+        // `portraitCandidate` itself carries no `errorMessage` field today.
+        // Read defensively via optional chaining so this keeps working
+        // whether or not it's populated yet.
+        errorMessage: asset.rejectionReason,
+      });
+      groups.set(candidate.batchId, batch);
+    }
+
+    const active = portraitCandidateBatches[characterId];
+    if (active) {
+      const durable = groups.get(active.batchId);
+      const durableByAssetId = new Map(
+        durable?.candidates.map(candidate => [candidate.assetLinkId, candidate]) ?? [],
+      );
+      groups.set(active.batchId, {
+        ...active,
+        candidates: active.candidates
+          .map(candidate =>
+            mergeDurablePortraitCandidateStatus(
+              candidate,
+              durableByAssetId.get(candidate.assetLinkId),
+            ),
+          )
+          .sort((left, right) => left.index - right.index),
+      });
+    }
+
+    const ordered = [...groups.values()].map(batch => ({
+      ...batch,
+      candidates: [...batch.candidates].sort((left, right) => left.index - right.index),
+    }));
+    if (!active) return ordered;
+    return [
+      groups.get(active.batchId)!,
+      ...ordered.filter(batch => batch.batchId !== active.batchId),
+    ];
+  }, [assets, portraitCandidateBatches, selectedCharacter]);
   // Deliberately does NOT include the per-character generate/poll flags
   // (`generateImageMutation.isPending` etc., `pollingCharacters`) — those
   // gate only THAT character's own generate buttons (via
@@ -2446,21 +3429,51 @@ export function VerticalDramaCharacterStockPanel({
           reference — any visible card accepts a drop directly. */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm">
-                {t(lang, "ตัวละครในซีรีย์", "Series characters")}
-              </CardTitle>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-sm">
+                  {t(lang, "ตัวละครในซีรีย์", "Series characters")}
+                </CardTitle>
+                {/* Set B (`vd-stuck-generation-and-lost-characters` plan) —
+                additive filter chip, off by default (full roster still
+                shown), only rendered when there's at least one row to jump
+                to. */}
+                {needsSetupCount > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={showOnlyNeedsSetup ? "default" : "outline"}
+                    className="gap-1.5 text-xs"
+                    aria-pressed={showOnlyNeedsSetup}
+                    onClick={() => setShowOnlyNeedsSetup(v => !v)}
+                  >
+                    {t(
+                      lang,
+                      `เฉพาะที่ต้องตั้งค่า (${needsSetupCount})`,
+                      `Needs setup only (${needsSetupCount})`
+                    )}
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="p-3">
               {characters.length === 0 ? (
                 <p className="px-2 py-4 text-center text-sm text-muted-foreground">
                   {t(lang, "ยังไม่มีตัวละคร", "No characters yet")}
                 </p>
+              ) : visibleRosterEntries.length === 0 ? (
+                <p className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  {t(
+                    lang,
+                    "ไม่มีตัวละครที่ต้องตั้งค่าแล้ว",
+                    "No characters need setup anymore"
+                  )}
+                </p>
               ) : (
                 <ul
                   className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
                   aria-label={t(lang, "รายชื่อตัวละคร", "Character list")}
                 >
-                  {rosterEntries.map(
+                  {visibleRosterEntries.map(
                     ({
                       character: c,
                       variants,
@@ -2704,12 +3717,34 @@ export function VerticalDramaCharacterStockPanel({
                               >
                                 {c.name}
                               </span>
-                              {c.role && (
+                              {(getCanonicalRoleLabel(c.roleTier, lang) || c.role) && (
                                 <Badge
                                   variant="outline"
                                   className="w-fit text-[10px]"
                                 >
-                                  {c.role}
+                                  {getCanonicalRoleLabel(c.roleTier, lang) ?? c.role}
+                                </Badge>
+                              )}
+                              {c.roleReviewStatus === "needs_role_review" && (
+                                <Badge variant="outline" className="w-fit border-amber-300 bg-amber-50 text-[10px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                                  {t(lang, "ต้องตรวจบทบาท", "Role review needed")}
+                                </Badge>
+                              )}
+                              {/* Set B (`vd-stuck-generation-and-lost-
+                              characters` plan) — distinct from the amber
+                              role-review badge above: this one is driven by
+                              `needsSetup`/`needsSetupReasons` (DNA/portrait
+                              completeness), not `roleReviewStatus`, so the
+                              two can independently show/hide. */}
+                              {c.needsSetup && (
+                                <Badge
+                                  variant="outline"
+                                  className="w-fit border-fuchsia-300 bg-fuchsia-50 text-[10px] text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
+                                >
+                                  {needsSetupBadgeLabel(
+                                    lang,
+                                    c.needsSetupReasons ?? []
+                                  )}
                                 </Badge>
                               )}
                               {/* Phase E — twin annotation: a character that
@@ -3186,17 +4221,29 @@ export function VerticalDramaCharacterStockPanel({
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7 shrink-0"
-                                disabled={mutating || generatingThis}
+                                disabled={
+                                  mutating ||
+                                  generatingThis ||
+                                  !selectedImageModelId
+                                }
                                 aria-label={t(
                                   lang,
                                   "สร้างภาพตัวละคร",
                                   "Generate character image"
                                 )}
-                                title={t(
-                                  lang,
-                                  "สร้างภาพตัวละคร",
-                                  "Generate character image"
-                                )}
+                                title={
+                                  selectedImageModelId
+                                    ? t(
+                                        lang,
+                                        "สร้างภาพตัวละคร",
+                                        "Generate character image"
+                                      )
+                                    : t(
+                                        lang,
+                                        "เลือกโมเดลภาพก่อนสร้าง",
+                                        "Select an image model first"
+                                      )
+                                }
                                 onClick={() =>
                                   startCharacterPromptPreview(c.characterId)
                                 }
@@ -3228,30 +4275,53 @@ export function VerticalDramaCharacterStockPanel({
                                 size="icon"
                                 variant="ghost"
                                 className="h-7 w-7 shrink-0"
-                                disabled={mutating || generatingSheetThis}
+                                disabled={
+                                  mutating ||
+                                  generatingSheetThis ||
+                                  !selectedImageModelId
+                                }
                                 aria-label={t(
                                   lang,
                                   "สร้างชีทตัวละคร (อัตโนมัติ)",
                                   "Generate character sheet (auto)"
                                 )}
-                                title={t(
-                                  lang,
-                                  "สร้างชีทตัวละคร (อัตโนมัติ) — เข้าไปในแผงรายละเอียดเพื่อเลือกรูปแบบอื่น",
-                                  "Generate character sheet (auto) — open the detail panel to pick a specific format"
-                                )}
+                                title={
+                                  selectedImageModelId
+                                    ? t(
+                                        lang,
+                                        "สร้างชีทตัวละคร (อัตโนมัติ) — เข้าไปในแผงรายละเอียดเพื่อเลือกรูปแบบอื่น",
+                                        "Generate character sheet (auto) — open the detail panel to pick a specific format"
+                                      )
+                                    : t(
+                                        lang,
+                                        "เลือกโมเดลภาพก่อนสร้าง",
+                                        "Select an image model first"
+                                      )
+                                }
                                 onClick={() => {
                                   if (!requireModelSelected()) return;
                                   if (!requireMcpConnectionOrToast()) return;
+                                  if (!requireHermesConnectionOrToast()) return;
                                   generateSheetMutation.mutate({
                                     seriesId,
                                     characterId: c.characterId,
                                     sheetType: "auto",
                                     sheetLanguage,
-                                    ...(selectedImageModelId
-                                      ? { selectedImageModelId }
-                                      : {}),
+                                    // Always sent — see the matching comment
+                                    // on `generatePortraitCandidateBatchMutation.mutate`
+                                    // above for why the conditional spread was
+                                    // removed.
+                                    selectedImageModelId,
                                     ...(imageModelUsesMcp && mcpConnectionId
                                       ? { mcpConnectionId }
+                                      : {}),
+                                    ...(imageModelUsesMcp &&
+                                    mcpConnectionId &&
+                                    mcpSharedGroupId != null
+                                      ? { sharedGroupId: mcpSharedGroupId }
+                                      : {}),
+                                    ...(imageModelUsesHermes && hermesConnectionId
+                                      ? { hermesConnectionId }
                                       : {}),
                                   });
                                 }}
@@ -3607,9 +4677,29 @@ export function VerticalDramaCharacterStockPanel({
                             ) : (
                               selectedCharacter.name
                             )}
-                            {selectedCharacter.role && (
+                            {(getCanonicalRoleLabel(selectedCharacter.roleTier, lang) || selectedCharacter.role) && (
                               <Badge variant="outline" className="text-[10px]">
-                                {selectedCharacter.role}
+                                {getCanonicalRoleLabel(selectedCharacter.roleTier, lang) ?? selectedCharacter.role}
+                              </Badge>
+                            )}
+                            {selectedCharacter.roleReviewStatus === "needs_role_review" && (
+                              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[10px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                                {t(lang, "ต้องตรวจบทบาท", "Role review needed")}
+                              </Badge>
+                            )}
+                            {/* Set B (`vd-stuck-generation-and-lost-
+                            characters` plan) — distinct from the amber
+                            role-review badge above, see the roster-row
+                            instance's own comment for why. */}
+                            {selectedCharacter.needsSetup && (
+                              <Badge
+                                variant="outline"
+                                className="border-fuchsia-300 bg-fuchsia-50 text-[10px] text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
+                              >
+                                {needsSetupBadgeLabel(
+                                  lang,
+                                  selectedCharacter.needsSetupReasons ?? []
+                                )}
                               </Badge>
                             )}
                             {isVariant && (
@@ -3681,6 +4771,43 @@ export function VerticalDramaCharacterStockPanel({
                         </p>
                       );
                     })()}
+
+                    <div className="flex flex-col gap-1.5 rounded-md border bg-muted/20 p-2">
+                      <Label htmlFor="vd-selected-role-tier" className="text-xs font-medium text-foreground">
+                        {t(lang, "บทบาทในเรื่อง (กำหนดให้ชัดเจน)", "Canonical narrative role")}
+                      </Label>
+                      <Select
+                        value={selectedCharacter.roleTier ?? ""}
+                        onValueChange={value => {
+                          const roleTier = value as RoleTier;
+                          updateCharacterRoleMutation.mutate({
+                            seriesId,
+                            characterId: selectedCharacter.characterId,
+                            roleTier,
+                            narrativeRole: roleTierToNarrativeRole(roleTier),
+                            roleProvenance: "user_confirmed",
+                            roleReviewStatus: "ready",
+                          });
+                        }}
+                        disabled={readOnly || updateCharacterRoleMutation.isPending}
+                      >
+                        <SelectTrigger id="vd-selected-role-tier" className="h-9 text-xs">
+                          <SelectValue placeholder={t(lang, "เลือก นางเอก/พระเอก/ตัวร้าย/ตัวประกอบ", "Choose lead / villain / supporting")} />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[min(70vh,32rem)]">
+                          {ROLE_TIER_VALUES.map(tier => (
+                            <SelectItem key={tier} value={tier}>
+                              {getCanonicalRoleLabel(tier, lang) ?? tier}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        {selectedCharacter.roleReviewStatus === "needs_role_review"
+                          ? t(lang, "ยังไม่ได้ยืนยัน บทบาทนี้จะกำหนด DNA และหน้าตาที่ Skill ใช้สร้างภาพ", "Not confirmed yet. This role drives the DNA and visual design used by the Skill.")
+                          : t(lang, "ยืนยันแล้วโดยผู้ใช้ — Skill จะใช้บทบาทนี้เป็นข้อมูลอ้างอิงหลัก", "User-confirmed. The Skill treats this role as authoritative.")}
+                      </p>
+                    </div>
 
                     {/* Reference-image picker (vertical-drama-reference-
                     picker-outfit-lock plan, Phase D3) — shows which
@@ -3816,6 +4943,98 @@ export function VerticalDramaCharacterStockPanel({
                       </div>
                     )}
 
+                    {!readOnly && selectedCharacterSupportsCandidateBatch && (
+                      <section
+                        className="rounded-lg border bg-muted/30 p-3"
+                        role="radiogroup"
+                        aria-labelledby="vd-portrait-candidate-count-label"
+                      >
+                        <p
+                          id="vd-portrait-candidate-count-label"
+                          className="mb-2 text-sm font-medium"
+                        >
+                          {t(
+                            lang,
+                            "เลือกจำนวนใบหน้าให้ระบบสร้างพร้อมกัน",
+                            "Choose how many different faces to generate together"
+                          )}
+                        </p>
+                        <Grid columns={{ minWidth: 108, max: 5, repeat: "fit" }} gap={2}>
+                          {[1, 2, 3, 4, 5].map(count => {
+                            const selected =
+                              (portraitCandidateCountByCharacter[
+                                selectedCharacter.characterId
+                              ] ?? 3) === count;
+                            return (
+                              <SelectableCard
+                                key={count}
+                                label={t(
+                                  lang,
+                                  `${count} ภาพ`,
+                                  `${count} image${count > 1 ? "s" : ""}`
+                                )}
+                                isSelected={selected}
+                                onChange={isSelected => {
+                                  if (!isSelected) return;
+                                  setPortraitCandidateCountByCharacter(prev => ({
+                                    ...prev,
+                                    [selectedCharacter.characterId]: count,
+                                  }));
+                                }}
+                                padding={2}
+                                variant={selected ? "blue" : "muted"}
+                              >
+                                <span
+                                  role="radio"
+                                  aria-checked={selected}
+                                  className="block text-center text-sm font-semibold"
+                                >
+                                  {count}
+                                </span>
+                              </SelectableCard>
+                            );
+                          })}
+                        </Grid>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {t(
+                            lang,
+                            "แต่ละภาพเป็นคนละใบหน้า คุณภาพและเสน่ห์ระดับเดียวกัน ค่าเริ่มต้น 3 ภาพ",
+                            "Each option is a different person with the same casting quality. Default: 3."
+                          )}
+                        </p>
+                      </section>
+                    )}
+
+                    {!readOnly && !selectedImageModelId && (
+                      /* Explicit "you must pick a model" notice — the
+                        generate button below is already disabled with a
+                        hover tooltip, but that alone was too subtle
+                        (product feedback 2026-07-15). Additive, not a
+                        replacement for the disabled-button guard. */
+                      <div
+                        className="mt-1 flex flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                        data-testid="vd-character-image-model-required-notice"
+                      >
+                        <AlertTriangle
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5"
+                        />
+                        <span>
+                          {t(
+                            lang,
+                            "ยังไม่ได้เลือกโมเดลภาพ — กรุณาเลือกโมเดลก่อนจึงจะสร้างภาพได้",
+                            "No image model selected — choose a model before you can generate."
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsModelDialogOpen(true)}
+                          className="ml-auto rounded-md border border-amber-400/60 bg-background px-2 py-1 text-[11px] font-medium hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                        >
+                          {t(lang, "เลือกโมเดล", "Select model")}
+                        </button>
+                      </div>
+                    )}
                     {!readOnly && (
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <Button
@@ -3847,7 +5066,17 @@ export function VerticalDramaCharacterStockPanel({
                           className="gap-2"
                           disabled={
                             mutating ||
-                            isImageGeneratingFor(selectedCharacter.characterId)
+                            isImageGeneratingFor(selectedCharacter.characterId) ||
+                            !selectedImageModelId
+                          }
+                          title={
+                            selectedImageModelId
+                              ? undefined
+                              : t(
+                                  lang,
+                                  "เลือกโมเดลภาพก่อนสร้าง",
+                                  "Select an image model first"
+                                )
                           }
                           onClick={() =>
                             startCharacterPromptPreview(
@@ -3870,8 +5099,12 @@ export function VerticalDramaCharacterStockPanel({
                           )}
                           {t(
                             lang,
-                            "สร้างภาพตัวละคร",
-                            "Generate character image"
+                            selectedCharacterSupportsCandidateBatch
+                              ? `สร้างตัวเลือก ${portraitCandidateCountByCharacter[selectedCharacter.characterId] ?? 3} ภาพ`
+                              : "สร้างภาพตัวละคร",
+                            selectedCharacterSupportsCandidateBatch
+                              ? `Generate ${portraitCandidateCountByCharacter[selectedCharacter.characterId] ?? 3} candidates`
+                              : "Generate character image"
                           )}
                         </Button>
                         {/* Unified sheet-format select + single generate
@@ -3913,18 +5146,35 @@ export function VerticalDramaCharacterStockPanel({
                           className="gap-2"
                           disabled={
                             mutating ||
-                            isSheetGeneratingFor(selectedCharacter.characterId)
+                            isSheetGeneratingFor(selectedCharacter.characterId) ||
+                            !selectedImageModelId
+                          }
+                          title={
+                            selectedImageModelId
+                              ? undefined
+                              : t(
+                                  lang,
+                                  "เลือกโมเดลภาพก่อนสร้าง",
+                                  "Select an image model first"
+                                )
                           }
                           onClick={() => {
                             if (!requireModelSelected()) return;
                             if (!requireMcpConnectionOrToast()) return;
+                            if (!requireHermesConnectionOrToast()) return;
                             generateSheetMutation.mutate({
                               seriesId,
                               characterId: selectedCharacter.characterId,
                               sheetType: selectedSheetType,
                               sheetLanguage,
-                              ...(selectedImageModelId ? { selectedImageModelId } : {}),
+                              // Always sent — see the matching comment on
+                              // `generatePortraitCandidateBatchMutation.mutate` above.
+                              selectedImageModelId,
                               ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+                              ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
+                                ? { sharedGroupId: mcpSharedGroupId }
+                                : {}),
+                              ...(imageModelUsesHermes && hermesConnectionId ? { hermesConnectionId } : {}),
                               // Reference-image-picker (Phase D3) — same
                               // override/omit rule as `generateImageMutation`
                               // above.
@@ -4008,6 +5258,352 @@ export function VerticalDramaCharacterStockPanel({
                           onCancel={handleCharacterPromptCancel}
                         />
                       )}
+
+                    {selectedPortraitCandidateBatches.length > 0 && (
+                      <section
+                        className="rounded-xl border bg-card p-3"
+                        aria-label={t(
+                          lang,
+                          "ตัวเลือกภาพหลักของตัวละคร",
+                          "Character primary portrait candidates"
+                        )}
+                        aria-live="polite"
+                      >
+                        <header className="mb-3">
+                          <h3 className="text-sm font-semibold">
+                            {t(
+                              lang,
+                              "เลือกใบหน้าที่จะใช้เป็นตัวละครหลัก",
+                              "Choose the face to become this character"
+                            )}
+                          </h3>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {t(
+                              lang,
+                              "ทุกภาพเป็นคนละใบหน้า แต่รักษาคุณภาพ เสน่ห์ และภาษาภาพระดับเดียวกัน การเลือกจะมีผลกับงานสร้างครั้งถัดไปเท่านั้น",
+                              "Every option is a different person with the same visual quality and magnetism. Your choice affects future generations only."
+                            )}
+                          </p>
+                        </header>
+
+                        {selectedPortraitCandidateBatches.map((batch, batchIndex) => {
+                          const activeBatch =
+                            portraitCandidateBatches[selectedCharacter.characterId];
+                          const isActive = activeBatch?.batchId === batch.batchId;
+                          const isPreviewOnly =
+                            isActive &&
+                            batch.candidates.every(candidate => candidate.status === "previewed");
+                          return (
+                            <section
+                              key={batch.batchId}
+                              className={cn(
+                                "py-3",
+                                batchIndex > 0 && "border-t"
+                              )}
+                              aria-label={
+                                isActive
+                                  ? t(lang, "ชุดตัวเลือกล่าสุด", "Newest candidate batch")
+                                  : t(lang, "ตัวเลือกที่บันทึกไว้", "Saved alternatives")
+                              }
+                            >
+                              <header className="mb-2 flex flex-wrap items-start justify-between gap-2">
+                                <span className="text-xs font-medium">
+                                  {isActive
+                                    ? t(lang, "ชุดล่าสุด", "Newest batch")
+                                    : t(lang, "ตัวเลือกก่อนหน้า", "Earlier alternatives")}
+                                </span>
+                                {batch.model && (
+                                  <Badge variant="outline">{batch.model}</Badge>
+                                )}
+                              </header>
+                              {batch.sharedVisualLanguage && (
+                                <p className="mb-3 text-xs text-muted-foreground">
+                                  {batch.sharedVisualLanguage}
+                                </p>
+                              )}
+
+                              <Grid
+                                columns={{ minWidth: 142, max: 5, repeat: "fit" }}
+                                gap={3}
+                              >
+                                {batch.candidates.map(candidate => {
+                                  const isSelected = candidate.status === "selected";
+                                  const canSelect =
+                                    Boolean(candidate.imageUrl) &&
+                                    ["completed", "selected", "superseded"].includes(
+                                      candidate.status
+                                    );
+                                  return (
+                                    <Card
+                                      key={candidate.assetLinkId}
+                                      className={cn(
+                                        "overflow-hidden",
+                                        isSelected && "ring-2 ring-primary"
+                                      )}
+                                    >
+                                      <AspectRatio ratio={9 / 16}>
+                                        {candidate.imageUrl ? (
+                                          <button
+                                            type="button"
+                                            className="h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+                                            onClick={() =>
+                                              setLightboxImage({
+                                                src: candidate.imageUrl!,
+                                                alt: t(
+                                                  lang,
+                                                  `ตัวเลือกใบหน้าที่ ${candidate.index + 1}`,
+                                                  `Face candidate ${candidate.index + 1}`
+                                                ),
+                                              })
+                                            }
+                                            aria-label={t(
+                                              lang,
+                                              `ดูตัวเลือกที่ ${candidate.index + 1} แบบขยาย`,
+                                              `View candidate ${candidate.index + 1} full size`
+                                            )}
+                                          >
+                                            <img
+                                              src={candidate.imageUrl}
+                                              alt={t(
+                                                lang,
+                                                `ตัวเลือกใบหน้าที่ ${candidate.index + 1}`,
+                                                `Face candidate ${candidate.index + 1}`
+                                              )}
+                                              className="h-full w-full object-cover"
+                                            />
+                                          </button>
+                                        ) : (
+                                          <section
+                                            className="flex h-full items-center justify-center bg-muted p-3 text-center"
+                                            aria-busy={
+                                              candidate.status === "queued" ||
+                                              candidate.status === "submitting"
+                                            }
+                                          >
+                                            {candidate.status === "failed" ? (
+                                              <p role="alert" className="text-xs text-destructive">
+                                                {candidate.errorMessage ??
+                                                  t(lang, "สร้างภาพไม่สำเร็จ", "Generation failed")}
+                                              </p>
+                                            ) : candidate.status === "previewed" ? (
+                                              <p className="text-xs text-muted-foreground">
+                                                {candidate.visualIdentitySummary ??
+                                                  t(lang, "พร้อมสร้างภาพ", "Ready to render")}
+                                              </p>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                                                <Loader2
+                                                  aria-hidden="true"
+                                                  className="h-4 w-4 animate-spin"
+                                                />
+                                                {t(lang, "กำลังสร้าง…", "Generating…")}
+                                              </span>
+                                            )}
+                                          </section>
+                                        )}
+                                      </AspectRatio>
+                                      <CardContent className="space-y-2 p-3">
+                                        <header className="flex items-center justify-between gap-2">
+                                          <span className="text-xs font-semibold">
+                                            {t(
+                                              lang,
+                                              `ตัวเลือก ${candidate.index + 1}`,
+                                              `Option ${candidate.index + 1}`
+                                            )}
+                                          </span>
+                                          <Badge
+                                            variant={isSelected ? "default" : "secondary"}
+                                          >
+                                            {isSelected
+                                              ? t(lang, "ภาพหลัก", "Primary")
+                                              : candidate.status === "failed"
+                                                ? t(lang, "ล้มเหลว", "Failed")
+                                                : candidate.status === "previewed"
+                                                  ? t(lang, "พร้อมสร้าง", "Ready")
+                                                  : candidate.status === "queued" ||
+                                                      candidate.status === "submitting"
+                                                    ? t(lang, "กำลังสร้าง", "Generating")
+                                                    : t(lang, "เลือกได้", "Available")}
+                                          </Badge>
+                                        </header>
+                                        {candidate.portraitPrompt && isPreviewOnly && (
+                                          <p className="line-clamp-4 text-[11px] text-muted-foreground">
+                                            {candidate.portraitPrompt}
+                                          </p>
+                                        )}
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant={isSelected ? "secondary" : "default"}
+                                          className="w-full"
+                                          role="radio"
+                                          aria-checked={isSelected}
+                                          aria-pressed={isSelected}
+                                          disabled={
+                                            !canSelect ||
+                                            isSelected ||
+                                            selectPortraitCandidateMutation.isPending
+                                          }
+                                          onClick={() =>
+                                            selectPortraitCandidateMutation.mutate({
+                                              seriesId,
+                                              characterId: selectedCharacter.characterId,
+                                              assetLinkId: candidate.assetLinkId,
+                                            })
+                                          }
+                                        >
+                                          {isSelected
+                                            ? t(lang, "ใช้อยู่เป็นภาพหลัก", "Current primary")
+                                            : t(lang, "ใช้ภาพนี้เป็นภาพหลัก", "Use as primary")}
+                                        </Button>
+                                        {/* Set A fix #3: per-candidate
+                                            Cancel/Retry for a stuck
+                                            queued/submitting or a terminal
+                                            failed candidate — the batch
+                                            footer below only covers the
+                                            pre-submission (`isPreviewOnly`)
+                                            state. */}
+                                        {["queued", "submitting", "failed"].includes(
+                                          candidate.status
+                                        ) && (
+                                          <div className="flex gap-2">
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="outline"
+                                              className="flex-1"
+                                              disabled={
+                                                (deleteAssetMutation.isPending &&
+                                                  deleteAssetMutation.variables
+                                                    ?.assetLinkId ===
+                                                    candidate.assetLinkId) ||
+                                                retryingPortraitCandidateAssetIds.has(
+                                                  candidate.assetLinkId
+                                                )
+                                              }
+                                              onClick={() =>
+                                                cancelPortraitCandidate(
+                                                  selectedCharacter.characterId,
+                                                  candidate.assetLinkId
+                                                )
+                                              }
+                                            >
+                                              {deleteAssetMutation.isPending &&
+                                              deleteAssetMutation.variables
+                                                ?.assetLinkId ===
+                                                candidate.assetLinkId ? (
+                                                <Loader2
+                                                  aria-hidden="true"
+                                                  className="h-3.5 w-3.5 animate-spin"
+                                                />
+                                              ) : (
+                                                t(lang, "ยกเลิก", "Cancel")
+                                              )}
+                                            </Button>
+                                            {candidate.status === "failed" && (
+                                              <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="secondary"
+                                                className="flex-1"
+                                                disabled={
+                                                  retryingPortraitCandidateAssetIds.has(
+                                                    candidate.assetLinkId
+                                                  ) ||
+                                                  (deleteAssetMutation.isPending &&
+                                                    deleteAssetMutation.variables
+                                                      ?.assetLinkId ===
+                                                      candidate.assetLinkId)
+                                                }
+                                                onClick={() =>
+                                                  retryPortraitCandidate(
+                                                    selectedCharacter.characterId,
+                                                    candidate.assetLinkId
+                                                  )
+                                                }
+                                              >
+                                                {retryingPortraitCandidateAssetIds.has(
+                                                  candidate.assetLinkId
+                                                ) ? (
+                                                  <Loader2
+                                                    aria-hidden="true"
+                                                    className="h-3.5 w-3.5 animate-spin"
+                                                  />
+                                                ) : (
+                                                  t(lang, "ลองใหม่", "Retry")
+                                                )}
+                                              </Button>
+                                            )}
+                                          </div>
+                                        )}
+                                      </CardContent>
+                                    </Card>
+                                  );
+                                })}
+                              </Grid>
+
+                              {isPreviewOnly && (
+                                <footer className="mt-3 flex flex-wrap items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() =>
+                                      handlePortraitCandidateBatchConfirm(
+                                        selectedCharacter.characterId
+                                      )
+                                    }
+                                    disabled={
+                                      generatePortraitCandidateBatchMutation.isPending ||
+                                      !selectedImageModelId
+                                    }
+                                    title={
+                                      selectedImageModelId
+                                        ? undefined
+                                        : t(
+                                            lang,
+                                            "เลือกโมเดลภาพก่อนสร้าง",
+                                            "Select an image model first"
+                                          )
+                                    }
+                                  >
+                                    {generatePortraitCandidateBatchMutation.isPending && (
+                                      <Loader2
+                                        aria-hidden="true"
+                                        className="mr-2 h-4 w-4 animate-spin"
+                                      />
+                                    )}
+                                    {t(
+                                      lang,
+                                      `สร้างทั้ง ${batch.candidates.length} ภาพ`,
+                                      `Generate all ${batch.candidates.length} images`
+                                    )}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() =>
+                                      handlePortraitCandidateBatchCancel(
+                                        selectedCharacter.characterId
+                                      )
+                                    }
+                                  >
+                                    {t(lang, "ยกเลิก", "Cancel")}
+                                  </Button>
+                                  <span className="text-xs text-muted-foreground">
+                                    {t(
+                                      lang,
+                                      "Prompt และ DNA ชุดนี้อ่านอย่างเดียว หากต้องการเปลี่ยนรายละเอียด ให้แก้ช่องคำอธิบายแล้วสร้าง Preview ใหม่",
+                                      "This prompt and DNA batch is read-only. Change the brief and generate a new preview to revise it."
+                                    )}
+                                  </span>
+                                </footer>
+                              )}
+                            </section>
+                          );
+                        })}
+                      </section>
+                    )}
 
                     {(() => {
                       const portrait =
@@ -4541,6 +6137,8 @@ export function VerticalDramaCharacterStockPanel({
                       <McpConnectionPicker
                         value={mcpConnectionId}
                         onChange={handleSelectMcpConnection}
+                        sharedGroupId={mcpSharedGroupId}
+                        onSharedGroupChange={setMcpSharedGroupId}
                         assetType="image"
                         providerKey={
                           resolveMediaModelTransportConfig({
@@ -4552,6 +6150,26 @@ export function VerticalDramaCharacterStockPanel({
                           }).providerKey ?? undefined
                         }
                       />
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Feature 135 — Hermes/Grok connection picker, mutually
+                    exclusive with the MCP picker above (a model row resolves
+                    to exactly one transport). */}
+                {imageModelUsesHermes && (
+                  <Card>
+                    <CardContent className="py-3 space-y-2">
+                      <HermesConnectionPicker
+                        value={hermesConnectionId}
+                        onChange={handleSelectHermesConnection}
+                        assetType="image"
+                      />
+                      {!hermesConnectionId ? (
+                        <p className="text-xs text-amber-600" data-testid="hermes-connection-required-hint">
+                          {t(lang, "เลือกบัญชี Grok ก่อน", "Select a Grok connection first")}
+                        </p>
+                      ) : null}
                     </CardContent>
                   </Card>
                 )}
@@ -4817,7 +6435,7 @@ export function VerticalDramaCharacterStockPanel({
                 </div>
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="vd-char-role" className="text-xs">
-                    {t(lang, "บทบาท (ไม่บังคับ)", "Role (optional)")}
+                    {t(lang, "อาชีพ/คำอธิบายบทบาท", "Occupation / role description")}
                   </Label>
                   <Input
                     id="vd-char-role"
@@ -4826,6 +6444,26 @@ export function VerticalDramaCharacterStockPanel({
                     placeholder={t(lang, "นางเอก", "Protagonist")}
                     maxLength={100}
                   />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="vd-char-role-tier" className="text-xs">
+                    {t(lang, "บทบาทในเรื่อง (ใช้สร้างภาพ)", "Narrative role (drives visual design)")}
+                  </Label>
+                  <Select value={newRoleTier} onValueChange={value => setNewRoleTier(value as RoleTier)}>
+                    <SelectTrigger id="vd-char-role-tier" className="h-9 text-xs">
+                      <SelectValue placeholder={t(lang, "เลือก นางเอก/พระเอก/ตัวร้าย/ตัวประกอบ", "Choose lead / villain / supporting")} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[min(70vh,32rem)]">
+                      {ROLE_TIER_VALUES.map(tier => (
+                        <SelectItem key={tier} value={tier}>
+                          {getCanonicalRoleLabel(tier, lang) ?? tier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(lang, "หากไม่เลือก ระบบจะแจ้งให้ตรวจบทบาทก่อนสร้างภาพ", "If omitted, the system will flag the character for role review before image generation.")}
+                  </p>
                 </div>
                 <Button
                   type="button"
@@ -4840,6 +6478,7 @@ export function VerticalDramaCharacterStockPanel({
                       name: newName.trim(),
                       characterKey: newKey.trim(),
                       role: newRole.trim() || undefined,
+                      roleTier: newRoleTier || undefined,
                     })
                   }
                 >

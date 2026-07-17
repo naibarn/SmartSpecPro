@@ -94,6 +94,7 @@ import {
 } from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import {
   isCharacterLockPolicyFailureMessage,
   VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
@@ -112,10 +113,7 @@ const EPISODE_RIGHT_PANEL_MIN_WIDTH = 300;
 const EPISODE_RIGHT_PANEL_MAX_WIDTH = 720;
 
 function readStoredEpisodePanelWidth(): number {
-  if (typeof window === "undefined") return EPISODE_RIGHT_PANEL_DEFAULT_WIDTH;
-  const value = Number(
-    window.localStorage.getItem(EPISODE_RIGHT_PANEL_WIDTH_KEY)
-  );
+  const value = Number(safeStorageGet(EPISODE_RIGHT_PANEL_WIDTH_KEY));
   if (!Number.isFinite(value)) return EPISODE_RIGHT_PANEL_DEFAULT_WIDTH;
   return Math.min(
     EPISODE_RIGHT_PANEL_MAX_WIDTH,
@@ -124,10 +122,7 @@ function readStoredEpisodePanelWidth(): number {
 }
 
 function readStoredEpisodePanelCollapsed(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.localStorage.getItem(EPISODE_RIGHT_PANEL_COLLAPSED_KEY) === "true"
-  );
+  return safeStorageGet(EPISODE_RIGHT_PANEL_COLLAPSED_KEY) === "true";
 }
 
 /**
@@ -472,12 +467,50 @@ function vdModelStorageKey(seriesId: string, kind: "image" | "video"): string {
   return `smartspec_vd_series_${seriesId}_${kind}_model`;
 }
 
+/** Best-effort localStorage access. Reads/writes here are only a CONVENIENCE
+ *  cache (remembered per-series model/resolution/MCP-connection defaults) —
+ *  never the source of truth (that's the episode row on the server). They
+ *  MUST NOT throw: `localStorage.setItem` raises `QuotaExceededError` when the
+ *  origin's storage is full (common for heavy users with many
+ *  `smartspec_vd_series_*` keys) and `getItem`/`setItem` raise `SecurityError`
+ *  in sandboxed/blocked-storage contexts. An unguarded throw here used to
+ *  abort the whole model-select click handler BEFORE it fired the
+ *  `setEpisodeModelSelection` mutation — so the dialog never closed and the
+ *  model was never saved (the "shows models but can't select" report). Swallow
+ *  the error and let the real (server-persisted) action proceed. */
+function safeStorageGet(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeStorageSet(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* quota exceeded / storage blocked — cache is best-effort, ignore */
+  }
+}
+
+function safeStorageRemove(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* storage blocked — best-effort, ignore */
+  }
+}
+
 function readStoredSeriesModelDefault(
   seriesId: string,
   kind: "image" | "video"
 ): string {
-  if (typeof window === "undefined" || !seriesId) return "";
-  return window.localStorage.getItem(vdModelStorageKey(seriesId, kind)) || "";
+  if (!seriesId) return "";
+  return safeStorageGet(vdModelStorageKey(seriesId, kind)) || "";
 }
 
 function storeSeriesModelDefault(
@@ -485,8 +518,8 @@ function storeSeriesModelDefault(
   kind: "image" | "video",
   modelId: string
 ): void {
-  if (typeof window === "undefined" || !seriesId) return;
-  window.localStorage.setItem(vdModelStorageKey(seriesId, kind), modelId);
+  if (!seriesId) return;
+  safeStorageSet(vdModelStorageKey(seriesId, kind), modelId);
 }
 
 /** Per-series, per-model last-picked resolution/size (storyboard-complete
@@ -509,12 +542,8 @@ function readStoredResolution(
   kind: "image" | "video",
   modelId: string
 ): string {
-  if (typeof window === "undefined" || !seriesId || !modelId) return "";
-  return (
-    window.localStorage.getItem(
-      vdResolutionStorageKey(seriesId, kind, modelId)
-    ) || ""
-  );
+  if (!seriesId || !modelId) return "";
+  return safeStorageGet(vdResolutionStorageKey(seriesId, kind, modelId)) || "";
 }
 
 function storeResolution(
@@ -523,14 +552,14 @@ function storeResolution(
   modelId: string,
   resolution: string
 ): void {
-  if (typeof window === "undefined" || !seriesId || !modelId) return;
+  if (!seriesId || !modelId) return;
   if (resolution) {
-    window.localStorage.setItem(
+    safeStorageSet(
       vdResolutionStorageKey(seriesId, kind, modelId),
       resolution
     );
   } else {
-    window.localStorage.removeItem(
+    safeStorageRemove(
       vdResolutionStorageKey(seriesId, kind, modelId)
     );
   }
@@ -545,17 +574,100 @@ function storeResolution(
 const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
 
 function readStoredMcpConnectionId(): string | null {
-  if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(MCP_CONNECTION_ID_STORAGE_KEY) || null;
+  return safeStorageGet(MCP_CONNECTION_ID_STORAGE_KEY) || null;
 }
 
 function storeMcpConnectionId(connectionId: string | null): void {
-  if (typeof window === "undefined") return;
   if (connectionId) {
-    window.localStorage.setItem(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
+    safeStorageSet(MCP_CONNECTION_ID_STORAGE_KEY, connectionId);
   } else {
-    window.localStorage.removeItem(MCP_CONNECTION_ID_STORAGE_KEY);
+    safeStorageRemove(MCP_CONNECTION_ID_STORAGE_KEY);
   }
+}
+
+/** Feature 135 (Hermes/Grok media worker) — shared Hermes-connection
+ *  localStorage key, same cross-surface carry-over convention as
+ *  `MCP_CONNECTION_ID_STORAGE_KEY` above (shared with
+ *  `VerticalDramaCharacterStockPanel.tsx`/`VerticalDramaLocationStockPanel.tsx`). */
+export const HERMES_CONNECTION_ID_STORAGE_KEY = "smartspec_hermes_connection_id";
+
+export function readStoredHermesConnectionId(): string | null {
+  return safeStorageGet(HERMES_CONNECTION_ID_STORAGE_KEY) || null;
+}
+
+export function storeHermesConnectionId(connectionId: string | null): void {
+  if (connectionId) {
+    safeStorageSet(HERMES_CONNECTION_ID_STORAGE_KEY, connectionId);
+  } else {
+    safeStorageRemove(HERMES_CONNECTION_ID_STORAGE_KEY);
+  }
+}
+
+/**
+ * Pure guard for the "hydrate the remembered per-series model into a
+ * brand-new episode" auto-hydration effect (Feature 135, section-10 §4.5).
+ * Extracted so the decision is directly unit-testable without mounting the
+ * whole page — see
+ * `__tests__/VerticalDramaEpisodePage.hermesModelHydration.test.ts`.
+ *
+ * Semantics: non-hermes models — unchanged behavior (hydrate whenever the
+ * row exists and is enabled, exactly like before this feature existed).
+ * Hermes models — hydrate ONLY when the row is enabled AND
+ * `hasAuthorizedHermesConnection` is true for the relevant asset type;
+ * otherwise leave the selection empty (no fallback to any other model, the
+ * caller's own gating then keeps generate disabled until the user connects
+ * an account or picks a different model).
+ */
+export function shouldHydrateRememberedVdModel(params: {
+  rememberedModelId: string;
+  modelRow: { isEnabled: boolean; configJson: unknown } | null;
+  hasAuthorizedHermesConnection: boolean;
+}): boolean {
+  if (!params.rememberedModelId) return false;
+  if (!params.modelRow) return false; // stale/unknown id — leave empty
+  if (!params.modelRow.isEnabled) return false;
+  const transport = resolveMediaModelTransportConfig({
+    configJson: params.modelRow.configJson,
+  }).transport;
+  if (transport !== "hermes_worker") return true;
+  return params.hasAuthorizedHermesConnection;
+}
+
+/**
+ * Feature 135 (Hermes/Grok media worker), section-10 review fix — shared
+ * task-projection failure toast builder for every image/video generation
+ * poll loop in this file (`pollStartFrameTask`, angle-variation polling,
+ * `pollVideoClipTask`, `pollRepairImageTask`, reference-frame polling).
+ * Reads `task.errorCode` (section-06's addition to `MediaTask`) via
+ * `presentHermesError` first; every non-hermes/legacy task falls through to
+ * the exact pre-existing bilingual "<fallback>: <errorMessage>" format
+ * (regression: unchanged). Pure/exported so it's independently testable
+ * without mounting the page or a poll loop.
+ */
+export function buildVdGenerateFailureToastMessage(
+  task: { errorMessage?: string; errorCode?: string } | null | undefined,
+  lang: "th" | "en",
+  fallback: { th: string; en: string }
+): string {
+  const presentation = presentHermesError(task ?? null);
+  if (presentation) return formatHermesErrorForToast(presentation, lang);
+  const errorMessage = task?.errorMessage;
+  return lang === "th"
+    ? `${fallback.th}${errorMessage ? `: ${errorMessage}` : ""}`
+    : `${fallback.en}${errorMessage ? `: ${errorMessage}` : ""}`;
+}
+
+/** Scrolls the episode-level image/video model picker into view — shared by
+ *  `requireModelSelectedOrToast`'s toast action AND every generate
+ *  mutation's `onError` below (server now fails closed with `BAD_REQUEST`
+ *  when the per-episode model selection is missing/invalid, instead of the
+ *  old silent `DEFAULT_MODELS` fallback). Same `data-testid` the picker
+ *  itself already renders in `VerticalDramaStoryboardPanel`. */
+function scrollToVdModelPicker(kind: "image" | "video"): void {
+  const el = document.querySelector(
+    `[data-testid="vd-storyboard-select-${kind}-model"]`
+  );
+  el?.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 export default function VerticalDramaEpisodePage() {
@@ -728,13 +840,10 @@ function EpisodeWorkspaceShell({
     readStoredEpisodePanelWidth
   );
   useEffect(() => {
-    window.localStorage.setItem(
-      EPISODE_RIGHT_PANEL_WIDTH_KEY,
-      String(rightPanelWidth)
-    );
+    safeStorageSet(EPISODE_RIGHT_PANEL_WIDTH_KEY, String(rightPanelWidth));
   }, [rightPanelWidth]);
   useEffect(() => {
-    window.localStorage.setItem(
+    safeStorageSet(
       EPISODE_RIGHT_PANEL_COLLAPSED_KEY,
       String(isRightPanelCollapsed)
     );
@@ -1079,8 +1188,8 @@ function EpisodeWorkspaceShell({
           return;
         }
         if (status === "failed") {
-          const errorMessage = (task as { errorMessage?: string } | null)
-            ?.errorMessage;
+          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
+          const errorMessage = failedTask?.errorMessage;
           // Character-lock auto-soften (2026-07-06 prompt-safety upgrade) —
           // on a policy/content/safety-category provider failure, resubmit
           // the SAME mutation with `softenLevel + 1` (fresh idempotency key)
@@ -1106,9 +1215,10 @@ function EpisodeWorkspaceShell({
             return;
           }
           toast.error(
-            lang === "th"
-              ? `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`
-              : `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`
+            buildVdGenerateFailureToastMessage(failedTask, lang, {
+              th: "สร้างภาพล้มเหลว",
+              en: "Generation failed",
+            })
           );
           return;
         }
@@ -1146,7 +1256,37 @@ function EpisodeWorkspaceShell({
       // fails — otherwise a shot that never reaches `pollStartFrameTask`'s
       // own `finally` cleanup would stay disabled forever.
       onError: (err, variables) => {
-        toast.error(err.message);
+        // Stale reference-mapping guard (character set changed after the prompt
+        // was authored) — give the user a one-click "regenerate prompt" action
+        // instead of just a wall of text. Detected by the stable phrase the
+        // server embeds in every stale-mapping message.
+        const isStaleMapping =
+          err.data?.code === "PRECONDITION_FAILED" &&
+          typeof err.message === "string" &&
+          err.message.includes("ไม่ตรงกับตัวละครในช็อต");
+        if (isStaleMapping) {
+          toast.error(err.message, {
+            duration: 14000,
+            action: {
+              label: lang === "th" ? "สร้าง prompt ใหม่" : "Regenerate prompt",
+              onClick: () =>
+                void handleGeneratePromptAndImage(variables.shotNumber, "single"),
+            },
+          });
+        } else {
+          // Feature 135 section-10 review fix: a `[HERMES_X] ...` prefixed
+          // message (pinned server wire convention) renders via
+          // `presentHermesError` instead of leaking the raw bracketed
+          // English string; every other message is unaffected.
+          const hermesPresentation = presentHermesError(err);
+          toast.error(
+            hermesPresentation ? formatHermesErrorForToast(hermesPresentation, lang) : err.message
+          );
+          // The server now fails closed (BAD_REQUEST) when this episode has
+          // no explicit image model selection — surface the picker so the
+          // user can fix it in one click instead of re-reading the toast.
+          if (err.data?.code === "BAD_REQUEST") scrollToVdModelPicker("image");
+        }
         setPollingStartFrameShots(prev => {
           const next = new Set(prev);
           next.delete(variables.shotNumber);
@@ -1173,6 +1313,65 @@ function EpisodeWorkspaceShell({
    *  convention as `splitInFlightShotsRef` in the storyboard panel. */
   const angleVariationsPollInFlightRef = useRef<Set<number>>(new Set());
 
+  /** Phase 5d (`planning/vd-start-frame-reference-mapping/plan.md`, client
+   *  half) — persists the completed grid IMAGE ITSELF (not a picked tile) as
+   *  a durable `startFramePlan.frames[shot].angleGridAssetIds` entry, so a
+   *  later session can reopen this exact grid via "กริดที่สร้างไว้" even
+   *  after all 9 tiles have been dismissed/consumed. No `onError` here — see
+   *  `persistAngleGridAsMediaAsset`'s own doc comment (fire-and-forget). */
+  const recordShotAngleGridAssetMutation =
+    trpc.verticalDramaEpisodes.recordShotAngleGridAsset.useMutation();
+
+  /** Best-effort persistence of a completed/reopened grid image as a durable
+   *  media asset (Phase 5d). Deliberately never throws/toasts — a failure
+   *  here only means this grid won't show up in "กริดที่สร้างไว้" later, not
+   *  that anything the user is actively doing (the existing pick-a-cell
+   *  flow, driven entirely by `angleVariationGridUrlByShot`/`persistAngleGrid`
+   *  above) is affected. `resolveMediaAssetForImport` dedupes by URL
+   *  checksum server-side, so calling this twice for the same grid URL (live
+   *  completion + a later resume-on-load, or reopening an already-stored
+   *  grid) is idempotent — same `mediaAssetId` both times, and
+   *  `recordShotAngleGridAsset` itself dedupes+promotes-to-most-recent. */
+  async function persistAngleGridAsMediaAsset(
+    shotNumber: number,
+    gridUrl: string
+  ) {
+    try {
+      const resolved = await resolveMediaAssetForImportMutation.mutateAsync({
+        seriesId,
+        source: "url",
+        url: gridUrl,
+        mimeType: "image/jpeg",
+      });
+      const result = await recordShotAngleGridAssetMutation.mutateAsync({
+        seriesId,
+        episodeId,
+        shotNumber,
+        mediaAssetId: resolved.mediaAssetId,
+      });
+      // Patch the cache directly (no full refetch needed) so the
+      // "กริดที่สร้างไว้" thumbnails appear immediately.
+      utils.verticalDramaEpisodes.getEpisodeDetail.setData(
+        { seriesId, episodeId },
+        prev =>
+          prev
+            ? {
+                ...prev,
+                angleGridAssetsByShotNumber: {
+                  ...(prev.angleGridAssetsByShotNumber ?? {}),
+                  [shotNumber]: result.angleGridAssets,
+                },
+              }
+            : prev
+      );
+    } catch (err) {
+      console.warn(
+        "[VerticalDramaEpisodePage] failed to persist angle-grid media asset",
+        err
+      );
+    }
+  }
+
   /** Shared completion handler for BOTH the live submit-then-poll path and
    *  the resume-on-load path (2026-07-06 fix) — both must converge on the
    *  identical persisted `angleGrid` shape ({ imageUrl, mediaTaskId,
@@ -1194,6 +1393,20 @@ function EpisodeWorkspaceShell({
       mediaTaskId: taskId,
       dismissedIndexes,
     });
+    // Phase 5d — best-effort, never blocks/toasts (see doc comment above).
+    void persistAngleGridAsMediaAsset(shotNumber, resultUrl);
+  }
+
+  /** "กริดที่สร้างไว้" thumbnail click (Phase 5d) — loads a previously-stored
+   *  grid back into the SAME `angleVariationGridUrlByShot`/picker flow a
+   *  freshly-completed grid uses. The pre-existing persist effect (below,
+   *  keyed off `persistedAngleGridUrlByShotRef`) picks this up and calls
+   *  `persistAngleGrid` for us — no need to duplicate that here. Does NOT
+   *  re-call `persistAngleGridAsMediaAsset`: this grid is already recorded
+   *  (that's how it got into `angleGridAssetsByShotNumber` in the first
+   *  place). */
+  function handleOpenStoredAngleGrid(shotNumber: number, url: string) {
+    setAngleVariationGridUrlByShot(prev => ({ ...prev, [shotNumber]: url }));
   }
 
   /**
@@ -1240,8 +1453,8 @@ function EpisodeWorkspaceShell({
           return;
         }
         if (status === "failed") {
-          const errorMessage = (task as { errorMessage?: string } | null)
-            ?.errorMessage;
+          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
+          const errorMessage = failedTask?.errorMessage;
           // Character-lock auto-soften — same convention as `pollStartFrameTask`.
           if (
             isCharacterLockPolicyFailureMessage(errorMessage) &&
@@ -1268,9 +1481,10 @@ function EpisodeWorkspaceShell({
             return;
           }
           toast.error(
-            lang === "th"
-              ? `สร้างภาพล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`
-              : `Generation failed${errorMessage ? `: ${errorMessage}` : ""}`
+            buildVdGenerateFailureToastMessage(failedTask, lang, {
+              th: "สร้างภาพล้มเหลว",
+              en: "Generation failed",
+            })
           );
           // Clear the orphan-recovery marker so a failed task isn't retried
           // as "still pending" forever (2026-07-06 fix).
@@ -1310,7 +1524,28 @@ function EpisodeWorkspaceShell({
           variables.softenLevel ?? 0
         );
       },
-      onError: err => toast.error(err.message),
+      onError: (err, variables) => {
+        const isStaleMapping =
+          err.data?.code === "PRECONDITION_FAILED" &&
+          typeof err.message === "string" &&
+          err.message.includes("ไม่ตรงกับตัวละครในช็อต");
+        if (isStaleMapping) {
+          toast.error(err.message, {
+            duration: 14000,
+            action: {
+              label: lang === "th" ? "สร้าง prompt ใหม่" : "Regenerate prompt",
+              onClick: () =>
+                void handleGeneratePromptAndImage(variables.shotNumber, "angles"),
+            },
+          });
+          return;
+        }
+        const hermesPresentation = presentHermesError(err);
+        toast.error(
+          hermesPresentation ? formatHermesErrorForToast(hermesPresentation, lang) : err.message
+        );
+        if (err.data?.code === "BAD_REQUEST") scrollToVdModelPicker("image");
+      },
     });
 
   async function handlePickAngleVariationCandidate(
@@ -1579,16 +1814,91 @@ function EpisodeWorkspaceShell({
   const videoModels = (videoModelsQuery.data?.models ??
     []) as VerticalDramaCapableModel[];
 
+  /** Feature 135 (Hermes/Grok media worker), section-10 §4.5 — the
+   *  hydration guard needs to know whether an AUTHORIZED hermes connection
+   *  exists for the remembered per-series default model's asset type, but
+   *  ONLY when that remembered model actually resolves to hermes transport
+   *  (avoids an unconditional extra query on every page load for the common
+   *  case where the remembered default is a gateway/MCP model). */
+  const rememberedImageModelIdForHydration = readStoredSeriesModelDefault(
+    seriesId,
+    "image"
+  );
+  const rememberedImageModelRowForHydration =
+    imageModels.find(m => m.modelId === rememberedImageModelIdForHydration) ??
+    null;
+  const rememberedImageModelIsHermesForHydration = Boolean(
+    rememberedImageModelRowForHydration &&
+      resolveMediaModelTransportConfig({
+        configJson: rememberedImageModelRowForHydration.configJson,
+      }).transport === "hermes_worker"
+  );
+  const hermesImageConnectionsForHydrationQuery =
+    trpc.hermesConnections.listConnections.useQuery(
+      { assetType: "image" },
+      { enabled: rememberedImageModelIsHermesForHydration, retry: false }
+    );
+  const hasAuthorizedHermesImageConnectionForHydration = (
+    hermesImageConnectionsForHydrationQuery.data ?? []
+  ).some((connection: { status: string }) => connection.status === "authorized");
+
+  const rememberedVideoModelIdForHydration = readStoredSeriesModelDefault(
+    seriesId,
+    "video"
+  );
+  const rememberedVideoModelRowForHydration =
+    videoModels.find(m => m.modelId === rememberedVideoModelIdForHydration) ??
+    null;
+  const rememberedVideoModelIsHermesForHydration = Boolean(
+    rememberedVideoModelRowForHydration &&
+      resolveMediaModelTransportConfig({
+        configJson: rememberedVideoModelRowForHydration.configJson,
+      }).transport === "hermes_worker"
+  );
+  const hermesVideoConnectionsForHydrationQuery =
+    trpc.hermesConnections.listConnections.useQuery(
+      { assetType: "video" },
+      { enabled: rememberedVideoModelIsHermesForHydration, retry: false }
+    );
+  const hasAuthorizedHermesVideoConnectionForHydration = (
+    hermesVideoConnectionsForHydrationQuery.data ?? []
+  ).some((connection: { status: string }) => connection.status === "authorized");
+
   const episodeSelectedImageModelId =
     episodeDetailQuery.data?.startFramePlan?.selectedImageModelId ?? "";
   const episodeSelectedVideoModelId =
     episodeDetailQuery.data?.motionPromptPack?.selectedVideoModelId ?? "";
+  /** Optimistic per-episode model selection — mirrors the Character tab's
+   *  instant local-state picker (`VerticalDramaCharacterStockPanel`'s
+   *  `selectedImageModelId` useState). The storyboard model choice is
+   *  server-persisted (drives generation + survives reload), but relying on
+   *  the `setEpisodeModelSelection` mutation + refetch alone means the picker
+   *  button and the MCP-connection row it reveals wouldn't react until the
+   *  server confirmed — and for a heavy user whose localStorage is full, the
+   *  localStorage fallback below writes nothing, so there'd be no instant
+   *  feedback at all (the "picks a model but nothing happens / MCP row never
+   *  shows" report). Holding the just-picked id locally makes the selection
+   *  appear immediately; it's reset per episode (below) so a pick never leaks
+   *  across episodes, and cleared on mutation error so a failed save reverts
+   *  to the true server state. */
+  const [optimisticImageModelId, setOptimisticImageModelId] = useState<
+    string | null
+  >(null);
+  const [optimisticVideoModelId, setOptimisticVideoModelId] = useState<
+    string | null
+  >(null);
+  useEffect(() => {
+    setOptimisticImageModelId(null);
+    setOptimisticVideoModelId(null);
+  }, [episodeId]);
   const selectedImageModelId =
-    episodeSelectedImageModelId ||
-    readStoredSeriesModelDefault(seriesId, "image");
+    optimisticImageModelId ??
+    (episodeSelectedImageModelId ||
+      readStoredSeriesModelDefault(seriesId, "image"));
   const selectedVideoModelId =
-    episodeSelectedVideoModelId ||
-    readStoredSeriesModelDefault(seriesId, "video");
+    optimisticVideoModelId ??
+    (episodeSelectedVideoModelId ||
+      readStoredSeriesModelDefault(seriesId, "video"));
 
   const setEpisodeModelSelectionMutation =
     trpc.verticalDramaEpisodes.setEpisodeModelSelection.useMutation({
@@ -1598,8 +1908,92 @@ function EpisodeWorkspaceShell({
         );
         void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
       },
-      onError: err => toast.error(err.message),
+      onError: err => {
+        // Revert the optimistic pick so the UI reflects the true (unsaved)
+        // server state instead of a selection that never persisted.
+        setOptimisticImageModelId(null);
+        setOptimisticVideoModelId(null);
+        toast.error(err.message);
+      },
     });
+
+  /** Auto-hydrate the remembered per-series model choice into a BRAND-NEW
+   *  episode (Phase 1.3 "pick once, use forever" follow-up to the server's
+   *  fail-closed model requirement) — a fresh episode's
+   *  `startFramePlan.selectedImageModelId` / `motionPromptPack.selectedVideoModelId`
+   *  start out EMPTY (the server no longer silently seeds `DEFAULT_MODELS`),
+   *  so without this the very first generate click on a new episode would
+   *  hit the server's BAD_REQUEST guard even though the user already picked
+   *  a model on a previous episode of the same series. Only fires when the
+   *  PER-EPISODE selection is empty (never overwrites an explicit choice)
+   *  AND the remembered series default still resolves to a valid, enabled
+   *  model in the freshly-loaded catalog — a stale/disabled id is left
+   *  alone so the buttons stay disabled and the user is prompted to pick
+   *  again. `hydratedModelDefaultRef` guards each (episodeId, kind) pair to
+   *  fire at most once per mount: `setEpisodeModelSelectionMutation`'s own
+   *  `onSuccess` invalidates `getEpisodeDetail`, which flips
+   *  `episodeSelectedImageModelId`/`episodeSelectedVideoModelId` non-empty
+   *  on the next render (the effect's own re-run guard), but the ref closes
+   *  the small window between the mutation firing and that refetch
+   *  landing — without it a slow refetch could let the effect fire twice
+   *  for the same (episodeId, kind) before the first write is reflected. */
+  const hydratedModelDefaultRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!episodeDetailQuery.data) return;
+    const candidates: Array<{
+      kind: "image" | "video";
+      episodeValue: string;
+      models: VerticalDramaCapableModel[];
+      hasAuthorizedHermesConnection: boolean;
+    }> = [
+      {
+        kind: "image",
+        episodeValue: episodeSelectedImageModelId,
+        models: imageModels,
+        hasAuthorizedHermesConnection: hasAuthorizedHermesImageConnectionForHydration,
+      },
+      {
+        kind: "video",
+        episodeValue: episodeSelectedVideoModelId,
+        models: videoModels,
+        hasAuthorizedHermesConnection: hasAuthorizedHermesVideoConnectionForHydration,
+      },
+    ];
+    for (const { kind, episodeValue, models, hasAuthorizedHermesConnection } of candidates) {
+      if (episodeValue) continue; // episode already has its own selection
+      const hydrateKey = `${episodeId}:${kind}`;
+      if (hydratedModelDefaultRef.current.has(hydrateKey)) continue;
+      const storedDefault = readStoredSeriesModelDefault(seriesId, kind);
+      if (!storedDefault) continue;
+      const modelRow = models.find(m => m.modelId === storedDefault) ?? null;
+      const isValid = shouldHydrateRememberedVdModel({
+        rememberedModelId: storedDefault,
+        modelRow: modelRow
+          ? { isEnabled: modelRow.isEnabled !== false, configJson: modelRow.configJson }
+          : null,
+        hasAuthorizedHermesConnection,
+      });
+      if (!isValid) continue; // stale/disabled, or hermes with no authorized connection — leave empty, user re-picks
+      if (setEpisodeModelSelectionMutation.isPending) continue;
+      hydratedModelDefaultRef.current.add(hydrateKey);
+      setEpisodeModelSelectionMutation.mutate(
+        kind === "image"
+          ? { seriesId, episodeId, selectedImageModelId: storedDefault }
+          : { seriesId, episodeId, selectedVideoModelId: storedDefault }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    episodeDetailQuery.data,
+    episodeId,
+    seriesId,
+    episodeSelectedImageModelId,
+    episodeSelectedVideoModelId,
+    imageModels,
+    videoModels,
+    hasAuthorizedHermesImageConnectionForHydration,
+    hasAuthorizedHermesVideoConnectionForHydration,
+  ]);
 
   /**
    * Product tie-in chip data (spec §13, storyboard product-tie-in wiring) —
@@ -1829,6 +2223,53 @@ function EpisodeWorkspaceShell({
   }
 
   /**
+   * "Repair missing characters" (episode-level) — scans every shot's
+   * resolved dialogue speakers and union-merges any missing roster
+   * character into that shot's `requiredCharacterRefs` (never removes
+   * anything). Free/no-LLM-cost, no confirm dialog needed — same "cheap
+   * direct data patch, refetch on success" convention as
+   * `handleSetShotCharacterReferences` above.
+   */
+  const repairShotCharacterReferencesMutation =
+    trpc.verticalDramaEpisodes.repairEpisodeShotCharacterReferences.useMutation(
+      {
+        onSuccess: data => {
+          if (data.added.length === 0) {
+            toast.success(
+              lang === "th"
+                ? "ไม่พบตัวละครที่ขาด"
+                : "No missing characters found."
+            );
+            return;
+          }
+          const names = Array.from(
+            new Set(data.added.flatMap(a => a.addedNames))
+          );
+          const resetShots = data.added
+            .filter(a => a.promptReset)
+            .map(a => a.shotNumber);
+          const base =
+            lang === "th"
+              ? `เพิ่มตัวละคร ${names.join(", ")} เข้า ${data.added.length} ช็อต`
+              : `Added ${names.join(", ")} to ${data.added.length} shot(s).`;
+          const resetNote =
+            resetShots.length > 0
+              ? lang === "th"
+                ? ` — ช็อต ${resetShots.join(", ")} ต้องกดสร้าง prompt ใหม่ (ตัวละครเปลี่ยน ทำให้ลำดับภาพเปลี่ยน)`
+                : ` — regenerate the prompt for shot(s) ${resetShots.join(", ")} (characters changed, image order shifted).`
+              : "";
+          toast.success(base + resetNote);
+          void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        },
+        onError: err => toast.error(err.message),
+      }
+    );
+
+  function handleRepairMissingShotCharacters() {
+    repairShotCharacterReferencesMutation.mutate({ seriesId, episodeId });
+  }
+
+  /**
    * Per-shot LOCATION override (Phase D, `planning/polished-toasting-
    * gadget.md` — location visual bible) — the location sibling of
    * `handleSetShotCharacterReferences` above, independent of the
@@ -1863,6 +2304,11 @@ function EpisodeWorkspaceShell({
   }
 
   const handleSelectImageModel = (modelId: string) => {
+    // Optimistic FIRST — the selection (and the MCP-connection row it reveals)
+    // shows instantly, exactly like the Character tab, independent of the
+    // server round-trip or a full-localStorage cache write. Both writes below
+    // are best-effort and cannot block this.
+    setOptimisticImageModelId(modelId);
     storeSeriesModelDefault(seriesId, "image", modelId);
     setEpisodeModelSelectionMutation.mutate({
       seriesId,
@@ -1871,6 +2317,7 @@ function EpisodeWorkspaceShell({
     });
   };
   const handleSelectVideoModel = (modelId: string) => {
+    setOptimisticVideoModelId(modelId);
     storeSeriesModelDefault(seriesId, "video", modelId);
     setEpisodeModelSelectionMutation.mutate({
       seriesId,
@@ -1992,9 +2439,19 @@ function EpisodeWorkspaceShell({
   const [mcpConnectionId, setMcpConnectionIdState] = useState<string | null>(
     readStoredMcpConnectionId
   );
+  const [mcpSharedGroupId, setMcpSharedGroupId] = useState<number | null>(null);
+  /** Same query (and therefore the same TanStack cache entry) the
+   *  `McpConnectionPicker` uses — read here only so
+   *  `requireMcpConnectionOrToast` can tell "no MCP account at all" apart from
+   *  "the picker just hasn't settled yet". Adds no extra network round-trip. */
+  const mcpConnectionsQuery = trpc.mcpConnections.listConnections.useQuery(
+    undefined,
+    { retry: false }
+  );
   const handleSelectMcpConnection = (connectionId: string | null) => {
     setMcpConnectionIdState(connectionId);
     storeMcpConnectionId(connectionId);
+    if (!connectionId) setMcpSharedGroupId(null);
   };
   const resolveModelTransport = (
     model: VerticalDramaCapableModel | undefined,
@@ -2021,16 +2478,94 @@ function EpisodeWorkspaceShell({
       .transport === "mcp";
   /** Blocks the action client-side with a Thai/English toast instead of
    *  letting the server throw BAD_REQUEST — returns true if the action
-   *  should proceed. */
+   *  should proceed.
+   *
+   *  A null `mcpConnectionId` does NOT by itself mean the user lacks access:
+   *  the MCP picker fills it in asynchronously (and its localStorage cache
+   *  silently no-ops when the browser's storage is full, so it never
+   *  pre-populates for those users), which made this guard reject generates
+   *  from members who had a perfectly good SHARED account. The server resolves
+   *  the actor's own eligible connection when the client doesn't pin one (see
+   *  `mediaTransportResolver`), so only block when we positively know this user
+   *  has NO MCP connection available. */
   function requireMcpConnectionOrToast(kind: "image" | "video"): boolean {
     const usesMcp = kind === "image" ? imageModelUsesMcp : videoModelUsesMcp;
     if (!usesMcp || mcpConnectionId) return true;
+    if (
+      mcpConnectionsQuery.isLoading ||
+      (mcpConnectionsQuery.data?.length ?? 0) > 0
+    ) {
+      return true; // server resolves the eligible account for this actor
+    }
     toast.error(
       lang === "th"
         ? "ต้องเลือกการเชื่อมต่อ MCP ก่อนใช้โมเดลนี้"
         : kind === "image"
           ? "Select an MCP connection before using this image model."
           : "Select an MCP connection before using this video model."
+    );
+    return false;
+  }
+
+  // Hermes connection selection (Feature 135, section-10 §4.5) — sibling of
+  // the MCP block above; mutually exclusive per model row (a row resolves to
+  // exactly one transport), so at most one of imageModelUsesMcp/
+  // imageModelUsesHermes is ever true.
+  const [hermesConnectionId, setHermesConnectionIdState] = useState<
+    string | null
+  >(readStoredHermesConnectionId);
+  const handleSelectHermesConnection = (connectionId: string | null) => {
+    setHermesConnectionIdState(connectionId);
+    storeHermesConnectionId(connectionId);
+  };
+  const imageModelUsesHermes =
+    Boolean(selectedImageModelId) &&
+    resolveModelTransport(selectedImageModelRecord, selectedImageModelId)
+      .transport === "hermes_worker";
+  const videoModelUsesHermes =
+    Boolean(selectedVideoModelId) &&
+    resolveModelTransport(selectedVideoModelRecord, selectedVideoModelId)
+      .transport === "hermes_worker";
+  /** Same convention as `requireMcpConnectionOrToast` above, for the Hermes
+   *  transport arm — Hermes has no shared-pool auto-resolve equivalent, so
+   *  (unlike the MCP guard) this blocks whenever no connection is pinned. */
+  function requireHermesConnectionOrToast(kind: "image" | "video"): boolean {
+    const usesHermes = kind === "image" ? imageModelUsesHermes : videoModelUsesHermes;
+    if (!usesHermes || hermesConnectionId) return true;
+    toast.error(
+      lang === "th"
+        ? "ต้องเลือกบัญชี Grok (Hermes) ก่อนใช้โมเดลนี้"
+        : kind === "image"
+          ? "Select a Grok (Hermes) connection before using this image model."
+          : "Select a Grok (Hermes) connection before using this video model."
+    );
+    return false;
+  }
+  /** Blocks the action client-side when no image/video model has been
+   *  picked yet, instead of letting the server silently fall back to its
+   *  hardcoded DEFAULT_MODELS — returns true if the action should proceed.
+   *  Only checks whether an id string is present (not whether the matching
+   *  model record has finished loading), so it never false-blocks during a
+   *  transient models-list fetch. */
+  function requireModelSelectedOrToast(kind: "image" | "video"): boolean {
+    const hasModel = Boolean(
+      kind === "image" ? selectedImageModelId : selectedVideoModelId
+    );
+    if (hasModel) return true;
+    toast.error(
+      lang === "th"
+        ? kind === "image"
+          ? "กรุณาเลือกโมเดลภาพก่อนสร้าง"
+          : "กรุณาเลือกโมเดลวิดีโอก่อนสร้าง (มีผลต่อเสียงพูดในตัวและรูปแบบคลิป)"
+        : kind === "image"
+          ? "Select an image model before generating."
+          : "Select a video model before generating (affects native audio and clip format).",
+      {
+        action: {
+          label: lang === "th" ? "เลือกโมเดล" : "Select model",
+          onClick: () => scrollToVdModelPicker(kind),
+        },
+      }
     );
     return false;
   }
@@ -2151,6 +2686,224 @@ function EpisodeWorkspaceShell({
       setUsingShotReferenceAsMainForShot(current =>
         current === shotNumber ? null : current
       );
+    }
+  }
+
+  /* ---- Phase 6c — user-controlled supplementary reference frames
+     (`planning/vd-start-frame-reference-mapping/plan.md`, Phase 6) ---- */
+  const generateShotReferenceFramePromptMutation =
+    trpc.verticalDramaEpisodes.generateShotReferenceFramePrompt.useMutation();
+  const generateShotReferenceFrameImageMutation =
+    trpc.verticalDramaEpisodes.generateShotReferenceFrameImage.useMutation();
+
+  /** Per-shot "authoring the prompt" spinner (step 1 of the dialog) — kept
+   *  separate from the render/poll set below so the two steps' loading
+   *  states never fight each other. */
+  const [
+    generatingReferenceFramePromptForShot,
+    setGeneratingReferenceFramePromptForShot,
+  ] = useState<Set<number>>(new Set());
+  /** Per-shot "rendering + polling" flag (step 2), same lifecycle convention
+   *  as `pollingStartFrameShots` — set on submit, cleared in
+   *  `pollReferenceFrameTask`'s own `finally`. A Set (not a single shot
+   *  number) so more than one shot's reference frame can render at once. */
+  const [pollingReferenceFrameShots, setPollingReferenceFrameShots] =
+    useState<Set<number>>(new Set());
+
+  /** Step 1: authors ONE reference-frame prompt. Returns `null` on failure
+   *  (already toasted here) — the dialog stays on the selection step. */
+  async function handleGenerateReferenceFramePrompt(args: {
+    shotNumber: number;
+    characterKeys: string[];
+    instruction: string;
+  }) {
+    if (!requireModelSelectedOrToast("image")) return null;
+    if (!requireMcpConnectionOrToast("image")) return null;
+    if (!requireHermesConnectionOrToast("image")) return null;
+    setGeneratingReferenceFramePromptForShot(prev =>
+      new Set(prev).add(args.shotNumber)
+    );
+    try {
+      return await generateShotReferenceFramePromptMutation.mutateAsync({
+        seriesId,
+        episodeId,
+        shotNumber: args.shotNumber,
+        characterKeys: args.characterKeys,
+        instruction: args.instruction,
+        idempotencyKey: crypto.randomUUID(),
+      });
+    } catch (err) {
+      const hermesPresentation = presentHermesError(err);
+      toast.error(
+        hermesPresentation
+          ? formatHermesErrorForToast(hermesPresentation, lang)
+          : err instanceof Error
+            ? err.message
+            : lang === "th"
+              ? "สร้าง prompt เฟรมอ้างอิงไม่สำเร็จ"
+              : "Failed to generate the reference-frame prompt."
+      );
+      if (
+        (err as { data?: { code?: string } } | undefined)?.data?.code ===
+        "BAD_REQUEST"
+      ) {
+        scrollToVdModelPicker("image");
+      }
+      return null;
+    } finally {
+      setGeneratingReferenceFramePromptForShot(prev => {
+        const next = new Set(prev);
+        next.delete(args.shotNumber);
+        return next;
+      });
+    }
+  }
+
+  /** Bounded poll for a submitted reference-frame render task — mirrors
+   *  `pollStartFrameTask` structurally, but on completion links the result
+   *  into the shot's reference set (`source: "reference_frame"`) via
+   *  `linkShotReferenceMutation` instead of `setApprovedStartFrameAsset`
+   *  (a supplementary reference frame never replaces the shot's main image),
+   *  and never auto-softens/resubmits on a policy failure (that convention
+   *  is specific to the main start-frame identity-lock flow). Its own
+   *  `pollingReferenceFrameShots` set keeps this independent from
+   *  `pollingStartFrameShots` — a shot can have both a start-frame render
+   *  AND a reference-frame render in flight at once, and this poller never
+   *  fires the start-frame success toast. */
+  async function pollReferenceFrameTask(taskId: string, shotNumber: number) {
+    try {
+      for (
+        let attempt = 0;
+        attempt < VD_START_FRAME_POLL_MAX_ATTEMPTS;
+        attempt++
+      ) {
+        const task = await utils.media.getTask.fetch({ taskId });
+        const status = (task as { status?: string } | null)?.status;
+        if (status === "completed") {
+          const resultUrl = (task as { resultUrl?: string } | null)
+            ?.resultUrl;
+          if (!resultUrl) {
+            toast.error(
+              lang === "th"
+                ? "สร้างเฟรมอ้างอิงสำเร็จแต่ไม่พบ URL ผลลัพธ์"
+                : "Reference-frame generation completed but no result URL."
+            );
+            return;
+          }
+          try {
+            const resolved =
+              await resolveMediaAssetForImportMutation.mutateAsync({
+                seriesId,
+                source: "url",
+                url: resultUrl,
+                mimeType: "image/png",
+              });
+            await linkShotReferenceMutation.mutateAsync({
+              seriesId,
+              episodeId,
+              shotNumber,
+              mediaAssetId: resolved.mediaAssetId,
+              role: "reference",
+              source: "reference_frame",
+            });
+          } catch (err) {
+            toast.error(
+              lang === "th"
+                ? `สร้างเฟรมอ้างอิงเสร็จแล้ว แต่บันทึกเข้าช็อตไม่สำเร็จ${err instanceof Error ? `: ${err.message}` : ""}`
+                : `Reference-frame generation finished, but saving it to the shot failed${err instanceof Error ? `: ${err.message}` : ""}.`
+            );
+            return;
+          }
+          toast.success(vdCopy(lang).referenceFrameRenderSuccess);
+          return;
+        }
+        if (status === "failed") {
+          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
+          toast.error(
+            buildVdGenerateFailureToastMessage(failedTask, lang, {
+              th: vdCopy("th").referenceFrameRenderFailed,
+              en: vdCopy("en").referenceFrameRenderFailed,
+            })
+          );
+          return;
+        }
+        await new Promise(resolve =>
+          setTimeout(resolve, VD_START_FRAME_POLL_INTERVAL_MS)
+        );
+      }
+      toast.error(
+        lang === "th"
+          ? "สร้างเฟรมอ้างอิงใช้เวลานานเกินไป ลองตรวจสอบภายหลัง"
+          : "Reference-frame generation is taking too long — check back later."
+      );
+    } finally {
+      setPollingReferenceFrameShots(prev => {
+        const next = new Set(prev);
+        next.delete(shotNumber);
+        return next;
+      });
+    }
+  }
+
+  /** Step 2: submits the user-confirmed (possibly hand-edited) prompt for
+   *  the paid render, then polls it. Returns `true` on successful SUBMIT
+   *  (closes the dialog — the render itself continues in the background,
+   *  same "submit closes the dialog, poll finishes later" convention as
+   *  every other async VD render in this file); `false` on a submit failure
+   *  (already toasted here, dialog stays open so the user can retry without
+   *  re-typing anything). */
+  async function handleGenerateReferenceFrameImage(args: {
+    shotNumber: number;
+    prompt: string;
+    negativePrompt?: string;
+    characterKeys: string[];
+  }): Promise<boolean> {
+    setPollingReferenceFrameShots(prev => new Set(prev).add(args.shotNumber));
+    try {
+      const task = await generateShotReferenceFrameImageMutation.mutateAsync({
+        seriesId,
+        episodeId,
+        shotNumber: args.shotNumber,
+        prompt: args.prompt,
+        negativePrompt: args.negativePrompt,
+        characterKeys: args.characterKeys,
+        mcpConnectionId: imageModelUsesMcp
+          ? (mcpConnectionId ?? undefined)
+          : undefined,
+        sharedGroupId:
+          imageModelUsesMcp && mcpConnectionId
+            ? (mcpSharedGroupId ?? undefined)
+            : undefined,
+        hermesConnectionId:
+          imageModelUsesHermes && !(imageModelUsesMcp && mcpConnectionId)
+            ? (hermesConnectionId ?? undefined)
+            : undefined,
+        resolution: selectedImageResolution || undefined,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      void pollReferenceFrameTask(task.taskId, args.shotNumber);
+      return true;
+    } catch (err) {
+      const hermesPresentation = presentHermesError(err);
+      toast.error(
+        hermesPresentation
+          ? formatHermesErrorForToast(hermesPresentation, lang)
+          : err instanceof Error
+            ? err.message
+            : vdCopy(lang).referenceFrameRenderFailed
+      );
+      if (
+        (err as { data?: { code?: string } } | undefined)?.data?.code ===
+        "BAD_REQUEST"
+      ) {
+        scrollToVdModelPicker("image");
+      }
+      setPollingReferenceFrameShots(prev => {
+        const next = new Set(prev);
+        next.delete(args.shotNumber);
+        return next;
+      });
+      return false;
     }
   }
 
@@ -2400,9 +3153,21 @@ function EpisodeWorkspaceShell({
    */
   async function handleGeneratePromptAndImage(
     shotNumber: number,
-    mode: "single" | "angles"
+    mode: "single" | "angles",
+    // When true (default — the "สร้าง prompt + ภาพ" button), re-author this
+    // shot's start-frame prompt from the latest Overview synopsis
+    // (`canonicalShotSummary`) before rendering, so a stale/wrong stored
+    // prompt is refreshed. When false (the "สร้างภาพ (AI)" render-only
+    // button), reuse the shot's EXISTING `frame.imagePrompt` as-is and skip
+    // re-authoring — this is the escape hatch for rendering a prompt the user
+    // has manually edited/approved without it being overwritten. If the shot
+    // has no stored prompt at all, the silent-repair fallback below still
+    // composes one regardless of this flag.
+    reauthor = true
   ) {
+    if (!requireModelSelectedOrToast("image")) return;
     if (!requireMcpConnectionOrToast("image")) return;
+    if (!requireHermesConnectionOrToast("image")) return;
     setPollingStartFrameShots(prev => new Set(prev).add(shotNumber));
     try {
       let plan = episodeDetailQuery.data?.startFramePlan as
@@ -2422,10 +3187,16 @@ function EpisodeWorkspaceShell({
           shot => shot.shotNumber === shotNumber
         )?.summary?.trim() || undefined;
 
-      if (!plan || !plan.frames?.length) {
-        // No plan at all yet — generate real prompts for every shot first
-        // (same call as the panel's own "Generate start-frame prompts"
-        // button), then refetch until this shot's frame shows up.
+      if (!plan || !plan.frames?.length || !frame) {
+        // No plan yet, OR this specific shot has no frame entry (e.g. a plan
+        // that only holds a placeholder frame created by the per-shot
+        // character-reference override for a different shot) — generate real
+        // prompts for every shot first (same call as the panel's own "Generate
+        // start-frame prompts" button), then refetch until this shot's frame
+        // shows up. A placeholder frame that DOES exist for this shot (empty
+        // imagePrompt but carrying manually-set requiredCharacterRefs) is
+        // intentionally NOT force-regenerated here — it falls through to the
+        // per-shot re-author path below, which preserves those manual refs.
         const outcome = await runStageMutation.mutateAsync({
           seriesId,
           episodeId,
@@ -2441,7 +3212,7 @@ function EpisodeWorkspaceShell({
               action: {
                 label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
                 onClick: () =>
-                  void handleGeneratePromptAndImage(shotNumber, mode),
+                  void handleGeneratePromptAndImage(shotNumber, mode, reauthor),
               },
             }
           );
@@ -2456,15 +3227,20 @@ function EpisodeWorkspaceShell({
         frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
       }
 
-      // The start-frame plan is a materialized snapshot. When the Overview
-      // shot draft is newer (or the frame predates source tracking), route the
-      // latest raw summary through the dedicated skill before any paid image
-      // render. The skill authors the new prompt; this page never appends
-      // story prose to a provider prompt.
-      if (
-        canonicalShotSummary &&
-        frame?.canonicalShotSummary?.trim() !== canonicalShotSummary
-      ) {
+      // The start-frame plan is a materialized snapshot. This button is
+      // "สร้าง prompt + ภาพ" — it ALWAYS re-authors the shot's prompt through
+      // the dedicated per-shot skill before the paid image render (2026-07-15
+      // fix: the old summary-equality guard reused a stale stored prompt
+      // whenever the Overview summary hadn't changed, so prompts authored
+      // under older rules — or before the user added a character to the shot
+      // — could never be refreshed from this button; ep60 shot9 kept its
+      // "extreme close-up isolating one person" prompt through every click).
+      // The per-shot skill reads the frame's CURRENT requiredCharacterRefs,
+      // so a manually-added character now deterministically widens framing.
+      // Render-only reuse stays available via the "สร้างภาพ (AI)" button,
+      // which calls this function with `reauthor = false` to skip exactly this
+      // re-authoring step and render the existing prompt as-is.
+      if (reauthor && canonicalShotSummary) {
         try {
           await generateShotStartFramePromptMutation.mutateAsync({
             seriesId,
@@ -2493,7 +3269,7 @@ function EpisodeWorkspaceShell({
       }
 
       if (!frame?.imagePrompt?.trim()) {
-        if (canonicalShotSummary) {
+        if (reauthor && canonicalShotSummary) {
           toast.error(
             lang === "th"
               ? "สร้างพรอมต์จากเรื่องย่อล่าสุดไม่สำเร็จ ลองใหม่อีกครั้ง"
@@ -2526,7 +3302,7 @@ function EpisodeWorkspaceShell({
               action: {
                 label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
                 onClick: () =>
-                  void handleGeneratePromptAndImage(shotNumber, mode),
+                  void handleGeneratePromptAndImage(shotNumber, mode, reauthor),
               },
             }
           );
@@ -2551,7 +3327,7 @@ function EpisodeWorkspaceShell({
             action: {
               label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
               onClick: () =>
-                void handleGeneratePromptAndImage(shotNumber, mode),
+                void handleGeneratePromptAndImage(shotNumber, mode, reauthor),
             },
           }
         );
@@ -2567,6 +3343,13 @@ function EpisodeWorkspaceShell({
           mcpConnectionId: imageModelUsesMcp
             ? (mcpConnectionId ?? undefined)
             : undefined,
+          sharedGroupId: imageModelUsesMcp && mcpConnectionId
+            ? (mcpSharedGroupId ?? undefined)
+            : undefined,
+          hermesConnectionId:
+            imageModelUsesHermes && !(imageModelUsesMcp && mcpConnectionId)
+              ? (hermesConnectionId ?? undefined)
+              : undefined,
           resolution: selectedImageResolution || undefined,
         });
       } else {
@@ -2578,6 +3361,13 @@ function EpisodeWorkspaceShell({
           mcpConnectionId: imageModelUsesMcp
             ? (mcpConnectionId ?? undefined)
             : undefined,
+          sharedGroupId: imageModelUsesMcp && mcpConnectionId
+            ? (mcpSharedGroupId ?? undefined)
+            : undefined,
+          hermesConnectionId:
+            imageModelUsesHermes && !(imageModelUsesMcp && mcpConnectionId)
+              ? (hermesConnectionId ?? undefined)
+              : undefined,
           resolution: selectedImageResolution || undefined,
         });
       }
@@ -2591,7 +3381,7 @@ function EpisodeWorkspaceShell({
         {
           action: {
             label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
-            onClick: () => void handleGeneratePromptAndImage(shotNumber, mode),
+            onClick: () => void handleGeneratePromptAndImage(shotNumber, mode, reauthor),
           },
         }
       );
@@ -2613,6 +3403,7 @@ function EpisodeWorkspaceShell({
     useState(false);
 
   async function handleGenerateVideoPromptPack() {
+    if (!requireModelSelectedOrToast("video")) return;
     setGeneratingVideoPromptPack(true);
     try {
       const existingDialoguePlan = episodeDetailQuery.data
@@ -3125,12 +3916,12 @@ function EpisodeWorkspaceShell({
           return;
         }
         if (status === "failed") {
-          const errorMessage = (task as { errorMessage?: string } | null)
-            ?.errorMessage;
+          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
           toast.error(
-            lang === "th"
-              ? `สร้างวิดีโอล้มเหลว${errorMessage ? `: ${errorMessage}` : ""}`
-              : `Video generation failed${errorMessage ? `: ${errorMessage}` : ""}`
+            buildVdGenerateFailureToastMessage(failedTask, lang, {
+              th: "สร้างวิดีโอล้มเหลว",
+              en: "Video generation failed",
+            })
           );
           await persistVideoTask(clipNumber, null);
           return;
@@ -3228,7 +4019,13 @@ function EpisodeWorkspaceShell({
             )
           );
       },
-      onError: err => toast.error(err.message),
+      onError: err => {
+        const hermesPresentation = presentHermesError(err);
+        toast.error(
+          hermesPresentation ? formatHermesErrorForToast(hermesPresentation, lang) : err.message
+        );
+        if (err.data?.code === "BAD_REQUEST") scrollToVdModelPicker("video");
+      },
     });
 
   /** RESUME ON LOAD (2026-07-06 fix) — same convention as the angle-grid
@@ -3600,17 +4397,6 @@ function EpisodeWorkspaceShell({
       }
     | undefined;
 
-  const motionPromptClips =
-    episodeDetailQuery.data?.motionPromptPack?.clips ?? [];
-  const totalClipCount = motionPromptClips.length;
-  const readyClipNumbers = motionPromptClips
-    .filter(c => {
-      const videoUrl = (c.videoTask as { videoUrl?: string } | undefined)
-        ?.videoUrl;
-      return typeof videoUrl === "string" && videoUrl.trim().length > 0;
-    })
-    .map(c => c.clipNumber);
-
   /** W12-B voice chain wave — the Dialogue/Audio panel's `batch` prop, built
    *  once here from the persisted plan + this session's `failedAudioLineIds`
    *  (see `resolveDialogueAudioLineStatus`'s doc comment). `undefined` when
@@ -3836,10 +4622,23 @@ function EpisodeWorkspaceShell({
         setRepairImageSubmittingForShot(current =>
           current === variables.shotNumber ? null : current
         );
+        // BAD_REQUEST here is the server's fail-closed "no image model
+        // selected" guard (`resolveEpisodeImageModelId`) — surface its
+        // actual bilingual message (don't swallow it under the generic
+        // fallback below) and scroll the picker into view once the dialog
+        // is dismissed.
+        if (err.data?.code === "BAD_REQUEST") scrollToVdModelPicker("image");
+        // Feature 135 section-10 review fix: `HERMES_CONNECTION_REQUIRED`
+        // and friends also throw with `code: "BAD_REQUEST"` — check for the
+        // pinned `[HERMES_X] ...` prefix before falling through to the raw
+        // `err.message` pass-through below (which predates this feature).
+        const hermesPresentation = presentHermesError(err);
         setRepairImageErrorByShot(prev => ({
           ...prev,
-          [variables.shotNumber]:
-            err.data?.code === "PRECONDITION_FAILED"
+          [variables.shotNumber]: hermesPresentation
+            ? formatHermesErrorForToast(hermesPresentation, lang)
+            : err.data?.code === "PRECONDITION_FAILED" ||
+                err.data?.code === "BAD_REQUEST"
               ? err.message
               : lang === "th"
                 ? "สร้างภาพที่แก้ไม่สำเร็จ"
@@ -3880,8 +4679,8 @@ function EpisodeWorkspaceShell({
           return;
         }
         if (status === "failed") {
-          const errorMessage = (task as { errorMessage?: string } | null)
-            ?.errorMessage;
+          const failedTask = task as { errorMessage?: string; errorCode?: string } | null;
+          const errorMessage = failedTask?.errorMessage;
           // Character-lock auto-soften — same convention as `pollStartFrameTask`.
           if (
             isCharacterLockPolicyFailureMessage(errorMessage) &&
@@ -3905,6 +4704,13 @@ function EpisodeWorkspaceShell({
                 mcpConnectionId: imageModelUsesMcp
                   ? (mcpConnectionId ?? undefined)
                   : undefined,
+                sharedGroupId: imageModelUsesMcp && mcpConnectionId
+                  ? (mcpSharedGroupId ?? undefined)
+                  : undefined,
+                hermesConnectionId:
+                  imageModelUsesHermes && !(imageModelUsesMcp && mcpConnectionId)
+                    ? (hermesConnectionId ?? undefined)
+                    : undefined,
                 resolution: selectedImageResolution || undefined,
               },
               {
@@ -3923,10 +4729,10 @@ function EpisodeWorkspaceShell({
           }
           setRepairImageErrorByShot(prev => ({
             ...prev,
-            [shotNumber]:
-              lang === "th"
-                ? `สร้างภาพที่แก้ไม่สำเร็จ${errorMessage ? `: ${errorMessage}` : ""}`
-                : `Failed to generate the fixed image${errorMessage ? `: ${errorMessage}` : ""}`,
+            [shotNumber]: buildVdGenerateFailureToastMessage(failedTask, lang, {
+              th: "สร้างภาพที่แก้ไม่สำเร็จ",
+              en: "Failed to generate the fixed image",
+            }),
           }));
           return;
         }
@@ -3949,7 +4755,9 @@ function EpisodeWorkspaceShell({
 
   function handleSubmitRepairImage(shotNumber: number, instruction: string) {
     if (!instruction.trim()) return;
+    if (!requireModelSelectedOrToast("image")) return;
     if (!requireMcpConnectionOrToast("image")) return;
+    if (!requireHermesConnectionOrToast("image")) return;
     const plan = episodeDetailQuery.data?.startFramePlan;
     const frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
     const assetId = frame?.approvedMediaAssetId;
@@ -3987,6 +4795,13 @@ function EpisodeWorkspaceShell({
         mcpConnectionId: imageModelUsesMcp
           ? (mcpConnectionId ?? undefined)
           : undefined,
+        sharedGroupId: imageModelUsesMcp && mcpConnectionId
+          ? (mcpSharedGroupId ?? undefined)
+          : undefined,
+        hermesConnectionId:
+          imageModelUsesHermes && !(imageModelUsesMcp && mcpConnectionId)
+            ? (hermesConnectionId ?? undefined)
+            : undefined,
         resolution: selectedImageResolution || undefined,
       },
       {
@@ -4095,6 +4910,7 @@ function EpisodeWorkspaceShell({
     });
 
   function handleGenerateShotVideoPrompt(shotNumber: number) {
+    if (!requireModelSelectedOrToast("video")) return;
     setGeneratingShotVideoPromptForShot(prev => new Set(prev).add(shotNumber));
     generateShotVideoPromptMutation.mutate(
       {
@@ -4207,6 +5023,20 @@ function EpisodeWorkspaceShell({
         | { storyboardReviewId?: string | null }
         | undefined
     )?.storyboardReviewId ?? null;
+  const storyboardArtifactProvenance = (
+    episodeDetailQuery.data as
+      | {
+          artifactProvenance?: {
+            startFramePlan?: "current" | "stale" | "unknown";
+            motionPromptPack?: "current" | "stale" | "unknown";
+            assemblyManifest?: "current" | "stale" | "unknown";
+          };
+        }
+      | undefined
+  )?.artifactProvenance;
+  const hasStaleStoryboardArtifacts = Object.values(
+    storyboardArtifactProvenance ?? {},
+  ).some(status => status === "stale");
 
   // Set right before triggering a real run of `create_storyboard_review_project`
   // when no review project exists yet; cleared once the id shows up (via the
@@ -4245,6 +5075,15 @@ function EpisodeWorkspaceShell({
     // plenty of horizontal room for a ~300px column there.
     <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
       <div className="min-w-0 space-y-4">
+        {hasStaleStoryboardArtifacts ? (
+          <Card className="border-amber-500/50" role="status" aria-live="polite">
+            <CardContent className="py-3 text-sm">
+              {lang === "th"
+                ? "สตอรี่บอร์ดถูกแก้ไขแล้ว พรอมต์/ภาพ/วิดีโอเดิมยังถูกเก็บไว้เพื่ออ้างอิง แต่ต้องสร้างส่วนที่ล้าสมัยใหม่ก่อนเริ่มงานที่มีค่าใช้จ่าย"
+                : "The storyboard changed. Existing prompts and media are preserved for reference, but stale items must be regenerated before paid generation."}
+            </CardContent>
+          </Card>
+        ) : null}
         <VerticalDramaEpisodeWorkspace
           locale={lang}
           loading={seriesQuery.isLoading}
@@ -4466,12 +5305,19 @@ function EpisodeWorkspaceShell({
               ),
             onGenerateVideoPromptPack: handleGenerateVideoPromptPack,
             generatingVideoPromptPack,
+            onRepairMissingShotCharacters: handleRepairMissingShotCharacters,
+            repairingMissingShotCharacters:
+              repairShotCharacterReferencesMutation.isPending,
             onGenerateStartFrameImage: shotNumber => {
-              void handleGeneratePromptAndImage(shotNumber, "single");
+              // Render-only: reuse the shot's existing (possibly manually
+              // edited) prompt as-is; do NOT re-author it from the synopsis.
+              void handleGeneratePromptAndImage(shotNumber, "single", false);
             },
             generatingStartFrameImageForShot: pollingStartFrameShots,
             onGenerateAllStartFrameImages: (shotNumbers: number[]) => {
+              if (!requireModelSelectedOrToast("image")) return;
               if (!requireMcpConnectionOrToast("image")) return;
+              if (!requireHermesConnectionOrToast("image")) return;
               setPollingStartFrameShots(prev => {
                 const next = new Set(prev);
                 shotNumbers.forEach(n => next.add(n));
@@ -4516,6 +5362,9 @@ function EpisodeWorkspaceShell({
             onDismissAngleVariations: handleDismissAngleVariations,
             onDeleteAngleVariationCandidate:
               handleDeleteAngleVariationCandidate,
+            angleGridAssetsByShotNumber:
+              episodeDetailQuery.data?.angleGridAssetsByShotNumber,
+            onOpenStoredAngleGrid: handleOpenStoredAngleGrid,
             imageModels,
             videoModels,
             selectedImageModelId,
@@ -4526,6 +5375,10 @@ function EpisodeWorkspaceShell({
               imageModelsQuery.isLoading || videoModelsQuery.isLoading,
             mcpConnectionId,
             onSelectMcpConnection: handleSelectMcpConnection,
+            mcpSharedGroupId,
+            onSelectMcpSharedGroup: setMcpSharedGroupId,
+            hermesConnectionId,
+            onHermesConnectionChange: handleSelectHermesConnection,
             selectedImageResolution,
             selectedVideoResolution,
             onSelectImageResolution: handleSelectImageResolution,
@@ -4549,12 +5402,18 @@ function EpisodeWorkspaceShell({
             addingShotReferenceForShot,
             onUseShotReferenceAsMain: handleUseShotReferenceAsMain,
             usingShotReferenceAsMainForShot,
+            onGenerateReferenceFramePrompt: handleGenerateReferenceFramePrompt,
+            generatingReferenceFramePromptForShot,
+            onGenerateReferenceFrameImage: handleGenerateReferenceFrameImage,
+            generatingReferenceFrameImageForShot: pollingReferenceFrameShots,
             onSaveClipDialogue: handleSaveClipDialogue,
             savingDialogueForClip,
             onRegenerateClipDialogue: handleRegenerateClipDialogue,
             regeneratingDialogueForShot,
             onGenerateVideoClip: clipNumber => {
+              if (!requireModelSelectedOrToast("video")) return;
               if (!requireMcpConnectionOrToast("video")) return;
+              if (!requireHermesConnectionOrToast("video")) return;
               generateVideoClipMutation.mutate({
                 seriesId,
                 episodeId,
@@ -4563,6 +5422,13 @@ function EpisodeWorkspaceShell({
                 mcpConnectionId: videoModelUsesMcp
                   ? (mcpConnectionId ?? undefined)
                   : undefined,
+                sharedGroupId: videoModelUsesMcp && mcpConnectionId
+                  ? (mcpSharedGroupId ?? undefined)
+                  : undefined,
+                hermesConnectionId:
+                  videoModelUsesHermes && !(videoModelUsesMcp && mcpConnectionId)
+                    ? (hermesConnectionId ?? undefined)
+                    : undefined,
                 resolution: selectedVideoResolution || undefined,
               });
             },
@@ -4611,8 +5477,6 @@ function EpisodeWorkspaceShell({
             compiledVideo,
             onAssembleCompiledVideo: handleAssembleCompiledVideo,
             assemblingCompiledVideo: assembleEpisodeVideoMutation.isPending,
-            totalClipCount,
-            readyClipNumbers,
             // Wave-5A (2026-07-07 production-grade upgrade) — density meter,
             // quality-loop v2, tie-in QC. Every flag/value below is sourced
             // straight from `getEpisodeDetail`'s flag-gated payload (never a
@@ -4760,6 +5624,7 @@ function EpisodeWorkspaceShell({
             if (repairStage === "start_frame_render_plan") {
               const shotNumber = target?.parentShotNumber;
               if (shotNumber == null) return;
+              if (!requireModelSelectedOrToast("image")) return;
               generateShotStartFramePromptMutation.mutate({
                 seriesId,
                 episodeId,
@@ -4772,6 +5637,7 @@ function EpisodeWorkspaceShell({
             if (repairStage === "video_motion_prompt_pack") {
               const shotNumber = target?.parentShotNumber;
               if (shotNumber == null) return;
+              if (!requireModelSelectedOrToast("video")) return;
               // Reuses the SAME mutation object the "สร้างพรอมต์วิดีโอ (AI)"
               // button already calls (`generateShotVideoPromptMutation`,
               // declared above near `handleGenerateShotVideoPrompt`) rather

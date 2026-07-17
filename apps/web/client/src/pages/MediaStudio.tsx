@@ -169,6 +169,7 @@ import ModelSelectorDialog, {
   formatMediaProviderDisplayName,
 } from "@/components/media/ModelSelectorDialog";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
+import { formatHermesErrorForToast, presentHermesError } from "@/lib/hermesErrorPresentation";
 import { OmniVoiceCloneDialog } from "@/components/media/OmniVoiceCloneDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
@@ -19329,7 +19330,14 @@ export default function MediaStudio() {
             error
           );
         }
-        const errorMessage = error?.message || "Unknown error";
+        // Feature 135 section-10 review fix: a `[HERMES_X] ...` prefixed
+        // message (pinned server wire convention, `shared/hermesMedia.ts`)
+        // renders via `presentHermesError` instead of leaking the raw
+        // bracketed English string; every other message is unaffected.
+        const hermesPresentation = presentHermesError(error);
+        const errorMessage = hermesPresentation
+          ? formatHermesErrorForToast(hermesPresentation, locale)
+          : error?.message || "Unknown error";
         setGenerationTasks(prev =>
           prev.map((task, idx) =>
             idx === i
@@ -21320,7 +21328,12 @@ export default function MediaStudio() {
           });
         }
       } catch (error: any) {
-        const errorMessage = error?.message || "Unknown error";
+        // Feature 135 section-10 review fix: same hermes-aware presentation
+        // as the primary generate catch block above.
+        const hermesPresentation = presentHermesError(error);
+        const errorMessage = hermesPresentation
+          ? formatHermesErrorForToast(hermesPresentation, locale)
+          : error?.message || "Unknown error";
         updateRetryTask({
           status: "error",
           error: errorMessage,

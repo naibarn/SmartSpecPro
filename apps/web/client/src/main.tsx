@@ -1,3 +1,7 @@
+// MUST stay the very first import: fixes the CSS cascade-layer order for the
+// whole app (see the comment inside the file). App.tsx below imports theme CSS
+// as a side effect, so anything imported after App would be too late.
+import "./cssLayerOrder.css";
 import * as Sentry from "@sentry/react";
 import { assertJsonApiResponse } from "@/lib/apiResponseDiagnostics";
 import * as systemErrorMonitor from "@/lib/systemErrorMonitor";

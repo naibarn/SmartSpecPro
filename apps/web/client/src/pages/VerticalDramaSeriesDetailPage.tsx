@@ -448,6 +448,7 @@ export default function VerticalDramaSeriesDetailPage() {
                   seriesId={seriesId}
                   episodes={episodes}
                   readOnly={isArchived}
+                  targetEpisodeCount={series.targetEpisodeCount ?? undefined}
                 />
               </TabsContent>
 
@@ -552,6 +553,7 @@ export function EpisodesTab({
   seriesId,
   episodes,
   readOnly,
+  targetEpisodeCount,
 }: {
   lang: "th" | "en";
   seriesId: string;
@@ -571,6 +573,11 @@ export function EpisodesTab({
     } | null;
   }>;
   readOnly: boolean;
+  /** Series' configured planned Sub-episode count (Settings tab), used to
+   *  compute how many slots remain and offer an "All remaining (N)" bulk
+   *  option in the add-episodes dropdown below (task: bulk sub-episode
+   *  slot creation, `planning/vertical-drama-scene-dedup-bulk-slots/plan.md`). */
+  targetEpisodeCount?: number | null;
 }) {
   const utils = trpc.useUtils();
   const t = vdCopy(lang);
@@ -740,6 +747,46 @@ export function EpisodesTab({
       count: Number(episodeAddCount) || 1,
     });
   };
+  // Bulk sub-episode slot creation
+  // (`planning/vertical-drama-scene-dedup-bulk-slots/plan.md`) — when a
+  // planned count is configured, cap how many slots remain and offer an
+  // "All remaining (N)" quick option so the whole plan can be materialized
+  // in one click (Mode A, free) instead of repeated 1-5 clicks.
+  const hasPlannedTarget =
+    typeof targetEpisodeCount === "number" && targetEpisodeCount > 0;
+  const remainingPlanned = hasPlannedTarget
+    ? Math.max(0, (targetEpisodeCount as number) - episodes.length)
+    : null;
+  // Series already has every planned slot created — disable the create
+  // controls rather than let the user submit a no-op call.
+  const isAtPlannedTarget = hasPlannedTarget && remainingPlanned === 0;
+  const episodeAddCountOptions = useMemo(() => {
+    const quickMax =
+      remainingPlanned !== null ? Math.min(5, remainingPlanned || 5) : 5;
+    const options: Array<{ value: string; label: string }> = [];
+    for (let count = 1; count <= quickMax; count++) {
+      options.push({
+        value: String(count),
+        label: lang === "th" ? `${count} ตอนย่อย` : `${count} Sub-ep`,
+      });
+    }
+    if (remainingPlanned !== null && remainingPlanned > 1) {
+      const value = String(remainingPlanned);
+      const label =
+        lang === "th"
+          ? `ทั้งหมดที่เหลือ (${remainingPlanned})`
+          : `All remaining (${remainingPlanned})`;
+      const existingIndex = options.findIndex(
+        option => option.value === value
+      );
+      if (existingIndex >= 0) {
+        options[existingIndex] = { value, label };
+      } else {
+        options.push({ value, label });
+      }
+    }
+    return options;
+  }, [lang, remainingPlanned]);
   const handleConfirmDeleteEpisode = () => {
     if (!episodeToDelete) return;
     deleteEpisodeMutation.mutate({ seriesId, episodeId: episodeToDelete.id });
@@ -758,7 +805,7 @@ export function EpisodesTab({
             <Button
               variant="outline"
               className="gap-2"
-              disabled={isAdding}
+              disabled={isAdding || isAtPlannedTarget}
               onClick={handleAddEpisode}
             >
               {isAdding ? (
@@ -878,17 +925,21 @@ export function EpisodesTab({
             >
               {lang === "th" ? "เพิ่มตอนย่อยใหม่" : "Add new Sub-episodes"}
             </Label>
-            <Select value={episodeAddCount} onValueChange={setEpisodeAddCount}>
+            <Select
+              value={episodeAddCount}
+              onValueChange={setEpisodeAddCount}
+              disabled={isAtPlannedTarget}
+            >
               <SelectTrigger
                 id="vd-add-episodes-count"
-                className="h-9 w-[104px]"
+                className="h-9 w-[160px]"
               >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {[1, 2, 3, 4, 5].map(count => (
-                  <SelectItem key={count} value={String(count)}>
-                    {lang === "th" ? `${count} ตอนย่อย` : `${count} Sub-ep`}
+                {episodeAddCountOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -897,7 +948,7 @@ export function EpisodesTab({
               variant="outline"
               size="sm"
               className="gap-2"
-              disabled={isAdding}
+              disabled={isAdding || isAtPlannedTarget}
               onClick={handleAddEpisode}
             >
               {isAdding ? (
@@ -907,6 +958,13 @@ export function EpisodesTab({
               )}
               {lang === "th" ? "สร้างตอนย่อยใหม่" : "Generate new Sub-episodes"}
             </Button>
+            {isAtPlannedTarget && (
+              <span className="text-xs text-muted-foreground">
+                {lang === "th"
+                  ? "ครบจำนวนตอนย่อยที่วางแผนไว้แล้ว"
+                  : "Already at the planned Sub-episode count."}
+              </span>
+            )}
           </div>
         )}
         {/* Task #21 / W12.5 "Final Render Suite" phase B — season batch

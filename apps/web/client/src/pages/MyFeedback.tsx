@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/contexts/AuthContext";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { Badge } from "@smartspec/ui/src/components/ui/badge";
 import { Button } from "@smartspec/ui/src/components/ui/button";
@@ -23,6 +24,8 @@ import {
 export default function MyFeedback() {
   const [, setLocation] = useLocation();
   const search = useSearch();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || user?.role === "domain_admin";
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
   // Deep-link: auto-select ticket from ?ticketId=X
@@ -130,6 +133,26 @@ export default function MyFeedback() {
           </div>
         </div>
       </header>
+
+      {/* This page shows only the viewer's own submissions — admins looking
+          for feedback FROM users must go to the Feedback Hub, so point them
+          there explicitly to prevent "user feedback never shows up" confusion. */}
+      {isAdmin && (
+        <div className="px-4 sm:px-6 lg:px-8 py-2.5 bg-amber-50 border-b border-amber-200 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-sm text-amber-900">
+            หน้านี้แสดงเฉพาะ feedback <b>ที่คุณเป็นคนส่งเอง</b> — feedback
+            จากผู้ใช้ทุกคนอยู่ที่ Feedback Hub (ศูนย์รวมข้อเสนอ)
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-amber-300 bg-white hover:bg-amber-100 text-amber-900 h-7"
+            onClick={() => setLocation("/admin/feedback-hub")}
+          >
+            เปิด Feedback Hub &rarr;
+          </Button>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="flex h-[calc(100vh-65px)]">
