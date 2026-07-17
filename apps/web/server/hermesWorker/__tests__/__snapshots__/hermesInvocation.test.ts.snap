@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildPromptEnvelope > is deterministic for a fixed contract 1`] = `
+"SmartSpecPro Hermes media job
+Job ID: job-123
+Operation: image.edit
+Output directory: /var/lib/smartspec-hermes-worker/jobs/job-123/output
+References (in this exact order — do not reorder, substitute, or drop any reference):
+  1. [subject] Character A (asset asset-1)
+  2. [style] Reference style (asset asset-2)
+
+Prompt:
+A cat wearing a hat
+
+When generation is complete, print EXACTLY one line in this form (no other text on that line):
+SMARTSPECPRO_RESULT_BEGIN {"status":"ok"|"error","files":["..."],"message":"..."} SMARTSPECPRO_RESULT_END"
+`;

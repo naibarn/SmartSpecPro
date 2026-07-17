@@ -1638,6 +1638,26 @@ async function main() {
     console.error("[Startup] Failed to start Hermes connection-control job sweep:", error);
   }
 
+  // Feature 135 section 07 — DEV-ONLY in-web-process Hermes drainer, behind
+  // `web_process_hermes_worker_enabled` (default OFF; production always runs
+  // the dedicated `smartspec-hermes-worker.service` instead — see spec §8.1
+  // and `server/services/hermesWorkerDevDrainer.ts`'s file-top comment).
+  // Mirrors the inline render worker / connection-job-sweep blocks above:
+  // lazy `await import(...)` + flag-guard + try/catch.
+  try {
+    const { getHermesWorkerSettings } = await import("../services/hermesWorkerSettings");
+    const settings = await getHermesWorkerSettings();
+    if (settings.webProcessWorkerEnabled) {
+      const { startHermesWorkerDevDrainer } = await import("../services/hermesWorkerDevDrainer");
+      startHermesWorkerDevDrainer();
+      console.log("[Startup] Hermes dev-only in-web drainer started (admin flag ON — DEV ONLY, never in production)");
+    } else {
+      console.log("[Startup] Hermes dev-only in-web drainer NOT started (admin flag OFF — default)");
+    }
+  } catch (error) {
+    console.error("[Startup] Failed to start the Hermes dev-only in-web drainer:", error);
+  }
+
   // Initialize Telegram notification queue
   try {
     const db = await getDb();

@@ -1,0 +1,57 @@
+[Unit]
+Description=SmartSpecPro Hermes Grok Media Worker (Feature 135, section 07)
+Documentation=https://github.com/smartspecpro/smartspec
+# Own cgroup, own unit — this process is NEVER part of smartspec-web.service
+# (spec §8.1 non-negotiable process rule; see the vertical-drama ffmpeg
+# incident post-mortem: web cgroup MemoryHigh throttle -> D-state hangs).
+After=smartspec-web.service
+PartOf=smartspec.target
+StartLimitIntervalSec=600
+StartLimitBurst=8
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro/apps/web
+
+# Environment
+Environment="PATH=/home/dev/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=production"
+Environment="NODE_OPTIONS=--max-old-space-size=768"
+EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
+# Root-owned, mode 0600 — holds HERMES_WORKER_TOKEN (refresh token) and
+# HERMES_WORKER_ID, both minted once by `scripts/pair-hermes-worker.ts`.
+EnvironmentFile=/etc/smartspec/hermes-worker.env
+
+# Start directly via tsx (not npm run start — avoids extra parent process)
+ExecStart=/home/dev/.nvm/versions/node/v22.22.3/bin/npx tsx server/hermesWorker/main.ts
+
+# Clean shutdown: SIGTERM drains active jobs within TimeoutStopSec, then
+# SIGKILL entire cgroup.
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=30s
+
+# Dedicated, modest cgroup limits — deliberately isolated from
+# smartspec-web.service's own MemoryHigh/MemoryMax so a runaway Hermes
+# child (or a stuck ffprobe/download) can never throttle or starve the web
+# process, mirroring the lesson from the vertical-drama incident.
+MemoryHigh=1024M
+MemoryMax=1536M
+CPUQuota=150%
+TasksMax=512
+
+# Restart policy: exponential backoff to prevent tight crash loops
+Restart=on-failure
+RestartSec=5s
+RestartMaxDelaySec=120s
+RestartSteps=6
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smartspec-hermes-worker
+
+[Install]
+WantedBy=smartspec.target

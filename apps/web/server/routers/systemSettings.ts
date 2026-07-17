@@ -782,6 +782,22 @@ export const systemSettingsRouter = router({
           clearHermesWorkerSettingsCache();
         }
 
+        // Feature 135 section 07 — clearing the toggle falls back to the
+        // env default (OFF unless `SMARTSPEC_INLINE_HERMES_WORKER=true`) —
+        // stop the DEV-ONLY in-web drainer to match, mirroring the
+        // render-worker clear-path hook above.
+        if (input.category === "infrastructure" && input.key === "web_process_hermes_worker_enabled") {
+          const { getHermesWorkerSettings } = await import("../services/hermesWorkerSettings");
+          const { startHermesWorkerDevDrainer, stopHermesWorkerDevDrainer } = await import(
+            "../services/hermesWorkerDevDrainer"
+          );
+          if ((await getHermesWorkerSettings()).webProcessWorkerEnabled) {
+            startHermesWorkerDevDrainer();
+          } else {
+            stopHermesWorkerDevDrainer();
+          }
+        }
+
         return { success: true };
       }
 
@@ -888,6 +904,22 @@ export const systemSettingsRouter = router({
       ) {
         const { clearHermesWorkerSettingsCache } = await import("../services/hermesWorkerSettings");
         clearHermesWorkerSettingsCache();
+      }
+
+      // Feature 135 section 07 — live start/stop of the DEV-ONLY in-web
+      // Hermes drainer when the admin flips this specific toggle. Mirrors
+      // the `web_process_render_worker_enabled` block above exactly.
+      // Production never runs this drainer regardless (see spec §8.1) —
+      // this only affects local/dev usage of the flag.
+      if (input.category === "infrastructure" && input.key === "web_process_hermes_worker_enabled") {
+        const { startHermesWorkerDevDrainer, stopHermesWorkerDevDrainer } = await import(
+          "../services/hermesWorkerDevDrainer"
+        );
+        if (input.value === "true") {
+          startHermesWorkerDevDrainer();
+        } else {
+          stopHermesWorkerDevDrainer();
+        }
       }
 
       return { success: true };
