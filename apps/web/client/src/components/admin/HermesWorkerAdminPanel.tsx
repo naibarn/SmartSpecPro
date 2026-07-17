@@ -8,7 +8,14 @@
  * live solely in `HermesConnectPanel`'s admin sub-panel
  * (Settings → AI Providers → "Grok via Hermes"), so the two admin surfaces
  * can never diverge (one-writer rule, section-10). This panel links there
- * for changes instead of wiring its own mutations.
+ * for connection changes instead of wiring its own mutations.
+ *
+ * Kill switches + limits (the 15 `hermes_*` / `web_process_hermes_worker_enabled`
+ * `system_settings` keys shown as badges below) are edited in the admin
+ * Infrastructure settings panel's "Hermes Media Worker (Feature 135)" card
+ * (Admin → Settings → Infrastructure → Tasks), NOT here and NOT in
+ * Settings → Integrations — this panel links to both destinations so
+ * admins land on the right one for what they're trying to change.
  *
  * Mounted inside `AdminMonitoring.tsx` adjacent to the existing worker-fleet
  * section. Thai copy primary, English secondary — consistent with the
@@ -132,9 +139,17 @@ export function HermesWorkerAdminPanel() {
             ภาพรวมการเชื่อมต่อ โควต้าการใช้งาน และสถานะ kill-switch (มุมมองอ่านอย่างเดียว)
           </p>
         </div>
-        <Link href="/settings?tab=integrations" data-testid="hermes-admin-panel-settings-link">
-          จัดการที่หน้า Settings
-        </Link>
+        <div className="flex flex-col items-start gap-1 text-sm sm:items-end">
+          <Link href="/settings?tab=integrations" data-testid="hermes-admin-panel-settings-link">
+            เชื่อมต่อ/โควต้า/ปิดการเชื่อมต่อ — Settings → Integrations
+          </Link>
+          <Link
+            href="/admin/settings?tab=infrastructure"
+            data-testid="hermes-admin-panel-infrastructure-link"
+          >
+            Kill switch + limits — Admin → Infrastructure
+          </Link>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2" data-testid="hermes-admin-panel-kill-switches">

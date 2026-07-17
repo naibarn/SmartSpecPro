@@ -41,6 +41,7 @@ describe("TenantFeatureFlagsPanel Hermes discoverability", () => {
         hermesMemoryContextSync: false,
         hermesTaskModes: true,
         hermesVisibilitySummaries: true,
+        hermesMediaWorker: false,
       },
       isLoading: false,
     });
@@ -71,5 +72,28 @@ describe("TenantFeatureFlagsPanel Hermes discoverability", () => {
         name: /toggle marketplace hyperframes \(marketplaceHyperframesEnabled\)/i,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("surfaces hermesMediaWorker (F135 Grok media worker) as discoverable and distinguishable from hermesAgentRuntime", () => {
+    render(<TenantFeatureFlagsPanel tenantId="tenant-1" canEdit={false} />);
+
+    // Discoverable: has its own switch, keyed by its own internal key —
+    // NOT nested under the "Hermes Runtime" group's flags.
+    expect(screen.getByText("Key: hermesMediaWorker")).toBeInTheDocument();
+    const mediaWorkerSwitch = screen.getByRole("switch", {
+      name: /toggle hermes media worker \(grok, f135\) \(hermesmediaworker\)/i,
+    });
+    expect(mediaWorkerSwitch).toBeInTheDocument();
+
+    // Distinguishable: label/description explicitly calls out that this is
+    // NOT the agent-gateway Hermes runtime (hermesAgentRuntime).
+    expect(screen.getByText(/not the agent-gateway hermes runtime/i)).toBeInTheDocument();
+
+    // hermesMediaWorker lives in the media/generation group, not the
+    // "Hermes Runtime" agent-gateway group (which only has the six legacy
+    // hermesAgentRuntime-lane flags).
+    const hermesRuntimeSwitch = screen.getByRole("switch", { name: /toggle hermes runtime \(hermesagentruntime\)/i });
+    expect(hermesRuntimeSwitch).toBeInTheDocument();
+    expect(mediaWorkerSwitch).not.toBe(hermesRuntimeSwitch);
   });
 });

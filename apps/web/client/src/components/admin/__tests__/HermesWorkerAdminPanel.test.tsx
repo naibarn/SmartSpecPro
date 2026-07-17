@@ -89,7 +89,7 @@ describe("HermesWorkerAdminPanel", () => {
     expect(screen.getByTestId("hermes-admin-scope-server_personal")).toHaveTextContent("ไม่มีบัญชีที่เชื่อมต่อในกลุ่มนี้");
   });
 
-  it("is read-only — links to Settings instead of wiring its own mutations", () => {
+  it("is read-only — links to Settings (connections) instead of wiring its own mutations", () => {
     mockAdminOverview.mockReturnValue({ data: BASE_OVERVIEW, isLoading: false });
     render(<HermesWorkerAdminPanel />);
 
@@ -97,6 +97,20 @@ describe("HermesWorkerAdminPanel", () => {
     expect(settingsLink).toBeInTheDocument();
     expect(settingsLink.getAttribute("href")).toBe("/settings?tab=integrations");
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("also links to the Infrastructure panel where kill switches + limits actually live (not Settings → Integrations)", () => {
+    mockAdminOverview.mockReturnValue({ data: BASE_OVERVIEW, isLoading: false });
+    render(<HermesWorkerAdminPanel />);
+
+    const infraLink = screen.getByTestId("hermes-admin-panel-infrastructure-link");
+    expect(infraLink).toBeInTheDocument();
+    expect(infraLink.getAttribute("href")).toBe("/admin/settings?tab=infrastructure");
+
+    // Both destinations must be discoverable and distinct — kill
+    // switches/limits are NOT under Settings → Integrations.
+    const settingsLink = screen.getByTestId("hermes-admin-panel-settings-link");
+    expect(infraLink).not.toBe(settingsLink);
   });
 
   it("renders an unlimited-quota connection without a progress bar", () => {

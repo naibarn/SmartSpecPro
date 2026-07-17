@@ -40,6 +40,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import HermesInfrastructureSettingsCard from "./HermesInfrastructureSettingsCard";
 import {
   Server,
   Save,
@@ -303,6 +304,7 @@ export default function InfrastructureSettingsPanel() {
     llm_gateway_service_account_id: "",
   });
   const [webProcessRenderWorkerEnabled, setWebProcessRenderWorkerEnabled] = useState(false);
+
   const [selectedTier, setSelectedTier] = useState<"starter" | "growth" | "pro" | "business" | "enterprise">("starter");
   const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudrun">("localhost");
   const [showApplyDialog, setShowApplyDialog] = useState(false);
@@ -1189,6 +1191,14 @@ done`}
           />
         </div>
       </DashboardCard>
+
+      {/* ============================================ */}
+      {/* CARD: Hermes Media Worker (Feature 135 — Grok media worker) */}
+      {/* ============================================ */}
+      <HermesInfrastructureSettingsCard
+        infrastructureSettings={infrastructureSettings as any}
+        onSettingsChanged={refetchInfrastructureSettings}
+      />
         </TabsContent>
 
         <TabsContent value="queues">
