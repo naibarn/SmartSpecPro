@@ -99,6 +99,14 @@ const WORKER_CONNECT_POLL_INTERVAL_SECONDS = 3;
 const DEFAULT_WORKER_RUNTIME_PACK_ID = "hyperframes-wsl2";
 const SUPPORTED_WORKER_RUNTIME_PACK_IDS = new Set(["hyperframes-wsl2", "hyperframes-windows-x64"]);
 const WORKER_RUNTIME_PACK_FILE_PATTERN = /^smart-ai-hub-worker-runtime-(hyperframes-(?:wsl2|windows-x64))-(.+)\.zip$/i;
+// Feature 135 §11 — Hermes runtime pack ids, additive and independent of the
+// HyperFrames pack family above (own file-name pattern, own manifest shape,
+// own allow-gate). Windows ships first (spec §1); the macOS id is
+// "registered" here (resolvable via the manifest endpoint) even before its
+// pack is built — see `findLatestHermesRuntimePack`/`defaultHermesManifestEntry`.
+const HERMES_RUNTIME_PACK_IDS = new Set(["hermes-windows-x64", "hermes-macos-arm64"]);
+const HERMES_RUNTIME_PACK_FILE_PATTERN =
+  /^smart-ai-hub-hermes-runtime-(hermes-(?:windows-x64|macos-arm64))-(.+)\.zip$/i;
 const DENIED_RUNTIME_SIDECAR_SHA256 = new Set([
   // Placeholder sidecar from early runtime pack scaffolding.
   "f04671084625130d4ed59f89ebb29000a411247ed2e8491ecfa3216b6e9e0774",
@@ -562,6 +570,66 @@ function findLatestAllowedRuntimePack(releaseDirs: string[], runtimeId = DEFAULT
   })[0] ?? null;
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §11 — Hermes runtime pack manifest serving. Deliberately does
+// NOT reuse `isOfficialRuntimePackManifest`/`findLatestAllowedRuntimePack`
+// (those encode HyperFrames-specific manifest fields like `hyperframesVersion`);
+// the Hermes pack (built by `apps/web/scripts/build-hermes-runtime-pack.ts`)
+// has its own manifest shape (`hermes_runtime.rs::HermesRuntimeManifest`).
+// ────────────────────────────────────────────────────────────────────────
+
+function findLatestHermesRuntimePack(releaseDirs: string[], runtimeId: string) {
+  const candidates: Array<{
+    fileName: string;
+    filePath: string;
+    runtimeId: string;
+    version: string;
+    updatedAt: string;
+    sizeBytes: number;
+  }> = [];
+  for (const releaseDir of releaseDirs) {
+    if (!fs.existsSync(releaseDir)) continue;
+    for (const fileName of fs.readdirSync(releaseDir)) {
+      const match = fileName.match(HERMES_RUNTIME_PACK_FILE_PATTERN);
+      if (!match?.[1] || !match?.[2]) continue;
+      if (match[1] !== runtimeId) continue;
+      const filePath = path.join(releaseDir, fileName);
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) continue;
+      candidates.push({
+        fileName,
+        filePath,
+        runtimeId: match[1],
+        version: match[2],
+        updatedAt: stat.mtime.toISOString(),
+        sizeBytes: stat.size,
+      });
+    }
+  }
+  return candidates.sort((left, right) => {
+    const versionCompare = right.version.localeCompare(left.version, undefined, { numeric: true, sensitivity: "base" });
+    return versionCompare || right.updatedAt.localeCompare(left.updatedAt);
+  })[0] ?? null;
+}
+
+/** Synthesized manifest for a "registered but not yet built" Hermes pack
+ *  (spec §1 — the macOS id exists with `allowed: false` until its pack
+ *  ships). Includes every field `HermesRuntimeManifest` requires in Rust so
+ *  `fetch_runtime_manifest` still parses successfully. */
+function defaultHermesManifestEntry(runtimeId: string): Record<string, unknown> {
+  return {
+    runtimeId,
+    version: "0.0.0",
+    hermesVersion: "0.0.0",
+    pythonRelativePath: "",
+    hermesRelativePath: "",
+    checksumFile: "SHA256SUMS",
+    signatureFile: "SHA256SUMS.sig",
+    allowed: false,
+    denyReason: `${runtimeId} runtime pack has not been published yet`,
+  };
+}
+
 function requireBearerToken(req: Request): string {
   const token = extractBearerTokenFromRequest(req);
   if (!token) {
@@ -704,6 +772,42 @@ export function registerWorkerRuntimeRoutes(
       try {
         res.setHeader("Cache-Control", "no-store");
         const runtimeId = String(req.query.runtimeId || DEFAULT_WORKER_RUNTIME_PACK_ID).trim();
+
+        // Feature 135 §11 — Hermes runtime pack ids are served by this same
+        // endpoint but resolved independently of the HyperFrames pack logic
+        // below (see `findLatestHermesRuntimePack`'s doc comment).
+        if (HERMES_RUNTIME_PACK_IDS.has(runtimeId)) {
+          const hermesPack = findLatestHermesRuntimePack(runtimePackReleaseDirs, runtimeId);
+          if (!hermesPack) {
+            res.json(defaultHermesManifestEntry(runtimeId));
+            return;
+          }
+          const hermesManifest = readRuntimePackManifest(hermesPack.filePath);
+          if (!hermesManifest || hermesManifest.allowed !== true) {
+            res.json({
+              ...(hermesManifest ?? defaultHermesManifestEntry(runtimeId)),
+              runtimeId,
+              allowed: false,
+            });
+            return;
+          }
+          const hermesManifestArchiveSha256 = stringField(hermesManifest.archiveSha256).toLowerCase();
+          const hermesArchiveSha256 = /^[a-f0-9]{64}$/.test(hermesManifestArchiveSha256)
+            ? hermesManifestArchiveSha256
+            : sha256File(hermesPack.filePath);
+          res.json({
+            ...hermesManifest,
+            runtimeId: hermesManifest.runtimeId ?? hermesPack.runtimeId,
+            version: hermesManifest.version ?? hermesPack.version,
+            archiveFileName: hermesPack.fileName,
+            archiveSha256: hermesArchiveSha256,
+            archiveSizeBytes: hermesPack.sizeBytes,
+            archiveUrl: `/api/workers/runtime-pack/download/${encodeURIComponent(hermesPack.fileName)}`,
+            updatedAt: hermesPack.updatedAt,
+          });
+          return;
+        }
+
         if (!SUPPORTED_WORKER_RUNTIME_PACK_IDS.has(runtimeId)) {
           sendApiError(res, 404, "runtime_pack_not_found", `Runtime pack is not available for ${runtimeId}`, "not_found_error");
           return;
@@ -757,6 +861,29 @@ export function registerWorkerRuntimeRoutes(
       try {
         res.setHeader("Cache-Control", "no-store");
         const fileName = path.basename(String(req.params.fileName || ""));
+
+        // Feature 135 §11 — Hermes runtime pack downloads, resolved
+        // independently of the HyperFrames pack logic below (own file-name
+        // pattern/allow-gate; see `findLatestHermesRuntimePack`).
+        const hermesMatch = fileName.match(HERMES_RUNTIME_PACK_FILE_PATTERN);
+        if (hermesMatch?.[1] && HERMES_RUNTIME_PACK_IDS.has(hermesMatch[1])) {
+          const hermesPack = findLatestHermesRuntimePack(runtimePackReleaseDirs, hermesMatch[1]);
+          if (!hermesPack || hermesPack.fileName !== fileName) {
+            sendApiError(res, 404, "runtime_pack_not_found", "Hermes runtime pack file was not found", "not_found_error");
+            return;
+          }
+          const hermesManifest = readRuntimePackManifest(hermesPack.filePath);
+          if (!hermesManifest || hermesManifest.allowed !== true) {
+            sendApiError(res, 409, "runtime_pack_not_allowed", "Hermes runtime pack is not allowed for download", "invalid_request_error");
+            return;
+          }
+          res.setHeader("Content-Type", "application/zip");
+          res.setHeader("Content-Length", String(hermesPack.sizeBytes));
+          res.setHeader("Content-Disposition", `attachment; filename="${hermesPack.fileName.replace(/"/g, "")}"`);
+          fs.createReadStream(hermesPack.filePath).pipe(res);
+          return;
+        }
+
         const runtimeMatch = fileName.match(WORKER_RUNTIME_PACK_FILE_PATTERN);
         if (!runtimeMatch?.[1] || !SUPPORTED_WORKER_RUNTIME_PACK_IDS.has(runtimeMatch[1])) {
           sendApiError(res, 400, "invalid_runtime_pack_file", "Invalid runtime pack file name", "invalid_request_error");
@@ -1023,6 +1150,11 @@ export function registerWorkerRuntimeRoutes(
           status: worker.status,
           workerId: worker.id,
           lastSeenAt: worker.lastSeenAt ?? null,
+          // Feature 135 §11 — surfaces workerRegistryService.ts's
+          // `enforceHermesMinVersion` warning (persisted in
+          // `warningFlagsJson`) so the Worker App can render an "update
+          // required" banner from this same heartbeat round-trip.
+          warningFlagsJson: Array.isArray(worker.warningFlagsJson) ? worker.warningFlagsJson : [],
         });
       } catch (error) {
         handleWorkerRouteError(error, res);

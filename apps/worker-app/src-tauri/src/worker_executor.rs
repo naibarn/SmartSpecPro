@@ -4,10 +4,42 @@ use std::fs;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 
+use crate::hermes_executor::{
+    HERMES_CONNECTION_AUTHORIZE_JOB_TYPE, HERMES_CONNECTION_DISCONNECT_JOB_TYPE,
+    HERMES_CONNECTION_PROBE_JOB_TYPE, HERMES_MEDIA_IMAGE_JOB_TYPE, HERMES_MEDIA_VIDEO_JOB_TYPE,
+};
 use crate::runtime_manifest::DoctorSummary;
 
 pub const HYPERFRAMES_JOB_TYPE: &str = "hyperframes_final_composite";
 pub const HYPERFRAMES_RENDER_INTENT: &str = "hyperframes_final_composite";
+
+/// Feature 135 §11 — dispatch classification. `worker_loop.rs`/`commands.rs`
+/// use this to route a claimed job to either the (existing) HyperFrames
+/// render flow or the (new) Hermes media/connection-control flow. Unknown
+/// job types are left untouched (`Unknown`) — no behavior change for any
+/// job type this module didn't already know about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkerJobKind {
+    Hyperframes,
+    HermesMediaImage,
+    HermesMediaVideo,
+    HermesConnectionAuthorize,
+    HermesConnectionProbe,
+    HermesConnectionDisconnect,
+    Unknown,
+}
+
+pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
+    match job_type {
+        HYPERFRAMES_JOB_TYPE => WorkerJobKind::Hyperframes,
+        HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
+        HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
+        HERMES_CONNECTION_AUTHORIZE_JOB_TYPE => WorkerJobKind::HermesConnectionAuthorize,
+        HERMES_CONNECTION_PROBE_JOB_TYPE => WorkerJobKind::HermesConnectionProbe,
+        HERMES_CONNECTION_DISCONNECT_JOB_TYPE => WorkerJobKind::HermesConnectionDisconnect,
+        _ => WorkerJobKind::Unknown,
+    }
+}
 
 const PROGRESS_STAGES: [&str; 9] = [
     "resolve_inputs",
@@ -24,7 +56,20 @@ const PROGRESS_STAGES: [&str; 9] = [
 pub const HYPERFRAMES_FINAL_VIDEO_MIN_BYTES: u64 = 1024;
 const ARTIFACT_METADATA_INLINE_STRING_MAX: usize = 1000;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Feature 135 §11 — a hermes_media_* job's fresh presigned reference URLs,
+/// minted server-side at claim time (section 06) and re-mintable mid-job via
+/// `POST /api/worker-jobs/:jobId/references/urls`. Never persisted — this is
+/// a claim/refresh-response-only field (the job's `inputJson` references
+/// stay `{assetId, index, role, label, sha256}`, never a URL).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesJobReferenceUrl {
+    pub asset_id: String,
+    pub url: String,
+    pub expires_at: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ClaimedWorkerJob {
     pub id: String,
@@ -33,6 +78,17 @@ pub struct ClaimedWorkerJob {
     pub assignment_attempt: String,
     #[serde(default)]
     pub input_json: Value,
+    /// Feature 135 §11 — present on hermes_media_*/hermes_connection_* jobs;
+    /// carries `{ connectionId }` (and other claim-gating fields) so the
+    /// Rust-side affinity re-check (`verify_connection_affinity`) can refuse
+    /// a job pinned to a connection this worker does not host, even if the
+    /// server offered it.
+    #[serde(default)]
+    pub capability_requirements_json: Value,
+    /// Feature 135 §11 — populated on the claim response for hermes_media_*
+    /// jobs only (section 06). Empty for every other job type.
+    #[serde(default)]
+    pub reference_urls: Vec<HermesJobReferenceUrl>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -983,6 +1039,7 @@ mod tests {
                     "manualProjectName": "Launch render"
                 }
             }),
+            ..Default::default()
         };
 
         let metadata = build_worker_job_display_metadata(&job);
@@ -993,5 +1050,48 @@ mod tests {
         );
         assert_eq!(metadata.project_id.as_deref(), Some("storyboardReview:42"));
         assert_eq!(metadata.project_name.as_deref(), Some("Launch render"));
+    }
+
+    #[test]
+    fn classify_job_type_routes_hyperframes_hermes_and_unknown_job_types() {
+        assert_eq!(
+            classify_job_type(HYPERFRAMES_JOB_TYPE),
+            WorkerJobKind::Hyperframes
+        );
+        assert_eq!(
+            classify_job_type(HERMES_MEDIA_IMAGE_JOB_TYPE),
+            WorkerJobKind::HermesMediaImage
+        );
+        assert_eq!(
+            classify_job_type(HERMES_MEDIA_VIDEO_JOB_TYPE),
+            WorkerJobKind::HermesMediaVideo
+        );
+        assert_eq!(
+            classify_job_type(HERMES_CONNECTION_AUTHORIZE_JOB_TYPE),
+            WorkerJobKind::HermesConnectionAuthorize
+        );
+        assert_eq!(
+            classify_job_type(HERMES_CONNECTION_PROBE_JOB_TYPE),
+            WorkerJobKind::HermesConnectionProbe
+        );
+        assert_eq!(
+            classify_job_type(HERMES_CONNECTION_DISCONNECT_JOB_TYPE),
+            WorkerJobKind::HermesConnectionDisconnect
+        );
+        assert_eq!(classify_job_type("video_assembly"), WorkerJobKind::Unknown);
+    }
+
+    #[test]
+    fn claimed_worker_job_defaults_hermes_fields_when_absent_from_json() {
+        let job: ClaimedWorkerJob = serde_json::from_value(json!({
+            "id": "job-1",
+            "jobType": HYPERFRAMES_JOB_TYPE,
+            "leaseOwnerToken": "lease-1",
+            "assignmentAttempt": "attempt-1",
+        }))
+        .unwrap();
+
+        assert_eq!(job.capability_requirements_json, Value::Null);
+        assert!(job.reference_urls.is_empty());
     }
 }

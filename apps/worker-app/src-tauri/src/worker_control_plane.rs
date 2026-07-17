@@ -66,6 +66,12 @@ pub struct WorkerHeartbeatResponse {
     pub status: String,
     pub worker_id: String,
     pub last_seen_at: Option<String>,
+    /// Feature 135 §11 — surfaces `workerRegistryService.ts`'s
+    /// `hermes_worker_min_version` enforcement warning (server persists it
+    /// in `worker.warningFlagsJson`; the heartbeat route mirrors it here so
+    /// the Worker App can render "update required" without a second call).
+    #[serde(default)]
+    pub warning_flags_json: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -196,6 +202,42 @@ pub async fn claim_worker_job(
         &connection.tokens.execution_token,
         payload,
         WORKER_CLAIM_TIMEOUT_MS,
+    )
+    .await
+}
+
+/// Feature 135 §11 — request/response shapes for
+/// `POST /api/worker-jobs/:jobId/references/urls` (section 06). Mid-job
+/// re-mint of a hermes_media_* job's presigned reference URLs; same shape as
+/// the claim response's `job.referenceUrls` field.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesReferenceUrlRefreshRequest {
+    pub lease_owner_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesReferenceUrlRefreshResponse {
+    pub reference_urls: Vec<crate::worker_executor::HermesJobReferenceUrl>,
+}
+
+/// Re-mints a hermes_media_* job's presigned reference URLs mid-job (e.g.
+/// after `expiresAt` is close, or a download came back expired). Uses the
+/// same lease-owner-token authentication as job event reporting.
+pub async fn refresh_reference_urls(
+    connection: &WorkerLoopConnection,
+    job_id: &str,
+    lease_owner_token: &str,
+) -> Result<HermesReferenceUrlRefreshResponse, String> {
+    post_json(
+        connection,
+        &connection.server_url,
+        &format!("/api/worker-jobs/{job_id}/references/urls"),
+        &connection.tokens.execution_token,
+        &HermesReferenceUrlRefreshRequest {
+            lease_owner_token: lease_owner_token.to_string(),
+        },
     )
     .await
 }
@@ -646,6 +688,57 @@ mod tests {
         assert_eq!(payload.queue_depth, 2);
         assert_eq!(payload.warnings_json, vec!["runtime blocked"]);
         assert_eq!(payload.runtime_metadata_json["doctorStatus"], "blocked");
+    }
+
+    #[test]
+    fn heartbeat_response_surfaces_hermes_update_required_warning() {
+        let response: WorkerHeartbeatResponse = serde_json::from_value(serde_json::json!({
+            "status": "online",
+            "workerId": "worker-1",
+            "lastSeenAt": "2026-07-17T00:00:00Z",
+            "warningFlagsJson": ["Hermes runtime version 0.17.0 is below the required minimum 0.18.2."],
+        }))
+        .unwrap();
+
+        assert_eq!(response.warning_flags_json.len(), 1);
+        assert!(response.warning_flags_json[0].starts_with("Hermes runtime version"));
+    }
+
+    #[test]
+    fn heartbeat_response_defaults_warning_flags_to_empty_when_absent() {
+        let response: WorkerHeartbeatResponse = serde_json::from_value(serde_json::json!({
+            "status": "online",
+            "workerId": "worker-1",
+            "lastSeenAt": null,
+        }))
+        .unwrap();
+
+        assert!(response.warning_flags_json.is_empty());
+    }
+
+    #[test]
+    fn hermes_reference_url_refresh_request_serializes_camel_case() {
+        let payload = HermesReferenceUrlRefreshRequest {
+            lease_owner_token: "lease-1".into(),
+        };
+        let value = serde_json::to_value(payload).unwrap();
+
+        assert_eq!(value["leaseOwnerToken"], "lease-1");
+        assert!(value.get("lease_owner_token").is_none());
+    }
+
+    #[test]
+    fn hermes_reference_url_refresh_response_parses_claim_response_shape() {
+        let response: HermesReferenceUrlRefreshResponse = serde_json::from_value(serde_json::json!({
+            "referenceUrls": [
+                { "assetId": "asset-1", "url": "https://example.com/a.png", "expiresAt": "2026-01-01T00:00:00Z" }
+            ]
+        }))
+        .unwrap();
+
+        assert_eq!(response.reference_urls.len(), 1);
+        assert_eq!(response.reference_urls[0].asset_id, "asset-1");
+        assert_eq!(response.reference_urls[0].url, "https://example.com/a.png");
     }
 
     #[test]

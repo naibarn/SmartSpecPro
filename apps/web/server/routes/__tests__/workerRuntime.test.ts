@@ -1006,6 +1006,133 @@ describe("workerRuntime routes", () => {
     expect(Number(downloadRes.headers["content-length"])).toBe(fs.statSync(filePath).size);
   });
 
+  it("serves the hermes runtime manifest and download for a built, allowed pack", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-"));
+    const fileName = "smart-ai-hub-hermes-runtime-hermes-windows-x64-0.1.0.zip";
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, "hermes-pack-zip-fixture");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      runtimeId: "hermes-windows-x64",
+      version: "0.1.0",
+      hermesVersion: "0.18.2",
+      pythonRelativePath: "python/Scripts/python.exe",
+      hermesRelativePath: "python/Scripts/hermes.exe",
+      checksumFile: "SHA256SUMS",
+      signatureFile: "SHA256SUMS.sig",
+      allowed: true,
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hermes-windows-x64");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      runtimeId: "hermes-windows-x64",
+      version: "0.1.0",
+      allowed: true,
+      archiveFileName: fileName,
+    });
+    expect(res.body.archiveSha256).toMatch(/^[a-f0-9]{64}$/);
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
+  });
+
+  it("registers the macOS hermes id as not-yet-built without erroring", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-macos-"));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const res = await request(app).get("/api/workers/runtime-pack/manifest?runtimeId=hermes-macos-arm64");
+    expect(res.status).toBe(200);
+    expect(res.body.allowed).toBe(false);
+    expect(res.body.runtimeId).toBe("hermes-macos-arm64");
+  });
+
+  it("rejects a download of an unbuilt/denied hermes pack", async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-hermes-denied-"));
+    const fileName = "smart-ai-hub-hermes-runtime-hermes-windows-x64-0.0.9.zip";
+    const filePath = path.join(tempDir, fileName);
+    fs.writeFileSync(filePath, "hermes-pack-zip-fixture");
+    fs.writeFileSync(`${filePath}.manifest.json`, JSON.stringify({
+      runtimeId: "hermes-windows-x64",
+      version: "0.0.9",
+      hermesVersion: "0.18.2",
+      pythonRelativePath: "python/Scripts/python.exe",
+      hermesRelativePath: "python/Scripts/hermes.exe",
+      checksumFile: "SHA256SUMS",
+      signatureFile: "SHA256SUMS.sig",
+      allowed: false,
+      denyReason: "rollback",
+    }));
+    const app = await makeApp({ runtimePacks: { releaseDirs: [tempDir] } });
+
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+    expect(downloadRes.status).toBe(409);
+  });
+
+  it("surfaces the hermes update-required warning from recordWorkerHeartbeat in the heartbeat response", async () => {
+    const { issueWorkerAccessTokens } = await import("../../services/workerAuthService");
+    const recordWorkerHeartbeat = vi.fn().mockResolvedValue({
+      id: "worker-1",
+      status: "online",
+      lastSeenAt: new Date("2026-07-17T00:00:00.000Z"),
+      warningFlagsJson: ["Hermes runtime version 0.17.0 is below the required minimum 0.18.2."],
+    });
+    const app = await makeApp({ workerRegistry: { recordWorkerHeartbeat } });
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    const res = await request(app)
+      .post("/api/workers/worker-1/heartbeat")
+      .set("Authorization", `Bearer ${tokens.executionToken}`)
+      .send({
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "1.2.3" },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.warningFlagsJson).toEqual([
+      "Hermes runtime version 0.17.0 is below the required minimum 0.18.2.",
+    ]);
+  });
+
+  it("defaults warningFlagsJson to an empty array when the worker record has none", async () => {
+    const { issueWorkerAccessTokens } = await import("../../services/workerAuthService");
+    const recordWorkerHeartbeat = vi.fn().mockResolvedValue({
+      id: "worker-1",
+      status: "online",
+      lastSeenAt: new Date("2026-07-17T00:00:00.000Z"),
+    });
+    const app = await makeApp({ workerRegistry: { recordWorkerHeartbeat } });
+
+    const tokens = issueWorkerAccessTokens({
+      tenantId: "tenant-1",
+      workerId: "worker-1",
+      runtimeType: "openclaw_gateway",
+    });
+
+    const res = await request(app)
+      .post("/api/workers/worker-1/heartbeat")
+      .set("Authorization", `Bearer ${tokens.executionToken}`)
+      .send({
+        compatibility: { protocolVersion: "2026-04-06", runtimeVersion: "1.2.3" },
+        runtimeType: "openclaw_gateway",
+        status: "online",
+        currentJobCount: 0,
+        queueDepth: 0,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.warningFlagsJson).toEqual([]);
+  });
+
   it("blocks WSL2 runtime packs that miss Linux sharp native dependencies", async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-runtime-missing-sharp-"));
     const fileName = "smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.06.25.2.zip";

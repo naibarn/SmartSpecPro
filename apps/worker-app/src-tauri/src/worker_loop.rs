@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -8,12 +9,20 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc, Mutex,
 };
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use tauri::async_runtime::JoinHandle;
 
 use crate::credentials::clear_connection;
 use crate::diagnostics::append_diagnostic_event;
 use crate::executor_state::{ExecutorState, ExecutorStatus};
+use crate::hermes_executor::{
+    build_production_refresh_closure, download_and_verify_reference, execute_hermes_media_job_core,
+    production_fetch_reference, production_ffprobe, run_hermes_connection_authorize,
+    run_hermes_connection_disconnect, run_hermes_connection_probe, spawn_hermes_process,
+    HermesControlOutcome, HermesFailure, HermesMediaJobDeps, HermesProfileStore,
+    RealHermesControlDeps, HERMES_MEDIA_CAPABILITY_FAMILY, HERMES_MEDIA_CLAIM_CAPABILITY,
+};
+use crate::hermes_runtime::{hermes_doctor_from_manifest_path, hermes_runtime_pack_paths, read_hermes_runtime_manifest};
 use crate::runtime_manifest::{
     doctor_from_manifest_path, read_runtime_pack_manifest, runtime_pack_paths,
     sidecar_path_from_manifest, DoctorSummary,
@@ -27,10 +36,107 @@ use crate::worker_control_plane::{
 use crate::worker_executor::{
     build_failure_event, build_progress_event_plan, build_required_artifact_uploads,
     build_sidecar_command, build_sidecar_manifest, build_worker_job_display_metadata,
-    compact_json_artifact_metadata, prepare_hyperframes_execution_plan,
-    validate_final_video_artifact, ClaimedWorkerJob, SidecarCommandPlan, WorkerEventPlan,
-    HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
+    classify_job_type, compact_json_artifact_metadata, prepare_hyperframes_execution_plan,
+    sanitize_segment, validate_final_video_artifact, ClaimedWorkerJob, SidecarCommandPlan,
+    WorkerEventPlan, WorkerJobKind, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
 };
+
+/// Feature 135 §11 — hermes has its own single-job slot, independent of the
+/// render (HyperFrames) slot(s) governed by `max_concurrent_jobs`. Default 1
+/// per spec §11 5.3 ("1 hermes job max; render throughput unaffected").
+const HERMES_MEDIA_MAX_CONCURRENT_JOBS: u32 = 1;
+
+/// Feature 135 §11 — claim `capability_hints` construction. Render hints are
+/// included only when the render (HyperFrames) doctor is ready; `hermes_media`
+/// is appended only when this worker's Hermes doctor is ready. Both gates are
+/// independent — a worker with only one runtime installed still claims that
+/// runtime's jobs (this is what unblocks a hermes-only worker: previously
+/// `worker_loop_tick` bailed out entirely whenever the render doctor wasn't
+/// ready, before ever reaching this call).
+pub fn build_worker_claim_capability_hints(render_ready: bool, hermes_media_advertised: bool) -> Vec<String> {
+    let mut hints = Vec::new();
+    if render_ready {
+        hints.push("hyperframes-final-composite".to_string());
+        hints.push(HYPERFRAMES_JOB_TYPE.to_string());
+    }
+    if hermes_media_advertised {
+        hints.push(HERMES_MEDIA_CLAIM_CAPABILITY.to_string());
+    }
+    hints
+}
+
+/// Slot accounting: a second hermes job is never claimed concurrently while
+/// one is already running; render slot availability (`max_concurrent_jobs`)
+/// is entirely independent of hermes activity.
+pub fn can_claim_hermes_media_job(hermes_jobs_active: u32) -> bool {
+    hermes_jobs_active < HERMES_MEDIA_MAX_CONCURRENT_JOBS
+}
+
+pub fn can_claim_render_job(render_jobs_active: u32, max_concurrent_jobs: u32) -> bool {
+    render_jobs_active < max_concurrent_jobs.max(1)
+}
+
+/// Feature 135 §11 FIX 1 — resolves the hermes doctor (python present,
+/// `hermes --version` == pin, profile root writable) from the app data dir
+/// and folds it into the claim `capability_hints`, in ONE call so the
+/// wiring is directly testable end-to-end (real filesystem + injected
+/// version-query closure — no network).
+pub fn resolve_hermes_doctor_and_version(
+    app_data_dir: &Path,
+    query_version: impl Fn(&Path) -> Result<String, String>,
+) -> (DoctorSummary, Option<String>) {
+    let (manifest_path, pack_root) = hermes_runtime_pack_paths(app_data_dir);
+    let profile_root = app_data_dir.join("hermes-profiles");
+    let doctor = hermes_doctor_from_manifest_path(&manifest_path, &pack_root, &profile_root, query_version);
+    let hermes_version = read_hermes_runtime_manifest(&manifest_path)
+        .ok()
+        .map(|manifest| manifest.hermes_version);
+    (doctor, hermes_version)
+}
+
+/// Combines a fresh hermes doctor probe with the pure hint builder — the
+/// integration-level seam `resolve_hermes_claim_hints_reflects_a_real_doctor_computation`
+/// exercises directly (real filesystem doctor computation, no network).
+pub fn resolve_hermes_claim_hints(
+    app_data_dir: &Path,
+    render_ready: bool,
+    query_version: impl Fn(&Path) -> Result<String, String>,
+) -> (Vec<String>, DoctorSummary, Option<String>) {
+    let (doctor, hermes_version) = resolve_hermes_doctor_and_version(app_data_dir, query_version);
+    let hints = build_worker_claim_capability_hints(render_ready, doctor.status == "ready");
+    (hints, doctor, hermes_version)
+}
+
+/// Caches the hermes doctor probe (+ pinned pack version) so the loop does
+/// not shell out to `hermes --version` on every 10s tick (spec: "cache it
+/// per tick or per N ticks — don't shell out every loop").
+struct HermesDoctorCache {
+    checked_at: Instant,
+    doctor: DoctorSummary,
+    hermes_version: Option<String>,
+}
+
+const HERMES_DOCTOR_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
+
+fn hermes_doctor_cached(
+    app_data_dir: &Path,
+    cache: &mut Option<HermesDoctorCache>,
+) -> (DoctorSummary, Option<String>) {
+    let needs_refresh = cache
+        .as_ref()
+        .map_or(true, |existing| existing.checked_at.elapsed() >= HERMES_DOCTOR_REFRESH_INTERVAL);
+    if needs_refresh {
+        let (doctor, hermes_version) =
+            resolve_hermes_doctor_and_version(app_data_dir, crate::commands::query_hermes_version);
+        *cache = Some(HermesDoctorCache {
+            checked_at: Instant::now(),
+            doctor,
+            hermes_version,
+        });
+    }
+    let existing = cache.as_ref().expect("cache is populated above");
+    (existing.doctor.clone(), existing.hermes_version.clone())
+}
 
 const IDLE_CLAIM_INTERVAL: Duration = Duration::from_secs(10);
 const ACTIVE_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15);
@@ -291,6 +397,28 @@ async fn run_worker_loop(
 ) {
     set_executor_polling(&executor, "Worker loop started.");
     let mut stopped_for_terminal_error = false;
+    // Feature 135 §11 — one profile store per loop lifetime (restored from
+    // disk so `verify_connection_affinity` survives a restart) and a
+    // doctor cache so hermes readiness isn't re-probed every tick.
+    let hermes_profiles = Arc::new(Mutex::new(HermesProfileStore::from_existing_root(
+        app_data_dir.join("hermes-profiles"),
+    )));
+    let mut hermes_doctor_cache: Option<HermesDoctorCache> = None;
+    // FIX E — independent render/hermes "a job of this kind is in flight"
+    // flags. Job execution is SPAWNED (not awaited inline in the tick — see
+    // `worker_loop_tick`'s dispatch below), so a hermes job running under
+    // `hermes_active` never blocks a render claim (gated only by
+    // `render_active`) and vice versa. `can_claim_hermes_media_job`/
+    // `can_claim_render_job` read these flags every tick.
+    let render_active = Arc::new(AtomicBool::new(false));
+    let hermes_active = Arc::new(AtomicBool::new(false));
+    // Since job execution is now spawned rather than awaited inline, a
+    // terminal error (revoked token, stale lease) surfacing INSIDE a
+    // spawned job's execution can no longer propagate back through this
+    // tick's own `Result` — the spawned task instead records it here, and
+    // this loop checks it every iteration (same shutdown handling either
+    // way, via `handle_worker_loop_error`).
+    let terminal_error: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     while !cancel.load(Ordering::Relaxed) {
         let _ = crate::commands::try_refresh_connection_if_needed(&app_data_dir, &connection).await;
 
@@ -301,48 +429,24 @@ async fn run_worker_loop(
             &app_data_dir,
             &connection,
             &cancel,
+            &hermes_profiles,
+            &mut hermes_doctor_cache,
+            &render_active,
+            &hermes_active,
+            &terminal_error,
         )
         .await;
         if let Err(error) = tick_result {
-            if is_terminal_worker_auth_error(&error) {
-                let connection_snapshot = clone_connection(&connection).ok();
-                append_diagnostic_event(
-                    &app_data_dir,
-                    "worker_loop.terminal_auth_error",
-                    json!({
-                        "error": error,
-                        "workerId": connection_snapshot.as_ref().map(|connection| connection.worker_id.as_str()),
-                        "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
-                    }),
-                );
-                let _ = clear_connection(&app_data_dir);
-                cancel.store(true, Ordering::Relaxed);
+            if handle_worker_loop_error(&error, &executor, &app_data_dir, &connection, &cancel).await {
                 stopped_for_terminal_error = true;
-                set_executor_error(&executor, terminal_worker_auth_message(&error));
                 break;
             }
-            if is_stale_worker_lease_error(&error) {
-                let connection_snapshot = clone_connection(&connection).ok();
-                append_diagnostic_event(
-                    &app_data_dir,
-                    "worker_loop.stale_job_lease",
-                    json!({
-                        "error": error,
-                        "workerId": connection_snapshot.as_ref().map(|connection| connection.worker_id.as_str()),
-                        "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
-                    }),
-                );
-                cancel.store(true, Ordering::Relaxed);
+        }
+        if let Some(error) = terminal_error.lock().ok().and_then(|mut guard| guard.take()) {
+            if handle_worker_loop_error(&error, &executor, &app_data_dir, &connection, &cancel).await {
                 stopped_for_terminal_error = true;
-                set_executor_error(
-                    &executor,
-                    format!(
-                        "Worker loop stopped because the active job lease was lost during render. This prevents claiming the same job again before the control plane settles. {error}"
-                    ),
-                );
                 break;
             }
-            set_executor_error(&executor, format!("Worker loop error: {error}"));
         }
         sleep_cancelable(IDLE_CLAIM_INTERVAL, &cancel).await;
     }
@@ -352,6 +456,58 @@ async fn run_worker_loop(
     stopped.store(true, Ordering::Relaxed);
 }
 
+/// Shared terminal-error handling for both the tick's own directly-returned
+/// error AND a spawned job's error recorded into `terminal_error` (FIX E —
+/// job execution is spawned, so this can no longer be inline in the `while`
+/// loop's single `if let Err(error) = tick_result` branch). Returns `true`
+/// when the caller should stop the loop.
+async fn handle_worker_loop_error(
+    error: &str,
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    cancel: &Arc<AtomicBool>,
+) -> bool {
+    if is_terminal_worker_auth_error(error) {
+        let connection_snapshot = clone_connection(connection).ok();
+        append_diagnostic_event(
+            app_data_dir,
+            "worker_loop.terminal_auth_error",
+            json!({
+                "error": error,
+                "workerId": connection_snapshot.as_ref().map(|connection| connection.worker_id.as_str()),
+                "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
+            }),
+        );
+        let _ = clear_connection(app_data_dir);
+        cancel.store(true, Ordering::Relaxed);
+        set_executor_error(executor, terminal_worker_auth_message(error));
+        return true;
+    }
+    if is_stale_worker_lease_error(error) {
+        let connection_snapshot = clone_connection(connection).ok();
+        append_diagnostic_event(
+            app_data_dir,
+            "worker_loop.stale_job_lease",
+            json!({
+                "error": error,
+                "workerId": connection_snapshot.as_ref().map(|connection| connection.worker_id.as_str()),
+                "serverUrl": connection_snapshot.as_ref().map(|connection| connection.server_url.as_str()),
+            }),
+        );
+        cancel.store(true, Ordering::Relaxed);
+        set_executor_error(
+            executor,
+            format!(
+                "Worker loop stopped because the active job lease was lost during render. This prevents claiming the same job again before the control plane settles. {error}"
+            ),
+        );
+        return true;
+    }
+    set_executor_error(executor, format!("Worker loop error: {error}"));
+    false
+}
+
 async fn worker_loop_tick(
     settings: &Arc<Mutex<WorkerAppSettings>>,
     executor: &Arc<Mutex<ExecutorState>>,
@@ -359,6 +515,11 @@ async fn worker_loop_tick(
     app_data_dir: &Path,
     connection: &Arc<Mutex<WorkerLoopConnection>>,
     cancel: &Arc<AtomicBool>,
+    hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
+    hermes_doctor_cache: &mut Option<HermesDoctorCache>,
+    render_active: &Arc<AtomicBool>,
+    hermes_active: &Arc<AtomicBool>,
+    terminal_error: &Arc<Mutex<Option<String>>>,
 ) -> Result<(), String> {
     let settings_snapshot = settings
         .lock()
@@ -377,8 +538,19 @@ async fn worker_loop_tick(
         true,
         &effective_runtime_dir,
     );
-    let runtime_ready = doctor.status == "ready";
-    let accepts_jobs = settings_snapshot.accept_jobs && runtime_ready;
+    let render_ready = doctor.status == "ready";
+
+    // Feature 135 §11 FIX 1/A — hermes doctor probed (cached, see
+    // `HERMES_DOCTOR_REFRESH_INTERVAL`) and folded into the heartbeat's
+    // `acceptJobs`/`claimEnabled` signal, the claim's capability hints, AND
+    // (FIX A) the heartbeat's own `runtimeMetadataJson.hermesMedia` so the
+    // server's persisted `capabilitiesJson.hermesMedia` stays fresh even
+    // between full re-registrations.
+    let (hermes_doctor, hermes_version) = hermes_doctor_cached(app_data_dir, hermes_doctor_cache);
+    let hermes_ready = hermes_doctor.status == "ready";
+
+    let any_runtime_ready = render_ready || hermes_ready;
+    let accepts_jobs = settings_snapshot.accept_jobs && any_runtime_ready;
     let connection_snapshot = clone_connection(connection)?;
     heartbeat(
         executor,
@@ -386,6 +558,7 @@ async fn worker_loop_tick(
         &settings_snapshot,
         &doctor,
         accepts_jobs,
+        Some((&hermes_doctor, hermes_version.as_deref())),
     )
     .await?;
 
@@ -396,24 +569,41 @@ async fn worker_loop_tick(
         );
         return Ok(());
     }
-    if !runtime_ready {
+    if !any_runtime_ready {
         set_executor_error(executor, runtime_block_message(&doctor));
         return Ok(());
     }
-    if has_active_job(executor)? {
+
+    // FIX E — independent slot accounting: a hermes job in flight
+    // (`hermes_active`) no longer blocks a render claim, and vice versa.
+    // `can_claim_render_job`/`can_claim_hermes_media_job` are the same
+    // pure functions the unit tests exercise directly.
+    let render_active_now = render_active.load(Ordering::Relaxed);
+    let hermes_active_now = hermes_active.load(Ordering::Relaxed);
+    let max_jobs = settings_snapshot.max_concurrent_jobs.max(1) as u32;
+    let can_claim_render = render_ready
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_hermes = hermes_ready
+        && can_claim_hermes_media_job(if hermes_active_now { 1 } else { 0 });
+
+    if !can_claim_render && !can_claim_hermes {
+        set_executor_polling(
+            executor,
+            if render_active_now || hermes_active_now {
+                "A job is already running in every available slot. Heartbeat is active."
+            } else {
+                "No claimable runtime is ready. Heartbeat is active."
+            },
+        );
         return Ok(());
     }
 
-    let max_jobs = settings_snapshot.max_concurrent_jobs.max(1) as u32;
     set_executor_polling(executor, "Checking Smart AI Hub worker queue.");
     let claimed = match claim_worker_job_with_watchdog(
         connection_snapshot,
         WorkerClaimRequest {
             max_jobs,
-            capability_hints: vec![
-                "hyperframes-final-composite".into(),
-                HYPERFRAMES_JOB_TYPE.into(),
-            ],
+            capability_hints: build_worker_claim_capability_hints(can_claim_render, can_claim_hermes),
         },
         CLAIM_WATCHDOG_TIMEOUT,
     )
@@ -434,17 +624,114 @@ async fn worker_loop_tick(
         return Ok(());
     };
 
-    execute_hyperframes_job(
-        executor,
-        resource_dir,
-        app_data_dir,
-        connection,
-        job,
-        &doctor,
-        &settings_snapshot,
-        cancel,
-    )
-    .await
+    match classify_job_type(&job.job_type) {
+        WorkerJobKind::Hyperframes => {
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let doctor_owned = doctor.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            // FIX E — spawned (not awaited inline) so a render job in
+            // flight never blocks a hermes claim on the NEXT tick.
+            tauri::async_runtime::spawn(async move {
+                let result = execute_hyperframes_job(
+                    &executor,
+                    &resource_dir_owned,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &doctor_owned,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::HermesMediaImage | WorkerJobKind::HermesMediaVideo => {
+            hermes_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let hermes_doctor_owned = hermes_doctor.clone();
+            let hermes_profiles = hermes_profiles.clone();
+            let settings_owned = settings_snapshot.clone();
+            let hermes_active = hermes_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_hermes_media_job(
+                    &executor,
+                    &app_data_dir_owned,
+                    &connection,
+                    job,
+                    &hermes_doctor_owned,
+                    &hermes_profiles,
+                    &settings_owned,
+                )
+                .await;
+                hermes_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::HermesConnectionAuthorize
+        | WorkerJobKind::HermesConnectionProbe
+        | WorkerJobKind::HermesConnectionDisconnect => {
+            hermes_active.store(true, Ordering::Relaxed);
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let connection = connection.clone();
+            let hermes_profiles = hermes_profiles.clone();
+            let hermes_active = hermes_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result =
+                    execute_hermes_control_job(&app_data_dir_owned, &connection, job, &hermes_profiles).await;
+                hermes_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
+        WorkerJobKind::Unknown => {
+            // The server offered a job type this Worker App build does not
+            // know how to execute — fail explicitly rather than silently
+            // assuming it's a HyperFrames render (the prior, section-11-era
+            // behavior, back when this dispatch only ever knew one job kind).
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                "unsupported_job_type",
+                &format!("Worker App does not support job type: {}", job.job_type),
+            );
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            Err(format!(
+                "worker received an unsupported job type: {}",
+                job.job_type
+            ))
+        }
+    }
+}
+
+/// A spawned job's error can no longer propagate back through the tick's
+/// own `Result` (see `handle_worker_loop_error`'s doc comment) — if it's
+/// terminal, latch it into the shared slot the main loop polls every
+/// iteration.
+fn record_terminal_error_if_needed(terminal_error: &Arc<Mutex<Option<String>>>, result: Result<(), String>) {
+    if let Err(error) = result {
+        if is_terminal_worker_auth_error(&error) || is_stale_worker_lease_error(&error) {
+            if let Ok(mut guard) = terminal_error.lock() {
+                if guard.is_none() {
+                    *guard = Some(error);
+                }
+            }
+        }
+    }
 }
 
 async fn claim_worker_job_with_watchdog(
@@ -474,12 +761,48 @@ async fn claim_worker_job_with_watchdog(
     }
 }
 
+/// Feature 135 §11 FIX A — builds the heartbeat's `runtimeMetadataJson`,
+/// including `hermesMedia` when hermes readiness is available for THIS
+/// heartbeat call. `hermes_info` is `None` for the "active heartbeat" calls
+/// fired while a HyperFrames render is in flight (those sites have no
+/// per-tick hermes doctor cache to read from) — the server preserves the
+/// last-known `capabilitiesJson.hermesMedia` in that case (see
+/// `workerRegistryService.ts::recordWorkerHeartbeat`, which only overwrites
+/// it when this field is present).
+fn build_heartbeat_runtime_metadata(
+    settings: &WorkerAppSettings,
+    accepts_jobs: bool,
+    doctor_status: &str,
+    hermes_info: Option<(&DoctorSummary, Option<&str>)>,
+) -> Value {
+    let mut runtime_metadata = json!({
+        "doctorStatus": doctor_status,
+        "acceptJobs": settings.accept_jobs,
+        "claimEnabled": accepts_jobs,
+        "sharingMode": settings.sharing_mode,
+        "runtimeChannel": settings.runtime_channel,
+        "runtimeVersion": settings.runtime_version,
+        "serviceMode": if settings.start_with_windows { "auto_start_requested" } else { "foreground" },
+    });
+    if let Some((hermes_doctor, hermes_version)) = hermes_info {
+        let hermes_ready = hermes_doctor.status == "ready";
+        runtime_metadata["hermesMedia"] = json!({
+            "capability": HERMES_MEDIA_CAPABILITY_FAMILY,
+            "advertised": hermes_ready,
+            "reason": if hermes_ready { "doctor_passed" } else { "doctor_not_ready" },
+            "hermesVersion": hermes_version,
+        });
+    }
+    runtime_metadata
+}
+
 async fn heartbeat(
     executor: &Arc<Mutex<ExecutorState>>,
     connection: &WorkerLoopConnection,
     settings: &WorkerAppSettings,
     doctor: &DoctorSummary,
     accepts_jobs: bool,
+    hermes_info: Option<(&DoctorSummary, Option<&str>)>,
 ) -> Result<(), String> {
     let current_job_count = if has_active_job(executor)? { 1 } else { 0 };
     let status = if doctor.status == "ready" {
@@ -498,18 +821,29 @@ async fn heartbeat(
         current_job_count,
         current_queue_depth(executor)?,
         warnings,
-        json!({
-            "doctorStatus": doctor.status,
-            "acceptJobs": settings.accept_jobs,
-            "claimEnabled": accepts_jobs,
-            "sharingMode": settings.sharing_mode,
-            "runtimeChannel": settings.runtime_channel,
-            "runtimeVersion": settings.runtime_version,
-            "serviceMode": if settings.start_with_windows { "auto_start_requested" } else { "foreground" },
-        }),
+        build_heartbeat_runtime_metadata(settings, accepts_jobs, &doctor.status, hermes_info),
     );
-    send_worker_heartbeat(connection, &payload).await?;
+    let response = send_worker_heartbeat(connection, &payload).await?;
+    apply_hermes_heartbeat_warning(executor, &response.warning_flags_json);
     Ok(())
+}
+
+/// Feature 135 §11 FIX 4 — surfaces the server's `hermes_worker_min_version`
+/// enforcement warning (see `workerRegistryService.ts::enforceHermesMinVersion`)
+/// from the heartbeat response into `ExecutorState.hermes`, which
+/// `src/main.tsx`'s "update required" banner already renders.
+fn find_hermes_update_warning(warnings: &[String]) -> Option<String> {
+    warnings
+        .iter()
+        .find(|warning| warning.starts_with("Hermes runtime version"))
+        .cloned()
+}
+
+fn apply_hermes_heartbeat_warning(executor: &Arc<Mutex<ExecutorState>>, warnings: &[String]) {
+    let reason = find_hermes_update_warning(warnings);
+    if let Ok(mut executor) = executor.lock() {
+        executor.set_hermes_update_required(reason.is_some(), reason);
+    }
 }
 
 fn runtime_block_message(doctor: &DoctorSummary) -> String {
@@ -559,6 +893,320 @@ fn runtime_block_message(doctor: &DoctorSummary) -> String {
         parts.push(format!("Next step: {action}"));
     }
     parts.join(" ")
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §11 FIX 1/2 — hermes media job dispatch, wired to REAL
+// production deps (spawn_hermes_process, reqwest reference download/refresh,
+// upload_worker_artifact_file, report_worker_job_event) via
+// `execute_hermes_media_job_core`. All blocking + `block_on`-bridged network
+// I/O runs inside `spawn_blocking` (never on the main async executor thread).
+// ────────────────────────────────────────────────────────────────────────
+
+async fn execute_hermes_media_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    hermes_doctor: &DoctorSummary,
+    hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
+    settings: &WorkerAppSettings,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let connection_snapshot = clone_connection(connection)?;
+
+    let result =
+        execute_hermes_media_job_inner(app_data_dir, &connection_snapshot, &job, hermes_doctor, hermes_profiles, settings)
+            .await;
+
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "Hermes media job completed and artifacts uploaded.",
+                None,
+            );
+            set_executor_complete(executor, "Hermes media job completed and artifacts uploaded.");
+        }
+        Err(error) => {
+            let failure = build_failure_event(&job, FAILURE_EVENT_SEQUENCE_NUMBER, "hermes_media_failed", error);
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            let error_msg = format!("Hermes media job failed: {error}");
+            set_executor_last_job(executor, &job, "error", &error_msg, None);
+            set_executor_error(executor, error_msg);
+        }
+    }
+    result
+}
+
+async fn execute_hermes_media_job_inner(
+    app_data_dir: &Path,
+    connection: &WorkerLoopConnection,
+    job: &ClaimedWorkerJob,
+    hermes_doctor: &DoctorSummary,
+    hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
+    settings: &WorkerAppSettings,
+) -> Result<(), String> {
+    let (manifest_path, pack_root) = hermes_runtime_pack_paths(app_data_dir);
+    let manifest = read_hermes_runtime_manifest(&manifest_path)
+        .map_err(|error| format!("hermes runtime manifest unavailable: {error}"))?;
+    let hermes_executable = pack_root.join(&manifest.hermes_relative_path);
+
+    let effective_runtime_dir = if settings.runtime_dir.trim().is_empty() {
+        app_data_dir.to_path_buf()
+    } else {
+        PathBuf::from(settings.runtime_dir.trim())
+    };
+    // Reuses the render runtime pack's own bundled ffprobe (spec §2.2) —
+    // NOTE (deviation): this resolves the non-managed-WSL layout only; when
+    // `settings.uses_wsl2_runtime()` the real ffprobe lives inside the WSL
+    // filesystem and needs the same `wsl.exe` bridging `build_sidecar_command`
+    // uses for HyperFrames. That bridging is not replicated here.
+    let ffprobe_name = if settings.uses_wsl2_runtime() { "ffprobe" } else { "ffprobe.exe" };
+    let ffprobe_executable = effective_runtime_dir.join("runtime-pack").join("bin").join(ffprobe_name);
+
+    let workspace_base = if !settings.workspace_dir.trim().is_empty() {
+        PathBuf::from(settings.workspace_dir.trim())
+    } else {
+        app_data_dir.join("worker-workspace")
+    };
+    fs::create_dir_all(&workspace_base)
+        .map_err(|error| format!("failed to create hermes workspace: {error}"))?;
+    let hermes_workspace_root = workspace_base.join("hermes-jobs");
+
+    let job_started_at = SystemTime::now();
+    let job_segment = sanitize_segment(&job.id);
+    let tmp_dir = hermes_workspace_root.join(&job_segment).join("tmp");
+
+    let forbidden_roots = {
+        let profiles = hermes_profiles
+            .lock()
+            .map_err(|_| "hermes profile store lock poisoned".to_string())?;
+        vec![profiles.root().to_path_buf()]
+    };
+
+    let job_owned = job.clone();
+    let doctor_owned = hermes_doctor.clone();
+    let profiles_arc = hermes_profiles.clone();
+    let workspace_root_owned = hermes_workspace_root.clone();
+    let cache_dirs: Vec<PathBuf> = Vec::new();
+
+    let reference_urls = job.reference_urls.clone();
+    let refresh_closure = build_production_refresh_closure(
+        connection.clone(),
+        job.id.clone(),
+        job.lease_owner_token.clone(),
+    );
+    let download_reference =
+        move |reference: &crate::hermes_executor::HermesJobReference| -> Result<PathBuf, HermesFailure> {
+            let url = reference_urls
+                .iter()
+                .find(|entry| entry.asset_id == reference.asset_id)
+                .map(|entry| entry.url.clone())
+                .ok_or_else(|| HermesFailure {
+                    code: "HERMES_REFERENCE_DOWNLOAD_FAILED".to_string(),
+                    message: format!("no referenceUrl for asset {}", reference.asset_id),
+                })?;
+            download_and_verify_reference(
+                &reference.asset_id,
+                &url,
+                &reference.sha256,
+                &tmp_dir,
+                &production_fetch_reference,
+                &refresh_closure,
+            )
+        };
+
+    let spawn_closure = move |argv: &[String],
+                               cwd: &Path,
+                               env: &HashMap<String, String>,
+                               timeouts: crate::hermes_executor::HermesSpawnTimeouts| {
+        spawn_hermes_process(
+            &hermes_executable,
+            argv,
+            cwd,
+            env,
+            timeouts,
+            &mut |_line: &str| {},
+            &mut || {
+                // FIX F — soft timeout notification. No dedicated event
+                // channel exists yet for this (spec: "logged/reported via
+                // onSoftTimeout, never kills"); the hard/inactivity timers
+                // below are what actually protect the job slot.
+            },
+        )
+    };
+    let ffprobe_closure = production_ffprobe(ffprobe_executable);
+
+    let connection_for_upload = connection.clone();
+    let job_for_upload = job.clone();
+    let mut upload_fn = move |output: &crate::hermes_executor::CollectedOutput| -> Result<(), String> {
+        let artifact_type = if output.kind == "video" {
+            "hermes_media_video"
+        } else {
+            "hermes_media_image"
+        };
+        let file_name = output
+            .path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("output.bin")
+            .to_string();
+        let content_type = output.content_type.clone();
+        let path = output.path.clone();
+        let connection = connection_for_upload.clone();
+        let job = job_for_upload.clone();
+        tauri::async_runtime::block_on(async move {
+            upload_worker_artifact_file(
+                &connection,
+                &job.id,
+                artifact_type,
+                &path,
+                &file_name,
+                &content_type,
+                &job.lease_owner_token,
+                &job.assignment_attempt,
+                json!({}),
+            )
+            .await
+            .map(|_| ())
+        })
+    };
+
+    let connection_for_progress = connection.clone();
+    let job_for_progress = job.clone();
+    let mut sequence_number: u32 = 1;
+    let mut emit_fn = move |stage: &str| {
+        let connection = connection_for_progress.clone();
+        let job = job_for_progress.clone();
+        let stage = stage.to_string();
+        let seq = sequence_number;
+        sequence_number = sequence_number.saturating_add(1);
+        let _ = tauri::async_runtime::block_on(async move {
+            report_worker_job_event(
+                &connection,
+                &job.id,
+                &WorkerJobEventPayload {
+                    event_type: "job.progress".to_string(),
+                    payload_json: json!({ "stage": stage }),
+                    sequence_number: Some(seq),
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: Some(job.assignment_attempt.clone()),
+                },
+            )
+            .await
+        });
+    };
+
+    let blocking_result = tauri::async_runtime::spawn_blocking(move || {
+        let profiles_guard = profiles_arc.lock().map_err(|_| HermesFailure {
+            code: "HERMES_PROCESS_FAILED".to_string(),
+            message: "hermes profile store lock poisoned".to_string(),
+        })?;
+        let mut deps = HermesMediaJobDeps {
+            download_reference: &download_reference,
+            spawn: &spawn_closure,
+            ffprobe: &ffprobe_closure,
+            upload_artifact: &mut upload_fn,
+            emit_stage: &mut emit_fn,
+        };
+        execute_hermes_media_job_core(
+            &job_owned,
+            &doctor_owned,
+            &profiles_guard,
+            &workspace_root_owned,
+            &cache_dirs,
+            &forbidden_roots,
+            job_started_at,
+            &mut deps,
+        )
+    })
+    .await;
+
+    let outcome: Result<Vec<crate::hermes_executor::CollectedOutput>, HermesFailure> = match blocking_result {
+        Ok(inner_result) => inner_result,
+        Err(join_error) => Err(HermesFailure {
+            code: "HERMES_PROCESS_FAILED".to_string(),
+            message: format!("hermes media job task failed: {join_error}"),
+        }),
+    };
+
+    outcome
+        .map(|_collected| ())
+        .map_err(|failure| format!("[{}] {}", failure.code, failure.message))
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §11 FIX 1/2 — hermes connection-control job dispatch
+// (authorize/probe/disconnect), wired to `RealHermesControlDeps`.
+// ────────────────────────────────────────────────────────────────────────
+
+async fn execute_hermes_control_job(
+    app_data_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    hermes_profiles: &Arc<Mutex<HermesProfileStore>>,
+) -> Result<(), String> {
+    let connection_snapshot = clone_connection(connection)?;
+    let connection_id = job
+        .capability_requirements_json
+        .get("connectionId")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "hermes control job is missing capabilityRequirementsJson.connectionId".to_string())?
+        .to_string();
+    let profile_reference = format!("conn_{connection_id}");
+
+    let (manifest_path, pack_root) = hermes_runtime_pack_paths(app_data_dir);
+    let manifest = read_hermes_runtime_manifest(&manifest_path)
+        .map_err(|error| format!("hermes runtime manifest unavailable: {error}"))?;
+    let hermes_executable = pack_root.join(&manifest.hermes_relative_path);
+
+    // Control jobs have a generous default timeout ceiling; the device-code
+    // authorize flow is bounded by the job's own `assignmentAttempt` lease
+    // lifetime server-side, not by this local ceiling.
+    let timeout_ms: u64 = 15 * 60 * 1000;
+    let deps = RealHermesControlDeps {
+        hermes_executable,
+        connection: connection_snapshot,
+        job_id: job.id.clone(),
+        lease_owner_token: job.lease_owner_token.clone(),
+        assignment_attempt: job.assignment_attempt.clone(),
+        connection_id: connection_id.clone(),
+        profiles: hermes_profiles.clone(),
+        app_data_dir: app_data_dir.to_path_buf(),
+        timeout_ms,
+    };
+
+    let job_type = job.job_type.clone();
+    let outcome = tauri::async_runtime::spawn_blocking(move || match classify_job_type(&job_type) {
+        WorkerJobKind::HermesConnectionAuthorize => {
+            run_hermes_connection_authorize(&connection_id, &profile_reference, timeout_ms / 1000, &deps)
+        }
+        WorkerJobKind::HermesConnectionProbe => {
+            run_hermes_connection_probe(&connection_id, &profile_reference, timeout_ms / 1000, &deps)
+        }
+        WorkerJobKind::HermesConnectionDisconnect => {
+            run_hermes_connection_disconnect(&connection_id, &profile_reference, timeout_ms / 1000, &deps)
+        }
+        _ => HermesControlOutcome::Failure {
+            error_code: "HERMES_PROCESS_FAILED".to_string(),
+            failure_reason: "process_failed".to_string(),
+            diagnostic: "unreachable: non-control job type dispatched to control-job executor".to_string(),
+        },
+    })
+    .await
+    .map_err(|error| format!("hermes control job task failed: {error}"))?;
+
+    match outcome {
+        HermesControlOutcome::Success { .. } => Ok(()),
+        HermesControlOutcome::Failure {
+            error_code,
+            diagnostic,
+            ..
+        } => Err(format!("[{error_code}] {diagnostic}")),
+    }
 }
 
 async fn execute_hyperframes_job(
@@ -805,7 +1453,7 @@ async fn execute_hyperframes_job_inner(
         let connection_snapshot =
             refresh_connection_for_control_plane(app_data_dir, connection, "artifact upload")
                 .await?;
-        let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true).await;
+        let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true, None).await;
         let mut metadata = json!({
             "assignmentAttempt": job.assignment_attempt,
             "runtimeId": runtime_id,
@@ -922,7 +1570,7 @@ async fn stage_hyperframes_source_videos(
             format!("Downloading source video {}/{}", index + 1, total_videos),
         );
         let connection_snapshot = clone_connection(connection)?;
-        let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true).await;
+        let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true, None).await;
 
         let shot_id = source_video
             .get("shotId")
@@ -1275,7 +1923,7 @@ async fn run_sidecar_with_active_heartbeat(
             let _ =
                 crate::commands::try_refresh_connection_if_needed(app_data_dir, connection).await;
             let connection_snapshot = clone_connection(connection)?;
-            let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true).await;
+            let _ = heartbeat(executor, &connection_snapshot, settings, doctor, true, None).await;
             let keepalive = build_sidecar_keepalive_event(
                 job,
                 parse_render_log_percent(&current_progress_line).unwrap_or(55),
@@ -1808,6 +2456,170 @@ mod tests {
     use crate::worker_control_plane::WorkerApiTokens;
 
     #[test]
+    fn fix_a_heartbeat_runtime_metadata_carries_real_hermes_readiness() {
+        let settings = WorkerAppSettings::default();
+        let hermes_ready = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: Some("hermes".into()),
+        };
+        let hermes_blocked = DoctorSummary {
+            status: "blocked".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: Some("hermes".into()),
+        };
+
+        let ready_metadata = build_heartbeat_runtime_metadata(
+            &settings,
+            true,
+            "ready",
+            Some((&hermes_ready, Some("0.18.2"))),
+        );
+        assert_eq!(ready_metadata["hermesMedia"]["advertised"], true);
+        assert_eq!(ready_metadata["hermesMedia"]["hermesVersion"], "0.18.2");
+        assert_eq!(ready_metadata["hermesMedia"]["capability"], "hermes-media-generation");
+
+        let blocked_metadata = build_heartbeat_runtime_metadata(&settings, true, "ready", Some((&hermes_blocked, None)));
+        assert_eq!(blocked_metadata["hermesMedia"]["advertised"], false);
+
+        // The 3 "active heartbeat" call sites (fired during an in-flight
+        // HyperFrames render) pass `None` — no hermesMedia key at all, so
+        // the server preserves the last-known value instead of clobbering
+        // it with a stale/absent probe.
+        let no_hermes_info = build_heartbeat_runtime_metadata(&settings, true, "ready", None);
+        assert!(no_hermes_info.get("hermesMedia").is_none());
+    }
+
+    #[test]
+    fn hermes_update_warning_is_extracted_from_heartbeat_response_warnings() {
+        assert_eq!(
+            find_hermes_update_warning(&[
+                "some unrelated warning".to_string(),
+                "Hermes runtime version 0.17.0 is below the required minimum 0.18.2.".to_string(),
+            ]),
+            Some("Hermes runtime version 0.17.0 is below the required minimum 0.18.2.".to_string())
+        );
+        assert_eq!(find_hermes_update_warning(&["unrelated".to_string()]), None);
+        assert_eq!(find_hermes_update_warning(&[]), None);
+    }
+
+    #[test]
+    fn claim_hints_include_hermes_media_only_when_advertised() {
+        let without_hermes = build_worker_claim_capability_hints(true, false);
+        assert!(!without_hermes.contains(&"hermes_media".to_string()));
+        assert!(without_hermes.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+
+        let with_hermes = build_worker_claim_capability_hints(true, true);
+        assert!(with_hermes.contains(&"hermes_media".to_string()));
+        // Render hints are unaffected by the hermes gate.
+        assert!(with_hermes.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+        assert!(with_hermes.contains(&"hyperframes-final-composite".to_string()));
+    }
+
+    #[test]
+    fn render_hints_are_excluded_when_render_doctor_is_not_ready_but_hermes_is() {
+        // FIX 1 — a hermes-only worker (no HyperFrames runtime installed)
+        // must still be able to claim hermes jobs; render hints must not be
+        // advertised while its own doctor is not ready.
+        let hermes_only = build_worker_claim_capability_hints(false, true);
+        assert!(!hermes_only.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+        assert!(!hermes_only.contains(&"hyperframes-final-composite".to_string()));
+        assert!(hermes_only.contains(&"hermes_media".to_string()));
+
+        let neither_ready = build_worker_claim_capability_hints(false, false);
+        assert!(neither_ready.is_empty());
+    }
+
+    #[test]
+    fn resolve_hermes_claim_hints_reflects_a_real_doctor_computation() {
+        // FIX 1 — "with doctor ready the claim sends the hermes_media hint;
+        // with doctor degraded it doesn't" against the REAL doctor pipeline
+        // (real filesystem manifest/profile-root checks), not just the pure
+        // hint builder in isolation.
+        let dir = tempfile::tempdir().unwrap();
+        let app_data_dir = dir.path().join("app-data");
+        let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+        fs::create_dir_all(manifest_path.parent().unwrap()).unwrap();
+        let python_relative_path = "python/python.exe";
+        fs::create_dir_all(pack_root.join("python")).unwrap();
+        fs::write(pack_root.join(python_relative_path), b"fake python").unwrap();
+        fs::write(
+            &manifest_path,
+            serde_json::to_vec(&serde_json::json!({
+                "runtimeId": "hermes-windows-x64",
+                "version": "0.1.0",
+                "hermesVersion": "0.18.2",
+                "pythonRelativePath": python_relative_path,
+                "hermesRelativePath": "python/Scripts/hermes.exe",
+                "checksumFile": "SHA256SUMS",
+                "signatureFile": "SHA256SUMS.sig",
+                "allowed": true,
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let (ready_hints, ready_doctor, ready_version) = resolve_hermes_claim_hints(&app_data_dir, true, |_path| {
+            Ok("hermes-cli 0.18.2".to_string())
+        });
+        assert_eq!(ready_doctor.status, "ready");
+        assert!(ready_hints.contains(&"hermes_media".to_string()));
+        assert_eq!(ready_version.as_deref(), Some("0.18.2"));
+
+        let (degraded_hints, degraded_doctor, _degraded_version) =
+            resolve_hermes_claim_hints(&app_data_dir, true, |_path| Ok("hermes-cli 0.10.0".to_string()));
+        assert_eq!(degraded_doctor.status, "degraded");
+        assert!(!degraded_hints.contains(&"hermes_media".to_string()));
+        // Render hint is untouched by the hermes gate either way.
+        assert!(degraded_hints.contains(&HYPERFRAMES_JOB_TYPE.to_string()));
+    }
+
+    #[test]
+    fn hermes_slot_accounting_allows_one_concurrent_job_independent_of_render_slots() {
+        assert!(can_claim_hermes_media_job(0));
+        assert!(!can_claim_hermes_media_job(1));
+
+        // Render slot availability never depends on hermes activity.
+        assert!(can_claim_render_job(0, 1));
+        assert!(!can_claim_render_job(1, 1));
+        assert!(can_claim_render_job(1, 2));
+    }
+
+    #[test]
+    fn fix_e_a_render_job_in_flight_never_blocks_a_hermes_claim_and_vice_versa() {
+        // Mirrors the EXACT expressions `worker_loop_tick` evaluates every
+        // tick from the independent `render_active`/`hermes_active` atomics
+        // (not the single `has_active_job` gate this replaced).
+        let max_jobs = 1u32;
+
+        // A render job is running; hermes is idle — hermes must still be
+        // claimable this tick.
+        let render_busy_hermes_idle = (
+            can_claim_render_job(1, max_jobs),
+            can_claim_hermes_media_job(0),
+        );
+        assert_eq!(render_busy_hermes_idle, (false, true));
+
+        // A hermes job is running; render is idle — render must still be
+        // claimable this tick.
+        let hermes_busy_render_idle = (
+            can_claim_render_job(0, max_jobs),
+            can_claim_hermes_media_job(1),
+        );
+        assert_eq!(hermes_busy_render_idle, (true, false));
+
+        // Both idle — both claimable.
+        assert_eq!(
+            (can_claim_render_job(0, max_jobs), can_claim_hermes_media_job(0)),
+            (true, true)
+        );
+    }
+
+    #[test]
     fn terminal_worker_auth_errors_are_not_retryable() {
         assert!(is_terminal_worker_auth_error(
             "worker control plane returned HTTP 401 Unauthorized: Worker token has been revoked"
@@ -1854,6 +2666,7 @@ mod tests {
             lease_owner_token: "lease-1".into(),
             assignment_attempt: "attempt-1".into(),
             input_json: json!({}),
+            ..Default::default()
         };
 
         let event = build_sidecar_keepalive_event(
@@ -1883,6 +2696,7 @@ mod tests {
             lease_owner_token: "lease-1".into(),
             assignment_attempt: "attempt-1".into(),
             input_json: json!({}),
+            ..Default::default()
         };
         let parsed = parse_sidecar_worker_event_line(
             r#"SMARTAIHUB_EVENT {"eventType":"shot.render.started","stage":"render_browser_css","shotId":"shot-6","shotIndex":5,"shotTotal":8,"percent":55,"message":"Rendering shot 6/8"}"#,

@@ -22,7 +22,9 @@ use tauri::Manager;
 use tauri_plugin_opener::OpenerExt;
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
-use crate::control_plane::{build_registration_payload, WorkerAppRegistrationPayload};
+use crate::control_plane::{
+    build_registration_payload_with_hermes, HermesRegistrationInfo, WorkerAppRegistrationPayload,
+};
 use crate::executor_state::ExecutorStatus;
 use crate::worker_control_plane::{post_worker_json, WorkerApiTokens, WorkerLoopConnection};
 use crate::worker_loop::{start_worker_loop, WorkerLoopStatus};
@@ -1430,6 +1432,242 @@ pub async fn worker_app_install_runtime_pack(
     })
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §11 — Hermes runtime pack install + doctor. Mirrors
+// `worker_app_install_runtime_pack`/`worker_app_run_doctor` step-for-step
+// against the hermes-specific manifest/doctor in `hermes_runtime.rs`.
+// ────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HermesRuntimeInstallResult {
+    pub status: String,
+    pub message: String,
+    pub doctor: DoctorSummary,
+}
+
+fn hermes_profile_root(app_data_dir: &Path) -> PathBuf {
+    app_data_dir.join("hermes-profiles")
+}
+
+/// Real `hermes --version` probe (production `query_version` implementation
+/// for `hermes_doctor_from_manifest_path`). Tests inject their own closure.
+pub(crate) fn query_hermes_version(hermes_executable: &Path) -> Result<String, String> {
+    let output = std::process::Command::new(hermes_executable)
+        .arg("--version")
+        .output()
+        .map_err(|error| format!("failed to run hermes --version: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "hermes --version exited with {:?}",
+            output.status.code()
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// FIX A — shared production doctor+version computation, used by BOTH the
+/// standalone `worker_app_hermes_doctor` command AND the real registration
+/// call site (`worker_app_start_connect_session`) so registration always
+/// carries real hermes readiness instead of `HermesRegistrationInfo::not_installed()`.
+pub(crate) fn compute_hermes_doctor_and_version(app_data_dir: &Path) -> (DoctorSummary, Option<String>) {
+    let (manifest_path, pack_root) = crate::hermes_runtime::hermes_runtime_pack_paths(app_data_dir);
+    let profile_root = hermes_profile_root(app_data_dir);
+    let doctor = crate::hermes_runtime::hermes_doctor_from_manifest_path(
+        &manifest_path,
+        &pack_root,
+        &profile_root,
+        query_hermes_version,
+    );
+    let hermes_version = crate::hermes_runtime::read_hermes_runtime_manifest(&manifest_path)
+        .ok()
+        .map(|manifest| manifest.hermes_version);
+    (doctor, hermes_version)
+}
+
+#[tauri::command]
+pub async fn worker_app_hermes_doctor(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<DoctorSummary, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let (doctor, hermes_version) = compute_hermes_doctor_and_version(&app_data_dir);
+    if let Ok(mut executor) = state.executor.lock() {
+        executor.set_hermes_doctor(doctor.status.clone(), hermes_version);
+    }
+    Ok(doctor)
+}
+
+async fn fetch_hermes_runtime_manifest(
+    server_url: &str,
+    runtime_id: &str,
+    channel: &str,
+) -> Result<crate::hermes_runtime::HermesRuntimeManifest, String> {
+    let url = format!(
+        "{}/api/workers/runtime-pack/manifest?runtimeId={}&channel={}",
+        server_url.trim().trim_end_matches('/'),
+        runtime_id.trim(),
+        channel.trim()
+    );
+    let response = reqwest::Client::new()
+        .get(url)
+        .send()
+        .await
+        .map_err(|error| format!("unable to fetch hermes runtime manifest: {error}"))?;
+    parse_json_response::<crate::hermes_runtime::HermesRuntimeManifest>(response)
+        .await
+        .map_err(|error| format!("hermes runtime manifest unavailable: {error}"))
+}
+
+fn extract_hermes_runtime_archive(archive_path: &Path, app_data_dir: &Path) -> Result<(), String> {
+    let file = File::open(archive_path)
+        .map_err(|error| format!("failed to open hermes runtime archive: {error}"))?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|error| format!("hermes runtime archive is not a valid zip: {error}"))?;
+    let install_root = app_data_dir.join("hermes-runtime-install");
+    if install_root.exists() {
+        fs::remove_dir_all(&install_root)
+            .map_err(|error| format!("failed to clear hermes runtime install staging: {error}"))?;
+    }
+    fs::create_dir_all(&install_root)
+        .map_err(|error| format!("failed to create hermes runtime install staging: {error}"))?;
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|error| format!("failed to read hermes runtime archive entry: {error}"))?;
+        let out_path = safe_archive_output_path(&install_root, entry.name())?;
+        if entry.is_dir() {
+            fs::create_dir_all(&out_path)
+                .map_err(|error| format!("failed to create hermes runtime directory: {error}"))?;
+            continue;
+        }
+        if let Some(parent) = out_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("failed to create hermes runtime directory: {error}"))?;
+        }
+        let mut out_file = File::create(&out_path)
+            .map_err(|error| format!("failed to create hermes runtime file: {error}"))?;
+        io::copy(&mut entry, &mut out_file)
+            .map_err(|error| format!("failed to extract hermes runtime file: {error}"))?;
+    }
+    if !install_root.join("manifest.json").is_file() {
+        return Err("Hermes runtime archive must contain manifest.json.".into());
+    }
+    replace_dir(&install_root, &app_data_dir.join("hermes-runtime"))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn worker_app_install_hermes_runtime(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<HermesRuntimeInstallResult, String> {
+    let settings = state
+        .settings
+        .lock()
+        .map(|settings| settings.clone())
+        .map_err(|_| "settings lock poisoned".to_string())?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    // Windows ships first (spec §1); the macOS runtime id is registered but
+    // may still report `allowed: false` until its pack is built.
+    let runtime_id = if cfg!(target_os = "macos") {
+        crate::hermes_runtime::HERMES_RUNTIME_ID_MACOS
+    } else {
+        crate::hermes_runtime::HERMES_RUNTIME_ID_WINDOWS
+    };
+    let manifest = fetch_hermes_runtime_manifest(
+        &settings.normalized_server_url(),
+        runtime_id,
+        settings.runtime_channel.as_query_value(),
+    )
+    .await?;
+    let (manifest_path, pack_root) =
+        crate::hermes_runtime::hermes_runtime_pack_paths(&app_data_dir);
+    let profile_root = hermes_profile_root(&app_data_dir);
+    if !manifest.allowed {
+        return Ok(HermesRuntimeInstallResult {
+            status: "blocked".into(),
+            message: manifest
+                .deny_reason
+                .clone()
+                .unwrap_or_else(|| "Hermes runtime pack is not allowed by server policy.".into()),
+            doctor: crate::hermes_runtime::hermes_doctor_from_manifest_path(
+                &manifest_path,
+                &pack_root,
+                &profile_root,
+                query_hermes_version,
+            ),
+        });
+    }
+    let archive_url = manifest
+        .archive_url
+        .clone()
+        .ok_or_else(|| "Hermes runtime manifest does not include archiveUrl.".to_string())?;
+    let archive_sha256 = manifest
+        .archive_sha256
+        .clone()
+        .ok_or_else(|| "Hermes runtime manifest does not include archiveSha256.".to_string())?;
+    let absolute_archive_url = absolute_url(&settings.normalized_server_url(), &archive_url)?;
+    let temp_dir = app_data_dir.join("hermes-runtime-downloads");
+    fs::create_dir_all(&temp_dir)
+        .map_err(|error| format!("failed to create hermes runtime download directory: {error}"))?;
+    let archive_path = temp_dir.join(format!(
+        "{}-{}.zip",
+        sanitize_file_segment(&manifest.runtime_id),
+        sanitize_file_segment(&manifest.version)
+    ));
+    download_runtime_archive(&absolute_archive_url, &archive_path, manifest.archive_size_bytes).await?;
+    let digest = file_sha256(&archive_path)?;
+    if !digest.eq_ignore_ascii_case(&archive_sha256) {
+        return Err(format!(
+            "Hermes runtime archive checksum mismatch. Expected {archive_sha256}, got {digest}."
+        ));
+    }
+    extract_hermes_runtime_archive(&archive_path, &app_data_dir)?;
+
+    let doctor = crate::hermes_runtime::hermes_doctor_from_manifest_path(
+        &manifest_path,
+        &pack_root,
+        &profile_root,
+        query_hermes_version,
+    );
+    if let Ok(mut executor) = state.executor.lock() {
+        executor.set_hermes_doctor(doctor.status.clone(), Some(manifest.hermes_version.clone()));
+    }
+    let status = if doctor.status == "ready" { "installed" } else { "blocked" };
+    Ok(HermesRuntimeInstallResult {
+        status: status.into(),
+        message: format!("Hermes runtime pack {} installed.", manifest.version),
+        doctor,
+    })
+}
+
+/// FIX A — the EXACT payload-construction logic `worker_app_start_connect_session`
+/// (the real registration call site) uses. Extracted as a plain, directly
+/// testable function (this codebase's established pattern for verifying
+/// `#[tauri::command]` bodies — see e.g. `worker_connect_url`,
+/// `token_device_binding_mismatches` — since a `tauri::command` itself
+/// can't be invoked without a running app/`AppHandle`). Wires the REAL
+/// `HermesRegistrationInfo` (never `HermesRegistrationInfo::not_installed()`)
+/// through `build_registration_payload_with_hermes`, so registration
+/// actually reports `capabilitiesJson.hermesMedia.advertised` correctly.
+pub(crate) fn build_start_connect_registration_payload(
+    settings: &WorkerAppSettings,
+    doctor: &DoctorSummary,
+    hermes_doctor: &DoctorSummary,
+    hermes_version: Option<String>,
+    device_binding: crate::credentials::WorkerDeviceBinding,
+) -> WorkerAppRegistrationPayload {
+    let hermes_info = HermesRegistrationInfo::from_doctor(hermes_doctor, hermes_version);
+    build_registration_payload_with_hermes(settings, doctor, device_binding, &hermes_info)
+}
+
 #[tauri::command]
 pub async fn worker_app_start_connect(
     app: tauri::AppHandle,
@@ -1477,7 +1715,14 @@ pub async fn worker_app_start_connect_session(
             "serverUrl": settings.normalized_server_url(),
         }),
     );
-    let payload = build_registration_payload(&settings, &doctor, device_proof.binding());
+    let (hermes_doctor, hermes_version) = compute_hermes_doctor_and_version(&app_data_dir);
+    let payload = build_start_connect_registration_payload(
+        &settings,
+        &doctor,
+        &hermes_doctor,
+        hermes_version,
+        device_proof.binding(),
+    );
     let session = start_worker_connect_session(&settings.normalized_server_url(), &payload).await?;
     app.opener()
         .open_url(session.verification_uri_complete.clone(), None::<&str>)
@@ -2554,10 +2799,13 @@ pub async fn worker_app_open_file(app: tauri::AppHandle, path: String) -> Result
 #[cfg(test)]
 mod tests {
     use super::{
-        normalize_machine_fingerprint_hash, summarize_local_device_proof,
-        token_device_binding_mismatches, worker_connect_url, WorkerTokenBindingSummary,
+        build_start_connect_registration_payload, normalize_machine_fingerprint_hash,
+        summarize_local_device_proof, token_device_binding_mismatches, worker_connect_url,
+        WorkerTokenBindingSummary,
     };
-    use crate::credentials::WorkerDeviceProofMaterial;
+    use crate::credentials::{WorkerDeviceBinding, WorkerDeviceProofMaterial};
+    use crate::runtime_manifest::DoctorSummary;
+    use crate::settings::WorkerAppSettings;
     use base64::Engine;
 
     #[test]
@@ -2566,6 +2814,61 @@ mod tests {
             worker_connect_url("https://smartaihub.app/"),
             "https://smartaihub.app/workers/connect",
         );
+    }
+
+    #[test]
+    fn fix_a_start_connect_registration_payload_carries_real_hermes_readiness() {
+        let settings = WorkerAppSettings::default();
+        let render_doctor = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: None,
+        };
+        let hermes_ready = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: Some("hermes".into()),
+        };
+        let hermes_blocked = DoctorSummary {
+            status: "blocked".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: Some("hermes".into()),
+        };
+        let device_binding = WorkerDeviceBinding {
+            device_id: "wdev_test".into(),
+            machine_fingerprint: "machine_test".into(),
+            public_key: "-----BEGIN PUBLIC KEY-----\\ntest\\n-----END PUBLIC KEY-----".into(),
+        };
+
+        // This is EXACTLY what `worker_app_start_connect_session` calls —
+        // no more `HermesRegistrationInfo::not_installed()` default.
+        let ready_payload = build_start_connect_registration_payload(
+            &settings,
+            &render_doctor,
+            &hermes_ready,
+            Some("hermes-cli 0.18.2".into()),
+            device_binding.clone(),
+        );
+        let blocked_payload = build_start_connect_registration_payload(
+            &settings,
+            &render_doctor,
+            &hermes_blocked,
+            None,
+            device_binding,
+        );
+
+        assert_eq!(ready_payload.capabilities_json["hermesMedia"]["advertised"], true);
+        assert_eq!(
+            ready_payload.capabilities_json["hermesMedia"]["hermesVersion"],
+            "hermes-cli 0.18.2"
+        );
+        assert_eq!(blocked_payload.capabilities_json["hermesMedia"]["advertised"], false);
     }
 
     #[test]

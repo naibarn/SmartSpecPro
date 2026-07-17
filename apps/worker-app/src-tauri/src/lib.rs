@@ -3,6 +3,8 @@ pub mod control_plane;
 pub mod credentials;
 pub mod diagnostics;
 pub mod executor_state;
+pub mod hermes_executor;
+pub mod hermes_runtime;
 pub mod runtime_manifest;
 pub mod settings;
 pub mod worker_control_plane;
@@ -88,6 +90,8 @@ pub fn run() {
             commands::worker_app_open_managed_wsl_runtime_setup,
             commands::worker_app_install_runtime_pack,
             commands::worker_app_clear_runtime_pack,
+            commands::worker_app_install_hermes_runtime,
+            commands::worker_app_hermes_doctor,
             commands::worker_app_start_connect,
             commands::worker_app_start_connect_session,
             commands::worker_app_poll_connect_session,

@@ -49,6 +49,23 @@ type LastJobSummary = {
   logPath?: string | null;
 };
 
+// Feature 135 §11 — Hermes runtime status, polled alongside the rest of
+// ExecutorState. Kept dumb: the Rust side (hermes_runtime.rs/commands.rs)
+// computes doctor/version/update-required state, this UI only renders it.
+type HermesActiveAuth = {
+  verificationUrl: string;
+  userCode: string;
+  expiresAt?: string | null;
+};
+
+type HermesExecutorSummary = {
+  doctorStatus: "ready" | "degraded" | "blocked" | string;
+  hermesVersion?: string | null;
+  updateRequired: boolean;
+  updateRequiredReason?: string | null;
+  activeAuth?: HermesActiveAuth | null;
+};
+
 type ExecutorState = {
   acceptingJobs: boolean;
   currentJobId?: string | null;
@@ -64,6 +81,7 @@ type ExecutorState = {
   previewCommand?: string | null;
   logTail?: string | null;
   lastCompletedJob?: LastJobSummary | null;
+  hermes?: HermesExecutorSummary | null;
 };
 
 type WorkerLoopStatus = {
@@ -267,6 +285,8 @@ function App() {
   const [appVersion, setAppVersion] = useState("");
   const [localRunning, setLocalRunning] = useState(false);
   const [localResult, setLocalResult] = useState<string | null>(null);
+  const [hermesInstalling, setHermesInstalling] = useState(false);
+  const [hermesMessage, setHermesMessage] = useState("");
   const connectionStateRef = useRef(connectionState);
   const loopStartingRef = useRef(false);
   const liveLogRef = useRef<HTMLPreElement | null>(null);
@@ -559,6 +579,31 @@ function App() {
       setDoctor(nextDoctor);
     } finally {
       setDoctorRunning(false);
+    }
+  };
+
+  const runHermesDoctor = async () => {
+    try {
+      await invoke("worker_app_hermes_doctor");
+      void refresh({ updateConnectionMessage: false });
+    } catch (error) {
+      setHermesMessage(formatInvokeError(error));
+    }
+  };
+
+  const installHermesRuntime = async () => {
+    setHermesInstalling(true);
+    setHermesMessage("Installing Hermes runtime pack...");
+    try {
+      const result = await invoke<{ status: string; message: string }>(
+        "worker_app_install_hermes_runtime",
+      );
+      setHermesMessage(result.message);
+      void refresh({ updateConnectionMessage: false });
+    } catch (error) {
+      setHermesMessage(formatInvokeError(error));
+    } finally {
+      setHermesInstalling(false);
     }
   };
 
@@ -889,6 +934,63 @@ function App() {
               ) : null}
             </div>
           )}
+        </article>
+
+        <article className="panel wide">
+          <div className="panel-heading inline">
+            <div>
+              <p className="eyebrow">Feature 135</p>
+              <h2>Hermes (Grok media) runtime</h2>
+            </div>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => void runHermesDoctor()}
+              disabled={hermesInstalling}
+            >
+              Run Hermes checks
+            </button>
+          </div>
+          <p className="subtle">
+            Lets this machine execute your private Grok connections' image/video generation jobs.
+            The Grok OAuth token never leaves this computer.
+          </p>
+          {executor.hermes?.updateRequired ? (
+            <div className="connect-message error">
+              Update required: {executor.hermes.updateRequiredReason || "This worker's Hermes runtime is below the server's minimum supported version."}
+            </div>
+          ) : null}
+          <div className="readiness-summary">
+            <div className="readiness-card">
+              <span className={`status-dot ${executor.hermes?.doctorStatus ?? "warn"}`} />
+              <div>
+                <strong>Runtime doctor</strong>
+                <p>
+                  {executor.hermes
+                    ? `${executor.hermes.doctorStatus} (${executor.hermes.hermesVersion ?? "version unknown"})`
+                    : "Not installed yet."}
+                </p>
+              </div>
+            </div>
+          </div>
+          {executor.hermes?.activeAuth ? (
+            <div className="connect-code-box">
+              <span>Grok device-code approval</span>
+              <strong>{executor.hermes.activeAuth.userCode}</strong>
+              <a href={executor.hermes.activeAuth.verificationUrl}>
+                {executor.hermes.activeAuth.verificationUrl}
+              </a>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => void installHermesRuntime()}
+            disabled={hermesInstalling}
+          >
+            {hermesInstalling ? "Installing..." : "Install / update Hermes runtime"}
+          </button>
+          {hermesMessage ? <p className="connect-message">{hermesMessage}</p> : null}
         </article>
 
         <article className="panel wide settings-panel">

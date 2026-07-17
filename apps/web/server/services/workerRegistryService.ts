@@ -92,6 +92,7 @@ import {
   sanitizeWorkerPayload,
   sanitizeWorkerWarningFlags,
 } from "./workerPayloadSanitizer";
+import { getHermesWorkerSettings } from "./hermesWorkerSettings";
 
 const DEFAULT_LEASE_TTL_MS = 5 * 60 * 1000;
 
@@ -126,6 +127,89 @@ const HERMES_FABRIC_JOB_TYPES: ReadonlySet<string> = new Set([
 function isHermesFabricJobType(jobType: string): boolean {
   return HERMES_FABRIC_JOB_TYPES.has(jobType);
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// Feature 135 §11 — server-side `hermes_worker_min_version` enforcement.
+// Applied at BOTH registration and heartbeat ingestion (never exempted by
+// runtimeType — the shared unit and Worker Apps are equally in scope). Pure
+// helper: no DB/network access, exported for `workerRegistryService.
+// hermesMinVersion.test.ts`.
+// ────────────────────────────────────────────────────────────────────────
+
+/** Extracts the numeric dotted segments from a version-ish string (e.g.
+ *  `"hermes-cli 0.18.2"` -> `[0, 18, 2]`). Non-numeric text around/between
+ *  segments is ignored rather than causing a parse failure. */
+function extractVersionSegments(raw: string): number[] {
+  const match = raw.match(/(\d+(?:\.\d+)*)/);
+  const versionText = match ? match[1] : raw;
+  return versionText.split(".").map((segment) => {
+    const parsed = Number.parseInt(segment, 10);
+    return Number.isFinite(parsed) ? parsed : 0;
+  });
+}
+
+/** Numeric-segment-wise comparison (NOT lexicographic) — `0.18.2` vs
+ *  `0.18.10` must correctly resolve `0.18.2 < 0.18.10`. Returns a negative
+ *  number when `a < b`, positive when `a > b`, `0` when equal. */
+function compareVersionsNumeric(a: string, b: string): number {
+  const segmentsA = extractVersionSegments(a);
+  const segmentsB = extractVersionSegments(b);
+  const length = Math.max(segmentsA.length, segmentsB.length);
+  for (let index = 0; index < length; index += 1) {
+    const diff = (segmentsA[index] ?? 0) - (segmentsB[index] ?? 0);
+    if (diff !== 0) return diff < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+export interface HermesMinVersionEnforcementResult {
+  capabilitiesJson: Record<string, unknown>;
+  belowMinimum: boolean;
+  warning?: string;
+}
+
+/**
+ * Forces `capabilitiesJson.hermesMedia.advertised = false` (+ a `reason`
+ * naming the minimum) when `hermesMedia.hermesVersion` is below
+ * `minVersion`. No-ops (returns the input capabilities untouched) when:
+ *  - `capabilitiesJson.hermesMedia` is absent (no crash, no synthesized
+ *    capability — never invents a hermesMedia block that wasn't offered),
+ *  - `hermesMedia.hermesVersion` is missing/blank, or
+ *  - `minVersion` is blank (`""` = no floor — `hermesWorkerSettings.ts`'s
+ *    documented default).
+ */
+export function enforceHermesMinVersion(
+  capabilitiesJson: unknown,
+  minVersion: string,
+): HermesMinVersionEnforcementResult {
+  const base: Record<string, unknown> = isPlainObject(capabilitiesJson) ? { ...capabilitiesJson } : {};
+  const hermesMedia = isPlainObject(base.hermesMedia) ? (base.hermesMedia as Record<string, unknown>) : null;
+  const hermesVersion = typeof hermesMedia?.hermesVersion === "string" ? hermesMedia.hermesVersion.trim() : "";
+  const trimmedMinVersion = (minVersion ?? "").trim();
+
+  if (!hermesMedia || !hermesVersion || !trimmedMinVersion) {
+    return { capabilitiesJson: base, belowMinimum: false };
+  }
+
+  if (compareVersionsNumeric(hermesVersion, trimmedMinVersion) >= 0) {
+    return { capabilitiesJson: base, belowMinimum: false };
+  }
+
+  const warning = `Hermes runtime version ${hermesVersion} is below the required minimum ${trimmedMinVersion}. Update the Worker App or shared worker runtime pack.`;
+  return {
+    capabilitiesJson: {
+      ...base,
+      hermesMedia: {
+        ...hermesMedia,
+        advertised: false,
+        reason: `below_minimum_version:${trimmedMinVersion}`,
+      },
+    },
+    belowMinimum: true,
+    warning,
+  };
+}
+
 const RECLAIMABLE_JOB_STATUSES: WorkerJobStatus[] = [
   "claimed",
   "preparing",
@@ -1120,6 +1204,18 @@ export async function registerWorker(
     input.auth.tenantId,
     input.payload.externalReference,
   );
+  const mergedCapabilitiesJson = mergeRuntimeMetadata(
+    {
+      ...(isPlainObject(input.payload.capabilitiesJson) ? input.payload.capabilitiesJson : {}),
+      ...(hasDelegatedSpendCaps ? { delegatedSpendCaps } : {}),
+    },
+    effectiveRuntimeMetadataWithAccessPolicy,
+  );
+  // Feature 135 §11 — server-side hermes_worker_min_version enforcement
+  // (applies regardless of runtimeType — the shared unit and Worker Apps
+  // alike). Absent hermesMedia block or absent setting ⇒ no-op.
+  const hermesMinVersion = (await getHermesWorkerSettings()).minHermesVersion;
+  const hermesEnforcement = enforceHermesMinVersion(mergedCapabilitiesJson, hermesMinVersion);
   const nextValues = {
     tenantId: input.auth.tenantId,
     teamId: input.payload.teamId ?? input.auth.teamId ?? null,
@@ -1135,13 +1231,7 @@ export async function registerWorker(
     policyProfileId: policyProfile?.id ?? null,
     externalReference: input.payload.externalReference,
     dashboardUrl: sanitizeDashboardUrl(input.payload.dashboardUrl ?? null),
-    capabilitiesJson: mergeRuntimeMetadata(
-      {
-        ...(isPlainObject(input.payload.capabilitiesJson) ? input.payload.capabilitiesJson : {}),
-        ...(hasDelegatedSpendCaps ? { delegatedSpendCaps } : {}),
-      },
-      effectiveRuntimeMetadataWithAccessPolicy,
-    ),
+    capabilitiesJson: hermesEnforcement.capabilitiesJson,
     hardwareJson: sanitizeWorkerPayload(input.payload.hardwareJson) as Record<string, unknown>,
     healthSummaryJson: buildWorkerHealthSummary(
       input.payload.healthSummaryJson,
@@ -1149,7 +1239,11 @@ export async function registerWorker(
       input.payload.compatibility,
       effectiveRuntimeMetadata,
     ),
-    warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningFlagsJson),
+    warningFlagsJson: sanitizeWorkerWarningFlags(
+      hermesEnforcement.warning
+        ? [...sanitizeWorkerWarningFlags(input.payload.warningFlagsJson), hermesEnforcement.warning]
+        : input.payload.warningFlagsJson,
+    ),
     fileScopeMode: input.payload.fileScopeMode,
     lastSeenAt: new Date(),
     registeredByUserId: input.auth.registeredByUserId ?? null,
@@ -1230,20 +1324,51 @@ export async function recordWorkerHeartbeat(
     worker.status === "disabled" || worker.status === "draining"
       ? worker.status
       : input.payload.status;
+  const incomingHeartbeatRuntimeMetadata = isPlainObject(input.payload.runtimeMetadataJson)
+    ? (input.payload.runtimeMetadataJson as Record<string, unknown>)
+    : {};
+  const mergedHeartbeatCapabilitiesJson = mergeRuntimeMetadata(
+    worker.capabilitiesJson,
+    incomingHeartbeatRuntimeMetadata,
+  );
+  // Feature 135 §11 FIX A — a heartbeat can carry a FRESH `hermesMedia`
+  // block (the Worker App's per-tick doctor probe) inside
+  // `runtimeMetadataJson`. `mergeRuntimeMetadata` nests the whole payload
+  // under a `runtimeMetadata` sub-key (never flattening it to the top
+  // level `enforceHermesMinVersion` reads from), so explicitly promote it
+  // here — overwriting the STALE registration-time value with what THIS
+  // heartbeat actually observed. Absent (e.g. the "active heartbeat" calls
+  // fired during an in-flight HyperFrames render, which send no hermes
+  // probe) ⇒ the previously-persisted top-level `hermesMedia` is left
+  // untouched rather than clobbered.
+  const freshHermesMedia = isPlainObject(incomingHeartbeatRuntimeMetadata.hermesMedia)
+    ? (incomingHeartbeatRuntimeMetadata.hermesMedia as Record<string, unknown>)
+    : null;
+  if (freshHermesMedia) {
+    mergedHeartbeatCapabilitiesJson.hermesMedia = freshHermesMedia;
+  }
+  // Feature 135 §11 — same rule as registration: a worker registered before
+  // an admin raised `hermes_worker_min_version` gets demoted on its next
+  // heartbeat (never exempted by runtimeType). The warning is surfaced on
+  // the returned/persisted `warningFlagsJson` — section-12 wires it into
+  // the heartbeat HTTP response's warning field.
+  const hermesMinVersion = (await getHermesWorkerSettings()).minHermesVersion;
+  const hermesEnforcement = enforceHermesMinVersion(mergedHeartbeatCapabilitiesJson, hermesMinVersion);
   const updatedWorker = await repo.updateWorker(worker.id, {
     status: nextStatus,
     runtimeVersion: input.payload.compatibility.runtimeVersion,
-    capabilitiesJson: mergeRuntimeMetadata(
-      worker.capabilitiesJson,
-      input.payload.runtimeMetadataJson ?? {},
-    ),
+    capabilitiesJson: hermesEnforcement.capabilitiesJson,
     healthSummaryJson: buildWorkerHealthSummary(
       worker.healthSummaryJson,
       worker.runtimeType,
       input.payload.compatibility,
       input.payload.runtimeMetadataJson ?? {},
     ),
-    warningFlagsJson: sanitizeWorkerWarningFlags(input.payload.warningsJson),
+    warningFlagsJson: sanitizeWorkerWarningFlags(
+      hermesEnforcement.warning
+        ? [...sanitizeWorkerWarningFlags(input.payload.warningsJson), hermesEnforcement.warning]
+        : input.payload.warningsJson,
+    ),
     lastSeenAt: new Date(),
   });
 

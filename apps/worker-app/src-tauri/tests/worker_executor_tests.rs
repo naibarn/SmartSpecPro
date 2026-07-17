@@ -43,6 +43,7 @@ fn claimed_job() -> ClaimedWorkerJob {
                 ]
             }
         }),
+        ..Default::default()
     }
 }
 

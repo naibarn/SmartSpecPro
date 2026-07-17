@@ -10,6 +10,44 @@ pub const WORKER_RUNTIME_FAMILY_SCHEMA_VERSION: &str = "2026-04-08";
 pub const WORKER_RUNTIME_PROFILE_SCHEMA_VERSION: &str = "2026-04-08";
 pub const WORKER_RUNTIME_TYPE: &str = "desktop_zeroclaw_managed";
 pub const HYPERFRAMES_CAPABILITY: &str = "hyperframes_final_composite";
+/// Feature 135 §11 — matches `HERMES_MEDIA_CAPABILITY_FAMILY` in
+/// `hermes_executor.rs` (frozen to `apps/web/shared/workerRuntime.ts`'s
+/// `HERMES_MEDIA_CAPABILITY_FAMILIES[0]`).
+pub const HERMES_MEDIA_CAPABILITY: &str = "hermes-media-generation";
+
+/// Feature 135 §11 — registration-time Hermes readiness input. Kept as its
+/// own struct (rather than extra `build_registration_payload` positional
+/// params) so callers that have no Hermes doctor yet (i.e. it hasn't been
+/// installed) can pass `HermesRegistrationInfo::not_installed()`.
+#[derive(Debug, Clone)]
+pub struct HermesRegistrationInfo {
+    pub ready: bool,
+    pub reason: String,
+    pub hermes_version: Option<String>,
+}
+
+impl HermesRegistrationInfo {
+    pub fn not_installed() -> Self {
+        Self {
+            ready: false,
+            reason: "hermes_not_installed".into(),
+            hermes_version: None,
+        }
+    }
+
+    pub fn from_doctor(doctor: &DoctorSummary, hermes_version: Option<String>) -> Self {
+        let ready = doctor.status == "ready";
+        Self {
+            ready,
+            reason: if ready {
+                "doctor_passed".into()
+            } else {
+                "doctor_not_ready".into()
+            },
+            hermes_version,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -57,6 +95,24 @@ pub fn build_registration_payload(
     settings: &WorkerAppSettings,
     doctor: &DoctorSummary,
     device_binding: WorkerDeviceBinding,
+) -> WorkerAppRegistrationPayload {
+    build_registration_payload_with_hermes(
+        settings,
+        doctor,
+        device_binding,
+        &HermesRegistrationInfo::not_installed(),
+    )
+}
+
+/// Feature 135 §11 — same payload as `build_registration_payload`, plus
+/// `capabilitiesJson.hermesMedia = { capability, advertised, reason,
+/// hermesVersion }`, gated on the Hermes doctor exactly like `hyperframes`
+/// is gated on its own doctor.
+pub fn build_registration_payload_with_hermes(
+    settings: &WorkerAppSettings,
+    doctor: &DoctorSummary,
+    device_binding: WorkerDeviceBinding,
+    hermes: &HermesRegistrationInfo,
 ) -> WorkerAppRegistrationPayload {
     let ready = doctor.status == "ready";
     let machine_name = machine_name();
@@ -111,6 +167,12 @@ pub fn build_registration_payload(
                 "capability": HYPERFRAMES_CAPABILITY,
                 "advertised": ready,
                 "reason": if ready { "doctor_passed" } else { "doctor_not_ready" },
+            },
+            "hermesMedia": {
+                "capability": HERMES_MEDIA_CAPABILITY,
+                "advertised": hermes.ready,
+                "reason": hermes.reason,
+                "hermesVersion": hermes.hermes_version,
             },
             "workerApp": {
                 "sharingMode": settings.sharing_mode,
@@ -240,6 +302,86 @@ mod tests {
             ready_payload.runtime_metadata_json.service_mode,
             "foreground"
         );
+        assert_eq!(
+            ready_payload.capabilities_json["hyperframes"]["advertised"],
+            true
+        );
+        // Feature 135 §11 — hermesMedia defaults to not-advertised when the
+        // caller doesn't pass Hermes readiness info at all.
+        assert_eq!(
+            blocked_payload.capabilities_json["hermesMedia"]["advertised"],
+            false
+        );
+        assert_eq!(
+            blocked_payload.capabilities_json["hermesMedia"]["capability"],
+            "hermes-media-generation"
+        );
+    }
+
+    #[test]
+    fn registration_advertises_hermes_media_only_when_hermes_doctor_is_ready() {
+        let settings = WorkerAppSettings {
+            accept_jobs: true,
+            ..WorkerAppSettings::default()
+        };
+        let ready_hyperframes = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: None,
+        };
+        let hermes_blocked = DoctorSummary {
+            status: "blocked".into(),
+            checks: vec![],
+            recommended_actions: vec!["Install the Hermes runtime pack".into()],
+            official_hyperframes_runtime: None,
+            runtime_kind: Some("hermes".into()),
+        };
+        let hermes_ready = DoctorSummary {
+            status: "ready".into(),
+            checks: vec![],
+            recommended_actions: vec![],
+            official_hyperframes_runtime: None,
+            runtime_kind: Some("hermes".into()),
+        };
+        let device_binding = WorkerDeviceBinding {
+            device_id: "wdev_test".into(),
+            machine_fingerprint: "machine_test".into(),
+            public_key: "-----BEGIN PUBLIC KEY-----\\ntest\\n-----END PUBLIC KEY-----".into(),
+        };
+
+        let blocked_payload = build_registration_payload_with_hermes(
+            &settings,
+            &ready_hyperframes,
+            device_binding.clone(),
+            &HermesRegistrationInfo::from_doctor(&hermes_blocked, None),
+        );
+        let ready_payload = build_registration_payload_with_hermes(
+            &settings,
+            &ready_hyperframes,
+            device_binding,
+            &HermesRegistrationInfo::from_doctor(&hermes_ready, Some("hermes-cli 0.18.2".into())),
+        );
+
+        assert_eq!(
+            blocked_payload.capabilities_json["hermesMedia"]["advertised"],
+            false
+        );
+        assert_eq!(
+            blocked_payload.capabilities_json["hermesMedia"]["reason"],
+            "doctor_not_ready"
+        );
+        assert_eq!(
+            ready_payload.capabilities_json["hermesMedia"]["advertised"],
+            true
+        );
+        assert_eq!(
+            ready_payload.capabilities_json["hermesMedia"]["hermesVersion"],
+            "hermes-cli 0.18.2"
+        );
+        // Registering hermes readiness must never disturb the independent
+        // hyperframes gate.
         assert_eq!(
             ready_payload.capabilities_json["hyperframes"]["advertised"],
             true
