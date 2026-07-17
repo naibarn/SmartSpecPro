@@ -158,10 +158,16 @@ interface FormData {
   priority: number;
   // API Config (configJson). Widened to the full `MediaTransport` union
   // (Feature 135 added a third "hermes_worker" arm) so an edit/duplicate
-  // round-trip preserves the real transport value even though this admin
-  // UI only exposes a picker for the two pre-existing arms so far — see
-  // the pass-through comment at the handleEditModel/handleDuplicateModel
-  // call sites (hermes-aware admin UI ships in a later section).
+  // round-trip preserves the real transport value. The Generation Route
+  // Select renders/keeps this value correctly for a hermes_worker row (and
+  // disables the picker so it can't be clobbered to gateway_api) but does
+  // NOT let an admin author a NEW hermes_worker row from scratch — that
+  // still requires the seed script, since a correct row needs
+  // `configJson.hermes.*` / `referenceImageLimit` / `pricing` that this
+  // form has no sub-form for yet. See the picker at the
+  // `formData.transport === "hermes_worker"` branch below and the
+  // pass-through comment at the handleEditModel/handleDuplicateModel call
+  // sites.
   transport: MediaTransport;
   providerModelId: string;
   mcpProviderKey: string;
@@ -2732,13 +2738,24 @@ export default function AdminMediaModels() {
                       <TableCell>
                         <div className="space-y-1">
                           <Badge
-                            variant={transportConfig.transport === "mcp" ? "default" : "outline"}
-                            className={transportConfig.transport === "mcp" ? "bg-sky-500" : ""}
+                            variant={
+                              transportConfig.transport === "mcp" ||
+                              transportConfig.transport === "hermes_worker"
+                                ? "default"
+                                : "outline"
+                            }
+                            className={
+                              transportConfig.transport === "mcp"
+                                ? "bg-sky-500"
+                                : transportConfig.transport === "hermes_worker"
+                                  ? "bg-violet-500"
+                                  : ""
+                            }
                           >
                             {getMediaModelTransportLabel(transportConfig)}
                           </Badge>
                           <div className="text-xs text-muted-foreground">
-                            {transportConfig.transport === "mcp"
+                            {transportConfig.creditSource === "provider_account"
                               ? "Provider account"
                               : "Platform credits"}
                           </div>
@@ -3633,20 +3650,37 @@ function ModelForm({
               <Label htmlFor="transport">Generation Route</Label>
               <Select
                 value={formData.transport}
-                onValueChange={(value: "gateway_api" | "mcp") =>
+                onValueChange={(value: MediaTransport) =>
                   setFormData({ ...formData, transport: value })
                 }
+                disabled={formData.transport === "hermes_worker"}
               >
-                <SelectTrigger>
+                <SelectTrigger data-testid="transport">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="gateway_api">Gateway API</SelectItem>
                   <SelectItem value="mcp">MCP Connect</SelectItem>
+                  {/* Feature 135 — hermes_worker rows are seed-only today (no
+                      sub-form here can author `configJson.hermes.*` /
+                      `referenceImageLimit` / `pricing` correctly), so this
+                      option is only ever rendered to give an already-hermes
+                      row a matching SelectItem (fixes the blank Generation
+                      Route field). The Select is disabled whenever this is
+                      the active transport (below), so it's never offered as
+                      a choice for gateway_api/mcp rows and can't be selected
+                      into from this dropdown. */}
+                  {formData.transport === "hermes_worker" && (
+                    <SelectItem value="hermes_worker">
+                      Grok via Hermes (user subscription)
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Users choose the model; SmartSpecPro calls this route automatically.
+                {formData.transport === "hermes_worker"
+                  ? "Hermes rows are provisioned by the seed script; editing the route here is disabled to prevent clobbering the model to Gateway API."
+                  : "Users choose the model; SmartSpecPro calls this route automatically."}
               </p>
             </div>
             <div className="grid gap-2">
