@@ -36,3 +36,11 @@ regeneration against the current revision.
 
 No old artifact is deleted or silently used as current.
 
+## Implementation evidence
+
+- Added canonical SHA-256 storyboard revisions and additive provenance.
+- Storyboard replacement preserves existing artifacts while marking them stale.
+- Regenerated motion packs are stamped current; paid stale video use is blocked.
+- Episode detail exposes provenance and UI displays an accessible stale warning.
+- Legacy unknown artifacts remain viewable and grandfathered until edited;
+  future storyboard edits are protected by explicit stale metadata.

@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "socraticode": {
+      "command": "/home/dev/tools/socraticode-docker/socraticode-mcp.sh"
+    }
+  }
+}

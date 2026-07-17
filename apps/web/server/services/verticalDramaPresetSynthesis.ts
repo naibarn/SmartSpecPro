@@ -160,7 +160,14 @@ const synthesizedPresetDraftSchema = z.object({
   mixRecipe: z
     .object({
       primaryFlavor: z.string().min(1),
-      supportingFlavors: z.array(z.string().min(1)).min(1),
+      // Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.3) relaxed
+      // this from `.min(1)`: with a premise and ZERO selected presets there
+      // is genuinely no second flavor to name, and requiring one forced the
+      // model to fabricate a nonexistent preset just to pass validation.
+      // Every pre-Phase-2 caller (>=2 selections) still has real presets to
+      // name, so this only ever ACCEPTS a superset of previously-valid
+      // responses — no existing caller's behavior changes.
+      supportingFlavors: z.array(z.string().min(1)),
       rationale: z.string().min(1),
     })
     .passthrough(),
@@ -269,9 +276,49 @@ function normalizeSynthesizedCharacters(
  * vertical-drama prompt builders — an absent premise must never append
  * anything to the prompt (spec §16.1 byte-identical acceptance criterion).
  */
-function buildUserPremisePrimaryBlock(userPremise: string | undefined): string | null {
+/**
+ * `hasPresetSelections` (Phase 2, `planning/vd-premise-first-wizard/plan.md`
+ * §2.3) — true when the caller selected at least one preset/category flavor
+ * alongside the premise. Before Phase 2, a premise could never reach this
+ * function with ZERO presets selected (the `MIN_SELECTIONS=2` gate blocked
+ * it upstream), so the "selected presets (1-5) are supporting flavor" line
+ * below was always true. Phase 2 lifts that gate when a premise is present
+ * (see `validatePresetSynthesisSelection`'s `hasUserPremise` param), so this
+ * block must now render DIFFERENT guidance for the genuinely-zero-selection
+ * case — otherwise the prompt tells the model to treat nonexistent presets
+ * as supporting flavor and to consult a `primarySelectionId` that (per the
+ * `buildFacetAssignments` fix below) no longer names a real preset, exactly
+ * the "dangling primary" incoherence flagged in the task brief. The
+ * with-selections branch is worded identically to before Phase 2 (still
+ * "(1-5)", since 1 is now also a valid non-zero count) — byte-identical
+ * prompt for every caller that already had >=1 selection.
+ */
+function buildUserPremisePrimaryBlock(
+  userPremise: string | undefined,
+  hasPresetSelections: boolean,
+): string | null {
   const trimmed = userPremise?.trim();
   if (!trimmed) return null;
+
+  const blendingRules = hasPresetSelections
+    ? [
+        "- The selected presets (1-5) are supporting flavor: use them to intensify",
+        "  drama, sharpen tropes, add contemporary texture, and fill gaps the user",
+        "  left open. Do not let any preset displace a premise-stated element.",
+        "- primarySelectionId, when also provided, selects which preset contributes",
+        "  the strongest *flavor*, not the spine.",
+        "- If a preset directly conflicts with the premise, keep the premise and",
+        "  record the dropped preset element in `warnings`.",
+      ]
+    : [
+        "- No preset or category was selected — build the ENTIRE draft from the",
+        "  premise alone. Do not invent or reference a preset that was not",
+        "  selected; ignore any `primarySelectionId`/preset-blend framing",
+        '  elsewhere in this prompt and set `mixRecipe.primaryFlavor` to',
+        '  "user_premise", leave `mixRecipe.supportingFlavors` empty, and use',
+        "  `mixRecipe.rationale` to note the draft is synthesized purely from",
+        "  the user's premise.",
+      ];
 
   return [
     "USER PREMISE (PRIMARY SPINE):",
@@ -280,13 +327,7 @@ function buildUserPremisePrimaryBlock(userPremise: string | undefined): string |
     "Blending rules when a user premise is present:",
     "- The user premise is the primary story spine. Setting, protagonist, core",
     "  conflict, and direction stated by the user are non-negotiable.",
-    "- The selected presets (1-5) are supporting flavor: use them to intensify",
-    "  drama, sharpen tropes, add contemporary texture, and fill gaps the user",
-    "  left open. Do not let any preset displace a premise-stated element.",
-    "- primarySelectionId, when also provided, selects which preset contributes",
-    "  the strongest *flavor*, not the spine.",
-    "- If a preset directly conflicts with the premise, keep the premise and",
-    "  record the dropped preset element in `warnings`.",
+    ...blendingRules,
     "- The synthesized draft's logline and mainPlot must be traceable to the",
     "  premise: a reader comparing them side by side must see the user's story.",
   ].join("\n");
@@ -534,6 +575,17 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
     label: genrePresetCategoryLabel(category, params.locale === "th" ? "th" : "en"),
   }));
 
+  // Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.3) — whether the
+  // caller selected ANY preset/category flavor at all. Before Phase 2 this
+  // was always true whenever `buildUserPrompt` ran (either the premise flag
+  // was off, so `MIN_SELECTIONS=2` still gated the caller, or a premise was
+  // present alongside >=2 selections). Threaded into `primarySelectionId`'s
+  // "auto" fallback below and `buildUserPremisePrimaryBlock`/`rules` so a
+  // genuinely-zero-selection prompt never asks the model to consult a
+  // "primary" or "supporting flavor" that does not exist.
+  const hasPresetSelections =
+    params.selectedPresets.length > 0 || params.selectedCategories.length > 0;
+
   const primarySelectionId =
     params.primarySelectionId ||
     params.selectedPresets[0]?.id ||
@@ -551,9 +603,14 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
     toneHint: clampText(params.toneHint, 180),
     rules: [
       "Create one coherent preset draft, not a collage.",
-      "Use one primary story spine and supporting flavors for situations, tone, and scene texture.",
+      hasPresetSelections
+        ? "Use one primary story spine and supporting flavors for situations, tone, and scene texture."
+        : "No preset or category was selected — build the entire draft from the user premise alone; ignore `primarySelectionId` (it is a placeholder, not a real preset).",
       "Keep the result easy for a non-technical creator to edit.",
       "Product or service tie-in may help a scene, but must not magically solve the main conflict.",
+      hasPresetSelections
+        ? 'Use "mixRecipe.primaryFlavor" to name the dominant preset/category flavor and "mixRecipe.supportingFlavors" for the rest.'
+        : 'Set "mixRecipe.primaryFlavor" to "user_premise" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.',
       "Use compact JSON only.",
       `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
@@ -565,7 +622,7 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
   return [
     renderCriteriaVersionMarker(),
     langInstruction,
-    buildUserPremisePrimaryBlock(params.userPremise),
+    buildUserPremisePrimaryBlock(params.userPremise, hasPresetSelections),
     "Synthesize a new Vertical Drama Series genre preset from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
@@ -579,9 +636,26 @@ function buildUserPrompt(params: SynthesizeVerticalDramaPresetParams): string {
 export function validatePresetSynthesisSelection(params: {
   selectedPresets: unknown[];
   selectedCategories: string[];
+  /**
+   * Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.1) — true only
+   * when the SERVICE actually received a non-empty, tenant-flag-gated user
+   * premise (see `SynthesizeVerticalDramaPresetParams.userPremise` /
+   * `SynthesizeVerticalDramaPresetV2Params.userPremise`: the router already
+   * forces this to `undefined` when `verticalDramaUserPremise` is off, so
+   * both call sites below derive this fact from their OWN gated `params`,
+   * never from raw client input). When true, the premise itself is a
+   * sufficient story spine, so the "at least 2 flavors" floor is lifted to
+   * 0. Omitted/false reproduces today's `MIN_SELECTIONS` behavior
+   * byte-for-byte — every existing caller (no premise, or premise support
+   * not yet threaded through) is unaffected. `MAX_SELECTIONS` (5) applies
+   * unconditionally either way — this flag only ever lowers the floor, never
+   * raises the ceiling.
+   */
+  hasUserPremise?: boolean;
 }) {
   const total = params.selectedPresets.length + uniqueStrings(params.selectedCategories).length;
-  if (total < MIN_SELECTIONS) {
+  const minSelections = params.hasUserPremise ? 0 : MIN_SELECTIONS;
+  if (total < minSelections) {
     throw new PresetSynthesisInputError("Select at least 2 story flavors for Mix and Match");
   }
   if (total > MAX_SELECTIONS) {
@@ -593,9 +667,16 @@ export async function synthesizeVerticalDramaPreset(
   params: SynthesizeVerticalDramaPresetParams,
 ): Promise<{ draft: SynthesizedGenrePresetDraft; creditsUsed: number; model: string }> {
   const selectedCategories = uniqueStrings(params.selectedCategories);
+  // Derived from `params.userPremise` — the value THIS function actually
+  // received, which the router already forced to `undefined` when the
+  // `verticalDramaUserPremise` tenant flag is off (see the param's own
+  // doc-comment). Never derive this from anything else, or a flag-off
+  // tenant could synthesize a draft the prompt then silently ignores.
+  const hasUserPremise = Boolean(params.userPremise?.trim());
   validatePresetSynthesisSelection({
     selectedPresets: params.selectedPresets,
     selectedCategories,
+    hasUserPremise,
   });
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);
@@ -716,6 +797,20 @@ export interface VerticalDramaFacetAssignmentEntry {
  * `presets` narrows `selections` to KNOWN ids only (defensive — a stray/
  * unmatched presetId is silently dropped from the assignment table rather
  * than corrupting it). Exported + unit-tested directly.
+ *
+ * Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.3) hardening: the
+ * SAME "known ids only" guard now ALSO applies to `primarySelectionId`
+ * itself. Previously it was seeded into every facet unconditionally, even
+ * when it did not match any preset in `presets` — harmless before Phase 2,
+ * because a `primarySelectionId` only ever reached here derived from a real
+ * selection (`MIN_SELECTIONS=2` guaranteed at least one). Phase 2 lets a
+ * premise-only caller reach this with ZERO presets, whose callers fall back
+ * to a placeholder id (`"auto"`, see `synthesizeVerticalDramaPresetV2`) that
+ * names no real preset — seeding it in would render a `facetAssignments`
+ * table telling the model to blend a preset that does not exist. Skipping
+ * the seed when `primarySelectionId` is unknown leaves every facet's
+ * `presetIds` at its already-initialized `[]`, which is exactly correct:
+ * nothing was selected, so nothing is assigned.
  */
 export function buildFacetAssignments(
   selections: VerticalDramaPresetMixSelection[],
@@ -733,9 +828,11 @@ export function buildFacetAssignments(
     VERTICAL_DRAMA_BLEND_FACETS.map((facet) => [facet, [] as string[]]),
   );
 
-  byFacet.set("story_spine", [primarySelectionId]);
-  for (const facet of NON_SPINE_BLEND_FACETS) {
-    byFacet.get(facet)!.push(primarySelectionId);
+  if (knownIds.has(primarySelectionId)) {
+    byFacet.set("story_spine", [primarySelectionId]);
+    for (const facet of NON_SPINE_BLEND_FACETS) {
+      byFacet.get(facet)!.push(primarySelectionId);
+    }
   }
 
   nonPrimarySelections.forEach((selection, index) => {
@@ -963,6 +1060,25 @@ function buildUserPromptV2(args: {
     label: genrePresetCategoryLabel(category, params.locale === "th" ? "th" : "en"),
   }));
 
+  // Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.3) — same fact as
+  // `buildUserPrompt`'s (v1) `hasPresetSelections`, computed from the SAME
+  // resolved `selections`/`selectedCategories` this function already
+  // received (not raw client input). When false, `facetAssignments` above
+  // is already all-empty (see `buildFacetAssignments`'s "known ids only"
+  // guard), so the "verifiable blend" rules below must not ask the model to
+  // fill facet slots or name a PRIMARY preset that does not exist.
+  const hasPresetSelections = selections.length > 0 || selectedCategories.length > 0;
+
+  const blendCoreRules = hasPresetSelections
+    ? [
+        "Create one coherent preset draft that VERIFIABLY blends every selected preset — not a collage, and never let a non-primary preset silently vanish into unverifiable flavor.",
+        'The PRIMARY selection\'s story spine (mainPlot/seasonArc skeleton) drives the main plot; every OTHER selected preset must still land concrete, genuine ("kept": true) contributions in its assigned facets below — fill EVERY facet slot assigned to it in "facetAssignments".',
+      ]
+    : [
+        "No preset or category was selected — the user premise above is the sole story spine. Do not invent, reference, or blend a preset that was not selected.",
+        'Every facet in "facetAssignments" below intentionally has an empty "assignedPresets" — return "blendFacets" covering every facet with an empty "contributions" array for each (there is nothing to blend).',
+      ];
+
   const payload = {
     language: params.locale,
     selectedPresets: selectedPresetSummaries,
@@ -983,9 +1099,12 @@ function buildUserPromptV2(args: {
     targetEpisodeCount: params.targetEpisodeCount ?? 10,
     toneHint: clampText(params.toneHint, 180),
     rules: [
-      "Create one coherent preset draft that VERIFIABLY blends every selected preset — not a collage, and never let a non-primary preset silently vanish into unverifiable flavor.",
-      'The PRIMARY selection\'s story spine (mainPlot/seasonArc skeleton) drives the main plot; every OTHER selected preset must still land concrete, genuine ("kept": true) contributions in its assigned facets below — fill EVERY facet slot assigned to it in "facetAssignments".',
-      `"blendFacets" must cover every facet in this exact set: ${VERTICAL_DRAMA_BLEND_FACETS.join(", ")}. For each facet, return one "contributions" entry per preset assigned to it in "facetAssignments", each with a concrete "element" string and "kept": true only when you genuinely used that element in the draft (mark it false instead of omitting it when you decided not to use it — never drop an assigned preset's entry).`,
+      ...blendCoreRules,
+      `"blendFacets" must cover every facet in this exact set: ${VERTICAL_DRAMA_BLEND_FACETS.join(", ")}.${
+        hasPresetSelections
+          ? ' For each facet, return one "contributions" entry per preset assigned to it in "facetAssignments", each with a concrete "element" string and "kept": true only when you genuinely used that element in the draft (mark it false instead of omitting it when you decided not to use it — never drop an assigned preset\'s entry).'
+          : ""
+      }`,
       mergedVisualIdentity
         ? 'For the "visual_identity" facet, do NOT re-list the palette/motifs/wardrobe/props/negative fragments given in "visualIdentityContext" (already fixed) — only contribute a short "element" noting how each identity-bearing preset\'s style shaped the blended look, and "kept": true when it genuinely did.'
         : 'No selected preset carries a structured visual identity — you may leave "visual_identity" contributions minimal or empty.',
@@ -994,6 +1113,9 @@ function buildUserPromptV2(args: {
         : 'Omit "visualIdentity" entirely (no preset supplied a structured visual identity to build from).',
       "Keep the result easy for a non-technical creator to edit.",
       "Product or service tie-in may help a scene, but must not magically solve the main conflict.",
+      hasPresetSelections
+        ? 'Use "mixRecipe.primaryFlavor" to name the dominant preset/category flavor and "mixRecipe.supportingFlavors" for the rest.'
+        : 'Set "mixRecipe.primaryFlavor" to "user_premise" and leave "mixRecipe.supportingFlavors" as an empty array — there is no preset to name.',
       "Use compact JSON only.",
       `"title" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.genre} characters (it fills the series genre field) — keep it short and punchy.`,
       `"tone" MUST be at most ${CREATE_SERIES_FIELD_LIMITS.tone} characters — a brief phrase, not a sentence.`,
@@ -1014,7 +1136,7 @@ function buildUserPromptV2(args: {
   return [
     renderCriteriaVersionMarker(),
     langInstruction,
-    buildUserPremisePrimaryBlock(params.userPremise),
+    buildUserPremisePrimaryBlock(params.userPremise, hasPresetSelections),
     "Synthesize a new Vertical Drama Series genre preset (Mix and Match v2 — verifiable blend) from this payload:",
     JSON.stringify(payload),
     "Return exactly this JSON shape:",
@@ -1082,9 +1204,14 @@ export async function synthesizeVerticalDramaPresetV2(
     selections: params.selections,
   });
 
+  // See `synthesizeVerticalDramaPreset`'s identical comment — derived from
+  // THIS function's own already-gated `params.userPremise`, never raw
+  // client input.
+  const hasUserPremise = Boolean(params.userPremise?.trim());
   validatePresetSynthesisSelection({
     selectedPresets: selections,
     selectedCategories,
+    hasUserPremise,
   });
 
   const hasCredits = await hasEnoughCredits(params.userId, 1);

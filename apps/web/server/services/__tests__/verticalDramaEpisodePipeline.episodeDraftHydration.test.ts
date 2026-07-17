@@ -56,7 +56,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
@@ -251,8 +260,13 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases`
+      // rows); empty alias table is out of scope for this file's own
+      // episode-draft-hydration assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
-      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
       // (the series' location roster, `existingLocations`); empty roster is
       // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));
@@ -272,8 +286,13 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases`
+      // rows); empty alias table is out of scope for this file's own
+      // episode-draft-hydration assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
-      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
       // (the series' location roster, `existingLocations`); empty roster is
       // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));
@@ -290,8 +309,13 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases`
+      // rows); empty alias table is out of scope for this file's own
+      // episode-draft-hydration assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
-      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
       // (the series' location roster, `existingLocations`); empty roster is
       // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));

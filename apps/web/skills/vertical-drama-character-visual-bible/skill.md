@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Character Visual Bible
 description: Create and maintain production-ready character visual bibles and image-generation prompt packs (imported character-visual-bible-skill).
-version: 1.3.2
+version: 1.3.3
 category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
@@ -423,6 +423,24 @@ elegance for the villain tier only. For support, use grounded believable attract
 without stealing the leads' visual grammar. `occupation` is always secondary: write the
 role/beauty identity first, then let CEO/bodyguard/teacher/etc. shape wardrobe and world.
 
+### Occupation-accurate wardrobe — uniformed professions
+
+When `occupation` (or the character `description`/story context) names a profession with
+regulated or job-specific workwear — aircraft maintenance engineer, pilot, cabin crew,
+flight-operations coordinator, doctor, nurse, paramedic, police, military, firefighter,
+chef, mechanic, lab scientist, construction engineer, security guard, and similar — the
+default wardrobe MUST be that exact profession's accurate, real-world-correct uniform,
+workwear, and equipment. Never substitute an adjacent or more glamorous profession's
+uniform: an aircraft *maintenance engineer* wears maintenance/engineering workwear with
+utility gear (work shirt or polo with department patch, utility trousers, safety shoes,
+radio/lanyard/ID), NOT a pilot's uniform with epaulettes and wings; a paramedic is not
+styled as a surgeon; a ground-operations coordinator is not styled as cabin crew. Use the
+most precise profession actually stated — never round it to the genre's most iconic job
+(an aviation series is not a reason to dress every lead as a pilot). Keep the uniform
+premium and camera-ready per the role tier, but occupation-accurate. If no occupation is
+stated anywhere, derive wardrobe from the role/beauty identity and story world without
+inventing a specific uniformed profession.
+
 Every lead/villain tier's `negative_prompt` MUST also include its matching negative terms, to
 actively steer away from the wrong look:
 - **Female lead negatives**: cheap fashion-catalog look, flat corporate headshot,
@@ -528,9 +546,31 @@ the description establishes — e.g. a described 12-year-old character stays a n
 age-appropriate child; never age them up into an adult lead look.
 
 **Region/ethnicity styling is never hardcoded here.** Use whatever region/ethnicity
-descriptor the caller supplies (series-level target-audience-region default, or an
-explicit ethnicity/nationality in the character's own `description`, which always wins) —
-do not assume or hardcode any particular region.
+descriptor the caller supplies. The full precedence order, HIGHEST first
+(`planning/vd-per-character-ethnicity/plan.md`, 2026-07-17):
+
+1. **`region_ethnicity` fact on the character object, where `explicit: true`** — a
+   per-character ethnicity/region the user picked specifically for THIS character, in the
+   app's character editor (free-text override or one of the 9 preset regions). This is the
+   MOST authoritative source and OUTRANKS everything below, INCLUDING the character's own
+   `description` — if `description` implies a different ethnicity than `region_ethnicity`
+   states, `region_ethnicity` wins. You will also receive an explicit instruction line
+   in the user message spelling this precedence out for the specific character; follow it.
+2. Explicit ethnicity/nationality stated in the character's own `description` (unchanged
+   from before — still wins over the series-level default below).
+3. The series-level target-audience-region default (an instruction line, always phrased as
+   a fallback/default, never as an override).
+
+Do not assume or hardcode any particular region when none of the above is present.
+
+**Whenever a `region_ethnicity` fact (or an explicit ethnicity in `description`) is
+present, you MUST make that look unmistakably present, IN-LINE, in the prose of
+`primary_portrait_prompt` itself** — not only summarized in `visual_identity_summary` or a
+separate note. A downstream image-generation model only ever receives the
+`primary_portrait_prompt` string; if the ethnicity/region fact does not appear inside that
+exact string, the rendered face will not reflect it, no matter how clearly the fact was
+stated in your input. Weave it naturally into the same sentence describing facial
+geometry/skin/hair — do not just prepend an unconnected clause.
 
 ## Solo-portrait identity reference — MANDATORY
 

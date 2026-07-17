@@ -1,0 +1,21 @@
+[Unit]
+Description=SocratiCode SmartSpecPro file watcher
+Requires=docker.service
+After=docker.service network-online.target socraticode-smartspecpro-index.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev/projects/SmartSpecPro
+ExecStart=/usr/bin/node /home/dev/tools/socraticode-docker/watch-smartspecpro.mjs
+Restart=always
+RestartSec=30
+KillMode=control-group
+TimeoutStopSec=45s
+OOMPolicy=stop
+Slice=system-smartspec-agent.slice
+
+[Install]
+WantedBy=multi-user.target

@@ -129,3 +129,256 @@ export function readTargetAudienceRegionFromBible(
 ): VerticalDramaTargetAudienceRegion {
   return normalizeTargetAudienceRegion(bible?.targetAudienceRegion);
 }
+
+/* -------------------------------------------------------------------------- */
+/* Per-character region/ethnicity override (planning/vd-per-character-        */
+/* ethnicity/plan.md, 2026-07-17)                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Short, lowercase keyword(s) that plausibly appear in prose honoring this
+ * region's descriptor above — used ONLY for the deterministic containment
+ * check (`promptContainsRegionEthnicityAnchor`) and to guarantee the
+ * deterministic fallback prepend (`ensureRegionEthnicityAnchorPresent`)
+ * always leaves a detectable anchor behind (every keyword here is a
+ * substring of its region's own `VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS`
+ * entry, lowercased — so prepending the descriptor is always
+ * self-verifying). Deliberately NOT used to author prompt prose — the skill
+ * remains the sole author of wording; this list only lets TS verify a fact
+ * landed in the string, same "TS computes/guards facts, the skill owns
+ * creative prose" convention as `feedback_skill_first_authoring`.
+ */
+export const VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_ANCHOR_KEYWORDS: Record<
+  VerticalDramaTargetAudienceRegion,
+  readonly string[]
+> = {
+  thai: ["thai", "southeast asian"],
+  east_asian: ["east asian", "chinese", "korean", "japanese"],
+  southeast_asian: ["southeast asian", "thai", "vietnamese", "filipino", "indonesian", "malaysian"],
+  south_asian: ["south asian", "indian", "pakistani", "bangladeshi", "sri lankan"],
+  western: ["western", "caucasian"],
+  latin: ["latin american", "hispanic", "latino", "latina"],
+  middle_eastern: ["middle eastern", "arab"],
+  african: ["african", "black"],
+  global_mixed: ["mixed", "multiracial"],
+};
+
+/**
+ * Per-character override input — the two new `verticalDramaCharacters.data`
+ * keys (`region`/`ethnicityText`), read straight off a character row's
+ * jsonb `data` column by `readCharacterRegionOverrideFromData` below. Kept
+ * as a standalone input type (rather than accepting the whole `data` blob)
+ * so `resolveCharacterTargetAudienceRegion` stays decoupled from the
+ * character row shape and is trivially unit-testable.
+ */
+export interface VerticalDramaCharacterRegionOverrideInput {
+  /** Dropdown override (`character.data.region`) — one of the 9 preset keys. */
+  region?: VerticalDramaTargetAudienceRegion | string | null;
+  /** Free-text override (`character.data.ethnicityText`) — wins over `region` when both are set (user decision, 2026-07-17). */
+  ethnicityText?: string | null;
+}
+
+/**
+ * Where a resolved character region/ethnicity came from — `"character_free_text"`
+ * and `"character_region"` are the two NEW explicit per-character sources
+ * (precedence levels 1–2 in the plan); `"series_default"` covers BOTH
+ * pre-existing precedence levels 4 (series `targetAudienceRegion`) and 5
+ * (global `"thai"` default) — the caller always passes
+ * `readTargetAudienceRegionFromBible`'s result as `seriesDefaultRegion`,
+ * which already collapses "series bible has a region" vs "series bible has
+ * none" into one normalized region value, so there is nothing left for this
+ * resolver to distinguish between those two levels.
+ *
+ * Precedence level 3 ("explicit ethnicity already in the character's own
+ * `description`") is DELIBERATELY NOT modeled here — it was, and remains,
+ * the skill's own responsibility (skill.md's pre-existing "explicit
+ * ethnicity in the character's own description always wins" rule), since
+ * this resolver never receives/parses free-form description text. What
+ * DOES change: when this resolver returns `isExplicit: true` (levels 1–2),
+ * the injected instruction (`buildCharacterRegionEthnicityInstruction`)
+ * explicitly tells the skill that fact now OUTRANKS level 3 too — see that
+ * function's own doc comment.
+ */
+export type VerticalDramaCharacterRegionSource =
+  | "character_free_text"
+  | "character_region"
+  | "series_default";
+
+export interface VerticalDramaResolvedCharacterRegion {
+  source: VerticalDramaCharacterRegionSource;
+  /** `true` only for `"character_free_text"`/`"character_region"` — the two
+   *  sources that trigger the deterministic validator-retry (D1) and
+   *  fallback-prepend (D2) enforcement layers. `false` for `"series_default"`
+   *  — an unset character must stay byte-identical to pre-existing behavior. */
+  isExplicit: boolean;
+  /** Nearest preset region — always a valid enum value, even for a free-text
+   *  override (best-effort normalized from the character's own `region`
+   *  field or the series default), so callers needing the enum (e.g. legacy
+   *  `buildTargetAudienceRegionInstruction` call sites) always have one. */
+  region: VerticalDramaTargetAudienceRegion;
+  /** Full descriptor sentence — used both inside the injected LLM
+   *  instruction and as the literal text `ensureRegionEthnicityAnchorPresent`
+   *  prepends. */
+  descriptor: string;
+  /** Lowercase keyword(s) `promptContainsRegionEthnicityAnchor` checks for
+   *  (case-insensitive substring match) — for a free-text override this is
+   *  just the trimmed free text itself, lowercased. */
+  anchorKeywords: readonly string[];
+}
+
+/**
+ * Resolves a character's explicit `{region?, ethnicityText?}` override
+ * (from `verticalDramaCharacters.data`) plus the series-level default region
+ * (`readTargetAudienceRegionFromBible`'s result) into ONE authoritative
+ * descriptor + short anchor-keyword list. Precedence (2026-07-17 decision):
+ *   1. `ethnicityText` (free text) — wins over `region` when both are set.
+ *   2. `region` (dropdown).
+ *   3. (not modeled here — see `VerticalDramaCharacterRegionSource` doc
+ *      comment) explicit ethnicity in the character's own `description`.
+ *   4/5. `seriesDefaultRegion` (already collapses the series default and the
+ *      global `"thai"` default into one normalized value).
+ *
+ * Pure and side-effect-free — never touches the DB, matching the
+ * `resolveEffectiveCharacterFacts`/`extractCharacterDescription` convention
+ * in `verticalDramaCharacters.ts`.
+ */
+export function resolveCharacterTargetAudienceRegion(
+  characterOverride: VerticalDramaCharacterRegionOverrideInput | null | undefined,
+  seriesDefaultRegion: VerticalDramaTargetAudienceRegion | null | undefined,
+): VerticalDramaResolvedCharacterRegion {
+  const freeText =
+    typeof characterOverride?.ethnicityText === "string"
+      ? characterOverride.ethnicityText.trim()
+      : "";
+  if (freeText) {
+    return {
+      source: "character_free_text",
+      isExplicit: true,
+      region: normalizeTargetAudienceRegion(characterOverride?.region ?? seriesDefaultRegion),
+      descriptor: `${freeText} ethnicity/appearance (explicitly specified by the user for this character)`,
+      anchorKeywords: [freeText.toLowerCase()],
+    };
+  }
+
+  const rawRegion = characterOverride?.region;
+  if (
+    typeof rawRegion === "string" &&
+    (VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS as readonly string[]).includes(rawRegion)
+  ) {
+    const region = rawRegion as VerticalDramaTargetAudienceRegion;
+    return {
+      source: "character_region",
+      isExplicit: true,
+      region,
+      descriptor: VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[region],
+      anchorKeywords: VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_ANCHOR_KEYWORDS[region],
+    };
+  }
+
+  const resolvedDefault = normalizeTargetAudienceRegion(seriesDefaultRegion);
+  return {
+    source: "series_default",
+    isExplicit: false,
+    region: resolvedDefault,
+    descriptor: VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS[resolvedDefault],
+    anchorKeywords: VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_ANCHOR_KEYWORDS[resolvedDefault],
+  };
+}
+
+/**
+ * Reads the two new per-character override keys off a character row's
+ * loosely-typed jsonb `data` column — mirrors `extractCharacterDescription`'s
+ * "tolerant, never throws on a malformed value" convention (a non-string
+ * `region`/`ethnicityText` — e.g. legacy garbage data — is silently treated
+ * as absent, never crashes). Callers pass the result straight into
+ * `resolveCharacterTargetAudienceRegion` as `characterOverride`.
+ */
+export function readCharacterRegionOverrideFromData(
+  data: Record<string, unknown> | null | undefined,
+): VerticalDramaCharacterRegionOverrideInput {
+  return {
+    region: typeof data?.region === "string" ? data.region : undefined,
+    ethnicityText: typeof data?.ethnicityText === "string" ? data.ethnicityText : undefined,
+  };
+}
+
+/**
+ * Builds the instruction line for an EXPLICIT per-character region/ethnicity
+ * (`resolved.isExplicit === true` — precedence levels 1–2 only). Unlike
+ * `buildTargetAudienceRegionInstruction` (which is always phrased as a
+ * DEFAULT a character's own description can override), this is phrased as an
+ * OVERRIDE: the user picked this fact for THIS character specifically, in
+ * the character editor, so it must outrank BOTH the series-level default AND
+ * any ethnicity/nationality implied elsewhere in the character's own
+ * `description`/backstory (precedence level 3) — the opposite precedence
+ * `buildTargetAudienceRegionInstruction` documents for the series default.
+ * Callers must ALSO keep sending `buildTargetAudienceRegionInstruction` for
+ * back-compat (this is an ADDITIONAL line, not a replacement) — see
+ * `verticalDramaCharacterImageGeneration.ts`'s prompt builders.
+ *
+ * For a non-explicit `resolved` (an unset character), returns the byte-
+ * identical `buildTargetAudienceRegionInstruction(resolved.region)` line —
+ * callers should simply not call this function at all for an unset
+ * character (this branch exists only so the function is total/safe to call
+ * unconditionally in tests).
+ */
+export function buildCharacterRegionEthnicityInstruction(
+  resolved: VerticalDramaResolvedCharacterRegion,
+): string {
+  if (!resolved.isExplicit) {
+    return buildTargetAudienceRegionInstruction(resolved.region);
+  }
+  return (
+    `Character-specific ethnicity/region requirement (explicitly set by the user for THIS ` +
+    `character in the character editor — NOT merely the series-level default): ${resolved.descriptor}. ` +
+    `This is MORE SPECIFIC than, and OVERRIDES, both the series-level default region AND any ` +
+    `ethnicity/nationality implied elsewhere in this character's own description/backstory. ` +
+    `You MUST make this look unmistakably present, in-line, in the prose of primary_portrait_prompt ` +
+    `(not only as a separate note) — a downstream image model only ever sees that one string.`
+  );
+}
+
+/**
+ * Deterministic (never LLM-dependent) case-insensitive substring check —
+ * does the assembled prompt text already contain SOME plausible token of
+ * `resolved`'s required look? Used by both the validator-retry (D1) and the
+ * fallback-prepend guard (D2, via `ensureRegionEthnicityAnchorPresent`).
+ */
+export function promptContainsRegionEthnicityAnchor(
+  promptText: string | null | undefined,
+  resolved: VerticalDramaResolvedCharacterRegion,
+): boolean {
+  if (!promptText) return false;
+  const haystack = promptText.toLowerCase();
+  return resolved.anchorKeywords.some(
+    (keyword) => keyword.length > 0 && haystack.includes(keyword),
+  );
+}
+
+/**
+ * Last-resort DETERMINISTIC guarantee (D2, `planning/vd-per-character-
+ * ethnicity/plan.md`): if `promptText` does not already contain one of
+ * `resolved`'s anchor keywords, prepend `resolved.descriptor` as a leading
+ * sentence. Idempotent — re-running this on its own output is a no-op,
+ * because `resolved.descriptor` always contains at least one of its own
+ * `anchorKeywords` (see that field's doc comment), so the containment check
+ * above finds the anchor already present on the second call.
+ *
+ * This enforces a USER-STATED FACT (the character's own explicit
+ * region/ethnicity choice) — the SAME class of deterministic guard as the
+ * DNA face-fingerprint check and the fail-closed model-selection guards
+ * already in this codebase (`project_vd_dna_fingerprint_wardrobe_and_
+ * occupation_fallback`) — NOT a rewrite of the LLM's creative prose: it only
+ * ever prepends, never edits/reorders the model's own sentence. Consistent
+ * with `feedback_skill_first_authoring`: TS enforces the FACT, the skill
+ * still owns 100% of the creative prose that follows it.
+ */
+export function ensureRegionEthnicityAnchorPresent(
+  promptText: string,
+  resolved: VerticalDramaResolvedCharacterRegion,
+): string {
+  if (promptContainsRegionEthnicityAnchor(promptText, resolved)) {
+    return promptText;
+  }
+  return `${resolved.descriptor}. ${promptText}`;
+}

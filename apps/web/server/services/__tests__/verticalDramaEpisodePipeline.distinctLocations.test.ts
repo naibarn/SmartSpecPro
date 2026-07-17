@@ -50,7 +50,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},

@@ -49,7 +49,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
@@ -304,8 +313,11 @@ describe("generateRealScript / generateRealStoryboard — sceneContractsEnabled 
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases` rows).
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
-      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
       // (the series' location roster, `existingLocations`).
       .mockReturnValueOnce(selectChain([]));
 
@@ -320,8 +332,11 @@ describe("generateRealScript / generateRealStoryboard — sceneContractsEnabled 
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases` rows).
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
-      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
       // (the series' location roster, `existingLocations`).
       .mockReturnValueOnce(selectChain([]));
 
@@ -365,8 +380,12 @@ describe("repairStage — storyboard_shotgrid threads args.sceneContractsEnabled
       .mockReturnValueOnce(selectChain([episode]))
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases`
+      // rows), called from inside `repairStage`'s own real-repair wiring.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
-      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
       // (the series' location roster), called from inside `repairStage`'s
       // own real-repair wiring for this stage.
       .mockReturnValueOnce(selectChain([]))
@@ -400,8 +419,12 @@ describe("repairStage — storyboard_shotgrid threads args.sceneContractsEnabled
       .mockReturnValueOnce(selectChain([episode]))
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases`
+      // rows), called from inside `repairStage`'s own real-repair wiring.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
-      // bible, dispatch 3/3) — `generateRealStoryboard`'s new 3rd select
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
       // (the series' location roster), called from inside `repairStage`'s
       // own real-repair wiring for this stage.
       .mockReturnValueOnce(selectChain([]))

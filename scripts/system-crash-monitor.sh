@@ -19,6 +19,10 @@ SWAP_CRIT_PCT="${CRASH_MONITOR_SWAP_CRIT_PCT:-70}"
 MEM_AVAILABLE_WARN_MB="${CRASH_MONITOR_MEM_AVAILABLE_WARN_MB:-4096}"
 MEM_AVAILABLE_CRIT_MB="${CRASH_MONITOR_MEM_AVAILABLE_CRIT_MB:-2048}"
 MEM_PSI_CRIT_AVG10="${CRASH_MONITOR_MEM_PSI_CRIT_AVG10:-5}"
+SSH_SESSION_WARN="${CRASH_MONITOR_SSH_SESSION_WARN:-12}"
+SSH_SESSION_CRIT="${CRASH_MONITOR_SSH_SESSION_CRIT:-24}"
+MCP_CONTAINER_WARN="${CRASH_MONITOR_MCP_CONTAINER_WARN:-6}"
+MCP_CONTAINER_CRIT="${CRASH_MONITOR_MCP_CONTAINER_CRIT:-10}"
 WEBHOOK_URL="${ALERT_WEBHOOK_URL:-${SLACK_WEBHOOK_URL:-${DISCORD_WEBHOOK_URL:-}}}"
 
 mkdir -p "${LOG_DIR}"
@@ -108,6 +112,7 @@ record_cgroup_memory_events() {
 smartspec-web.service|/sys/fs/cgroup/system.slice/smartspec-web.service/memory.events
 smartspec-backend.service|/sys/fs/cgroup/system.slice/smartspec-backend.service/memory.events
 system-smartspec-agent.slice|/sys/fs/cgroup/system.slice/system-smartspec.slice/system-smartspec-agent.slice/memory.events
+user-1000.slice|/sys/fs/cgroup/user.slice/user-1000.slice/memory.events
 system.slice|/sys/fs/cgroup/system.slice/memory.events
 CGROUPS
 }
@@ -180,12 +185,44 @@ main() {
     record_cgroup_memory_events
 
     # ------------------------------------------------------------------
-    # 3. Write to daily log
+    # 3. SSH/Codex and SocratiCode lifecycle pressure
+    # Reconnect fan-out can exhaust user/agent cgroups before host RAM looks
+    # full. Keep Docker probing bounded so the monitor cannot amplify stalls.
+    # ------------------------------------------------------------------
+    local ssh_session_count ssh_preauth_count managed_mcp_count legacy_mcp_count
+    local mcp_probe_state mcp_snapshot
+    ssh_session_count="$(loginctl list-sessions --no-legend 2>/dev/null | awk '$3 == "dev" {count++} END {print count + 0}')"
+    ssh_preauth_count="$(ps -eo args= 2>/dev/null | awk '/^sshd-session: dev \[priv\]/ {count++} END {print count + 0}')"
+    managed_mcp_count="?"
+    legacy_mcp_count="?"
+    mcp_probe_state="unavailable"
+    if mcp_snapshot="$(timeout 5s docker ps --filter name=socraticode-mcp --format '{{.Names}}|{{.Label "com.smartspec.socraticode.managed"}}' 2>/dev/null)"; then
+        mcp_probe_state="ok"
+        managed_mcp_count="$(printf '%s\n' "${mcp_snapshot}" | awk -F '|' '$2 == "true" {count++} END {print count + 0}')"
+        legacy_mcp_count="$(printf '%s\n' "${mcp_snapshot}" | awk -F '|' '$1 != "" && $2 != "true" {count++} END {print count + 0}')"
+    fi
+
+    if [ "${ssh_session_count}" -ge "${SSH_SESSION_CRIT}" ]; then
+        alerts+=("CRITICAL ssh_session_fanout sessions=${ssh_session_count} preauth=${ssh_preauth_count} threshold=${SSH_SESSION_CRIT}")
+    elif [ "${ssh_session_count}" -ge "${SSH_SESSION_WARN}" ]; then
+        alerts+=("WARNING ssh_session_fanout sessions=${ssh_session_count} preauth=${ssh_preauth_count} threshold=${SSH_SESSION_WARN}")
+    fi
+    if [ "${mcp_probe_state}" = "ok" ]; then
+        if [ "${managed_mcp_count}" -ge "${MCP_CONTAINER_CRIT}" ]; then
+            alerts+=("CRITICAL mcp_container_fanout managed=${managed_mcp_count} legacy=${legacy_mcp_count} threshold=${MCP_CONTAINER_CRIT}")
+        elif [ "${managed_mcp_count}" -ge "${MCP_CONTAINER_WARN}" ]; then
+            alerts+=("WARNING mcp_container_fanout managed=${managed_mcp_count} legacy=${legacy_mcp_count} threshold=${MCP_CONTAINER_WARN}")
+        fi
+    fi
+
+    # ------------------------------------------------------------------
+    # 4. Write to daily log
     # ------------------------------------------------------------------
     {
         echo "===== ${timestamp} ====="
         echo "ram_pct=${mem_pct:-?} used_mb=${mem_used:-?} total_mb=${mem_total:-?}"
         echo "available_mb=${mem_available:-?} swap_pct=${swap_pct:-?} swap_used_mb=${swap_used:-?} memory_psi_some_avg10=${mem_psi_avg10:-?}"
+        echo "ssh_sessions=${ssh_session_count:-?} ssh_preauth=${ssh_preauth_count:-?} mcp_managed=${managed_mcp_count:-?} mcp_legacy=${legacy_mcp_count:-?} mcp_probe=${mcp_probe_state:-?}"
         if [ "${#alerts[@]}" -eq 0 ]; then
             echo "alerts=none"
         else
@@ -195,7 +232,7 @@ main() {
     } >> "${DAILY_LOG}"
 
     # ------------------------------------------------------------------
-    # 4. Fire webhooks for actionable alerts
+    # 5. Fire webhooks for actionable alerts
     # ------------------------------------------------------------------
     for alert in "${alerts[@]}"; do
         local level

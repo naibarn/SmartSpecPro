@@ -163,6 +163,59 @@ describe("validatePresetSynthesisSelection", () => {
       }),
     ).toThrow(PresetSynthesisInputError);
   });
+
+  /* ------------------------------------------------------------------ */
+  /* Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.1) —          */
+  /* `hasUserPremise` lifts the floor to 0 selections.                    */
+  /* ------------------------------------------------------------------ */
+
+  it("hasUserPremise: true allows ZERO selected flavors (premise alone is a sufficient spine)", () => {
+    expect(() =>
+      validatePresetSynthesisSelection({
+        selectedPresets: [],
+        selectedCategories: [],
+        hasUserPremise: true,
+      }),
+    ).not.toThrow();
+  });
+
+  it("hasUserPremise: true still throws above five selected flavors (MAX_SELECTIONS unchanged)", () => {
+    expect(() =>
+      validatePresetSynthesisSelection({
+        selectedPresets: [{}, {}, {}],
+        selectedCategories: ["a", "b", "c"],
+        hasUserPremise: true,
+      }),
+    ).toThrow(PresetSynthesisInputError);
+  });
+
+  it("hasUserPremise: false (explicit) behaves byte-identical to omitted — still throws at 0 and at 1", () => {
+    expect(() =>
+      validatePresetSynthesisSelection({
+        selectedPresets: [],
+        selectedCategories: [],
+        hasUserPremise: false,
+      }),
+    ).toThrow(PresetSynthesisInputError);
+
+    expect(() =>
+      validatePresetSynthesisSelection({
+        selectedPresets: [{}],
+        selectedCategories: [],
+        hasUserPremise: false,
+      }),
+    ).toThrow(PresetSynthesisInputError);
+  });
+
+  it("hasUserPremise: true still throws with exactly ONE selected flavor below MIN_SELECTIONS is now allowed (0 and 1 both pass)", () => {
+    expect(() =>
+      validatePresetSynthesisSelection({
+        selectedPresets: [{}],
+        selectedCategories: [],
+        hasUserPremise: true,
+      }),
+    ).not.toThrow();
+  });
 });
 
 describe("synthesizeVerticalDramaPreset", () => {
@@ -560,6 +613,34 @@ describe("buildFacetAssignments", () => {
     expect(buildFacetAssignments(selections, presets, "101")).toEqual(
       buildFacetAssignments(selections, presets, "101"),
     );
+  });
+
+  /* ------------------------------------------------------------------ */
+  /* Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.3) —          */
+  /* an unknown/placeholder `primarySelectionId` must never be seeded    */
+  /* into any facet — otherwise the prompt tells the model to blend a    */
+  /* preset that does not exist.                                        */
+  /* ------------------------------------------------------------------ */
+
+  it("assigns EVERY facet an empty presetIds array when primarySelectionId names no known preset (e.g. the zero-preset premise-only placeholder \"auto\")", () => {
+    const assignments = buildFacetAssignments([], [], "auto");
+    for (const entry of assignments) {
+      expect(entry.presetIds).toEqual([]);
+    }
+    expect(assignments.map((a) => a.facet)).toEqual([...VERTICAL_DRAMA_BLEND_FACETS]);
+  });
+
+  it("still drops an unknown primarySelectionId even when OTHER known presets were selected (no fictitious primary contamination)", () => {
+    const assignments = buildFacetAssignments(
+      [{ presetId: "101", weight: 3 }],
+      presets,
+      "does-not-exist",
+    );
+    const spine = assignments.find((a) => a.facet === "story_spine")!;
+    expect(spine.presetIds).toEqual([]);
+    for (const entry of assignments) {
+      expect(entry.presetIds).not.toContain("does-not-exist");
+    }
   });
 });
 
@@ -961,6 +1042,79 @@ describe("buildUserPrompt (via synthesizeVerticalDramaPreset) — premise-primar
   });
 });
 
+/* -------------------------------------------------------------------------- */
+/* Phase 2 (`planning/vd-premise-first-wizard/plan.md`) — premise ALONE,      */
+/* zero presets/categories selected. Verifies the rendered prompt is          */
+/* coherent: no dangling "primary preset"/mix-recipe framing that assumes a   */
+/* preset exists when none was selected.                                    */
+/* -------------------------------------------------------------------------- */
+
+describe("buildUserPrompt (via synthesizeVerticalDramaPreset) — premise alone, ZERO presets/categories", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockExecuteWithFallback.mockResolvedValue({
+      type: "success",
+      response: {
+        choices: [{ message: { content: JSON.stringify(VALID_DRAFT) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    });
+  });
+
+  function capturedUserPrompt(): string {
+    const call = mockExecuteWithFallback.mock.calls[0][0];
+    return call.messages[1].content as string;
+  }
+
+  it("does not throw the selection-count gate (validatePresetSynthesisSelection allows 0 with a premise)", async () => {
+    await expect(
+      synthesizeVerticalDramaPreset({
+        userId: 7,
+        tenantId: "tenant-1",
+        locale: "th",
+        selectedPresets: [],
+        selectedCategories: [],
+        userPremise: "พระเอกเป็นนักบิน นางเอกเป็นพนักงานภาคพื้น อยากไต่เต้าไปทำงานบนเครื่อง มีปมเป็นเด็กกำพร้า",
+      }),
+    ).resolves.toBeTruthy();
+  });
+
+  it("renders premise-only guidance instead of preset-blend framing (no dangling primary/mixRecipe reference)", async () => {
+    await synthesizeVerticalDramaPreset({
+      userId: 7,
+      tenantId: "tenant-1",
+      locale: "th",
+      selectedPresets: [],
+      selectedCategories: [],
+      userPremise: "พระเอกเป็นนักบิน นางเอกเป็นพนักงานภาคพื้น",
+    });
+    const prompt = capturedUserPrompt();
+
+    // Premise-only guidance IS present.
+    expect(prompt).toContain("No preset or category was selected");
+    expect(prompt).toContain('"user_premise"');
+
+    // Preset-blend framing that assumes a real preset exists is ABSENT.
+    expect(prompt).not.toContain("primarySelectionId, when also provided");
+    expect(prompt).not.toContain("The selected presets (1-5) are supporting flavor");
+    expect(prompt).not.toContain(
+      "Use one primary story spine and supporting flavors for situations, tone, and scene texture.",
+    );
+  });
+
+  it("with 1+ presets still renders the original preset-blend framing (byte-identical non-zero-selection behavior)", async () => {
+    await synthesizeVerticalDramaPreset({ ...baseParams(), userPremise: "ตำรวจสาวสืบคดี" });
+    const prompt = capturedUserPrompt();
+
+    expect(prompt).toContain("The selected presets (1-5) are supporting flavor");
+    expect(prompt).toContain(
+      "Use one primary story spine and supporting flavors for situations, tone, and scene texture.",
+    );
+    expect(prompt).not.toContain("No preset or category was selected");
+  });
+});
+
 describe("buildUserPromptV2 (via synthesizeVerticalDramaPresetV2) — premise-primary blending", () => {
   const WELL_BLENDED_FACETS_MIN = [
     { facet: "story_spine", contributions: [{ presetId: "101", element: "hero's journey", kept: true }] },
@@ -1119,6 +1273,182 @@ describe("buildUserPromptV2 (via synthesizeVerticalDramaPresetV2) — premise-pr
     for (const value of ROLE_TIER_VALUES) {
       expect(prompt).toContain(value);
     }
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Phase 2 (`planning/vd-premise-first-wizard/plan.md` §2.3) — premise ALONE, */
+/* ZERO presets/categories, routed through the v2 (verifiable blend) entry   */
+/* point. This is the path most at risk of a dangling "primary preset"       */
+/* reference (`facetAssignments`/`blendFacets` exist ONLY in v2) — verifies  */
+/* the deterministic pre-pass + prompt text stay coherent with nothing to    */
+/* blend.                                                                    */
+/* -------------------------------------------------------------------------- */
+
+describe("synthesizeVerticalDramaPresetV2 — premise alone, ZERO presets/categories", () => {
+  const EMPTY_BLEND_FACETS = VERTICAL_DRAMA_BLEND_FACETS.map((facet) => ({
+    facet,
+    contributions: [] as Array<{ presetId: string; element: string; kept: boolean }>,
+  }));
+
+  function zeroSelectionDraftPayload(overrides: Record<string, unknown> = {}) {
+    return {
+      contract_version: 2,
+      title: "Title",
+      category: "sci_fi_mecha",
+      logline: "logline",
+      mainPlot: "main plot",
+      seasonArc: "season arc",
+      tone: "tone",
+      cliffhangerStyle: "cliffhanger",
+      creatorSummary: {
+        whatItIsAbout: "A pilot and a ground crew member chase a shared dream.",
+        protagonistAndGoal: "The hero pilot wants to prove himself in the sky.",
+        conflictAndDiscovery: "The heroine fights to move from the ground to the cabin crew.",
+        centralMystery: "Will the airline let her transfer roles?",
+        decisionNotes: ["Keep the premise's setting and cast.", "No preset to blend in."],
+      },
+      characters: [
+        { name: "A", role: "pilot", narrativeRole: "protagonist", roleTier: "lead_male", occupation: "นักบิน", description: "d" },
+        { name: "B", role: "ground crew", narrativeRole: "co_protagonist", roleTier: "lead_female", occupation: "พนักงานภาคพื้น", description: "d" },
+        { name: "C", role: "mentor", narrativeRole: "supporting", roleTier: "support_memorable", occupation: "ครูฝึก", description: "d" },
+      ],
+      visualBible: "prose",
+      mixRecipe: { primaryFlavor: "user_premise", supportingFlavors: [], rationale: "Synthesized purely from the user premise; no preset selected." },
+      warnings: [],
+      blendFacets: EMPTY_BLEND_FACETS,
+      ...overrides,
+    };
+  }
+
+  function mockLlmResponse(payload: Record<string, unknown>) {
+    return {
+      type: "success",
+      response: {
+        choices: [{ message: { content: JSON.stringify(payload) } }],
+        usage: { prompt_tokens: 100, completion_tokens: 50 },
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  function baseZeroSelectionParams(
+    overrides: Partial<SynthesizeVerticalDramaPresetV2Params> = {},
+  ): SynthesizeVerticalDramaPresetV2Params {
+    return {
+      userId: 7,
+      tenantId: "tenant-1",
+      locale: "th",
+      selections: [],
+      selectedPresets: [],
+      selectedCategories: [],
+      userPremise: "พระเอกเป็นนักบิน นางเอกเป็นพนักงานภาคพื้น อยากไต่เต้าไปทำงานบนเครื่อง",
+      ...overrides,
+    };
+  }
+
+  it("does not throw the selection-count gate and synthesizes successfully with zero presets/categories", async () => {
+    mockExecuteWithFallback.mockResolvedValueOnce(mockLlmResponse(zeroSelectionDraftPayload()));
+
+    const { draft } = await synthesizeVerticalDramaPresetV2(baseZeroSelectionParams());
+
+    expect(draft.contract_version).toBe(2);
+    expect(draft.blendReport.underBlended).toEqual([]); // no fictitious "auto" preset flagged
+  });
+
+  function capturedUserPromptV2(): string {
+    const call = mockExecuteWithFallback.mock.calls[0][0];
+    return call.messages[1].content as string;
+  }
+
+  it("facetAssignments has an empty assignedPresets for every facet — no fictitious primary preset seeded", async () => {
+    mockExecuteWithFallback.mockResolvedValueOnce(mockLlmResponse(zeroSelectionDraftPayload()));
+
+    await synthesizeVerticalDramaPresetV2(baseZeroSelectionParams());
+    const prompt = capturedUserPromptV2();
+    const payloadJson = JSON.parse(prompt.slice(prompt.indexOf("{\"language\""), prompt.indexOf("\nReturn exactly this JSON shape:")));
+
+    expect(payloadJson.primarySelectionId).toBe("auto");
+    for (const entry of payloadJson.facetAssignments) {
+      expect(entry.assignedPresets).toEqual([]);
+    }
+  });
+
+  it("renders premise-only rules — no dangling PRIMARY-preset framing, no facet-fill instruction, mixRecipe guided to user_premise", async () => {
+    mockExecuteWithFallback.mockResolvedValueOnce(mockLlmResponse(zeroSelectionDraftPayload()));
+
+    await synthesizeVerticalDramaPresetV2(baseZeroSelectionParams());
+    const prompt = capturedUserPromptV2();
+
+    expect(prompt).toContain("No preset or category was selected — the user premise above is the sole story spine");
+    expect(prompt).toContain("mixRecipe.primaryFlavor");
+    expect(prompt).toContain("user_premise");
+    expect(prompt).not.toContain("The PRIMARY selection's story spine");
+    expect(prompt).not.toContain("fill EVERY facet slot assigned to it");
+    expect(prompt).not.toContain("primarySelectionId, when also provided");
+  });
+
+  it("with 1+ presets still renders the original verifiable-blend framing (byte-identical non-zero-selection behavior)", async () => {
+    mockExecuteWithFallback.mockResolvedValueOnce(
+      mockLlmResponse({
+        contract_version: 2,
+        title: "Title",
+        category: "sci_fi_mecha",
+        logline: "logline",
+        mainPlot: "main plot",
+        seasonArc: "season arc",
+        tone: "tone",
+        cliffhangerStyle: "cliffhanger",
+        creatorSummary: {
+          whatItIsAbout: "whatItIsAbout",
+          protagonistAndGoal: "protagonistAndGoal",
+          conflictAndDiscovery: "conflictAndDiscovery",
+          centralMystery: "centralMystery",
+          decisionNotes: ["note"],
+        },
+        characters: [
+          { name: "A", role: "lead", narrativeRole: "protagonist", roleTier: "lead_female", occupation: "o", description: "d" },
+          { name: "B", role: "support", narrativeRole: "supporting", roleTier: "support_memorable", occupation: "o", description: "d" },
+          { name: "C", role: "villain", narrativeRole: "antagonist", roleTier: "villain_male_open", occupation: "o", description: "d" },
+        ],
+        visualBible: "prose",
+        mixRecipe: { primaryFlavor: "101", supportingFlavors: ["202"], rationale: "why" },
+        warnings: [],
+        blendFacets: [
+          { facet: "story_spine", contributions: [{ presetId: "101", element: "hero's journey", kept: true }] },
+          { facet: "situations", contributions: [{ presetId: "101", element: "chase", kept: true }, { presetId: "202", element: "support beat", kept: true }] },
+          { facet: "characters", contributions: [{ presetId: "101", element: "lead", kept: true }, { presetId: "202", element: "sidekick", kept: true }] },
+          { facet: "tone", contributions: [{ presetId: "101", element: "tense", kept: true }] },
+          { facet: "cliffhanger_style", contributions: [{ presetId: "101", element: "twist", kept: true }] },
+          { facet: "world_texture", contributions: [{ presetId: "101", element: "texture", kept: true }] },
+          { facet: "visual_identity", contributions: [{ presetId: "101", element: "palette", kept: true }] },
+          { facet: "product_fit", contributions: [{ presetId: "101", element: "tie-in", kept: true }] },
+        ],
+      }),
+    );
+
+    await synthesizeVerticalDramaPresetV2({
+      ...baseZeroSelectionParams({
+        selections: [
+          { presetId: "101", weight: 3 },
+          { presetId: "202", weight: 2 },
+        ],
+        selectedPresets: [
+          presetInputV2({ id: "101", title: "Primary Preset" }),
+          presetInputV2({ id: "202", title: "Supporting Preset" }),
+        ],
+        primarySelectionId: "101",
+      }),
+    });
+    const prompt = capturedUserPromptV2();
+
+    expect(prompt).toContain("The PRIMARY selection's story spine");
+    expect(prompt).toContain("fill EVERY facet slot assigned to it");
+    expect(prompt).not.toContain("No preset or category was selected");
   });
 });
 

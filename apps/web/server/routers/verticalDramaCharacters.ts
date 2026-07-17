@@ -46,7 +46,12 @@ import {
   VERTICAL_DRAMA_CHARACTER_ASSET_STATES,
   type VdCharacterNeedsSetupReason,
 } from "@shared/verticalDramaSeries/characterAssets";
-import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
+import {
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS,
+  readTargetAudienceRegionFromBible,
+  readCharacterRegionOverrideFromData,
+  resolveCharacterTargetAudienceRegion,
+} from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
 import { hasEnoughCredits, deductCredits, refundCredits } from "../services/creditService";
@@ -75,6 +80,19 @@ import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSer
 import { verticalDramaApprovedCharacterDesignSnapshotSchema } from "@shared/verticalDramaSeries/characterProfile";
 import { loadCharacterDesignContext } from "../services/verticalDramaCharacterDesignContext";
 import { persistCharacterVisualBible } from "../services/verticalDramaCharacterDnaPersistence";
+// `normalizeStoryCharacterName` is a lightweight, DB-free string helper (see
+// its own doc comment) — safe as a static import.
+import { normalizeStoryCharacterName } from "../services/verticalDramaCharacterRosterAutoRegister";
+// `readBibleRefinedCharacterProfiles` is imported from
+// `verticalDramaBibleRefinedCharacters.ts` (NOT `verticalDramaStoryBible.ts`
+// — see that file's own header doc comment: `verticalDramaStoryBible.ts`'s
+// module graph is too heavy for this router's minimal-mock test suites,
+// confirmed by a real vitest run) — see `resolveEffectiveCharacterFacts`'s
+// own doc comment below for the full story.
+import {
+  readBibleRefinedCharacterProfiles,
+  type VdBibleRefinedCharacter,
+} from "../services/verticalDramaBibleRefinedCharacters";
 // W12-A voice chain note: `listVoiceCatalog` below reuses the EXACT
 // server-side voice-option resolution `media.listModelFieldOptions` already
 // implements (dynamic UVoice/provider-API fetch with its own module-level
@@ -803,6 +821,146 @@ export function extractCharacterDescription(data: Record<string, unknown> | null
     if (rules.length > 0) parts.push(`Wardrobe rules: ${rules.join("; ")}`);
   }
   return parts.length > 0 ? parts.join(" | ") : undefined;
+}
+
+/**
+ * Merges a roster row's own `role`/`occupation`/description facts with the
+ * matching entry (by name, falling back to `aliases`) in the series' story
+ * bible `refinedCharacters` list. Roster values ALWAYS win when present and
+ * non-empty; bible values only fill in facts the roster genuinely lacks —
+ * this never overrides a role/occupation/description a user or the roster
+ * auto-register flow actually set.
+ *
+ * Fixes the "occupation/description silently missing" bug this file's
+ * `previewCharacterPrompt` / `generateCharacterImage` / `generateCharacterSheet`
+ * mutations hit for story-auto-registered characters (traceId
+ * Ytrq5TrfJRzyFNRLasyV8; `planning/vd-character-visual-bible-occupation-fix/plan.md`,
+ * 2026-07-17): series 18 character 70's roster row had `role`/`occupation`
+ * NULL and no `data.description` (only `source: "auto_registered_from_story"`),
+ * so `generateCharacterVisualPrompts` had nothing but a bare name to work
+ * from and guessed "pilot" for an aviation-series aircraft maintenance
+ * engineer — wrong uniform baked into the approved Character DNA. The full
+ * facts already live in `bible.refinedCharacters` (persisted by
+ * `generateStoryBible`, read tolerantly by
+ * `readBibleRefinedCharacterProfiles`); this just falls back to them.
+ *
+ * `readBibleRefinedCharacterProfiles` is now imported from
+ * `verticalDramaBibleRefinedCharacters.ts` (a lightweight, DB/LLM-free
+ * extraction — see that file's own header doc comment), so this function
+ * can safely take the raw `bible` JSON and parse it itself as a plain,
+ * static-import-only (no dynamic `import()`, no DB access) pure function.
+ *
+ * Description fallback uses the SAME `"Description: "` prefix convention as
+ * `extractCharacterDescription` above. `occupation` is always passed as its
+ * own separate downstream fact/param — it is deliberately never baked into
+ * the description string here, matching how the roster-sourced `occupation`
+ * column already flows separately from `data.description`.
+ */
+export function resolveEffectiveCharacterFacts(
+  character: {
+    name: string;
+    role: string | null;
+    occupation: string | null;
+    data: Record<string, unknown> | null;
+  },
+  bible: Record<string, unknown> | null,
+): {
+  role: string | null;
+  occupation: string | null;
+  description: string | undefined;
+} {
+  const rosterDescription = extractCharacterDescription(character.data);
+  const hasRosterRole = typeof character.role === "string" && character.role.trim().length > 0;
+  const hasRosterOccupation =
+    typeof character.occupation === "string" && character.occupation.trim().length > 0;
+
+  let role = character.role;
+  let occupation = character.occupation;
+  let description = rosterDescription;
+
+  if (hasRosterRole && hasRosterOccupation && description !== undefined) {
+    // Nothing missing — never even look at the bible.
+    return { role, occupation, description };
+  }
+
+  // Tolerant guard (same "never assume a caller-supplied string is well-formed"
+  // convention `extractCharacterDescription` above follows): a falsy/blank
+  // `character.name` can't be matched against anything, so skip the bible
+  // lookup entirely rather than crashing `normalizeStoryCharacterName`'s
+  // unconditional `.trim()`.
+  if (typeof character.name !== "string" || character.name.trim().length === 0) {
+    return { role, occupation, description };
+  }
+
+  const bibleCharacters: ReadonlyArray<VdBibleRefinedCharacter> =
+    readBibleRefinedCharacterProfiles(bible);
+  const normalizedTarget = normalizeStoryCharacterName(character.name);
+  const bibleEntry = bibleCharacters.find((entry) => {
+    if (normalizeStoryCharacterName(entry.name) === normalizedTarget) return true;
+    return (entry.aliases ?? []).some(
+      (alias) => normalizeStoryCharacterName(alias) === normalizedTarget,
+    );
+  });
+  if (!bibleEntry) {
+    return { role, occupation, description };
+  }
+
+  if (!hasRosterRole && typeof bibleEntry.role === "string" && bibleEntry.role.trim()) {
+    role = bibleEntry.role;
+  }
+  if (
+    !hasRosterOccupation &&
+    typeof bibleEntry.occupation === "string" &&
+    bibleEntry.occupation.trim()
+  ) {
+    occupation = bibleEntry.occupation;
+  }
+  if (
+    description === undefined &&
+    typeof bibleEntry.description === "string" &&
+    bibleEntry.description.trim()
+  ) {
+    description = `Description: ${bibleEntry.description.trim()}`;
+  }
+
+  return { role, occupation, description };
+}
+
+/**
+ * Merges the two new per-character ethnicity/region override input fields
+ * (`region`/`ethnicityText` — `planning/vd-per-character-ethnicity/plan.md`,
+ * 2026-07-17) into a character's `data` jsonb blob, WITHOUT clobbering any
+ * other keys already present (`description`, `identityLock`,
+ * `wardrobeRules`, etc.) — jsonb columns are replaced wholesale on write, so
+ * this must merge rather than build a bare `{ region, ethnicityText }`
+ * object. `undefined` for either override field means "the caller did not
+ * touch this field" (leave whatever `baseData` already has alone); an
+ * explicit `null` (only reachable from `updateCharacter`, whose schema
+ * marks both fields `.nullable()`) CLEARS that key — the same "undefined
+ * means untouched, null means clear" convention `updateCharacter`'s other
+ * nullable fields (`role`, `narrativeRole`, ...) already use.
+ *
+ * Returns `null` (never `{}`) when the merged object ends up empty — this
+ * is the exact byte-identical fallback `createCharacter`/`updateCharacter`
+ * used before this field existed (`data: input.data ?? null`), so a
+ * pre-existing character (or a new one created without touching either
+ * field) keeps a `data` column indistinguishable from today's (user
+ * decision 2: no backfill, no forced regen).
+ */
+function mergeCharacterRegionOverrideIntoData(
+  baseData: Record<string, unknown>,
+  overrides: { region?: string | null; ethnicityText?: string | null },
+): Record<string, unknown> | null {
+  const merged = { ...baseData };
+  if (overrides.region !== undefined) {
+    if (overrides.region === null) delete merged.region;
+    else merged.region = overrides.region;
+  }
+  if (overrides.ethnicityText !== undefined) {
+    if (overrides.ethnicityText === null) delete merged.ethnicityText;
+    else merged.ethnicityText = overrides.ethnicityText;
+  }
+  return Object.keys(merged).length > 0 ? merged : null;
 }
 
 /**
@@ -1613,6 +1771,17 @@ export const verticalDramaCharactersRouter = router({
         roleProvenance: roleProvenanceSchema.optional(),
         roleReviewStatus: roleReviewStatusSchema.optional(),
         data: z.record(z.string(), z.unknown()).optional(),
+        // Per-character ethnicity/region override (planning/vd-per-character-
+        // ethnicity/plan.md, 2026-07-17) — persisted into `data.region`/
+        // `data.ethnicityText` by `mergeCharacterRegionOverrideIntoData`
+        // below, never a separate column (see that function's doc comment).
+        // Free text wins over the dropdown when both are set — see
+        // `resolveCharacterTargetAudienceRegion`'s own precedence doc
+        // comment. Absent (the default for every pre-existing character):
+        // `data` stays exactly what it would have been before this field
+        // existed (user decision: no backfill, no forced regen).
+        region: z.enum(VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS).optional(),
+        ethnicityText: z.string().trim().max(80).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1636,7 +1805,10 @@ export const verticalDramaCharactersRouter = router({
           roleVisualIntent: input.roleVisualIntent ?? null,
           roleProvenance: input.roleProvenance ?? (input.narrativeRole && input.roleTier ? "user_confirmed" : "ai_assigned"),
           roleReviewStatus: input.roleReviewStatus ?? (input.narrativeRole && input.roleTier ? "ready" : "needs_role_review"),
-          data: input.data ?? null,
+          data: mergeCharacterRegionOverrideIntoData(input.data ?? {}, {
+            region: input.region,
+            ethnicityText: input.ethnicityText,
+          }),
         } as typeof verticalDramaCharacters.$inferInsert)
         .returning();
 
@@ -1657,6 +1829,14 @@ export const verticalDramaCharactersRouter = router({
         roleProvenance: roleProvenanceSchema.nullable().optional(),
         roleReviewStatus: roleReviewStatusSchema.nullable().optional(),
         data: z.record(z.string(), z.unknown()).nullable().optional(),
+        // Per-character ethnicity/region override — see `createCharacter`'s
+        // identical fields and `mergeCharacterRegionOverrideIntoData`'s doc
+        // comment. `.nullable()` (unlike `createCharacter`'s `.optional()`
+        // only) so an already-set override can be explicitly CLEARED back
+        // to "inherit the series default" without the caller having to
+        // resend the character's entire `data` blob.
+        region: z.enum(VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS).nullable().optional(),
+        ethnicityText: z.string().trim().max(80).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1665,7 +1845,7 @@ export const verticalDramaCharactersRouter = router({
       const seriesId = parseId(input.seriesId, "series id");
       const characterId = parseId(input.characterId, "character id");
       await loadOwnedSeries(tenantId, userId, seriesId);
-      await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      const existingCharacter = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
 
       const patch: Record<string, unknown> = { updatedAt: new Date() };
       if (input.name !== undefined) patch.name = input.name;
@@ -1680,7 +1860,21 @@ export const verticalDramaCharactersRouter = router({
         patch.roleProvenance = input.narrativeRole && input.roleTier ? "user_confirmed" : "migrated";
         patch.roleReviewStatus = input.narrativeRole && input.roleTier ? "ready" : "needs_role_review";
       }
-      if (input.data !== undefined) patch.data = input.data;
+      if (input.data !== undefined) {
+        patch.data = mergeCharacterRegionOverrideIntoData(input.data ?? {}, {
+          region: input.region,
+          ethnicityText: input.ethnicityText,
+        });
+      } else if (input.region !== undefined || input.ethnicityText !== undefined) {
+        // No caller-supplied `data` replacement this call — merge onto the
+        // EXISTING row's `data` instead of wiping every other key (identity
+        // lock, wardrobe rules, description, ...) an unrelated
+        // region/ethnicityText-only edit must never touch.
+        patch.data = mergeCharacterRegionOverrideIntoData(
+          ((existingCharacter.data as Record<string, unknown> | null) ?? {}),
+          { region: input.region, ethnicityText: input.ethnicityText },
+        );
+      }
 
       const [row] = await db
         .update(verticalDramaCharacters)
@@ -2126,6 +2320,244 @@ export const verticalDramaCharactersRouter = router({
       };
     }),
 
+  /* ------------------------------------------------------------------------ */
+  /* Character identity repair (`planning/vd-character-identity-repair/       */
+  /* plan.md` Phase 3) — propose -> user confirms each group -> merge.        */
+  /* NEVER auto-applied; story text is NEVER rewritten (binding user          */
+  /* decisions, see that plan's "Decisions" section).                        */
+  /* ------------------------------------------------------------------------ */
+
+  /**
+   * PROPOSAL ONLY — never merges/deletes/renames anything. Reads this
+   * series' roster + Story Bible `refinedCharacters` cast + active
+   * deep-draft season script, computes per-roster-row occurrence FACTS in
+   * TS (per `feedback_skill_first_authoring` — TS computes facts, the LLM
+   * judges), and invokes the `vertical-drama-character-identity-reconciler`
+   * skill to decide which roster rows are the SAME person under a drifted
+   * spelling/short form versus genuinely distinct characters. Returns a
+   * FULL PARTITION of the roster — every character ends up in exactly one
+   * returned group (a lone/non-duplicate character gets its own singleton
+   * group, `isSingleton: true`).
+   *
+   * `verticalDramaStoryBible`/`verticalDramaCharacterMerge` are loaded via a
+   * DYNAMIC `import()` INSIDE this procedure (never a static top-level
+   * import) — same "dynamic import, never static" convention this file's
+   * `detectCharacterVariantsNow` already documents for the identical
+   * problem (this router's existing minimal-mock test suites do not mock
+   * either module's heavy transitive chain).
+   *
+   * Credit-gated by `generateCharacterDuplicateAnalysis` ITSELF
+   * (`hasEnoughCredits`/`deductCredits` live inside that function) — this
+   * mutation invents no separate credit-charging scheme of its own, same
+   * established pattern as `detectCharacterVariantsNow`/`detectLocationsNow`.
+   *
+   * Throws `PRECONDITION_FAILED` when the roster is empty — there is
+   * nothing to analyze. DELIBERATE DIVERGENCE from `detectCharacterVariantsNow`:
+   * an empty drafted-episode set is NOT a precondition failure here — the
+   * analysis can still run on bible-name matching + existing-alias evidence
+   * alone (occurrence counts simply read as zero), so a series with
+   * duplicates but no deep-draft yet still gets a usable (if
+   * lower-confidence) proposal instead of being blocked outright.
+   */
+  analyzeCharacterDuplicates: verticalDramaProcedure
+    .input(seriesScope)
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const [seriesRow] = await db
+        .select({ locale: verticalDramaSeries.locale, bible: verticalDramaSeries.bible })
+        .from(verticalDramaSeries)
+        .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
+        .limit(1);
+      const bible = (seriesRow?.bible as Record<string, unknown> | null) ?? {};
+      const lang: StoryScriptLang = seriesRow?.locale === "th" ? "th" : "en";
+
+      const {
+        getActiveBreakdown,
+        readItemShotDrafts,
+        readItemCliffhangerLine,
+        readBibleRefinedCharacterProfiles,
+      } = await import("../services/verticalDramaStoryBible");
+      const {
+        analyzeCharacterDuplicates: runAnalyzeCharacterDuplicates,
+        InsufficientCreditsError,
+        VdSchemaValidationError,
+      } = await import("../services/verticalDramaCharacterMerge");
+
+      const activeItems = getActiveBreakdown(bible);
+      const draftedItems = activeItems.filter((item) => readItemShotDrafts(item) !== null);
+      const episodes: StoryScriptEpisodeInput[] = draftedItems.map((item) => ({
+        episodeNumber: item.episodeNumber,
+        workingTitle: item.workingTitle,
+        logline: item.logline,
+        keyBeats: item.keyBeats,
+        shotDrafts: readItemShotDrafts(item),
+        cliffhangerLine: readItemCliffhangerLine(item),
+      }));
+
+      const bibleCharacters = readBibleRefinedCharacterProfiles(bible).map((c) => ({
+        name: c.name,
+        narrativeRole: c.narrativeRole ?? null,
+        roleTier: c.roleTier ?? null,
+        occupation: c.occupation ?? null,
+      }));
+
+      let result: Awaited<ReturnType<typeof runAnalyzeCharacterDuplicates>>;
+      try {
+        result = await runAnalyzeCharacterDuplicates(
+          { tenantId, userId, seriesId },
+          { lang, bibleCharacters, episodes },
+        );
+      } catch (err) {
+        if (err instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+        }
+        if (err instanceof VdSchemaValidationError) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+        }
+        if (err instanceof Error && err.message === "no_characters") {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "ยังไม่มีตัวละครในซีรีย์นี้ให้ตรวจสอบความซ้ำ",
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Character duplicate analysis failed",
+        });
+      }
+
+      return {
+        model: result.model,
+        creditsUsed: result.creditsUsed,
+        groups: result.groups.map((group) => ({
+          canonicalCharacterId: String(group.canonicalCharacterId),
+          canonicalCharacterKey: group.canonicalCharacterKey,
+          canonicalName: group.canonicalName,
+          canonicalMatchesBibleCharacter: group.canonicalMatchesBibleCharacter,
+          duplicateCharacterIds: group.duplicateCharacterIds.map(String),
+          duplicates: group.duplicates.map((d) => ({
+            characterId: String(d.characterId),
+            characterKey: d.characterKey,
+            name: d.name,
+          })),
+          aliasesToRecord: group.aliasesToRecord,
+          evidence: group.evidence.map((e) => ({
+            characterId: String(e.characterId),
+            characterKey: e.characterKey,
+            name: e.name,
+            narrativeRole: e.narrativeRole ?? undefined,
+            roleTier: e.roleTier ?? undefined,
+            roleReviewStatus: e.roleReviewStatus ?? undefined,
+            dataSource: e.dataSource ?? undefined,
+            matchesBibleCharacterExactly: e.matchesBibleCharacterExactly,
+            shotCharacterOccurrences: e.shotCharacterOccurrences,
+            dialogueSpeakerOccurrences: e.dialogueSpeakerOccurrences,
+            episodeNumbersSeenIn: e.episodeNumbersSeenIn,
+            existingAliases: e.existingAliases,
+          })),
+          reasoning: group.reasoning,
+          confidence: group.confidence,
+          isSingleton: group.isSingleton,
+          autoFallback: group.autoFallback,
+        })),
+      };
+    }),
+
+  /**
+   * The ONLY mutation that actually merges/deletes anything for this
+   * feature. Takes an explicit, user-CONFIRMED
+   * `{ keepCharacterId, mergeCharacterIds[] }` — normally copied straight
+   * from one of `analyzeCharacterDuplicates`'s proposed groups — and is
+   * NEVER invoked automatically. Delegates the entire ordered merge
+   * sequence (alias recording, self-FK repoint, asset repoint,
+   * `startFramePlan` rewrite, delete) to
+   * `verticalDramaCharacterMerge.ts`'s `mergeCharacters`, which runs inside
+   * ONE `db.transaction` — see that function's own doc comment for the
+   * exact order and why it matters (the self-FK repoint MUST precede the
+   * delete, mirroring `deleteCharacter`'s own PRECONDITION_FAILED guard
+   * above).
+   *
+   * Story text (`bible.breakdownVersions[]` shot/dialogue content) is NEVER
+   * rewritten — a merged row's own name becomes a registered ALIAS of the
+   * surviving row instead (binding user decision,
+   * `planning/vd-character-identity-repair/plan.md` "Decisions" §2).
+   */
+  mergeCharacters: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        keepCharacterId: z.string().min(1),
+        mergeCharacterIds: z.array(z.string().min(1)).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+
+      const keepCharacterId = parseId(input.keepCharacterId, "keep character id");
+      const mergeCharacterIds = input.mergeCharacterIds.map((id) => parseId(id, "merge character id"));
+
+      const { mergeCharacters: runMergeCharacters, VdCharacterMergeError } = await import(
+        "../services/verticalDramaCharacterMerge"
+      );
+
+      try {
+        const summary = await runMergeCharacters(
+          { tenantId, userId, seriesId },
+          { keepCharacterId, mergeCharacterIds },
+        );
+        return {
+          keptCharacterId: String(summary.keptCharacterId),
+          mergedCharacterIds: summary.mergedCharacterIds.map(String),
+          aliasesRecorded: summary.aliasesRecorded,
+          aliasesCarriedOver: summary.aliasesCarriedOver,
+          dependentsRepointed: summary.dependentsRepointed,
+          assetsRepointed: summary.assetsRepointed,
+          episodesRewritten: summary.episodesRewritten.map((e) => ({
+            episodeId: String(e.episodeId),
+            episodeNumber: e.episodeNumber,
+            shotsChanged: e.shotsChanged,
+          })),
+        };
+      } catch (err) {
+        if (err instanceof VdCharacterMergeError) {
+          switch (err.reason) {
+            case "keep_in_merge_list":
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "ตัวละครที่ต้องการเก็บไว้ต้องไม่อยู่ในรายการตัวละครที่จะรวมเข้าด้วยกัน",
+              });
+            case "empty_merge_list":
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: "ต้องระบุตัวละครอย่างน้อยหนึ่งตัวที่จะรวมเข้ากับตัวละครหลัก",
+              });
+            case "row_not_found":
+              throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบตัวละครบางตัวในซีรีย์นี้" });
+            default:
+              throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+          }
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: err instanceof Error ? err.message : "Character merge failed",
+        });
+      }
+    }),
+
   /**
    * Attach an existing canonical `media_assets` row as a durable character /
    * product reference. The media asset is validated for tenant + user ownership
@@ -2466,6 +2898,10 @@ export const verticalDramaCharactersRouter = router({
           tone: verticalDramaSeries.tone,
           bible: verticalDramaSeries.bible,
           updatedAt: verticalDramaSeries.updatedAt,
+          // Season lineage (plan Stage 2.3) — feeds `loadCharacterDesignContext`'s
+          // `crossSeriesUniqueness` parent exclusion so a sequel is never told
+          // to differ from its own previous-season self.
+          parentSeriesId: verticalDramaSeries.parentSeriesId,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
@@ -2473,14 +2909,29 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      // Per-character ethnicity/region override (planning/vd-per-character-
+      // ethnicity/plan.md) — OVERRIDES the series default resolved above at
+      // this call site. `isExplicit: false` (no per-character override set)
+      // resolves to the exact same `targetAudienceRegion` used today, so an
+      // untouched character's generation stays byte-identical.
+      const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
+        readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
+        targetAudienceRegion,
+      );
       const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
         tenantId,
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
 
-      const description = extractCharacterDescription(
-        (character.data as Record<string, unknown> | null) ?? null,
+      // Merge the roster row's role/occupation/description with the series
+      // bible's `refinedCharacters` entry for this character (see
+      // `resolveEffectiveCharacterFacts`'s own doc comment — traceId
+      // Ytrq5TrfJRzyFNRLasyV8 / `planning/vd-character-visual-bible-occupation-fix/plan.md`).
+      const effectiveCharacterFacts = resolveEffectiveCharacterFacts(
+        { name: character.name, role: character.role, occupation: character.occupation, data: (character.data as Record<string, unknown> | null) ?? null },
+        (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      const description = effectiveCharacterFacts.description;
       const faceSourceReference = await resolveFaceSourceReferenceForCharacter(
         { tenantId, userId, seriesId },
         character,
@@ -2513,10 +2964,10 @@ export const verticalDramaCharactersRouter = router({
             characterId,
             characterKey: character.characterKey,
             name: character.name,
-            role: character.role,
+            role: effectiveCharacterFacts.role,
             narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
             roleTier: character.roleTier as RoleTier | null | undefined,
-            occupation: character.occupation,
+            occupation: effectiveCharacterFacts.occupation,
             roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
             roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
             description,
@@ -2528,6 +2979,7 @@ export const verticalDramaCharactersRouter = router({
                 }
               : undefined,
             targetAudienceRegion,
+            resolvedCharacterRegion,
             presetVisualIdentity,
             customInstruction: input.customInstruction,
             characterDesignContext,
@@ -2602,10 +3054,10 @@ export const verticalDramaCharactersRouter = router({
           characterId,
           characterKey: character.characterKey,
           name: character.name,
-          role: character.role,
+          role: effectiveCharacterFacts.role,
           narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
           roleTier: character.roleTier as RoleTier | null | undefined,
-          occupation: character.occupation,
+          occupation: effectiveCharacterFacts.occupation,
           roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
           roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
           description,
@@ -2613,6 +3065,7 @@ export const verticalDramaCharactersRouter = router({
             ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
             : undefined,
           targetAudienceRegion,
+          resolvedCharacterRegion,
           presetVisualIdentity,
           faceSourceReference,
           customInstruction: input.customInstruction,
@@ -2758,6 +3211,10 @@ export const verticalDramaCharactersRouter = router({
           tone: verticalDramaSeries.tone,
           bible: verticalDramaSeries.bible,
           updatedAt: verticalDramaSeries.updatedAt,
+          // Season lineage (plan Stage 2.3) — feeds `loadCharacterDesignContext`'s
+          // `crossSeriesUniqueness` parent exclusion so a sequel is never told
+          // to differ from its own previous-season self.
+          parentSeriesId: verticalDramaSeries.parentSeriesId,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
@@ -2765,13 +3222,16 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      // Per-character ethnicity/region override (planning/vd-per-character-
+      // ethnicity/plan.md) — see `previewCharacterPrompt`'s identical site
+      // for the full contract.
+      const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
+        readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
+        targetAudienceRegion,
+      );
       const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
         tenantId,
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-      );
-
-      const description = extractCharacterDescription(
-        (character.data as Record<string, unknown> | null) ?? null,
       );
 
       // 0. Identity-lock reference — resolve BEFORE prompt generation (Phase
@@ -2823,6 +3283,14 @@ export const verticalDramaCharactersRouter = router({
         const characterDesignContext = seriesRow
           ? await loadCharacterDesignContext({ tenantId, userId }, seriesRow, character)
           : undefined;
+        // Merge roster + series-bible facts (see `resolveEffectiveCharacterFacts`'s
+        // own doc comment — traceId Ytrq5TrfJRzyFNRLasyV8 /
+        // `planning/vd-character-visual-bible-occupation-fix/plan.md`).
+        const effectiveCharacterFacts = resolveEffectiveCharacterFacts(
+          { name: character.name, role: character.role, occupation: character.occupation, data: (character.data as Record<string, unknown> | null) ?? null },
+          (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+        );
+        const description = effectiveCharacterFacts.description;
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -2832,10 +3300,10 @@ export const verticalDramaCharactersRouter = router({
             characterId,
             characterKey: character.characterKey,
             name: character.name,
-            role: character.role,
+            role: effectiveCharacterFacts.role,
             narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
             roleTier: character.roleTier as RoleTier | null | undefined,
-            occupation: character.occupation,
+            occupation: effectiveCharacterFacts.occupation,
             roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
             roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
             description,
@@ -2843,6 +3311,7 @@ export const verticalDramaCharactersRouter = router({
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
               : undefined,
             targetAudienceRegion,
+            resolvedCharacterRegion,
             presetVisualIdentity,
             faceSourceReference,
             hasOwnReferenceImage: Boolean(referencePortraitUrl),
@@ -3233,6 +3702,10 @@ export const verticalDramaCharactersRouter = router({
           tone: verticalDramaSeries.tone,
           bible: verticalDramaSeries.bible,
           updatedAt: verticalDramaSeries.updatedAt,
+          // Season lineage (plan Stage 2.3) — feeds `loadCharacterDesignContext`'s
+          // `crossSeriesUniqueness` parent exclusion so a sequel is never told
+          // to differ from its own previous-season self.
+          parentSeriesId: verticalDramaSeries.parentSeriesId,
         })
         .from(verticalDramaSeries)
         .where(and(eq(verticalDramaSeries.id, seriesId), eq(verticalDramaSeries.tenantId, tenantId)))
@@ -3240,13 +3713,16 @@ export const verticalDramaCharactersRouter = router({
       const targetAudienceRegion = readTargetAudienceRegionFromBible(
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
       );
+      // Per-character ethnicity/region override (planning/vd-per-character-
+      // ethnicity/plan.md) — see `previewCharacterPrompt`'s identical site
+      // for the full contract.
+      const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion(
+        readCharacterRegionOverrideFromData((character.data as Record<string, unknown> | null) ?? null),
+        targetAudienceRegion,
+      );
       const presetVisualIdentity = await resolveCharacterPresetVisualIdentity(
         tenantId,
         (seriesRow?.bible as Record<string, unknown> | null) ?? null,
-      );
-
-      const description = extractCharacterDescription(
-        (character.data as Record<string, unknown> | null) ?? null,
       );
 
       // Identity-lock reference — resolved BEFORE prompt generation (Phase
@@ -3297,6 +3773,14 @@ export const verticalDramaCharactersRouter = router({
         const characterDesignContext = seriesRow
           ? await loadCharacterDesignContext({ tenantId, userId }, seriesRow, character)
           : undefined;
+        // Merge roster + series-bible facts (see `resolveEffectiveCharacterFacts`'s
+        // own doc comment — traceId Ytrq5TrfJRzyFNRLasyV8 /
+        // `planning/vd-character-visual-bible-occupation-fix/plan.md`).
+        const effectiveCharacterFacts = resolveEffectiveCharacterFacts(
+          { name: character.name, role: character.role, occupation: character.occupation, data: (character.data as Record<string, unknown> | null) ?? null },
+          (seriesRow?.bible as Record<string, unknown> | null) ?? null,
+        );
+        const description = effectiveCharacterFacts.description;
         let promptResult;
         try {
           promptResult = await generateCharacterVisualPrompts({
@@ -3306,10 +3790,10 @@ export const verticalDramaCharactersRouter = router({
             characterId,
             characterKey: character.characterKey,
             name: character.name,
-            role: character.role,
+            role: effectiveCharacterFacts.role,
             narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
             roleTier: character.roleTier as RoleTier | null | undefined,
-            occupation: character.occupation,
+            occupation: effectiveCharacterFacts.occupation,
             roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
             roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
             description,
@@ -3317,6 +3801,7 @@ export const verticalDramaCharactersRouter = router({
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
               : undefined,
             targetAudienceRegion,
+            resolvedCharacterRegion,
             presetVisualIdentity,
             faceSourceReference,
             hasOwnReferenceImage: Boolean(referencePortraitUrl),

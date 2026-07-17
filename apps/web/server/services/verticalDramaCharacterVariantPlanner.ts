@@ -64,6 +64,7 @@ import {
   type StoryScriptEpisodeInput,
   type StoryScriptLang,
 } from "@shared/verticalDramaSeries/storyScriptText";
+import { normalizeStoryCharacterName } from "./verticalDramaCharacterRosterAutoRegister";
 // Circular import (safe — see this file's doc comment): only referenced
 // inside `generateCharacterVariantPlan`'s function body, never at
 // module-evaluation time.
@@ -572,13 +573,26 @@ export async function reconcileCharacterVariantPlan(
         ? rowsByCharacterKey.get(newCharacter.existing_character_key)
         : undefined;
       if (!existing) {
+        // Name comparison is normalized (trim + case-fold + whitespace
+        // collapse) via the shared `normalizeStoryCharacterName` — the same
+        // convention every other roster writer in this codebase already
+        // follows (see `verticalDramaCharacterRosterAutoRegister.ts`'s doc
+        // comment on that function). Raw `===` here would let a trailing
+        // space or a case-only difference slip past this match and mint a
+        // duplicate row — exactly the failure class this whole repair plan
+        // exists to close (see `planning/vd-character-identity-repair/plan.md`).
+        // Only the name dimension is normalized; the id/parent/shares-face
+        // conditions are untouched.
+        const newCharacterNormalizedName = normalizeStoryCharacterName(newCharacter.name);
         existing = isIdentical
           ? [...rowsById.values()].find(
-              (row) => row.sharesFaceWithCharacterId === sourceRow.id && row.name === newCharacter.name,
+              (row) =>
+                row.sharesFaceWithCharacterId === sourceRow.id &&
+                normalizeStoryCharacterName(row.name) === newCharacterNormalizedName,
             )
           : [...rowsById.values()].find(
               (row) =>
-                row.name === newCharacter.name &&
+                normalizeStoryCharacterName(row.name) === newCharacterNormalizedName &&
                 row.id !== sourceRow.id &&
                 row.parentCharacterId == null &&
                 row.sharesFaceWithCharacterId == null,

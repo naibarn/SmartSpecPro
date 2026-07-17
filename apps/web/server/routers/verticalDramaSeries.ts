@@ -25,6 +25,15 @@ import {
   verticalDramaCharacters,
   verticalDramaCharacterAssets,
   /**
+   * `planning/vd-character-identity-repair/plan.md` Phase 6.2 — the alias
+   * table `reconcileCharactersFromStoryBible` now reads AND writes (see that
+   * function below): resolves a bible name to an already-known roster
+   * character via a persisted alias, and records a NEWLY-discovered
+   * bible-declared alias (the wizard-rename case) so a later run doesn't
+   * have to re-derive it from `refinedCharacters[].aliases` every time.
+   */
+  verticalDramaCharacterAliases,
+  /**
    * Location Visual Bible whole-series seeding (mirrors
    * `verticalDramaCharacters` above) — used only by `seedLocationsFromDraft`
    * below to bulk-insert the wizard's freeform `bible.locationsDraft` text
@@ -57,6 +66,8 @@ import {
   type VerticalDramaSeriesRow,
   type VerticalDramaGenrePresetRow,
   type VerticalDramaCharacterRow,
+  /** Phase 6.2 — see `verticalDramaCharacterAliases` import above. */
+  type VerticalDramaCharacterAliasRow,
   type VerticalDramaMemoryEventRow,
   /** Production-grade full-story generation — see `loadSeriesLocationFacts` below. */
   type VerticalDramaLocationRow,
@@ -131,6 +142,88 @@ import {
   resolveAudienceAgeRating,
 } from "@shared/verticalDramaSeries/audienceAgeRating";
 /**
+ * Genre pollution guard (Stage 1.5, `planning/vd-series-memory-and-lineage/
+ * plan.md`) — `createSeriesInput` below rejects a `genre` that is a copy of
+ * `title` or is logline/alt-title-shaped rather than genre-shaped. See that
+ * module's own header doc comment for the real-data investigation and the
+ * conservative, structural (not fuzzy-similarity) rule design.
+ */
+import {
+  detectGenrePollution,
+  genrePollutionErrorMessage,
+} from "@shared/verticalDramaSeries/genrePollutionGuard";
+/**
+ * Series memory (Stage 1.1/1.2/1.4, `planning/vd-series-memory-and-lineage/
+ * plan.md`) — `VdOpenThread` (type-only, used by
+ * `resolveOpenThreadsFromSeriesMemory` below, Stage 1.5's openThreads-leak
+ * fix) PLUS the additional types/value Stage 1.4's `getSeriesMemory`/
+ * `updateSeriesMemory` procedures need: `foldSeriesMemory` (pure, TS-only,
+ * no LLM/I-O — see that function's own doc comment) to re-derive
+ * `currentState` after every user edit, and the remaining `VdSeriesMemory`
+ * field types for this file's own `normalizeStoredSeriesMemory` below. Still
+ * does NOT import `verticalDramaSeriesMemoryProjection.ts`'s unexported
+ * `readStoredSeriesMemory` (see the original note this doc comment used to
+ * carry) — this file has its own small `normalizeStoredSeriesMemory`
+ * mirroring that function's tolerant-parse convention read-only. It DOES
+ * import that module's exported `buildCompactSummary` (separate import,
+ * right below) since that pure formatter is reused as-is rather than
+ * re-implemented.
+ */
+import {
+  foldSeriesMemory,
+  type VdEpisodeMemory,
+  type VdOpenThread,
+  type VdRelationshipState,
+  type VdSeriesMemory,
+  type VdSeriesMemoryCurrentState,
+} from "@shared/verticalDramaSeries/seriesMemoryState";
+/**
+ * Series Memory tab write path (Stage 1.4) reuses ONLY this pure formatter
+ * from the Stage 1.2 projection service — see the import block's doc
+ * comment above for why the rest of that module's write path (the
+ * `userEdited`-gated `upsertEpisodeMemories`/`upsertEpisodeMemory`) is
+ * deliberately NOT reused for user-triggered edits.
+ */
+import { buildCompactSummary } from "../services/verticalDramaSeriesMemoryProjection";
+/**
+ * Season/special-edition lineage (Part 2, Stage 2.1/2.2/2.3,
+ * `planning/vd-series-memory-and-lineage/plan.md`). `VerticalDramaSeriesLineage`
+ * / `VerticalDramaSeasonCarryOverDraft` are the persisted/proposed contract
+ * shapes (`@shared/verticalDramaSeries/lineage.ts` — a dedicated file, NOT
+ * folded into the 1000+ line `contracts.ts`). `loadLineageContext` and
+ * `cloneSeriesCastForLineage` are services this router calls INTO — they
+ * never import this router back (see each service's own header doc comment
+ * on why, mirroring `verticalDramaStoryJobs.ts`'s established convention).
+ */
+import {
+  VERTICAL_DRAMA_SERIES_CREATE_MODES,
+  type VerticalDramaSeriesCreateMode,
+  type VerticalDramaSeriesLineage,
+} from "@shared/verticalDramaSeries/lineage";
+import {
+  loadLineageContext,
+  type VerticalDramaLineageContext,
+} from "../services/verticalDramaSeriesLineage";
+import { cloneSeriesCastForLineage } from "../services/verticalDramaSeriesClone";
+import {
+  synthesizeSeasonCarryOver,
+  SeasonCarryOverInputError,
+} from "../services/verticalDramaSeasonCarryOver";
+/**
+ * Stage 2.5 (`planning/vd-series-memory-and-lineage/plan.md`) —
+ * `proposeSpecialEditionBrief` mutation, mirroring `proposeSeasonCarryOver`
+ * immediately above exactly (same "LLM call -> transient draft, zero DB
+ * writes" shape, same flag gate, same ownership hard-throw). Closes the gap
+ * where `skills/vertical-drama-special-edition-planner/skill.md` had no
+ * caller — see this service's own header doc comment for the full
+ * `bible.userPremise` hand-off chain into the (untouched)
+ * `vertical-drama-full-story-architect` skill.
+ */
+import {
+  synthesizeSpecialEditionBrief,
+  SpecialEditionInputError,
+} from "../services/verticalDramaSpecialEdition";
+/**
  * Task #22 (season-level product tie-in draft awareness, spec §7.7.2/§7.7.3,
  * added 2026-07-09) — VALUE import (not type-only): `planSeasonTieInPlacements`
  * is a pure/shared function with zero server-only transitive imports (same
@@ -193,6 +286,13 @@ import {
    * below), matching `mergeDeepDraftItems`'s own draftedItems shape.
    */
   type DeepDraftedEpisodeItem,
+  /**
+   * Stage 2.4 threading (`planning/vd-series-memory-and-lineage/plan.md`,
+   * added 2026-07-17) — the bounded fact set `resolveSeasonLineageContext`
+   * below builds for a sequel row and threads into `generateStoryBibleDeep`'s
+   * `seasonLineage` param; see that type's own doc comment.
+   */
+  type VdSeasonLineageContext,
 } from "../services/verticalDramaStoryBible";
 /**
  * Async story jobs (#28, added 2026-07-08) — generic submit -> jobId -> poll
@@ -308,6 +408,26 @@ import {
 import {
   readActiveSeasonCritique,
   readBibleRefinedCharacters,
+  // Vd character identity repair (`planning/vd-character-identity-repair/plan.md`
+  // Phase 1) — the FULL bible character profile (name + role + narrativeRole +
+  // roleTier + occupation), unlike `readBibleRefinedCharacters` just above,
+  // which deliberately strips everything down to `{ name }` for its own
+  // (unrelated) dramaturgy-roster callers. Threaded into
+  // `ensureRosterCharactersFromStory`'s `refinedCharacters` param below so the
+  // auto-register INSERT stops discarding role data the bible already has —
+  // see that function's own doc comment for the bug this fixes.
+  readBibleRefinedCharacterProfiles,
+  // `planning/vd-character-identity-repair/plan.md` Phase 2.0/2.1 — the full
+  // profile shape `readBibleRefinedCharacterProfiles` returns (now including
+  // `aliases`), used as this file's `characterBibleProfiles` variable's
+  // declared type so `.aliases` is visible without narrowing to
+  // `VdRosterAutoRegisterRefinedCharacter` (which deliberately doesn't
+  // declare `aliases` — see that type's own file). `VdBibleRefinedCharacter`
+  // is a structural superset of `VdRosterAutoRegisterRefinedCharacter`, so
+  // passing a `VdBibleRefinedCharacter[]` into
+  // `ensureRosterCharactersFromStory`'s `refinedCharacters` param still
+  // type-checks unchanged.
+  type VdBibleRefinedCharacter,
 } from "../services/verticalDramaStoryBible";
 /**
  * Premium multi-round drafts (W11-A, added 2026-07-08) — `mode` input on the
@@ -351,10 +471,29 @@ import { persistDeepDraftEpisodeMemories } from "../services/verticalDramaSeries
  * (which is UPDATE-only); persists a deep story draft run's dialogue
  * speakers / shot `characters[]` names that are new to the roster; see
  * `runGenerateStoryBibleDeepJob` / `runExtendStoryDraftHorizonJob` below.
+ *
+ * `planning/vd-character-identity-repair/plan.md` Phase 1 — both call sites
+ * below now build the `refinedCharacters` argument from
+ * `readBibleRefinedCharacterProfiles` instead of the name-only `{ name }`
+ * they used to pass (`characterBibleProfiles`, typed as this file's own
+ * `VdBibleRefinedCharacter[]` — a structural superset of this service's own
+ * `VdRosterAutoRegisterRefinedCharacter`, so no explicit import of that
+ * narrower type is needed here).
  */
 import {
   ensureRosterCharactersFromStory,
   type VdRosterAutoRegisterSummary,
+  /**
+   * `planning/vd-character-identity-repair/plan.md` Phase 6.2 —
+   * `reconcileCharactersFromStoryBible` below now shares the SAME
+   * normalized-name convention (case-fold + whitespace-collapse) as this
+   * service's own dedup/alias logic, instead of its previous bespoke
+   * `.trim().toLocaleLowerCase()` (no whitespace-collapse). Import-only —
+   * this router file must NOT modify
+   * `verticalDramaCharacterRosterAutoRegister.ts` itself (out of scope for
+   * this phase).
+   */
+  normalizeStoryCharacterName,
 } from "../services/verticalDramaCharacterRosterAutoRegister";
 import { debugError } from "../_core/logger";
 import {
@@ -677,6 +816,160 @@ async function loadOwnedSeries(
     throw new TRPCError({ code: "NOT_FOUND", message: "Series not found" });
   }
   return row;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Series Memory tab (Stage 1.4, `planning/vd-series-memory-and-lineage/      */
+/* plan.md`) — input schemas + read/normalize helpers shared by               */
+/* `getSeriesMemory`/`updateSeriesMemory` below.                              */
+/* -------------------------------------------------------------------------- */
+
+const vdRelationshipDisclosureInputSchema = z.enum([
+  "secret",
+  "known_to_some",
+  "public",
+  "undeclared",
+]);
+
+const vdThreadClassInputSchema = z.enum([
+  "plot",
+  "domestic",
+  "career",
+  "financial",
+  "health",
+  "relationship",
+]);
+
+/**
+ * `VdRelationshipState` as user-editable input. Strict about the fields this
+ * whole feature depends on — `pair`/`status`/`disclosure` are REQUIRED with
+ * a closed enum for `disclosure` — deliberately NOT the
+ * `z.object({}).passthrough()` looseness documented (this feature's plan
+ * file, and `verticalDramaSeriesMemoryProjection.ts`'s own doc comment) as
+ * the root cause of today's memory data being worthless. `knownBy` defaults
+ * to `[]` (meaningfully empty for `"undeclared"` — nobody has been TOLD).
+ */
+const vdRelationshipStateInputSchema = z.object({
+  pair: z.tuple([z.string().trim().min(1), z.string().trim().min(1)]),
+  status: z.string().trim().min(1).max(200),
+  disclosure: vdRelationshipDisclosureInputSchema,
+  knownBy: z.array(z.string().trim().min(1)).default([]),
+  sinceEpisode: z.number().int().positive(),
+});
+
+/**
+ * `VdOpenThread` as user-editable input — `threadClass` is a closed enum for
+ * the same reason `disclosure` is above (`"domestic"` is the whole point of
+ * this feature's thread-class axis; a free-text field would let it silently
+ * drift back to plot-only threads).
+ */
+const vdOpenThreadInputSchema = z.object({
+  threadId: z.string().trim().min(1).max(120),
+  description: z.string().trim().min(1).max(500),
+  threadClass: vdThreadClassInputSchema,
+  openedEpisode: z.number().int().positive(),
+  resolvedEpisode: z.number().int().positive().optional(),
+});
+
+const vdKnowledgeChangeInputSchema = z.object({
+  characterKey: z.string().trim().min(1),
+  learned: z.string().trim().min(1).max(500),
+});
+
+/**
+ * `VdEpisodeMemory` as user-editable input — the single granularity
+ * `updateSeriesMemory` supports (see that procedure's own doc comment for
+ * the "why episode-record, not sub-field, granularity" design decision).
+ */
+const vdEpisodeMemoryInputSchema = z.object({
+  episodeNumber: z.number().int().positive(),
+  recap: z.string().trim().min(1).max(4000),
+  canonicalFacts: z.array(z.string().trim().min(1)).default([]),
+  threadsOpened: z.array(vdOpenThreadInputSchema).default([]),
+  threadsResolved: z.array(z.string().trim().min(1)).default([]),
+  relationshipChanges: z.array(vdRelationshipStateInputSchema).default([]),
+  knowledgeChanges: z.array(vdKnowledgeChangeInputSchema).default([]),
+});
+
+export const getSeriesMemoryInput = z.object({ seriesId: z.string().min(1) });
+
+export const updateSeriesMemoryInput = z.object({
+  seriesId: z.string().min(1),
+  edit: z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("upsertEpisode"),
+      episode: vdEpisodeMemoryInputSchema,
+    }),
+    z.object({
+      kind: z.literal("removeEpisode"),
+      episodeNumber: z.number().int().positive(),
+    }),
+  ]),
+});
+
+/**
+ * Defensive read of `vertical_drama_series.memory` jsonb into a trustworthy
+ * `VdSeriesMemory` — mirrors `verticalDramaSeriesMemoryProjection.ts`'s
+ * unexported `readStoredSeriesMemory` (same tolerant-parse convention:
+ * missing/malformed input -> a well-formed EMPTY shape, never a throw, never
+ * `null`/`undefined` reaching a caller). That function is intentionally not
+ * exported (see this file's `seriesMemoryState` import doc comment above),
+ * so this is a genuinely separate, small, READ-ONLY implementation rather
+ * than a modification of that module.
+ */
+function normalizeStoredSeriesMemory(raw: unknown): VdSeriesMemory {
+  if (!raw || typeof raw !== "object") {
+    return {
+      contractVersion: 1,
+      episodes: [],
+      currentState: foldSeriesMemory([]),
+      compactSummary: "",
+      lastFoldedEpisode: 0,
+    };
+  }
+  const candidate = raw as Partial<VdSeriesMemory>;
+  const episodes = Array.isArray(candidate.episodes)
+    ? candidate.episodes.filter(
+        (ep): ep is VdEpisodeMemory =>
+          !!ep && typeof (ep as VdEpisodeMemory).episodeNumber === "number"
+      )
+    : [];
+  const currentState: VdSeriesMemoryCurrentState =
+    candidate.currentState ?? foldSeriesMemory(episodes);
+  return {
+    contractVersion: 1,
+    episodes,
+    currentState,
+    compactSummary:
+      typeof candidate.compactSummary === "string"
+        ? candidate.compactSummary
+        : "",
+    lastFoldedEpisode:
+      typeof candidate.lastFoldedEpisode === "number"
+        ? candidate.lastFoldedEpisode
+        : 0,
+    ...(candidate.userEdited === true ? { userEdited: true as const } : {}),
+  };
+}
+
+/**
+ * Maps `vdEpisodeMemoryInputSchema`'s parsed shape 1:1 onto `VdEpisodeMemory`
+ * — same field names throughout; zod already enforced the strict inner
+ * shapes (`pair`/`status`/`disclosure`/`threadClass`, etc.) above.
+ */
+function toVdEpisodeMemoryFromInput(
+  input: z.infer<typeof vdEpisodeMemoryInputSchema>
+): VdEpisodeMemory {
+  const relationshipChanges: VdRelationshipState[] = input.relationshipChanges;
+  return {
+    episodeNumber: input.episodeNumber,
+    recap: input.recap,
+    canonicalFacts: input.canonicalFacts,
+    threadsOpened: input.threadsOpened,
+    threadsResolved: input.threadsResolved,
+    relationshipChanges,
+    knowledgeChanges: input.knowledgeChanges,
+  };
 }
 
 /**
@@ -1398,6 +1691,126 @@ async function loadSeriesLocationFacts(
   });
 }
 
+/** Defensive parse of `vertical_drama_series.lineage` (jsonb) — same "malformed blob degrades to null, never throws" convention as this file's own `normalizeStoredSeriesMemory`/`asRecord`-shaped reads. */
+function asVerticalDramaSeriesLineage(
+  raw: unknown
+): VerticalDramaSeriesLineage | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  return raw as VerticalDramaSeriesLineage;
+}
+
+/**
+ * Stage 2.4 threading (`planning/vd-series-memory-and-lineage/plan.md`,
+ * added 2026-07-17) — the ONE place a sequel's deep-draft/extend run
+ * assembles `VdSeasonLineageContext`, per that stage's own "the router reads
+ * `series.lineage` + `series.parentSeriesId` and assembles it itself, the
+ * client never has to" design note. Called by both
+ * `runGenerateStoryBibleDeepJob` and `runExtendStoryDraftHorizonJob` — a
+ * sequel keeps needing these facts on every later extend/horizon run, not
+ * just its first deep-draft.
+ *
+ * Two sources, preferring the freshest:
+ *  - LIVE: `loadLineageContext` against the parent row, when
+ *    `row.parentSeriesId` is still linked (not yet `ON DELETE SET NULL`'d) —
+ *    reflects any episodes the parent has drafted SINCE this child's
+ *    `lineage` snapshot was taken at `create` time.
+ *  - SNAPSHOT: `row.lineage` (`VerticalDramaSeriesLineage`) — the Stage
+ *    2.2/2.3 user-approved carry-over decision captured once, at `create`
+ *    time. The ONLY source once the parent is deleted (`parentSeriesId`
+ *    degrades to `NULL`) or the live load fails for any reason, and always
+ *    preferred for `parentTitle` specifically (see inline comment below) so
+ *    the badge/prompt text survives a deleted parent.
+ *
+ * Returns `undefined` for every non-sequel row (`createMode !== "sequel"`,
+ * true for every series that existed before this feature and every
+ * `special_edition` row) with ZERO extra DB calls — the entire byte-identity
+ * guarantee this task's brief requires. Never throws for a `"sequel"` row
+ * either: an unreachable/cross-tenant/deleted parent or a malformed
+ * `lineage` blob all degrade to the best partial context still buildable
+ * (worst case: just `seasonNumber`/a generic `parentTitle`, empty facts
+ * otherwise) — mirrors `loadSeriesLocationFacts`'s own best-effort
+ * convention just above.
+ *
+ * Deliberately does NOT special-case "parent has no recorded memory yet"
+ * (true for 4/10 real series today) by omitting the whole block: every
+ * field here already independently degrades to an honest "nothing here"
+ * default (`""`, `[]`, `{}` — the SAME sentinel `loadLineageContext`'s own
+ * `compactSummary` doc comment documents for "no memory yet"), and the
+ * Stage 2.2 carry-over snapshot (`carriedCharacters`/`antagonistStrategy`)
+ * is independent of live memory and normally non-empty for any
+ * wizard-created sequel — so "no live memory" is rarely "zero lineage
+ * information", and dropping the block would ALSO hide the season-number/
+ * parent-title continuity framing `buildSeasonLineagePromptBlock` renders,
+ * undermining Stage 2.4's title/genre-lock half of this feature even when
+ * memory specifically is thin.
+ */
+async function resolveSeasonLineageContext(
+  row: VerticalDramaSeriesRow,
+  tenantId: string,
+  userId: number
+): Promise<VdSeasonLineageContext | undefined> {
+  if (row.createMode !== "sequel") return undefined;
+
+  const snapshot = asVerticalDramaSeriesLineage(row.lineage);
+  const carryOver = snapshot?.carryOver;
+
+  let live: VerticalDramaLineageContext | null = null;
+  if (row.parentSeriesId) {
+    try {
+      const parentRow = await loadOwnedSeries(
+        tenantId,
+        userId,
+        row.parentSeriesId
+      );
+      live = await loadLineageContext(parentRow, { tenantId, userId });
+    } catch (error) {
+      // Parent deleted mid-request, cross-tenant race, or a transient DB
+      // error — fall through to the `lineage` snapshot only, never throw.
+      debugError(
+        "verticalDramaSeries.deepStoryDraft",
+        "Failed to load live parent lineage context — falling back to the lineage snapshot",
+        error
+      );
+      live = null;
+    }
+  }
+
+  const carriedCharacters = (carryOver?.characters ?? [])
+    .filter(character => character.availability !== "write_out")
+    .map(character => ({
+      characterKey: character.characterKey,
+      name: character.name,
+      postFinaleStatus: character.postFinaleStatus,
+    }));
+  const writtenOutCharacters = (carryOver?.characters ?? [])
+    .filter(character => character.availability === "write_out")
+    .map(character => ({
+      characterKey: character.characterKey,
+      name: character.name,
+    }));
+
+  return {
+    seasonNumber: row.seasonNumber ?? snapshot?.seasonNumber ?? 2,
+    // Snapshot preferred over the live row's own title — survives a
+    // deleted parent (`lineage.parentTitle` is a snapshot; the live row
+    // would be gone). See this function's own doc comment.
+    parentTitle:
+      snapshot?.parentTitle ?? live?.parentTitle ?? "the prior season",
+    priorSeasonSummary:
+      live?.compactSummary ?? snapshot?.priorSeasonSummary ?? "",
+    carriedRelationships:
+      live?.currentState.relationships ??
+      carryOver?.carriedRelationships ??
+      [],
+    carriedThreads:
+      live?.currentState.openThreads ?? carryOver?.carriedThreads ?? [],
+    carriedCharacters,
+    writtenOutCharacters,
+    antagonistStrategy: carryOver?.antagonistStrategy ?? "",
+    characterKnowledge: live?.currentState.characterKnowledge ?? {},
+  };
+}
+
 export async function runGenerateStoryBibleDeepJob(
   params: StoryJobExecutorOwner & {
     horizonEpisodes?: number;
@@ -1478,8 +1891,43 @@ export async function runGenerateStoryBibleDeepJob(
     userId,
     seriesId
   );
-  const characterBibleNames = readBibleRefinedCharacters(bible).map(
-    c => c.name
+  // Vd character identity repair (`planning/vd-character-identity-repair/
+  // plan.md` Phase 1) — the FULL bible character profiles (role/
+  // narrativeRole/roleTier/occupation/aliases), used THREE ways below:
+  // (1) as-is, into `ensureRosterCharactersFromStory`'s `refinedCharacters`
+  // param (Phase 1's own fix — role data no longer discarded at INSERT);
+  // (2) as-is again, into `generateStoryBibleDeep`'s `knownCharacters`
+  // (Phase 2.0 — renders the "CHARACTER BIBLE" FACT block the deep-draft
+  // prompt was missing entirely); (3) flattened into `characterBibleNames`
+  // just below (Phase 2.1/2.5 — the completeness gate's flat membership set).
+  const characterBibleProfiles: VdBibleRefinedCharacter[] =
+    readBibleRefinedCharacterProfiles(bible);
+  // `planning/vd-character-identity-repair/plan.md` Phase 2.1/2.5 (added
+  // 2026-07-17) — flattens each character's canonical `name` AND its
+  // declared `aliases` (Phase 2.1) into ONE flat list, so the completeness
+  // gate's membership check (`characterBibleNames`, both the
+  // `characters[].name` check and the Phase 2.5 `dialogue_lines[].speaker`
+  // check — see `computeShotCompletenessViolations`'s own doc comment)
+  // accepts a legitimate short form ("คิริน") exactly like the canonical
+  // spelling ("คิริน วัฒนเมธา"). A legacy bible with no declared aliases
+  // contributes nothing extra here — byte-identical to before Phase 2.1.
+  // Deliberately a SEPARATE variable from `characterBibleProfiles` above:
+  // this one stays a flat `string[]` for the gate's cheap membership check;
+  // that one carries the full profile the "CHARACTER BIBLE" prompt block
+  // renders.
+  const characterBibleNames = characterBibleProfiles.flatMap(c => [
+    c.name,
+    ...(c.aliases ?? []),
+  ]);
+
+  // Stage 2.4 threading (`planning/vd-series-memory-and-lineage/plan.md`) —
+  // see `resolveSeasonLineageContext`'s own doc comment. `undefined` for
+  // every non-sequel row (every series that existed before this feature),
+  // with zero extra DB calls in that case.
+  const seasonLineage = await resolveSeasonLineageContext(
+    row,
+    tenantId,
+    userId
   );
 
   // Resilient resume — see `resolveDeepDraftResumeState`'s own doc comment
@@ -1552,6 +2000,15 @@ export async function runGenerateStoryBibleDeepJob(
       // "existingLocations"/"characterBibleNames" load above.
       existingLocations,
       characterBibleNames,
+      // `planning/vd-character-identity-repair/plan.md` Phase 2.0 — the
+      // deep-draft prompt's "CHARACTER BIBLE" FACT block source; reuses the
+      // SAME `characterBibleProfiles` load above (Phase 1's role-preserving
+      // read), never a separate query.
+      knownCharacters: characterBibleProfiles,
+      // Stage 2.4 threading — see this function's own `seasonLineage` load
+      // above. `undefined` for every non-sequel run, byte-identical to
+      // before this feature existed.
+      seasonLineage,
       onProgress,
     });
   } catch (error) {
@@ -1708,9 +2165,18 @@ export async function runGenerateStoryBibleDeepJob(
   // user-facing mutation" convention as the location block just above.
   // Candidates: this run's newly-drafted shots' `characters[]`/dialogue
   // `speaker`s (`result.draftedItems`) PLUS the Story Bible's own
-  // `refinedCharacters` list (`characterBibleNames`, already loaded above
+  // `refinedCharacters` list (`characterBibleProfiles`, already loaded above
   // for the deep-draft prompt) — see `ensureRosterCharactersFromStory`'s own
   // doc comment for why the two sources are trusted differently.
+  //
+  // `planning/vd-character-identity-repair/plan.md` Phase 1 — this used to
+  // pass `characterBibleNames.map(name => ({ name }))`, discarding the
+  // bible's own role/narrativeRole/roleTier/occupation before it ever
+  // reached the auto-register INSERT (root cause of every
+  // "ต้องตรวจบทบาท" badge on a series whose bible actually HAD the role
+  // data). Now passes `characterBibleProfiles` — the full profiles — so a
+  // newly-registered, bible-declared character's role is populated on
+  // INSERT instead of hardcoded to `null`.
   //
   // Set B — the returned `VdRosterAutoRegisterSummary` used to be discarded
   // here; now captured into the mutation's `createdCharacters` response
@@ -1721,7 +2187,7 @@ export async function runGenerateStoryBibleDeepJob(
     const rosterAutoRegisterSummary = await ensureRosterCharactersFromStory(
       { tenantId, userId, seriesId },
       {
-        refinedCharacters: characterBibleNames.map(name => ({ name })),
+        refinedCharacters: characterBibleProfiles,
         deepDraftShots: result.draftedItems.flatMap(item => item.shotDrafts),
       }
     );
@@ -1867,6 +2333,53 @@ export async function runGenerateStoryBibleDeepJob(
   };
 }
 
+/**
+ * Stage 1.5 (`planning/vd-series-memory-and-lineage/plan.md`) — the fix for
+ * the openThreads leak: `runExtendStoryDraftHorizonJob` used to hardcode
+ * `priorRecap.openThreads: []` on every call, silently dropping every
+ * thread `finalOpenThreads` (`verticalDramaStoryBible.ts`) had already
+ * computed on a PRIOR run. Reads the still-open threads back out of
+ * `vertical_drama_series.memory` (`row.memory`, already selected in full by
+ * `loadOwnedSeries`'s `.select()` — no new query) instead.
+ *
+ * Mapping choice (`VdOpenThread` -> `string`): `[threadClass] description`.
+ * `generateStoryBibleDeep`'s `priorRecap.openThreads` is plain free-text
+ * (joined with "; " by `buildDeepDraftContinuityRecap` into one "Currently
+ * open threads to track/advance/resolve: ..." prompt line) — there is no
+ * structured slot for `threadClass`/`threadId`/`openedEpisode` there, so the
+ * class is folded into the string itself (bracket-prefixed) rather than
+ * dropped, keeping "the renovation is still unfinished" (domestic) visibly
+ * distinct from a plot thread for the model, without inventing a new prompt
+ * shape.
+ *
+ * Graceful degradation (mandatory): EVERY series created before Stage 1.2
+ * landed has no `memory` yet (or a legacy/malformed value) — `row.memory`
+ * absent/null, not an object, or missing `currentState.openThreads`, all
+ * return `[]`, i.e. behave EXACTLY like the hardcoded `[]` this replaces.
+ * Never throws — this runs inline in the extend-horizon job's happy path,
+ * and a memory-read hiccup must never block drafting.
+ */
+function resolveOpenThreadsFromSeriesMemory(memory: unknown): string[] {
+  if (!memory || typeof memory !== "object") return [];
+  const currentState = (memory as { currentState?: unknown }).currentState;
+  if (!currentState || typeof currentState !== "object") return [];
+  const openThreads = (currentState as { openThreads?: unknown }).openThreads;
+  if (!Array.isArray(openThreads)) return [];
+  return openThreads
+    .filter(
+      (thread): thread is VdOpenThread =>
+        !!thread &&
+        typeof thread === "object" &&
+        typeof (thread as VdOpenThread).description === "string" &&
+        (thread as VdOpenThread).description.length > 0
+    )
+    .map(thread =>
+      typeof thread.threadClass === "string" && thread.threadClass.length > 0
+        ? `[${thread.threadClass}] ${thread.description}`
+        : thread.description
+    );
+}
+
 export async function runExtendStoryDraftHorizonJob(
   params: StoryJobExecutorOwner & {
     additionalEpisodes?: number;
@@ -1969,8 +2482,27 @@ export async function runExtendStoryDraftHorizonJob(
     userId,
     seriesId
   );
-  const characterBibleNames = readBibleRefinedCharacters(bible).map(
-    c => c.name
+  // Vd character identity repair (`planning/vd-character-identity-repair/
+  // plan.md` Phase 1/2.0/2.1/2.5) — parity with
+  // `runGenerateStoryBibleDeepJob`'s identical `characterBibleProfiles` +
+  // `characterBibleNames` load above; see that block's own doc comments for
+  // the full rationale (Phase 1's role-data-preserving INSERT, Phase 2.0's
+  // "CHARACTER BIBLE" prompt block, Phase 2.1/2.5's alias-flattened gate set).
+  const characterBibleProfiles: VdBibleRefinedCharacter[] =
+    readBibleRefinedCharacterProfiles(bible);
+  const characterBibleNames = characterBibleProfiles.flatMap(c => [
+    c.name,
+    ...(c.aliases ?? []),
+  ]);
+
+  // Stage 2.4 threading — parity with `runGenerateStoryBibleDeepJob`; a
+  // sequel keeps needing these facts on every LATER horizon extension, not
+  // just its first deep-draft run. See `resolveSeasonLineageContext`'s own
+  // doc comment.
+  const seasonLineage = await resolveSeasonLineageContext(
+    row,
+    tenantId,
+    userId
   );
 
   // Resilient resume — see `runGenerateStoryBibleDeepJob`'s identical block
@@ -2011,7 +2543,10 @@ export async function runExtendStoryDraftHorizonJob(
       tone: row.tone,
       episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
       episodes: episodesToDraft,
-      priorRecap: { items: recapItems, openThreads: [] },
+      priorRecap: {
+        items: recapItems,
+        openThreads: resolveOpenThreadsFromSeriesMemory(row.memory),
+      },
       mode,
       // Resilient resume — see the doc comment on this const block above.
       resumeDraftedItems,
@@ -2034,6 +2569,12 @@ export async function runExtendStoryDraftHorizonJob(
       // `runGenerateStoryBibleDeepJob`; see the load just above this try.
       existingLocations,
       characterBibleNames,
+      // `planning/vd-character-identity-repair/plan.md` Phase 2.0 — parity
+      // with `runGenerateStoryBibleDeepJob`'s identical wiring.
+      knownCharacters: characterBibleProfiles,
+      // Stage 2.4 threading — see this function's own `seasonLineage` load
+      // above; parity with `runGenerateStoryBibleDeepJob`'s identical wiring.
+      seasonLineage,
       onProgress,
     });
   } catch (error) {
@@ -2127,7 +2668,9 @@ export async function runExtendStoryDraftHorizonJob(
   // Auto-register story-introduced characters
   // (`planning/vd-auto-register-story-characters/plan.md`) — parity with
   // `runGenerateStoryBibleDeepJob`'s identical block above; see that block's
-  // own doc comment for the full rationale.
+  // own doc comment for the full rationale, including the
+  // `planning/vd-character-identity-repair/plan.md` Phase 1 fix (role data
+  // now threaded via `characterBibleProfiles` instead of being discarded).
   //
   // Set B — see `runGenerateStoryBibleDeepJob`'s identical capture above.
   let createdCharacters: VdDeepDraftCreatedCharactersSummary = EMPTY_DEEP_DRAFT_CREATED_CHARACTERS;
@@ -2135,7 +2678,7 @@ export async function runExtendStoryDraftHorizonJob(
     const rosterAutoRegisterSummary = await ensureRosterCharactersFromStory(
       { tenantId, userId, seriesId },
       {
-        refinedCharacters: characterBibleNames.map(name => ({ name })),
+        refinedCharacters: characterBibleProfiles,
         deepDraftShots: result.draftedItems.flatMap(item => item.shotDrafts),
       }
     );
@@ -2701,8 +3244,42 @@ export async function seedCharactersFromDraft(
  * Persist the canonical narrative role emitted by Story Bible generation onto
  * the durable character roster. Legacy free-text `role` is never overwritten;
  * user-confirmed assignments are also never downgraded by a later AI run.
+ *
+ * `planning/vd-character-identity-repair/plan.md` Phase 6.2 — closes the
+ * NEW-PROJECT (wizard) path hole: this function used to match ONLY by exact
+ * normalized name, so a bible refinement that RENAMES a wizard-seeded roster
+ * row (`ผู้บงการ(คนร้าย)` seeded by `seedCharactersFromDraft` at series
+ * creation, refined by the bible to `ผู้บงการ`) could never find its roster
+ * row, silently `continue`d, and left the row's roles NULL forever — the
+ * very next deep draft would then have `ensureRosterCharactersFromStory`
+ * mint a genuine SECOND row for `ผู้บงการ`, reproducing the plan's original
+ * duplicate-roster bug from a brand-new project. The match cascade below
+ * closes that hole with a THIRD, alias-aware step; the fix is intentionally
+ * narrow (exact-or-declared only, never fuzzy/edit-distance — see this
+ * function's own cascade doc comment).
+ *
+ * RENAME-vs-KEEP decision (required by the Phase 6.2 brief): when a bible
+ * profile resolves to an EXISTING roster row via an alias (cascade steps 2/3
+ * below) rather than by its own name, this function deliberately does NOT
+ * rename that row's `name` column to the bible's canonical spelling. Two
+ * reasons: (1) the wizard's `charactersDraft` name is something the human
+ * creator typed on purpose — silently overwriting it with the model's
+ * refined spelling is exactly the class of "AI overwrites a human's own
+ * input" bug this plan exists to eliminate elsewhere (see the
+ * `roleProvenance === "user_confirmed"` skip a few lines below, and the
+ * plan's own resolved decision #2, "story text is never rewritten, aliased
+ * instead"); (2) leaving the row's name untouched and recording the bible's
+ * name as an alias is STRICTLY ADDITIVE and reversible — a future merge tool
+ * or a human can still rename the row later with full information, whereas
+ * an automatic rename here cannot be un-done once other data (asset links,
+ * `characterKey`-based refs) has accumulated against whichever spelling won.
+ * The tradeoff is that the roster UI keeps showing the wizard's original
+ * spelling rather than the bible's refined one; that's a display nuance, not
+ * a correctness bug, and is a reasonable follow-up for the merge-review UI
+ * (plan Phase 3.4) to offer as an explicit, human-confirmed action — not
+ * something this reconcile pass should ever decide unattended.
  */
-async function reconcileCharactersFromStoryBible(
+export async function reconcileCharactersFromStoryBible(
   tenantId: string,
   userId: number,
   seriesId: number,
@@ -2712,6 +3289,8 @@ async function reconcileCharactersFromStoryBible(
     narrativeRole?: NarrativeRole;
     roleTier?: RoleTier;
     occupation?: string;
+    /** Phase 6.1 — see `VdRosterAutoRegisterRefinedCharacter.aliases`'s own doc comment. */
+    aliases?: string[];
   }>,
 ): Promise<void> {
   if (refinedCharacters.length === 0) return;
@@ -2725,35 +3304,147 @@ async function reconcileCharactersFromStoryBible(
         eq(verticalDramaCharacters.seriesId, seriesId),
       ),
     )) as VerticalDramaCharacterRow[];
-  const byName = new Map(roster.map(character => [
-    character.name.trim().toLocaleLowerCase(),
-    character,
-  ]));
+  const byNormalizedName = new Map(
+    roster.map(character => [
+      normalizeStoryCharacterName(character.name),
+      character,
+    ]),
+  );
+  const byId = new Map(roster.map(character => [character.id, character]));
 
-  for (const profile of refinedCharacters) {
-    const character = byName.get(profile.name.trim().toLocaleLowerCase());
-    if (!character || character.roleProvenance === "user_confirmed") continue;
-    const narrativeRole = profile.narrativeRole ?? null;
-    const roleTier = profile.roleTier ?? null;
-    await db
-      .update(verticalDramaCharacters)
-      .set({
-        narrativeRole,
-        roleTier,
-        occupation: profile.occupation ?? profile.role ?? character.occupation ?? character.role,
-        roleProvenance: narrativeRole || roleTier ? "ai_assigned" : "migrated",
-        roleReviewStatus: narrativeRole && roleTier ? "ready" : "needs_role_review",
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(verticalDramaCharacters.id, character.id),
-          eq(verticalDramaCharacters.tenantId, tenantId),
-          eq(verticalDramaCharacters.userId, userId),
-          eq(verticalDramaCharacters.seriesId, seriesId),
-        ),
-      );
-  }
+  // Already-persisted aliases for this series — cascade step 2 below.
+  // Mirrors `ensureRosterCharactersFromStory`'s own alias read
+  // (`verticalDramaCharacterRosterAutoRegister.ts`), which this function
+  // does not modify.
+  const aliasRows = (await db
+    .select()
+    .from(verticalDramaCharacterAliases)
+    .where(
+      and(
+        eq(verticalDramaCharacterAliases.tenantId, tenantId),
+        eq(verticalDramaCharacterAliases.seriesId, seriesId),
+      ),
+    )) as VerticalDramaCharacterAliasRow[];
+  const characterIdByPersistedAlias = new Map(
+    aliasRows.map(row => [row.normalizedAlias, row.characterId]),
+  );
+
+  // Whole batch atomic (Database Safety Protocol) — a partial reconcile
+  // (some characters updated, an unrelated one mid-write when the DB
+  // rejects a later statement) is worse than all-or-nothing for a single
+  // bible-expansion run. Mirrors `ensureRosterCharactersFromStory`'s own
+  // `db.transaction` wrapping of its insert+alias-seed batch.
+  await db.transaction(async tx => {
+    for (const profile of refinedCharacters) {
+      const normalizedProfileName = normalizeStoryCharacterName(profile.name);
+
+      // Cascade, exact-or-declared only — NEVER fuzzy/edit-distance (see
+      // this function's own doc comment): "ผู้บงการ" vs "ผู้บงการ(คนร้าย)" is
+      // only knowable because the bible DECLARES the link, not because the
+      // strings look similar.
+      //
+      // Step 1 — exact normalized name (today's original, pre-Phase-6
+      // behavior).
+      let character = byNormalizedName.get(normalizedProfileName);
+      // True once `character` resolved via step 2 or 3 rather than step 1 —
+      // gates the alias-linkage write below (a step-1 exact match needs no
+      // new alias row; the character's OWN name already IS its identity).
+      let matchedViaAlias = false;
+
+      // Step 2 — a `vertical_drama_character_aliases` row already resolves
+      // this bible name to a roster character (recorded by an earlier
+      // reconcile run, or seeded by `ensureRosterCharactersFromStory` during
+      // a deep-draft run).
+      if (!character) {
+        const aliasedCharacterId =
+          characterIdByPersistedAlias.get(normalizedProfileName);
+        if (aliasedCharacterId !== undefined) {
+          character = byId.get(aliasedCharacterId);
+          matchedViaAlias = character !== undefined;
+        }
+      }
+
+      // Step 3 — THIS bible entry's OWN declared `aliases[]` names an
+      // EXISTING roster character. This is the wizard-rename case: the
+      // bible's canonical `profile.name` ("ผู้บงการ") doesn't match any
+      // roster row, but one of ITS declared aliases ("ผู้บงการ(คนร้าย)")
+      // matches the roster row the wizard originally seeded.
+      if (!character) {
+        for (const alias of profile.aliases ?? []) {
+          const normalizedAlias = normalizeStoryCharacterName(alias);
+          if (!normalizedAlias || normalizedAlias === normalizedProfileName) {
+            continue;
+          }
+          const candidate = byNormalizedName.get(normalizedAlias);
+          if (candidate) {
+            character = candidate;
+            matchedViaAlias = true;
+            break;
+          }
+        }
+      }
+
+      if (!character) continue; // Genuinely unresolvable here — left for
+      // `ensureRosterCharactersFromStory` (INSERT-capable) to create later,
+      // per this function's UPDATE-only contract; see the doc comment above
+      // this function for why it must never insert a character row itself.
+
+      // A human's own decision outranks a later AI run, unchanged from
+      // before Phase 6 — but this ONLY skips the ROLE fields below. Alias
+      // linkage is not a role judgment; it merely records "these two
+      // strings name the same person", which the human implicitly already
+      // agreed to by keeping this row. Skipping alias recording here would
+      // leave a `user_confirmed` character exposed to the exact duplicate-
+      // insert risk this whole cascade exists to close.
+      const isUserConfirmed = character.roleProvenance === "user_confirmed";
+      if (!isUserConfirmed) {
+        const narrativeRole = profile.narrativeRole ?? null;
+        const roleTier = profile.roleTier ?? null;
+        await tx
+          .update(verticalDramaCharacters)
+          .set({
+            narrativeRole,
+            roleTier,
+            occupation:
+              profile.occupation ?? profile.role ?? character.occupation ?? character.role,
+            roleProvenance: narrativeRole || roleTier ? "ai_assigned" : "migrated",
+            roleReviewStatus: narrativeRole && roleTier ? "ready" : "needs_role_review",
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(verticalDramaCharacters.id, character.id),
+              eq(verticalDramaCharacters.tenantId, tenantId),
+              eq(verticalDramaCharacters.userId, userId),
+              eq(verticalDramaCharacters.seriesId, seriesId),
+            ),
+          );
+      }
+
+      // Record the linkage so a LATER run (this function's own step-2
+      // cascade above, PLUS `ensureRosterCharactersFromStory`'s
+      // `existingAliasNames` dedup guard) resolves `profile.name` -> this
+      // SAME roster row without re-deriving it from `aliases[]` every time.
+      // `onConflictDoNothing` on the UNIQUE `(seriesId, normalizedAlias)`
+      // index makes this idempotent — re-running the same expansion writes
+      // nothing new and never aborts the transaction on a 23505, same
+      // precedent as `ensureRosterCharactersFromStory`'s own alias-seeding
+      // loop.
+      if (matchedViaAlias) {
+        await tx
+          .insert(verticalDramaCharacterAliases)
+          .values({
+            tenantId,
+            seriesId,
+            characterId: character.id,
+            alias: profile.name.trim(),
+            normalizedAlias: normalizedProfileName,
+            source: "bible_declared",
+          } as typeof verticalDramaCharacterAliases.$inferInsert)
+          .onConflictDoNothing();
+      }
+    }
+  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2989,7 +3680,56 @@ export const createSeriesInput = z.object({
    * `"18plus"`), so omitting it is a valid, fully-supported input.
    */
   audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
-});
+  /**
+   * Season/special-edition lineage (Part 2, Stage 2.1/2.3,
+   * `planning/vd-series-memory-and-lineage/plan.md`). All 4 fields are
+   * optional and, when the `verticalDramaSeriesLineage` tenant flag is off
+   * (or `parentSeriesId` is absent), `create` below writes every one of the
+   * matching `vertical_drama_series` columns as `NULL` — the exact
+   * "original mode is unchanged" structural guarantee the schema's own doc
+   * comment describes. `lineage` is a lossless `z.record(...)`, same
+   * "wizard shell payload, validated by its own contract" convention as
+   * `bible`/`memory`/`productTieIn`/`policy` above — the client's `as`-cast
+   * against this uniformly-untyped wizard is not this router's problem.
+   */
+  parentSeriesId: z.string().trim().min(1).optional(),
+  createMode: z.enum(VERTICAL_DRAMA_SERIES_CREATE_MODES).optional(),
+  seasonNumber: z.number().int().positive().optional(),
+  lineage: z.record(z.string(), z.unknown()).optional(),
+})
+  /**
+   * Stage 1.5 (`planning/vd-series-memory-and-lineage/plan.md`) — genre
+   * pollution guard. Runs AFTER every per-field `.max()` check above (zod
+   * `superRefine` always runs after the base object shape parses), so a
+   * `genre` that is merely too long is still reported as the ordinary
+   * `too_big` issue; this only fires for a `genre` that parsed fine on
+   * length but is a copy of `title` or logline/alt-title-shaped. See
+   * `@shared/verticalDramaSeries/genrePollutionGuard`'s header doc comment
+   * for the real-data investigation and why this rule is conservative.
+   * There is no separate "update genre" mutation (`updateSeriesInput` does
+   * not carry `genre`), so `create` is the only write path this needs.
+   */
+  .superRefine((data, ctx) => {
+    const reason = detectGenrePollution(data.genre, data.title);
+    if (reason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["genre"],
+        message: genrePollutionErrorMessage(reason),
+      });
+    }
+    // Stage 2.1 — a `createMode` with no `parentSeriesId` is a malformed
+    // lineage request (a sequel/special-edition with no parent to derive
+    // from is meaningless); catching this here, not just in `create`,
+    // keeps the input contract itself self-consistent.
+    if (data.createMode && !data.parentSeriesId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["parentSeriesId"],
+        message: "parentSeriesId is required when createMode is set",
+      });
+    }
+  });
 
 const listSeriesInput = z
   .object({
@@ -3036,6 +3776,43 @@ const synthesizeGenrePresetInput = z.object({
     .optional(),
   /** Phase 1 — same contract as `createSeriesInput.audienceAgeRating`; accepted here for forward compatibility, not yet forwarded into preset synthesis (see Phase 1 task notes). */
   audienceAgeRating: z.enum(AUDIENCE_AGE_RATINGS).optional(),
+});
+
+/**
+ * Stage 2.2 (`planning/vd-series-memory-and-lineage/plan.md`) —
+ * `proposeSeasonCarryOver`'s input. `parentSeriesId` is required (unlike
+ * `createSeriesInput`'s optional field): this procedure only ever makes
+ * sense FOR a chosen parent, whereas `create` also serves the unrelated
+ * "original series" path.
+ */
+export const proposeSeasonCarryOverInput = z.object({
+  parentSeriesId: z.string().trim().min(1),
+  /** Free-form "โจทย์ภาคใหม่ที่อยากได้" — same top-level convention as `createSeriesInput.userPremise`. */
+  premise: z.string().trim().max(CREATE_SERIES_FIELD_LIMITS.userPremise).optional(),
+});
+
+/**
+ * Stage 2.5 (`planning/vd-series-memory-and-lineage/plan.md`) —
+ * `proposeSpecialEditionBrief`'s input. `parentSeriesId` is required, same
+ * reasoning as `proposeSeasonCarryOverInput` above. `storyFunctionChoice`
+ * values mirror `VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES`
+ * (`verticalDramaProductTieIn.ts`) verbatim — inlined here (rather than
+ * imported) purely to keep this router's top-level zod schemas free of a
+ * static import into that service file; the two are guarded against drift
+ * by `verticalDramaProductTieIn.test.ts`'s own coverage of that constant.
+ * `marketplaceProductName`/`marketplaceProductDescription` (source 1) and
+ * `uploadedSummary` (source 2) are BOTH optional — a special edition may
+ * lean on only one source; at least one should be meaningfully populated by
+ * the wizard, but this procedure does not hard-require it (the skill itself
+ * can still plan around bare `premise`/roster facts if both are empty).
+ */
+export const proposeSpecialEditionBriefInput = z.object({
+  parentSeriesId: z.string().trim().min(1),
+  targetEpisodeCount: z.number().int().min(1).max(2),
+  storyFunctionChoice: z.enum(["review", "tie_in_solution"]),
+  marketplaceProductName: z.string().trim().max(256).optional(),
+  marketplaceProductDescription: z.string().trim().max(4000).optional(),
+  uploadedSummary: z.string().trim().max(4000).optional(),
 });
 
 /**
@@ -3407,6 +4184,150 @@ export const verticalDramaSeriesRouter = router({
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
 
+      // Season/special-edition lineage (Stage 2.1/2.3) — resolved BEFORE the
+      // insert so the new row's `parentSeriesId`/`createMode`/`seasonNumber`/
+      // `lineage` columns are written correctly at creation time (no
+      // follow-up UPDATE needed). `parentSeriesRow` stays `null` — and every
+      // one of those 4 columns is written `NULL` below — unless BOTH the
+      // tenant flag is on AND `input.parentSeriesId` was sent; this is the
+      // "flag off -> byte-identical original-mode create" guarantee.
+      //
+      // Ownership of the parent is a HARD THROW (`loadOwnedSeries`, NOT
+      // wrapped in try/catch): a cross-tenant/cross-user parent silently
+      // yielding an empty sequel is a data-leak-shaped bug, never a
+      // best-effort degrade. Everything AFTER this point (character/location
+      // cloning) is best-effort, per this mutation's own established
+      // convention for `charactersDraft`/`locationsDraft` seeding below.
+      let parentSeriesRow: VerticalDramaSeriesRow | null = null;
+      if (input.parentSeriesId) {
+        const flags = await getTenantFeatureFlags(tenantId);
+        if (flags.verticalDramaSeriesLineage === true) {
+          const parentSeriesIdNum = Number(input.parentSeriesId);
+          if (!Number.isFinite(parentSeriesIdNum)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Invalid parentSeriesId",
+            });
+          }
+          parentSeriesRow = await loadOwnedSeries(
+            tenantId,
+            userId,
+            parentSeriesIdNum
+          );
+        }
+      }
+
+      // Special edition (Stage 2.5, `planning/vd-series-memory-and-lineage/
+      // plan.md`) — build a FULLY POPULATED, contract-valid `productTieIn`
+      // instead of writing `input.productTieIn` through unvalidated (today's
+      // behavior for every OTHER createMode, unchanged below). Gated on
+      // `parentSeriesRow` being resolved (same flag+ownership gate as the 4
+      // lineage columns above) so a flag-off or unowned-parent request stays
+      // byte-identical to original-mode create — never build this object
+      // unless the row itself will actually be persisted as special_edition.
+      let resolvedProductTieIn: Record<string, unknown> | null = null;
+      if (parentSeriesRow && input.createMode === "special_edition") {
+        const rawProductTieIn = (input.productTieIn ?? {}) as Record<
+          string,
+          unknown
+        >;
+
+        // Stage 2.5 source 2 — uploaded reference images register as media
+        // assets BEST-EFFORT (never fails series creation), mirroring the
+        // `charactersDraft`/`locationsDraft` seeding blocks' own established
+        // convention just below. Cannot use `resolveMediaAssetForImport`
+        // (`verticalDramaCharacters.ts`) — it requires an already-existing
+        // seriesId via `loadOwnedSeries`, which does not exist yet at wizard
+        // time; `createAssetFromAttachment` needs only tenant+user context
+        // (same `{ tenantId, userId } as any` cast that file's own
+        // `resolveMediaAssetForImport` already uses for the identical
+        // context-shape mismatch).
+        const uploadedReferenceAssetIds: string[] = [];
+        const uploadedReferences = Array.isArray(
+          rawProductTieIn.uploadedReferences
+        )
+          ? (rawProductTieIn.uploadedReferences as unknown[])
+          : [];
+        if (uploadedReferences.length > 0) {
+          const { createAssetFromAttachment } = await import(
+            "../services/mediaAssetService"
+          );
+          for (const entryRaw of uploadedReferences) {
+            if (!entryRaw || typeof entryRaw !== "object") continue;
+            const entry = entryRaw as {
+              url?: unknown;
+              mimeType?: unknown;
+              fileName?: unknown;
+            };
+            if (typeof entry.url !== "string" || !entry.url.trim()) continue;
+            try {
+              const { assetId } = await createAssetFromAttachment(
+                {
+                  type: "image",
+                  url: entry.url,
+                  mimeType:
+                    typeof entry.mimeType === "string"
+                      ? entry.mimeType
+                      : undefined,
+                  name:
+                    typeof entry.fileName === "string"
+                      ? entry.fileName
+                      : undefined,
+                } as any,
+                { tenantId, userId } as any
+              );
+              uploadedReferenceAssetIds.push(String(assetId));
+            } catch (error) {
+              debugError(
+                "verticalDramaSeries.create",
+                "Failed to register a special-edition uploaded reference image as a media asset",
+                error
+              );
+            }
+          }
+        }
+
+        const {
+          buildSpecialEditionProductTieInConfig,
+          verticalDramaProductTieInConfigSchema,
+        } = await import("../services/verticalDramaProductTieIn");
+        const builtConfig = buildSpecialEditionProductTieInConfig({
+          raw: rawProductTieIn,
+          uploadedReferenceAssetIds,
+        });
+        const parsedConfig =
+          verticalDramaProductTieInConfigSchema.safeParse(builtConfig);
+        if (!parsedConfig.success) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Invalid special-edition product tie-in configuration: ${parsedConfig.error.message}`,
+          });
+        }
+
+        // `marketplaceCaptureId`/`productImageUrl` are NOT part of the strict
+        // `VerticalDramaProductTieInConfig` contract (they're pre-existing
+        // sibling keys stored in the same jsonb blob — see `listProductImages`
+        // above, which already reads both this same way off any series'
+        // `productTieIn`) — passed through verbatim, left exactly as-is per
+        // this task's brief (a bare string, not an FK; not this task's
+        // problem to fix).
+        const marketplaceCaptureId =
+          typeof rawProductTieIn.marketplaceCaptureId === "string" &&
+          rawProductTieIn.marketplaceCaptureId.trim()
+            ? rawProductTieIn.marketplaceCaptureId.trim()
+            : undefined;
+        const productImageUrl =
+          typeof rawProductTieIn.productImageUrl === "string" &&
+          rawProductTieIn.productImageUrl.trim()
+            ? rawProductTieIn.productImageUrl.trim()
+            : undefined;
+        resolvedProductTieIn = {
+          ...parsedConfig.data,
+          ...(marketplaceCaptureId ? { marketplaceCaptureId } : {}),
+          ...(productImageUrl ? { productImageUrl } : {}),
+        };
+      }
+
       const [row] = await db
         .insert(verticalDramaSeries)
         .values({
@@ -3442,10 +4363,49 @@ export const verticalDramaSeriesRouter = router({
             ),
           },
           memory: input.memory ?? null,
-          productTieIn: input.productTieIn ?? null,
+          // Stage 2.5 — `resolvedProductTieIn` is only ever non-null for
+          // `createMode === "special_edition"` (see above); every other
+          // createMode (including `undefined` = original and `"sequel"`)
+          // writes `input.productTieIn` through completely unvalidated,
+          // exactly as before this task.
+          productTieIn: resolvedProductTieIn ?? input.productTieIn ?? null,
           policy: input.policy ?? null,
+          // Stage 2.1 — NULL on every one of these 4 columns unless a valid,
+          // flag-gated, ownership-checked parent was resolved above. This is
+          // the "original mode writes NULL" structural guarantee described on
+          // `verticalDramaSeries.parentSeriesId`'s own schema.ts doc comment.
+          parentSeriesId: parentSeriesRow ? parentSeriesRow.id : null,
+          createMode: parentSeriesRow ? (input.createMode ?? null) : null,
+          seasonNumber: parentSeriesRow ? (input.seasonNumber ?? null) : null,
+          lineage: parentSeriesRow
+            ? ((input.lineage as VerticalDramaSeriesLineage | undefined) ?? null)
+            : null,
         })
         .returning();
+
+      // Best-effort: clone the parent series' durable character/location
+      // roster (Stage 2.3) — runs BEFORE `charactersDraft`/`locationsDraft`
+      // seeding below so a cloned `characterKey` is already present when any
+      // later auto-registration pass looks it up (see
+      // `verticalDramaSeriesClone.ts`'s own header doc comment for the full
+      // table-by-table rationale).
+      if (parentSeriesRow) {
+        try {
+          await cloneSeriesCastForLineage({
+            tenantId,
+            userId,
+            parentSeriesId: parentSeriesRow.id,
+            childSeriesId: Number(row.id),
+            lineage: input.lineage as VerticalDramaSeriesLineage | undefined,
+          });
+        } catch (error) {
+          debugError(
+            "verticalDramaSeries.create",
+            `Failed to clone cast/locations for series ${row.id} from parent ${parentSeriesRow.id}`,
+            error
+          );
+        }
+      }
 
       // Best-effort: seed the durable character roster (`vertical_drama_characters`,
       // read by the Series Detail Characters tab) from the wizard's freeform
@@ -4041,6 +5001,247 @@ export const verticalDramaSeriesRouter = router({
     }),
 
   /**
+   * Series Memory tab — READ (Stage 1.4, `planning/vd-series-memory-and-
+   * lineage/plan.md`). Returns the full stored `VdSeriesMemory` plus a
+   * coverage summary the client uses for the thin-season warning (the
+   * product owner's chosen answer for thin seasons is "warn + let the user
+   * fill it in themselves" — plan.md, "การตัดสินใจที่ผู้ใช้ให้มา" #6).
+   *
+   * Never throws for a series with no memory yet (every series until its
+   * first deep-draft/script run has `memory: null`) —
+   * `normalizeStoredSeriesMemory` turns that into a well-formed EMPTY
+   * `VdSeriesMemory` shape, never `null`/`undefined`. Ownership IS still
+   * enforced the normal way (`loadOwnedSeries` throws NOT_FOUND for a
+   * missing/cross-tenant/cross-user series id — that is a genuinely
+   * different case from "this series exists and I own it, it just has no
+   * memory recorded yet").
+   *
+   * Coverage fields are derived from real, independently-verifiable
+   * columns, never invented:
+   *  - `targetEpisodeCount` — the series' planned episode count.
+   *  - `episodeRowCount` — `vertical_drama_episodes` rows that actually
+   *    exist yet (can be less than `targetEpisodeCount` for a series not
+   *    fully drafted).
+   *  - `episodesWithRealScript` — episode numbers where `.script IS NOT
+   *    NULL`, i.e. `plan_episode_script` (Producer B) actually ran. This is
+   *    the literal signal behind the plan's own example ("series 17 has
+   *    real scripts for only 9 of 30 episodes").
+   *  - `episodesWithMemory` — how many episode numbers have ANY memory
+   *    record (`stored.episodes.length`).
+   *  - `episodesWithMemoryAndRealScript` — episode numbers with BOTH a
+   *    memory record AND a real script row. IMPORTANT, HONEST CAVEAT (the
+   *    brief for this task explicitly asks not to invent a signal the data
+   *    doesn't support): this is a CORRELATION, not stored provenance.
+   *    Neither `VdEpisodeMemory` nor any DB column records WHICH producer
+   *    (deep-draft Producer A, `plan_episode_script` Producer B, or the
+   *    deterministic recap-only fallback) actually wrote a given stored
+   *    record — `buildFallbackEpisodeMemory` can run for an episode that
+   *    LATER also gets a real script without that memory record ever being
+   *    refreshed, and conversely Producer B's own `episode_memory` block is
+   *    itself optional (weak-model JSON risk), so a scripted episode can
+   *    still be carrying Producer A's recap-only fallback. `false` on
+   *    `provenanceDistinguishable` says this out loud to the client rather
+   *    than silently implying a guarantee that isn't there. True per-record
+   *    provenance would need a new field on `VdEpisodeMemory` itself
+   *    (Stage 1.1's contract — out of scope for this router-only task).
+   */
+  getSeriesMemory: verticalDramaProcedure
+    .input(getSeriesMemoryInput)
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+
+      // Ownership check — NOT_FOUND (not FORBIDDEN) on cross-tenant/missing,
+      // never discloses existence (mirrors every other procedure in this
+      // file).
+      const series = await loadOwnedSeries(tenantId, userId, seriesId);
+      const memory = normalizeStoredSeriesMemory(series.memory);
+
+      const episodeRows: Array<{ episodeNumber: number; hasScript: boolean }> =
+        await db
+          .select({
+            episodeNumber: verticalDramaEpisodes.episodeNumber,
+            hasScript: sql<boolean>`${verticalDramaEpisodes.script} IS NOT NULL`.as(
+              "hasScript"
+            ),
+          })
+          .from(verticalDramaEpisodes)
+          .where(
+            and(
+              eq(verticalDramaEpisodes.tenantId, tenantId),
+              eq(verticalDramaEpisodes.userId, userId),
+              eq(verticalDramaEpisodes.seriesId, seriesId)
+            )
+          );
+
+      const episodeNumbersWithScript = new Set(
+        episodeRows
+          .filter((row: { hasScript: boolean }) => row.hasScript)
+          .map((row: { episodeNumber: number }) => row.episodeNumber)
+      );
+      const episodesWithMemoryAndRealScript = memory.episodes.filter(ep =>
+        episodeNumbersWithScript.has(ep.episodeNumber)
+      ).length;
+
+      return {
+        memory,
+        coverage: {
+          targetEpisodeCount: series.targetEpisodeCount,
+          episodeRowCount: episodeRows.length,
+          episodesWithRealScript: episodeNumbersWithScript.size,
+          episodesWithMemory: memory.episodes.length,
+          episodesWithMemoryAndRealScript,
+          provenanceDistinguishable: false as const,
+        },
+      };
+    }),
+
+  /**
+   * Series Memory tab — WRITE (Stage 1.4). "custom ได้จริง" — the AI
+   * proposes (Stage 1.2's producer-time upserts), the user corrects, here.
+   *
+   * GRANULARITY DECISION (documented per this task's brief, which flags
+   * this as a real design fork): the ONLY editable unit is one whole
+   * `VdEpisodeMemory` record, identified by `episodeNumber` — create it if
+   * absent (this IS the thin-season "warn + let the user fill it in
+   * themselves" escape hatch: an episode with no script yet has NO memory
+   * record at all, and this op lets a user author one from scratch),
+   * replace it if present (`upsertEpisode`), or delete a bogus one
+   * (`removeEpisode`). There is deliberately NO surgical "edit just one
+   * relationship" or "edit just one thread" server-side operation, and NO
+   * whole-`VdSeriesMemory`-blob overwrite: the client (Stage 1.4's own
+   * frontend task) reads the current episode object from `getSeriesMemory`,
+   * mutates the one relationship/thread card the user touched WITHIN that
+   * object client-side, and sends the whole episode record back. This keeps
+   * the server-side conflict surface to exactly one well-understood unit
+   * (already the SAME unit `verticalDramaSeriesMemoryProjection.ts`'s
+   * producer-time upserts operate on), and avoids inventing a cross-episode
+   * identity rule for e.g. "delete this one thread" (a `threadId` can be
+   * OPENED in one episode and RESOLVED — appear in `threadsResolved` — in a
+   * later one, so "the" episode owning a thread isn't always a single
+   * well-defined record once resolution is involved).
+   *
+   * `currentState`/`compactSummary` are NEVER accepted as direct input —
+   * they are ALWAYS re-derived via `foldSeriesMemory`/`buildCompactSummary`
+   * from the merged `episodes[]` after every edit, so they can never drift
+   * out of sync with the episodes that are the actual source of truth (this
+   * directly answers the brief's "how does a direct `currentState` edit
+   * survive a re-fold" question: it doesn't, because it is not offered —
+   * `VdSeriesMemoryCurrentState`'s own doc comment already describes it as
+   * "Pure `foldSeriesMemory(episodes)` output", so a divergent direct edit
+   * would violate that invariant the moment any OTHER edit re-folds it).
+   *
+   * Always sets `userEdited: true`. Deliberately does NOT call
+   * `upsertEpisodeMemories`/`upsertEpisodeMemory` from the Stage 1.2
+   * projection service: that function's `userEdited` handling is "once
+   * true, append ONLY genuinely-new episode numbers, never supersede" —
+   * correct for guarding a user's edits against being overwritten by the
+   * NEXT PRODUCER run, but wrong for THIS mutation, where the user is
+   * deliberately re-editing an episode number that may already exist
+   * (including one they themselves edited before) and must always win.
+   * This procedure instead performs its own row-locked (`db.transaction` +
+   * `.select().for("update")`) read-modify-write — the SAME lock
+   * convention that module uses for the SAME class of problem (concurrent
+   * writers racing on the one `memory` jsonb blob) — and reuses that
+   * module's exported `buildCompactSummary` formatter rather than
+   * re-implementing it.
+   */
+  updateSeriesMemory: verticalDramaProcedure
+    .input(updateSeriesMemoryInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = Number(input.seriesId);
+      if (!Number.isFinite(seriesId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid series id",
+        });
+      }
+
+      return db.transaction(async tx => {
+        const ownershipWhere = seriesOwnershipWhere(tenantId, userId, seriesId);
+
+        // Row-lock FIRST, then read `memory` — mirrors
+        // `verticalDramaSeriesMemoryProjection.ts`'s `upsertEpisodeMemories`
+        // `.select().for("update")` inside `db.transaction` convention,
+        // serializing any concurrent writer (a producer's deep-draft chunk
+        // persist, or another hand-edit) on this exact series row instead of
+        // losing one side's update. NOT_FOUND (not FORBIDDEN) if the row
+        // doesn't match this tenant/user — never discloses existence,
+        // mirroring `loadOwnedSeries`.
+        const [row] = await tx
+          .select({ memory: verticalDramaSeries.memory })
+          .from(verticalDramaSeries)
+          .where(ownershipWhere)
+          .for("update");
+        if (!row) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Series not found",
+          });
+        }
+
+        const stored = normalizeStoredSeriesMemory(row.memory);
+
+        // Bind to a local `const` before narrowing — narrowing a nested
+        // property chain (`input.edit.kind`) directly is not reliably
+        // retained across the `.map`/`.filter` callback boundaries below in
+        // every TS version; a local `const` narrows exactly like any other
+        // discriminated-union variable.
+        const edit = input.edit;
+        let nextEpisodes: VdEpisodeMemory[];
+        if (edit.kind === "upsertEpisode") {
+          const incoming = toVdEpisodeMemoryFromInput(edit.episode);
+          const byNumber = new Map(
+            stored.episodes.map(ep => [ep.episodeNumber, ep])
+          );
+          byNumber.set(incoming.episodeNumber, incoming);
+          nextEpisodes = [...byNumber.values()].sort(
+            (a, b) => a.episodeNumber - b.episodeNumber
+          );
+        } else {
+          const episodeNumberToRemove = edit.episodeNumber;
+          nextEpisodes = stored.episodes.filter(
+            ep => ep.episodeNumber !== episodeNumberToRemove
+          );
+        }
+
+        // Re-fold — never trust a stale client-supplied currentState (there
+        // is none here; it is not accepted as input at all, see this
+        // procedure's own doc comment).
+        const currentState = foldSeriesMemory(nextEpisodes);
+        const compactSummary = buildCompactSummary(currentState, nextEpisodes);
+        const lastFoldedEpisode = nextEpisodes.reduce(
+          (max, ep) => Math.max(max, ep.episodeNumber),
+          0
+        );
+        const nextMemory: VdSeriesMemory = {
+          contractVersion: 1,
+          episodes: nextEpisodes,
+          currentState,
+          compactSummary,
+          lastFoldedEpisode,
+          userEdited: true,
+        };
+
+        await tx
+          .update(verticalDramaSeries)
+          .set({ memory: nextMemory, updatedAt: new Date() })
+          .where(ownershipWhere);
+
+        return { memory: nextMemory };
+      });
+    }),
+
+  /**
    * Manual LLM model override (added 2026-07-11 — see
    * `/home/dev/.claude/plans/polished-toasting-gadget.md`) — lists the
    * eligible model set the "generate start-frame render plan" / "generate
@@ -4474,6 +5675,189 @@ export const verticalDramaSeriesRouter = router({
           code: "INTERNAL_SERVER_ERROR",
           message:
             error instanceof Error ? error.message : "Preset synthesis failed",
+        });
+      }
+    }),
+
+  /**
+   * Stage 2.2 (`planning/vd-series-memory-and-lineage/plan.md`) — AI
+   * proposes a season carry-over draft (who returns, new conflict
+   * directions, antagonist strategy) for a chosen PARENT series; the
+   * wizard lets the user review/edit it before `create` ever persists
+   * anything. Same "LLM call -> transient draft, zero DB writes" shape as
+   * `synthesizeGenrePreset` immediately above — no series row exists yet
+   * at this point in the wizard, so this is a synchronous mutation, not a
+   * `VerticalDramaStoryJobPayload` job (which requires a `seriesId` that
+   * does not exist here yet).
+   *
+   * Gated on the dedicated `verticalDramaSeriesLineage` tenant flag (on top
+   * of the base `verticalDramaSeries` gate every procedure on this router
+   * already has) — this is the "gate the create BRANCH, never the
+   * underlying schema read path" rule from that flag's own doc comment.
+   */
+  proposeSeasonCarryOver: verticalDramaProcedure
+    .input(proposeSeasonCarryOverInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+
+      const flags = await getTenantFeatureFlags(tenantId);
+      if (flags.verticalDramaSeriesLineage !== true) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Season carry-over planning is not enabled for this tenant",
+        });
+      }
+
+      const parentSeriesIdNum = Number(input.parentSeriesId);
+      if (!Number.isFinite(parentSeriesIdNum)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid parentSeriesId",
+        });
+      }
+      // HARD THROW on a cross-tenant/cross-user parent — see `create`'s own
+      // doc comment on why this specific check is never best-effort.
+      const parentRow = await loadOwnedSeries(
+        tenantId,
+        userId,
+        parentSeriesIdNum
+      );
+
+      const lineageContext = await loadLineageContext(parentRow, {
+        tenantId,
+        userId,
+      });
+
+      try {
+        const result = await synthesizeSeasonCarryOver({
+          userId,
+          tenantId,
+          locale: normalizeVerticalDramaSeriesLocale(parentRow.locale),
+          premise: input.premise,
+          lineageContext,
+        });
+        return {
+          ...result,
+          hasMemory: lineageContext.hasMemory,
+          memoryEpisodesRecorded: lineageContext.memoryEpisodesRecorded,
+          parentEpisodeCount: lineageContext.parentEpisodeCount,
+        };
+      } catch (error) {
+        if (error instanceof SeasonCarryOverInputError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
+        if (error instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+        }
+        if (error instanceof VdSchemaValidationError) {
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message: error.message,
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Season carry-over planning failed",
+        });
+      }
+    }),
+
+  /**
+   * Stage 2.5 (`planning/vd-series-memory-and-lineage/plan.md`) — AI
+   * proposes a special-edition brief (story shape, per-episode briefs sized
+   * for a SHORT 1-2 sub-episode special, continuity notes) for a chosen
+   * PARENT series; the wizard shows `suggestedUserPremise` in an editable
+   * field and the user's FINAL text is what gets sent as
+   * `createSeriesInput.userPremise` on `create` (see
+   * `verticalDramaSpecialEdition.ts`'s header doc comment for the full
+   * hand-off chain into `bible.userPremise` -> `buildDeepDraftPrompts`'s
+   * "USER PREMISE (PRIMARY)" block — that block already renders
+   * unconditionally whenever a non-empty string is present, so no
+   * additional wiring in `create` was needed for this to reach the
+   * architect). Same "LLM call -> transient draft, zero DB writes" shape as
+   * `proposeSeasonCarryOver` immediately above — no series row exists yet
+   * at this point in the wizard.
+   *
+   * Gated on the same `verticalDramaSeriesLineage` tenant flag as every
+   * other lineage procedure on this router.
+   */
+  proposeSpecialEditionBrief: verticalDramaProcedure
+    .input(proposeSpecialEditionBriefInput)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+
+      const flags = await getTenantFeatureFlags(tenantId);
+      if (flags.verticalDramaSeriesLineage !== true) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Special edition planning is not enabled for this tenant",
+        });
+      }
+
+      const parentSeriesIdNum = Number(input.parentSeriesId);
+      if (!Number.isFinite(parentSeriesIdNum)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid parentSeriesId",
+        });
+      }
+      // HARD THROW on a cross-tenant/cross-user parent — see `create`'s own
+      // doc comment on why this specific check is never best-effort.
+      const parentRow = await loadOwnedSeries(
+        tenantId,
+        userId,
+        parentSeriesIdNum
+      );
+
+      const lineageContext = await loadLineageContext(parentRow, {
+        tenantId,
+        userId,
+      });
+
+      try {
+        const result = await synthesizeSpecialEditionBrief({
+          userId,
+          tenantId,
+          locale: normalizeVerticalDramaSeriesLocale(parentRow.locale),
+          targetEpisodeCount: input.targetEpisodeCount,
+          storyFunctionChoice: input.storyFunctionChoice,
+          source: {
+            marketplaceProductName: input.marketplaceProductName,
+            marketplaceProductDescription: input.marketplaceProductDescription,
+            uploadedSummary: input.uploadedSummary,
+          },
+          lineageContext,
+        });
+        return {
+          ...result,
+          hasMemory: lineageContext.hasMemory,
+          memoryEpisodesRecorded: lineageContext.memoryEpisodesRecorded,
+          parentEpisodeCount: lineageContext.parentEpisodeCount,
+        };
+      } catch (error) {
+        if (error instanceof SpecialEditionInputError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+        }
+        if (error instanceof InsufficientCreditsError) {
+          throw new TRPCError({ code: "FORBIDDEN", message: error.message });
+        }
+        if (error instanceof VdSchemaValidationError) {
+          throw new TRPCError({
+            code: "UNPROCESSABLE_CONTENT",
+            message: error.message,
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Special edition planning failed",
         });
       }
     }),

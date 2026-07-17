@@ -1,0 +1,240 @@
+{
+  "gate": "remotion-parity-test",
+  "status": "failed",
+  "generatedAt": "2026-07-12T00:32:30.421Z",
+  "plan": "planning/remotion-migration/plan.md (Phase 3)",
+  "node": "v22.22.3",
+  "hyperframesRuntime": {
+    "everAttempted": true,
+    "everBlockedByEnvironment": false
+  },
+  "fixturesHash": "rpt_55d4c02eff79a4dea0add632fc9b337a",
+  "fixtures": [
+    {
+      "fixtureId": "single-shot-basic",
+      "fixtureFile": "01-single-shot-basic.json",
+      "kind": "parity",
+      "status": "passed",
+      "description": "Single 4s shot, schema-default presets, one on-screen text line and one subtitle cue. Smallest possible parity fixture.",
+      "config": {
+        "finalVideoLengthSec": 4,
+        "fps": 30,
+        "width": 1080,
+        "height": 1920,
+        "shotCount": 1,
+        "subtitlePreset": "classic_box"
+      },
+      "hyperframes": {
+        "attempted": true,
+        "ok": true,
+        "blockedByEnvironment": false,
+        "errorMessage": null,
+        "durationMs": 70777,
+        "probe": {
+          "passed": true,
+          "durationSec": 4.021,
+          "width": 1080,
+          "height": 1920,
+          "codecName": "h264",
+          "hasVideo": true,
+          "hasAudio": true,
+          "frameCount": 120
+        },
+        "frames": [
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/single-shot-basic-hyperframes-t1.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/single-shot-basic-hyperframes-t2.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/single-shot-basic-hyperframes-t3.png"
+        ]
+      },
+      "remotion": {
+        "attempted": true,
+        "ok": true,
+        "errorMessage": null,
+        "durationMs": 7911,
+        "probe": {
+          "passed": true,
+          "durationSec": 4.053,
+          "width": 1080,
+          "height": 1920,
+          "codecName": "h264",
+          "hasVideo": true,
+          "hasAudio": true,
+          "frameCount": 120
+        },
+        "frames": [
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/single-shot-basic-remotion-t1.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/single-shot-basic-remotion-t2.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/single-shot-basic-remotion-t3.png"
+        ]
+      },
+      "parity": {
+        "verdict": "pass",
+        "durationDiffSec": 0.03200000000000003,
+        "durationDiffFrames": 0.9600000000000009,
+        "toleranceFrames": 1,
+        "resolutionMatch": true,
+        "bothPlayable": true,
+        "notes": [
+          "Frame comparison is structural/visual (file paths only) — exact pixel-diff automation is out of scope for this phase; inspect the extracted frame PNGs manually or wire in a perceptual-diff tool in a follow-up."
+        ]
+      }
+    },
+    {
+      "fixtureId": "two-shot-fade-transition",
+      "fixtureFile": "02-two-shot-fade-transition.json",
+      "kind": "parity",
+      "status": "failed",
+      "description": "Two shots (~7s total), second shot uses the supported fade transition, exercises subtitle timing across a shot boundary.",
+      "config": {
+        "finalVideoLengthSec": 7,
+        "fps": 30,
+        "width": 1080,
+        "height": 1920,
+        "shotCount": 2,
+        "subtitlePreset": "classic_box"
+      },
+      "hyperframes": {
+        "attempted": true,
+        "ok": true,
+        "blockedByEnvironment": false,
+        "errorMessage": null,
+        "durationMs": 78566,
+        "probe": {
+          "passed": true,
+          "durationSec": 7.021,
+          "width": 1080,
+          "height": 1920,
+          "codecName": "h264",
+          "hasVideo": true,
+          "hasAudio": true,
+          "frameCount": 210
+        },
+        "frames": [
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/two-shot-fade-transition-hyperframes-t1.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/two-shot-fade-transition-hyperframes-t2.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/two-shot-fade-transition-hyperframes-t3.png"
+        ]
+      },
+      "remotion": {
+        "attempted": true,
+        "ok": true,
+        "errorMessage": null,
+        "durationMs": 10162,
+        "probe": {
+          "passed": true,
+          "durationSec": 7.061,
+          "width": 1080,
+          "height": 1920,
+          "codecName": "h264",
+          "hasVideo": true,
+          "hasAudio": true,
+          "frameCount": 210
+        },
+        "frames": [
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/two-shot-fade-transition-remotion-t1.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/two-shot-fade-transition-remotion-t2.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/two-shot-fade-transition-remotion-t3.png"
+        ]
+      },
+      "parity": {
+        "verdict": "fail",
+        "durationDiffSec": 0.040000000000000036,
+        "durationDiffFrames": 1.200000000000001,
+        "toleranceFrames": 1,
+        "resolutionMatch": true,
+        "bothPlayable": true,
+        "notes": [
+          "Duration diff 1.20 frames exceeds tolerance of 1 frame(s) at 30fps.",
+          "Frame comparison is structural/visual (file paths only) — exact pixel-diff automation is out of scope for this phase; inspect the extracted frame PNGs manually or wire in a perceptual-diff tool in a follow-up."
+        ]
+      }
+    },
+    {
+      "fixtureId": "three-shot-subtitles-safe-area",
+      "fixtureFile": "03-three-shot-subtitles-safe-area.json",
+      "kind": "parity",
+      "status": "passed",
+      "description": "Three shots (~9s total), mixed fade/none transitions (both supported), longer Thai subtitle text and a non-default Thai font family, exercises safe-zone/subtitle placement handling.",
+      "config": {
+        "finalVideoLengthSec": 9,
+        "fps": 24,
+        "width": 1080,
+        "height": 1920,
+        "shotCount": 3,
+        "subtitlePreset": "classic_box"
+      },
+      "hyperframes": {
+        "attempted": true,
+        "ok": true,
+        "blockedByEnvironment": false,
+        "errorMessage": null,
+        "durationMs": 139175,
+        "probe": {
+          "passed": true,
+          "durationSec": 9.021,
+          "width": 1080,
+          "height": 1920,
+          "codecName": "h264",
+          "hasVideo": true,
+          "hasAudio": true,
+          "frameCount": 216
+        },
+        "frames": [
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/three-shot-subtitles-safe-area-hyperframes-t1.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/three-shot-subtitles-safe-area-hyperframes-t2.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/three-shot-subtitles-safe-area-hyperframes-t3.png"
+        ]
+      },
+      "remotion": {
+        "attempted": true,
+        "ok": true,
+        "errorMessage": null,
+        "durationMs": 12212,
+        "probe": {
+          "passed": true,
+          "durationSec": 9.045,
+          "width": 1080,
+          "height": 1920,
+          "codecName": "h264",
+          "hasVideo": true,
+          "hasAudio": true,
+          "frameCount": 216
+        },
+        "frames": [
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/three-shot-subtitles-safe-area-remotion-t1.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/three-shot-subtitles-safe-area-remotion-t2.png",
+          "/home/dev/projects/SmartSpecPro/apps/web/test-results/remotion-parity/frames/three-shot-subtitles-safe-area-remotion-t3.png"
+        ]
+      },
+      "parity": {
+        "verdict": "pass",
+        "durationDiffSec": 0.023999999999999133,
+        "durationDiffFrames": 0.5759999999999792,
+        "toleranceFrames": 1,
+        "resolutionMatch": true,
+        "bothPlayable": true,
+        "notes": [
+          "Frame comparison is structural/visual (file paths only) — exact pixel-diff automation is out of scope for this phase; inspect the extracted frame PNGs manually or wire in a perceptual-diff tool in a follow-up."
+        ]
+      }
+    },
+    {
+      "fixtureId": "unsupported-subtitle-preset-negative",
+      "fixtureFile": "04-unsupported-subtitle-preset-negative.json",
+      "kind": "negative_unsupported_preset",
+      "status": "passed",
+      "description": "Negative-path fixture: subtitlePreset is NOT the schema-default 'classic_box' Remotion phase-2 supports. This fixture is not a real parity comparison — it only asserts that the Remotion adapter fails closed (UnsupportedPresetError) instead of silently mis-rendering, per remotionCompositionService.ts's assertRemotionPresetSupport(). The Hyperframes side is not exercised for this fixture (it supports every preset already).",
+      "remotion": {
+        "threwUnsupportedPresetError": true,
+        "errorMessage": "Remotion renderer (phase 2) only supports subtitlePreset=\"classic_box\", got \"minimal_shadow\"."
+      },
+      "hyperframesSkipped": true
+    }
+  ],
+  "notes": [
+    "This harness performs REAL end-to-end renders through both engines via the same executeVideoRender() dispatch layer the production render worker uses — no mocking.",
+    "Frame comparison is structural/visual (extracted PNG file paths under test-results/remotion-parity/frames/) — exact pixel-diff automation is explicitly out of scope for this phase.",
+    "If hyperframes.blockedByEnvironment is true for a fixture, the HyperFrames-side code path was genuinely exercised but could not complete due to a missing runtime dependency in this environment (see hyperframes.errorMessage) — this is not a bug in the harness or in remotionRuntimeAdapter.ts.",
+    "This is the Phase 3 hard gate from planning/remotion-migration/plan.md — a 'passed' status here for all fixtures is required before marketplaceRemotionRendererEnabled is enabled for any real tenant."
+  ]
+}

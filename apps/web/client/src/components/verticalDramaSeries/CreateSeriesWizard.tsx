@@ -176,6 +176,92 @@ export function clampMixWeight(value: number): VerticalDramaPresetMixWeight {
   return rounded as VerticalDramaPresetMixWeight;
 }
 
+/**
+ * vd-premise-first-wizard plan, Phase 3 — the premise is the spine, presets
+ * are supplements, never the reverse. Pure decision of what step 1's single
+ * preset CTA does (and what it's labeled) for a given premise/preset-count
+ * combination. Exported for direct unit testing without rendering.
+ *
+ * | userPremise | presetCount | kind                              |
+ * |---|---|---|
+ * | yes | 0     | synthesize_from_premise_only  (AI builds from premise alone) |
+ * | yes | 1..5  | synthesize_premise_and_presets (premise primary, preset(s) as flavor) |
+ * | no  | 1     | apply_preset_verbatim         (unchanged legacy "Use this preset") |
+ * | no  | 2..5  | synthesize_presets_only        (unchanged legacy AI preset mix) |
+ * | no  | 0     | blocked                        (nothing to build from) |
+ */
+export type CreateSeriesPresetActionKind =
+  | "apply_preset_verbatim"
+  | "synthesize_from_premise_only"
+  | "synthesize_premise_and_presets"
+  | "synthesize_presets_only"
+  | "blocked";
+
+export interface CreateSeriesPresetAction {
+  kind: CreateSeriesPresetActionKind;
+  /** CTA button label matching what this action will actually do. */
+  label: string;
+  /**
+   * Only meaningful when `kind === "blocked"` — explains why no AI action can
+   * run yet (surfaced as a toast if the disabled CTA is somehow triggered
+   * anyway, e.g. a defensive check in the mutation handler).
+   */
+  blockedReason?: string;
+}
+
+export function resolveCreateSeriesPresetAction(params: {
+  hasUserPremise: boolean;
+  presetCount: number;
+  lang: "th" | "en";
+}): CreateSeriesPresetAction {
+  const { hasUserPremise, presetCount, lang } = params;
+  const th = lang === "th";
+
+  // No premise + exactly 1 preset — legacy verbatim path, byte-identical to
+  // pre-Phase-3 behavior (nothing else to build from besides the preset).
+  if (presetCount === 1 && !hasUserPremise) {
+    return {
+      kind: "apply_preset_verbatim",
+      label: th ? "ใช้ Preset นี้" : "Use this preset",
+    };
+  }
+
+  // A premise exists — it is always the spine; 0..5 presets are supplements.
+  if (hasUserPremise) {
+    return presetCount === 0
+      ? {
+          kind: "synthesize_from_premise_only",
+          label: th
+            ? "ให้ AI สร้างโครงเรื่องจากโจทย์"
+            : "Let AI build the story from your premise",
+        }
+      : {
+          kind: "synthesize_premise_and_presets",
+          label: th
+            ? "ให้ AI ผสมโจทย์กับ preset"
+            : "Let AI mix your premise with the preset(s)",
+        };
+  }
+
+  // No premise, 2-5 presets — legacy AI preset-mix path, unchanged.
+  if (presetCount >= 2) {
+    return {
+      kind: "synthesize_presets_only",
+      label: th ? "ให้ AI ผสมเป็น Preset" : "Mix into a preset",
+    };
+  }
+
+  // No premise and fewer than 2 presets (i.e. 0) — genuinely nothing to
+  // build from.
+  return {
+    kind: "blocked",
+    label: th ? "ให้ AI ผสมเป็น Preset" : "Mix into a preset",
+    blockedReason: th
+      ? "พิมพ์โจทย์เรื่องที่อยากได้ หรือเลือก preset อย่างน้อย 2 แบบก่อนให้ AI ช่วย"
+      : "Type a story premise, or choose at least 2 presets first",
+  };
+}
+
 export function CreateSeriesWizard({
   open,
   lang,
@@ -390,12 +476,17 @@ export function CreateSeriesWizard({
   }
 
   function handleSynthesizePreset() {
-    if (mixPresetIds.length < 2) {
-      toast.error(
-        lang === "th"
-          ? "เลือกอย่างน้อย 2 preset ก่อนให้ AI ผสม"
-          : "Choose at least 2 presets first"
-      );
+    // vd-premise-first-wizard plan Phase 3.1 — the premise stands on its own:
+    // synthesis is allowed with 0 presets when a premise is present, and the
+    // hard error now only fires for the genuinely-empty case (see
+    // `resolveCreateSeriesPresetAction`'s "blocked" kind).
+    const action = resolveCreateSeriesPresetAction({
+      hasUserPremise: form.userPremise.trim().length > 0,
+      presetCount: mixPresetIds.length,
+      lang,
+    });
+    if (action.kind === "blocked") {
+      toast.error(action.blockedReason);
       return;
     }
     // Clear the previous response/error before a new request so a stale draft
@@ -859,235 +950,407 @@ function WizardStep({
   // Preset browser height: toggle between compact and tall; the list is also
   // user-draggable via CSS resize-y for anything in between.
   const [presetListExpanded, setPresetListExpanded] = useState(false);
+  // vd-premise-first-wizard follow-up (discoverability fix) — the weight
+  // sliders live inside `MixAndMatchPresetPanel` (the preset rail), but the
+  // "Adjust weights" link inside a blend report can now render either there
+  // OR up in the hero's `PresetSynthesisActionPanel` (see step 0 below,
+  // depending on `hasUserPremise`). The ref/scroll trigger is lifted up here
+  // so both possible render sites can reach the SAME sliders section.
+  const weightsSectionRef = useRef<HTMLDivElement>(null);
+  const scrollToWeights = () =>
+    weightsSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
   switch (stepIndex) {
-    case 0:
+    case 0: {
+      // vd-premise-first-wizard plan (Phase 4.1) — the user's own story idea
+      // is the SPINE, presets are supplements, never the reverse. This flag
+      // drives both the hero premise field below and how the (now-optional,
+      // now-narrow) preset library and its copy present themselves.
+      const hasUserPremise = form.userPremise.trim().length > 0;
       return (
-        <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,2.35fr)_minmax(22rem,0.85fr)] lg:items-start">
-          <div className="flex min-h-[32rem] flex-col rounded-xl border bg-muted/20 p-4 shadow-sm xl:min-h-[calc(90dvh-15rem)]">
-            <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Sparkles
-                    className="h-4 w-4 text-primary"
-                    aria-hidden="true"
-                  />
-                  {th ? "คลัง Preset แนวเรื่อง" : "Story preset library"}
-                </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {th
-                    ? "เลือก preset เดี่ยว หรือให้ AI ผสมหลายแนวเป็น draft เดียว"
-                    : "Choose one preset or let AI mix several flavors into one draft."}
-                </p>
+        <div className="grid gap-4">
+          {/* Premise leads step 1 as a full-width hero input — everything
+              below (presets, basic setup) builds on top of it, not the
+              reverse (see plan.md "target behaviour" table). */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-sm">
+            <Field
+              label={
+                th
+                  ? "โจทย์เรื่องที่อยากได้ (แกนเรื่องหลัก, ไม่บังคับ)"
+                  : "Story premise — your story's spine (optional)"
+              }
+              helperText={
+                th
+                  ? "ถ้าระบุ ระบบจะใช้โจทย์ของคุณเป็นแกนเรื่องหลัก แล้วนำ preset ที่เลือกด้านล่าง (0–5 แบบ ไม่บังคับ) มาผสมเสริมความเข้มข้นและความร่วมสมัย — ไม่เลือก preset เลยก็ได้ ให้ AI สร้างจากโจทย์ล้วน ๆ"
+                  : "If provided, the system uses your premise as the primary story spine and blends any preset(s) you choose below (0-5, optional) to intensify and add contemporary flavor — skip presets entirely and AI will build purely from your premise."
+              }
+            >
+              <Textarea
+                value={form.userPremise}
+                onChange={e => {
+                  // Hard length cap only while typing (no trim here — trimming
+                  // on every keystroke would eat trailing spaces the user is
+                  // still mid-word on, breaking normal typing). Full
+                  // trim + word-boundary clamp runs on blur below.
+                  const raw = e.target.value;
+                  const limit = CREATE_SERIES_FIELD_LIMITS.userPremise;
+                  set(
+                    "userPremise",
+                    raw.length > limit ? raw.slice(0, limit) : raw
+                  );
+                }}
+                onBlur={e =>
+                  set(
+                    "userPremise",
+                    clampToCreateSeriesLimit(e.target.value, "userPremise") ??
+                      ""
+                  )
+                }
+                rows={4}
+                maxLength={CREATE_SERIES_FIELD_LIMITS.userPremise}
+                placeholder={
+                  th
+                    ? "อยากได้เรื่องเกี่ยวกับอะไร แนวไหน เกิดที่ไหน ตัวเอกเป็นใคร ปมหลักคืออะไร — ระบุเท่าที่อยากกำหนด ที่เหลือให้ AI ช่วยเติม"
+                    : "What is it about, which genre, where does it happen, who's the lead, what's the core conflict — specify as much as you want, AI fills the rest."
+                }
+              />
+            </Field>
+
+            {/* Discoverability fix (2026-07-17 follow-up to
+                vd-premise-first-wizard) — the user reported that after typing
+                a premise, there was no visible action: the single button that
+                acts on it lived at the bottom of the (now-optional) preset
+                rail, a panel the copy itself tells you to ignore. The primary
+                CTA now renders directly under the textarea the moment a
+                premise is present, so pressing it (and seeing what it did)
+                never requires looking anywhere else. When there is no
+                premise yet, this renders nothing — the CTA stays in the
+                preset rail below, unchanged (see `MixAndMatchPresetPanel`'s
+                `actionSection` prop), since that is legacy behavior nobody
+                reported an issue with. Exactly one CTA renders at a time. */}
+            {hasUserPremise && (
+              <div className="mt-4 border-t border-primary/15 pt-4">
+                <PresetSynthesisActionPanel
+                  lang={lang}
+                  presets={presets}
+                  selectedPresetIds={mixPresetIds}
+                  hasUserPremise={hasUserPremise}
+                  loading={mixDraftLoading}
+                  errorMessage={mixDraftError}
+                  draft={mixDraft}
+                  onGenerate={onSynthesizePreset}
+                  onApplySinglePreset={onApplyPreset}
+                  onApplyDraft={onApplyPresetDraft}
+                  onAdjustWeights={scrollToWeights}
+                  emphasize
+                />
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1 px-2 text-xs text-muted-foreground"
-                onClick={() => setPresetListExpanded(v => !v)}
-                aria-expanded={presetListExpanded}
-              >
-                {presetListExpanded ? (
-                  <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
-                ) : (
-                  <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
-                )}
-                {presetListExpanded
-                  ? th
-                    ? "ย่อรายการ"
-                    : "Collapse"
-                  : th
-                    ? "ขยายรายการ"
-                    : "Expand"}
-              </Button>
-            </div>
-            <MixAndMatchPresetPanel
-              lang={lang}
-              presets={presets}
-              presetsLoading={presetsLoading}
-              presetSearch={presetSearch}
-              onPresetSearchChange={onPresetSearchChange}
-              categories={presetCategories}
-              selectedPresetIds={mixPresetIds}
-              selectedCategories={mixCategories}
-              businessContext={mixBusinessContext}
-              onBusinessContextChange={onMixBusinessContextChange}
-              primarySelectionId={mixPrimarySelectionId}
-              onPrimarySelectionIdChange={onMixPrimarySelectionIdChange}
-              weights={mixWeights}
-              onWeightChange={onMixWeightChange}
-              draft={mixDraft}
-              loading={mixDraftLoading}
-              errorMessage={mixDraftError}
-              onTogglePreset={onToggleMixPreset}
-              onToggleCategory={onToggleMixCategory}
-              onGenerate={onSynthesizePreset}
-              onApplyDraft={onApplyPresetDraft}
-              onApplySinglePreset={onApplyPreset}
-              expanded={presetListExpanded}
-              // Feature 132 §4.1 (F132A) — the badge only signals that a
-              // premise is present; it does not itself gate anything (the
-              // server decides whether the tenant flag honors it).
-              hasUserPremise={form.userPremise.trim().length > 0}
-            />
+            )}
           </div>
 
-          <div className="rounded-xl border bg-background p-4 shadow-sm">
-            <div className="mb-4">
-              <p className="text-sm font-semibold">
-                {th ? "ข้อมูลพื้นฐาน" : "Basic setup"}
-              </p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {th
-                  ? "เลือก preset ก่อน แล้วค่อยปรับข้อมูลสำคัญด้านนี้"
-                  : "Pick a preset first, then refine the essentials here."}
-              </p>
-            </div>
-            <div className="grid gap-4">
-              <Field label={th ? "ชื่อซีรีย์ *" : "Series title *"}>
-                <Input
-                  value={form.title}
-                  onChange={e => set("title", e.target.value)}
-                  autoFocus
-                />
-              </Field>
-              <Field label={th ? "แนวเรื่อง" : "Genre"}>
-                <Input
-                  value={form.genre}
-                  onChange={e => set("genre", e.target.value)}
-                />
-              </Field>
-              <Field
-                label={
-                  th
-                    ? "จำนวนตอนย่อย (Sub-episode) ในโครงสร้างเรื่อง"
-                    : "Planned Sub-episodes in story structure"
-                }
-                helperText={
-                  th
-                    ? "ใช้กำหนดจำนวนตอนย่อยสำหรับวางโครงเรื่องและผลิตวิดีโอสั้น ไม่ใช่จำนวน Public EP ที่เผยแพร่จริง Public EP จะถูกรวมจากตอนย่อยภายหลัง"
-                    : "Sets the number of Sub-episodes used for story planning and short-video production. This is not the number of Public Episodes; Public Episodes are grouped later."
-                }
-              >
-                <Input
-                  type="number"
-                  min={1}
-                  value={form.targetEpisodeCount}
-                  onChange={e => set("targetEpisodeCount", e.target.value)}
-                />
-              </Field>
-              <Field
-                label={th ? "อายุผู้ชม" : "Audience age"}
-                helperText={
-                  th
-                    ? "มีผลต่อความเหมาะสมของเนื้อหาที่ระบบสร้าง (ค่าเริ่มต้น 18+)"
-                    : "Shapes how mature the generated content is (default 18+)"
-                }
-              >
-                <Select
-                  value={form.audienceAgeRating}
-                  onValueChange={v =>
-                    set("audienceAgeRating", v as AudienceAgeRating)
+          {/* Below the premise: basic setup (wide, primary data-entry column)
+              is now on the LEFT where the preset library used to be, and the
+              preset library (narrow, clearly-optional column) is on the
+              RIGHT — inverted from the old layout, which taught the opposite
+              mental model (plan.md root-cause item 4). */}
+          <div className="grid min-h-full gap-4 lg:grid-cols-[minmax(0,2.35fr)_minmax(22rem,0.85fr)] lg:items-start">
+            <div className="rounded-xl border bg-background p-4 shadow-sm">
+              <div className="mb-4">
+                <p className="text-sm font-semibold">
+                  {th ? "ข้อมูลพื้นฐาน" : "Basic setup"}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {th
+                    ? "โจทย์ด้านบนคือแกนเรื่องหลัก กรอกรายละเอียดสำคัญของซีรีย์เพิ่มเติมได้ที่นี่"
+                    : "The premise above is your story's spine — fill in the series' key details here."}
+                </p>
+              </div>
+              <div className="grid gap-4">
+                {/* Information-architecture follow-up (2026-07-17) — these
+                    are REAL user settings `applyPresetDraft` (:413-420) never
+                    touches (verified against its field list: title only when
+                    blank, genre, logline, mainPlot, seasonArc, tone,
+                    cliffhangerStyle, characters — never targetEpisodeCount,
+                    audienceAgeRating, locale, or targetDurationSeconds).
+                    They stay as plain, un-demoted inputs. */}
+                <Field
+                  label={th ? "ชื่อซีรีย์ *" : "Series title *"}
+                  helperText={
+                    th
+                      ? "ถ้าเว้นว่างไว้ AI จะตั้งชื่อให้จากผลลัพธ์ที่สร้าง — ต้องมีชื่อก่อนสร้างซีรีย์จริงในขั้นตอนสุดท้าย"
+                      : "Leave blank and AI will name it from the generated draft — a title is still required before the final Create step."
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[min(60vh,24rem)]">
-                    {AUDIENCE_AGE_RATINGS.map(r => (
-                      <SelectItem key={r} value={r}>
-                        {AUDIENCE_AGE_RATING_LABELS[r][th ? "th" : "en"]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field
-                label={
-                  th
-                    ? "โจทย์เรื่องที่อยากได้ (ไม่บังคับ)"
-                    : "Story premise you want (optional)"
-                }
-                helperText={
-                  th
-                    ? "ถ้าระบุ ระบบจะใช้โจทย์ของคุณเป็นแกนเรื่องหลัก แล้วนำ preset ที่เลือก (1–5 แบบ) มาผสมเพื่อเสริมความเข้มข้นและความร่วมสมัย"
-                    : "If provided, the system uses your premise as the primary story spine and blends the selected preset(s) (1-5) to intensify and add contemporary flavor."
-                }
-              >
-                <Textarea
-                  value={form.userPremise}
-                  onChange={e => {
-                    // Hard length cap only while typing (no trim here — trimming
-                    // on every keystroke would eat trailing spaces the user is
-                    // still mid-word on, breaking normal typing). Full
-                    // trim + word-boundary clamp runs on blur below.
-                    const raw = e.target.value;
-                    const limit = CREATE_SERIES_FIELD_LIMITS.userPremise;
-                    set(
-                      "userPremise",
-                      raw.length > limit ? raw.slice(0, limit) : raw
-                    );
-                  }}
-                  onBlur={e =>
-                    set(
-                      "userPremise",
-                      clampToCreateSeriesLimit(e.target.value, "userPremise") ??
-                        ""
-                    )
-                  }
-                  rows={4}
-                  maxLength={CREATE_SERIES_FIELD_LIMITS.userPremise}
-                  placeholder={
+                  <Input
+                    value={form.title}
+                    onChange={e => set("title", e.target.value)}
+                    autoFocus
+                  />
+                </Field>
+                <Field
+                  label={
                     th
-                      ? "อยากได้เรื่องเกี่ยวกับอะไร แนวไหน เกิดที่ไหน ตัวเอกเป็นใคร ปมหลักคืออะไร — ระบุเท่าที่อยากกำหนด ที่เหลือให้ AI ช่วยเติม"
-                      : "What is it about, which genre, where does it happen, who's the lead, what's the core conflict — specify as much as you want, AI fills the rest."
+                      ? "จำนวนตอนย่อย (Sub-episode) ในโครงสร้างเรื่อง"
+                      : "Planned Sub-episodes in story structure"
                   }
-                />
-              </Field>
-              <Field label={th ? "เรื่องย่อ (logline)" : "Logline"}>
-                <Textarea
-                  value={form.logline}
-                  onChange={e => set("logline", e.target.value)}
-                  rows={3}
-                />
-              </Field>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-                <Field label={th ? "ภาษา" : "Language"}>
+                  helperText={
+                    th
+                      ? "ใช้กำหนดจำนวนตอนย่อยสำหรับวางโครงเรื่องและผลิตวิดีโอสั้น ไม่ใช่จำนวน Public EP ที่เผยแพร่จริง Public EP จะถูกรวมจากตอนย่อยภายหลัง"
+                      : "Sets the number of Sub-episodes used for story planning and short-video production. This is not the number of Public Episodes; Public Episodes are grouped later."
+                  }
+                >
+                  <Input
+                    type="number"
+                    min={1}
+                    value={form.targetEpisodeCount}
+                    onChange={e => set("targetEpisodeCount", e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label={th ? "อายุผู้ชม" : "Audience age"}
+                  helperText={
+                    th
+                      ? "มีผลต่อความเหมาะสมของเนื้อหาที่ระบบสร้าง (ค่าเริ่มต้น 18+)"
+                      : "Shapes how mature the generated content is (default 18+)"
+                  }
+                >
                   <Select
-                    value={form.locale}
+                    value={form.audienceAgeRating}
                     onValueChange={v =>
-                      set("locale", v as VerticalDramaSeriesLocale)
+                      set("audienceAgeRating", v as AudienceAgeRating)
                     }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-[min(60vh,24rem)]">
-                      {VERTICAL_DRAMA_SERIES_LOCALES.map(code => (
-                        <SelectItem key={code} value={code}>
-                          {VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[code]}
+                      {AUDIENCE_AGE_RATINGS.map(r => (
+                        <SelectItem key={r} value={r}>
+                          {AUDIENCE_AGE_RATING_LABELS[r][th ? "th" : "en"]}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </Field>
-                <Field
-                  label={
-                    th ? "ความยาวต่อตอน (วินาที)" : "Target duration (sec)"
-                  }
-                >
-                  <Input
-                    type="number"
-                    min={1}
-                    value={form.targetDurationSeconds}
-                    onChange={e => set("targetDurationSeconds", e.target.value)}
-                  />
-                </Field>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                  <Field label={th ? "ภาษา" : "Language"}>
+                    <Select
+                      value={form.locale}
+                      onValueChange={v =>
+                        set("locale", v as VerticalDramaSeriesLocale)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[min(60vh,24rem)]">
+                        {VERTICAL_DRAMA_SERIES_LOCALES.map(code => (
+                          <SelectItem key={code} value={code}>
+                            {VERTICAL_DRAMA_DIALOGUE_LANGUAGE_NATIVE_NAMES[code]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field
+                    label={
+                      th ? "ความยาวต่อตอน (วินาที)" : "Target duration (sec)"
+                    }
+                  >
+                    <Input
+                      type="number"
+                      min={1}
+                      value={form.targetDurationSeconds}
+                      onChange={e =>
+                        set("targetDurationSeconds", e.target.value)
+                      }
+                    />
+                  </Field>
+                </div>
+
+                {/* Information-architecture follow-up (2026-07-17) — the user
+                    reported confusion: "ทำไมมีทั้งโจทย์ที่อยากได้และเรื่องย่อ
+                    ในเมื่อบอกโจทย์ไประบบต้องสร้างเรื่องย่อให้เอง" (why is
+                    there both a premise AND a logline box, if the premise
+                    already tells the system what to generate). `genre` and
+                    `logline` ARE synthesis OUTPUTS (`applyPresetDraft`
+                    :413-420 writes both), not inputs the user is expected to
+                    hand-fill before generating — presenting them as plain
+                    blank required-looking inputs directly under the premise
+                    box reads as "please fill this in too". Visually
+                    demoted (dashed border, muted background, explicit
+                    "AI output" framing) so they read as editable OUTPUT, not
+                    a second thing to fill in — never hidden, always fully
+                    editable, same state keys/values as before (presentation
+                    only, no `create`/`CREATE_SERIES_FIELD_LIMITS` change). */}
+                <div className="grid gap-3 rounded-lg border border-dashed bg-muted/30 p-3">
+                  <div className="flex items-start gap-2">
+                    <Wand2
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <div>
+                      <p className="text-xs font-medium text-foreground">
+                        {th
+                          ? "ผลลัพธ์จาก AI — แก้ไขได้เสมอ"
+                          : "AI-generated output — always editable"}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {th
+                          ? "สองช่องนี้ถูกเติมอัตโนมัติจากโจทย์ด้านบน (หรือ preset ที่เลือก) เมื่อกด \"ใช้ draft นี้\" — ไม่ต้องกรอกเองก็ได้ แต่แก้ไขทับได้ตลอดถ้าต้องการกำหนดเอง"
+                          : "These two fields are auto-filled from your premise above (or the chosen preset) once you apply a draft — you don't need to fill them yourself, but you can always override them."}
+                      </p>
+                    </div>
+                  </div>
+                  <Field
+                    label={th ? "แนวเรื่อง" : "Genre"}
+                    helperText={
+                      form.genre.trim()
+                        ? undefined
+                        : th
+                          ? "ว่างไว้ก็ได้ — AI จะเติมให้"
+                          : "Leave blank — AI will fill this in"
+                    }
+                  >
+                    <Input
+                      value={form.genre}
+                      onChange={e => set("genre", e.target.value)}
+                      placeholder={
+                        th
+                          ? "เว้นว่างไว้ให้ AI เติม หรือระบุเองที่นี่"
+                          : "Leave blank for AI, or set it yourself"
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={th ? "เรื่องย่อ (logline)" : "Logline"}
+                    helperText={
+                      form.logline.trim()
+                        ? undefined
+                        : th
+                          ? "ว่างไว้ก็ได้ — AI จะเขียนเรื่องย่อให้จากโจทย์ด้านบน"
+                          : "Leave blank — AI will write this from your premise above"
+                    }
+                  >
+                    <Textarea
+                      value={form.logline}
+                      onChange={e => set("logline", e.target.value)}
+                      rows={3}
+                      placeholder={
+                        th
+                          ? "เว้นว่างไว้ให้ AI เขียนให้ หรือเขียนเองที่นี่"
+                          : "Leave blank for AI to write, or write it yourself"
+                      }
+                    />
+                  </Field>
+                </div>
               </div>
+            </div>
+
+            <div className="flex min-h-[26rem] flex-col rounded-xl border bg-muted/20 p-4 shadow-sm xl:min-h-[calc(90dvh-22rem)]">
+              <div className="mb-3 flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 text-sm font-semibold">
+                    <Sparkles
+                      className="h-4 w-4 text-primary"
+                      aria-hidden="true"
+                    />
+                    {th ? "คลัง Preset แนวเรื่อง" : "Story preset library"}
+                    <Badge
+                      variant="outline"
+                      className="px-1.5 py-0 text-[10px] font-normal leading-4 text-muted-foreground"
+                    >
+                      {th
+                        ? "เสริมให้สมบูรณ์ (ไม่บังคับ)"
+                        : "Optional — adds flavor"}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {hasUserPremise
+                      ? th
+                        ? "ไม่เลือกเลยก็ได้ — AI จะสร้างเรื่องจากโจทย์ของคุณด้านบน หรือเลือก preset เพื่อเพิ่มรสชาติ"
+                        : "Skip this entirely — AI builds from your premise above, or choose presets to add flavor."
+                      : th
+                        ? "เลือก preset เดี่ยว หรือให้ AI ผสมหลายแนวเป็น draft เดียว"
+                        : "Choose one preset or let AI mix several flavors into one draft."}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 px-2 text-xs text-muted-foreground"
+                  onClick={() => setPresetListExpanded(v => !v)}
+                  aria-expanded={presetListExpanded}
+                >
+                  {presetListExpanded ? (
+                    <Minimize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  ) : (
+                    <Maximize2 className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  {presetListExpanded
+                    ? th
+                      ? "ย่อรายการ"
+                      : "Collapse"
+                    : th
+                      ? "ขยายรายการ"
+                      : "Expand"}
+                </Button>
+              </div>
+              <MixAndMatchPresetPanel
+                lang={lang}
+                presets={presets}
+                presetsLoading={presetsLoading}
+                presetSearch={presetSearch}
+                onPresetSearchChange={onPresetSearchChange}
+                categories={presetCategories}
+                selectedPresetIds={mixPresetIds}
+                selectedCategories={mixCategories}
+                businessContext={mixBusinessContext}
+                onBusinessContextChange={onMixBusinessContextChange}
+                primarySelectionId={mixPrimarySelectionId}
+                onPrimarySelectionIdChange={onMixPrimarySelectionIdChange}
+                weights={mixWeights}
+                onWeightChange={onMixWeightChange}
+                onTogglePreset={onToggleMixPreset}
+                onToggleCategory={onToggleMixCategory}
+                expanded={presetListExpanded}
+                // Feature 132 §4.1 (F132A) — also now drives which primary CTA
+                // and copy render inside the panel (see
+                // `resolveCreateSeriesPresetAction`), not just the badge.
+                hasUserPremise={hasUserPremise}
+                weightsSectionRef={weightsSectionRef}
+                // Discoverability fix — with a premise present the primary
+                // CTA (+ its loading/error/draft result) already rendered in
+                // the hero above (see `PresetSynthesisActionPanel` usage
+                // there); rendering it again here would be a second,
+                // competing button firing the same mutation. Only render it
+                // in the rail for the unchanged no-premise legacy flow.
+                actionSection={
+                  hasUserPremise ? null : (
+                    <PresetSynthesisActionPanel
+                      lang={lang}
+                      presets={presets}
+                      selectedPresetIds={mixPresetIds}
+                      hasUserPremise={hasUserPremise}
+                      loading={mixDraftLoading}
+                      errorMessage={mixDraftError}
+                      draft={mixDraft}
+                      onGenerate={onSynthesizePreset}
+                      onApplySinglePreset={onApplyPreset}
+                      onApplyDraft={onApplyPresetDraft}
+                      onAdjustWeights={scrollToWeights}
+                    />
+                  )
+                }
+              />
             </div>
           </div>
         </div>
       );
+    }
     case 1:
       return (
         <div className="grid gap-4">
@@ -1516,16 +1779,12 @@ function MixAndMatchPresetPanel({
   onPrimarySelectionIdChange,
   weights,
   onWeightChange,
-  draft,
-  loading,
-  errorMessage,
   onTogglePreset,
   onToggleCategory,
-  onGenerate,
-  onApplyDraft,
-  onApplySinglePreset,
   expanded,
   hasUserPremise,
+  weightsSectionRef,
+  actionSection,
 }: {
   lang: "th" | "en";
   presets: GenrePreset[];
@@ -1541,17 +1800,28 @@ function MixAndMatchPresetPanel({
   onPrimarySelectionIdChange: (value: string | undefined) => void;
   weights: Record<string, VerticalDramaPresetMixWeight>;
   onWeightChange: (id: string, weight: VerticalDramaPresetMixWeight) => void;
-  draft?: SynthesizedGenrePresetDraft;
-  loading: boolean;
-  errorMessage?: string;
   onTogglePreset: (id: string) => void;
   onToggleCategory: (category: string) => void;
-  onGenerate: () => void;
-  onApplyDraft: (draft: SynthesizedGenrePresetDraft) => void;
-  onApplySinglePreset: (preset: GenrePreset) => void;
   expanded: boolean;
   /** Feature 132 §4.1 (F132A) — true when `form.userPremise` is non-empty (trimmed); shows the premise-primary badge below. */
   hasUserPremise?: boolean;
+  /**
+   * Discoverability fix (2026-07-17 follow-up) — lifted up to `WizardStep` so
+   * a blend report's "Adjust weights" link can scroll here regardless of
+   * whether it renders from THIS panel's own `actionSection` (no-premise
+   * path) or from the hero's `PresetSynthesisActionPanel` above (premise
+   * path) — the weight sliders themselves always live in this panel.
+   */
+  weightsSectionRef: React.RefObject<HTMLDivElement | null>;
+  /**
+   * The primary CTA + its loading/error/draft-result UI, rendered by the
+   * PARENT (`WizardStep`) as exactly one `PresetSynthesisActionPanel`
+   * instance — here when there's no premise (unchanged legacy position),
+   * `null` when a premise is present (it already rendered in the hero, see
+   * `WizardStep` case 0). Never both, so there is never a second, competing
+   * CTA firing the same mutation.
+   */
+  actionSection: React.ReactNode;
 }) {
   const th = lang === "th";
   // Local-only category filter (purely a UI aid — never touches which
@@ -1560,8 +1830,6 @@ function MixAndMatchPresetPanel({
   // of the current UI language.
   const [categorySearch, setCategorySearch] = useState("");
   const selectionCount = selectedPresetIds.length;
-  const canApplySingle = selectionCount === 1 && !loading;
-  const canGenerate = selectionCount >= 2 && selectionCount <= 5 && !loading;
   const selectedPresetIdSet = new Set(selectedPresetIds);
   const searchQuery = presetSearch.trim().toLowerCase();
   const categoryCounts = presets.reduce<Record<string, number>>(
@@ -1604,10 +1872,8 @@ function MixAndMatchPresetPanel({
       return { id, label: preset?.title ?? id };
     }),
   ];
-  const selectedSinglePreset =
-    selectionCount === 1
-      ? presets.find(preset => preset.id === selectedPresetIds[0])
-      : undefined;
+  // Still needed here (not just by the extracted action section) — the
+  // weight sliders below label each row by preset title.
   const presetTitleById = presets.reduce<Record<string, string>>(
     (acc, preset) => {
       acc[preset.id] = preset.title;
@@ -1615,15 +1881,6 @@ function MixAndMatchPresetPanel({
     },
     {}
   );
-
-  // Preset Mix v2 (spec §8.2.2.C.1, section-15) — the weight sliders' scroll
-  // target for the blend report's "adjust weights" CTA below.
-  const weightsSectionRef = useRef<HTMLDivElement>(null);
-  const scrollToWeights = () =>
-    weightsSectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -1635,12 +1892,22 @@ function MixAndMatchPresetPanel({
           />
           <div>
             <p className="text-sm font-medium">
-              {th ? "เลือก Preset ได้ 1-5 แบบ" : "Choose 1-5 presets"}
+              {hasUserPremise
+                ? th
+                  ? "เสริมให้สมบูรณ์ (ไม่บังคับ)"
+                  : "Enrich it further (optional)"
+                : th
+                  ? "เลือก Preset ได้ 1-5 แบบ"
+                  : "Choose 1-5 presets"}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              {th
-                ? "เลือก 1 แบบเพื่อใช้ preset เดี่ยวแบบเดิม หรือเลือก 2-5 แบบเพื่อให้ AI ช่วย mix เป็น draft เดียว"
-                : "Choose 1 preset to use it directly, or choose 2-5 presets for AI to mix into one draft."}
+              {hasUserPremise
+                ? th
+                  ? "ไม่เลือกเลยก็ได้ — AI จะสร้างเรื่องจากโจทย์ของคุณล้วน ๆ หรือเลือก preset 0-5 แบบเพื่อเสริมรสชาติและความร่วมสมัย"
+                  : "Skip this entirely — AI builds purely from your premise, or choose 0-5 presets to add flavor and contemporary touches."
+                : th
+                  ? "เลือก 1 แบบเพื่อใช้ preset เดี่ยวแบบเดิม หรือเลือก 2-5 แบบเพื่อให้ AI ช่วย mix เป็น draft เดียว"
+                  : "Choose 1 preset to use it directly, or choose 2-5 presets for AI to mix into one draft."}
             </p>
             {hasUserPremise && (
               <Badge
@@ -1682,11 +1949,21 @@ function MixAndMatchPresetPanel({
             aria-label={th ? "ค้นหาหมวดแนวเรื่อง" : "Search categories"}
           />
         </div>
-        {/* Capped at 3 columns on purpose: a 4th column squeezes the long Thai
-            category labels past the button edge on tablet widths. */}
+        {/* Discoverability follow-up (2026-07-17) — this grid used to be
+            `grid-cols-2 sm:grid-cols-3`, i.e. a VIEWPORT-width breakpoint.
+            That was fine back when this panel lived in the wide 2.35fr
+            column, but Phase 4 moved it into the narrow
+            `minmax(22rem,0.85fr)` rail — a fixed 3-column split of a ~22rem
+            (352px) container leaves ~100px per chip, nowhere near enough for
+            labels like "คลุมถุงชนศัตรูหัวใจ (1)" or "ทายาทถูกตัดขาดคัมแบ็ก
+            (1)", and `sm:` doesn't know the rail is narrower than the
+            viewport. `auto-fill`/`minmax` sizes columns off the GRID's own
+            (container) width instead, so it never forces more columns than
+            actually fit, at any viewport size or rail width — correctness
+            (never clipped) over squeezing in an extra column. */}
         <div
           className={cn(
-            "grid grid-cols-2 gap-1.5 overflow-y-auto rounded-lg border bg-background p-2 sm:grid-cols-3",
+            "grid gap-1.5 overflow-y-auto rounded-lg border bg-background p-2 [grid-template-columns:repeat(auto-fill,minmax(7.5rem,1fr))]",
             expanded ? "max-h-[18rem]" : "max-h-[14rem]"
           )}
         >
@@ -1701,7 +1978,14 @@ function MixAndMatchPresetPanel({
                   onClick={() => onToggleCategory(category)}
                   aria-pressed={selected}
                   className={cn(
-                    "min-h-8 break-words rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    // `[overflow-wrap:anywhere]` (not just `break-words`) —
+                    // Thai script has no spaces, so a run with no natural
+                    // break opportunity must still be force-broken at the
+                    // column's real width; `anywhere` is also honored by the
+                    // grid track's min-content sizing, so the column itself
+                    // never has to grow past its `minmax` share to avoid
+                    // clipping the label.
+                    "min-h-8 [overflow-wrap:anywhere] rounded-md border px-2 py-1 text-left text-xs leading-snug transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     selected
                       ? "border-primary bg-primary text-primary-foreground"
                       : "bg-background hover:bg-accent"
@@ -1759,7 +2043,10 @@ function MixAndMatchPresetPanel({
         </div>
         <div
           className={cn(
-            "grid auto-rows-min grid-cols-1 gap-2 overflow-y-auto rounded-lg border bg-background/80 p-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4",
+            // vd-premise-first-wizard plan Phase 4.1 — this panel now lives in
+            // the narrow "supplemental" rail (see step-1 layout below), so the
+            // card grid no longer bumps past 2 columns regardless of viewport.
+            "grid auto-rows-min grid-cols-1 gap-2 overflow-y-auto rounded-lg border bg-background/80 p-2 sm:grid-cols-2",
             expanded
               ? "min-h-[16rem] max-h-[34vh]"
               : "min-h-[12rem] max-h-[26vh]"
@@ -1876,6 +2163,83 @@ function MixAndMatchPresetPanel({
         </div>
       )}
 
+      {actionSection}
+    </div>
+  );
+}
+
+/**
+ * Discoverability fix (2026-07-17 follow-up to vd-premise-first-wizard) — the
+ * user reported that after typing a premise, there was no visible way to make
+ * anything happen: the one button that acts on the premise/preset selection
+ * lived at the bottom of the (now-optional) preset rail, a panel the UI
+ * itself labels "เสริมให้สมบูรณ์ (ไม่บังคับ)" / optional. Extracted out of
+ * `MixAndMatchPresetPanel` so the SAME button+result markup can render in
+ * either of exactly two places, chosen by the caller (`WizardStep`):
+ *   - the hero, directly under the premise textarea, the instant a premise is
+ *     typed (this is the fix — see `WizardStep` case 0)
+ *   - the (unchanged) bottom of the preset rail, for the legacy no-premise
+ *     flow (apply-verbatim / mix-presets-only / blocked)
+ * Only ONE of those two call sites is ever rendered at once (the other passes
+ * `null`), so there is never a second, competing CTA that fires the same
+ * mutation from two places.
+ */
+function PresetSynthesisActionPanel({
+  lang,
+  presets,
+  selectedPresetIds,
+  hasUserPremise,
+  loading,
+  errorMessage,
+  draft,
+  onGenerate,
+  onApplySinglePreset,
+  onApplyDraft,
+  onAdjustWeights,
+  emphasize,
+}: {
+  lang: "th" | "en";
+  presets: GenrePreset[];
+  selectedPresetIds: string[];
+  hasUserPremise: boolean;
+  loading: boolean;
+  errorMessage?: string;
+  draft?: SynthesizedGenrePresetDraft;
+  onGenerate: () => void;
+  onApplySinglePreset: (preset: GenrePreset) => void;
+  onApplyDraft: (draft: SynthesizedGenrePresetDraft) => void;
+  onAdjustWeights: () => void;
+  /** True when rendered in the hero — makes the CTA read as the page's main action (larger, full-width on mobile), not a quiet secondary link. */
+  emphasize?: boolean;
+}) {
+  const th = lang === "th";
+  const selectionCount = selectedPresetIds.length;
+  const presetAction = resolveCreateSeriesPresetAction({
+    hasUserPremise,
+    presetCount: selectionCount,
+    lang,
+  });
+  const canApplySingle =
+    presetAction.kind === "apply_preset_verbatim" && !loading;
+  const canGenerate =
+    (presetAction.kind === "synthesize_from_premise_only" ||
+      presetAction.kind === "synthesize_premise_and_presets" ||
+      presetAction.kind === "synthesize_presets_only") &&
+    !loading;
+  const selectedSinglePreset =
+    selectionCount === 1
+      ? presets.find(preset => preset.id === selectedPresetIds[0])
+      : undefined;
+  const presetTitleById = presets.reduce<Record<string, string>>(
+    (acc, preset) => {
+      acc[preset.id] = preset.title;
+      return acc;
+    },
+    {}
+  );
+
+  return (
+    <div className="grid gap-2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">
           {th
@@ -1885,21 +2249,23 @@ function MixAndMatchPresetPanel({
         {canApplySingle ? (
           <Button
             type="button"
+            size={emphasize ? "lg" : "default"}
             onClick={() =>
               selectedSinglePreset && onApplySinglePreset(selectedSinglePreset)
             }
             disabled={!selectedSinglePreset}
-            className="gap-2"
+            className={cn("gap-2", emphasize && "w-full sm:w-auto")}
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
-            {th ? "ใช้ Preset นี้" : "Use this preset"}
+            {presetAction.label}
           </Button>
         ) : (
           <Button
             type="button"
+            size={emphasize ? "lg" : "default"}
             onClick={onGenerate}
             disabled={!canGenerate}
-            className="gap-2"
+            className={cn("gap-2", emphasize && "w-full sm:w-auto")}
           >
             {loading && (
               <Loader2
@@ -1911,12 +2277,22 @@ function MixAndMatchPresetPanel({
               ? th
                 ? "AI กำลังจัดรสชาติเรื่องให้เข้ากัน..."
                 : "AI is mixing the story flavors..."
-              : th
-                ? "ให้ AI ผสมเป็น Preset"
-                : "Mix into a preset"}
+              : presetAction.label}
           </Button>
         )}
       </div>
+
+      {/* Requirement: a disabled CTA must never be silent about why. `blocked`
+          only ever occurs when there's no premise AND fewer than 2 presets —
+          i.e. only at this component's non-hero (legacy) call site. */}
+      {presetAction.kind === "blocked" && presetAction.blockedReason && (
+        <p
+          role="note"
+          className="rounded-md border border-dashed bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground"
+        >
+          {presetAction.blockedReason}
+        </p>
+      )}
 
       {errorMessage && (
         <div
@@ -1940,7 +2316,7 @@ function MixAndMatchPresetPanel({
         </div>
       )}
 
-      {selectionCount === 0 && (
+      {selectionCount === 0 && !hasUserPremise && (
         <p className="text-xs text-muted-foreground">
           {th
             ? "เริ่มจากเลือกหมวดเพื่อกรองรายการ แล้วเลือก preset 1-5 แบบ"
@@ -2044,8 +2420,32 @@ function MixAndMatchPresetPanel({
             </div>
           </div>
           {draft.warnings && draft.warnings.length > 0 && (
-            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-              {draft.warnings[0]?.message}
+            // Render EVERY warning, not just `warnings[0]` — the
+            // `premise_coverage_low` warning ("the AI drifted from your
+            // premise") is APPENDED to the end of `draft.warnings`
+            // server-side (`appendPremiseCoverageWarning` in
+            // `verticalDramaPresetSynthesis.ts`), so a preceding technical
+            // warning like `preset_field_length_clamped` would otherwise bury
+            // the one the creator most needs to see. The premise-coverage
+            // warning is surfaced first so it never hides behind housekeeping
+            // notices.
+            <div className="mt-2 space-y-1.5">
+              {[...draft.warnings]
+                .sort((a, b) =>
+                  a.code === "premise_coverage_low"
+                    ? -1
+                    : b.code === "premise_coverage_low"
+                      ? 1
+                      : 0
+                )
+                .map((warning, i) => (
+                  <div
+                    key={`${warning.code}-${i}`}
+                    className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                  >
+                    {warning.message}
+                  </div>
+                ))}
             </div>
           )}
           {draft.contract_version === 2 && (
@@ -2059,7 +2459,7 @@ function MixAndMatchPresetPanel({
                   blendReport={draft.blendReport}
                   presetOrder={selectedPresetIds}
                   presetTitleById={presetTitleById}
-                  onAdjustWeights={scrollToWeights}
+                  onAdjustWeights={onAdjustWeights}
                 />
               </div>
             </details>

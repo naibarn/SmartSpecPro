@@ -278,3 +278,14 @@ apps/web/client/public/releases/runtime/*.zip
 
 # Machine-specific MCP registration (command path is local to this server)
 .mcp.json
+
+# Facebook Ads API token (secret — never commit)
+.fb_token
+
+# Crash core dumps (never commit)
+core
+core.*
+
+# Atomic build backup/staging dirs (build:deploy artifacts)
+apps/web/dist-prev-*
+apps/web/dist-staging

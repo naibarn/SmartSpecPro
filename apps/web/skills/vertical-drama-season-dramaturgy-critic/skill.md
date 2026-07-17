@@ -247,11 +247,73 @@ For each (candidate, episode) pair, score these 14 dimensions, each 1-5
     from `dialogue_naturalness` (does it sound like real speech?) — a line
     can be natural yet still too technical for the target audience.
 
-A caller MAY append one additional, narrowly-scoped scoring instruction
-(covering a conditional 15th dimension) directly after this skill's own
-system prompt when at least one episode in this call carries an extra
-marker — when no such addendum is present, score ONLY the 14 dimensions
-above and do not invent any additional dimension yourself.
+A caller MAY append one or more additional, narrowly-scoped scoring
+instructions (each covering ONE conditional 15th/16th dimension) directly
+after this skill's own system prompt when this call's input carries the
+matching marker/fact block for that dimension — when no such addendum is
+present, score ONLY the 14 dimensions above and do not invent any additional
+dimension yourself. A SECOND such conditional dimension exists for sequel
+mode — see "prior_season_continuity" immediately below, scored ONLY when its
+own trigger (a "SEASON LINEAGE" fact block) is present; more than one
+conditional addendum may appear together on the same call (e.g. a sequel
+season that also has a planned product tie-in).
+
+### Conditional dimension — `prior_season_continuity` (sequel mode only)
+
+Score this dimension ONLY when the caller's addendum says so — this happens
+ONLY when the user message ALSO contains a "SEASON LINEAGE" fact block (this
+run is drafting a season that continues a prior one). Never score it, and
+never invent it, for a normal (non-sequel) run.
+
+When it applies, judge EVERY given episode 1-5 against the SEASON LINEAGE
+facts (the prior season's bounded summary, its carried relationships +
+`disclosure` levels, its still-open threads by `threadClass`, its
+`characterKnowledge`, and its canonical facts) for whether THIS content
+stays continuous with that prior season or drifts/contradicts it. This is
+the mechanism a viewer relies on to NOT wonder whether the new season
+forgot who is dating whom, who already knows what, or what happened last
+season — score it strictly on that, nothing else (do not re-judge story
+craft here; the 14 core dimensions already cover that).
+
+**5 = fully continuous** — every carried relationship's status/disclosure
+either holds or moves with an on-screen, earned reason; every carried
+open thread is either continued, resolved, or explicitly acknowledged (never
+silently dropped); no character acts ignorant of something `characterKnowledge`
+says they already learned; nothing contradicts a carried canonical fact.
+**1 = contradicts or ignores the prior season** — a relationship or
+character resets with no story reason, a thread vanishes with zero mention,
+a character is written newly-ignorant of something they already knew, or a
+carried fact is directly contradicted.
+
+**The single most important judgment call this dimension makes: distinguish
+legitimate CHANGE from DRIFT.** Relationships and characters are EXPECTED to
+move between seasons — a sequel that freezes everyone in their season-1
+state is itself a craft failure the 14 core dimensions would catch
+elsewhere, and this dimension must never punish a story for progressing.
+Concretely:
+- A relationship's `status`/`disclosure` moving forward (or even backward)
+  because of something that happens ON SCREEN this season is GOOD — score
+  it high. The same status silently reverting with NO on-screen cause, or a
+  couple who ended `"public"` being written as if no one has ever heard of
+  them, is DRIFT — score it low.
+- A character who grew past a flaw acting on a NEW, specific pressure this
+  season in a way that echoes an old weakness is legitimate stakes-raising.
+  The SAME character reset to their exact pre-growth self purely because it
+  makes this season's plot easier to write, with no on-screen cause, is
+  cheating the audience's investment — score it low.
+- A carried thread being resolved this season, or explicitly continued
+  ("still not done"), is GOOD either way. The same thread never mentioned
+  again, with no resolution and no acknowledgment, is a silent drop — score
+  it low.
+- A character learning something they, per `characterKnowledge`, already
+  knew — played as a fresh discovery — is a direct contradiction, not
+  character growth. Score it low regardless of how well-written the scene
+  is otherwise.
+
+Write your reasoning against the SPECIFIC carried facts given, not general
+impressions — this dimension exists because generic "does it feel
+continuous" judgment is not enough; ground every low score in the exact
+carried relationship/thread/fact it contradicts.
 
 ### Mode 2 output contract
 

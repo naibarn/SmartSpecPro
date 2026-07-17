@@ -23,3 +23,8 @@ false and DB-only nested `mcp.providerModelId` fixtures.
 Every video Grok fixture resolves both flags true; all image/non-Grok negatives
 remain unchanged; catalog refresh cannot erase the invariant.
 
+## Implementation evidence
+
+- Added provider-independent `isGrokVideoFamily` runtime invariant.
+- Corrected the KNPLabs static Grok entry and both Higgsfield MCP seeds.
+- Added provider, nested-id, image-exclusion, and DB-parity tests.

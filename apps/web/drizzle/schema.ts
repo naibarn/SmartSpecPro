@@ -20532,6 +20532,47 @@ export const verticalDramaSeries = pgTable(
      * via `verticalDramaSeries.assembleProductionEpisodes` / `.get`.
      */
     productionEpisodesManifest: jsonb("productionEpisodesManifest"),
+    /**
+     * Season/special-edition lineage (`planning/vd-series-memory-and-lineage/
+     * plan.md` Stage 2.1) — 4 additive, nullable columns, hand-applied via
+     * `manual_vertical_drama_series_lineage.sql` (drizzle-kit generate is
+     * blocked for this table lineage by the same pre-existing meta-journal
+     * collision documented on this table's sibling `trailer`/`watermark`/
+     * `productionEpisodesManifest` columns above). Zero data-loss: nullable
+     * ADD COLUMN, existing rows get all four new columns = NULL.
+     *
+     * NULL semantics (deliberate — do NOT backfill an `'original'` sentinel):
+     * `createMode` NULL = an ORIGINAL series (every row that existed before
+     * this feature). "Original mode is unchanged" is therefore a STRUCTURAL
+     * guarantee, matching this table's convention for every prior additive
+     * column. Non-NULL `createMode` values: `"sequel"` | `"special_edition"`.
+     * `parentSeriesId` NULL = not derived from another series. `seasonNumber`
+     * NULL = not part of a numbered season lineage. `lineage` NULL = no
+     * lineage payload (carry-over decisions the user approved,
+     * special-edition source config, and a `parentTitle`/`parentEpisodeCount`
+     * snapshot so a child's badge survives parent deletion — see
+     * `@shared/verticalDramaSeries/lineage.ts` for the
+     * `VerticalDramaSeriesLineage` shape).
+     *
+     * `parentSeriesId` uses `ON DELETE SET NULL` — a DELIBERATE divergence
+     * from this table's sibling self-FKs on `verticalDramaCharacters`
+     * (`parentCharacterId`/`sharesFaceWithCharacterId`, bare `REFERENCES`).
+     * Deleting season 1 must NOT cascade-delete season 2: the child degrades
+     * to an orphan that still renders its badge from
+     * `lineage->>'parentTitle'`. Read via `loadOwnedSeries`
+     * (`server/routers/verticalDramaSeries.ts`) and
+     * `loadLineageContext`/cloned via `cloneSeriesCastForLineage`
+     * (`server/services/verticalDramaSeriesLineage.ts` /
+     * `verticalDramaSeriesClone.ts`).
+     */
+    parentSeriesId: bigint("parentSeriesId", { mode: "number" }).references(
+      (): AnyPgColumn => verticalDramaSeries.id,
+      { onDelete: "set null" }
+    ),
+    createMode: varchar("createMode", { length: 24 }),
+    seasonNumber: integer("seasonNumber"),
+    /** `VerticalDramaSeriesLineage` (`@shared/verticalDramaSeries/lineage.ts`) — see doc comment above. */
+    lineage: jsonb("lineage"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -20542,6 +20583,13 @@ export const verticalDramaSeries = pgTable(
   t => [
     index("vds_series_list_idx").on(t.tenantId, t.userId, t.updatedAt),
     index("vds_series_status_idx").on(t.tenantId, t.status),
+    /**
+     * Lists a parent's children ("ภาค 2 / ภาคพิเศษ ของเรื่องนี้") without a
+     * sequential scan, tenant-scoped to match `vds_series_list_idx`'s
+     * leading column. Matches `manual_vertical_drama_series_lineage.sql`'s
+     * hand-applied index exactly.
+     */
+    index("vds_series_parent_idx").on(t.tenantId, t.parentSeriesId),
   ]
 );
 
@@ -20687,6 +20735,70 @@ export type VerticalDramaCharacterAssetRow =
   typeof verticalDramaCharacterAssets.$inferSelect;
 export type InsertVerticalDramaCharacterAssetRow =
   typeof verticalDramaCharacterAssets.$inferInsert;
+
+/**
+ * Character name aliases — canonical identity resolution
+ * (`planning/vd-character-identity-repair/plan.md` Phase 2.2). Each row
+ * records one spelling/short-form/romanization/nickname that resolves to
+ * exactly one `verticalDramaCharacters` row within a series (e.g. `คิริน`,
+ * `Kirin`, `คีริน` all resolving to the same `คิริน วัฒนเมธา` row).
+ *
+ * `normalizedAlias` is written in the `normalizeStoryCharacterName()` form
+ * (`server/services/verticalDramaCharacterRosterAutoRegister.ts`:
+ * `.trim().toLowerCase().replace(/\s+/g, " ")`) — this table does not
+ * reimplement that normalizer; callers must apply it before insert/lookup.
+ *
+ * UNIQUE `(seriesId, normalizedAlias)` is the DB-level guarantee that one
+ * spelling resolves to exactly one character — the guard that
+ * `(seriesId, characterKey)` was never able to provide for Thai names,
+ * because `slugifyForCharacterKey` strips all non-`[a-z0-9]` characters and
+ * every Thai name collapses to the same `"character"` fallback (plan
+ * root-cause #7).
+ *
+ * Hand-authored via `manual_vertical_drama_character_aliases.sql` — same
+ * "hand-authored migration, schema.ts catches up separately" convention as
+ * this table's sibling `verticalDramaCharacters` / `verticalDramaCharacterAssets`
+ * columns (drizzle-kit generate is blocked for this table lineage by the
+ * pre-existing meta-journal collision documented on those columns).
+ */
+export const verticalDramaCharacterAliases = pgTable(
+  "vertical_drama_character_aliases",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    seriesId: bigint("seriesId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaSeries.id, { onDelete: "cascade" }),
+    characterId: bigint("characterId", { mode: "number" })
+      .notNull()
+      .references(() => verticalDramaCharacters.id, { onDelete: "cascade" }),
+    /** Display form as written (e.g. "คิริน", "Kirin"). */
+    alias: varchar("alias", { length: 255 }).notNull(),
+    /** The `normalizeStoryCharacterName()` form of `alias` — see doc comment above. */
+    normalizedAlias: varchar("normalizedAlias", { length: 255 }).notNull(),
+    /** "bible_declared" | "merge_recorded" | "user_added" */
+    source: varchar("source", { length: 24 }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("vds_character_alias_unique").on(
+      t.seriesId,
+      t.normalizedAlias
+    ),
+    index("vds_character_alias_lookup_idx").on(
+      t.tenantId,
+      t.seriesId,
+      t.characterId
+    ),
+  ]
+);
+
+export type VerticalDramaCharacterAliasRow =
+  typeof verticalDramaCharacterAliases.$inferSelect;
+export type InsertVerticalDramaCharacterAliasRow =
+  typeof verticalDramaCharacterAliases.$inferInsert;
 
 /**
  * Series locations — location/environment roster for the "Location Visual

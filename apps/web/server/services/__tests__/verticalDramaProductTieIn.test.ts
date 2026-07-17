@@ -28,8 +28,12 @@ import {
   VD_TIE_IN_MAX_SPOKEN_MENTIONS,
   VD_TIE_IN_MAX_VISUAL_SHOTS,
   VERTICAL_DRAMA_AD_SPEAK_LEXICON,
+  buildSpecialEditionProductTieInConfig,
+  verticalDramaProductTieInConfigSchema,
+  VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES,
   type PlanTieInInput,
   type BuildTieInQualityReportParams,
+  type BuildSpecialEditionProductTieInConfigParams,
 } from "../verticalDramaProductTieIn";
 import type { VerticalDramaProductTieInConfig } from "@shared/verticalDramaSeries";
 
@@ -980,5 +984,119 @@ describe("buildTieInQualityReport (spec §13.1)", () => {
     expect(report.visualShotCount).toBe(0);
     expect(report.spokenMentionCount).toBe(0);
     expect(report.adSpeakViolations).toEqual([]);
+  });
+});
+
+/**
+ * Special-edition product tie-in config (Stage 2.5,
+ * `planning/vd-series-memory-and-lineage/plan.md`) — the wizard has
+ * historically written a `productTieIn` object missing 5 required
+ * `VerticalDramaProductTieInConfig` fields with nothing catching it
+ * (`createSeriesInput.productTieIn` is a loosely-typed `z.record`). These
+ * tests assert `buildSpecialEditionProductTieInConfig`'s RESULT always
+ * satisfies the FULL contract via `verticalDramaProductTieInConfigSchema`.
+ */
+describe("buildSpecialEditionProductTieInConfig (Stage 2.5)", () => {
+  function buildParams(
+    overrides: Partial<BuildSpecialEditionProductTieInConfigParams> = {},
+  ): BuildSpecialEditionProductTieInConfigParams {
+    return {
+      raw: {},
+      uploadedReferenceAssetIds: [],
+      ...overrides,
+    };
+  }
+
+  it("declares exactly the 2 documented story-function-choice values", () => {
+    expect(VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES).toEqual(["review", "tie_in_solution"]);
+  });
+
+  it("a totally empty wizard payload still satisfies the FULL contract (every required field defaulted)", () => {
+    const built = buildSpecialEditionProductTieInConfig(buildParams());
+    const parsed = verticalDramaProductTieInConfigSchema.safeParse(built);
+    expect(parsed.success).toBe(true);
+    expect(built.referenceAssetIds).toEqual([]);
+    expect(built.disclosurePolicy).toBe("caption_disclosure");
+    expect(built.maxEpisodesWithTieInPerTenEpisodes).toBe(10);
+    expect(built.requireHumanApproval).toBe(false);
+    // Safe default when the wizard sent no explicit choice — "review" (the
+    // less claims-heavy shape), never left undefined/invalid.
+    expect(built.allowedStoryFunctions).toEqual(["soft_cta", "daily_use"]);
+  });
+
+  it("maps storyFunctionChoice 'review' to the review-only allowedStoryFunctions set", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { storyFunctionChoice: "review" } }),
+    );
+    expect(built.allowedStoryFunctions).toEqual(["soft_cta", "daily_use"]);
+  });
+
+  it("maps storyFunctionChoice 'tie_in_solution' to the solution-oriented allowedStoryFunctions set", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { storyFunctionChoice: "tie_in_solution" } }),
+    );
+    expect(built.allowedStoryFunctions).toEqual([
+      "plot_clue",
+      "memory_trigger",
+      "relationship_token",
+    ]);
+  });
+
+  it("uploaded reference asset ids (source 2) land in referenceAssetIds and productSource becomes 'uploaded_reference'", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ uploadedReferenceAssetIds: ["101", "102"] }),
+    );
+    expect(built.referenceAssetIds).toEqual(["101", "102"]);
+    expect(built.productSource).toBe("uploaded_reference");
+  });
+
+  it("a marketplaceCaptureId (source 1) with no uploads infers productSource 'marketplace'", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { marketplaceCaptureId: "cap_123" } }),
+    );
+    expect(built.productSource).toBe("marketplace");
+  });
+
+  it("requireHumanApproval follows isRegulatedCategory(regulatedCategory) exactly", () => {
+    const regulated = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { regulatedCategory: "health" } }),
+    );
+    expect(regulated.requireHumanApproval).toBe(true);
+    expect(regulated.regulatedCategory).toBe("health");
+
+    const unregulated = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { regulatedCategory: "other-not-a-real-category" } }),
+    );
+    // Invalid/unrecognized value degrades to "none", never throws.
+    expect(unregulated.regulatedCategory).toBe("none");
+    expect(unregulated.requireHumanApproval).toBe(false);
+  });
+
+  it("disclosurePolicy and maxEpisodesWithTieInPerTenEpisodes are hardcoded regardless of wizard input (owner decision, never overridable)", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({
+        raw: {
+          disclosurePolicy: "not_required",
+          maxEpisodesWithTieInPerTenEpisodes: 2,
+        },
+      }),
+    );
+    expect(built.disclosurePolicy).toBe("caption_disclosure");
+    expect(built.maxEpisodesWithTieInPerTenEpisodes).toBe(10);
+  });
+
+  it("passes productCategory through when it is a real contract enum value", () => {
+    const built = buildSpecialEditionProductTieInConfig(
+      buildParams({ raw: { productCategory: "service" } }),
+    );
+    expect(built.productCategory).toBe("service");
+    const parsed = verticalDramaProductTieInConfigSchema.safeParse(built);
+    expect(parsed.success).toBe(true);
+  });
+
+  it("verticalDramaProductTieInConfigSchema rejects an invalid allowedStoryFunctions/disclosurePolicy value (real regression guard)", () => {
+    const bad = { ...buildSpecialEditionProductTieInConfig(buildParams()), disclosurePolicy: "totally_invalid" };
+    const parsed = verticalDramaProductTieInConfigSchema.safeParse(bad);
+    expect(parsed.success).toBe(false);
   });
 });

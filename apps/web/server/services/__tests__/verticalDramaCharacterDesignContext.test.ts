@@ -1,7 +1,51 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * `crossSeriesUniqueness` parent exclusion (plan Stage 2.3,
+ * `planning/vd-series-memory-and-lineage/plan.md`) — exercises
+ * `loadCharacterDesignContext`'s actual DB query (NOT the pure
+ * `buildCharacterDesignContextFromRows` the rest of this file covers), since
+ * the fix lives in the `ne(...)` predicate passed to `db.select()`.
+ */
+const { mockDb, setSelectResults, getWhereConditions, resetQueryHarness } = vi.hoisted(() => {
+  let queue: unknown[][] = [];
+  let whereConditions: unknown[] = [];
+  function selectBuilder() {
+    const builder: any = {};
+    builder.from = vi.fn(() => builder);
+    builder.where = vi.fn((condition: unknown) => {
+      whereConditions.push(condition);
+      return builder;
+    });
+    builder.orderBy = vi.fn(() => builder);
+    builder.limit = vi.fn(() => Promise.resolve(queue.shift() ?? []));
+    // `currentCastRows` is awaited directly off `.limit(...)` above; the
+    // `recentSeriesRows`/`recentCharacterRows` queries (inside the try/catch)
+    // are also awaited directly off `.limit(...)` — no bare `.where()` await
+    // occurs in `loadCharacterDesignContext`, so `.limit` is the only
+    // resolution point this mock needs.
+    return builder;
+  }
+  const mockDb = { select: vi.fn(() => selectBuilder()) };
+  return {
+    mockDb,
+    setSelectResults: (results: unknown[][]) => {
+      queue = [...results];
+    },
+    getWhereConditions: () => whereConditions,
+    resetQueryHarness: () => {
+      queue = [];
+      whereConditions = [];
+    },
+  };
+});
+vi.mock("../../db", () => ({ db: mockDb }));
+vi.mock("../../_core/logger", () => ({ debugError: vi.fn() }));
+
 import {
   buildCharacterDesignContextFromRows,
   extractCharacterDesignDna,
+  loadCharacterDesignContext,
 } from "../verticalDramaCharacterDesignContext";
 
 function characterRow(id: number, overrides: Record<string, unknown> = {}) {
@@ -163,5 +207,66 @@ describe("verticalDramaCharacterDesignContext", () => {
     expect(context.archiveStatus).toBe("unavailable");
     expect(context.currentCast).toHaveLength(2);
     expect(context.recentLeadArchive).toEqual([]);
+  });
+});
+
+/** Recursively collects every numeric leaf value out of a drizzle-orm `SQL` condition tree (`.queryChunks[].value`) — used to assert WHICH ids a composed `and(...)` condition compares against, without depending on drizzle's internal AST shape beyond this one property. */
+function extractNumericLiterals(node: unknown, out: number[] = []): number[] {
+  if (node == null || typeof node !== "object") return out;
+  const record = node as Record<string, unknown>;
+  if (typeof record.value === "number") out.push(record.value);
+  if (Array.isArray(record.queryChunks)) {
+    for (const chunk of record.queryChunks) extractNumericLiterals(chunk, out);
+  }
+  return out;
+}
+
+describe("loadCharacterDesignContext — crossSeriesUniqueness parent exclusion (plan Stage 2.3)", () => {
+  beforeEach(() => {
+    resetQueryHarness();
+  });
+
+  const owner = { tenantId: "tenant-1", userId: 42 };
+  const target = characterRow(999);
+
+  it("excludes the PARENT series (not just the current series) from the recentLeadArchive query when parentSeriesId is set", async () => {
+    setSelectResults([[], [], []]);
+    await loadCharacterDesignContext(
+      owner,
+      { id: 100, title: "Season 2", genre: "romance", tone: "warm", bible: {}, parentSeriesId: 55 },
+      target
+    );
+
+    const recentSeriesCondition = getWhereConditions()[1];
+    const comparedIds = extractNumericLiterals(recentSeriesCondition);
+    expect(comparedIds).toContain(100); // still excludes itself
+    expect(comparedIds).toContain(55); // NEW: also excludes its own parent
+  });
+
+  it("is unchanged (no parent exclusion) when parentSeriesId is null", async () => {
+    setSelectResults([[], [], []]);
+    await loadCharacterDesignContext(
+      owner,
+      { id: 100, title: "Original Series", genre: "romance", tone: "warm", bible: {}, parentSeriesId: null },
+      target
+    );
+
+    const recentSeriesCondition = getWhereConditions()[1];
+    const comparedIds = extractNumericLiterals(recentSeriesCondition);
+    expect(comparedIds).toContain(100);
+    expect(comparedIds).not.toContain(55);
+  });
+
+  it("is unchanged when parentSeriesId is simply absent from the series object (older call sites)", async () => {
+    setSelectResults([[], [], []]);
+    await loadCharacterDesignContext(
+      owner,
+      { id: 100, title: "Original Series", genre: "romance", tone: "warm", bible: {} },
+      target
+    );
+
+    const recentSeriesCondition = getWhereConditions()[1];
+    const comparedIds = extractNumericLiterals(recentSeriesCondition);
+    expect(comparedIds).toContain(100);
   });
 });

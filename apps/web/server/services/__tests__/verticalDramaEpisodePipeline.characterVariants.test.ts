@@ -53,7 +53,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
@@ -170,11 +179,18 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
       // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
-      // series' location roster (`existingLocations`) as a 3rd select, right
-      // after the character roster. Empty roster here is out of scope for
-      // this file's own character-variant/twin-pair assertions.
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockImplementation((_owner: unknown, id: number) => {
       if (id === 1) return Promise.resolve(null); // base character — no portrait yet
@@ -214,11 +230,18 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
       // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
-      // series' location roster (`existingLocations`) as a 3rd select, right
-      // after the character roster. Empty roster here is out of scope for
-      // this file's own character-variant/twin-pair assertions.
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockImplementation((_owner: unknown, id: number) =>
       Promise.resolve(id === 2 ? "https://cdn.example/nuna-school.png" : null)
@@ -238,11 +261,18 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
       // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
-      // series' location roster (`existingLocations`) as a 3rd select, right
-      // after the character roster. Empty roster here is out of scope for
-      // this file's own character-variant/twin-pair assertions.
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
@@ -261,11 +291,18 @@ describe("generateRealStoryboard — character variants (Phase D)", () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
       // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
-      // series' location roster (`existingLocations`) as a 3rd select, right
-      // after the character roster. Empty roster here is out of scope for
-      // this file's own character-variant/twin-pair assertions.
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
@@ -286,11 +323,18 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
       // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
-      // series' location roster (`existingLocations`) as a 3rd select, right
-      // after the character roster. Empty roster here is out of scope for
-      // this file's own character-variant/twin-pair assertions.
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
@@ -310,11 +354,18 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
       // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
-      // series' location roster (`existingLocations`) as a 3rd select, right
-      // after the character roster. Empty roster here is out of scope for
-      // this file's own character-variant/twin-pair assertions.
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
@@ -334,11 +385,18 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
       // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
-      // series' location roster (`existingLocations`) as a 3rd select, right
-      // after the character roster. Empty roster here is out of scope for
-      // this file's own character-variant/twin-pair assertions.
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 
@@ -355,11 +413,18 @@ describe("generateRealStoryboard — twin pairs (planning/vertical-drama-twin-va
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain(characterRows))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`
+      // now also queries this series' `vertical_drama_character_aliases`
+      // rows (grouped into `characters[].aliases`) as its OWN 3rd select,
+      // right after the character roster and before the location-roster
+      // select below. Empty alias table here is out of scope for this
+      // file's own character-variant/twin-pair assertions.
+      .mockReturnValueOnce(selectChain([]))
       // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
       // bible, dispatch 3/3) — `generateRealStoryboard` now also queries the
-      // series' location roster (`existingLocations`) as a 3rd select, right
-      // after the character roster. Empty roster here is out of scope for
-      // this file's own character-variant/twin-pair assertions.
+      // series' location roster (`existingLocations`) as a 4th select, right
+      // after the alias-rows select above. Empty roster here is out of scope
+      // for this file's own character-variant/twin-pair assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 

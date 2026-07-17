@@ -4,6 +4,7 @@ import {
   buildCreateCharacterTwinInput,
   buildDetectCharacterVariantsSummaryMessage,
   buildPreviewCharacterPromptInput,
+  decideVariantAutoGenerateImage,
   isFirstPortraitCandidateEligible,
   resolveVdCharacterMutationErrorMessage,
 } from "@/components/verticalDramaSeries/VerticalDramaCharacterStockPanel";
@@ -275,5 +276,73 @@ describe("resolveVdCharacterMutationErrorMessage", () => {
     expect(resolveVdCharacterMutationErrorMessage({}, "en")).toBe(
       "Something went wrong"
     );
+  });
+});
+
+/**
+ * `planning/vd-character-look-one-step-flow/plan.md` (2026-07-17) — the
+ * one-step "เพิ่มลุค" flow's shared guard: whether `createVariantMutation`'s
+ * `onSuccess` (and the modal's own hint row) should auto-fire portrait
+ * generation for the just-created look.
+ */
+describe("decideVariantAutoGenerateImage", () => {
+  it("fires when the parent has a portrait, a model is selected, and no reference image was uploaded", () => {
+    expect(
+      decideVariantAutoGenerateImage({
+        hasReferenceMediaAssetId: false,
+        parentNeedsSetupReasons: ["missing_dna"],
+        selectedImageModelId: "model-1",
+      })
+    ).toEqual({ fire: true });
+  });
+
+  it("does not fire when the user uploaded their own reference image", () => {
+    expect(
+      decideVariantAutoGenerateImage({
+        hasReferenceMediaAssetId: true,
+        parentNeedsSetupReasons: [],
+        selectedImageModelId: "model-1",
+      })
+    ).toEqual({ fire: false, reason: "has_reference_image" });
+  });
+
+  it("does not fire when the parent has no portrait yet", () => {
+    expect(
+      decideVariantAutoGenerateImage({
+        hasReferenceMediaAssetId: false,
+        parentNeedsSetupReasons: ["missing_portrait"],
+        selectedImageModelId: "model-1",
+      })
+    ).toEqual({ fire: false, reason: "missing_parent_portrait" });
+  });
+
+  it("does not fire when no image model is selected", () => {
+    expect(
+      decideVariantAutoGenerateImage({
+        hasReferenceMediaAssetId: false,
+        parentNeedsSetupReasons: [],
+        selectedImageModelId: "",
+      })
+    ).toEqual({ fire: false, reason: "missing_model" });
+  });
+
+  it("treats undefined parentNeedsSetupReasons as having a portrait (no false 'missing' guess)", () => {
+    expect(
+      decideVariantAutoGenerateImage({
+        hasReferenceMediaAssetId: false,
+        parentNeedsSetupReasons: undefined,
+        selectedImageModelId: "model-1",
+      })
+    ).toEqual({ fire: true });
+  });
+
+  it("checks reference image before parent portrait (upload always wins, regardless of other gaps)", () => {
+    expect(
+      decideVariantAutoGenerateImage({
+        hasReferenceMediaAssetId: true,
+        parentNeedsSetupReasons: ["missing_portrait"],
+        selectedImageModelId: "",
+      })
+    ).toEqual({ fire: false, reason: "has_reference_image" });
   });
 });

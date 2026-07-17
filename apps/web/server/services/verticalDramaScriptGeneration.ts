@@ -76,6 +76,22 @@ import {
   renderVoiceCardBlock,
   type VerticalDramaSpeechProfile,
 } from "@shared/verticalDramaSeries/speechProfile";
+// Series memory — Producer B (`planning/vd-series-memory-and-lineage/plan.md`
+// Stage 1.2/1.3). `plan_episode_script` is the SECOND producer of
+// `VdEpisodeMemory` (Producer A is `verticalDramaStoryBible.ts`'s deep-draft
+// chunk loop) — reuses the SAME tolerant-parse/fallback primitives Producer A
+// uses, never a parallel implementation. See `resolveScriptEpisodeMemory`
+// below for how this producer's own richer raw material
+// (`continuity_notes`/`open_loops`) is folded in on top of the generic
+// fallback when the LLM omits/breaks the `episode_memory` block.
+import {
+  episodeMemoryBlockSchema,
+  resolveEpisodeMemoryBlock,
+} from "./verticalDramaSeriesMemoryProjection";
+import type {
+  VdEpisodeMemory,
+  VdOpenThread,
+} from "@shared/verticalDramaSeries/seriesMemoryState";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -267,10 +283,114 @@ export const scriptBuilderOutputSchema = z
      */
     open_loops: z.array(scriptOpenLoopSchema).optional(),
     retention_loop: scriptRetentionLoopSchema.optional(),
+    /**
+     * Series memory — Producer B (`planning/vd-series-memory-and-lineage/
+     * plan.md` Stage 1.2/1.3). Optional per-episode fact block, same shape
+     * `vertical-drama-full-story-architect` (Producer A) emits — see
+     * `episodeMemoryBlockSchema` (`verticalDramaSeriesMemoryProjection.ts`).
+     * Deliberately typed `z.unknown()` here, NOT `episodeMemoryBlockSchema`
+     * itself: a malformed/incomplete block must NEVER fail this WHOLE
+     * script's schema validation (the "weak-model JSON failure class"
+     * documented on `episodeMemoryBlockSchema` — heavier VD schemas make
+     * cheap models emit broken JSON, never fixed by changing the model, only
+     * by making this ONE optional block safe to drop). The strict, tolerant
+     * parse-or-fallback happens downstream in `resolveScriptEpisodeMemory`,
+     * which always calls `resolveEpisodeMemoryBlock` and never throws.
+     * Mirrors `verticalDramaStoryBible.ts`'s identical
+     * `episode_memory: z.unknown().optional()` field exactly.
+     */
+    episode_memory: z.unknown().optional(),
   })
   .passthrough();
 
 export type ScriptBuilderOutput = z.infer<typeof scriptBuilderOutputSchema>;
+
+/* -------------------------------------------------------------------------- */
+/* Series memory (Producer B) — episode_memory resolution                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Resolves this episode's `VdEpisodeMemory` from a generated script —
+ * Producer B of `planning/vd-series-memory-and-lineage/plan.md` Stage 1.2.
+ * `plan_episode_script` runs AFTER the deep-draft producer (Producer A) for
+ * the same episode and, per the plan, its resolved memory SUPERSEDES
+ * Producer A's draft-time record for that `episodeNumber` (via
+ * `upsertEpisodeMemory`'s supersede-by-episodeNumber merge) — the script is
+ * the better, more detailed source once it exists.
+ *
+ * Two paths:
+ *  1. The LLM emitted a valid `episode_memory` block (passes
+ *     `episodeMemoryBlockSchema`) — trust it as-is via
+ *     `resolveEpisodeMemoryBlock`, exactly like Producer A's convention (see
+ *     `verticalDramaStoryBible.ts`'s `extractDramaturgyStructureFields`).
+ *  2. The block is absent OR fails validation — `resolveEpisodeMemoryBlock`
+ *     falls back to a generic recap built from `hook`/`cliffhanger` (passed
+ *     as this function's `logline`/`cliffhangerLine` fallback context,
+ *     Producer B has no `keyBeats` equivalent). This function then ENRICHES
+ *     that generic fallback with raw material Producer A never has, because
+ *     it lives only in the script stage's own output:
+ *       - `continuity_notes` (already free-text durable facts) -> appended
+ *         to `canonicalFacts`.
+ *       - `open_loops[].question` -> becomes a `threadClass: "plot"`
+ *         `VdOpenThread` (deterministic `threadId`, never asked of the LLM).
+ *     Deliberately DOES NOT use `character_state_deltas`: that field is a
+ *     PER-CHARACTER label (e.g. "ศัตรู" -> "พันธมิตร"), not a pair, so it
+ *     cannot yield a `VdRelationshipState.pair` (`[string, string]`) without
+ *     fabricating one — `relationshipChanges` stays empty in this fallback
+ *     path, same limitation the plan documents.
+ *
+ * Never throws (delegates entirely to `resolveEpisodeMemoryBlock`'s own
+ * never-throw contract) — the caller (`verticalDramaEpisodePipeline.ts`)
+ * still wraps the call site in its own try/catch per this codebase's
+ * established best-effort convention (`seedCharactersFromDraft`), since the
+ * downstream `upsertEpisodeMemory` persist IS a real DB call that can fail
+ * for reasons unrelated to this function (row lock timeout, series deleted
+ * mid-request, etc).
+ */
+export function resolveScriptEpisodeMemory(
+  script: ScriptBuilderOutput,
+  episodeNumber: number
+): VdEpisodeMemory {
+  const rawBlock = (script as { episode_memory?: unknown }).episode_memory;
+  const parsedRawBlock =
+    rawBlock != null ? episodeMemoryBlockSchema.safeParse(rawBlock) : null;
+
+  const resolved = resolveEpisodeMemoryBlock(rawBlock, {
+    episodeNumber,
+    logline: script.hook,
+    cliffhangerLine: script.cliffhanger,
+  });
+
+  if (parsedRawBlock?.success) {
+    // The LLM authored a trustworthy block directly — nothing to enrich.
+    return resolved;
+  }
+
+  const continuityFacts = script.continuity_notes.filter(
+    (note): note is string =>
+      typeof note === "string" && note.trim().length > 0
+  );
+
+  const threadsFromOpenLoops: VdOpenThread[] = (script.open_loops ?? [])
+    .map((loop, index): VdOpenThread | null => {
+      const description =
+        typeof loop.question === "string" ? loop.question.trim() : "";
+      if (!description) return null;
+      return {
+        threadId: `script-open-loop-ep${episodeNumber}-${index}`,
+        description,
+        threadClass: "plot",
+        openedEpisode: episodeNumber,
+      };
+    })
+    .filter((thread): thread is VdOpenThread => thread !== null);
+
+  return {
+    ...resolved,
+    canonicalFacts: [...resolved.canonicalFacts, ...continuityFacts],
+    threadsOpened: [...resolved.threadsOpened, ...threadsFromOpenLoops],
+  };
+}
 
 /* -------------------------------------------------------------------------- */
 /* Prompt building                                                            */

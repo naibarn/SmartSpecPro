@@ -704,6 +704,121 @@ describe("premium — scorecard shape", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* Stage 2.4b (`planning/vd-series-memory-and-lineage/plan.md`) —             */
+/* `prior_season_continuity` conditional judge dimension — mirrors the       */
+/* `tie_in_naturalness` conditional-dimension coverage in                    */
+/* `verticalDramaStoryBible.tieInDraft.test.ts` exactly (byte-identical-when- */
+/* absent, present + floor-checked + revise-triggering when given).          */
+/* -------------------------------------------------------------------------- */
+
+function seasonLineageFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    seasonNumber: 2,
+    parentTitle: "รักข้ามเวลา",
+    priorSeasonSummary: "สรุปภาค 1: พิมพ์ดาวและกวินท์คบกันแบบเปิดเผยแล้ว",
+    carriedRelationships: [
+      {
+        pair: ["aria", "kane"] as [string, string],
+        status: "คบกันแบบเปิดเผย",
+        disclosure: "public" as const,
+        knownBy: [],
+        sinceEpisode: 30,
+      },
+    ],
+    carriedThreads: [
+      {
+        threadId: "house-reno",
+        description: "การรีโนเวทบ้านยังไม่เสร็จ",
+        threadClass: "domestic" as const,
+        openedEpisode: 5,
+      },
+    ],
+    carriedCharacters: [{ characterKey: "aria", name: "Aria" }],
+    writtenOutCharacters: [],
+    antagonistStrategy: "ตัวร้ายเดิมถูกจับแล้ว ต้องหาปมใหม่",
+    characterKnowledge: { aria: ["รู้ว่ากวินท์เป็นน้องชายแท้ๆ"] },
+    ...overrides,
+  };
+}
+
+describe("premium — Stage 2.4b prior_season_continuity (sequel continuity judge dimension)", () => {
+  it("byte-identical: no seasonLineage -> scorecard has no prior_season_continuity key, and the judge prompts never mention it/SEASON LINEAGE", async () => {
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
+    mockLlmResponseOnce(judgeResponsePayload([{ candidateIndex: 0, episodeNumber: 1 }]));
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(baseDeepParams());
+
+    expect(result.draftedItems[0].draftScorecard).not.toHaveProperty(
+      "prior_season_continuity",
+    );
+    const judgeSystemPrompt = systemPromptOf(3);
+    const judgeUserPrompt = userPromptOf(3);
+    // The dramaturgy-critic skill.md's static content documents
+    // "prior_season_continuity" unconditionally (Stage 2.4b puts the actual
+    // judging CRITERIA in the skill, unlike `tie_in_naturalness`'s
+    // code-only rubric) — so the bare dimension NAME is expected to appear
+    // in every judge call's systemPrompt, sequel or not. What must stay
+    // conditional is the code-appended TRIGGER instruction
+    // (`buildPriorSeasonContinuityJudgeInstruction`) that tells the model to
+    // actually SCORE it this call — that phrase must be absent here.
+    expect(judgeSystemPrompt).not.toContain(
+      'a "SEASON LINEAGE" fact block is given in the user message',
+    );
+    expect(judgeUserPrompt).not.toContain("SEASON LINEAGE");
+  });
+
+  it("scores prior_season_continuity when seasonLineage is given, floor-checks it (independent of the 8 core dimensions), and a below-floor score triggers a targeted revise round with the SEASON LINEAGE facts threaded to both the judge and the revise call", async () => {
+    const seasonLineage = seasonLineageFixture();
+    mockLlmResponseOnce(candidateChunkPayload("c0", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c1", [1]));
+    mockLlmResponseOnce(candidateChunkPayload("c2", [1]));
+    // Candidate 0 wins on mean overall (5 > 3) despite every CORE dimension
+    // being full marks — it drifted from the prior season, so
+    // prior_season_continuity alone must fail the floor.
+    mockLlmResponseOnce(
+      judgeResponsePayload([
+        { candidateIndex: 0, episodeNumber: 1, overrides: { prior_season_continuity: 2 } },
+        { candidateIndex: 1, episodeNumber: 1, overrides: { overall: 3 } },
+        { candidateIndex: 2, episodeNumber: 1, overrides: { overall: 3 } },
+      ]),
+    );
+    // Round 1: revise + re-judge — the revision restores continuity, scored
+    // higher on prior_season_continuity, and is adopted (overall unchanged >= prior).
+    mockLlmResponseOnce(reviseResponsePayload("revised", [1]));
+    mockLlmResponseOnce(
+      rejudgeResponsePayload([
+        { episodeNumber: 1, overrides: { prior_season_continuity: 5 } },
+      ]),
+    );
+    mockLlmResponseOnce(sweepResponsePayload([]));
+
+    const result = await generateStoryBibleDeep(
+      baseDeepParams({ seasonLineage }),
+    );
+
+    // Calls: 0-2 fan-out, 3 judge, 4 revise, 5 re-judge, 6 sweep.
+    const judgeSystemPrompt = systemPromptOf(3);
+    const judgeUserPrompt = userPromptOf(3);
+    expect(judgeSystemPrompt).toContain("prior_season_continuity");
+    expect(judgeUserPrompt).toContain("SEASON LINEAGE");
+    expect(judgeUserPrompt).toContain(seasonLineage.parentTitle);
+
+    const reviseUserPrompt = userPromptOf(4);
+    expect(reviseUserPrompt).toContain("SEASON LINEAGE");
+    expect(reviseUserPrompt).toContain(seasonLineage.parentTitle);
+
+    expect(result.draftedItems[0].draftScorecard).toMatchObject({
+      prior_season_continuity: 5,
+      judgedAtRound: 1,
+    });
+    expect(result.premiumMetrics).toMatchObject({ roundsUsedPerChunk: [1] });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* Live-bug fixes — shared enforcement, exercised through the premium entry   */
 /* (verifies both fixes are NOT standard-mode-only)                          */
 /* -------------------------------------------------------------------------- */

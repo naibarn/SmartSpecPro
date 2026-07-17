@@ -442,6 +442,34 @@ export interface GenerateStoryboardShotgridParams {
       description: string;
       referenceImageUrl: string;
     }>;
+    /**
+     * `vertical_drama_character_aliases` rows for this BASE character
+     * (planning/vd-character-identity-repair/plan.md — closes the plan's
+     * last-remaining gap: the alias table existed and was populated by
+     * auto-register/merge, but nothing outside those two call sites ever
+     * READ it, so an aliased spelling like "Kirin"/"คีริน" a story writes
+     * for a merged character's canonical name "คิริน วัฒนเมธา" resolved to
+     * NOTHING here — the dialogue-speaker-coverage reconcile below
+     * (`speakerLookup`) would silently skip it as an "unknown speaker" and
+     * drop that reference-image attachment for the shot). Each entry is the
+     * DISPLAY form of the alias (`vertical_drama_character_aliases.alias`,
+     * not the normalized form) — `speakerLookup` below does its own
+     * `.trim()`, mirroring the existing `name`/`characterId` keys, so no
+     * extra normalization is needed here. Every alias maps to THIS base
+     * character's own `characterId` — never a variant's `characterKey` —
+     * exactly like `name` does today; this field carries no separate
+     * per-variant aliasing. Optional/empty for every character with no
+     * alias rows (the vast majority today, and every existing caller before
+     * this field existed) — `speakerLookup`'s registration loop only adds
+     * entries for a non-empty `aliases` array and, per that loop's own doc
+     * comment, an alias key is only registered when no existing name/
+     * characterId/variant key already claims that exact string, so passing
+     * this field never changes resolution for a shot whose speaker already
+     * matches a real name/id — the prompt/reconcile output for every caller
+     * omitting or emptying this field stays byte-identical to before it
+     * existed.
+     */
+    aliases?: string[];
   }>;
   /**
    * Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
@@ -846,6 +874,24 @@ export async function generateStoryboardShotgrid(
     speakerLookup.set(c.characterId.trim(), c.characterId);
     for (const v of c.variants ?? []) {
       speakerLookup.set(v.characterKey.trim(), v.characterKey);
+    }
+  }
+  // Alias registration (see `characters[].aliases` doc comment above) —
+  // deliberately a SEPARATE pass after every character's own name/
+  // characterId/variant keys are already in `speakerLookup`, so a real name
+  // or characterKey ALWAYS wins over an alias regardless of which
+  // character's turn came first/last in `params.characters` — an alias can
+  // only fill a key nobody else already claimed. Two merged characters can
+  // never collide here in practice (the alias table's own
+  // `UNIQUE(seriesId, normalizedAlias)` already guarantees one alias string
+  // resolves to one characterId before this code ever sees it), but the
+  // `.has()` guard is kept anyway as defense-in-depth and to make the
+  // precedence explicit without relying on that external invariant.
+  for (const c of params.characters) {
+    for (const alias of c.aliases ?? []) {
+      const trimmed = alias.trim();
+      if (!trimmed || speakerLookup.has(trimmed)) continue;
+      speakerLookup.set(trimmed, c.characterId);
     }
   }
   for (const shot of storyboardData.shots) {

@@ -73,7 +73,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
@@ -297,15 +306,23 @@ describe("repairStage — storyboard_shotgrid (real repair)", () => {
   it("calls generateStoryboardShotgrid with repairContext (current storyboard + instruction) and persists the live storyboard column", async () => {
     const episode = baseEpisode();
     queueSuccessSelects(episode, { bible: null, locale: "th", tone: null });
-    // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
-    // bible, dispatch 3/3) — `generateRealStoryboard` (called from inside
-    // `repairStage`'s own real-repair wiring for this stage) now does a 3rd
-    // select (the series' location roster) beyond what `queueSuccessSelects`
-    // already queues (episode/seriesRow/characterRows/checkpoint=[]). Not
+    // `generateRealStoryboard` (called from inside `repairStage`'s own
+    // real-repair wiring for this stage) does TWO more selects beyond what
+    // `queueSuccessSelects` already queues
+    // (episode/seriesRow/characterRows/checkpoint=[]):
+    //  - planning/vd-character-identity-repair/plan.md's alias-rows select
+    //    (this series' `vertical_drama_character_aliases` rows), and
+    //  - Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+    //    bible, dispatch 3/3)'s location-roster select.
+    // Both resolve to an empty array here (out of scope for this test), same
+    // shape as the `checkpoint=[]` `queueSuccessSelects` already queued as
+    // its 4th call — the two placeholder empties added below simply shift
+    // that queued empty down to the alias/location slots and supply a fresh
+    // empty for the REAL checkpoint-lookup select that now comes 6th. Not
     // added to the shared helper itself — `plan_episode_script`'s repair
     // test (which calls `generateRealScript`, untouched by this dispatch)
     // also reuses that helper and must stay at exactly 4 queued selects.
-    mockDb.select.mockReturnValueOnce(selectChain([]));
+    mockDb.select.mockReturnValueOnce(selectChain([])).mockReturnValueOnce(selectChain([]));
 
     const episodeUpdateChain = updateChain();
     const runUpdateChain = updateChain();

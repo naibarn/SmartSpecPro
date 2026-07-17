@@ -35,7 +35,11 @@ import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import { auditLogger } from "./auditLogger";
 import {
   buildTargetAudienceRegionInstruction,
+  buildCharacterRegionEthnicityInstruction,
+  promptContainsRegionEthnicityAnchor,
+  ensureRegionEthnicityAnchorPresent,
   type VerticalDramaTargetAudienceRegion,
+  type VerticalDramaResolvedCharacterRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
 import {
@@ -913,6 +917,25 @@ export interface GenerateCharacterVisualPromptsParams {
    */
   targetAudienceRegion?: VerticalDramaTargetAudienceRegion;
   /**
+   * Per-character ethnicity/region override (`planning/vd-per-character-
+   * ethnicity/plan.md`, 2026-07-17) — resolved by the router via
+   * `resolveCharacterTargetAudienceRegion` from the character's own
+   * `data.region`/`data.ethnicityText` plus `targetAudienceRegion` above.
+   * `undefined`, or an `isExplicit: false` value (no per-character override
+   * set — the vast majority of characters, including every pre-existing
+   * one), makes every code path below byte-identical to before this field
+   * existed: no `region_ethnicity` payload fact is added
+   * (`buildCharacterVisualBibleInputPayload`), no extra instruction line is
+   * appended (`buildCharacterVisualPromptsUserPrompt`/
+   * `buildCharacterPortraitCandidatesUserPrompt`), the validator adds no
+   * extra issue, and the returned `primary_portrait_prompt` is never
+   * touched. `isExplicit: true` (the character has an explicit per-character
+   * region/free-text override) activates all three enforcement layers —
+   * see this file's own "Region/ethnicity enforcement" section below for
+   * why three layers, matching the plan's rationale exactly.
+   */
+  resolvedCharacterRegion?: VerticalDramaResolvedCharacterRegion;
+  /**
    * Preset visual identity flow-through (spec §8.2.2 flow-through rule,
    * section-15 change D) — the series' STAMPED `bible.presetVisualIdentity`
    * (see `readPresetVisualIdentityFromBible` / `verticalDramaSeries.ts`'s
@@ -1189,6 +1212,25 @@ function buildCharacterVisualBibleInputPayload(params: GenerateCharacterVisualPr
         ...(params.roleVisualIntent ? { role_visual_intent: params.roleVisualIntent } : {}),
         ...(params.roleReviewStatus ? { role_review_status: params.roleReviewStatus } : {}),
         ...(params.description ? { description: params.description } : {}),
+        // Per-character ethnicity/region FACT (planning/vd-per-character-
+        // ethnicity/plan.md) — ONLY added when the character carries an
+        // EXPLICIT per-character override (`isExplicit`), never for a
+        // character merely inheriting the series/global default, so an
+        // untouched character's JSON payload (and therefore its LLM user
+        // prompt) stays byte-identical to before this field existed. A
+        // first-class DATA fact on the character object — NOT folded into
+        // `custom_instruction` below, which this payload's own user-prompt
+        // wrapper explicitly labels "DATA, never instructions" (the wrong
+        // channel for a fact the skill must treat as authoritative, not as
+        // free-form ephemeral hint text).
+        ...(params.resolvedCharacterRegion?.isExplicit
+          ? {
+              region_ethnicity: {
+                descriptor: params.resolvedCharacterRegion.descriptor,
+                explicit: true,
+              },
+            }
+          : {}),
       },
     ],
     story_context: buildStoryContextString(params.storyContext),
@@ -1254,6 +1296,15 @@ export function buildCharacterVisualPromptsUserPrompt(params: GenerateCharacterV
     // traits are the persistent identity anchor vs. the free-to-vary staging.
     VD_CHARACTER_LOCK_INSTRUCTION,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
+    // Per-character ethnicity/region override (planning/vd-per-character-
+    // ethnicity/plan.md) — an ADDITIONAL instruction line, appended only
+    // for an EXPLICIT per-character override; the series-level default
+    // line above is always kept for back-compat. Absent/non-explicit:
+    // this spreads in zero extra array elements, so `.join("\n\n")`
+    // produces the byte-identical string it always has.
+    ...(params.resolvedCharacterRegion?.isExplicit
+      ? [buildCharacterRegionEthnicityInstruction(params.resolvedCharacterRegion)]
+      : []),
     "Return ONLY the JSON object described in your instructions — no markdown fences, no commentary.",
     VD_COMPACT_JSON_INSTRUCTION,
   ].join("\n\n");
@@ -1306,6 +1357,10 @@ export function buildCharacterPortraitCandidatesUserPrompt(
     "visual_identity_summary, complete character_design_dna, primary_portrait_prompt, and negative_prompt.",
     "Use snake_case for every output key. Return ONLY JSON with no markdown or commentary.",
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
+    // See `buildCharacterVisualPromptsUserPrompt`'s identical comment above.
+    ...(params.resolvedCharacterRegion?.isExplicit
+      ? [buildCharacterRegionEthnicityInstruction(params.resolvedCharacterRegion)]
+      : []),
     VD_COMPACT_JSON_INSTRUCTION,
   ].join("\n\n");
 }
@@ -1680,14 +1735,18 @@ function canonicalDesignIdentityFingerprint(
 ): string {
   return JSON.stringify({
     version: dna.version,
-    designIntent: dna.designIntent,
     seriesDnaAlignment: dna.seriesDnaAlignment,
     roleTier: dna.roleTier,
     beautyArchetype: dna.beautyArchetype,
     ageRange: dna.ageRange,
     faceIdentity: dna.faceIdentity,
     bodyLanguage: dna.bodyLanguage,
-    recallStack: dna.recallStack,
+    // Only the identity-carrying members of `recallStack` are fingerprinted —
+    // `silhouette` and `color` are wardrobe-coupled (see below) and are
+    // deliberately excluded, same as `costumeGrammar`.
+    recallStackFace: dna.recallStack.face,
+    recallStackBehavior: dna.recallStack.behavior,
+    recallStackEmotionalHook: dna.recallStack.emotionalHook,
     // `costumeGrammar` is DELIBERATELY excluded from the identity fingerprint
     // (2026-07-14): a wardrobe change is a costume/scene variant, NOT an
     // identity change. Including it made "regenerate this approved character in
@@ -1695,6 +1754,21 @@ function canonicalDesignIdentityFingerprint(
     // Character DNA identity" guard. Identity = face + body + recall + archetype
     // + age + role + essence (mask/truth/promise below); the outfit is free to
     // vary per generation.
+    //
+    // `designIntent` and `recallStack.silhouette`/`recallStack.color` are ALSO
+    // excluded (2026-07-17, traceId Ytrq5TrfJRzyFNRLasyV8): wardrobe/occupation
+    // prose doesn't live only in `costumeGrammar` — it leaks into
+    // `designIntent`'s free-text framing and into `recallStack.silhouette`/
+    // `.color`, which describe the outfit's shape and palette. A user sent a
+    // `customInstruction` correcting an aircraft maintenance engineer's guessed
+    // wardrobe ("pilot" -> "maintenance lead"); the LLM echoed every face/body/
+    // anti-clone field verbatim but naturally updated `designIntent` ("...
+    // perfectionist pilot...") and `recallStack.silhouette` ("broad-shouldered
+    // in crisp pilot uniform" -> "... in maintenance uniform") to match the
+    // corrected wardrobe. The exact-JSON-equality guard rejected this correct,
+    // identity-preserving response on all 3 retries, surfacing as a 500. Only
+    // `recallStack.face`/`.behavior`/`.emotionalHook` describe identity
+    // (expression tell, behavioral tell, emotional core) — those still gate.
     publicMask: dna.publicMask,
     hiddenTruth: dna.hiddenTruth,
     narrativePromise: dna.narrativePromise,
@@ -2137,6 +2211,19 @@ export async function generateCharacterVisualPrompts(
     : undefined;
   let evidenceCorrections: AuthoritativeEvidenceCorrection[] = [];
   let keyCorrections: CharacterDnaKeyCorrection[] = [];
+  // Region/ethnicity anchor enforcement (D1, planning/vd-per-character-
+  // ethnicity/plan.md) — counts how many times `responseSchema.safeParse`
+  // has run (once per `executeJsonPlanningCallWithRetry` attempt). The
+  // anchor-missing issue below is added ONLY on the very first attempt, so
+  // it costs exactly ONE bounded corrective retry — never enough to exhaust
+  // `executeJsonPlanningCallWithRetry`'s full retry budget and throw. If the
+  // 2nd (or any later) attempt still lacks the anchor, this validator
+  // deliberately stays silent about it and lets the deterministic D2
+  // fallback (`ensureRegionEthnicityAnchorPresent`, below, after the call
+  // succeeds) guarantee the anchor lands in the final string instead — see
+  // this file's own "why D1 alone would sometimes throw instead of
+  // guaranteeing the fact" reasoning in the plan.
+  let regionAnchorCheckAttempts = 0;
   const normalizedOutputSchema = z.preprocess((rawOutput) => {
     const envelopeNormalized = normalizeCharacterVisualBibleEnvelope(rawOutput);
     const keyNormalized = normalizeCharacterVisualBibleDnaKeys(envelopeNormalized);
@@ -2176,6 +2263,30 @@ export async function generateCharacterVisualPrompts(
         code: z.ZodIssueCode.custom,
         path: ["characters", characterIndex, "character_design_dna", "role_tier"],
         message: `Reported role tier "${reportedRoleTier}" does not match authoritative input tier "${expectedRoleTier}".`,
+      });
+    }
+
+    // Region/ethnicity anchor enforcement (D1) — ONLY for an EXPLICIT
+    // per-character override (never for a character merely inheriting the
+    // series/global default — that would newly hard-gate every pre-existing
+    // series). See `regionAnchorCheckAttempts`'s doc comment above for why
+    // this only ever fires on the first attempt.
+    regionAnchorCheckAttempts += 1;
+    if (
+      params.resolvedCharacterRegion?.isExplicit &&
+      regionAnchorCheckAttempts === 1 &&
+      !promptContainsRegionEthnicityAnchor(
+        character.primary_portrait_prompt,
+        params.resolvedCharacterRegion,
+      )
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["characters", characterIndex, "primary_portrait_prompt"],
+        message:
+          `primary_portrait_prompt must make this character's explicit ethnicity/region ` +
+          `requirement (${params.resolvedCharacterRegion.descriptor}) unmistakably present, ` +
+          `in-line, in the prose — it currently reads as ethnicity-neutral.`,
       });
     }
 
@@ -2353,8 +2464,28 @@ export async function generateCharacterVisualPrompts(
     .filter((part): part is string => Boolean(part && part.trim()))
     .join(", ");
 
+  // D2 — last-resort DETERMINISTIC guarantee (planning/vd-per-character-
+  // ethnicity/plan.md). ONLY for an EXPLICIT per-character region/ethnicity
+  // override: if the validated `primary_portrait_prompt` still lacks the
+  // required anchor after D1's one corrective retry (see
+  // `regionAnchorCheckAttempts` above), deterministically prepend the
+  // descriptor before this string is ever persisted or sent to an image
+  // model. This is enforcing a USER-STATED FACT — the same class of
+  // deterministic guard as the DNA face-fingerprint check and the
+  // fail-closed model-selection guards already in this codebase — never a
+  // rewrite of the skill's own creative prose (it only ever prepends). A
+  // character with no explicit override (the vast majority) is completely
+  // untouched: `portraitPrompt` stays byte-identical to
+  // `matched.primary_portrait_prompt`.
+  const portraitPrompt = params.resolvedCharacterRegion?.isExplicit
+    ? ensureRegionEthnicityAnchorPresent(
+        matched.primary_portrait_prompt,
+        params.resolvedCharacterRegion,
+      )
+    : matched.primary_portrait_prompt;
+
   return {
-    portraitPrompt: matched.primary_portrait_prompt,
+    portraitPrompt,
     negativePrompt,
     turnaroundPrompt,
     fullBodyPrompt,
@@ -2423,6 +2554,10 @@ export async function generateCharacterPortraitCandidates(
     : undefined;
   let evidenceCorrections: AuthoritativeEvidenceCorrection[] = [];
   let keyCorrections: CharacterDnaKeyCorrection[] = [];
+  // Region/ethnicity anchor enforcement (D1) — see
+  // `generateCharacterVisualPrompts`'s identical `regionAnchorCheckAttempts`
+  // doc comment for why this only fires on the first attempt.
+  let regionAnchorCheckAttempts = 0;
   const normalizedOutputSchema = z.preprocess((rawOutput) => {
     const keyNormalized = normalizeCharacterVisualBibleDnaKeys(rawOutput);
     keyCorrections = keyNormalized.corrections;
@@ -2441,6 +2576,10 @@ export async function generateCharacterPortraitCandidates(
 
   const responseSchema = normalizedOutputSchema.superRefine((output, ctx) => {
     const batch = output.portrait_candidate_batch;
+    // Incremented ONCE per attempt (not per candidate) — every candidate in
+    // a batch is the SAME character, so the "only ask for one corrective
+    // retry" contract applies to the whole attempt, not per-candidate.
+    regionAnchorCheckAttempts += 1;
     if (batch.character_id !== params.characterKey) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -2494,6 +2633,27 @@ export async function generateCharacterPortraitCandidates(
           message:
             `Reported role tier "${reportedRoleTier}" does not match authoritative ` +
             `input tier "${expectedRoleTier}".`,
+        });
+      }
+
+      // Region/ethnicity anchor enforcement (D1) — see
+      // `generateCharacterVisualPrompts`'s identical check for the full
+      // contract (explicit-override-only, first-attempt-only).
+      if (
+        params.resolvedCharacterRegion?.isExplicit &&
+        regionAnchorCheckAttempts === 1 &&
+        !promptContainsRegionEthnicityAnchor(
+          candidate.primary_portrait_prompt,
+          params.resolvedCharacterRegion,
+        )
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["portrait_candidate_batch", "candidates", candidateIndex, "primary_portrait_prompt"],
+          message:
+            `primary_portrait_prompt must make this character's explicit ethnicity/region ` +
+            `requirement (${params.resolvedCharacterRegion.descriptor}) unmistakably present, ` +
+            `in-line, in the prose — it currently reads as ethnicity-neutral.`,
         });
       }
 
@@ -2610,9 +2770,19 @@ export async function generateCharacterPortraitCandidates(
     ]
       .filter((part): part is string => Boolean(part && part.trim()))
       .join(", ");
+    // D2 fallback — see `generateCharacterVisualPrompts`'s identical
+    // `portraitPrompt` computation for the full contract. Every candidate is
+    // the SAME character, so the SAME `resolvedCharacterRegion` applies to
+    // each one individually.
+    const portraitPrompt = params.resolvedCharacterRegion?.isExplicit
+      ? ensureRegionEthnicityAnchorPresent(
+          candidate.primary_portrait_prompt,
+          params.resolvedCharacterRegion,
+        )
+      : candidate.primary_portrait_prompt;
     return {
       candidateId: candidate.candidate_id,
-      portraitPrompt: candidate.primary_portrait_prompt,
+      portraitPrompt,
       negativePrompt: negativePrompt || undefined,
       visualIdentitySummary: candidate.visual_identity_summary,
       visualBibleSnapshot: buildCharacterVisualBibleSnapshot({ character: candidate, model }),

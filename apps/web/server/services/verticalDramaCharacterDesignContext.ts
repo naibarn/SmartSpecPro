@@ -35,7 +35,19 @@ type CharacterContextRow = Pick<
 type SeriesContextRow = Pick<
   VerticalDramaSeriesRow,
   "id" | "title" | "genre" | "tone" | "bible" | "updatedAt"
->;
+> & {
+  /**
+   * Season lineage (`planning/vd-series-memory-and-lineage/plan.md` Stage
+   * 2.3) — read-only here, consulted ONLY by `loadCharacterDesignContext`'s
+   * `crossSeriesUniqueness` exclusion below. Optional (rather than
+   * `Pick`-ed, which would REQUIRE the key) so every existing caller that
+   * constructs a `SeriesContextRow` by hand — every fixture in
+   * `verticalDramaCharacterDesignContext.test.ts` — keeps compiling
+   * byte-identically without needing to add this field; `undefined`
+   * behaves exactly like `null` (no parent, no extra exclusion).
+   */
+  parentSeriesId?: VerticalDramaSeriesRow["parentSeriesId"];
+};
 
 export interface CharacterDesignContextOwner {
   tenantId: string;
@@ -307,7 +319,20 @@ export async function loadCharacterDesignContext(
         and(
           eq(verticalDramaSeries.tenantId, owner.tenantId),
           eq(verticalDramaSeries.userId, owner.userId),
-          ne(verticalDramaSeries.id, series.id)
+          ne(verticalDramaSeries.id, series.id),
+          /**
+           * `crossSeriesUniqueness` parent exclusion (plan Stage 2.3): a
+           * sequel's own parent series must never appear in
+           * `recentLeadArchive` — without this, a sequel character gets
+           * compared for "uniqueness" against its OWN previous-season self,
+           * and `characterProfile.ts`'s uniqueness-16 floor then hard-fails
+           * a perfectly-intentional carried-over lead. `undefined` (no
+           * `parentSeriesId`, the overwhelming common case) drops out of
+           * `and(...)` — byte-identical to before this fix.
+           */
+          series.parentSeriesId
+            ? ne(verticalDramaSeries.id, series.parentSeriesId)
+            : undefined
         )
       )
       .orderBy(desc(verticalDramaSeries.updatedAt))

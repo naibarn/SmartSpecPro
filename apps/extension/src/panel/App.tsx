@@ -287,6 +287,17 @@ interface DramaShotReferenceImage {
   title?: string;
 }
 
+/** One spoken line for a shot, mirroring the server's
+ *  `DramaShotDialogueLine` (verticalDramaExtensionReadService.ts) — carries the
+ *  per-line spoken duration so the panel can show each line's length and the
+ *  shot's total, always-visible, like the web app's storyboard. */
+interface DramaShotDialogueLine {
+  speaker: string;
+  emotion: string | null;
+  text: string;
+  durationSeconds: number | null;
+}
+
 interface DramaShot {
   shotNumber: number;
   description: string;
@@ -297,6 +308,10 @@ interface DramaShot {
   videoPrompt: string;
   negativeVideoPrompt: string;
   dialogue: string;
+  /** Structured per-line dialogue (speaker + text + spoken seconds). The server
+   *  already sends this; older panel builds only rendered the flat `dialogue`
+   *  string in a collapsed <details>, dropping the per-line durations. */
+  dialogueLines: DramaShotDialogueLine[];
   mainImageUrl: string | null;
   mainImageThumbnailUrl: string | null;
   gridImageUrl: string | null;
@@ -345,8 +360,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.123";
-const EXTENSION_BUILD_LABEL = "2026-07-10 15:24 +07";
+const EXTENSION_VERSION = "0.1.133";
+const EXTENSION_BUILD_LABEL = "2026-07-16 09:30 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -768,6 +783,18 @@ function formatDateTime(value: string | null | undefined) {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return "-";
   return new Date(time).toLocaleString();
+}
+
+/** Format a spoken-line duration as `X.Xs` (e.g. 2.6s), matching the web app's
+ *  storyboard dialogue display. */
+function formatDialogueSeconds(seconds: number | null | undefined): string {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "-";
+  return `${seconds.toFixed(1)}s`;
+}
+
+/** Sum of a shot's per-line spoken durations (nulls skipped). */
+function totalDialogueSeconds(lines: DramaShotDialogueLine[]): number {
+  return lines.reduce((sum, line) => sum + (typeof line.durationSeconds === "number" && Number.isFinite(line.durationSeconds) ? line.durationSeconds : 0), 0);
 }
 
 function tokenExpiryStatus(expiresAt: string | null | undefined) {
@@ -3730,7 +3757,10 @@ export default function App() {
     }
   }
 
-  async function loadDramaEpisode(episode: DramaEpisodeSummary) {
+  // Only `episode.id` is read, so a `{ id }` shape is enough — this lets the
+  // refresh button re-fetch the currently-open episode (a `DramaEpisodeDetail`,
+  // which is not a `DramaEpisodeSummary`) without reconstructing a full summary.
+  async function loadDramaEpisode(episode: { id: string }) {
     if (!settings.token || !selectedDramaProject) throw new Error("กรุณาใส่ extension token ก่อน");
     setDramaEpisodeBusy(true);
     setProductionMediaFiles({});
@@ -5306,6 +5336,18 @@ export default function App() {
                 >
                   ← Projects
                 </button>
+                {/* Refresh — re-pull the currently-open episode's latest data
+                    (prompts, dialogue durations, reference frames) from the
+                    server, so edits made in the web app show up without
+                    leaving/re-entering the episode. */}
+                <button
+                  className="button"
+                  type="button"
+                  disabled={dramaEpisodeBusy || !settings.token}
+                  onClick={() => run(() => loadDramaEpisode({ id: selectedDramaEpisode.id }))}
+                >
+                  {dramaEpisodeBusy ? "กำลังรีเฟรช..." : "รีเฟรชข้อมูลล่าสุด"}
+                </button>
               </div>
             </div>
             {dramaEpisodeBusy ? (
@@ -5414,51 +5456,112 @@ export default function App() {
                       })()}
                       {productionPromptBox("Image prompt", shot.imagePrompt, "No image prompt saved for this shot yet.")}
                       {productionPromptBox("Video prompt", shot.videoPrompt, "No video prompt saved for this shot yet.")}
-                      {shot.dialogue ? (
-                        <details className="story-option-video">
-                          <summary>Dialogue</summary>
-                          <div className="muted" style={{ whiteSpace: "pre-wrap" }}>{shot.dialogue}</div>
-                        </details>
-                      ) : null}
-                      {shot.referenceImages.length > 0 ? (
-                        <div className="production-reference-strip shot">
-                          {shot.referenceImages.map((image, index) => {
-                            const imageUrl = resolveServerUrl(serverBaseUrl, image.url);
-                            const fileEntry = productionMediaFiles[imageUrl];
-                            const label = image.title || image.source || image.role;
-                            return (
+                      {shot.dialogueLines.length > 0 ? (
+                        <div style={{ marginTop: 8 }}>
+                          <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                            <strong>บทพูด</strong>
+                            <span className="muted">รวมบทพูดประมาณ {formatDialogueSeconds(totalDialogueSeconds(shot.dialogueLines))}</span>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                            {shot.dialogueLines.map((line, index) => (
                               <div
-                                role="button"
-                                tabIndex={0}
-                                className="production-reference-image"
-                                draggable
-                                onPointerDown={() => void prepareProductionMediaFile(image.url, `drama-shot-${shot.shotNumber}-ref-${index + 1}`)}
-                                onMouseEnter={() => void prepareProductionMediaFile(image.url, `drama-shot-${shot.shotNumber}-ref-${index + 1}`)}
-                                onDragStart={(event) => startProductionMediaDrag(event, {
-                                  url: imageUrl,
-                                  title: `drama-shot-${shot.shotNumber}-ref-${index + 1}`,
-                                  kind: "image",
-                                  file: fileEntry?.file,
-                                  dragId: fileEntry?.dragId,
-                                  dataUrl: fileEntry?.dataUrl,
-                                  headers: fileEntry?.authHeaders,
-                                })}
-                                onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
-                                onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") chrome.tabs.create({ url: imageUrl });
-                                }}
-                                key={`${shot.shotNumber}-${image.id}`}
+                                key={`${shot.shotNumber}-dialogue-${index}`}
+                                style={{ border: "1px solid var(--border, #d8d8d8)", borderRadius: 8, padding: "8px 10px" }}
                               >
-                                <img src={resolveServerUrl(serverBaseUrl, image.thumbnailUrl || image.url)} alt={label} draggable={false} />
-                                <span>{label}{fileEntry?.status === "ready" ? " · file" : ""}</span>
+                                <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                                  <strong>{line.speaker}</strong>
+                                  {line.durationSeconds != null ? (
+                                    <span className="muted">{formatDialogueSeconds(line.durationSeconds)}</span>
+                                  ) : null}
+                                </div>
+                                <div style={{ whiteSpace: "pre-wrap", marginTop: 2 }}>{line.text}</div>
                               </div>
-                            );
-                          })}
+                            ))}
+                          </div>
                         </div>
-                      ) : (
-                        <div className="muted">No reference images uploaded for this shot.</div>
-                      )}
+                      ) : shot.dialogue ? (
+                        <div style={{ marginTop: 8 }}>
+                          <strong>บทพูด</strong>
+                          <div className="muted" style={{ whiteSpace: "pre-wrap", marginTop: 4 }}>{shot.dialogue}</div>
+                        </div>
+                      ) : null}
+                      {(() => {
+                        // Phase 6 (`planning/vd-start-frame-reference-mapping/plan.md`) —
+                        // user-created supplementary reference frames arrive in the
+                        // same `referenceImages` array as the character/product refs
+                        // but carry `source === "reference_frame"`. Split them into
+                        // their own labelled, drag-to-Grok strip below the standard
+                        // reference strip so they read as a distinct "extra reference
+                        // frames" set (the server already streams them through — no
+                        // payload change needed).
+                        const referenceFrameImages = shot.referenceImages.filter((image) => image.source === "reference_frame");
+                        const standardReferenceImages = shot.referenceImages.filter((image) => image.source !== "reference_frame");
+                        const renderDramaReferenceCard = (image: DramaShotReferenceImage, dragTitle: string, displayLabel: string) => {
+                          const imageUrl = resolveServerUrl(serverBaseUrl, image.url);
+                          const fileEntry = productionMediaFiles[imageUrl];
+                          return (
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              className="production-reference-image"
+                              draggable
+                              onPointerDown={() => void prepareProductionMediaFile(image.url, dragTitle)}
+                              onMouseEnter={() => void prepareProductionMediaFile(image.url, dragTitle)}
+                              onDragStart={(event) => startProductionMediaDrag(event, {
+                                url: imageUrl,
+                                title: dragTitle,
+                                kind: "image",
+                                file: fileEntry?.file,
+                                dragId: fileEntry?.dragId,
+                                dataUrl: fileEntry?.dataUrl,
+                                headers: fileEntry?.authHeaders,
+                              })}
+                              onDragEnd={() => endProductionMediaDrag({ dragId: fileEntry?.dragId })}
+                              onDoubleClick={() => chrome.tabs.create({ url: imageUrl })}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") chrome.tabs.create({ url: imageUrl });
+                              }}
+                              key={`${shot.shotNumber}-${image.id}`}
+                            >
+                              <img src={resolveServerUrl(serverBaseUrl, image.thumbnailUrl || image.url)} alt={displayLabel} draggable={false} />
+                              <span>{displayLabel}{fileEntry?.status === "ready" ? " · file" : ""}</span>
+                            </div>
+                          );
+                        };
+                        return (
+                          <>
+                            {standardReferenceImages.length > 0 ? (
+                              <div className="production-reference-strip shot">
+                                {standardReferenceImages.map((image, index) =>
+                                  renderDramaReferenceCard(
+                                    image,
+                                    `drama-shot-${shot.shotNumber}-ref-${index + 1}`,
+                                    image.title || image.source || image.role,
+                                  ),
+                                )}
+                              </div>
+                            ) : referenceFrameImages.length === 0 ? (
+                              <div className="muted">No reference images uploaded for this shot.</div>
+                            ) : null}
+                            {referenceFrameImages.length > 0 ? (
+                              <>
+                                <div className="muted" style={{ marginTop: 8 }}>
+                                  เฟรมอ้างอิงที่สร้างเพิ่ม ({referenceFrameImages.length}) · ลากไปวางใน Grok ได้
+                                </div>
+                                <div className="production-reference-strip shot">
+                                  {referenceFrameImages.map((image, index) =>
+                                    renderDramaReferenceCard(
+                                      image,
+                                      `drama-shot-${shot.shotNumber}-reference-frame-${index + 1}`,
+                                      `เฟรมอ้างอิง ${index + 1}`,
+                                    ),
+                                  )}
+                                </div>
+                              </>
+                            ) : null}
+                          </>
+                        );
+                      })()}
                     </div>
                   )) : (
                     <div className="muted">This episode has no shots yet.</div>

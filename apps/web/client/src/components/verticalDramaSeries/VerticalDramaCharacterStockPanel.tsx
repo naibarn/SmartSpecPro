@@ -22,7 +22,9 @@ import {
   ChevronRight,
   Clock,
   Grid3x3,
+  ImagePlus,
   Loader2,
+  Merge,
   Plus,
   Shirt,
   Sparkles,
@@ -64,6 +66,7 @@ import { useVerticalDramaLang } from "@/components/verticalDramaSeries/verticalD
 import { VD_COPY } from "@/components/verticalDramaSeries/verticalDramaWorkspaceCopy";
 import { VerticalDramaCharacterReferencePanel } from "@/components/verticalDramaSeries/VerticalDramaCharacterReferencePanel";
 import { VerticalDramaCharacterVoiceCastingCard } from "@/components/verticalDramaSeries/VerticalDramaCharacterVoiceCastingCard";
+import { VerticalDramaCharacterMergeReviewDialog } from "@/components/verticalDramaSeries/VerticalDramaCharacterMergeReviewDialog";
 import type {
   VerticalDramaCharacterVoiceConfig,
   VerticalDramaVoiceCatalogEntry,
@@ -96,9 +99,11 @@ import type {
 } from "@shared/verticalDramaSeries/characterAssets";
 import type { VerticalDramaApprovedCharacterDesignSnapshot } from "@shared/verticalDramaSeries/characterProfile";
 import {
+  VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS,
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN,
   VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH,
   normalizeTargetAudienceRegion,
+  type VerticalDramaTargetAudienceRegion,
 } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import {
   ROLE_TIER_LABELS,
@@ -699,6 +704,45 @@ export function buildCreateCharacterVariantInput(params: {
   };
 }
 
+/**
+ * `planning/vd-character-look-one-step-flow/plan.md` (2026-07-17) — pure
+ * decision for whether "เพิ่มลุค" should auto-fire the SAME direct (no-
+ * preview) portrait generation `generateCharacterImage` already uses
+ * elsewhere in this panel, right after the variant row is created. Shared by
+ * `createVariantMutation`'s `onSuccess` (real auto-fire) and the modal's own
+ * hint row (preview of what submit is about to do) so the two can never
+ * silently disagree. Never fires when the user already supplied their own
+ * reference image (`bestEffortLinkPrimaryPortrait`, server, already turns
+ * that into the look's portrait — nothing left to generate), when the
+ * parent has no usable portrait yet (nothing to use as the face-lock
+ * reference — `needsSetupReasons` already carries this exact signal, see
+ * `characterRowToDto`'s `hasApprovedOrGeneratedPortrait` doc comment,
+ * `server/routers/verticalDramaCharacters.ts`), or when no image model is
+ * selected (fail-closed server guard — never invent a default here, per the
+ * project's model-selection policy).
+ */
+export type VdVariantAutoGenerateBlockReason =
+  | "has_reference_image"
+  | "missing_parent_portrait"
+  | "missing_model";
+
+export function decideVariantAutoGenerateImage(params: {
+  hasReferenceMediaAssetId: boolean;
+  parentNeedsSetupReasons: readonly VdCharacterNeedsSetupReason[] | undefined;
+  selectedImageModelId: string;
+}): { fire: true } | { fire: false; reason: VdVariantAutoGenerateBlockReason } {
+  if (params.hasReferenceMediaAssetId) {
+    return { fire: false, reason: "has_reference_image" };
+  }
+  if ((params.parentNeedsSetupReasons ?? []).includes("missing_portrait")) {
+    return { fire: false, reason: "missing_parent_portrait" };
+  }
+  if (!params.selectedImageModelId.trim()) {
+    return { fire: false, reason: "missing_model" };
+  }
+  return { fire: true };
+}
+
 /** Exact payload shape `verticalDramaCharacters.createCharacterTwin` expects
  *  (`server/routers/verticalDramaCharacters.ts`, ~line 1057) — same rationale
  *  as `VdCreateCharacterVariantInput` above for why this isn't imported from
@@ -1112,6 +1156,117 @@ export function formStateToSpeechProfile(
     forbiddenStyle: splitLinesToArray(form.forbiddenStyleText),
     signaturePhrases: splitLinesToArray(form.signaturePhrasesText),
   };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Per-character ethnicity/region override — pure helpers                    */
+/* (planning/vd-per-character-ethnicity/plan.md, 2026-07-17). Server side is  */
+/* DONE — `createCharacter`/`updateCharacter` already accept `region`         */
+/* (enum, one of `VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS`) and `ethnicityText`*/
+/* (free string, max 80), persisted into `character.data.region`/            */
+/* `character.data.ethnicityText` (see `verticalDramaCharacters.ts`'s         */
+/* `mergeCharacterRegionOverrideIntoData`). Free text wins over the dropdown  */
+/* — enforced server-side by `resolveCharacterTargetAudienceRegion` — this    */
+/* file only has to prefill + submit both fields untouched. A full render    */
+/* test of this panel is impractical (see                                    */
+/* `VerticalDramaCharacterStockPanel.referencePicker.test.ts`'s established   */
+/* precedent) so, same as the speech-profile helpers just above, the         */
+/* form-state <-> payload conversion is pulled out into these exported pure  */
+/* functions instead of asserting on rendered DOM.                           */
+/* -------------------------------------------------------------------------- */
+
+/** Draft-form shape for the region/ethnicity controls. `region: ""` means
+ *  "unset — inherit the series-level default" — it must NEVER be defaulted
+ *  to a preset (user decision: no backfill; existing/blank characters stay
+ *  unset until the user explicitly picks one). */
+export interface VdRegionOverrideFormState {
+  region: string;
+  ethnicityText: string;
+}
+
+export const VD_REGION_OVERRIDE_FORM_DEFAULTS: VdRegionOverrideFormState = {
+  region: "",
+  ethnicityText: "",
+};
+
+/** Radix `Select.Item` rejects an empty-string `value` — this sentinel is
+ *  used ONLY as the "ไม่ระบุ / inherit series default" option's control
+ *  value; it is translated back to `""` (unset) in the `onValueChange`
+ *  handler and never leaves the component / reaches any mutation payload. */
+const VD_REGION_UNSET_SENTINEL = "unset";
+
+/** Prefill helper — reads the two override keys off a character's loosely-
+ *  typed `data` jsonb payload, mirroring the server's own
+ *  `readCharacterRegionOverrideFromData` "tolerant, never throws on a
+ *  malformed value" convention: a non-string or unrecognized `region` is
+ *  silently treated as unset rather than crashing or guessing a default. */
+export function regionOverrideFormFromCharacterData(
+  data: Record<string, unknown> | null | undefined
+): VdRegionOverrideFormState {
+  const rawRegion = data?.region;
+  const region =
+    typeof rawRegion === "string" &&
+    (VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS as readonly string[]).includes(rawRegion)
+      ? rawRegion
+      : "";
+  const ethnicityText = typeof data?.ethnicityText === "string" ? data.ethnicityText : "";
+  return { region, ethnicityText };
+}
+
+/** Builds the `createCharacter` payload fragment from the draft form.
+ *  `createCharacter`'s `region`/`ethnicityText` inputs are `.optional()`
+ *  only (no `.nullable()`) — so an unset field must be OMITTED, never sent
+ *  as `null` (that would fail the create schema). */
+export function buildCharacterRegionOverrideCreateFields(
+  form: VdRegionOverrideFormState
+): { region?: VerticalDramaTargetAudienceRegion; ethnicityText?: string } {
+  const ethnicityText = form.ethnicityText.trim();
+  return {
+    ...(form.region ? { region: form.region as VerticalDramaTargetAudienceRegion } : {}),
+    ...(ethnicityText ? { ethnicityText } : {}),
+  };
+}
+
+/** Builds the `updateCharacter` payload fragment from the draft form.
+ *  Unlike `createCharacter`, `updateCharacter`'s inputs are
+ *  `.nullable().optional()` — sending `null` explicitly CLEARS an
+ *  already-set override back to "inherit the series default" without the
+ *  caller resending the character's entire `data` blob (see
+ *  `updateCharacter`'s own doc comment). Always sends both fields together
+ *  so a single Save always fully replaces both, matching the free-text-wins
+ *  precedence `resolveCharacterTargetAudienceRegion` resolves server-side. */
+export function buildCharacterRegionOverrideUpdateFields(
+  form: VdRegionOverrideFormState
+): { region: VerticalDramaTargetAudienceRegion | null; ethnicityText: string | null } {
+  const ethnicityText = form.ethnicityText.trim();
+  return {
+    region: (form.region || null) as VerticalDramaTargetAudienceRegion | null,
+    ethnicityText: ethnicityText || null,
+  };
+}
+
+/** Compact roster-card label for a character's EXPLICIT region/ethnicity —
+ *  `null` when nothing is set, so the (already dense — see badge-overflow
+ *  fix) roster card renders no chip at all for the common unset case.
+ *  Free text wins over the dropdown for display too, mirroring
+ *  `resolveCharacterTargetAudienceRegion`'s server-side precedence. */
+export function getCharacterRegionBadgeLabel(
+  data: Record<string, unknown> | null | undefined,
+  lang: Lang
+): string | null {
+  const ethnicityText = typeof data?.ethnicityText === "string" ? data.ethnicityText.trim() : "";
+  if (ethnicityText) return ethnicityText;
+  const rawRegion = data?.region;
+  if (
+    typeof rawRegion === "string" &&
+    (VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS as readonly string[]).includes(rawRegion)
+  ) {
+    const region = rawRegion as VerticalDramaTargetAudienceRegion;
+    return lang === "th"
+      ? VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH[region]
+      : VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN[region];
+  }
+  return null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1795,6 +1950,66 @@ export function VerticalDramaCharacterStockPanel({
     });
   };
 
+  /** Per-character ethnicity/region override — save mutation
+   *  (planning/vd-per-character-ethnicity/plan.md). A dedicated hook (rather
+   *  than reusing `updateCharacterMutation`/`updateCharacterRoleMutation`)
+   *  so its own `isPending`/`variables` can drive this section's Save button
+   *  independently, same "one hook per editing sub-section" convention as
+   *  the two above. */
+  const updateCharacterRegionMutation =
+    trpc.verticalDramaCharacters.updateCharacter.useMutation({
+      onSuccess: () => {
+        invalidate();
+        toast.success(t(lang, "บันทึกเชื้อชาติ/ภูมิภาคของตัวละครแล้ว", "Character ethnicity/region saved"));
+      },
+      onError,
+    });
+
+  /** Draft-form buffer for the region/ethnicity controls, keyed by
+   *  characterId — same "local draft > persisted fallback, never reset on
+   *  selection change" convention as `speechProfileFormDrafts` above. */
+  const [regionOverrideFormDrafts, setRegionOverrideFormDrafts] = useState<
+    Record<string, VdRegionOverrideFormState>
+  >({});
+
+  const regionOverrideFormFor = (characterId: string): VdRegionOverrideFormState => {
+    const existingDraft = regionOverrideFormDrafts[characterId];
+    if (existingDraft) return existingDraft;
+    const character = characters.find(
+      (c: VdCharacterListItem) => c.characterId === characterId
+    );
+    return regionOverrideFormFromCharacterData(
+      (character?.data as Record<string, unknown> | null | undefined) ?? undefined
+    );
+  };
+
+  const updateRegionOverrideForm = (
+    characterId: string,
+    patch: Partial<VdRegionOverrideFormState>
+  ) => {
+    setRegionOverrideFormDrafts(prev => ({
+      ...prev,
+      [characterId]: { ...regionOverrideFormFor(characterId), ...patch },
+    }));
+  };
+
+  const handleSaveRegionOverride = (characterId: string) => {
+    const form = regionOverrideFormFor(characterId);
+    updateCharacterRegionMutation.mutate({
+      seriesId,
+      characterId,
+      ...buildCharacterRegionOverrideUpdateFields(form),
+    });
+  };
+
+  /** New-character "Add character" card draft state (create surface — see
+   *  `newName`/`newRole`/`newRoleTier` above). Separate from
+   *  `regionOverrideFormDrafts` (which is for the per-character EDIT
+   *  surface, keyed by an existing characterId) since there is no
+   *  characterId yet for a not-yet-created character. */
+  const [newRegionOverride, setNewRegionOverride] =
+    useState<VdRegionOverrideFormState>(VD_REGION_OVERRIDE_FORM_DEFAULTS);
+
   /** Character ids currently between "preview task submitted" and
    *  "preview task completed" — same Set-keyed-by-id convention as
    *  `pollingCharacters` above (independent characters can preview
@@ -1935,6 +2150,7 @@ export function VerticalDramaCharacterStockPanel({
         setNewKey("");
         setNewRole("");
         setNewRoleTier("");
+        setNewRegionOverride(VD_REGION_OVERRIDE_FORM_DEFAULTS);
         setSelectedCharacterId(res.character.characterId);
         invalidate();
         toast.success(t(lang, "เพิ่มตัวละครแล้ว", "Character added"));
@@ -2033,11 +2249,50 @@ export function VerticalDramaCharacterStockPanel({
 
   const createVariantMutation =
     trpc.verticalDramaCharacters.createCharacterVariant.useMutation({
-      onSuccess: res => {
+      onSuccess: (res, variables) => {
         invalidate();
         setSelectedCharacterId(res.character.characterId);
-        toast.success(t(lang, "เพิ่มลุคแล้ว", "Look added"));
         closeVariantDialog();
+
+        // `planning/vd-character-look-one-step-flow/plan.md` (2026-07-17) —
+        // the modal used to only insert the variant row, leaving the user to
+        // discover the detail-panel wizard to ever get an image out of it.
+        // Complete the whole flow in one step whenever it's safe to: fire
+        // the SAME direct generation `fireDirectCharacterImageGeneration`
+        // above fires for every other "auto" affordance in this panel.
+        // `characters` (roster list, defined below) still reflects the
+        // PRE-create snapshot here — fine, since the parent's own portrait
+        // status never changes as a side effect of adding a look to it.
+        const parent = (characters as VdCharacterListItem[]).find(
+          candidate => candidate.characterId === variables.parentCharacterId
+        );
+        const decision = decideVariantAutoGenerateImage({
+          hasReferenceMediaAssetId: Boolean(variables.referenceMediaAssetId),
+          parentNeedsSetupReasons: parent?.needsSetupReasons,
+          selectedImageModelId,
+        });
+        if (!decision.fire) {
+          toast.success(
+            decision.reason === "missing_parent_portrait"
+              ? t(
+                  lang,
+                  "เพิ่มลุคแล้ว — ยังไม่สร้างภาพอัตโนมัติ: กรุณาสร้างภาพหลักของตัวละครก่อน เพื่อใช้เป็นภาพอ้างอิงใบหน้า",
+                  "Look added — image not auto-generated: generate the character's main portrait first to use as the face reference."
+                )
+              : decision.reason === "missing_model"
+                ? t(
+                    lang,
+                    "เพิ่มลุคแล้ว — ยังไม่สร้างภาพอัตโนมัติ: กรุณาเลือกโมเดลภาพก่อน",
+                    "Look added — image not auto-generated: choose an image model first."
+                  )
+                : t(lang, "เพิ่มลุคแล้ว", "Look added")
+          );
+          return;
+        }
+        toast.success(
+          t(lang, "เพิ่มลุคแล้ว กำลังสร้างภาพลุค...", "Look added. Generating the look's image...")
+        );
+        fireDirectCharacterImageGeneration(res.character.characterId);
       },
       onError,
     });
@@ -2235,6 +2490,36 @@ export function VerticalDramaCharacterStockPanel({
       },
       onError: onImageModelError,
     });
+
+  /**
+   * `planning/vd-character-look-one-step-flow/plan.md` (2026-07-17) — fires
+   * the SAME direct (no-preview) `generateImageMutation` call the roster
+   * card's "auto" shortcuts already use (see `generateSheetMutation.mutate`'s
+   * call site below for the identical `selectedImageModelId`/MCP/Hermes
+   * field convention), for an arbitrary `characterId` — used both by
+   * `createVariantMutation`'s auto-fire-on-submit and the per-look chip's
+   * own "สร้างภาพลุค" button. No `approvedPrompt` is passed, so the server
+   * runs its own prompt-generation step (the fallback path), exactly like
+   * every other "auto" generate affordance in this panel. Callers are
+   * responsible for their own guard checks first (`decideVariantAutoGenerateImage`
+   * for the silent auto-fire path, `requireModelSelected`/
+   * `requireMcpConnectionOrToast`/`requireHermesConnectionOrToast` for the
+   * explicit chip-button click) — this function never guards, only fires.
+   */
+  const fireDirectCharacterImageGeneration = (characterId: string) => {
+    generateImageMutation.mutate({
+      seriesId,
+      characterId,
+      selectedImageModelId,
+      ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+      ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
+        ? { sharedGroupId: mcpSharedGroupId }
+        : {}),
+      ...(imageModelUsesHermes && hermesConnectionId
+        ? { hermesConnectionId }
+        : {}),
+    });
+  };
 
   /**
    * Character Design Bible sheet generation — ONE mutation for whichever
@@ -3123,6 +3408,10 @@ export function VerticalDramaCharacterStockPanel({
     () => countCharactersNeedingSetup(characters as VdCharacterListItem[]),
     [characters]
   );
+  /** `vd-character-identity-repair` plan, Phase 3.4 — "รวมตัวละครซ้ำ" review
+   *  dialog visibility. The dialog owns its own analyze/merge mutations;
+   *  this panel only needs to know whether it's open. */
+  const [isMergeReviewOpen, setIsMergeReviewOpen] = useState(false);
   const visibleRosterEntries = useMemo(
     () =>
       showOnlyNeedsSetup
@@ -3453,6 +3742,22 @@ export function VerticalDramaCharacterStockPanel({
                     )}
                   </Button>
                 )}
+                {/* `vd-character-identity-repair` plan, Phase 3.4 —
+                discoverable but not alarming: a plain outline button beside
+                the needs-setup chip, not a badge/count (this is a proposal
+                workflow, not something with an urgent number to surface). */}
+                {!readOnly && characters.length > 0 && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-xs"
+                    onClick={() => setIsMergeReviewOpen(true)}
+                  >
+                    <Merge aria-hidden="true" className="h-3.5 w-3.5" />
+                    {t(lang, "รวมตัวละครซ้ำ", "Merge duplicates")}
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-3">
@@ -3470,7 +3775,7 @@ export function VerticalDramaCharacterStockPanel({
                 </p>
               ) : (
                 <ul
-                  className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                  className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                   aria-label={t(lang, "รายชื่อตัวละคร", "Character list")}
                 >
                   {visibleRosterEntries.map(
@@ -3510,7 +3815,7 @@ export function VerticalDramaCharacterStockPanel({
                       <li key={c.characterId}>
                         <div
                           className={cn(
-                            "group relative flex flex-col gap-2 rounded-lg border p-2.5 transition-colors",
+                            "group relative flex flex-col gap-2 overflow-hidden rounded-lg border p-2.5 transition-colors",
                             active
                               ? "border-purple-400 bg-purple-50/60 ring-2 ring-purple-100"
                               : "border-border hover:border-muted-foreground/40",
@@ -3692,8 +3997,8 @@ export function VerticalDramaCharacterStockPanel({
                                 )}
                               </div>
                             ) : (
-                              <span className="flex aspect-[9/16] w-28 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-muted-foreground">
-                                <User aria-hidden="true" className="h-8 w-8" />
+                              <span className="flex aspect-[9/16] w-16 shrink-0 items-center justify-center rounded-md border border-dashed border-border/70 bg-muted/20 text-muted-foreground/70">
+                                <User aria-hidden="true" className="h-5 w-5" />
                               </span>
                             )}
                             <button
@@ -3720,13 +4025,13 @@ export function VerticalDramaCharacterStockPanel({
                               {(getCanonicalRoleLabel(c.roleTier, lang) || c.role) && (
                                 <Badge
                                   variant="outline"
-                                  className="w-fit text-[10px]"
+                                  className="w-fit max-w-full whitespace-normal break-words text-left text-[10px]"
                                 >
                                   {getCanonicalRoleLabel(c.roleTier, lang) ?? c.role}
                                 </Badge>
                               )}
                               {c.roleReviewStatus === "needs_role_review" && (
-                                <Badge variant="outline" className="w-fit border-amber-300 bg-amber-50 text-[10px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                                <Badge variant="outline" className="w-fit max-w-full whitespace-normal break-words text-left border-amber-300 bg-amber-50 text-[10px] text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
                                   {t(lang, "ต้องตรวจบทบาท", "Role review needed")}
                                 </Badge>
                               )}
@@ -3739,7 +4044,7 @@ export function VerticalDramaCharacterStockPanel({
                               {c.needsSetup && (
                                 <Badge
                                   variant="outline"
-                                  className="w-fit border-fuchsia-300 bg-fuchsia-50 text-[10px] text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
+                                  className="w-fit max-w-full whitespace-normal break-words text-left border-fuchsia-300 bg-fuchsia-50 text-[10px] text-fuchsia-700 dark:border-fuchsia-800 dark:bg-fuchsia-950/30 dark:text-fuchsia-300"
                                 >
                                   {needsSetupBadgeLabel(
                                     lang,
@@ -3756,13 +4061,13 @@ export function VerticalDramaCharacterStockPanel({
                               {shareFaceSourceName && (
                                 <Badge
                                   variant="outline"
-                                  className="w-fit gap-1 border-sky-200 bg-sky-50 text-[10px] text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300"
+                                  className="w-fit max-w-full gap-1 border-sky-200 bg-sky-50 text-[10px] text-sky-700 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-300"
                                 >
                                   <Users
                                     aria-hidden="true"
                                     className="h-3 w-3 shrink-0"
                                   />
-                                  <span className="truncate">
+                                  <span className="min-w-0 truncate">
                                     {t(
                                       lang,
                                       `ใช้ใบหน้าเดียวกับ ${shareFaceSourceName}`,
@@ -3777,7 +4082,7 @@ export function VerticalDramaCharacterStockPanel({
                               {variants.length > 0 && (
                                 <Badge
                                   variant="outline"
-                                  className="w-fit text-[10px] text-muted-foreground"
+                                  className="w-fit max-w-full whitespace-normal break-words text-left text-[10px] text-muted-foreground"
                                 >
                                   {t(
                                     lang,
@@ -3786,6 +4091,27 @@ export function VerticalDramaCharacterStockPanel({
                                   )}
                                 </Badge>
                               )}
+                              {/* Per-character ethnicity/region override
+                              (planning/vd-per-character-ethnicity/plan.md) —
+                              ONE compact chip, only when explicitly set, so
+                              a user scanning the roster can see at a glance
+                              which characters are Thai/Western/etc. without
+                              crowding the already-dense card (deliberately
+                              not shown for the common unset case). */}
+                              {(() => {
+                                const regionBadgeLabel = getCharacterRegionBadgeLabel(
+                                  c.data as Record<string, unknown> | null | undefined,
+                                  lang
+                                );
+                                return regionBadgeLabel ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="w-fit max-w-full whitespace-normal break-words text-left text-[10px] text-muted-foreground"
+                                  >
+                                    {regionBadgeLabel}
+                                  </Badge>
+                                ) : null;
+                              })()}
                             </button>
                           </div>
 
@@ -4103,6 +4429,66 @@ export function VerticalDramaCharacterStockPanel({
                                         {variantLabel}
                                       </span>
                                     </button>
+                                    {/* `planning/vd-character-look-one-step-
+                                    flow/plan.md` (2026-07-17) — per-look
+                                    generate/regenerate affordance: the modal
+                                    already auto-fires this on submit when it
+                                    safely can, but this chip button is the
+                                    retry path for whenever it couldn't (no
+                                    model, no parent portrait yet at the time)
+                                    plus ordinary regeneration afterward. Same
+                                    guard functions + direct-generation call
+                                    as the roster card's own "auto" shortcuts
+                                    above — never opens the preview wizard. */}
+                                    {!readOnly && (
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-5 w-5 shrink-0"
+                                        disabled={
+                                          mutating ||
+                                          isImageGeneratingFor(v.characterId) ||
+                                          !selectedImageModelId
+                                        }
+                                        aria-label={t(
+                                          lang,
+                                          `สร้างภาพลุค ${variantLabel} ของ ${c.name}`,
+                                          `Generate ${c.name}'s ${variantLabel} look image`
+                                        )}
+                                        title={
+                                          selectedImageModelId
+                                            ? t(lang, "สร้างภาพลุค", "Generate look image")
+                                            : t(
+                                                lang,
+                                                "เลือกโมเดลภาพก่อนสร้าง",
+                                                "Select an image model first"
+                                              )
+                                        }
+                                        onClick={event => {
+                                          event.stopPropagation();
+                                          if (!requireModelSelected()) return;
+                                          if (!requireMcpConnectionOrToast()) return;
+                                          if (!requireHermesConnectionOrToast())
+                                            return;
+                                          fireDirectCharacterImageGeneration(
+                                            v.characterId
+                                          );
+                                        }}
+                                      >
+                                        {isImageGeneratingFor(v.characterId) ? (
+                                          <Loader2
+                                            aria-hidden="true"
+                                            className="h-3 w-3 animate-spin"
+                                          />
+                                        ) : (
+                                          <ImagePlus
+                                            aria-hidden="true"
+                                            className="h-3 w-3"
+                                          />
+                                        )}
+                                      </Button>
+                                    )}
                                     {/* W2 delete-CHARACTER for this variant
                                     row (distinct from the portrait-image
                                     delete on the thumbnail above) — same
@@ -4215,7 +4601,7 @@ export function VerticalDramaCharacterStockPanel({
                           )}
 
                           {!readOnly && (
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex flex-wrap items-center justify-end gap-1">
                               <Button
                                 type="button"
                                 size="icon"
@@ -4808,6 +5194,106 @@ export function VerticalDramaCharacterStockPanel({
                           : t(lang, "ยืนยันแล้วโดยผู้ใช้ — Skill จะใช้บทบาทนี้เป็นข้อมูลอ้างอิงหลัก", "User-confirmed. The Skill treats this role as authoritative.")}
                       </p>
                     </div>
+
+                    {/* Per-character ethnicity/region override
+                    (planning/vd-per-character-ethnicity/plan.md) — a
+                    9-preset dropdown plus a free-text override (free text
+                    wins, enforced server-side by
+                    `resolveCharacterTargetAudienceRegion`). Fixes the
+                    reported "ชื่อไทยแต่หน้าฝรั่ง" confusion: this is what
+                    drives the AI-generated FACE ethnicity for THIS
+                    character specifically; leaving both empty inherits the
+                    series-level default shown above ("กลุ่มผู้ชมเป้าหมาย"). */}
+                    {(() => {
+                      const characterId = selectedCharacter.characterId;
+                      const form = regionOverrideFormFor(characterId);
+                      const saving =
+                        updateCharacterRegionMutation.isPending &&
+                        updateCharacterRegionMutation.variables?.characterId ===
+                          characterId;
+                      return (
+                        <div
+                          className="flex flex-col gap-1.5 rounded-md border bg-muted/20 p-2"
+                          data-testid="vd-character-region-override"
+                        >
+                          <Label
+                            htmlFor="vd-selected-region"
+                            className="text-xs font-medium text-foreground"
+                          >
+                            {t(lang, "เชื้อชาติ/ภูมิภาคของตัวละคร", "Character ethnicity/region")}
+                          </Label>
+                          <Select
+                            value={form.region || VD_REGION_UNSET_SENTINEL}
+                            onValueChange={value =>
+                              updateRegionOverrideForm(characterId, {
+                                region: value === VD_REGION_UNSET_SENTINEL ? "" : value,
+                              })
+                            }
+                            disabled={readOnly}
+                          >
+                            <SelectTrigger id="vd-selected-region" className="h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-[min(70vh,32rem)]">
+                              <SelectItem value={VD_REGION_UNSET_SENTINEL}>
+                                {t(lang, "ไม่ระบุ / ใช้ค่าเริ่มต้นของซีรีย์", "Unset / use series default")}
+                              </SelectItem>
+                              {VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS.map(region => (
+                                <SelectItem key={region} value={region}>
+                                  {lang === "th"
+                                    ? VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH[region]
+                                    : VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN[region]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Label
+                            htmlFor="vd-selected-ethnicity-text"
+                            className="text-xs"
+                          >
+                            {t(lang, "หรือระบุเอง (เช่น ลูกครึ่งไทย-ญี่ปุ่น, คนเหนือ)", "Or specify freely (e.g. Thai-Japanese mixed, Northern Thai)")}
+                          </Label>
+                          <Input
+                            id="vd-selected-ethnicity-text"
+                            value={form.ethnicityText}
+                            disabled={readOnly}
+                            onChange={e =>
+                              updateRegionOverrideForm(characterId, {
+                                ethnicityText: e.target.value,
+                              })
+                            }
+                            placeholder={t(lang, "ลูกครึ่งไทย-ญี่ปุ่น", "Thai-Japanese mixed")}
+                            maxLength={80}
+                          />
+                          <p className="text-[11px] text-muted-foreground">
+                            {t(
+                              lang,
+                              "กำหนดหน้าตา (เชื้อชาติ) ที่ AI ใช้สร้างภาพตัวละครนี้โดยเฉพาะ ข้อความที่กรอกเองจะมีผลเหนือกว่าตัวเลือกด้านบน หากปล่อยว่างทั้งคู่ ระบบจะใช้ค่าเริ่มต้นของซีรีย์",
+                              "Drives the AI-generated face/ethnicity for this character specifically. Free text (if filled) always wins over the dropdown. Leave both empty to use the series default."
+                            )}
+                          </p>
+                          {!readOnly && (
+                            <div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={saving}
+                                onClick={() => handleSaveRegionOverride(characterId)}
+                                data-testid="vd-character-region-save"
+                              >
+                                {saving ? (
+                                  <Loader2
+                                    aria-hidden="true"
+                                    className="mr-2 h-3.5 w-3.5 animate-spin"
+                                  />
+                                ) : null}
+                                {t(lang, "บันทึกเชื้อชาติ/ภูมิภาค", "Save ethnicity/region")}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Reference-image picker (vertical-drama-reference-
                     picker-outfit-lock plan, Phase D3) — shows which
@@ -6465,6 +6951,58 @@ export function VerticalDramaCharacterStockPanel({
                     {t(lang, "หากไม่เลือก ระบบจะแจ้งให้ตรวจบทบาทก่อนสร้างภาพ", "If omitted, the system will flag the character for role review before image generation.")}
                   </p>
                 </div>
+                <div className="flex flex-col gap-1.5 rounded-md border bg-muted/20 p-2">
+                  <Label htmlFor="vd-char-region" className="text-xs font-medium text-foreground">
+                    {t(lang, "เชื้อชาติ/ภูมิภาคของตัวละคร", "Character ethnicity/region")}
+                  </Label>
+                  <Select
+                    value={newRegionOverride.region || VD_REGION_UNSET_SENTINEL}
+                    onValueChange={value =>
+                      setNewRegionOverride(prev => ({
+                        ...prev,
+                        region: value === VD_REGION_UNSET_SENTINEL ? "" : value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="vd-char-region" className="h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[min(70vh,32rem)]">
+                      <SelectItem value={VD_REGION_UNSET_SENTINEL}>
+                        {t(lang, "ไม่ระบุ / ใช้ค่าเริ่มต้นของซีรีย์", "Unset / use series default")}
+                      </SelectItem>
+                      {VERTICAL_DRAMA_TARGET_AUDIENCE_REGIONS.map(region => (
+                        <SelectItem key={region} value={region}>
+                          {lang === "th"
+                            ? VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_TH[region]
+                            : VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_LABELS_EN[region]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Label htmlFor="vd-char-ethnicity-text" className="text-xs">
+                    {t(lang, "หรือระบุเอง (เช่น ลูกครึ่งไทย-ญี่ปุ่น, คนเหนือ)", "Or specify freely (e.g. Thai-Japanese mixed, Northern Thai)")}
+                  </Label>
+                  <Input
+                    id="vd-char-ethnicity-text"
+                    value={newRegionOverride.ethnicityText}
+                    onChange={e =>
+                      setNewRegionOverride(prev => ({
+                        ...prev,
+                        ethnicityText: e.target.value,
+                      }))
+                    }
+                    placeholder={t(lang, "ลูกครึ่งไทย-ญี่ปุ่น", "Thai-Japanese mixed")}
+                    maxLength={80}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {t(
+                      lang,
+                      "กำหนดหน้าตา (เชื้อชาติ) ที่ AI ใช้สร้างภาพตัวละครนี้โดยเฉพาะ ข้อความที่กรอกเองจะมีผลเหนือกว่าตัวเลือกด้านบน หากปล่อยว่างทั้งคู่ ระบบจะใช้ค่าเริ่มต้นของซีรีย์",
+                      "Drives the AI-generated face/ethnicity for this character specifically. Free text (if filled) always wins over the dropdown. Leave both empty to use the series default."
+                    )}
+                  </p>
+                </div>
                 <Button
                   type="button"
                   size="sm"
@@ -6479,6 +7017,7 @@ export function VerticalDramaCharacterStockPanel({
                       characterKey: newKey.trim(),
                       role: newRole.trim() || undefined,
                       roleTier: newRoleTier || undefined,
+                      ...buildCharacterRegionOverrideCreateFields(newRegionOverride),
                     })
                   }
                 >
@@ -6756,6 +7295,58 @@ export function VerticalDramaCharacterStockPanel({
                 />
               </div>
             </div>
+            {/* `planning/vd-character-look-one-step-flow/plan.md`
+            (2026-07-17) — transparency row: previews exactly what "เพิ่มลุค"
+            below is about to do, using the SAME pure decision
+            (`decideVariantAutoGenerateImage`) `createVariantMutation`'s
+            `onSuccess` uses to actually fire it, so the hint can never
+            silently disagree with the real behavior. Hidden entirely when
+            the user already picked their own reference image — that upload
+            becomes the look's portrait directly, no generation involved. */}
+            {!variantReferenceMediaAssetId &&
+              variantDialogCharacter &&
+              (() => {
+                const parent = (characters as VdCharacterListItem[]).find(
+                  candidate =>
+                    candidate.characterId === variantDialogCharacter.characterId
+                );
+                const hintDecision = decideVariantAutoGenerateImage({
+                  hasReferenceMediaAssetId: false,
+                  parentNeedsSetupReasons: parent?.needsSetupReasons,
+                  selectedImageModelId,
+                });
+                return hintDecision.fire ? (
+                  <p className="flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1.5 text-[11px] text-muted-foreground">
+                    <Sparkles
+                      aria-hidden="true"
+                      className="mt-0.5 h-3 w-3 shrink-0"
+                    />
+                    {t(
+                      lang,
+                      `ระบบจะสร้างภาพลุคให้อัตโนมัติด้วยโมเดล ${selectedImageModelRecord?.name ?? selectedImageModelId} โดยใช้ภาพหลักเป็นภาพอ้างอิงใบหน้า`,
+                      `The look's image will be generated automatically with ${selectedImageModelRecord?.name ?? selectedImageModelId}, using the main portrait as the face reference.`
+                    )}
+                  </p>
+                ) : (
+                  <p className="flex items-start gap-1.5 rounded-md border border-amber-400/60 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    <AlertTriangle
+                      aria-hidden="true"
+                      className="mt-0.5 h-3 w-3 shrink-0"
+                    />
+                    {hintDecision.reason === "missing_parent_portrait"
+                      ? t(
+                          lang,
+                          "ยังไม่มีภาพหลักของตัวละคร — จะไม่สร้างภาพลุคอัตโนมัติจนกว่าจะมีภาพหลักไว้เป็นภาพอ้างอิงใบหน้า",
+                          "No main portrait yet — the look's image won't auto-generate until one exists to use as the face reference."
+                        )
+                      : t(
+                          lang,
+                          "ยังไม่ได้เลือกโมเดลภาพ — จะไม่สร้างภาพลุคอัตโนมัติจนกว่าจะเลือกโมเดล",
+                          "No image model selected — the look's image won't auto-generate until you choose one."
+                        )}
+                  </p>
+                );
+              })()}
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={closeVariantDialog}>
@@ -6962,6 +7553,13 @@ export function VerticalDramaCharacterStockPanel({
         images={lightboxImage ? [lightboxImage] : []}
         open={lightboxImage !== null}
         onClose={() => setLightboxImage(null)}
+      />
+
+      <VerticalDramaCharacterMergeReviewDialog
+        seriesId={seriesId}
+        lang={lang}
+        open={isMergeReviewOpen}
+        onOpenChange={setIsMergeReviewOpen}
       />
     </section>
   );

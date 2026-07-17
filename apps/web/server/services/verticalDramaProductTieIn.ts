@@ -21,6 +21,7 @@
  * audit-logs any approval/removal.
  */
 
+import { z } from "zod";
 import type {
   VerticalDramaProductTieInConfig,
   VerticalDramaTieInUsage,
@@ -1189,5 +1190,236 @@ export function buildTieInQualityReport(
     fatigueOk,
     naturalnessScore,
     passed,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Special-edition product tie-in config (Stage 2.5,                          */
+/* `planning/vd-series-memory-and-lineage/plan.md`)                           */
+/*                                                                            */
+/* A "ภาคพิเศษ" (special edition) series is, by definition, a tie-in for its   */
+/* ENTIRE 1-2 sub-episode runtime — every episode carries product/place       */
+/* content, so `VerticalDramaProductTieInConfig` must be a FULLY POPULATED,   */
+/* contract-valid object, not the partial shape the wizard has historically   */
+/* written (verified during this task: `createSeriesInput.productTieIn` is a  */
+/* loosely-typed `z.record(z.unknown())`, so a wizard payload missing         */
+/* `referenceAssetIds`/`disclosurePolicy`/`allowedStoryFunctions`/             */
+/* `maxEpisodesWithTieInPerTenEpisodes`/`requireHumanApproval` has always      */
+/* passed silently). `buildSpecialEditionProductTieInConfig` below computes   */
+/* every one of those fields deterministically (no LLM, no story judgment —   */
+/* the actual "is this natural" craft lives entirely in the                  */
+/* `vertical-drama-special-edition-planner` skill, never in this file), and   */
+/* `verticalDramaProductTieInConfigSchema` is the final safety-net validation */
+/* the router (`verticalDramaSeries.ts`'s `create`, `createMode ===           */
+/* "special_edition"` ONLY) runs over the RESULT before persisting it. It     */
+/* should never fail in normal operation — every field here is either        */
+/* hardcoded or defaulted — but it guards against a malformed wizard-supplied */
+/* enum value slipping through un-caught the way the old `z.record` did.      */
+/*                                                                            */
+/* This is a DELIBERATE separate copy of `verticalDramaProvider.ts`'s own     */
+/* (unexported, router-local) `tieInConfigSchema` — same shape, minus that    */
+/* file's `productCategory` gap (its copy predates that field and never       */
+/* added it; harmless there since the field is optional, but this copy       */
+/* includes it since the special-edition builder actively populates it). A   */
+/* cross-router import was intentionally avoided here to keep this pure      */
+/* service file's test/import surface isolated from that router's heavier    */
+/* transitive dependencies (auditLogger, modelRegistry, etc.) — if the two   */
+/* schemas ever drift, this file's own `verticalDramaProductTieIn.test.ts`    */
+/* plus that router's tests are the tripwire.                                */
+/* -------------------------------------------------------------------------- */
+
+const VD_TIE_IN_PRODUCT_SOURCES = [
+  "manual",
+  "marketplace",
+  "library",
+  "uploaded_reference",
+] as const;
+
+const VD_TIE_IN_DISCLOSURE_POLICIES = [
+  "not_required",
+  "show_overlay_disclosure",
+  "caption_disclosure",
+  "manual_review",
+] as const;
+
+const VD_TIE_IN_REGULATED_CATEGORY_VALUES = [
+  "none",
+  ...VERTICAL_DRAMA_REGULATED_CATEGORIES,
+] as const;
+
+const VD_TIE_IN_PRODUCT_CATEGORIES = [
+  "cosmetics",
+  "supplement",
+  "food_beverage",
+  "general_goods",
+  "service",
+  "other",
+] as const;
+
+const VD_TIE_IN_STORY_FUNCTIONS = [
+  "memory_trigger",
+  "relationship_token",
+  "status_symbol",
+  "daily_use",
+  "plot_clue",
+  "soft_cta",
+] as const;
+
+/** Mirrors `VerticalDramaProductTieInConfig` (`@shared/verticalDramaSeries/contracts.ts`) field-for-field — see this section's header doc comment for why it is a separate copy from `verticalDramaProvider.ts`'s router-local `tieInConfigSchema`. */
+export const verticalDramaProductTieInConfigSchema = z.object({
+  enabled: z.boolean(),
+  productName: z.string().max(256).optional(),
+  productDescription: z.string().max(4000).optional(),
+  referenceAssetIds: z.array(z.string().max(128)).max(50),
+  productSource: z.enum(VD_TIE_IN_PRODUCT_SOURCES).optional(),
+  disclosurePolicy: z.enum(VD_TIE_IN_DISCLOSURE_POLICIES),
+  regulatedCategory: z.enum(VD_TIE_IN_REGULATED_CATEGORY_VALUES).optional(),
+  productCategory: z.enum(VD_TIE_IN_PRODUCT_CATEGORIES).optional(),
+  allowedStoryFunctions: z.array(z.enum(VD_TIE_IN_STORY_FUNCTIONS)),
+  forbiddenClaims: z.array(z.string().max(512)).max(100),
+  maxEpisodesWithTieInPerTenEpisodes: z.number().int().min(0).max(10),
+  requireHumanApproval: z.boolean(),
+});
+
+/**
+ * The user's single "what kind of special is this" choice (plan Stage 2.5,
+ * source 3) — a straight product/place review vs. a tie-in that has a
+ * character find a fitting SOLUTION using it. Maps deterministically to the
+ * `allowedStoryFunctions` subset each shape is naturally allowed to use;
+ * ALL FIVE values remain valid `VerticalDramaProductTieInConfig` members
+ * (verified against `@shared/verticalDramaSeries/contracts.ts` — none of
+ * these are invented), this mapping only narrows which ones this special
+ * edition's placements may claim.
+ */
+export const VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES = [
+  "review",
+  "tie_in_solution",
+] as const;
+export type VerticalDramaSpecialEditionStoryFunctionChoice =
+  (typeof VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES)[number];
+
+const VD_SPECIAL_EDITION_STORY_FUNCTION_MAP: Record<
+  VerticalDramaSpecialEditionStoryFunctionChoice,
+  VerticalDramaProductTieInConfig["allowedStoryFunctions"]
+> = {
+  // A straight, honest review beat — the product/place sells itself through
+  // ordinary use, never a hard pitch.
+  review: ["soft_cta", "daily_use"],
+  // A character has a real problem the product/place plausibly solves —
+  // the plot furnishes the "why now", not a coincidence.
+  tie_in_solution: ["plot_clue", "memory_trigger", "relationship_token"],
+};
+
+function readOptionalTrimmedString(
+  raw: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = raw[key];
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+}
+
+function readOptionalEnumValue<T extends string>(
+  raw: Record<string, unknown>,
+  key: string,
+  allowed: readonly T[],
+): T | undefined {
+  const value = raw[key];
+  return typeof value === "string" &&
+    (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : undefined;
+}
+
+function readStringArray(raw: Record<string, unknown>, key: string): string[] {
+  const value = raw[key];
+  if (!Array.isArray(value)) return [];
+  return value.filter((v): v is string => typeof v === "string" && v.trim().length > 0);
+}
+
+export interface BuildSpecialEditionProductTieInConfigParams {
+  /**
+   * Raw wizard `productTieIn` record — loosely-typed input, same
+   * "wizard-shell-payload" convention as every other free-form field on
+   * `createSeriesInput` (`bible`/`memory`/`policy`). Recognized keys:
+   * `enabled`, `productName`, `productDescription`, `productSource`,
+   * `marketplaceCaptureId` (Stage 2.5 source 1 — passed through verbatim by
+   * the caller, NOT part of this function's return value, see the header
+   * doc comment on `marketplaceCaptureId` being left as-is), `productImageUrl`,
+   * `regulatedCategory`, `productCategory`, `storyFunctionChoice` (Stage 2.5
+   * source 3 — one of `VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES`),
+   * `forbiddenClaims`, `referenceAssetIds` (honored verbatim only when the
+   * caller did not already resolve `uploadedReferenceAssetIds`).
+   */
+  raw: Record<string, unknown>;
+  /**
+   * Asset ids already registered (via `createAssetFromAttachment`, Stage 2.5
+   * source 2) from `raw.uploadedReferences` — computed by the CALLER so this
+   * function stays pure/DB-free/unit-testable. Empty when the special
+   * edition is marketplace-sourced instead.
+   */
+  uploadedReferenceAssetIds: string[];
+}
+
+/**
+ * Deterministically build a FULLY POPULATED `VerticalDramaProductTieInConfig`
+ * for a special-edition series — see this section's header doc comment. Pure,
+ * no DB/LLM/network access; never throws (unrecognized/missing wizard fields
+ * degrade to a safe default rather than failing series creation over an
+ * incomplete wizard payload). The caller is responsible for validating the
+ * result against `verticalDramaProductTieInConfigSchema` before persisting it.
+ */
+export function buildSpecialEditionProductTieInConfig(
+  params: BuildSpecialEditionProductTieInConfigParams,
+): VerticalDramaProductTieInConfig {
+  const { raw, uploadedReferenceAssetIds } = params;
+
+  const regulatedCategory =
+    readOptionalEnumValue(raw, "regulatedCategory", VD_TIE_IN_REGULATED_CATEGORY_VALUES) ??
+    "none";
+  const productCategory = readOptionalEnumValue(raw, "productCategory", VD_TIE_IN_PRODUCT_CATEGORIES);
+
+  const explicitProductSource = readOptionalEnumValue(raw, "productSource", VD_TIE_IN_PRODUCT_SOURCES);
+  const hasMarketplaceCapture = Boolean(readOptionalTrimmedString(raw, "marketplaceCaptureId"));
+  const productSource: VerticalDramaProductTieInConfig["productSource"] =
+    explicitProductSource ??
+    (uploadedReferenceAssetIds.length > 0
+      ? "uploaded_reference"
+      : hasMarketplaceCapture
+        ? "marketplace"
+        : "manual");
+
+  const referenceAssetIds =
+    productSource === "uploaded_reference" && uploadedReferenceAssetIds.length > 0
+      ? uploadedReferenceAssetIds
+      : readStringArray(raw, "referenceAssetIds");
+
+  const storyFunctionChoice =
+    readOptionalEnumValue(raw, "storyFunctionChoice", VD_SPECIAL_EDITION_STORY_FUNCTION_CHOICES) ??
+    // Safe default: a special edition with no explicit choice still gets the
+    // natural, non-CTA-heavy "review" set rather than failing series creation.
+    "review";
+
+  return {
+    enabled: raw.enabled !== false,
+    productName: readOptionalTrimmedString(raw, "productName"),
+    productDescription: readOptionalTrimmedString(raw, "productDescription"),
+    referenceAssetIds,
+    productSource,
+    // A special edition IS a paid tie-in for its entire runtime (owner
+    // decision, plan Stage 2.5: "a paid special IS an ad; disclose
+    // honestly") — never `"not_required"`, regardless of wizard input.
+    disclosurePolicy: "caption_disclosure",
+    regulatedCategory,
+    productCategory,
+    allowedStoryFunctions: VD_SPECIAL_EDITION_STORY_FUNCTION_MAP[storyFunctionChoice],
+    forbiddenClaims: readStringArray(raw, "forbiddenClaims"),
+    // A special edition IS tie-in for its entire (1-2 sub-episode) runtime —
+    // the fatigue cap that suppresses REPEATED placement across a normal
+    // multi-episode season has no meaning here and must never suppress
+    // placement (owner decision, plan Stage 2.5).
+    maxEpisodesWithTieInPerTenEpisodes: 10,
+    requireHumanApproval: isRegulatedCategory(regulatedCategory),
   };
 }

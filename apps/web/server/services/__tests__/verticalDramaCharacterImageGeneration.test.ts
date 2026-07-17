@@ -84,6 +84,7 @@ import {
   resolveFaceSourceReferenceForCharacter,
 } from "../verticalDramaCharacterImageGeneration";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+import { resolveCharacterTargetAudienceRegion } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
 import {
@@ -1775,6 +1776,46 @@ describe("generateCharacterVisualPrompts", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
+  it("allows design_intent + recall_stack.silhouette/color wardrobe-prose updates on an approved character without flagging identity drift (pilot-to-maintenance-lead variant)", async () => {
+    // Regression for traceId Ytrq5TrfJRzyFNRLasyV8: an aircraft maintenance
+    // engineer's approved DNA had guessed "pilot" (no occupation/description
+    // reached the LLM). The user's customInstruction correction made the LLM
+    // echo every face/body/recall-identity/anti-clone field verbatim, but
+    // naturally update the wardrobe-flavored PROSE in `design_intent` and
+    // `recall_stack.silhouette`/`.color` to match the corrected occupation.
+    // Since those three fields are no longer part of the identity
+    // fingerprint, this must NOT trip the drift guard.
+    mockHasEnoughCredits.mockResolvedValue(true);
+    const approvedCharacter = validCharacter();
+    const context = partialHistoryContext();
+    context.approvedDesignDna = buildCharacterVisualBibleSnapshot({
+      character: approvedCharacter,
+      model: "gpt-4o-mini",
+      createdAt: "2026-07-13T00:00:00.000Z",
+    }).designDna;
+    const variantCharacter = validCharacter();
+    variantCharacter.character_design_dna.design_intent =
+      "A competent aircraft maintenance lead whose stillness hides unresolved grief.";
+    variantCharacter.character_design_dna.recall_stack.silhouette =
+      "broad-shouldered in a crisp maintenance-crew uniform";
+    variantCharacter.character_design_dna.recall_stack.color =
+      "hangar-grey coveralls with oxidized-gold trim";
+    variantCharacter.character_design_dna.comparison_evidence = {
+      candidate_direction_count: 3,
+      current_cast_compared: 1,
+      recent_series_compared: 1,
+      prior_lead_dna_compared: 0,
+      history_completeness: "partial",
+    };
+    variantCharacter.character_design_dna.scores.threshold_status = "provisional";
+    mockExecute.mockResolvedValue(successResponse(validOutput([variantCharacter])));
+
+    await expect(
+      generateCharacterVisualPrompts(baseParams({ characterDesignContext: context })),
+    ).resolves.toEqual(expect.objectContaining({ portraitPrompt: expect.any(String) }));
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
   it("passes bounded series, current-cast, and recent-lead evidence as structured facts", () => {
     const prompt = buildCharacterVisualPromptsUserPrompt(
       baseParams({
@@ -2420,5 +2461,220 @@ describe("generateCharacterVisualPrompts — sheet_prompt passthrough", () => {
     const result = await generateCharacterVisualPrompts(baseParams());
 
     expect(result.sheetPrompt).toBeUndefined();
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Per-character ethnicity/region override (planning/vd-per-character-        */
+/* ethnicity/plan.md, 2026-07-17) — payload fact + D1 validator-retry + D2    */
+/* deterministic fallback                                                     */
+/* -------------------------------------------------------------------------- */
+
+describe("buildCharacterVisualPromptsUserPrompt — region_ethnicity payload fact", () => {
+  it("adds a region_ethnicity fact + an extra instruction line ONLY for an explicit per-character override", () => {
+    const explicit = resolveCharacterTargetAudienceRegion({ region: "western" }, "thai");
+    const withExplicit = buildCharacterVisualPromptsUserPrompt(
+      baseParams({ resolvedCharacterRegion: explicit }),
+    );
+    expect(withExplicit).toContain('"region_ethnicity"');
+    expect(withExplicit).toMatch(/explicitly set by the user/i);
+    expect(withExplicit).toContain(VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS_western());
+  });
+
+  it("byte-identical: adds NEITHER the fact nor the extra instruction line when resolvedCharacterRegion is absent", () => {
+    const withoutOverride = buildCharacterVisualPromptsUserPrompt(baseParams());
+    expect(withoutOverride).not.toContain("region_ethnicity");
+    expect(withoutOverride).not.toMatch(/explicitly set by the user/i);
+  });
+
+  it("byte-identical: adds NEITHER the fact nor the extra instruction line for a non-explicit (series-default) resolution", () => {
+    const nonExplicit = resolveCharacterTargetAudienceRegion(undefined, "thai");
+    const withNonExplicit = buildCharacterVisualPromptsUserPrompt(
+      baseParams({ resolvedCharacterRegion: nonExplicit }),
+    );
+    const withoutOverride = buildCharacterVisualPromptsUserPrompt(baseParams());
+    expect(withNonExplicit).toBe(withoutOverride);
+  });
+});
+
+// Small helper so the payload-fact test above doesn't hardcode the descriptor
+// string twice (keeps it in sync with `targetAudienceRegion.ts` automatically).
+function VERTICAL_DRAMA_TARGET_AUDIENCE_REGION_DESCRIPTORS_western(): string {
+  return resolveCharacterTargetAudienceRegion({ region: "western" }, "thai").descriptor;
+}
+
+describe("generateCharacterVisualPrompts — region/ethnicity anchor enforcement (D1 validator-retry + D2 deterministic fallback)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  it("D1: retries once when an explicit-region character's prompt is missing the anchor, and succeeds once the retry supplies it", async () => {
+    const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion({ region: "thai" }, "thai");
+    // `validCharacter()`'s default `primary_portrait_prompt` carries no
+    // ethnicity language at all — a genuine "anchor missing" case with no
+    // fixture changes needed (the same fixture the pre-existing "happy path"
+    // test already proves passes every OTHER check cleanly).
+    const missingAnchor = validCharacter();
+    const corrected = validCharacter();
+    corrected.primary_portrait_prompt = `${corrected.primary_portrait_prompt}, unmistakably Thai features`;
+    mockExecute
+      .mockResolvedValueOnce(successResponse(validOutput([missingAnchor])))
+      .mockResolvedValueOnce(successResponse(validOutput([corrected])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ resolvedCharacterRegion }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    // The retry instruction sanitizes the diagnostic message (never echoes
+    // raw validation text back to the model — see `buildSchemaRetryInstruction`'s
+    // `validationIssueGuidance`), but always states the exact failing path.
+    const retryUserMessage = mockExecute.mock.calls[1][0].messages.find(
+      (message: { role: string }) => message.role === "user",
+    );
+    expect(retryUserMessage.content).toContain("characters.0.primary_portrait_prompt");
+    expect(result.portraitPrompt).toContain("unmistakably Thai features");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("D2: deterministically prepends the descriptor when the anchor is STILL missing after the one bounded retry (never exhausts retries, never throws)", async () => {
+    const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion({ region: "thai" }, "thai");
+    const stillMissingAttempt1 = validCharacter();
+    const stillMissingAttempt2 = validCharacter();
+    mockExecute
+      .mockResolvedValueOnce(successResponse(validOutput([stillMissingAttempt1])))
+      .mockResolvedValueOnce(successResponse(validOutput([stillMissingAttempt2])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ resolvedCharacterRegion }),
+    );
+
+    // Exactly ONE bounded retry (2 total calls) — the validator does not
+    // hard-gate the final attempt, so this never exhausts
+    // `VD_SCHEMA_MAX_RETRIES` and throw; D2 backstops the still-missing
+    // anchor deterministically instead.
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(result.portraitPrompt.startsWith(resolvedCharacterRegion.descriptor)).toBe(true);
+    expect(result.portraitPrompt).toContain(stillMissingAttempt2.primary_portrait_prompt);
+  });
+
+  it("D2 is idempotent — never double-injects even though it runs on every call", async () => {
+    const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion({ region: "western" }, "thai");
+    const alreadyHasAnchor = validCharacter();
+    alreadyHasAnchor.primary_portrait_prompt = `${alreadyHasAnchor.primary_portrait_prompt}, Western features`;
+    mockExecute.mockResolvedValue(successResponse(validOutput([alreadyHasAnchor])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ resolvedCharacterRegion }),
+    );
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(result.portraitPrompt).toBe(alreadyHasAnchor.primary_portrait_prompt);
+    expect(result.portraitPrompt.split(resolvedCharacterRegion.descriptor).length - 1).toBe(0);
+  });
+
+  it("byte-identical: a character with NO explicit region override is completely untouched, even when the prompt has no ethnicity language at all", async () => {
+    mockExecute.mockResolvedValue(successResponse(validOutput()));
+
+    const result = await generateCharacterVisualPrompts(baseParams());
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(result.portraitPrompt).toBe(validCharacter().primary_portrait_prompt);
+  });
+
+  it("real-data-style proof (mirrors series 18's คิริน วัฒนเมธา): a Thai character (region='thai') ends up with a Thai/Southeast-Asian anchor PHYSICALLY PRESENT in the final assembled prompt, even though the model drops it exactly like the real gemini-3.1-flash-lite response did", async () => {
+    const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion({ region: "thai" }, "thai");
+    const modelDroppedAnchor = validCharacter();
+    modelDroppedAnchor.name = "คิริน";
+    // This is the REAL shape of the bug: the stored visualBible for คิริน had
+    // ZERO ethnicity anchor — "piercing dark eyes, sharp jawline, light-tan
+    // complexion" reads Western, not Thai/Southeast Asian.
+    modelDroppedAnchor.primary_portrait_prompt =
+      "Cinematic portrait of คิริน, piercing dark eyes, sharp jawline, light-tan complexion, " +
+      "wearing a tailored charcoal suit, 85mm lens, shallow depth of field, 9:16";
+    mockExecute.mockResolvedValue(successResponse(validOutput([modelDroppedAnchor])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ name: "คิริน", resolvedCharacterRegion }),
+    );
+
+    expect(result.portraitPrompt).toMatch(/thai/i);
+    expect(result.portraitPrompt).toBe(
+      `${resolvedCharacterRegion.descriptor}. ${modelDroppedAnchor.primary_portrait_prompt}`,
+    );
+  });
+});
+
+describe("generateCharacterPortraitCandidates — region/ethnicity anchor enforcement", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  it("D1: retries once when every candidate is missing the anchor, succeeding once the retry supplies it", async () => {
+    const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion({ region: "thai" }, "thai");
+    const missingBatch = validPortraitCandidateBatch(2);
+    const correctedBatch = structuredClone(validPortraitCandidateBatch(2));
+    for (const candidate of correctedBatch.portrait_candidate_batch.candidates) {
+      candidate.primary_portrait_prompt = `${candidate.primary_portrait_prompt}, Thai features`;
+    }
+    mockExecute
+      .mockResolvedValueOnce(successResponse(missingBatch))
+      .mockResolvedValueOnce(successResponse(correctedBatch));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female", resolvedCharacterRegion }),
+      portraitCandidateCount: 2,
+    });
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    for (const candidate of result.candidates) {
+      expect(candidate.portraitPrompt).toContain("Thai features");
+    }
+  });
+
+  it("D2: deterministically prepends the descriptor onto every candidate still missing the anchor after the one bounded retry", async () => {
+    const resolvedCharacterRegion = resolveCharacterTargetAudienceRegion({ region: "thai" }, "thai");
+    mockExecute.mockResolvedValue(successResponse(validPortraitCandidateBatch(2)));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female", resolvedCharacterRegion }),
+      portraitCandidateCount: 2,
+    });
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    for (const candidate of result.candidates) {
+      expect(candidate.portraitPrompt.startsWith(resolvedCharacterRegion.descriptor)).toBe(true);
+    }
+  });
+
+  it("byte-identical: candidates for a character with no explicit region override are untouched", async () => {
+    mockExecute.mockResolvedValue(successResponse(validPortraitCandidateBatch(2)));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+      portraitCandidateCount: 2,
+    });
+
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+    const original = validPortraitCandidateBatch(2).portrait_candidate_batch.candidates;
+    result.candidates.forEach((candidate, index) => {
+      expect(candidate.portraitPrompt).toBe(original[index]!.primary_portrait_prompt);
+    });
   });
 });

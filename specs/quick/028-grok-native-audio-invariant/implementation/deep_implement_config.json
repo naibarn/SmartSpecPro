@@ -12,7 +12,12 @@
     "section-03-storyboard-revision",
     "section-04-backfill-verification"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-capability-catalog": "completed",
+    "section-02-prompt-compliance": "completed",
+    "section-03-storyboard-revision": "completed",
+    "section-04-backfill-verification": "completed"
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

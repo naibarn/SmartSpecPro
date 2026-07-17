@@ -607,6 +607,63 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     expect(result.creditsUsed).toBe(6);
   });
 
+  it("threads the bible's refinedCharacters into knownCharacters (Phase 2.0) and flattens name+aliases into characterBibleNames (Phase 2.1/2.5)", async () => {
+    const seriesRow = {
+      id: 10,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Corporate Betrayal",
+      locale: "th",
+      genre: "romance",
+      tone: "dramatic",
+      targetEpisodeCount: 3,
+      defaultEpisodeDurationSeconds: 60,
+      bible: {
+        refinedCharacters: [
+          {
+            name: "คิริน วัฒนเมธา",
+            role: "lead",
+            narrativeRole: "protagonist",
+            roleTier: "lead_male",
+            aliases: ["คิริน"],
+          },
+          { name: "ลลิน ศิริกุล", role: "lead", aliases: [] },
+        ],
+        episodeBreakdown: [plannedItem(1), plannedItem(2), plannedItem(3)],
+      },
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const chain = updateChain([{ ...seriesRow }]);
+    mockDb.update.mockReturnValueOnce(chain);
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1), draftedResultItem(2)],
+      chunkSizes: [2],
+      partial: false,
+      creditsUsed: 6,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10, horizonEpisodes: 2 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    // Phase 2.0 — full profiles (including aliases), reused for the
+    // "CHARACTER BIBLE" prompt block.
+    expect(callArgs.knownCharacters).toEqual([
+      expect.objectContaining({ name: "คิริน วัฒนเมธา", aliases: ["คิริน"] }),
+      expect.objectContaining({ name: "ลลิน ศิริกุล" }),
+    ]);
+    // Phase 2.1/2.5 — canonical name + declared alias flattened into ONE
+    // flat list for the completeness gate's membership check.
+    expect(callArgs.characterBibleNames).toEqual(
+      expect.arrayContaining(["คิริน วัฒนเมธา", "คิริน", "ลลิน ศิริกุล"]),
+    );
+  });
+
   it("runs ledger_plan before draft when F132B is on, persists ledgers on the new version, and includes ledger credits", async () => {
     const seriesRow = {
       id: 10,
@@ -769,6 +826,340 @@ describe("runGenerateStoryBibleDeepJob — happy path", () => {
     expect(versions[0].deepDraft).toEqual(
       expect.objectContaining({ horizonEndEpisode: 9, chunkSizes: [5, 4] }),
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Stage 2.4 threading (`planning/vd-series-memory-and-lineage/plan.md`,      */
+/* added 2026-07-17) — `runGenerateStoryBibleDeepJob` building and passing    */
+/* `seasonLineage` for a sequel row.                                          */
+/* -------------------------------------------------------------------------- */
+
+describe("runGenerateStoryBibleDeepJob — Stage 2.4 seasonLineage threading", () => {
+  const PLANNED_ONE = { bible: { episodeBreakdown: [plannedItem(1)] } };
+
+  function baseSeriesRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 20,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Time-Crossed Love: Season 2",
+      locale: "th",
+      genre: "romance",
+      tone: "dramatic",
+      targetEpisodeCount: 10,
+      defaultEpisodeDurationSeconds: 60,
+      parentSeriesId: null,
+      createMode: null,
+      seasonNumber: null,
+      lineage: null,
+      ...PLANNED_ONE,
+      ...overrides,
+    };
+  }
+
+  function parentSeriesRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 16,
+      tenantId: "tenant-1",
+      userId: 42,
+      title: "Time-Crossed Love",
+      genre: "romance",
+      tone: "dramatic",
+      locale: "th",
+      targetEpisodeCount: 30,
+      bible: {},
+      memory: null,
+      ...overrides,
+    };
+  }
+
+  const CARRY_OVER_SNAPSHOT = {
+    contractVersion: 1,
+    characters: [
+      {
+        characterKey: "kai",
+        name: "Kai",
+        postFinaleStatus: "reunited with Mai",
+        availability: "returns",
+      },
+      {
+        characterKey: "villain1",
+        name: "Chana",
+        postFinaleStatus: "sent to prison",
+        availability: "write_out",
+      },
+    ],
+    newCharacterSuggestions: [],
+    newConflictDirections: ["a new rival heir emerges"],
+    antagonistStrategy: "new antagonist introduced; Chana referenced only in flashback",
+    carriedRelationships: [
+      {
+        pair: ["kai", "mai"],
+        status: "engaged",
+        disclosure: "public",
+        knownBy: ["kai", "mai"],
+        sinceEpisode: 28,
+      },
+    ],
+    carriedThreads: [
+      {
+        threadId: "t-house",
+        description: "renovation of the family house still unfinished",
+        threadClass: "domestic",
+        openedEpisode: 5,
+      },
+    ],
+  };
+
+  function lineageSnapshot(overrides: Record<string, unknown> = {}) {
+    return {
+      contractVersion: 1,
+      parentSeriesId: 16,
+      parentTitle: "Time-Crossed Love",
+      parentEpisodeCount: 30,
+      createMode: "sequel",
+      seasonNumber: 2,
+      priorSeasonSummary: "Kai and Mai found each other again across time.",
+      carryOver: CARRY_OVER_SNAPSHOT,
+      ...overrides,
+    };
+  }
+
+  it("non-sequel row (createMode null, the pre-existing shape of every series) passes seasonLineage: undefined and makes no extra db calls", async () => {
+    const seriesRow = baseSeriesRow();
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    const selectCallsBefore = mockDb.select;
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 20 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.seasonLineage).toBeUndefined();
+    // Zero extra `db.select()` calls beyond the pre-existing baseline (main
+    // row, the best-effort `existingLocations` attempt, and
+    // `ensureRosterCharactersFromStory`'s existing-roster read — all 3
+    // predate this feature) — the entire byte-identity guarantee for every
+    // series that predates this feature: `resolveSeasonLineageContext`
+    // short-circuits on `createMode !== "sequel"` with no DB call of its own.
+    expect(selectCallsBefore).toHaveBeenCalledTimes(3);
+  });
+
+  it("sequel whose parent HAS recorded memory: builds seasonLineage from the LIVE parent projection (freshest facts) plus the carry-over snapshot", async () => {
+    const parentRow = parentSeriesRow({
+      memory: {
+        contractVersion: 1,
+        episodes: [],
+        currentState: {
+          relationships: [
+            {
+              pair: ["kai", "mai"],
+              status: "married",
+              disclosure: "public",
+              knownBy: ["kai", "mai", "chana"],
+              sinceEpisode: 30,
+            },
+          ],
+          openThreads: [
+            {
+              threadId: "t-house",
+              description: "renovation of the family house still unfinished",
+              threadClass: "domestic",
+              openedEpisode: 5,
+            },
+          ],
+          canonicalFacts: ["Kai inherited the family estate"],
+          characterKnowledge: { kai: ["Mai's real identity"] },
+        },
+        compactSummary: "Kai and Mai married after reconciling across timelines.",
+        lastFoldedEpisode: 30,
+      },
+    });
+    const seriesRow = baseSeriesRow({
+      parentSeriesId: 16,
+      createMode: "sequel",
+      seasonNumber: 2,
+      lineage: lineageSnapshot(),
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow])) // main row (loadOwnedSeries)
+      .mockReturnValueOnce(selectChain([])) // existingLocations (child, best-effort)
+      .mockReturnValueOnce(selectChain([parentRow])) // parent row (loadOwnedSeries)
+      .mockReturnValueOnce(selectChain([])) // parent roster (loadLineageContext)
+      .mockReturnValueOnce(selectChain([])); // parent locations (loadLineageContext)
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 20 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.seasonLineage).toEqual({
+      seasonNumber: 2,
+      parentTitle: "Time-Crossed Love",
+      priorSeasonSummary: "Kai and Mai married after reconciling across timelines.",
+      carriedRelationships: [
+        {
+          pair: ["kai", "mai"],
+          status: "married",
+          disclosure: "public",
+          knownBy: ["kai", "mai", "chana"],
+          sinceEpisode: 30,
+        },
+      ],
+      carriedThreads: [
+        {
+          threadId: "t-house",
+          description: "renovation of the family house still unfinished",
+          threadClass: "domestic",
+          openedEpisode: 5,
+        },
+      ],
+      carriedCharacters: [
+        { characterKey: "kai", name: "Kai", postFinaleStatus: "reunited with Mai" },
+      ],
+      writtenOutCharacters: [{ characterKey: "villain1", name: "Chana" }],
+      antagonistStrategy: "new antagonist introduced; Chana referenced only in flashback",
+      characterKnowledge: { kai: ["Mai's real identity"] },
+    });
+  });
+
+  it("sequel whose parent has NO recorded memory: does not crash, and degrades to the carry-over snapshot's facts with empty memory-derived fields (never garbage)", async () => {
+    const parentRow = parentSeriesRow({ memory: null });
+    const seriesRow = baseSeriesRow({
+      parentSeriesId: 16,
+      createMode: "sequel",
+      seasonNumber: 2,
+      lineage: lineageSnapshot(),
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([parentRow]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    const result = await runGenerateStoryBibleDeepJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 20 },
+      vi.fn(),
+    );
+
+    expect(result.partial).toBe(false);
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    // Memory-derived fields degrade to the honest "nothing recorded" empty
+    // default — never fabricated text — while the carry-over snapshot's
+    // OWN facts (independent of live memory) still come through.
+    expect(callArgs.seasonLineage).toEqual({
+      seasonNumber: 2,
+      parentTitle: "Time-Crossed Love",
+      priorSeasonSummary: "",
+      carriedRelationships: [],
+      carriedThreads: [],
+      carriedCharacters: [
+        { characterKey: "kai", name: "Kai", postFinaleStatus: "reunited with Mai" },
+      ],
+      writtenOutCharacters: [{ characterKey: "villain1", name: "Chana" }],
+      antagonistStrategy: "new antagonist introduced; Chana referenced only in flashback",
+      characterKnowledge: {},
+    });
+  });
+
+  it("sequel whose parent has been DELETED (parentSeriesId SET NULL by the FK): falls back to the lineage snapshot, never throws", async () => {
+    const seriesRow = baseSeriesRow({
+      parentSeriesId: null, // ON DELETE SET NULL already applied
+      createMode: "sequel",
+      seasonNumber: 2,
+      lineage: lineageSnapshot(),
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([seriesRow])) // main row
+      .mockReturnValueOnce(selectChain([])); // existingLocations (child, best-effort)
+    // No parent row select at all — `parentSeriesId` is null, so this
+    // function must never attempt to load a parent.
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [draftedResultItem(1)],
+      chunkSizes: [1],
+      partial: false,
+      creditsUsed: 3,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await expect(
+      runGenerateStoryBibleDeepJob(
+        { tenantId: "tenant-1", userId: 42, seriesId: 20 },
+        vi.fn(),
+      ),
+    ).resolves.toEqual(expect.objectContaining({ partial: false }));
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.seasonLineage).toEqual({
+      seasonNumber: 2,
+      parentTitle: "Time-Crossed Love",
+      priorSeasonSummary: "Kai and Mai found each other again across time.",
+      carriedRelationships: [
+        {
+          pair: ["kai", "mai"],
+          status: "engaged",
+          disclosure: "public",
+          knownBy: ["kai", "mai"],
+          sinceEpisode: 28,
+        },
+      ],
+      carriedThreads: [
+        {
+          threadId: "t-house",
+          description: "renovation of the family house still unfinished",
+          threadClass: "domestic",
+          openedEpisode: 5,
+        },
+      ],
+      carriedCharacters: [
+        { characterKey: "kai", name: "Kai", postFinaleStatus: "reunited with Mai" },
+      ],
+      writtenOutCharacters: [{ characterKey: "villain1", name: "Chana" }],
+      antagonistStrategy: "new antagonist introduced; Chana referenced only in flashback",
+      characterKnowledge: {},
+    });
+    // 3 = main row + `existingLocations` + `ensureRosterCharactersFromStory`'s
+    // roster read (all pre-existing) — NOT 4 or 5, i.e. no parent-row/
+    // `loadLineageContext` select ever ran, proving the null `parentSeriesId`
+    // guard actually skipped the live-parent load path.
+    expect(mockDb.select).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -1257,6 +1648,93 @@ describe("runExtendStoryDraftHorizonJob — worker executor", () => {
     const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
     expect(callArgs.episodes.map((e: any) => e.episodeNumber)).toEqual([1, 2, 3, 4, 5]);
     expect(callArgs.priorRecap.items).toEqual([]);
+  });
+
+  /* ------------------------------------------------------------------------ */
+  /* Stage 1.5 (`planning/vd-series-memory-and-lineage/plan.md`) —            */
+  /* openThreads leak fix: `priorRecap.openThreads` must read from            */
+  /* `series.memory.currentState.openThreads` instead of the old hardcoded    */
+  /* `[]`, and must degrade to `[]` (never throw) for a series with no        */
+  /* memory yet — the case EVERY series predating Stage 1.2 is in.           */
+  /* ------------------------------------------------------------------------ */
+
+  it("threads still-open threads from series.memory.currentState.openThreads into priorRecap.openThreads", async () => {
+    const seriesRow = {
+      ...seriesRowWithDeepDraftedHorizon(5, 10),
+      memory: {
+        contractVersion: 1,
+        episodes: [],
+        currentState: {
+          relationships: [],
+          openThreads: [
+            {
+              threadId: "t-1",
+              description: "รีโนเวทบ้านยังไม่เสร็จ",
+              threadClass: "domestic",
+              openedEpisode: 2,
+            },
+            {
+              threadId: "t-2",
+              description: "ใครอยู่เบื้องหลังเอกสารปลอม",
+              threadClass: "plot",
+              openedEpisode: 3,
+            },
+          ],
+          canonicalFacts: [],
+          characterKnowledge: {},
+        },
+        compactSummary: "",
+        lastFoldedEpisode: 5,
+      },
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [6, 7, 8, 9, 10].map(draftedResultItem),
+      chunkSizes: [5],
+      partial: false,
+      creditsUsed: 5,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runExtendStoryDraftHorizonJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.priorRecap.openThreads).toEqual([
+      "[domestic] รีโนเวทบ้านยังไม่เสร็จ",
+      "[plot] ใครอยู่เบื้องหลังเอกสารปลอม",
+    ]);
+  });
+
+  it("degrades to [] (never throws) when series.memory is a malformed/legacy shape", async () => {
+    const seriesRow = {
+      ...seriesRowWithDeepDraftedHorizon(5, 10),
+      memory: { someLegacyShape: true },
+    };
+    mockDb.select.mockReturnValueOnce(selectChain([seriesRow]));
+    mockDb.update.mockReturnValueOnce(updateChain([{ ...seriesRow }]));
+    mockGenerateStoryBibleDeep.mockResolvedValue({
+      draftedItems: [6, 7, 8, 9, 10].map(draftedResultItem),
+      chunkSizes: [5],
+      partial: false,
+      creditsUsed: 5,
+      model: "test-model",
+      warnings: [],
+      finalOpenThreads: [],
+    });
+
+    await runExtendStoryDraftHorizonJob(
+      { tenantId: "tenant-1", userId: 42, seriesId: 10 },
+      vi.fn(),
+    );
+
+    const callArgs = mockGenerateStoryBibleDeep.mock.calls[0][0];
+    expect(callArgs.priorRecap.openThreads).toEqual([]);
   });
 });
 

@@ -67,6 +67,7 @@ import { VerticalDramaSettingsTab } from "@/components/verticalDramaSeries/Verti
 import { VerticalDramaProductTieInTab } from "@/components/verticalDramaSeries/VerticalDramaProductTieInTab";
 import { VerticalDramaAssetsTab } from "@/components/verticalDramaSeries/VerticalDramaAssetsTab";
 import { VerticalDramaSeriesMemoryTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryTab";
+import { VerticalDramaSeriesMemoryStateTab } from "@/components/verticalDramaSeries/VerticalDramaSeriesMemoryStateTab";
 import { VerticalDramaSeriesShareDialog } from "@/components/verticalDramaSeries/VerticalDramaSeriesShareDialog";
 import { getActiveBreakdownItemsForDisplay } from "@/components/verticalDramaSeries/VerticalDramaArcReplanCard";
 import {
@@ -131,6 +132,7 @@ type TabId =
   | "episodes"
   | "production"
   | "bible"
+  | "seriesMemory"
   | "memory"
   | "product"
   | "assets"
@@ -152,12 +154,19 @@ const ALL_TABS: TabId[] = [
   "episodes",
   "production",
   "bible",
+  "seriesMemory",
   "memory",
   "product",
   "assets",
   "settings",
 ];
-const STORY_TABS: TabId[] = ["bible", "characters", "scenes", "memory"];
+const STORY_TABS: TabId[] = [
+  "bible",
+  "characters",
+  "scenes",
+  "seriesMemory",
+  "memory",
+];
 const ADVANCED_TABS: TabId[] = ["product", "assets", "settings"];
 
 const tabLabels: Record<TabId, { th: string; en: string }> = {
@@ -170,7 +179,15 @@ const tabLabels: Record<TabId, { th: string; en: string }> = {
   bible: { th: "ไบเบิล", en: "Bible" },
   characters: { th: "ตัวละคร", en: "Characters" },
   scenes: { th: "ฉาก", en: "Locations" },
-  memory: { th: "ความจำซีรีย์", en: "Memory" },
+  // Stage 1.4 (`planning/vd-series-memory-and-lineage/plan.md`) added the
+  // NEW `seriesMemory` tab (reads/edits `VdSeriesMemory`, the materialized
+  // relationships/open-threads/episode-timeline projection) as the primary
+  // "read this and understand the whole story" surface. The PRE-EXISTING
+  // `memory` tab (durable append-only event log, `listMemoryEvents`) is
+  // relabeled here so the two tabs don't show an identical name — it keeps
+  // its own TabId/behavior untouched, only this visible label changes.
+  seriesMemory: { th: "ความจำซีรีย์", en: "Series Memory" },
+  memory: { th: "บันทึกเหตุการณ์", en: "Event Log" },
   product: { th: "สินค้าผูกเรื่อง", en: "Product Tie-in" },
   assets: { th: "แอสเซ็ต", en: "Assets" },
   settings: { th: "ตั้งค่า", en: "Settings" },
@@ -488,6 +505,12 @@ export default function VerticalDramaSeriesDetailPage() {
                       seriesId={seriesId}
                       locale={series.locale}
                       bible={series.bible}
+                      readOnly={isArchived}
+                    />
+                  ) : tab === "seriesMemory" ? (
+                    <VerticalDramaSeriesMemoryStateTab
+                      lang={lang}
+                      seriesId={seriesId}
                       readOnly={isArchived}
                     />
                   ) : tab === "memory" ? (

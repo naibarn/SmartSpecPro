@@ -222,6 +222,104 @@
     },
     "contract_version": {
       "const": 1
+    },
+    "episode_memory": {
+      "description": "Optional superset (planning/vd-series-memory-and-lineage/plan.md Stage 1.2/1.3, Producer B, added 2026-07-17): per-episode continuity fact block, same contract as the vertical-drama-full-story-architect skill's own `episode_memory`. Optional/passthrough for backward compatibility and because a malformed block must never fail the whole script (see skill.md's 'Episode memory' section and the service's own tolerant-parse-or-fallback handling) — never enforced by this schema, only by skill.md guidance.",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "recap": {
+          "type": "string"
+        },
+        "canonical_facts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "threads_opened": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "thread_id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "thread_class": {
+                "type": "string",
+                "enum": [
+                  "plot",
+                  "domestic",
+                  "career",
+                  "financial",
+                  "health",
+                  "relationship"
+                ]
+              }
+            }
+          }
+        },
+        "threads_resolved": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "relationship_changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "pair": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "status": {
+                "type": "string"
+              },
+              "disclosure": {
+                "type": "string",
+                "enum": [
+                  "secret",
+                  "known_to_some",
+                  "public",
+                  "undeclared"
+                ]
+              },
+              "known_by": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "knowledge_changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "character_key": {
+                "type": "string"
+              },
+              "learned": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -23,3 +23,11 @@ artifact shape, restore instructions, and no automatic apply.
 Backfill is idempotent/reversible; runtime is safe before it runs; all gates
 pass from the final worktree and unrelated dirty changes remain untouched.
 
+## Implementation evidence
+
+- Added report-first `backfill:grok-native-audio`; writes require `--apply`.
+- Apply writes a timestamped JSON backup before its transaction and verifies
+  repaired rows afterward.
+- Pure tests cover config preservation, provider independence, exclusions,
+  and idempotency.
+- Live report was skipped because `DATABASE_URL` was absent; no apply ran.

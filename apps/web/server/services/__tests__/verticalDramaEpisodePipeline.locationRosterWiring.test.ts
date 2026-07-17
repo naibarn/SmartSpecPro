@@ -55,7 +55,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
@@ -188,6 +197,7 @@ describe("generateRealStoryboard — existingLocations real query (Phase 2 locat
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }])) // seriesRow
       .mockReturnValueOnce(selectChain([])) // characterRows
+      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
       .mockReturnValueOnce(selectChain(rosterRows)); // NEW: location roster
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -204,6 +214,7 @@ describe("generateRealStoryboard — existingLocations real query (Phase 2 locat
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
       .mockReturnValueOnce(selectChain(rosterRows));
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -218,6 +229,7 @@ describe("generateRealStoryboard — existingLocations real query (Phase 2 locat
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
       .mockReturnValueOnce(selectChain([])); // empty roster
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -230,13 +242,16 @@ describe("generateRealStoryboard — existingLocations real query (Phase 2 locat
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
       .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode, false);
 
-    // The 3rd select call is the new location-roster query — assert it ran
-    // (via .from()/.where() being invoked on the 3rd chain instance).
-    expect(mockDb.select).toHaveBeenCalledTimes(3);
+    // The 4th select call is the location-roster query (3rd is now the
+    // alias-rows query, planning/vd-character-identity-repair/plan.md) —
+    // assert it ran (via .from()/.where() being invoked on the 4th chain
+    // instance).
+    expect(mockDb.select).toHaveBeenCalledTimes(4);
   });
 });
 
@@ -278,8 +293,9 @@ const KITCHEN_GROUP = {
  * Queue the exact `mockDb.select` sequence a successful
  * `runStage(owner, "storyboard_shotgrid", {mode: "full"})` consumes:
  * loadEpisode -> generateRealStoryboard's seriesRow -> characterRows ->
- * (NEW) location roster. No further selects happen on the success path
- * (`runQc` is a no-op via the default stub provider port; the checkpoint
+ * (planning/vd-character-identity-repair/plan.md) alias rows -> (Phase 2)
+ * location roster. No further selects happen on the success path (`runQc`
+ * is a no-op via the default stub provider port; the checkpoint
  * bookkeeping below uses `insert`, not `select`).
  */
 function queueRunStageSelects() {
@@ -287,6 +303,7 @@ function queueRunStageSelects() {
     .mockReturnValueOnce(selectChain([episode])) // loadEpisode
     .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }])) // seriesRow
     .mockReturnValueOnce(selectChain([])) // characterRows
+    .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
     .mockReturnValueOnce(selectChain([])); // location roster (existingLocations)
 }
 

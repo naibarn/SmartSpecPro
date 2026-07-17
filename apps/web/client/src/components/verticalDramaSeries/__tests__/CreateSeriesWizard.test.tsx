@@ -469,7 +469,11 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
   });
 
   function getPremiseTextarea(): HTMLTextAreaElement {
-    const label = screen.getByText(/โจทย์เรื่องที่อยากได้/);
+    // Anchored at the start — the step-1 "blocked" affordance text (added by
+    // the CTA-discoverability follow-up) reads "พิมพ์โจทย์เรื่องที่อยากได้
+    // หรือเลือก preset..." and would otherwise ALSO match an unanchored
+    // substring search for "โจทย์เรื่องที่อยากได้", making the query ambiguous.
+    const label = screen.getByText(/^โจทย์เรื่องที่อยากได้/);
     return label
       .closest("div")
       ?.querySelector("textarea") as HTMLTextAreaElement;
@@ -530,8 +534,10 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.change(textarea, { target: { value: "นักสืบไล่ล่าคดีปริศนา" } });
 
     selectCategoryAndPresets(["1", "2"]);
+    // vd-premise-first-wizard plan Phase 3.3 — with a premise present the CTA
+    // label reflects "mix premise with preset(s)", not the presets-only label.
     fireEvent.click(
-      screen.getByRole("button", { name: /ให้ AI ผสมเป็น Preset/ })
+      screen.getByRole("button", { name: /ให้ AI ผสมโจทย์กับ preset/ })
     );
 
     expect(mockSynthesizeMutate).toHaveBeenCalledWith(
@@ -557,7 +563,32 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     );
   });
 
-  it("no-clobber: applying a single preset never touches form.userPremise", () => {
+  it("with a premise present, a single selected preset routes through synthesis (never verbatim) and never touches form.userPremise", () => {
+    // vd-premise-first-wizard plan Phase 3.2 — a premise present means a
+    // single selected preset must NOT `applyPreset` verbatim; it becomes
+    // flavor on the user's spine via synthesis instead. This supersedes the
+    // old byte-identical "no-clobber" test, which exercised the verbatim
+    // "Use this preset" path that no longer exists once a premise is typed.
+    mockSynthesizeMutationState = {
+      data: {
+        draft: {
+          contract_version: 1,
+          title: "Synthesized With One Preset",
+          category: "sci_fi_mecha",
+          logline: "synth logline",
+          mainPlot: "synth main plot",
+          seasonArc: "synth season arc",
+          tone: "synth tone",
+          cliffhangerStyle: "synth cliff",
+          characters: [{ name: "F", role: "Lead", description: "desc" }],
+          visualBible: "synth visual bible",
+          warnings: [],
+        },
+        creditsUsed: 3,
+        model: "test-model",
+      },
+      isPending: false,
+    };
     renderWizard();
     const titleLabel = screen.getByText("ชื่อซีรีย์ *");
     const titleInput = titleLabel
@@ -569,7 +600,23 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.change(textarea, { target: { value: "รักษาโจทย์เดิมไว้เสมอ" } });
 
     selectCategoryAndPresets(["1"]);
-    fireEvent.click(screen.getByRole("button", { name: /ใช้ Preset นี้/ }));
+
+    // The verbatim single-preset CTA must be gone once a premise is present.
+    expect(
+      screen.queryByRole("button", { name: /ใช้ Preset นี้/ })
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /ให้ AI ผสมโจทย์กับ preset/ })
+    );
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPremise: "รักษาโจทย์เดิมไว้เสมอ",
+        selectedPresetIds: ["1"],
+      })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /ใช้ draft นี้/ }));
 
     fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
     fireEvent.click(
@@ -628,5 +675,134 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     fireEvent.change(textarea, { target: { value: "มีโจทย์แล้ว" } });
 
     expect(screen.getByText(/ใช้โจทย์ของคุณเป็นแกนหลัก/)).toBeInTheDocument();
+  });
+
+  it("premise-only (0 presets): AI synthesis is now reachable, labeled correctly, and forwards an empty preset selection", () => {
+    // vd-premise-first-wizard plan Phase 3.1/3.3 — a premise alone with ZERO
+    // presets used to be impossible (hard-blocked toast). It must now be a
+    // fully working synthesis path.
+    renderWizard();
+    const textarea = getPremiseTextarea();
+    fireEvent.change(textarea, {
+      target: {
+        value:
+          "พระเอกเป็นนักบิน นางเอกเป็นพนักงานภาคพื้น อยากไต่เต้าไปทำงานบนเครื่อง เป็นเด็กกำพร้า",
+      },
+    });
+
+    const button = screen.getByRole("button", {
+      name: /ให้ AI สร้างโครงเรื่องจากโจทย์/,
+    });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPremise:
+          "พระเอกเป็นนักบิน นางเอกเป็นพนักงานภาคพื้น อยากไต่เต้าไปทำงานบนเครื่อง เป็นเด็กกำพร้า",
+        selectedPresetIds: [],
+        selections: [],
+      })
+    );
+  });
+
+  it("no premise + 0 presets: the CTA stays disabled with the legacy label, and the stale '2 preset minimum' copy is gone from the tree", () => {
+    renderWizard();
+
+    const button = screen.getByRole("button", {
+      name: /ให้ AI ผสมเป็น Preset/,
+    });
+    expect(button).toBeDisabled();
+    // The pre-Phase-3 hard-coded toast copy claimed a 2-preset minimum even
+    // when a premise could satisfy the gate on its own — that copy must not
+    // appear anywhere in the rendered step.
+    expect(
+      screen.queryByText(/เลือกอย่างน้อย 2 preset/)
+    ).not.toBeInTheDocument();
+  });
+
+  /* ------------------------------------------------------------------ */
+  /* CTA discoverability follow-up (2026-07-17)                          */
+  /* ------------------------------------------------------------------ */
+
+  it("no premise + 0 presets: the disabled CTA explains itself inline instead of being silently disabled", () => {
+    // This is the exact failure the user reported: a disabled button with no
+    // stated reason. `resolveCreateSeriesPresetAction`'s `blockedReason` must
+    // now render next to the CTA, not just fire as a toast if clicked.
+    renderWizard();
+    const button = screen.getByRole("button", {
+      name: /ให้ AI ผสมเป็น Preset/,
+    });
+    expect(button).toBeDisabled();
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "พิมพ์โจทย์เรื่องที่อยากได้ หรือเลือก preset อย่างน้อย 2 แบบก่อนให้ AI ช่วย"
+    );
+  });
+
+  it("typing a premise clears the blocked-state explanation (the action is no longer blocked)", () => {
+    renderWizard();
+    expect(screen.getByRole("note")).toBeInTheDocument();
+
+    const textarea = getPremiseTextarea();
+    fireEvent.change(textarea, { target: { value: "มีโจทย์แล้ว" } });
+
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
+  it("renders the primary CTA directly under the premise textarea (hero), ahead of the optional preset rail in document order — never both at once", () => {
+    // The user's reported bug: after typing a premise, the one button that
+    // acts on it lived at the BOTTOM of the preset rail — a panel labeled
+    // "optional" — with nothing pointing the user there. The CTA must now
+    // render right after the textarea, before the preset library section.
+    renderWizard();
+    const textarea = getPremiseTextarea();
+    fireEvent.change(textarea, { target: { value: "มีโจทย์แล้ว" } });
+
+    // Exactly one matching button exists — `getByRole` (singular) would
+    // throw "found multiple elements" if the CTA rendered in both places.
+    const button = screen.getByRole("button", {
+      name: /ให้ AI สร้างโครงเรื่องจากโจทย์/,
+    });
+    const presetLibraryHeading = screen.getByText("คลัง Preset แนวเรื่อง");
+
+    expect(
+      Boolean(
+        textarea.compareDocumentPosition(button) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      )
+    ).toBe(true);
+    expect(
+      Boolean(
+        button.compareDocumentPosition(presetLibraryHeading) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      )
+    ).toBe(true);
+  });
+
+  it("the AI-output framing around genre/logline never hides them — both stay visible and directly editable before any generation", () => {
+    // Information-architecture follow-up: genre/logline are demoted
+    // visually (they are synthesis OUTPUTS), but the hard constraint is that
+    // collapsing must never mean removing — a user who wants to hand-write
+    // them must still be able to, without generating first.
+    renderWizard();
+    expect(
+      screen.getByText("ผลลัพธ์จาก AI — แก้ไขได้เสมอ")
+    ).toBeInTheDocument();
+
+    const genreLabel = screen.getByText("แนวเรื่อง");
+    const genreInput = genreLabel
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
+    fireEvent.change(genreInput, { target: { value: "หักมุมสืบสวน" } });
+    expect(genreInput.value).toBe("หักมุมสืบสวน");
+
+    const loglineLabel = screen.getByText("เรื่องย่อ (logline)");
+    const loglineTextarea = loglineLabel
+      .closest("div")
+      ?.querySelector("textarea") as HTMLTextAreaElement;
+    fireEvent.change(loglineTextarea, {
+      target: { value: "เรื่องย่อที่เขียนเอง" },
+    });
+    expect(loglineTextarea.value).toBe("เรื่องย่อที่เขียนเอง");
   });
 });

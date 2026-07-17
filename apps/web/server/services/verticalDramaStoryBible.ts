@@ -52,15 +52,35 @@ import {
   verticalDramaLocaleEnglishName,
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
+/**
+ * Genre pollution guard (Stage 1.5, `planning/vd-series-memory-and-lineage/
+ * plan.md`) — see `buildGenrePromptLine` below (this file's ONE routing
+ * point for every `Genre:` prompt-emit site) and the guard module's own
+ * header doc comment for the real-data investigation behind this.
+ */
+import { isGenrePolluted } from "@shared/verticalDramaSeries/genrePollutionGuard";
 import {
   lenientNarrativeRoleSchema,
   lenientRoleTierSchema,
   normalizeLegacyRole,
   NARRATIVE_ROLE_VALUES,
   ROLE_TIER_VALUES,
-  type NarrativeRole,
-  type RoleTier,
 } from "@shared/verticalDramaSeries/narrativeRole";
+/**
+ * Re-exported unchanged from `verticalDramaBibleRefinedCharacters.ts`
+ * (extracted out 2026-07-17,
+ * `planning/vd-character-visual-bible-occupation-fix/plan.md` — see that
+ * file's own header doc comment for why: `verticalDramaCharacters.ts` needs
+ * a SAFE static import of `readBibleRefinedCharacterProfiles`, and this
+ * file's own module graph is too heavy for that router's minimal-mock test
+ * suites). Every existing caller keeps importing from THIS file unchanged.
+ */
+export type { VdBibleRefinedCharacter } from "./verticalDramaBibleRefinedCharacters";
+import {
+  readBibleRefinedCharacterProfiles,
+  type VdBibleRefinedCharacter,
+} from "./verticalDramaBibleRefinedCharacters";
+export { readBibleRefinedCharacterProfiles };
 /**
  * Series-level audience age rating (Phase 1 of a 2-phase feature — later
  * phases thread it into per-episode stages). Imported directly from its own
@@ -88,7 +108,11 @@ import {
   resolveEpisodeMemoryBlock,
   type VdEpisodeMemoryFallbackContext,
 } from "./verticalDramaSeriesMemoryProjection";
-import type { VdEpisodeMemory } from "@shared/verticalDramaSeries/seriesMemoryState";
+import type {
+  VdEpisodeMemory,
+  VdRelationshipState,
+  VdOpenThread,
+} from "@shared/verticalDramaSeries/seriesMemoryState";
 // Story-density reform (spec §7.7, section-13, added 2026-07-07) — imported
 // DIRECTLY from the submodule (not the shared barrel) per section-13: this
 // is the ONE canonical source for the content-budget/breakdown-versioning
@@ -520,6 +544,27 @@ const premiumTieInNaturalnessShape = {
   tie_in_naturalness: z.number().min(1).max(5).optional(),
 };
 
+/**
+ * Stage 2.4b (`planning/vd-series-memory-and-lineage/plan.md`, added
+ * 2026-07-17) — a SECOND optional conditional dimension, mirroring
+ * `premiumTieInNaturalnessShape` above field-for-field (same "kept OUT of the
+ * 8 core dimensions, threaded as its own optional field everywhere a
+ * scorecard/score shape is built, present -> also floor-check/report,
+ * absent -> ignore entirely" contract, which keeps every existing call site
+ * byte-identical). Scored ONLY for an episode drafted as part of a SEQUEL
+ * season (`GenerateStoryBibleDeepParams.seasonLineage` present this run) —
+ * judges whether the episode stays continuous with the parent season's
+ * carried relationships/disclosure/open threads/character knowledge, as
+ * opposed to contradicting or silently resetting them. The actual judging
+ * CRITERIA (what counts as legitimate change vs. drift) live ONLY in
+ * `vertical-drama-season-dramaturgy-critic` skill.md's own
+ * "prior_season_continuity" section — never hardcoded here (project policy:
+ * TS computes facts, skill owns judgment).
+ */
+const premiumPriorSeasonContinuityShape = {
+  prior_season_continuity: z.number().min(1).max(5).optional(),
+};
+
 /** Sentinel `judgedAtRound` for a score last updated by the one-time season continuity sweep (distinct from the 1-2 per-chunk targeted-revise rounds; 0 = the initial fan-out judge pass). */
 export const VD_PREMIUM_DRAFT_SWEEP_ROUND = 3;
 
@@ -548,6 +593,8 @@ const draftScorecardSchema = z
     dialogue_accessibility:
       premiumScoreDimensionsShape.dialogue_accessibility.optional(),
     ...premiumTieInNaturalnessShape,
+    // Stage 2.4b — see `premiumPriorSeasonContinuityShape`'s own doc comment.
+    ...premiumPriorSeasonContinuityShape,
     judgedAtRound: z.number().int().nonnegative(),
   })
   .passthrough();
@@ -737,6 +784,20 @@ const expandedStoryBibleSchema = z.object({
         narrativeRole: lenientNarrativeRoleSchema,
         roleTier: lenientRoleTierSchema,
         occupation: z.string().min(1).optional(),
+        /**
+         * `planning/vd-character-identity-repair/plan.md` Phase 2.1 (added
+         * 2026-07-17) — root-cause-chain item 1: Thai drama dialogue
+         * naturally calls a character by a given name alone, a nickname, or
+         * a romanization ("คิริน" for "คิริน วัฒนเมธา") — legitimate short-form
+         * usage, not a typo. Before this field, the pipeline had no concept
+         * of a canonical name + its aliases, so it read every natural short
+         * form as a stranger. Requested (see `buildPrompts`'s system prompt
+         * below) but OPTIONAL here so a response that omits it (every
+         * pre-2026-07-17 response, or a lenient/legacy replay) still parses;
+         * `readBibleRefinedCharacterProfiles` treats a missing/empty array
+         * as "no declared aliases", never throws.
+         */
+        aliases: z.array(z.string().min(1)).optional(),
       })
     )
     .min(1),
@@ -748,6 +809,10 @@ export type ExpandedVerticalDramaStoryBible = z.infer<
   typeof expandedStoryBibleSchema
 >;
 
+// `planning/vd-character-identity-repair/plan.md` Phase 2.1 — `aliases`
+// (when the LLM supplied it) passes through untouched via the `...character`
+// spread below; this function only ever backfills narrativeRole/roleTier/
+// occupation, never touches aliases.
 function normalizeExpandedCharacterRoles(
   characters: ExpandedVerticalDramaStoryBible["refinedCharacters"],
 ): ExpandedVerticalDramaStoryBible["refinedCharacters"] {
@@ -979,6 +1044,36 @@ export function extractJson(text: string): unknown {
  */
 export const VD_COMPACT_JSON_INSTRUCTION =
   "Return ONLY a single JSON object. Do not pretty-print or indent — emit compact JSON (no unnecessary whitespace/newlines) to keep the response as short as possible.";
+
+/**
+ * Genre pollution guard (Stage 1.5, `planning/vd-series-memory-and-lineage/
+ * plan.md`) — the ONE place in this file that decides whether a `Genre:`
+ * line reaches an LLM prompt. EVERY genre-emit call site in this file
+ * (`buildPrompts`, `buildDeepDraftPrompts`, `buildPremiumJudgePrompts`,
+ * `buildPremiumRejudgePrompts`, `buildPremiumRevisePrompts`,
+ * `buildPremiumSweepPrompts`) calls this instead of inlining
+ * `params.genre ? \`Genre: ${params.genre}\` : null` directly, so the guard
+ * can never silently be skipped at a new call site.
+ *
+ * `vertical_drama_series.genre` has been observed holding a logline or a
+ * copy of `title` for real series (see
+ * `@shared/verticalDramaSeries/genrePollutionGuard`'s header doc comment for
+ * the investigation) — emitting THAT as `Genre: ...` injects a second,
+ * conflicting title into every prompt, which is worse than omitting the
+ * line entirely. For every series whose `genre` is clean (the overwhelming
+ * majority, and the ONLY case `createSeriesInput`'s guard allows going
+ * forward — see that schema's `superRefine`), this returns the exact same
+ * `Genre: ${genre}` string as before this change, so every existing
+ * call site's prompt stays byte-identical for a clean genre.
+ */
+function buildGenrePromptLine(
+  genre: string | null | undefined,
+  title: string | null | undefined
+): string | null {
+  if (!genre) return null;
+  if (isGenrePolluted(genre, title)) return null;
+  return `Genre: ${genre}`;
+}
 
 const VD_RETRY_STRICT_INSTRUCTION =
   "Your previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text). Do not truncate — if needed, shorten prose fields to fit, but every object/array must be properly closed. Output exactly ONE JSON object and nothing after it.";
@@ -1466,8 +1561,8 @@ function buildPrompts(params: GenerateStoryBibleParams): {
   const trimmedUserPremise = params.userPremise?.trim();
 
   const responseShape = trimmedUserPremise
-    ? '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}], "premise_coverage": {"sufficient": boolean, "note": string}}'
-    : '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}';
+    ? '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string, "aliases": string[]}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}], "premise_coverage": {"sufficient": boolean, "note": string}}'
+    : '{"expandedSeasonArc": string, "refinedCharacters": [{"name": string, "role": string, "description": string, "narrativeRole": string, "roleTier": string, "occupation": string, "aliases": string[]}], "episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[]}]}';
 
   const systemPrompt = [
     renderCriteriaVersionMarker(),
@@ -1483,6 +1578,29 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     "For every refined character, assign exactly one canonical narrativeRole and roleTier from the supplied role taxonomy. Keep the legacy role field as a human-readable occupation or free-text descriptor; never use an occupation alone as the narrative role. If the story does not establish the narrative role, use the safest supporting/other tier and make the ambiguity explicit in the description rather than inventing a lead or villain.",
     `"narrativeRole" MUST be exactly one of: ${NARRATIVE_ROLE_VALUES.join(", ")}.`,
     `"roleTier" MUST be exactly one of: ${ROLE_TIER_VALUES.join(", ")}. Copy one value verbatim — never invent a new label; lowercase snake_case only.`,
+    // `planning/vd-character-identity-repair/plan.md` Phase 2.1 (root-cause-
+    // chain item 1: "legitimate short-form usage") — Thai (and most) drama
+    // dialogue naturally calls a character by a given name alone, a
+    // nickname, or a common romanization; without a declared alias, the
+    // deep-draft stage reads that natural short form as a stranger. Declaring
+    // it here is what lets the deep-draft prompt's own "CHARACTER BIBLE" FACT
+    // block (`buildKnownCharactersPromptBlock`) accept it as a valid name
+    // instead of a violation.
+    'For each refined character, ALSO include "aliases": an array of every OTHER string ANY dialogue or shot in this story would call this character by — a given name alone when "name" is a full name, a nickname, an honorific/kinship form, or a common romanization. Return an empty array only when the character truly has no other form of address; never omit the field.',
+    // `planning/vd-character-identity-repair/plan.md` Phase 6.1 — closes the
+    // NEW-PROJECT (wizard) path hole: series 7's roster row
+    // `ผู้บงการ(คนร้าย)` (seeded verbatim from the wizard's `charactersDraft`
+    // textarea at series creation) was refined by THIS call into
+    // `refinedCharacters[].name = "ผู้บงการ"` with no alias declared back to
+    // the original — so `reconcileCharactersFromStoryBible` couldn't find it
+    // by exact name and silently no-opped, and the NEXT deep draft would
+    // have minted a genuine duplicate row (the exact bug this whole plan
+    // fixes, reproduced from a clean wizard project rather than an existing
+    // one). The instruction below is the model-facing half of the fix; see
+    // `charactersDraftBlock` a few lines down in the user message for the
+    // deterministic (facts-only) half that makes the original names visible
+    // enough for the model to actually satisfy this rule.
+    'The "WIZARD CHARACTER DRAFT" block in the user message (when present) lists the creator\'s ORIGINAL character names, verbatim, before your refinement. When a "refinedCharacters" entry\'s "name" is a renamed/expanded/corrected/translated form of one of those original lines (e.g. the draft said "ผู้บงการ(คนร้าย)" and you refined it to "ผู้บงการ"), you MUST include that draft line\'s EXACT original name string in this character\'s "aliases" array — this is the ONLY way the rest of the pipeline can tell your refined name and the creator\'s original name are the same person, so never skip it.',
     `"episodeBreakdown" must contain exactly ${params.targetEpisodeCount} Sub-episode entries, numbered 1..${params.targetEpisodeCount} in order, each with 3-5 short keyBeats.`,
     speechBudgetEnabled
       ? `Each Sub-episode is a fixed ${episodeDurationSeconds}-second short video that must carry AT LEAST ${minEpisodeSpeechSeconds} seconds of spoken dialogue (the platform's minimum speech-coverage floor) — plan enough plot/conflict per Sub-episode to genuinely fill that budget instead of padding a thin Sub-episode afterward. Each entry in "episodeBreakdown" must ALSO include a "contentBudget" object: {"beatCount": number (5-7 story beats), "estimatedSpeechSeconds": number (this Sub-episode's planned total spoken-dialogue seconds, >= ${minEpisodeSpeechSeconds}), "conflictLevel": integer 1-5 (this Sub-episode's position on the SEASON'S escalation curve — start low in early Sub-episodes and rise toward 5 near the finale; never flat across the season), "reversalTarget": integer (at least 2 reversals planned for this Sub-episode), "arcThreads": string[] (season threads this Sub-episode advances)}.`
@@ -1518,14 +1636,48 @@ function buildPrompts(params: GenerateStoryBibleParams): {
     resolveAudienceAgeRating(params.audienceAgeRating)
   );
 
+  // `planning/vd-character-identity-repair/plan.md` Phase 6.1 — the wizard's
+  // `charactersDraft` freeform textarea is ALREADY present, verbatim, inside
+  // the `Existing bible: ${JSON.stringify(params.bible)}` dump below (it is
+  // just a raw key on `params.bible`) — but buried in one giant JSON blob it
+  // has near-zero salience, and the model has no cue that THESE specific
+  // strings are the ones its own naming-alias rule (the instruction ending
+  // in "...so never skip it" in the system prompt above) is talking about.
+  // Pulling it into its own labeled block is the deterministic, facts-only
+  // half of the fix (no code-side name parsing/matching — this file cannot
+  // safely import `parseCharactersDraft` from `verticalDramaSeries.ts`
+  // without a router->service->router import cycle, and guessing which
+  // draft line a refined name came from is exactly the fuzzy-matching this
+  // plan forbids). The actual judgment of "which original line does this
+  // refined character correspond to" stays entirely with the model
+  // (skill-first — see `feedback_skill_first_authoring`); this block only
+  // supplies the fact. Renders nothing when the wizard's textarea was left
+  // empty (every legacy series, and every series created before this field
+  // existed) — byte-identical prompt in that case.
+  const rawCharactersDraft =
+    typeof (params.bible as { charactersDraft?: unknown } | null)
+      ?.charactersDraft === "string"
+      ? (
+          (params.bible as { charactersDraft?: string }).charactersDraft ?? ""
+        ).trim()
+      : "";
+  const charactersDraftBlock = rawCharactersDraft
+    ? [
+        "WIZARD CHARACTER DRAFT (verbatim, exactly as the creator originally typed it, one character per line):",
+        rawCharactersDraft,
+        'When a "refinedCharacters" entry you write has a "name" that differs from how that SAME character appears above (a fuller name, a corrected spelling, a title added/removed, a translation/romanization), you MUST include that original line\'s name string, verbatim, in that character\'s "aliases" array.',
+      ].join("\n")
+    : null;
+
   const userPrompt = [
     userPremiseBlock,
     audienceAgeRatingBlock,
     `Series title: ${params.title}`,
-    params.genre ? `Genre: ${params.genre}` : null,
+    buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
     `Target Sub-episode count (story structure, not Public Episode count): ${params.targetEpisodeCount}`,
     `Existing bible (from the creator's wizard input): ${JSON.stringify(params.bible)}`,
+    charactersDraftBlock,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -2228,7 +2380,23 @@ export type VdDeepDraftCompletenessViolation = {
 };
 
 export interface VdDeepDraftCompletenessGateContext {
-  /** Character names from the series' character bible (`readBibleRefinedCharacters`). Omit to skip the character-name-membership check. */
+  /**
+   * Accepted character-name strings for BOTH the `characters[].name` check
+   * below AND (Phase 2.5) the `dialogue_lines[].speaker` check — a flat set
+   * of canonical bible names (`readBibleRefinedCharacterProfiles`). Omit to
+   * skip both membership checks entirely.
+   *
+   * `planning/vd-character-identity-repair/plan.md` Phase 2.1/2.5 (added
+   * 2026-07-17) — the caller (see `GenerateStoryBibleDeepParams.
+   * characterBibleNames`'s own doc comment) now flattens each character's
+   * declared `aliases` into this SAME set alongside its canonical `name`, so
+   * a legitimate short form (e.g. "คิริน" for "คิริน วัฒนเมธา") is accepted
+   * exactly like the canonical spelling — this type's own shape (a flat
+   * `ReadonlySet<string>`) is UNCHANGED; only what the caller populates it
+   * with grew richer. A caller that predates Phase 2.1 (no declared aliases
+   * anywhere in the bible) populates this set with canonical names only,
+   * byte-identical to before.
+   */
   characterBibleNames?: ReadonlySet<string>;
   /** Existing (DB) + already-accepted-this-run `new_locations` keys. Omit to skip the `location_key`-membership check. */
   knownLocationKeys?: ReadonlySet<string>;
@@ -2239,8 +2407,22 @@ export interface VdDeepDraftCompletenessGateContext {
  * schema already guarantees `.min(1)` for a fresh deep-draft generation, so
  * an empty array here only happens for a caller reading tolerant/legacy
  * data) has every character's `name` in the character bible (when
- * `context.characterBibleNames` is given), and every shot's `location_key`
- * (when present) resolves against `context.knownLocationKeys` (when given).
+ * `context.characterBibleNames` is given), every `dialogue_lines[].speaker`
+ * ALSO resolves against that same set (Phase 2.5 — see below), and every
+ * shot's `location_key` (when present) resolves against
+ * `context.knownLocationKeys` (when given).
+ *
+ * `planning/vd-character-identity-repair/plan.md` Phase 2.5 (added
+ * 2026-07-17, root-cause-chain item 1b/3) — before this change, ONLY
+ * `characters[].name` was checked; `dialogue_lines[].speaker` was completely
+ * ungoverned, even though `selectStoryIntroducedCharacterNames`
+ * (`verticalDramaCharacterRosterAutoRegister.ts`) treats a speaker with >= 2
+ * lines as grounds to mint a NEW roster row — the widest character-creation
+ * path in the pipeline had no corresponding gate. Every `dialogue_lines`
+ * entry's `speaker` is now checked the SAME way (no line-count threshold —
+ * a single invented speaker is still an invented name), using the SAME
+ * `context.characterBibleNames` set, so a declared alias (Phase 2.1) is
+ * accepted for a speaker exactly like it is for a `characters[].name`.
  */
 export function computeShotCompletenessViolations(
   episodeNumber: number,
@@ -2279,6 +2461,27 @@ export function computeShotCompletenessViolations(
             message: `Episode ${episodeNumber} shot ${shot.shot_number}: character "${character.name}" is not in the character bible — use an existing character's exact name, never invent a new one.`,
           });
         }
+      }
+    }
+
+    // Phase 2.5 — see this function's own doc comment above for why the
+    // dialogue speaker gets the SAME membership check as `characters[].name`,
+    // with no line-count threshold. `?? []` mirrors `shot.characters ?? []`
+    // just above — defense-in-depth for tolerant/legacy-read data, even
+    // though a fresh deep-draft generation's schema always defaults this to
+    // an array.
+    for (const dialogueLine of shot.dialogue_lines ?? []) {
+      const speaker = dialogueLine.speaker?.trim();
+      if (
+        speaker &&
+        context.characterBibleNames &&
+        !context.characterBibleNames.has(speaker)
+      ) {
+        violations.push({
+          episodeNumber,
+          shotNumber: shot.shot_number,
+          message: `Episode ${episodeNumber} shot ${shot.shot_number}: dialogue speaker "${speaker}" is not in the character bible — use an existing character's exact name, never invent a new one.`,
+        });
       }
     }
 
@@ -2876,6 +3079,116 @@ function buildKnownLocationsPromptBlock(
   )}`;
 }
 
+/**
+ * THE PRIMARY FIX for `planning/vd-character-identity-repair/plan.md`'s
+ * root-cause-chain item 1 (added 2026-07-17) — renders the "CHARACTER BIBLE"
+ * FACT block for `buildDeepDraftPrompts`'s userPrompt. Before this function
+ * existed, `skill.md:56` commanded the model to spell every name "EXACTLY as
+ * spelled in the character bible" while the assembled prompt never actually
+ * showed the model that bible — locations got a rendered "EXISTING LOCATIONS"
+ * FACT block (`buildKnownLocationsPromptBlock` above) so the model reuses an
+ * established key; characters got nothing, so the model could only infer
+ * names from whatever short form an earlier stage happened to write, then was
+ * penalized by the completeness gate for improvising a spelling it was never
+ * given. Mirrors `buildKnownLocationsPromptBlock` exactly (same optional-
+ * param / honest-empty-block contract): `undefined` (every caller that
+ * predates this field) renders NO block at all, byte-identical to before
+ * this fix; an EMPTY (but DEFINED) array still renders a block, so a caller
+ * that DOES thread character context always gets an honest instruction
+ * either way — see `buildDeepDraftPrompts`'s own `knownCharacters` doc
+ * comment.
+ */
+function buildKnownCharactersPromptBlock(
+  characters: VdBibleRefinedCharacter[] | undefined
+): string | null {
+  if (!characters) return null;
+  if (characters.length === 0) {
+    return 'CHARACTER BIBLE: no characters declared yet for this series — there is no established roster to check names against yet, so keep every name you introduce consistent across shots.';
+  }
+  return `CHARACTER BIBLE (every "characters[].name" and "dialogue_lines[].speaker" you write MUST be EXACTLY one of these declared strings — the canonical "name" or one of its "aliases" — never invent a new spelling or a new character): ${JSON.stringify(
+    characters.map(c => ({
+      name: c.name,
+      aliases: c.aliases ?? [],
+      role: c.role ?? null,
+      narrativeRole: c.narrativeRole ?? null,
+      roleTier: c.roleTier ?? null,
+      occupation: c.occupation ?? null,
+    }))
+  )}`;
+}
+
+/**
+ * Sequel authoring — Stage 2.4 (`planning/vd-series-memory-and-lineage/
+ * plan.md`, added 2026-07-17). The bounded fact set a sequel's deep-draft
+ * (and, per Stage 2.4b, the premium judge/rejudge/revise prompts) needs to
+ * stay continuous with the season it follows — deliberately NOT the parent's
+ * full story (20-100 sub-episodes would be far too much input, per the
+ * plan's Context section): only the parent's already-bounded
+ * `series.memory.compactSummary` + `currentState` projection
+ * (`VdSeriesMemory`, `@shared/verticalDramaSeries/seriesMemoryState`), plus
+ * the Stage 2.2 carry-over planner's user-approved character disposition.
+ * Every field here is a FACT this run was GIVEN, never something the model
+ * is asked to EMIT — unlike `episode_memory`, this type needs no entry in
+ * `buildDeepDraftPrompts`'s output-contract JSON string.
+ */
+export type VdSeasonLineageContext = {
+  seasonNumber: number;
+  parentTitle: string;
+  /** The parent series' `series.memory.compactSummary` — bounded, never the parent's full episode-by-episode story. */
+  priorSeasonSummary: string;
+  /** The parent's `currentState.relationships` as of its last folded episode — carried forward so the model knowingly MOVES them, never silently resets them. */
+  carriedRelationships: VdRelationshipState[];
+  /** The parent's still-open `currentState.openThreads` (any `threadClass`, including `"domestic"`) this season may pick back up — or must explicitly close/acknowledge, never silently drop. */
+  carriedThreads: VdOpenThread[];
+  /** Stage 2.2 carry-over planner output — characters returning this season (user-approved), by name for prompt rendering. */
+  carriedCharacters: Array<{
+    characterKey: string;
+    name: string;
+    postFinaleStatus?: string;
+  }>;
+  /** Stage 2.2 — characters explicitly written out; the model must not resurrect them without a stated in-story reason. */
+  writtenOutCharacters: Array<{ characterKey: string; name: string }>;
+  /** Stage 2.2 — the carry-over planner's antagonist decision for this season (e.g. "released on parole, must re-earn threat" or "new antagonist introduced"). */
+  antagonistStrategy: string;
+  /** The parent's `currentState.characterKnowledge` — who already knows what; a sequel must not write a character as newly-ignorant of something they already learned in the parent season. */
+  characterKnowledge: Record<string, string[]>;
+};
+
+/**
+ * Renders the "SEASON LINEAGE" FACT block for `buildDeepDraftPrompts`'s (and,
+ * per Stage 2.4b, the premium judge/rejudge/revise prompts') userPrompt.
+ * Mirrors `buildKnownLocationsPromptBlock`'s optional-param contract EXACTLY
+ * — this `null`-when-absent return is the WHOLE byte-identity guarantee for
+ * this feature: `undefined` (every caller that predates this field, i.e.
+ * every non-sequel run) renders NO block at all and is dropped by the
+ * existing `.filter(Boolean)` chain, byte-identical to before this feature
+ * existed. Unlike `knownLocations` there is no "empty but defined" honest-
+ * block case — a sequel run only ever supplies this once it has a real
+ * parent season to describe.
+ *
+ * The literal string "SEASON LINEAGE" is load-bearing: the
+ * `vertical-drama-full-story-architect` skill's guard is the prose
+ * "When the user message contains a SEASON LINEAGE block, additionally...",
+ * and Stage 2.4b's judge instruction (`buildPriorSeasonContinuityJudgeInstruction`)
+ * refers back to this same block by name.
+ */
+function buildSeasonLineagePromptBlock(
+  lineage: VdSeasonLineageContext | undefined
+): string | null {
+  if (!lineage) return null;
+  return `SEASON LINEAGE (this is Season ${lineage.seasonNumber}, continuing the SAME story as "${lineage.parentTitle}" — every episode you draft MUST stay recognizably part of that same story world, genre, and tone; open a genuinely NEW conflict rather than re-running the prior season's already-resolved plot): ${JSON.stringify(
+    {
+      priorSeasonSummary: lineage.priorSeasonSummary,
+      carriedRelationships: lineage.carriedRelationships,
+      carriedThreads: lineage.carriedThreads,
+      carriedCharacters: lineage.carriedCharacters,
+      writtenOutCharacters: lineage.writtenOutCharacters,
+      antagonistStrategy: lineage.antagonistStrategy,
+      characterKnowledge: lineage.characterKnowledge,
+    }
+  )}`;
+}
+
 function buildDeepDraftPrompts(params: {
   title: string;
   locale: VerticalDramaSeriesLocale;
@@ -2945,6 +3258,31 @@ function buildDeepDraftPrompts(params: {
     name: string;
     description?: string;
   }>;
+  /**
+   * `planning/vd-character-identity-repair/plan.md` Phase 2.0 (added
+   * 2026-07-17) — this series' character-bible roster
+   * (`readBibleRefinedCharacterProfiles`), rendered as a "CHARACTER BIBLE"
+   * FACT block (`buildKnownCharactersPromptBlock`) so the model can actually
+   * obey `skill.md`'s "spell names EXACTLY as in the character bible" rule
+   * instead of improvising — see that function's own doc comment for the
+   * bug this fixes. Optional — `undefined` (every caller that predates this
+   * field) renders NO such block at all, byte-identical to before this fix;
+   * an EMPTY array still renders the block (stating there is no established
+   * roster yet), so a caller that DOES thread character context always gets
+   * an honest instruction either way — mirrors `knownLocations`'s own
+   * contract exactly.
+   */
+  knownCharacters?: VdBibleRefinedCharacter[];
+  /**
+   * Sequel authoring — Stage 2.4 (`planning/vd-series-memory-and-lineage/
+   * plan.md`, added 2026-07-17) — see `VdSeasonLineageContext`'s own doc
+   * comment. Optional — `undefined` (every caller that predates this field,
+   * i.e. every non-sequel run) renders NO "SEASON LINEAGE" block at all,
+   * byte-identical to before this feature existed (see
+   * `buildSeasonLineagePromptBlock`'s own doc comment for the full
+   * guarantee).
+   */
+  seasonLineage?: VdSeasonLineageContext;
 }): { systemPrompt: string; userPrompt: string } {
   const langInstruction =
     params.locale === "th"
@@ -3007,10 +3345,17 @@ function buildDeepDraftPrompts(params: {
     buildTieInDraftSystemBlock(params.tieInDraftContext),
     buildSceneContractPromptBlock(params.sceneContractsEnabled),
     "Respond with ONLY a single JSON object (no markdown, no commentary) matching exactly this shape:",
-    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string}], "open_threads": string[], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
+    `{"episodeBreakdown": [{"episodeNumber": number, "workingTitle": string, "logline": string, "keyBeats": string[], "shotDrafts": [{"shot_number": number, "summary": string, "characters": [{"name": string, "emotion": string, "emotion_after": string}], "location_key": string, "dialogue_lines": [{"speaker": string, "line": string, "delivery": string}], "silence_intent": "dramatic_pause"|"action_visual"|"montage"|"establishing"${tieInDraftShotShapeSuffix(params.tieInDraftContext)}${sceneContractShotShapeSuffix(params.sceneContractsEnabled)}}], "cliffhanger_line": string, "antagonist_tactics": string[], "character_decisions": [{"character": string, "decision": string}], "protagonist_stake": string, "world_rules": [{"rule": string, "limit_or_cost": string}], "price_paid": string, "episode_memory": {"recap": string, "canonical_facts": string[], "threads_opened": [{"thread_id": string, "description": string, "thread_class": "plot"|"domestic"|"career"|"financial"|"health"|"relationship"}], "threads_resolved": string[], "relationship_changes": [{"pair": [string, string], "status": string, "disclosure": "secret"|"known_to_some"|"public"|"undeclared", "known_by": string[]}], "knowledge_changes": [{"character_key": string, "learned": string}]}}], "open_threads": string[], "new_locations": [{"location_key": string, "name": string, "description": string, "environment": string, "time_of_day": string, "mood": string}]}`,
     `"episodeBreakdown" must contain exactly ${params.chunkEpisodes.length} entries — one per Sub-episode listed below, using the SAME episodeNumber/workingTitle/logline/keyBeats given (do not rename or renumber) — each with EXACTLY ${VD_DEEP_DRAFT_SHOTS_PER_EPISODE} "shotDrafts", and EVERY shot's "characters" (>= 1) and "location_key" filled in per this system prompt's shot-completeness/new-location rules.`,
     '"open_threads" must be the UPDATED list of unresolved plot threads/hooks after these episodes: carry forward every thread you were given that is still open, add any new thread you introduce, and drop any thread you fully resolve.',
     '"new_locations" must contain EVERY location this response uses that is not already in the "EXISTING LOCATIONS" list given in the user message — omit the key entirely (or return an empty array) when no new location is needed this chunk.',
+    // Without this line the model never emits `episode_memory` at all: the
+    // system prompt (skill.md) TEACHES the block, and the parser accepts it,
+    // but a model follows the explicit output contract above over prose — the
+    // Part 1 gate caught exactly this (gpt-5.4, a strong model, returned every
+    // memory array empty and the deterministic fallback took over). Do NOT
+    // remove: the whole series-memory feature is dead without it.
+    'Every "episodeBreakdown" entry MUST include "episode_memory" — the continuity record for THAT Sub-episode, per this system prompt\'s Episode memory rules. "relationship_changes" is the state AFTER this Sub-episode (never a delta like "trust -> rivalry"), each with a "disclosure" that reflects what the story has actually shown: "public" only once it is openly acknowledged in-world, "secret" when it is deliberately hidden, "undeclared" when neither party has said it aloud yet. Record mundane unfinished business (an unfinished renovation, an unpaid debt) as "threads_opened" with "thread_class": "domestic" — not only plot hooks. Do NOT include "openedEpisode"/"sinceEpisode"; those are assigned automatically.',
   ]
     .filter(Boolean)
     .join("\n");
@@ -3050,18 +3395,30 @@ function buildDeepDraftPrompts(params: {
     params.openThreads
   );
 
+  const knownCharactersBlock = buildKnownCharactersPromptBlock(
+    params.knownCharacters
+  );
+
   const knownLocationsBlock = buildKnownLocationsPromptBlock(
     params.knownLocations
+  );
+
+  // Sequel authoring — Stage 2.4 — see `buildSeasonLineagePromptBlock`'s own
+  // doc comment for the byte-identity guarantee (`null` when absent).
+  const seasonLineageBlock = buildSeasonLineagePromptBlock(
+    params.seasonLineage
   );
 
   const userPrompt = [
     userPremiseBlockForDeepDraft,
     audienceAgeRatingBlockForDeepDraft,
     `Series title: ${params.title}`,
-    params.genre ? `Genre: ${params.genre}` : null,
+    buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
     recapText,
+    knownCharactersBlock,
     knownLocationsBlock,
+    seasonLineageBlock,
     `Already-planned episodes to draft shots for: ${JSON.stringify(episodesPayload)}`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -3210,13 +3567,57 @@ export interface GenerateStoryBibleDeepParams {
   }>;
   /**
    * Production-grade full-story generation, added 2026-07-13 — this series'
-   * character-bible names (`readBibleRefinedCharacters`), used ONLY by the
-   * deterministic completeness gate's character-name-membership check.
-   * Optional — `undefined` (every caller that predates this field) disables
-   * that one check (a shot's `characters[].name` is still required to be
-   * present/non-empty, by the schema).
+   * character-bible names, used ONLY by the deterministic completeness
+   * gate's character-name/dialogue-speaker-membership check
+   * (`computeShotCompletenessViolations`). Optional — `undefined` (every
+   * caller that predates this field) disables that check entirely (a shot's
+   * `characters[].name` is still required to be present/non-empty, by the
+   * schema).
+   *
+   * `planning/vd-character-identity-repair/plan.md` Phase 2.1/2.5 (added
+   * 2026-07-17) — the router now flattens each character's declared
+   * `aliases` (Phase 2.1) into this SAME flat list alongside its canonical
+   * `name`, so "คิริน" (an alias of "คิริน วัฒนเมธา") passes this membership
+   * check exactly like the canonical name would — this is deliberately the
+   * ONE list threaded to the gate, not a separate alias set, so every
+   * existing membership check (shot `characters[].name`, and now
+   * `dialogue_lines[].speaker` too — see `computeShotCompletenessViolations`'s
+   * own doc comment) becomes alias-tolerant for free, with no signature
+   * change anywhere else in this threading chain. A legacy bible with no
+   * declared aliases contributes nothing extra here — byte-identical to
+   * before Phase 2.1.
    */
   characterBibleNames?: string[];
+  /**
+   * `planning/vd-character-identity-repair/plan.md` Phase 2.0 (added
+   * 2026-07-17) — this series' character-bible roster
+   * (`readBibleRefinedCharacterProfiles`), threaded straight through to
+   * `buildDeepDraftPrompts`'s `knownCharacters` (STANDARD mode) / the premium
+   * fan-out candidates + missing-episode recovery retry (PREMIUM mode — see
+   * `runPremiumChunk`) so the model actually SEES the bible it is told to
+   * copy names from. Optional — `undefined` (every caller that predates this
+   * field) renders NO "CHARACTER BIBLE" prompt block at all, byte-identical
+   * to before this fix. Deliberately a SEPARATE field from
+   * `characterBibleNames` just above: that one stays a flat name(+alias)
+   * `string[]` for the completeness gate's cheap membership check; this one
+   * carries the full profile (role/narrativeRole/roleTier/occupation/
+   * aliases) the prompt block actually renders.
+   */
+  knownCharacters?: VdBibleRefinedCharacter[];
+  /**
+   * Sequel authoring — Stage 2.4 (`planning/vd-series-memory-and-lineage/
+   * plan.md`, added 2026-07-17) — see `VdSeasonLineageContext`'s own doc
+   * comment. Threaded straight through to `buildDeepDraftPrompts`'s
+   * `seasonLineage` (STANDARD mode) and `runPremiumChunk`'s `seasonLineage`
+   * (PREMIUM mode — fan-out candidates, judge/re-judge/revise calls, and the
+   * missing-episode recovery retry all see it; see Stage 2.4b for the
+   * premium judge's conditional `prior_season_continuity` dimension this
+   * also gates). Optional — `undefined` (every caller that predates this
+   * field, i.e. every non-sequel run) is BYTE-IDENTICAL to before this
+   * feature existed: no "SEASON LINEAGE" prompt block, no
+   * `prior_season_continuity` judging, no floor-check/feedback text for it.
+   */
+  seasonLineage?: VdSeasonLineageContext;
   /**
    * Resilient resume (added 2026-07-14, `planning/vertical-drama-deep-story-
    * resilient-resume/plan.md`) — episodes already drafted by an EARLIER
@@ -3703,6 +4104,8 @@ export async function generateStoryBibleDeep(
       sceneContractsEnabled: params.sceneContractsEnabled,
       audienceAgeRating: params.audienceAgeRating,
       knownLocations: knownLocationsForPrompt,
+      knownCharacters: params.knownCharacters,
+      seasonLineage: params.seasonLineage,
     });
 
     try {
@@ -4173,6 +4576,8 @@ type PremiumScoreLike = Partial<
   overall: number;
   /** Task #22 — see `premiumTieInNaturalnessShape`'s own doc comment; present ONLY for a placed episode's score. */
   tie_in_naturalness?: number;
+  /** Stage 2.4b — see `premiumPriorSeasonContinuityShape`'s own doc comment; present ONLY for a sequel-season episode's score. */
+  prior_season_continuity?: number;
 };
 
 /**
@@ -4248,6 +4653,16 @@ export function meetsPremiumDraftFloor(
   if (
     scorecard.tie_in_naturalness !== undefined &&
     scorecard.tie_in_naturalness < VD_PREMIUM_DRAFT_MIN_DIMENSION
+  ) {
+    return false;
+  }
+  // Stage 2.4b — additive: only checked when this episode was actually
+  // judged on `prior_season_continuity` (a sequel-season episode this run);
+  // absent (every existing caller, or a non-sequel run) never affects the
+  // floor.
+  if (
+    scorecard.prior_season_continuity !== undefined &&
+    scorecard.prior_season_continuity < VD_PREMIUM_DRAFT_MIN_DIMENSION
   ) {
     return false;
   }
@@ -4345,6 +4760,8 @@ const premiumEpisodeScoreCoreShape = {
   ...premiumScoreDimensionsShape,
   // Task #22 — see `premiumTieInNaturalnessShape`'s own doc comment.
   ...premiumTieInNaturalnessShape,
+  // Stage 2.4b — see `premiumPriorSeasonContinuityShape`'s own doc comment.
+  ...premiumPriorSeasonContinuityShape,
 };
 
 const premiumJudgeScoreSchema = z
@@ -4535,6 +4952,12 @@ function scoreToScorecard(
   if (score.tie_in_naturalness !== undefined) {
     scorecard.tie_in_naturalness = score.tie_in_naturalness;
   }
+  // Stage 2.4b — carried through ONLY when the judge actually scored it (a
+  // sequel-season episode), matching `worstCasePremiumScorecard`'s own "omit
+  // unless applicable" convention below.
+  if (score.prior_season_continuity !== undefined) {
+    scorecard.prior_season_continuity = score.prior_season_continuity;
+  }
   return scorecard as unknown as VdPremiumDraftScorecard;
 }
 
@@ -4552,10 +4975,17 @@ function scoreToScorecard(
  * placement this run, so a missing judgment for a PLACED episode still reads
  * as "needs revision" on that dimension too (mirrors this function's own
  * "worst case, never silently passes" rationale above).
+ *
+ * Stage 2.4b — `includePriorSeasonContinuity` (defaults `false`, same
+ * byte-identical-when-omitted contract as `includeTieIn`) additionally
+ * stamps `prior_season_continuity: 1` — pass `true` ONLY when this run is
+ * drafting a sequel season (`seasonLineage` present), so a missing judgment
+ * for a sequel episode still reads as "needs revision" on that dimension too.
  */
 function worstCasePremiumScorecard(
   judgedAtRound: number,
-  includeTieIn = false
+  includeTieIn = false,
+  includePriorSeasonContinuity = false
 ): VdPremiumDraftScorecard {
   const scorecard: Record<string, number> = { judgedAtRound, overall: 1 };
   for (const dimension of VD_PREMIUM_DRAFT_SCORE_DIMENSIONS) {
@@ -4563,6 +4993,9 @@ function worstCasePremiumScorecard(
   }
   if (includeTieIn) {
     scorecard.tie_in_naturalness = 1;
+  }
+  if (includePriorSeasonContinuity) {
+    scorecard.prior_season_continuity = 1;
   }
   return scorecard as unknown as VdPremiumDraftScorecard;
 }
@@ -4579,9 +5012,19 @@ function composePremiumScoreFeedback(scorecard: PremiumScoreLike): string {
   const tieInWeak =
     scorecard.tie_in_naturalness !== undefined &&
     scorecard.tie_in_naturalness < VD_PREMIUM_DRAFT_MIN_DIMENSION;
-  const allWeakDimensions = tieInWeak
-    ? [...weakDimensions, "tie_in_naturalness"]
-    : weakDimensions;
+  // Stage 2.4b — `prior_season_continuity` participates in the SAME "weak
+  // dimensions"/feedback text as the 8 core dimensions whenever it was
+  // actually judged (a sequel-season episode); absent otherwise, so this
+  // stays byte-identical for every non-sequel call — mirrors `tieInWeak`
+  // exactly.
+  const priorSeasonContinuityWeak =
+    scorecard.prior_season_continuity !== undefined &&
+    scorecard.prior_season_continuity < VD_PREMIUM_DRAFT_MIN_DIMENSION;
+  const allWeakDimensions = [
+    ...weakDimensions,
+    ...(tieInWeak ? ["tie_in_naturalness"] : []),
+    ...(priorSeasonContinuityWeak ? ["prior_season_continuity"] : []),
+  ];
   const allScoresText = [
     `overall: ${scorecard.overall}/5`,
     ...VD_PREMIUM_DRAFT_SCORE_DIMENSIONS.map(
@@ -4589,6 +5032,9 @@ function composePremiumScoreFeedback(scorecard: PremiumScoreLike): string {
     ),
     ...(scorecard.tie_in_naturalness !== undefined
       ? [`tie_in_naturalness: ${scorecard.tie_in_naturalness}/5`]
+      : []),
+    ...(scorecard.prior_season_continuity !== undefined
+      ? [`prior_season_continuity: ${scorecard.prior_season_continuity}/5`]
       : []),
   ].join(", ");
   const focus =
@@ -4598,7 +5044,10 @@ function composePremiumScoreFeedback(scorecard: PremiumScoreLike): string {
   const tieInNote = tieInWeak
     ? " Make the product tie-in moment feel more organic and natural — like real product placement, not an advertisement."
     : "";
-  return `Current judged scores — ${allScoresText}. ${focus}${tieInNote} Revise ONLY what's needed to fix these — do not discard what already works.`;
+  const priorSeasonContinuityNote = priorSeasonContinuityWeak
+    ? " Fix the break in continuity with the prior season named in the SEASON LINEAGE facts — restore what was established there without undoing any legitimate story progress."
+    : "";
+  return `Current judged scores — ${allScoresText}. ${focus}${tieInNote}${priorSeasonContinuityNote} Revise ONLY what's needed to fix these — do not discard what already works.`;
 }
 
 /** Composes human-readable feedback from the season sweep's issue(s) for ONE episode, combining multiple issues into one instruction. */
@@ -4827,6 +5276,32 @@ function buildTieInJudgeInstruction(
   return 'Additionally, for any episode digest marked "hasPlannedTieIn": true, ALSO score "tie_in_naturalness" 1-5 (1 = reads like a forced advertisement, 5 = reads like real, organic product placement) — omit this field entirely for an episode NOT marked "hasPlannedTieIn": true.';
 }
 
+/**
+ * Stage 2.4b (`planning/vd-series-memory-and-lineage/plan.md`, added
+ * 2026-07-17) — the `prior_season_continuity` judge-prompt addition, shared
+ * by `buildPremiumJudgePrompts`/`buildPremiumRejudgePrompts`. `null` (renders
+ * nothing) unless this call is judging a SEQUEL season (`seasonLineage`
+ * present), so a non-sequel run's judge prompt stays byte-identical to
+ * before this feature existed — mirrors `buildTieInJudgeInstruction`'s exact
+ * contract.
+ *
+ * UNLIKE `buildTieInJudgeInstruction` (whose whole rubric lives in this
+ * file), this function is deliberately a thin POINTER, not a rubric — per
+ * project policy ("TS computes facts, skill owns judgment"), the actual
+ * drift-vs-legitimate-change criteria live ONLY in
+ * `vertical-drama-season-dramaturgy-critic` skill.md's own
+ * "prior_season_continuity" section; this string only names the JSON
+ * key/range and tells the model which facts to judge against (the "SEASON
+ * LINEAGE" block `buildSeasonLineagePromptBlock` renders into the user
+ * message).
+ */
+function buildPriorSeasonContinuityJudgeInstruction(
+  hasSeasonLineage: boolean
+): string | null {
+  if (!hasSeasonLineage) return null;
+  return 'Additionally — because a "SEASON LINEAGE" fact block is given in the user message (this run is drafting a SEQUEL season) — ALSO score "prior_season_continuity" 1-5 for every episode in this call, per this skill\'s own "prior_season_continuity" section, judging strictly against the SEASON LINEAGE facts given (carried relationships/disclosure, carried open threads, canonical facts, character knowledge) — never against invented continuity.';
+}
+
 function buildPremiumJudgePrompts(params: {
   title: string;
   locale: VerticalDramaSeriesLocale;
@@ -4845,6 +5320,8 @@ function buildPremiumJudgePrompts(params: {
       hasPlannedTieIn?: boolean;
     }>;
   }>;
+  /** Stage 2.4b — see `buildPriorSeasonContinuityJudgeInstruction`'s own doc comment; threaded straight through from `GenerateStoryBibleDeepParams.seasonLineage`. */
+  seasonLineage?: VdSeasonLineageContext;
 }): { systemPrompt: string; userPrompt: string } {
   const hasAnyPlacedEpisode = params.candidates.some(c =>
     c.episodes.some(e => e.hasPlannedTieIn === true)
@@ -4853,11 +5330,15 @@ function buildPremiumJudgePrompts(params: {
   // dramaturgy-critic skill's Mode 2 content is the sole author of the
   // rubric/output-shape instructions below; this function supplies only
   // structured input facts (title/genre/tone/locale/recap/candidates) plus
-  // the one narrow, deliberately-code-appended tie-in addendum (see
-  // `buildTieInJudgeInstruction`'s own doc comment).
+  // the two narrow, deliberately-code-appended conditional addenda (see
+  // `buildTieInJudgeInstruction`/`buildPriorSeasonContinuityJudgeInstruction`'s
+  // own doc comments).
   const systemPrompt = [
     loadDramaturgyCriticSkillSystemPrompt(),
     buildTieInJudgeInstruction(hasAnyPlacedEpisode),
+    buildPriorSeasonContinuityJudgeInstruction(
+      params.seasonLineage !== undefined
+    ),
   ]
     .filter(Boolean)
     .join("\n");
@@ -4867,13 +5348,20 @@ function buildPremiumJudgePrompts(params: {
     params.openThreads
   );
 
+  // Stage 2.4b — see `buildSeasonLineagePromptBlock`'s own doc comment for
+  // the byte-identity guarantee (`null` when absent).
+  const seasonLineageBlock = buildSeasonLineagePromptBlock(
+    params.seasonLineage
+  );
+
   const userPrompt = [
     'Action: "draft_quality_score"',
     `Series title: ${params.title}`,
-    params.genre ? `Genre: ${params.genre}` : null,
+    buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
     `Locale: ${params.locale}`,
     recapText,
+    seasonLineageBlock,
     `Number of candidate drafts given below: ${params.candidates.length}`,
     `Candidates to judge: ${JSON.stringify(
       params.candidates.map(c => ({
@@ -4911,6 +5399,8 @@ function buildPremiumRejudgePrompts(params: {
     /** Task #22 — see `buildPremiumEpisodeDigest`'s own doc comment. */
     hasPlannedTieIn?: boolean;
   }>;
+  /** Stage 2.4b — see `buildPriorSeasonContinuityJudgeInstruction`'s own doc comment; threaded straight through from `GenerateStoryBibleDeepParams.seasonLineage`. */
+  seasonLineage?: VdSeasonLineageContext;
 }): { systemPrompt: string; userPrompt: string } {
   const hasAnyPlacedEpisode = params.episodes.some(
     e => e.hasPlannedTieIn === true
@@ -4921,6 +5411,9 @@ function buildPremiumRejudgePrompts(params: {
   const systemPrompt = [
     loadDramaturgyCriticSkillSystemPrompt(),
     buildTieInJudgeInstruction(hasAnyPlacedEpisode),
+    buildPriorSeasonContinuityJudgeInstruction(
+      params.seasonLineage !== undefined
+    ),
   ]
     .filter(Boolean)
     .join("\n");
@@ -4930,13 +5423,20 @@ function buildPremiumRejudgePrompts(params: {
     params.openThreads
   );
 
+  // Stage 2.4b — see `buildSeasonLineagePromptBlock`'s own doc comment for
+  // the byte-identity guarantee (`null` when absent).
+  const seasonLineageBlock = buildSeasonLineagePromptBlock(
+    params.seasonLineage
+  );
+
   const userPrompt = [
     'Action: "draft_quality_score"',
     `Series title: ${params.title}`,
-    params.genre ? `Genre: ${params.genre}` : null,
+    buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
     `Locale: ${params.locale}`,
     recapText,
+    seasonLineageBlock,
     `Episodes to score (no candidate grouping — treat as a single implicit candidate, candidateIndex 0): ${JSON.stringify(
       params.episodes.map(e =>
         buildPremiumEpisodeDigest({
@@ -5003,6 +5503,24 @@ function buildPremiumRevisePrompts(params: {
     name: string;
     description?: string;
   }>;
+  /**
+   * `planning/vd-character-identity-repair/plan.md` Phase 2.0 (added
+   * 2026-07-18, follow-up) — see `buildDeepDraftPrompts`'s own
+   * `knownCharacters` doc comment; same optional-param / honest-empty-block
+   * contract. This closes the gap the initial Phase 2.0 pass left open:
+   * `mode: "premium"` — the mode picker's DEFAULT (see
+   * `VerticalDramaDeepStoryDraftsPanel.tsx`) — revises via THIS function,
+   * not `buildDeepDraftPrompts`, and its `currentDraft.shots[].characters`
+   * payload below hands the model whatever names the fan-out candidate
+   * already wrote (possibly already-drifted, e.g. "คีริน"/"Kirin") with no
+   * canonical anchor to correct back to. Rendering the SAME "CHARACTER
+   * BIBLE" FACT block here gives every revise round (both the per-chunk
+   * targeted-revise loop and the season-sweep spot-revise) a name it can
+   * actually revise TOWARD, not just drift further from.
+   */
+  knownCharacters?: VdBibleRefinedCharacter[];
+  /** Stage 2.4b — see `buildDeepDraftPrompts`'s own `seasonLineage` doc comment; threaded through so a below-floor sequel episode's revise call still has the SEASON LINEAGE facts to actually fix a continuity break against. */
+  seasonLineage?: VdSeasonLineageContext;
 }): { systemPrompt: string; userPrompt: string } {
   const langInstruction =
     params.locale === "th"
@@ -5017,6 +5535,14 @@ function buildPremiumRevisePrompts(params: {
     VD_PREMIUM_SPEAKABILITY_RULES,
     VD_PREMIUM_NO_SILENCE_INTENT_WITH_DIALOGUE_RULE,
     'Each shot\'s "currentDraft" already carries its "characters" (each with "emotion") and "location_key" — carry them forward UNCHANGED unless the feedback specifically calls for a fix to a character/emotion/location, in which case update ONLY what the feedback names; every revised shot MUST still include both fields exactly like the JSON response shape requires.',
+    // `planning/vd-character-identity-repair/plan.md` Phase 2.0 follow-up
+    // (added 2026-07-18) — a "currentDraft" character/speaker name MAY
+    // already be drifted (the fan-out candidate this revises invented a
+    // spelling); when the feedback calls for a name fix, the corrected name
+    // MUST come from the "CHARACTER BIBLE" FACT block in the user message
+    // below (a canonical name or one of its declared aliases), never a new
+    // invented spelling.
+    'If the feedback calls for correcting a character\'s "name" (in "characters[]" or a "dialogue_lines[].speaker"), the corrected value MUST be EXACTLY one of the names/aliases declared in the "CHARACTER BIBLE" block below — never invent a new spelling or a new character.',
     'Each Sub-episode\'s "currentStructure" (when given) is its already-recorded antagonist_tactics/character_decisions/protagonist_stake/world_rules/price_paid — carry each forward UNCHANGED in your revised entry unless the feedback specifically calls for updating that one, in which case update ONLY that field.',
     buildTieInDraftSystemBlock(params.tieInDraftContext),
     params.tieInDraftContext
@@ -5035,8 +5561,18 @@ function buildPremiumRevisePrompts(params: {
     params.openThreads
   );
 
+  const knownCharactersBlock = buildKnownCharactersPromptBlock(
+    params.knownCharacters
+  );
+
   const knownLocationsBlock = buildKnownLocationsPromptBlock(
     params.knownLocations
+  );
+
+  // Stage 2.4b — see `buildSeasonLineagePromptBlock`'s own doc comment for
+  // the byte-identity guarantee (`null` when absent).
+  const seasonLineageBlock = buildSeasonLineagePromptBlock(
+    params.seasonLineage
   );
 
   const episodesPayload = params.episodes.map(e => ({
@@ -5075,10 +5611,12 @@ function buildPremiumRevisePrompts(params: {
 
   const userPrompt = [
     `Series title: ${params.title}`,
-    params.genre ? `Genre: ${params.genre}` : null,
+    buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
     recapText,
+    knownCharactersBlock,
     knownLocationsBlock,
+    seasonLineageBlock,
     `Episodes to revise (current draft + feedback to address): ${JSON.stringify(episodesPayload)}`,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
@@ -5113,7 +5651,7 @@ function buildPremiumSweepPrompts(params: {
 
   const userPrompt = [
     `Series title: ${params.title}`,
-    params.genre ? `Genre: ${params.genre}` : null,
+    buildGenrePromptLine(params.genre, params.title),
     params.tone ? `Tone: ${params.tone}` : null,
     `Episodes drafted this run: ${JSON.stringify(
       params.episodes.map(e => ({
@@ -5199,6 +5737,10 @@ async function callPremiumFanoutCandidate(
       name: string;
       description?: string;
     }>;
+    /** `planning/vd-character-identity-repair/plan.md` Phase 2.0 — see `buildDeepDraftPrompts`'s own `knownCharacters` doc comment; threaded straight through. */
+    knownCharacters?: VdBibleRefinedCharacter[];
+    /** Stage 2.4 — see `buildDeepDraftPrompts`'s own `seasonLineage` doc comment; threaded straight through. */
+    seasonLineage?: VdSeasonLineageContext;
   }
 ) {
   const base = buildDeepDraftPrompts(params);
@@ -5338,6 +5880,10 @@ async function runPremiumChunk(
     }>;
     /** Production-grade full-story generation — see `GenerateStoryBibleDeepParams.characterBibleNames`'s own doc comment; threaded to the deterministic completeness gate below. */
     characterBibleNames?: string[];
+    /** `planning/vd-character-identity-repair/plan.md` Phase 2.0 — see `GenerateStoryBibleDeepParams.knownCharacters`'s own doc comment; threaded to the fan-out candidates (via `callPremiumFanoutCandidate`) and the missing-episode recovery retry below. */
+    knownCharacters?: VdBibleRefinedCharacter[];
+    /** Stage 2.4/2.4b — see `GenerateStoryBibleDeepParams.seasonLineage`'s own doc comment; threaded to the fan-out candidates, the judge/re-judge/revise calls (Stage 2.4b's `prior_season_continuity` dimension), and the missing-episode recovery retry below. */
+    seasonLineage?: VdSeasonLineageContext;
   },
   callAccounting: PremiumCallAccounting
 ): Promise<PremiumChunkResult> {
@@ -5515,6 +6061,7 @@ async function runPremiumChunk(
           : undefined,
       })),
     })),
+    seasonLineage: params.seasonLineage,
   });
   {
     const credits = await deductPremiumCall(
@@ -5569,7 +6116,11 @@ async function runPremiumChunk(
       draftCompleteness: ep.draftCompleteness,
       draftScorecard: score
         ? scoreToScorecard(score, 0)
-        : worstCasePremiumScorecard(0, isEpisodeTieInPlaced(ep.episodeNumber)),
+        : worstCasePremiumScorecard(
+            0,
+            isEpisodeTieInPlaced(ep.episodeNumber),
+            params.seasonLineage !== undefined
+          ),
       localWarnings: ep.localWarnings,
       completenessViolations: ep.completenessViolations,
       ...extractDramaturgyStructureFields(ep),
@@ -5634,6 +6185,8 @@ async function runPremiumChunk(
         episodes: reviseEpisodesInput,
         tieInDraftContext: params.tieInDraftContext,
         knownLocations: knownLocationsForPrompt,
+        knownCharacters: params.knownCharacters,
+        seasonLineage: params.seasonLineage,
       });
     } catch (err) {
       // Phase A reliability fix (added 2026-07-09) — was a bare `catch {}`
@@ -5689,6 +6242,7 @@ async function runPremiumChunk(
             ? isEpisodeTieInPlaced(ep.episodeNumber)
             : undefined,
         })),
+        seasonLineage: params.seasonLineage,
       });
     } catch (err) {
       // Phase A reliability fix (added 2026-07-09) — see the revise catch
@@ -5721,7 +6275,8 @@ async function runPremiumChunk(
         ? scoreToScorecard(score, round)
         : worstCasePremiumScorecard(
             round,
-            isEpisodeTieInPlaced(revisedEp.episodeNumber)
+            isEpisodeTieInPlaced(revisedEp.episodeNumber),
+            params.seasonLineage !== undefined
           );
       if (newScorecard.overall < prior.draftScorecard.overall) {
         continue; // REGRESSION GUARD — keep the prior episode version.
@@ -5772,6 +6327,8 @@ async function runPremiumChunk(
         userPremise: params.userPremise,
         sceneContractsEnabled: params.sceneContractsEnabled,
         knownLocations: knownLocationsForPrompt,
+        knownCharacters: params.knownCharacters,
+        seasonLineage: params.seasonLineage,
       });
       const retryUserPrompt = `${base.userPrompt}\n\n${buildDeepDraftMissingEpisodesRetryInstruction(missingEpisodeNumbers)}`;
       const { data: retryData, response: retryResponse } =
@@ -5818,7 +6375,8 @@ async function runPremiumChunk(
           // never actually judged.
           draftScorecard: worstCasePremiumScorecard(
             0,
-            isEpisodeTieInPlaced(ep.episodeNumber)
+            isEpisodeTieInPlaced(ep.episodeNumber),
+            params.seasonLineage !== undefined
           ),
           localWarnings: ep.localWarnings,
           completenessViolations: ep.completenessViolations,
@@ -5905,6 +6463,10 @@ async function runPremiumSeasonSweep(
     }>;
     /** Production-grade full-story generation — see `GenerateStoryBibleDeepParams.characterBibleNames`'s own doc comment. */
     characterBibleNames?: string[];
+    /** `planning/vd-character-identity-repair/plan.md` Phase 2.0 (added 2026-07-18) — see `GenerateStoryBibleDeepParams.knownCharacters`'s own doc comment; threaded to the spot-revise call below so the sweep's revise round ALSO gets the "CHARACTER BIBLE" FACT block — closing the gap where premium mode's default revise/sweep path (the mode picker's DEFAULT — see `VerticalDramaDeepStoryDraftsPanel.tsx`) was the one path still handing the model already-drifted names with no canonical anchor. */
+    knownCharacters?: VdBibleRefinedCharacter[];
+    /** Stage 2.4b — see `GenerateStoryBibleDeepParams.seasonLineage`'s own doc comment; threaded to the spot-revise/re-judge calls below so a sequel run's season sweep ALSO stays continuity-aware (and re-scores `prior_season_continuity`) for any episode it touches. */
+    seasonLineage?: VdSeasonLineageContext;
   },
   callAccounting: PremiumCallAccounting
 ): Promise<{ issuesFound: number }> {
@@ -6010,6 +6572,8 @@ async function runPremiumSeasonSweep(
       episodes: reviseEpisodesInput,
       tieInDraftContext: params.tieInDraftContext,
       knownLocations: params.knownLocations,
+      knownCharacters: params.knownCharacters,
+      seasonLineage: params.seasonLineage,
     });
   } catch (err) {
     // Phase A reliability fix (added 2026-07-09) — was a bare `catch {}`
@@ -6068,6 +6632,7 @@ async function runPremiumSeasonSweep(
               ?.planned === true
           : undefined,
       })),
+      seasonLineage: params.seasonLineage,
     });
   } catch (err) {
     // Phase A reliability fix (added 2026-07-09) — see the spot-revise
@@ -6098,7 +6663,11 @@ async function runPremiumSeasonSweep(
     );
     const newScorecard = score
       ? scoreToScorecard(score, VD_PREMIUM_DRAFT_SWEEP_ROUND)
-      : worstCasePremiumScorecard(VD_PREMIUM_DRAFT_SWEEP_ROUND);
+      : worstCasePremiumScorecard(
+          VD_PREMIUM_DRAFT_SWEEP_ROUND,
+          undefined,
+          params.seasonLineage !== undefined
+        );
     if (newScorecard.overall < prior.draftScorecard.overall) {
       continue; // REGRESSION GUARD — keep the prior episode version.
     }
@@ -6350,6 +6919,8 @@ async function generateStoryBibleDeepPremium(
           sceneContractsEnabled: params.sceneContractsEnabled,
           knownLocations: knownLocationsForPrompt,
           characterBibleNames: params.characterBibleNames,
+          knownCharacters: params.knownCharacters,
+          seasonLineage: params.seasonLineage,
         },
         callAccounting
       );
@@ -6391,6 +6962,8 @@ async function generateStoryBibleDeepPremium(
                 sceneContractsEnabled: params.sceneContractsEnabled,
                 knownLocations: knownLocationsForPrompt,
                 characterBibleNames: params.characterBibleNames,
+                knownCharacters: params.knownCharacters,
+                seasonLineage: params.seasonLineage,
               },
               callAccounting
             );
@@ -6454,6 +7027,8 @@ async function generateStoryBibleDeepPremium(
         tieInDraftContext: params.tieInDraftContext,
         knownLocations: knownLocationsForPrompt,
         characterBibleNames: params.characterBibleNames,
+        knownCharacters: params.knownCharacters,
+        seasonLineage: params.seasonLineage,
       },
       callAccounting
     );
@@ -6947,48 +7522,6 @@ export function readItemPricePaid(
 ): string | undefined {
   const raw = (item as { price_paid?: unknown }).price_paid;
   return typeof raw === "string" && raw.trim().length > 0 ? raw : undefined;
-}
-
-const bibleRefinedCharacterSchema = z
-  .object({
-    name: z.string().min(1),
-    role: z.string().optional(),
-    description: z.string().optional(),
-    // Lenient (2026-07-14 fix): this is a documented "tolerant read of a
-    // stored bible" — a persisted `narrativeRole`/`roleTier` value that
-    // predates the enum values changing (or was written by a model that
-    // guessed wrong) must degrade to `undefined`, never fail the whole
-    // array via `bibleRefinedCharacterArraySchema`'s `safeParse` below.
-    narrativeRole: lenientNarrativeRoleSchema,
-    roleTier: lenientRoleTierSchema,
-    occupation: z.string().optional(),
-  })
-  .passthrough();
-const bibleRefinedCharacterArraySchema = z.array(bibleRefinedCharacterSchema);
-
-export type VdBibleRefinedCharacter = {
-  name: string;
-  role?: string;
-  description?: string;
-  narrativeRole?: NarrativeRole;
-  roleTier?: RoleTier;
-  occupation?: string;
-};
-
-/**
- * Read the complete canonical character profiles persisted in the story
- * bible. This is intentionally tolerant for legacy bibles: malformed or
- * missing optional role fields are preserved as absent so callers can mark
- * the durable roster for review rather than inventing a role.
- */
-export function readBibleRefinedCharacterProfiles(
-  bible: Record<string, unknown> | null | undefined,
-): VdBibleRefinedCharacter[] {
-  const raw = (bible as { refinedCharacters?: unknown } | null | undefined)
-    ?.refinedCharacters;
-  if (raw === undefined) return [];
-  const parsed = bibleRefinedCharacterArraySchema.safeParse(raw);
-  return parsed.success ? parsed.data : [];
 }
 
 /** One roster entry `analyzeSeasonDramaturgy`/`critiqueSeasonDrafts` evaluate for late-intro/zero-agency signals. */

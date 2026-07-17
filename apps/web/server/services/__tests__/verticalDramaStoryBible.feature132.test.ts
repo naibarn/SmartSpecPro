@@ -218,6 +218,81 @@ describe("generateStoryBible — user premise (F132A)", () => {
 });
 
 /* -------------------------------------------------------------------------- */
+/* Genre pollution guard (Stage 1.5,                                         */
+/* `planning/vd-series-memory-and-lineage/plan.md`) — `buildPrompts`'s       */
+/* `Genre:` line now routes through `buildGenrePromptLine`. A CLEAN genre    */
+/* (the only case a new series can be created with, per                     */
+/* `createSeriesInput`'s guard) must render byte-identically to before this  */
+/* change; only a genre that is a duplicate/logline copy of `title` may     */
+/* differ (by omitting the line entirely). Extracting the exact `Genre:`    */
+/* line and asserting `.toBe()` on it (never `.not.toContain`) is the       */
+/* proof this feature's brief calls for.                                    */
+/* -------------------------------------------------------------------------- */
+
+describe("generateStoryBible — genre pollution guard (Stage 1.5)", () => {
+  function genreLineOf(userPrompt: string): string | undefined {
+    return userPrompt.split("\n").find(line => line.startsWith("Genre:"));
+  }
+
+  it("renders the EXACT same `Genre: ...` line as the pre-fix inline expression for a clean genre (byte-identity)", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ genre: "romance", title: "Test Series" }));
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+
+    // The exact pre-fix inline expression this test guards against
+    // regressing (`params.genre ? \`Genre: ${params.genre}\` : null`) —
+    // a genuine two-build `.toBe()` comparison, not a substring check.
+    const preFixGenreLine = "romance" ? `Genre: romance` : null;
+    expect(genreLineOf(userPrompt)).toBe(preFixGenreLine);
+  });
+
+  it("produces a byte-identical full prompt across two calls with the same clean genre (determinism)", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ genre: "โรแมนติกดราม่าย้อนเวลา", title: "รักข้ามเวลา" }));
+    const firstUserPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(baseParams({ genre: "โรแมนติกดราม่าย้อนเวลา", title: "รักข้ามเวลา" }));
+    const secondUserPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+
+    expect(secondUserPrompt).toBe(firstUserPrompt);
+  });
+
+  it("omits the `Genre:` line entirely — never emits it — when genre is a byte-for-byte copy of title (real series-5 shape)", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(
+      baseParams({ title: "สวมรอยดาราสองชีวิต…", genre: "สวมรอยดาราสองชีวิต…" }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(genreLineOf(userPrompt)).toBe(undefined);
+  });
+
+  it("omits the `Genre:` line when genre is a colon-shaped alt-title (real series-17 shape)", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(
+      baseParams({
+        title: "รักข้ามเวลา",
+        genre: "คฤหาสน์ครึ่งเวลา: อ้อมใจในเงา",
+      }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(genreLineOf(userPrompt)).toBe(undefined);
+  });
+
+  it("still renders `Series title:` and the rest of the prompt normally when the Genre line is suppressed", async () => {
+    mockLlmResponse(validExpandedResponse());
+    await generateStoryBible(
+      baseParams({ title: "สวมรอยดาราสองชีวิต…", genre: "สวมรอยดาราสองชีวิต…" }),
+    );
+    const userPrompt = mockExecuteWithFallback.mock.calls[0][0].messages[1].content as string;
+    expect(userPrompt).toContain("Series title: สวมรอยดาราสองชีวิต…");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* Lenient narrativeRole/roleTier (2026-07-14 recurring failure fix — same   */
 /* root cause as preset synthesis: `buildPrompts` never listed the allowed   */
 /* enum values, so gpt-5.4-nano title-cased/invented labels like             */

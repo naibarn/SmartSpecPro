@@ -190,6 +190,7 @@ export interface TenantFeatureFlags {
   verticalDramaSeriesShareLinks: boolean; // F131AA — Collab-lite L1: owner-created, expiring, revocable read-only share links to a whitelisted story-content projection of the series, no account/login required to view (fail-closed)
   verticalDramaSeriesTextOverlaySuite: boolean; // F131AB — Text Overlay Suite: end-card teaser/opener recap/title bumper/episode indicator/character intro cards/mid-episode cards + series watermark, all rendered through the existing ASS subtitle channel + a dedicated top-most watermark overlay input (fail-closed)
   verticalDramaSeriesNativeAudioPrompts: boolean; // F131AC — native audio direction in shot video prompts: SFX cues tied to visible actions (primary) + ambient soundscape (secondary) for video models with supportsNativeAudio; hard rules: no speech/voices, no music — 3-layer audio architecture layer 1 (fail-closed)
+  verticalDramaSeriesLineage: boolean; // planning/vd-series-memory-and-lineage/plan.md Part 2 — season 2/sequel + special-edition create modes: parentSeriesId/createMode/seasonNumber/lineage columns, season carry-over planner, clone-on-create cast/location roster (fail-closed; gates the wizard UI + the create/proposeSeasonCarryOver lineage BRANCH only — never the underlying schema read path)
   verticalDramaUserPremise: boolean; // F132A — spec 132 §4 user premise field + premise-primary synthesis (fail-closed)
   verticalDramaQualityLedgers: boolean; // F132B — spec 132 §5 ledgers + story state + deterministic checks (fail-closed)
   verticalDramaSceneContracts: boolean; // F132C — spec 132 §6 scene contracts in drafts/pipeline validation (fail-closed)
@@ -405,6 +406,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "verticalDramaSeriesShareLinks",
   "verticalDramaSeriesTextOverlaySuite",
   "verticalDramaSeriesNativeAudioPrompts",
+  "verticalDramaSeriesLineage",
   "verticalDramaUserPremise",
   "verticalDramaQualityLedgers",
   "verticalDramaSceneContracts",
@@ -614,6 +616,7 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   verticalDramaSeriesShareLinks: false,
   verticalDramaSeriesTextOverlaySuite: false,
   verticalDramaSeriesNativeAudioPrompts: true,
+  verticalDramaSeriesLineage: false,
   verticalDramaUserPremise: false,
   verticalDramaQualityLedgers: false,
   verticalDramaSceneContracts: false,
@@ -685,6 +688,7 @@ export const VERTICAL_DRAMA_SERIES_FEATURE_FLAG_KEYS = [
   "verticalDramaSeriesShareLinks",
   "verticalDramaSeriesTextOverlaySuite",
   "verticalDramaSeriesNativeAudioPrompts",
+  "verticalDramaSeriesLineage",
 ] as const satisfies readonly TenantFeatureFlagKey[];
 
 export type VerticalDramaSeriesFeatureFlagKey =

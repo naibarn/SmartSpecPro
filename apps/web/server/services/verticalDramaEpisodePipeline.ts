@@ -24,6 +24,7 @@ import {
   verticalDramaApprovalCheckpoints,
   verticalDramaSeries,
   verticalDramaCharacters,
+  verticalDramaCharacterAliases,
   verticalDramaLocations,
   mediaAssets,
   type VerticalDramaEpisodeRow,
@@ -69,10 +70,15 @@ import {
 } from "./verticalDramaSeriesMemory";
 import {
   generateEpisodeScript,
+  resolveScriptEpisodeMemory,
   InsufficientCreditsError as ScriptInsufficientCreditsError,
   VdSchemaValidationError as ScriptVdSchemaValidationError,
   type ScriptBuilderOutput,
 } from "./verticalDramaScriptGeneration";
+// Series memory — Producer B persist (`planning/vd-series-memory-and-lineage/
+// plan.md` Stage 1.2). Reuses the SAME `upsertEpisodeMemory` write path
+// Producer A (deep-draft) uses — no parallel implementation.
+import { upsertEpisodeMemory } from "./verticalDramaSeriesMemoryProjection";
 import {
   generateStoryboardShotgrid,
   InsufficientCreditsError as StoryboardInsufficientCreditsError,
@@ -2237,6 +2243,45 @@ export class VerticalDramaEpisodePipeline {
       (c: VdCharacterRosterRow) => c.parentCharacterId != null
     );
 
+    // Alias-aware speaker resolution (`planning/vd-character-identity-repair/
+    // plan.md` — closes the plan's last-remaining gap). This series' durable
+    // `vertical_drama_character_aliases` rows, grouped by the OWNING base
+    // character's numeric `id` (the alias table's `characterId` column,
+    // NOT `characterKey` — see that table's own doc comment in
+    // `drizzle/schema.ts`), then threaded onto each base character's
+    // `characters[].aliases` entry below so
+    // `generateStoryboardShotgrid`'s dialogue-speaker-coverage reconcile
+    // (`speakerLookup` in `verticalDramaStoryboardGeneration.ts`) can map an
+    // aliased spelling a story writes (e.g. "Kirin"/"คีริน" after series 18's
+    // merge absorbed them as aliases of character 70) back to the SAME
+    // characterId its canonical name resolves to, instead of silently
+    // dropping that reference-image attachment as an unknown speaker. Query
+    // is series-scoped only (no `characterId IN (...)` filter needed — every
+    // alias row for this series already points at a row this same query's
+    // sibling `allCharacterRows` above also loaded). A series with zero
+    // alias rows (every series before this feature, and every series with
+    // no merge history) produces an empty map, so `aliases` is omitted for
+    // every character below and the storyboard prompt/reconcile stays
+    // byte-identical to before this field existed.
+    const aliasRows = await db
+      .select({
+        characterId: verticalDramaCharacterAliases.characterId,
+        alias: verticalDramaCharacterAliases.alias,
+      })
+      .from(verticalDramaCharacterAliases)
+      .where(
+        and(
+          eq(verticalDramaCharacterAliases.tenantId, owner.tenantId),
+          eq(verticalDramaCharacterAliases.seriesId, owner.seriesId)
+        )
+      );
+    const aliasesByCharacterId = new Map<number, string[]>();
+    for (const a of aliasRows) {
+      const list = aliasesByCharacterId.get(a.characterId) ?? [];
+      list.push(a.alias);
+      aliasesByCharacterId.set(a.characterId, list);
+    }
+
     // Identity-lock (upstream parity, see `referenceImageUrl` doc comment on
     // `GenerateStoryboardShotgridParams`) — reuses the same
     // `getPrimaryPortraitUrl` lookup already wired into character
@@ -2467,6 +2512,7 @@ export class VerticalDramaEpisodePipeline {
           role: c.role,
           referenceImageUrl: referenceImageUrls[i],
           variants: variantsByParentId.get(c.id),
+          aliases: aliasesByCharacterId.get(c.id),
         })
       ),
       twinPairs: twinPairs.length > 0 ? twinPairs : undefined,
@@ -3303,6 +3349,33 @@ export class VerticalDramaEpisodePipeline {
               eq(verticalDramaEpisodes.seriesId, owner.seriesId)
             )
           );
+
+        // Series memory — Producer B (`planning/vd-series-memory-and-lineage/
+        // plan.md` Stage 1.2), wrapped in its OWN try/catch — same
+        // "never fail the primary mutation for a secondary/optional step"
+        // convention as the `reconcileEpisodeLocations` best-effort block
+        // below (storyboard_shotgrid override): the script itself already
+        // generated and persisted successfully above, so a memory-write
+        // failure (row lock timeout, series deleted mid-request, etc.) must
+        // never surface as a script-generation failure.
+        try {
+          const episodeMemory = resolveScriptEpisodeMemory(
+            generated.script,
+            episode.episodeNumber
+          );
+          await upsertEpisodeMemory(
+            owner.seriesId,
+            owner.tenantId,
+            owner.userId,
+            episodeMemory
+          );
+        } catch (memoryError) {
+          debugError(
+            "vd_series_memory_producer_b",
+            `Series memory upsert failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a real plan_episode_script persist — best-effort, does not fail the script stage`,
+            memoryError
+          );
+        }
       } catch (error) {
         const genError = mapScriptGenerationError(error);
         const runId = await this.writeRun(owner, stage, mode, {
@@ -4321,6 +4394,29 @@ export class VerticalDramaEpisodePipeline {
             .update(verticalDramaEpisodes)
             .set({ script: generated.script, updatedAt: new Date() })
             .where(episodeWhereClause);
+
+          // Series memory — Producer B, repair-mode call site. Same
+          // best-effort convention as `runStage`'s fresh-generation override
+          // above — a repaired script's memory record should also supersede
+          // whatever was recorded before for this episode number.
+          try {
+            const episodeMemory = resolveScriptEpisodeMemory(
+              generated.script,
+              episode.episodeNumber
+            );
+            await upsertEpisodeMemory(
+              owner.seriesId,
+              owner.tenantId,
+              owner.userId,
+              episodeMemory
+            );
+          } catch (memoryError) {
+            debugError(
+              "vd_series_memory_producer_b",
+              `Series memory upsert failed for episode #${owner.episodeId} (series #${owner.seriesId}) after a repaired plan_episode_script persist — best-effort, does not fail the repair`,
+              memoryError
+            );
+          }
         } else if (stage === "storyboard_shotgrid") {
           const generated = await this.generateRealStoryboard(
             owner,

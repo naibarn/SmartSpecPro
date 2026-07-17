@@ -14,6 +14,10 @@ import type {
 } from "@shared/verticalDramaSeries/contentBudget";
 import type { VerticalDramaBlendFacet } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import type { VerticalDramaLineSpeakabilityViolationKind } from "@shared/verticalDramaSeries/dialogueQuality";
+import type {
+  VerticalDramaCarryOverAvailability,
+  VerticalDramaSeriesCreateMode,
+} from "@shared/verticalDramaSeries/lineage";
 
 export type VerticalDramaLang = "th" | "en";
 
