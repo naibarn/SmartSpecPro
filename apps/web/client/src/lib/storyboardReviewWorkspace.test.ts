@@ -73,6 +73,40 @@ describe("Storyboard Review video segment state", () => {
     });
   });
 
+  // Feature 135 — Hermes Grok media worker (section 09 carry-forward from
+  // section-08 review): the normalizer used to narrow "hermes_worker" down
+  // to "gateway_api" and "provider_account" down to "smartspec_credits" —
+  // silently corrupting a genuine hermes transport task's metadata.
+  it("preserves hermes_worker transport and provider_account credit policy while normalizing drafts", () => {
+    expect(normalizeStoryboardTransportMetadata({
+      transport: "hermes_worker",
+      originSurface: "storyboard_review",
+      assetType: "video",
+      connectionId: "hermes_conn_1",
+      providerKey: "hermes-grok",
+      providerModelId: "grok-imagine-video",
+      creditPolicy: "provider_account",
+    })).toMatchObject({
+      transport: "hermes_worker",
+      connectionId: "hermes_conn_1",
+      providerKey: "hermes-grok",
+      providerModelId: "grok-imagine-video",
+      creditPolicy: "provider_account",
+    });
+  });
+
+  it("still falls back to gateway_api/smartspec_credits for an unrecognized transport/creditPolicy value (regression)", () => {
+    expect(normalizeStoryboardTransportMetadata({
+      transport: "something_unknown",
+      originSurface: "storyboard_review",
+      assetType: "video",
+      creditPolicy: "something_unknown",
+    })).toMatchObject({
+      transport: "gateway_api",
+      creditPolicy: "smartspec_credits",
+    });
+  });
+
   it("applies Storyboard Review video options to task generation context", () => {
     const now = 123_456;
     const draft = normalizeStoryboardReviewDraft({

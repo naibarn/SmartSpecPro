@@ -91,6 +91,101 @@ vi.mock("../../services/verticalDramaAdBanner", () => ({
   VdAdBannerForbiddenClaimError: class extends Error {},
 }));
 
+// Feature 135 — Hermes Grok media worker (section 09, remediation row 10):
+// `generateAdBannerImage` now dynamically imports
+// `resolveVdCharacterMediaTransportDecision` from `verticalDramaCharacters.ts`,
+// whose `mcp` arm delegates to the REAL `resolveMediaTransport` (which pulls
+// in MCP connection/share-policy services with their own transitive module
+// graph) — mocked directly here, same "mock the transport resolver, not the
+// whole MCP module graph" convention `verticalDramaCharacters.modelSelection.test.ts`
+// already established, so this file's `../../_core/trpc` mock (no
+// `adminProcedure`) is never exercised transitively.
+const { mockResolveMediaTransport } = vi.hoisted(() => ({
+  mockResolveMediaTransport: vi.fn(),
+}));
+vi.mock("../../services/mediaTransportResolver", () => ({
+  resolveMediaTransport: mockResolveMediaTransport,
+}));
+
+const { mockQueueHermesMediaJob } = vi.hoisted(() => ({
+  mockQueueHermesMediaJob: vi.fn(),
+}));
+vi.mock("../../services/hermesMediaScheduler", () => ({
+  queueHermesMediaJob: mockQueueHermesMediaJob,
+}));
+
+const { mockBuildHermesMediaReferences } = vi.hoisted(() => ({
+  mockBuildHermesMediaReferences: vi.fn(async () => []),
+}));
+vi.mock("../../services/hermesMediaReferences", () => ({
+  buildHermesMediaReferences: mockBuildHermesMediaReferences,
+  buildHermesMediaTaskEnvelope: (params: {
+    taskId: string;
+    userId: number;
+    mediaType: string;
+    model: string;
+    prompt: string;
+  }) => ({
+    id: params.taskId,
+    userId: String(params.userId),
+    mediaType: params.mediaType,
+    status: "pending",
+    model: params.model,
+    prompt: params.prompt,
+    creditsUsed: 0,
+    createdAt: new Date().toISOString(),
+  }),
+  resolveHermesReferenceAssetIdFromUrl: vi.fn(async () => null),
+  resolveHermesOrderedRefsFromUrls: vi.fn(async (params: { urls: string[] }) => ({
+    orderedRefs: [],
+    droppedReferenceCount: params.urls.length,
+  })),
+}));
+vi.mock("../../services/hermesConnectionService", () => ({
+  getHermesConnection: vi.fn(async () => ({ capabilities: null })),
+  listHermesConnections: vi.fn(async () => []),
+}));
+
+// `resolveVdCharacterMediaTransportDecision` is dynamically imported from
+// `verticalDramaCharacters.ts`, which pulls that ENTIRE router file's static
+// module graph into this test too — same "mock the whole module graph"
+// convention `verticalDramaLocations.test.ts` already established for the
+// identical reuse (see that file's own doc comment: these mocks are the
+// same ones `verticalDramaCharacters.modelSelection.test.ts` uses to import
+// that exact file safely).
+vi.mock("../../services/pricingCalculator", () => ({
+  calculateCreditCost: vi.fn(() => 5),
+}));
+vi.mock("../../services/verticalDramaCharacterImageGeneration", () => ({
+  readPresetVisualIdentityFromBible: vi.fn(() => undefined),
+  generateCharacterVisualPrompts: vi.fn(),
+  InsufficientCreditsError: class extends Error {},
+  VdSchemaValidationError: class extends Error {},
+  resolveFaceSourceReferenceForCharacter: vi.fn(),
+}));
+vi.mock("../../services/mediaAssetService", () => ({
+  createAssetFromAttachment: vi.fn(),
+}));
+vi.mock("../../services/tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn(),
+}));
+vi.mock("../../services/modelRegistry", () => ({
+  getModelsByTypeAsync: vi.fn(async () => []),
+  isDbModelCatalogLoaded: () => true,
+}));
+vi.mock("../../services/verticalDramaCharacterStock", () => ({
+  verticalDramaCharacterStockService: {
+    getPrimaryPortraitUrl: vi.fn(),
+    getReferenceImageUrlByAssetLinkId: vi.fn(),
+  },
+  VerticalDramaCharacterStockError: class extends Error {
+    constructor(public readonly reason: string, message: string) {
+      super(message);
+    }
+  },
+  VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE: "policy-rejected",
+}));
+
 import { verticalDramaSeriesRouter } from "../verticalDramaSeries";
 import {
   InsufficientCreditsError,
@@ -427,6 +522,7 @@ describe("generateAdBannerImage", () => {
       prompt: { generated: "A safe prompt" },
       status: "prompt_ready",
       approval: { required: true, approvedAt: "2026-07-08T00:00:00.000Z" },
+      generation: { modelId: "google-nano-banana-pro" },
     });
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow([banner])]));
     mockDb.update.mockReturnValueOnce(updateChain());
@@ -435,6 +531,7 @@ describe("generateAdBannerImage", () => {
       modelId: "google-nano-banana-pro",
       creditCost: 10,
       maxReferenceImages: 3,
+      configJson: null,
     });
     mockSubmitImage.mockResolvedValue({ taskId: "task-1" });
 
@@ -450,6 +547,7 @@ describe("generateAdBannerImage", () => {
     const banner = draftBanner({
       prompt: { generated: "A safe prompt" },
       status: "prompt_ready",
+      generation: { modelId: "google-nano-banana-pro" },
     });
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow([banner])]));
     const chain = updateChain();
@@ -458,6 +556,7 @@ describe("generateAdBannerImage", () => {
       modelId: "google-nano-banana-pro",
       creditCost: 10,
       maxReferenceImages: 3,
+      configJson: null,
     });
     mockSubmitImage.mockResolvedValue({ taskId: "task-42" });
 
@@ -494,13 +593,20 @@ describe("generateAdBannerImage", () => {
     const banner = draftBanner({
       prompt: { generated: "A safe prompt" },
       status: "prompt_ready",
+      // A plain (non-MCP-id-shaped, non-hermes) zero-cost gateway model —
+      // the transport-decision helper resolves this to `{kind:"gateway"}`
+      // without touching the real (unmocked in this file)
+      // `mediaTransportResolver`/MCP connection-lookup chain, which
+      // `higgsfield/*`-shaped ids would otherwise route into.
+      generation: { modelId: "zero-cost-gateway-model" },
     });
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow([banner])]));
     mockDb.update.mockReturnValueOnce(updateChain());
     mockResolvePricing.mockResolvedValue({
-      modelId: "higgsfield/x",
+      modelId: "zero-cost-gateway-model",
       creditCost: 0,
       maxReferenceImages: 1,
+      configJson: null,
     });
     mockSubmitImage.mockResolvedValue({ taskId: "task-mcp" });
 
@@ -517,12 +623,14 @@ describe("generateAdBannerImage", () => {
     const banner = draftBanner({
       prompt: { generated: "A safe prompt" },
       status: "prompt_ready",
+      generation: { modelId: "google-nano-banana-pro" },
     });
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow([banner])]));
     mockResolvePricing.mockResolvedValue({
       modelId: "google-nano-banana-pro",
       creditCost: 10,
       maxReferenceImages: 3,
+      configJson: null,
     });
     mockSubmitImage.mockRejectedValue(new Error("provider unavailable"));
 
@@ -542,12 +650,14 @@ describe("generateAdBannerImage", () => {
     const banner = draftBanner({
       prompt: { generated: "A safe prompt" },
       status: "prompt_ready",
+      generation: { modelId: "google-nano-banana-pro" },
     });
     mockDb.select.mockReturnValueOnce(selectChain([seriesRow([banner])]));
     mockResolvePricing.mockResolvedValue({
       modelId: "google-nano-banana-pro",
       creditCost: 10,
       maxReferenceImages: 3,
+      configJson: null,
     });
     mockHasEnoughCredits.mockResolvedValue(false);
 
@@ -580,6 +690,102 @@ describe("generateAdBannerImage", () => {
       message: expect.stringContaining("VD_AD_BANNER_TOO_MANY"),
     });
     expect(mockSubmitImage).not.toHaveBeenCalled();
+  });
+
+  // Feature 135 — Hermes Grok media worker (section 09, remediation row 10).
+  describe("remediation row 10 — fail-closed model guard + transport routing", () => {
+    it("throws BAD_REQUEST when banner.generation.modelId is empty (the silent DEFAULT_MODELS.image fallback is gone)", async () => {
+      const banner = draftBanner({
+        prompt: { generated: "A safe prompt" },
+        status: "prompt_ready",
+        // generation.modelId intentionally absent/empty.
+      });
+      mockDb.select.mockReturnValueOnce(selectChain([seriesRow([banner])]));
+
+      await expect(
+        router.generateAdBannerImage({
+          ctx: ctx(),
+          input: { seriesId: "10", bannerId: "banner-1" },
+        })
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      // Never even reaches pricing/submit — proves the model source is no
+      // longer a lazy `DEFAULT_MODELS` import.
+      expect(mockResolvePricing).not.toHaveBeenCalled();
+      expect(mockSubmitImage).not.toHaveBeenCalled();
+    });
+
+    it("routes a Hermes-transport model into queueHermesMediaJob (image operation), with no platform-credit charge", async () => {
+      const banner = draftBanner({
+        prompt: { generated: "A safe prompt" },
+        status: "prompt_ready",
+        generation: { modelId: "hermes-grok/grok-imagine-image" },
+      });
+      mockDb.select.mockReturnValueOnce(selectChain([seriesRow([banner])]));
+      mockDb.update.mockReturnValueOnce(updateChain());
+      mockResolvePricing.mockResolvedValue({
+        modelId: "hermes-grok/grok-imagine-image",
+        creditCost: 0,
+        maxReferenceImages: 3,
+        configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+      });
+      mockQueueHermesMediaJob.mockResolvedValue({ created: true, taskId: "hermes_banner-1", job: {} });
+
+      const result = await router.generateAdBannerImage({
+        ctx: ctx(),
+        input: { seriesId: "10", bannerId: "banner-1", hermesConnectionId: "hermes-conn-1" },
+      });
+
+      expect(mockSubmitImage).not.toHaveBeenCalled();
+      expect(mockQueueHermesMediaJob).toHaveBeenCalledTimes(1);
+      expect(mockQueueHermesMediaJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          operation: "image.generate",
+          connectionId: "hermes-conn-1",
+          tenantId: "tenant-1",
+          requestedByUserId: 42,
+        }),
+      );
+      expect(result.taskId).toBe("hermes_banner-1");
+      expect(result.creditCost).toBe(0);
+      expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+      expect(mockDeductCredits).not.toHaveBeenCalled();
+    });
+
+    it("routes an MCP-transport model id into the MCP submit path (side effect of the shared decision helper), byte-identical charge lifecycle otherwise", async () => {
+      const banner = draftBanner({
+        prompt: { generated: "A safe prompt" },
+        status: "prompt_ready",
+        generation: { modelId: "higgsfield/nano-banana-pro" },
+      });
+      mockDb.select.mockReturnValueOnce(selectChain([seriesRow([banner])]));
+      mockDb.update.mockReturnValueOnce(updateChain());
+      mockResolvePricing.mockResolvedValue({
+        modelId: "higgsfield/nano-banana-pro",
+        creditCost: 0,
+        maxReferenceImages: 3,
+        configJson: null,
+      });
+      mockResolveMediaTransport.mockResolvedValue({
+        transport: "mcp",
+        providerKey: "higgsfield",
+        providerModelId: "nano_banana_pro",
+        connectionId: "mcp-conn-1",
+      });
+      mockSubmitImage.mockResolvedValue({ taskId: "task-mcp-banner" });
+
+      const result = await router.generateAdBannerImage({
+        ctx: ctx(),
+        input: { seriesId: "10", bannerId: "banner-1", mcpConnectionId: "mcp-conn-1" },
+      });
+
+      expect(mockQueueHermesMediaJob).not.toHaveBeenCalled();
+      expect(mockSubmitImage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          transportMetadata: expect.objectContaining({ transport: "mcp", providerKey: "higgsfield" }),
+        }),
+      );
+      expect(result.taskId).toBe("task-mcp-banner");
+    });
   });
 });
 

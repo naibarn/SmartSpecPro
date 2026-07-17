@@ -571,7 +571,20 @@ export function normalizeStoryboardTransportMetadata(
     };
   }
   const record = value as Record<string, unknown>;
-  const transport = record.transport === "mcp" ? "mcp" : "gateway_api";
+  // Feature 135 — Hermes Grok media worker (section 09 carry-forward from
+  // section-08 review): this normalizer previously narrowed `transport` to
+  // only "mcp" | "gateway_api" and `creditPolicy` to only
+  // "provider_credits_tracked" | "smartspec_credits" — silently corrupting
+  // a genuine "hermes_worker" transport / "provider_account" credit policy
+  // value down to the gateway defaults. Now that media.ts's async
+  // procedures (which storyboard review consumes) have a hermes arm
+  // (section 09), this narrowing must preserve those values explicitly.
+  const transport =
+    record.transport === "mcp"
+      ? "mcp"
+      : record.transport === "hermes_worker"
+        ? "hermes_worker"
+        : "gateway_api";
   return {
     transport,
     originSurface: record.originSurface === "storyboard_review" ? "storyboard_review" : "storyboard_review",
@@ -582,7 +595,12 @@ export function normalizeStoryboardTransportMetadata(
     shareId: typeof record.shareId === "string" ? record.shareId : undefined,
     sharedGroupId: typeof record.sharedGroupId === "number" ? record.sharedGroupId : undefined,
     connectionScope: record.connectionScope === "shared" ? "shared" : record.connectionScope === "personal" ? "personal" : undefined,
-    creditPolicy: record.creditPolicy === "provider_credits_tracked" ? "provider_credits_tracked" : "smartspec_credits",
+    creditPolicy:
+      record.creditPolicy === "provider_credits_tracked"
+        ? "provider_credits_tracked"
+        : record.creditPolicy === "provider_account"
+          ? "provider_account"
+          : "smartspec_credits",
     providerModelId: typeof record.providerModelId === "string" ? record.providerModelId : undefined,
     toolName: typeof record.toolName === "string" ? record.toolName : undefined,
     argumentShape: typeof record.argumentShape === "string" ? record.argumentShape : undefined,

@@ -36,9 +36,16 @@ import {
 import { calculateCreditCost } from "../services/pricingCalculator";
 import {
   getModelsByTypeAsync,
+  isDbModelCatalogLoaded,
   resolveVerticalDramaCapabilities,
   deriveModelResolutionOptions,
 } from "../services/modelRegistry";
+import {
+  markArtifactStale,
+  stampArtifactForStoryboard,
+  stampStoryboardRevision,
+  storyboardArtifactStatus,
+} from "../services/verticalDramaStoryboardRevision";
 import {
   hasEnoughCredits,
   deductCredits,
@@ -52,6 +59,9 @@ import {
   defaultMcpArgumentShape,
 } from "../services/mcpModelRouteResolver";
 import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
+// Feature 135 — Hermes Grok media worker (section 09). Pure string helper
+// only (no DB import) — see this file's private `resolveVdMediaTransportDecision`.
+import { formatHermesErrorMessage } from "../../shared/hermesMedia";
 import { signBearerToken } from "../_core/tokens";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { verticalDramaCharacterStockService } from "../services/verticalDramaCharacterStock";
@@ -154,7 +164,9 @@ import {
 import {
   VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL,
 } from "@shared/verticalDramaSeries/characterLock";
-import { ensurePromptWithinLimit } from "../services/verticalDramaPromptQc";
+import {
+  ensurePromptWithinLimit,
+} from "../services/verticalDramaPromptQc";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
 // section-15 change D, Wave-4A/section-14 completing the "start
 // frames/motion prompts" leg of the rule — character refs were already
@@ -178,6 +190,7 @@ import {
 } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import {
   buildCharacterIdentityMapBlock,
+  findCharacterImageIndexMappingMismatches,
   stripExistingIdentityLockSuffix,
   type VerticalDramaCharacterDescriptorSource,
 } from "@shared/verticalDramaSeries/characterIdentityMap";
@@ -188,6 +201,17 @@ import {
   VERTICAL_DRAMA_THAI_ACCENTS,
   VERTICAL_DRAMA_TARGET_DURATION_SECONDS,
   analyzeVerticalDramaClipDialogueQuality,
+  // Phase 6 (`planning/vd-start-frame-reference-mapping/plan.md`) —
+  // `generateShotReferenceFrameImage`'s `prompt` input zod-caps at the same
+  // limit `ensurePromptWithinLimit` itself enforces (so a user who edits the
+  // confirmed prompt can never submit something the render call would have
+  // silently truncated anyway). Imported from the shared barrel directly
+  // (NOT from `verticalDramaPromptQc.ts`'s re-export) — that service module
+  // is wholesale-mocked by every existing VD router test file, and none of
+  // those mocks export this constant; `@shared/verticalDramaSeries` is a
+  // pure/shared module every one of those same test files already imports
+  // unmocked.
+  VD_IMAGE_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
 import {
   targetVerticalDramaSpeechSeconds,
@@ -1259,6 +1283,15 @@ async function resolveEpisodePlanAssetUrls(
   for (const frame of frames) {
     if (frame?.approvedMediaAssetId)
       ids.add(String(frame.approvedMediaAssetId));
+    // Reference-mapping fix Phase 5d (`vd-start-frame-reference-mapping/
+    // plan.md`) — additive: folds each frame's persisted alternate-angle
+    // "backup still" ids into the SAME batch query/flat id->url map this
+    // function already builds (no new query). `?? []` contributes nothing
+    // for every frame created before this field existed, so every
+    // pre-existing caller/test stays byte-identical.
+    for (const angleGridAssetId of frame?.angleGridAssetIds ?? []) {
+      ids.add(String(angleGridAssetId));
+    }
   }
   const clips =
     (motionPromptPack as VerticalDramaMotionPromptPack | null)?.clips ?? [];
@@ -1300,6 +1333,43 @@ async function resolveEpisodePlanAssetUrls(
 }
 
 /**
+ * Reference-mapping fix Phase 5d (`vd-start-frame-reference-mapping/
+ * plan.md`) — group each frame's persisted `angleGridAssetIds` into resolved
+ * `{ mediaAssetId, url }[]`, keyed by `shotNumber`, for `getEpisodeDetail`'s
+ * response. Deliberately NOT a new query: `assetUrls` is the SAME flat map
+ * `resolveEpisodePlanAssetUrls` already returned (its `ids` set now also
+ * includes every frame's `angleGridAssetIds`, see that function's own doc
+ * comment) — this is a pure in-memory re-grouping of already-fetched data,
+ * following the existing "resolve every referenced id in one batch query,
+ * client joins by id/shot number" pattern this router already uses for
+ * `assetUrls` itself, rather than inventing a second per-frame query. A
+ * frame with no `angleGridAssetIds` (every frame created before this field
+ * existed) is simply absent from the returned record — never an empty-array
+ * placeholder — so this stays a strictly additive, opt-in-by-presence key.
+ */
+function buildAngleGridAssetsByShotNumber(
+  startFramePlan: VerticalDramaStartFramePlan | null,
+  assetUrls: Record<string, { url: string; thumbnailUrl: string | null }>
+): Record<number, Array<{ mediaAssetId: number; url: string }>> {
+  const result: Record<number, Array<{ mediaAssetId: number; url: string }>> =
+    {};
+  for (const frame of startFramePlan?.frames ?? []) {
+    const angleGridAssetIds = frame?.angleGridAssetIds;
+    if (!angleGridAssetIds?.length) continue;
+    const resolved = angleGridAssetIds
+      .map(mediaAssetId => {
+        const entry = assetUrls[String(mediaAssetId)];
+        return entry ? { mediaAssetId, url: entry.url } : null;
+      })
+      .filter((entry): entry is { mediaAssetId: number; url: string } =>
+        Boolean(entry)
+      );
+    if (resolved.length > 0) result[frame.shotNumber] = resolved;
+  }
+  return result;
+}
+
+/**
  * Batch-resolve arbitrary `media_assets` numeric ids to their display URL,
  * tenant + user scoped (never discloses another owner's asset URL). Used by
  * `generateVideoClip` to resolve the approved start-frame asset + a shot's
@@ -1334,6 +1404,102 @@ async function resolveMediaAssetUrlsByIds(
     if (row.originalUrl) map.set(row.id, row.originalUrl);
   }
   return map;
+}
+
+/**
+ * Reference-mapping fix Phase 5c (`planning/vd-start-frame-reference-mapping/
+ * plan.md`) — resolve a video clip's REQUIRED characters (unioned across
+ * every source shot in `clip.sourceShotNumbers`, deduped, first-appearance
+ * order — a consolidated/speaker-switch clip can span more than one shot) to
+ * their current approved primary-portrait `media_assets` ids, for
+ * `generateVideoClip` to auto-attach as extra video-generation references on
+ * multi-image-reference models. "Required characters" comes from
+ * `startFramePlan.frames[shotNumber].requiredCharacterRefs` — the SAME
+ * ordering-truth source Phase 1 of this plan established for start-frame
+ * image generation — never from the storyboard's own `characterIds` (that
+ * field is DB-order, not authoritative; see this plan's RC1).
+ *
+ * Same portrait-resolution primitive
+ * (`verticalDramaCharacterStockService.getPrimaryPortraitAssetId`) the
+ * 2026-07-11 speaker-switch redesign already uses for
+ * `clip.extraReferenceAssetIds` (~line 6345 of this file), so results stay
+ * consistent with that existing path. Tolerant by design — a character key
+ * with no matching roster row, or no approved portrait yet, is silently
+ * skipped (same convention as `resolveShotVideoPromptCharacterReferenceImages`)
+ * rather than throwing; the caller additionally wraps this whole call in a
+ * try/catch since portrait enrichment must never block a paid render.
+ */
+async function resolveClipRequiredCharacterPortraitAssetIds(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  startFramePlan: VerticalDramaStartFramePlan | null,
+  sourceShotNumbers: number[]
+): Promise<number[]> {
+  const frameByShotNumber = new Map(
+    (startFramePlan?.frames ?? []).map(frame => [frame.shotNumber, frame])
+  );
+  const orderedCharacterKeys: string[] = [];
+  const seenCharacterKeys = new Set<string>();
+  for (const shotNumber of sourceShotNumbers) {
+    const requiredCharacterRefs =
+      frameByShotNumber.get(shotNumber)?.requiredCharacterRefs ?? [];
+    for (const characterKey of requiredCharacterRefs) {
+      if (!characterKey || seenCharacterKeys.has(characterKey)) continue;
+      seenCharacterKeys.add(characterKey);
+      orderedCharacterKeys.push(characterKey);
+    }
+  }
+  if (orderedCharacterKeys.length === 0) return [];
+
+  const characterRows = await db
+    .select({
+      id: verticalDramaCharacters.id,
+      characterKey: verticalDramaCharacters.characterKey,
+    })
+    .from(verticalDramaCharacters)
+    .where(
+      and(
+        eq(verticalDramaCharacters.tenantId, tenantId),
+        eq(verticalDramaCharacters.seriesId, seriesId),
+        inArray(verticalDramaCharacters.characterKey, orderedCharacterKeys)
+      )
+    );
+  // Explicit annotations on both the callback param and its tuple return
+  // (rather than the terser `rows.map(row => [row.characterKey, row])` this
+  // file's OTHER `verticalDramaCharacters` queries use) — without them, this
+  // particular `db.select(...).from(verticalDramaCharacters)...` query's
+  // return type does not propagate through `.map()` into `new Map(...)`
+  // (falls back to `{}`/`unknown`), a pre-existing `db`/drizzle
+  // type-inference gap this table already exhibits elsewhere in this file
+  // (see `resolveRequiredShotCharacterAttachmentManifest`'s identical
+  // un-annotated pattern, which has the same gap — untouched here, out of
+  // scope). Annotating both sides here keeps THIS new query's row/map types
+  // sound without touching that pre-existing code.
+  const characterRowByKey: Map<string, { id: number; characterKey: string }> =
+    new Map(
+      characterRows.map(
+        (
+          row: { id: number; characterKey: string }
+        ): [string, { id: number; characterKey: string }] => [
+          row.characterKey,
+          row,
+        ]
+      )
+    );
+
+  const owner = { tenantId, userId, seriesId };
+  const portraitAssetIds: number[] = [];
+  for (const characterKey of orderedCharacterKeys) {
+    const characterRow = characterRowByKey.get(characterKey);
+    if (!characterRow) continue;
+    const assetId = await verticalDramaCharacterStockService.getPrimaryPortraitAssetId(
+      owner,
+      characterRow.id
+    );
+    if (assetId != null) portraitAssetIds.push(assetId);
+  }
+  return portraitAssetIds;
 }
 
 /**
@@ -1497,17 +1663,147 @@ interface ShotCharacterRefEntry {
   characterKey: string;
 }
 
-// `formatIdentityLockedImagePrompt` (formerly defined here, a near-duplicate
-// of `@shared/verticalDramaSeries/characterIdentityMap.ts`'s canonical copy)
-// was removed (vertical-drama-skill-first-architecture plan, Phase 3, item
-// 2) — its only caller (`generateStartFrameImage`'s `effectiveSoftenLevel
-// === 0` branch) now uses the planning skill's own prompt text unmodified,
-// since `vertical-drama-shot-start-frame-render/skill.md` now authors the
-// full identity-lock constraint itself. `stripExistingIdentityLockSuffix`
-// (imported from the shared module) is UNRELATED and still used below — it
-// is a back-compat safety net that strips a stale bracket-style suffix a
-// PRE-migration stored prompt may still carry, so it is never echoed back as
-// if it were story content.
+interface RequiredShotCharacterAttachmentManifest {
+  primaryEntries: ShotCharacterRefEntry[];
+  supplementaryEntries: ShotCharacterRefEntry[];
+}
+
+/**
+ * Fail-closed character attachment resolver for paid start-frame renders.
+ * Unlike the tolerant prompt-vision resolver below, this restores the exact
+ * requiredCharacterRefs order and rejects missing/duplicate portraits before
+ * credits can be reserved or a provider task can be submitted.
+ */
+async function resolveRequiredShotCharacterAttachmentManifest(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  shotNumber: number,
+  characterKeys: string[] | undefined,
+): Promise<RequiredShotCharacterAttachmentManifest> {
+  const orderedKeys = Array.from(
+    new Set((characterKeys ?? []).map(key => key.trim()).filter(Boolean)),
+  );
+  if (orderedKeys.length === 0) {
+    return { primaryEntries: [], supplementaryEntries: [] };
+  }
+
+  const rows = await db
+    .select({
+      id: verticalDramaCharacters.id,
+      name: verticalDramaCharacters.name,
+      characterKey: verticalDramaCharacters.characterKey,
+    })
+    .from(verticalDramaCharacters)
+    .where(
+      and(
+        eq(verticalDramaCharacters.tenantId, tenantId),
+        eq(verticalDramaCharacters.seriesId, seriesId),
+        inArray(verticalDramaCharacters.characterKey, orderedKeys),
+      ),
+    );
+  const rowByKey = new Map(rows.map(row => [row.characterKey, row]));
+  const unknownKeys = orderedKeys.filter(key => !rowByKey.has(key));
+  if (unknownKeys.length > 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `ยังสร้างภาพช็อต ${shotNumber} ไม่ได้: ไม่พบตัวละครในรายการสำหรับ ${unknownKeys.join(", ")}`,
+    });
+  }
+
+  const includeSheets = await resolveVerticalDramaCharacterRefV2Flag(tenantId);
+  const owner = { tenantId, userId, seriesId };
+  const resolved = await Promise.all(
+    orderedKeys.map(async characterKey => {
+      const row = rowByKey.get(characterKey)!;
+      const primaryPortraitUrl =
+        await verticalDramaCharacterStockService.getPrimaryPortraitUrl(owner, row.id);
+      const allReferenceUrls = includeSheets
+        ? await verticalDramaCharacterStockService.getCharacterReferenceUrls(
+            owner,
+            row.id,
+            { includeSheet: true },
+          )
+        : [];
+      const supplementaryUrls = allReferenceUrls.filter(
+        url => Boolean(url) && url !== primaryPortraitUrl,
+      );
+      return { row, primaryPortraitUrl, supplementaryUrls };
+    }),
+  );
+
+  const missingNames = resolved
+    .filter(item => !item.primaryPortraitUrl)
+    .map(item => item.row.name || item.row.characterKey);
+  if (missingNames.length > 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `ยังสร้างภาพช็อต ${shotNumber} ไม่ได้: ไม่พบภาพตัวละครที่อนุมัติแล้วสำหรับ ${missingNames.join(", ")}`,
+    });
+  }
+
+  const primaryEntries = resolved.map(({ row, primaryPortraitUrl }) => ({
+    name: row.name,
+    url: primaryPortraitUrl!,
+    characterKey: row.characterKey,
+  }));
+  if (new Set(primaryEntries.map(entry => entry.url)).size !== primaryEntries.length) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `ยังสร้างภาพช็อต ${shotNumber} ไม่ได้: ตัวละครหลายคนใช้ภาพอ้างอิงเดียวกัน กรุณาตรวจสอบภาพตัวละครก่อน`,
+    });
+  }
+
+  const supplementaryEntries = resolved.flatMap(({ row, supplementaryUrls }) =>
+    supplementaryUrls.map(url => ({
+      name: row.name,
+      url,
+      characterKey: row.characterKey,
+    })),
+  );
+  return { primaryEntries, supplementaryEntries };
+}
+
+function assertRequiredCharacterReferenceCapacity(
+  shotNumber: number,
+  requiredCount: number,
+  maxReferenceImages: number | undefined,
+): void {
+  if (maxReferenceImages === undefined || requiredCount <= maxReferenceImages) return;
+  throw new TRPCError({
+    code: "PRECONDITION_FAILED",
+    message: `โมเดลนี้รองรับภาพอ้างอิงสูงสุด ${maxReferenceImages} ภาพ แต่ช็อต ${shotNumber} ต้องใช้ตัวละคร ${requiredCount} คน กรุณาเลือกโมเดลที่รองรับอย่างน้อย ${requiredCount} ภาพ`,
+  });
+}
+
+/**
+ * `formatIdentityLockedImagePrompt` (formerly defined here, a near-duplicate
+ * of `@shared/verticalDramaSeries/characterIdentityMap.ts`'s canonical copy)
+ * and its `assertRequiredIdentityBlockFits` length-cap guard were removed
+ * again (`planning/vd-start-frame-reference-mapping/plan.md` Phase 3,
+ * 2026-07-16) — a 2026-07-13 uncommitted change had re-added the code-side
+ * bracket append after HEAD's 2026-07-11 skill-first-architecture removal,
+ * which reintroduced RC2: the append's own attachment-order mapping could
+ * silently CONTRADICT the mapping the skill already wrote in its own prose
+ * (observed live, series 16 episode 66 shot 9 — prose said
+ * `"ภาคิน (Image 1)"` / `"ไอริณ (Image 2)"` while the appended tail said
+ * `"Image 1 = ไอริณ; Image 2 = ภาคิน"`). Every call site
+ * (`generateStartFrameImage`, `generateStartFrameAngleVariations`) now uses
+ * the planning/authoring skill's own prompt text UNMODIFIED — since
+ * `vertical-drama-shot-start-frame-render/skill.md` /
+ * `vertical-drama-shot-start-frame-prompt/skill.md` already author the full
+ * identity-lock constraint (including the "Image N ↔ name" mapping) in their
+ * own prose — and instead runs
+ * `findCharacterImageIndexMappingMismatches` (the shared validator) as a
+ * render-time fail-closed guard against the REAL attachment order right
+ * before credits are reserved; see each mutation's own
+ * `referenceMappingMismatches` block below. `stripExistingIdentityLockSuffix`
+ * (imported from the shared module) is UNRELATED and still used below — it
+ * is a back-compat safety net that strips a stale bracket-style suffix a
+ * PRE-migration stored prompt may still carry, so it is never echoed back as
+ * if it were story content (and so it never confuses the new validator with
+ * a legacy code-authored claim).
+ */
 
 async function resolveShotCharacterReferenceEntries(
   tenantId: string,
@@ -1599,6 +1895,48 @@ async function resolveShotCharacterReferenceUrls(
 const VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS = 3;
 
 /**
+ * Re-sort `resolveShotCharacterReferenceEntries`' arbitrary (no-`ORDER BY`)
+ * return value into a caller-supplied `keysInOrder` order, keeping only the
+ * FIRST entry per `characterKey` (always that character's portrait, never a
+ * character-sheet supplementary image — per `resolveShotCharacterReferenceEntries`'s
+ * own "all portraits before any sheets" ordering guarantee). Extracted
+ * (`planning/vd-start-frame-reference-mapping/plan.md` Phase 1, RC1 fix,
+ * 2026-07-16) from `resolveShotVideoPromptCharacterReferenceImages`'s own
+ * inline re-sort so both that function AND `generateShotStartFramePrompt`'s
+ * `character_reference_manifest` builder share exactly one ordering
+ * implementation — the bug this fixes (RC1) was that the start-frame-prompt
+ * path built its manifest straight from the DB's own arbitrary row order
+ * instead of re-sorting like this, so the skill was sometimes told the WRONG
+ * "Image N" index for a character relative to what the paid render actually
+ * attaches later (`resolveRequiredShotCharacterAttachmentManifest`, which
+ * always restores `requiredCharacterRefs` order).
+ *
+ * Defensively de-dupes `keysInOrder` itself too (in case a caller ever
+ * passes the same key twice), so a caller-side cap can never be partly
+ * consumed by the same character appearing more than once. Pure — no I/O.
+ */
+function reorderShotCharacterRefEntriesByKeyOrder(
+  entries: readonly ShotCharacterRefEntry[],
+  keysInOrder: readonly string[],
+): ShotCharacterRefEntry[] {
+  const firstEntryByCharacterKey = new Map<string, ShotCharacterRefEntry>();
+  for (const entry of entries) {
+    if (!firstEntryByCharacterKey.has(entry.characterKey)) {
+      firstEntryByCharacterKey.set(entry.characterKey, entry);
+    }
+  }
+  const ordered: ShotCharacterRefEntry[] = [];
+  const seenCharacterKeys = new Set<string>();
+  for (const characterKey of keysInOrder) {
+    if (seenCharacterKeys.has(characterKey)) continue;
+    seenCharacterKeys.add(characterKey);
+    const entry = firstEntryByCharacterKey.get(characterKey);
+    if (entry) ordered.push(entry);
+  }
+  return ordered;
+}
+
+/**
  * Resolve up to `VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS`
  * character reference portraits for a shot-video-prompt vision call
  * (multi-character disambiguation fix, `polished-toasting-gadget.md`) — one
@@ -1612,17 +1950,12 @@ const VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS = 3;
  *
  * Reuses `resolveShotCharacterReferenceEntries` (no new resolution path) —
  * that function's own return order is NOT reliably `characterKeysInOrder`
- * (the underlying query has no `ORDER BY`), so this re-sorts to match, and
- * keeps only the FIRST entry per `characterKey` (always that character's
- * portrait, never a character-sheet supplementary image, per that
- * function's own "all portraits before any sheets" ordering guarantee).
+ * (the underlying query has no `ORDER BY`), so this re-sorts to match via
+ * `reorderShotCharacterRefEntriesByKeyOrder` above.
  *
  * Never throws for a character with no approved portrait yet — that
  * character is silently omitted from the result, same tolerant convention
- * as `resolveShotLocationReferenceEntry` below. Defensively de-dupes
- * `characterKeysInOrder` itself too (in case a caller ever passes the same
- * key twice), so the 3-slot cap can never be partly consumed by the same
- * character appearing more than once.
+ * as `resolveShotLocationReferenceEntry` below.
  */
 async function resolveShotVideoPromptCharacterReferenceImages(
   tenantId: string,
@@ -1638,27 +1971,14 @@ async function resolveShotVideoPromptCharacterReferenceImages(
     seriesId,
     characterKeysInOrder
   );
-  const firstEntryByCharacterKey = new Map<string, ShotCharacterRefEntry>();
-  for (const entry of entries) {
-    if (!firstEntryByCharacterKey.has(entry.characterKey)) {
-      firstEntryByCharacterKey.set(entry.characterKey, entry);
-    }
-  }
-  const ordered: ShotVideoPromptCharacterReferenceImage[] = [];
-  const seenCharacterKeys = new Set<string>();
-  for (const characterKey of characterKeysInOrder) {
-    if (seenCharacterKeys.has(characterKey)) continue;
-    seenCharacterKeys.add(characterKey);
-    const entry = firstEntryByCharacterKey.get(characterKey);
-    if (!entry) continue;
-    ordered.push({
-      characterKey,
+  const ordered = reorderShotCharacterRefEntriesByKeyOrder(entries, characterKeysInOrder);
+  return ordered
+    .slice(0, VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS)
+    .map((entry) => ({
+      characterKey: entry.characterKey,
       name: entry.name,
       url: resolveReferenceUrl(entry.url, publicUrl),
-    });
-    if (ordered.length >= VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_MAX_CHARACTER_REFS) break;
-  }
-  return ordered;
+    }));
 }
 
 /**
@@ -2507,34 +2827,68 @@ function shouldRegenerateDialogueForVideoPrompt(input: {
 
 /**
  * Resolve the effective image model for a start-frame generation call:
- * episode-level `startFramePlan.selectedImageModelId` (Phase 1.2 resolution
- * order: episode selection → `DEFAULT_MODELS`), falling back to
- * `DEFAULT_MODELS.image` when the plan has no selection yet OR the selected
- * model is no longer enabled (fails closed to a known-good default rather
- * than submitting a generation call with a dead model id). Shared by
- * `generateStartFrameImage` and `generateStartFrameAngleVariations` so both
- * call sites — and their credit pricing — stay in sync with the same
- * resolution.
+ * episode-level `startFramePlan.selectedImageModelId`. FAIL CLOSED: throws
+ * `TRPCError BAD_REQUEST` when the plan has no selection yet OR the
+ * selected model is unknown/no longer enabled — no silent fallback to
+ * `DEFAULT_MODELS.image`. (Previously fell back silently, letting
+ * generation run on a model the user never chose.) Shared by
+ * `generateStartFrameImage`, `generateStartFrameAngleVariations`, and
+ * `repairShotImage` — all user-clicked paid actions — so both the throw and
+ * the credit pricing stay in sync with the same resolution.
  */
 export async function resolveEpisodeImageModelId(
   plan: VerticalDramaStartFramePlan | null
 ): Promise<string> {
   const requested = plan?.selectedImageModelId?.trim();
-  if (!requested) return DEFAULT_MODELS.image;
+  if (!requested) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "กรุณาเลือกโมเดลภาพก่อนสร้าง / Select an image model before generating.",
+    });
+  }
   const models = await getModelsByTypeAsync("image");
   const model = models.find(m => m.id === requested);
-  if (!model || model.isEnabled === false) return DEFAULT_MODELS.image;
+  if (!model) {
+    // Cold-start / transient-DB guard: when the DB-backed model catalog is not
+    // loaded, `getModelsByType` serves only the small static fallback subset
+    // (no DB-only models like the higgsfield catalog). Do NOT reject a model we
+    // simply cannot verify yet — trust the user's persisted selection and let
+    // the downstream generation validate it, rather than either falsely erroring
+    // ("pick another") or silently swapping to DEFAULT_MODELS.
+    if (!isDbModelCatalogLoaded()) {
+      return requested;
+    }
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "โมเดลภาพที่เลือกใช้ไม่ได้ กรุณาเลือกใหม่ / Selected image model is unavailable; pick another.",
+    });
+  }
+  if (model.isEnabled === false) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "โมเดลภาพที่เลือกใช้ไม่ได้ กรุณาเลือกใหม่ / Selected image model is unavailable; pick another.",
+    });
+  }
   return model.id;
 }
 
 /**
  * Resolve the effective video model DEFINITION (not just the id) for a video
- * clip generation call: episode-level `motionPromptPack.selectedVideoModelId`
- * (Phase 1.2 resolution order: episode selection → `DEFAULT_MODELS`), falling
- * back to `DEFAULT_MODELS.video` when the pack has no selection yet OR the
- * selected model is no longer enabled — same fail-closed convention as
- * `resolveEpisodeImageModelId`. Returns the full `ModelDefinition` (not just
- * the id) because `formatVideoClipRequest` needs the capability metadata
+ * clip generation call: episode-level `motionPromptPack.selectedVideoModelId`.
+ *
+ * Feature 135 — Hermes Grok media worker (section 09, remediation row 9):
+ * FAIL CLOSED, same convention as `resolveEpisodeImageModelId` above — this
+ * doc comment previously CLAIMED that fail-closed symmetry while the
+ * function body actually did the opposite (silently substituted
+ * `DEFAULT_MODELS.video`, and even manufactured a synthetic last-resort
+ * `ModelDefinition` when that lookup failed too) — that mismatch was the
+ * bug's camouflage. There is now no fallback of any kind: an empty/absent
+ * selection, an unknown model id, or a disabled model all throw
+ * `TRPCError({code:"BAD_REQUEST"})`. `DEFAULT_MODELS.video` is never
+ * consulted. Returns the full `ModelDefinition` (not just the id) because
+ * `formatVideoClipRequest` needs the capability metadata
  * (`configJson`/`aspectRatios`/`provider`/`aliases`) to resolve
  * `nativeAudioDialogue`/`maxReferenceImages` for the requested model — a
  * second lookup by id would risk resolving a DIFFERENT model if the catalog
@@ -2543,25 +2897,45 @@ export async function resolveEpisodeImageModelId(
 export async function resolveEpisodeVideoModel(
   pack: VerticalDramaMotionPromptPack | null
 ): Promise<import("../services/modelRegistry").ModelDefinition> {
-  const models = await getModelsByTypeAsync("video");
   const requested = pack?.selectedVideoModelId?.trim();
-  if (requested) {
-    const model = models.find(m => m.id === requested);
-    if (model && model.isEnabled !== false) return model;
+  if (!requested) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "กรุณาเลือกโมเดลวิดีโอก่อนสร้าง / Select a video model before generating.",
+    });
   }
-  const fallback = models.find(m => m.id === DEFAULT_MODELS.video);
-  if (fallback) return fallback;
-  // Extremely defensive last resort — the catalog should always contain
-  // `DEFAULT_MODELS.video`, but never throw out of a resolution helper.
-  return {
-    id: DEFAULT_MODELS.video,
-    type: "video",
-    name: DEFAULT_MODELS.video,
-    provider: "unknown",
-    description: "",
-    aliases: [],
-    creditCost: 10,
-  };
+  const models = await getModelsByTypeAsync("video");
+  const model = models.find(m => m.id === requested);
+  if (!model) {
+    // Cold-start / transient-DB guard — same convention as
+    // `resolveEpisodeImageModelId`/`resolveCharacterImageModelId`: when the
+    // DB-backed model catalog is not loaded yet, trust the caller's
+    // persisted selection rather than falsely rejecting it as "unknown".
+    if (!isDbModelCatalogLoaded()) {
+      return {
+        id: requested,
+        type: "video",
+        name: requested,
+        provider: "unknown",
+        description: "",
+        aliases: [],
+        creditCost: 10,
+      };
+    }
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "โมเดลวิดีโอที่เลือกใช้ไม่ได้ กรุณาเลือกใหม่ / Selected video model is unavailable; pick another.",
+    });
+  }
+  if (model.isEnabled === false) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "โมเดลวิดีโอที่เลือกใช้ไม่ได้ กรุณาเลือกใหม่ / Selected video model is unavailable; pick another.",
+    });
+  }
+  return model;
 }
 
 /**
@@ -2605,6 +2979,7 @@ async function resolveVdMcpTransportMetadata(params: {
   modelId: string;
   configJson: Record<string, unknown> | null;
   mcpConnectionId?: string;
+  sharedGroupId?: number;
   idempotencyKey?: string;
 }): Promise<MediaTaskTransportMetadata | null> {
   const modelTransport = resolveMediaModelTransportConfig({
@@ -2636,13 +3011,12 @@ async function resolveVdMcpTransportMetadata(params: {
       argumentShape,
     }) ?? rawProviderModelId;
 
-  if (!params.mcpConnectionId) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `"${params.modelId}" requires a connected MCP provider account. Connect a ${providerKey} MCP account first, then re-select this model.`,
-    });
-  }
-
+  // NOTE: deliberately no "mcpConnectionId is required" pre-check here.
+  // `resolveMediaTransport` auto-resolves the caller's own eligible connection
+  // when the client doesn't pin one (the picker fills it in asynchronously and
+  // its localStorage cache silently no-ops on full storage, so a null id here
+  // does NOT mean the user lacks an account), and raises a precise error itself
+  // when there genuinely is none / the choice is ambiguous.
   return resolveMediaTransport({
     tenantId: params.tenantId,
     actorUserId: params.actorUserId,
@@ -2650,6 +3024,7 @@ async function resolveVdMcpTransportMetadata(params: {
     assetType: params.assetType,
     requestedTransport: "mcp",
     mcpConnectionId: params.mcpConnectionId,
+    sharedGroupId: params.sharedGroupId,
     providerKey,
     providerModelId,
     model: providerModelId ?? params.modelId,
@@ -2657,6 +3032,105 @@ async function resolveVdMcpTransportMetadata(params: {
     argumentShape,
     idempotencyKey: params.idempotencyKey,
   });
+}
+
+/**
+ * Feature 135 — Hermes Grok media worker (section 09): private twin of
+ * `verticalDramaCharacters.ts`'s exported `resolveVdCharacterMediaTransportDecision`
+ * — byte-equivalent apart from the export keyword and the delegate call
+ * (this file's own private `resolveVdMcpTransportMetadata` above, instead of
+ * that file's exported one). See that function's doc comment for the full
+ * design rationale (detect hermes_worker FIRST, delegate everything else to
+ * the existing MCP helper unchanged).
+ */
+type VdTransportDecision =
+  | { kind: "gateway" }
+  | { kind: "mcp"; transportMetadata: MediaTaskTransportMetadata }
+  | { kind: "hermes"; connectionId: string };
+
+interface ResolveVdMediaTransportDecisionDeps {
+  resolveDefaultHermesConnectionId?: (params: {
+    tenantId: string;
+    userId: number;
+    assetType: "image" | "video";
+  }) => Promise<string | null>;
+}
+
+async function defaultResolveDefaultHermesConnectionIdForEpisodes(params: {
+  tenantId: string;
+  userId: number;
+  assetType: "image" | "video";
+}): Promise<string | null> {
+  const { listHermesConnections } = await import("../services/hermesConnectionService");
+  const connections = await listHermesConnections({
+    tenantId: params.tenantId,
+    userId: params.userId,
+    assetType: params.assetType,
+  });
+  const defaultConnection = connections.find(connection =>
+    params.assetType === "image" ? connection.defaultForImage : connection.defaultForVideo,
+  );
+  return defaultConnection?.id ?? null;
+}
+
+async function resolveVdMediaTransportDecision(
+  params: {
+    tenantId: string;
+    actorUserId: number;
+    assetType: "image" | "video";
+    modelId: string;
+    configJson: Record<string, unknown> | null;
+    mcpConnectionId?: string;
+    sharedGroupId?: number;
+    hermesConnectionId?: string;
+    idempotencyKey?: string;
+  },
+  deps: ResolveVdMediaTransportDecisionDeps = {},
+): Promise<VdTransportDecision> {
+  const modelTransport = resolveMediaModelTransportConfig({
+    modelId: params.modelId,
+    configJson: params.configJson,
+  });
+
+  if (modelTransport.transport === "hermes_worker") {
+    const explicitConnectionId = params.hermesConnectionId?.trim();
+    if (explicitConnectionId) {
+      return { kind: "hermes", connectionId: explicitConnectionId };
+    }
+    const resolveDefault =
+      deps.resolveDefaultHermesConnectionId ?? defaultResolveDefaultHermesConnectionIdForEpisodes;
+    const defaultConnectionId = await resolveDefault({
+      tenantId: params.tenantId,
+      userId: params.actorUserId,
+      assetType: params.assetType,
+    });
+    if (defaultConnectionId) {
+      return { kind: "hermes", connectionId: defaultConnectionId };
+    }
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: formatHermesErrorMessage("HERMES_CONNECTION_REQUIRED"),
+    });
+  }
+
+  if (params.hermesConnectionId?.trim()) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "hermesConnectionId requires transport=hermes_worker",
+    });
+  }
+
+  const transportMetadata = await resolveVdMcpTransportMetadata({
+    tenantId: params.tenantId,
+    actorUserId: params.actorUserId,
+    assetType: params.assetType,
+    modelId: params.modelId,
+    configJson: params.configJson,
+    mcpConnectionId: params.mcpConnectionId,
+    sharedGroupId: params.sharedGroupId,
+    idempotencyKey: params.idempotencyKey,
+  });
+  return transportMetadata ? { kind: "mcp", transportMetadata } : { kind: "gateway" };
 }
 
 /**
@@ -4074,7 +4548,14 @@ export interface VerticalDramaEpisodePlanSummary {
   keyBeats: string[];
   cliffhangerLine: string | null;
   /** Latest Overview shot summaries; omitted when the active item has no deep draft. */
-  shotDrafts?: Array<{ shotNumber: number; summary: string }>;
+  shotDrafts?: Array<{
+    shotNumber: number;
+    summary: string;
+    /** Canonical per-shot dialogue (speaker/line only); [] when the shot has none. */
+    dialogueLines: Array<{ speaker: string; line: string }>;
+    /** Present only for wordless shots (e.g. "action_visual", "establishing"). */
+    silenceIntent?: string;
+  }>;
 }
 
 /**
@@ -4128,6 +4609,11 @@ async function resolveEpisodePlanForEpisode(
             shotDrafts: shotDrafts.map(shot => ({
               shotNumber: shot.shot_number,
               summary: shot.summary,
+              dialogueLines: (shot.dialogue_lines ?? []).map(line => ({
+                speaker: line.speaker,
+                line: line.line,
+              })),
+              ...(shot.silence_intent ? { silenceIntent: shot.silence_intent } : {}),
             })),
           }
         : {}),
@@ -5892,6 +6378,35 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
   storyboardShot: VerticalDramaShotgrid["shots"][number] | undefined;
   shotVideoCharacterIdentityMapBlock: string | undefined;
   dialogueLines: ShotDialogueLine[];
+  /**
+   * Synopsis grounding (`planning/vd-video-prompt-skill-first/plan.md`
+   * Phase 1a) — the CALLER's already-resolved
+   * `deepDraftShotForDialogue?.summary`, mirrored straight into
+   * `GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams.shotContext
+   * .canonicalShotSummary`. Optional/omitted preserves today's byte-
+   * identical prompt (every caller before this fix).
+   */
+  canonicalShotSummary?: string;
+  /**
+   * Persistence/pin root-cause fix (`planning/vd-video-prompt-skill-first/
+   * plan.md` Phase 2) — the CALLER's already-resolved
+   * `deepDraftShotForDialogue?.silence_intent` truthiness, mirrored into
+   * `shotContext.beatIsSilent`. In practice this split path only runs when
+   * `dialogueLines` requires cutting between 2-3 speakers, so a genuinely
+   * silent shot never reaches this branch — kept purely for shape symmetry
+   * with the non-split path. Optional/omitted (`false`) preserves today's
+   * byte-identical prompt.
+   */
+  beatIsSilent?: boolean;
+  /**
+   * Lip-sync discipline fix — `characterKey -> roster display name`,
+   * pre-resolved by the CALLER from the identity sources it already fetched
+   * for `shotVideoCharacterIdentityMapBlock` above (no new DB query here).
+   * Used to attribute each dialogue line to its speaker by name in the
+   * native-audio lip-sync block (`@shared/verticalDramaSeries/nativeDialogue.ts`).
+   * Optional/omitted falls back to bare `characterKey` attribution.
+   */
+  characterNameByKey?: Map<string, string>;
   tieInPlacement: VerticalDramaShotProductPlacement | undefined;
   tieInProductName: string | undefined;
   tieInProductCategory: string | undefined;
@@ -5946,6 +6461,9 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     storyboardShot,
     shotVideoCharacterIdentityMapBlock,
     dialogueLines,
+    canonicalShotSummary,
+    beatIsSilent,
+    characterNameByKey,
     tieInPlacement,
     tieInProductName,
     tieInProductCategory,
@@ -5962,6 +6480,13 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     repairInstruction,
   } = args;
 
+  // Lip-sync discipline fix — same speaker-attribution mirror convention as
+  // the non-split path in `generateShotVideoPrompt` above.
+  const dialogueLinesWithSpeakerNames = dialogueLines.map(l => ({
+    ...l,
+    speakerName: l.characterKey ? characterNameByKey?.get(l.characterKey) : undefined,
+  }));
+
   const speakerSwitchGeneration = await generateVerticalDramaShotVideoPromptSpeakerSwitch({
     userId,
     tenantId,
@@ -5973,10 +6498,12 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     characterReferenceImages,
     locationReferenceImage,
     shotContext: {
+      canonicalShotSummary,
+      beatIsSilent,
       description: storyboardShot?.description,
       camera: storyboardShot?.cameraSetup,
       emotion: undefined,
-      dialogueLines: dialogueLines.length ? dialogueLines : undefined,
+      dialogueLines: dialogueLines.length ? dialogueLinesWithSpeakerNames : undefined,
       characterIdentityMap: shotVideoCharacterIdentityMapBlock,
       productContext: tieInPlacement
         ? {
@@ -6020,17 +6547,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
       );
     }
   }
-  const qc = await ensurePromptWithinLimit({
-    kind: "video",
-    prompt,
-    userId,
-    tenantId,
-    seriesId,
-    idempotencyKey: idempotencyKey ? `${idempotencyKey}:prompt-qc` : undefined,
-    label: `shot video prompt (episode #${episodeId}, shot ${shotNumber})`,
-  });
-  prompt = qc.prompt;
-
   const { presetMixV2Enabled } = await resolveVerticalDramaQualityLoopFlags(tenantId);
   if (presetMixV2Enabled) {
     const presetVisualIdentity = await loadSeriesPresetVisualIdentity(tenantId, userId, seriesId);
@@ -6038,6 +6554,42 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
       prompt = appendPresetVisualIdentityStyleTokensToMotionPrompt(prompt, presetVisualIdentity);
     }
   }
+  const speakerSwitchCapabilities = resolveVerticalDramaCapabilities(selectedVideoModel.id, {
+    type: selectedVideoModel.type,
+    aspectRatios: selectedVideoModel.aspectRatios,
+    configJson: selectedVideoModel.configJson,
+  });
+  const qc = await ensurePromptWithinLimit({
+    kind: "video",
+    prompt,
+    // Dialogue-duplication fix (2026-07-15) — protect each individual
+    // spoken line (not the `buildNativeDialogueVerbatimBlock` boilerplate
+    // block). The refiner already keeps dialogue inline/verbatim while
+    // compressing, so protecting the block caused it to be re-appended a
+    // SECOND time on top of the refiner's inline lines whenever the prompt
+    // was over the length cap. Protecting the bare quoted line lets
+    // `finalizeProtectedFragments` recognize the refiner's inline dialogue
+    // as already-present (no duplicate) and only re-append a genuinely
+    // dropped line, as a single bare quoted line — never the block.
+    protectedFragments:
+      speakerSwitchCapabilities.nativeAudioDialogue === true
+        ? speakerSwitchGeneration.dialogue
+            .map(l => l.lineTh.trim())
+            // BARE, UNQUOTED line text — do NOT wrap in `"..."`.
+            // finalizeProtectedFragments matches via a raw `indexOf`, and the
+            // skill/refiner writes inline dialogue in CURLY quotes; a
+            // straight-quoted fragment never matches inline, so it gets wrongly
+            // re-appended (dialogue-duplication regression, 2026-07-15). The
+            // unquoted line is found inside the curly-quoted inline text.
+            .filter(Boolean)
+        : undefined,
+    userId,
+    tenantId,
+    seriesId,
+    idempotencyKey: idempotencyKey ? `${idempotencyKey}:prompt-qc` : undefined,
+    label: `shot video prompt (episode #${episodeId}, shot ${shotNumber})`,
+  });
+  prompt = qc.prompt;
 
   // Resolve every distinct speaker's own approved primary-portrait media
   // asset id, in `distinctSpeakerCharacterKeys` order (anchor speaker
@@ -6158,7 +6710,13 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
 
     await tx
       .update(verticalDramaEpisodes)
-      .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+      .set({
+        motionPromptPack: stampArtifactForStoryboard(
+          updatedPack as unknown as Record<string, unknown>,
+          row.storyboard,
+        ),
+        updatedAt: new Date(),
+      })
       .where(
         and(
           eq(verticalDramaEpisodes.id, episodeId),
@@ -6265,7 +6823,7 @@ export const verticalDramaEpisodesRouter = router({
     .input(
       z.object({
         seriesId: z.string().min(1),
-        count: z.number().int().min(1).max(5).default(1),
+        count: z.number().int().min(1).max(1000).default(1),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -6656,22 +7214,55 @@ export const verticalDramaEpisodesRouter = router({
         episodeId: parseId(input.episodeId, "episode id"),
       };
       // Confirm ownership (throws NOT_FOUND otherwise).
-      await loadOwnedEpisode(owner);
+      const existingEpisode = await loadOwnedEpisode(owner);
 
       const updates: Partial<typeof verticalDramaEpisodes.$inferInsert> = {
         updatedAt: new Date(),
       };
       if (input.title !== undefined) updates.title = input.title;
       if (input.script !== undefined) updates.script = input.script;
-      if (input.storyboard !== undefined) updates.storyboard = input.storyboard;
+      const effectiveStoryboard =
+        input.storyboard && typeof input.storyboard === "object"
+          ? stampStoryboardRevision(input.storyboard)
+          : input.storyboard !== undefined
+            ? input.storyboard
+            : existingEpisode.storyboard;
+      if (input.storyboard !== undefined) updates.storyboard = effectiveStoryboard;
       if (input.startFramePlan !== undefined)
-        updates.startFramePlan = input.startFramePlan;
+        updates.startFramePlan = input.startFramePlan && effectiveStoryboard
+          ? stampArtifactForStoryboard(input.startFramePlan, effectiveStoryboard)
+          : input.startFramePlan;
       if (input.dialogueAudioPlan !== undefined)
         updates.dialogueAudioPlan = input.dialogueAudioPlan;
       if (input.motionPromptPack !== undefined)
-        updates.motionPromptPack = input.motionPromptPack;
+        updates.motionPromptPack = input.motionPromptPack && effectiveStoryboard
+          ? stampArtifactForStoryboard(input.motionPromptPack, effectiveStoryboard)
+          : input.motionPromptPack;
       if (input.assemblyManifest !== undefined)
-        updates.assemblyManifest = input.assemblyManifest;
+        updates.assemblyManifest = input.assemblyManifest && effectiveStoryboard
+          ? stampArtifactForStoryboard(input.assemblyManifest, effectiveStoryboard)
+          : input.assemblyManifest;
+
+      if (input.storyboard !== undefined) {
+        if (input.startFramePlan === undefined) {
+          updates.startFramePlan = markArtifactStale(
+            existingEpisode.startFramePlan,
+            existingEpisode.storyboard,
+          );
+        }
+        if (input.motionPromptPack === undefined) {
+          updates.motionPromptPack = markArtifactStale(
+            existingEpisode.motionPromptPack,
+            existingEpisode.storyboard,
+          );
+        }
+        if (input.assemblyManifest === undefined) {
+          updates.assemblyManifest = markArtifactStale(
+            existingEpisode.assemblyManifest,
+            existingEpisode.storyboard,
+          );
+        }
+      }
 
       const [row] = await db
         .update(verticalDramaEpisodes)
@@ -6730,8 +7321,10 @@ export const verticalDramaEpisodesRouter = router({
       };
 
       // Ownership check happens before the transaction so a cross-tenant or
-      // cross-user request cannot use the row lock as an existence oracle.
-      await loadOwnedEpisode(owner);
+      // cross-user request cannot use the row lock as an existence oracle. The
+      // returned row also supplies the storyboard used to stamp artifact
+      // provenance below (same convention as the sibling motion-pack writers).
+      const ownedEpisode = await loadOwnedEpisode(owner);
 
       const persisted = await db.transaction(async tx => {
         const [freshRow] = await tx
@@ -6766,7 +7359,13 @@ export const verticalDramaEpisodesRouter = router({
 
         await tx
           .update(verticalDramaEpisodes)
-          .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+          .set({
+            motionPromptPack: stampArtifactForStoryboard(
+              updatedPack as unknown as Record<string, unknown>,
+              ownedEpisode.storyboard,
+            ),
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(verticalDramaEpisodes.id, owner.episodeId),
@@ -7864,8 +8463,26 @@ export const verticalDramaEpisodesRouter = router({
           string,
           unknown
         > | null,
+        artifactProvenance: {
+          startFramePlan: storyboardArtifactStatus(row.startFramePlan, row.storyboard),
+          motionPromptPack: storyboardArtifactStatus(row.motionPromptPack, row.storyboard),
+          assemblyManifest: storyboardArtifactStatus(row.assemblyManifest, row.storyboard),
+        },
         qualityReview,
         assetUrls,
+        // Reference-mapping fix Phase 5d (`vd-start-frame-reference-mapping/
+        // plan.md`) — resolved `{ mediaAssetId, url }[]` per shot number for
+        // each frame's persisted `angleGridAssetIds` (backup alternate-angle
+        // stills recorded via `recordShotAngleGridAsset`). `{}` for an
+        // episode with no shot carrying any recorded angle-grid assets yet
+        // (grandfathered — every frame predating this field is simply
+        // absent as a key). See `buildAngleGridAssetsByShotNumber`'s doc
+        // comment for why this reuses `assetUrls`'s existing batch query
+        // instead of a new one.
+        angleGridAssetsByShotNumber: buildAngleGridAssetsByShotNumber(
+          row.startFramePlan as VerticalDramaStartFramePlan | null,
+          assetUrls
+        ),
         characterPortraits,
         // Part A1 (planning/`polished-toasting-gadget.md`) — read-only
         // episode plan for the new plan panel; `null` when the series bible
@@ -8238,6 +8855,148 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
+   * Reference-mapping fix Phase 5d (`planning/vd-start-frame-reference-
+   * mapping/plan.md`) — persist a durable "backup alternate-angle still" for
+   * one shot, sourced from an already-completed media task (typically one
+   * tile of the existing `generateStartFrameAngleVariations` 3x3 grid, or any
+   * other approved Media History/Library image the user picks). This is the
+   * asset SOURCE the reshoot/repair research finding (c) in this plan's
+   * Phase 5 identified: a drifted shot's start frame can be regenerated from
+   * a stored alternate angle instead of a brand-new render. A pure,
+   * no-cost, no-LLM data patch — same "verify ownership, find-or-reject the
+   * matching frame, patch one field, write the whole jsonb column back"
+   * convention as `setApprovedStartFrameAsset` immediately above (id
+   * parsing, `mediaAssets` ownership check, and "no plan yet" /
+   * "no frame entry" error handling are all reused verbatim from that
+   * mutation).
+   *
+   * Additive-only append: `frame.angleGridAssetIds` grows by one call at a
+   * time (never a full-array replacement, unlike `setShotCharacterReference`/
+   * `setShotLocation`), deduplicated (re-recording an asset already present
+   * moves it to the MOST-RECENT position instead of creating a duplicate
+   * entry) and capped at the 5 most recent entries — the OLDEST is dropped
+   * once a 6th is recorded, so this can be called an unbounded number of
+   * times across a shot's lifetime (e.g. once per multi-angle grid render)
+   * without the jsonb column growing unbounded.
+   */
+  recordShotAngleGridAsset: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        mediaAssetId: z.string().min(1),
+        // Accepted for API-shape consistency with this router's other
+        // client-mutation calls; this is a free, no-credit, purely additive
+        // data patch (idempotent by construction via the dedupe-then-append
+        // logic below), so — unlike the paid `generateVideoClip`/
+        // `generateStartFrameImage` mutations — nothing here actually reads
+        // it.
+        idempotencyKey,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+
+      const numericAssetId = Number(input.mediaAssetId);
+      if (!Number.isInteger(numericAssetId) || numericAssetId <= 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid media asset id",
+        });
+      }
+      const [asset] = await db
+        .select({ id: mediaAssets.id })
+        .from(mediaAssets)
+        .where(
+          and(
+            eq(mediaAssets.id, numericAssetId),
+            eq(mediaAssets.tenantId, tenantId),
+            eq(mediaAssets.userId, userId)
+          )
+        )
+        .limit(1);
+      if (!asset) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Media asset not found",
+        });
+      }
+
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      if (!plan || !Array.isArray(plan.frames)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No start-frame plan exists yet for this episode",
+        });
+      }
+      const frameIndex = plan.frames.findIndex(
+        f => f.shotNumber === input.shotNumber
+      );
+      if (frameIndex === -1) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `No start-frame plan entry for shot ${input.shotNumber}`,
+        });
+      }
+
+      // Dedupe (re-recording an already-present id promotes it to
+      // most-recent instead of duplicating), append, then cap at the 5 MOST
+      // RECENT entries — `.slice(-5)` keeps the tail (newest) and drops the
+      // oldest once the list would exceed 5.
+      const existingAngleGridAssetIds =
+        plan.frames[frameIndex]?.angleGridAssetIds ?? [];
+      const updatedAngleGridAssetIds = [
+        ...existingAngleGridAssetIds.filter(id => id !== numericAssetId),
+        numericAssetId,
+      ].slice(-5);
+
+      const updatedFrames = plan.frames.slice();
+      updatedFrames[frameIndex] = {
+        ...updatedFrames[frameIndex],
+        angleGridAssetIds: updatedAngleGridAssetIds,
+      };
+      const updatedPlan: VerticalDramaStartFramePlan = {
+        ...plan,
+        frames: updatedFrames,
+      };
+
+      await db
+        .update(verticalDramaEpisodes)
+        .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
+        .where(eq(verticalDramaEpisodes.id, episodeId));
+
+      const urlsByAssetId = await resolveMediaAssetUrlsByIds(
+        tenantId,
+        userId,
+        updatedAngleGridAssetIds
+      );
+      const angleGridAssets = updatedAngleGridAssetIds
+        .map(mediaAssetId => {
+          const url = urlsByAssetId.get(mediaAssetId);
+          return url ? { mediaAssetId, url } : null;
+        })
+        .filter((entry): entry is { mediaAssetId: number; url: string } =>
+          Boolean(entry)
+        );
+
+      return {
+        startFramePlan: updatedPlan,
+        angleGridAssetIds: updatedAngleGridAssetIds,
+        angleGridAssets,
+      };
+    }),
+
+  /**
    * Manually override which character(s) — or which specific
    * variant/age-stage/twin `characterKey` of a character — are used as the
    * identity-lock reference(s) for ONE shot only (planning/vertical-drama-
@@ -8277,22 +9036,18 @@ export const verticalDramaEpisodesRouter = router({
         episodeId,
       });
 
-      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
-      if (!plan || !Array.isArray(plan.frames)) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "No start-frame plan exists yet for this episode",
-        });
-      }
-      const frameIndex = plan.frames.findIndex(
-        f => f.shotNumber === input.shotNumber
-      );
-      if (frameIndex === -1) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `No start-frame plan entry for shot ${input.shotNumber}`,
-        });
-      }
+      // The per-shot character-reference override must be settable BEFORE the
+      // start-frame plan/prompt is generated — e.g. to add a manually-created
+      // character (like a freshly added roster member) to a shot that has no
+      // image prompt yet. This used to throw "No start-frame plan entry for
+      // shot N". Instead, create a minimal plan/frame when missing; the empty
+      // `imagePrompt` is authored later by the normal per-shot generation,
+      // which reads this `requiredCharacterRefs`.
+      const existingPlan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const basePlan: VerticalDramaStartFramePlan =
+        existingPlan && Array.isArray(existingPlan.frames)
+          ? existingPlan
+          : { mode: "single_frame_per_shot", selectedImageModelId: "", frames: [] };
 
       // Every requested characterKey must exist in this series' roster —
       // reject unknown keys instead of silently persisting garbage that
@@ -8321,13 +9076,41 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      const updatedFrames = plan.frames.slice();
-      updatedFrames[frameIndex] = {
-        ...updatedFrames[frameIndex],
-        requiredCharacterRefs: input.characterRefs,
-      };
+      const frameIndex = basePlan.frames.findIndex(
+        f => f.shotNumber === input.shotNumber
+      );
+      const updatedFrames = basePlan.frames.slice();
+      if (frameIndex === -1) {
+        updatedFrames.push({
+          shotNumber: input.shotNumber,
+          imagePrompt: "",
+          negativePrompt: "",
+          requiredCharacterRefs: input.characterRefs,
+          productReferenceAssetIds: [],
+        });
+        updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+      } else {
+        // If the character set actually changed (membership OR order), any
+        // explicit "Image N = character" mapping baked into the stored prompt
+        // is now stale — the start-frame image generator fail-closes on it
+        // (see `findCharacterImageIndexMappingMismatches`). Clear the stale
+        // prompt so the shot reads as "needs a fresh prompt" rather than a
+        // broken one that only fails at image-generation time.
+        const priorRefs = updatedFrames[frameIndex].requiredCharacterRefs ?? [];
+        const refsChanged =
+          priorRefs.length !== input.characterRefs.length ||
+          priorRefs.some((k, i) => k !== input.characterRefs[i]);
+        const clearStalePrompt =
+          refsChanged &&
+          (updatedFrames[frameIndex].imagePrompt ?? "").trim().length > 0;
+        updatedFrames[frameIndex] = {
+          ...updatedFrames[frameIndex],
+          requiredCharacterRefs: input.characterRefs,
+          ...(clearStalePrompt ? { imagePrompt: "", negativePrompt: "" } : {}),
+        };
+      }
       const updatedPlan: VerticalDramaStartFramePlan = {
-        ...plan,
+        ...basePlan,
         frames: updatedFrames,
       };
 
@@ -8442,6 +9225,48 @@ export const verticalDramaEpisodesRouter = router({
         .where(eq(verticalDramaEpisodes.id, episodeId));
 
       return { startFramePlan: updatedPlan };
+    }),
+
+  /**
+   * Repair missing per-shot character reference slots — scans every shot's
+   * resolved dialogue speakers (`resolveShotDialogueLines`, the same
+   * fallback chain the per-shot start-frame/video prompt generators use)
+   * and UNION-merges any roster `characterKey` a speaker resolves to into
+   * that shot's `requiredCharacterRefs`, creating a minimal frame when a
+   * shot has none yet. Never removes an existing ref/character. All real
+   * logic lives in `verticalDramaShotCharacterRepair.ts` (this file is huge
+   * and concurrently edited) — this is a thin auth/ownership wrapper only.
+   */
+  repairEpisodeShotCharacterReferences: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+
+      const { repairEpisodeShotCharacterReferences: runRepair } = await import(
+        "../services/verticalDramaShotCharacterRepair"
+      );
+      try {
+        return await runRepair({ tenantId, userId, seriesId, episodeId });
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to repair missing shot characters",
+        });
+      }
     }),
 
   /**
@@ -8668,7 +9493,11 @@ export const verticalDramaEpisodesRouter = router({
             ...(input.thaiAccent ? { thaiAccent: input.thaiAccent } : {}),
           }
         : {
-            selectedVideoModelId: DEFAULT_MODELS.video,
+            // Empty, NOT `DEFAULT_MODELS.video` — "selected" must reflect a
+            // REAL user choice, not an auto-default (fail-closed guard in
+            // `generateVideoClip`/the video-prompt-pack procedure requires a
+            // non-empty value before generating).
+            selectedVideoModelId: "",
             durationProfileId:
               row.durationProfileId ?? "vertical_drama_60s_9_frames_8_clips",
             motionMode: "first_frame_to_video",
@@ -8736,6 +9565,11 @@ export const verticalDramaEpisodesRouter = router({
         // MCP-transport (e.g. `higgsfield/*`, `magnific-mcp/*`) — see
         // `resolveVdMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09, row 5).
+        // Required only when the resolved model is Hermes-transport and the
+        // caller has no default Hermes connection for images.
+        hermesConnectionId: z.string().max(64).optional(),
         // Optional output resolution/size (storyboard-complete plan Phase
         // 6.2b) — e.g. "1K"/"2K"/"4K" or "720p"/"1080p"/"4K" depending on the
         // resolved model's `resolutionOptions` (`mediaModels.list`). Ignored
@@ -8869,13 +9703,55 @@ export const verticalDramaEpisodesRouter = router({
 
       // Identity-lock references — resolve each required character's
       // approved portrait, same lookup `generateRealStoryboard` uses.
-      const characterRefEntries = await resolveShotCharacterReferenceEntries(
+      const characterAttachmentManifest =
+        await resolveRequiredShotCharacterAttachmentManifest(
         tenantId,
         userId,
         seriesId,
-        frame.requiredCharacterRefs
+        input.shotNumber,
+        frame.requiredCharacterRefs,
       );
+      const characterRefEntries = [
+        ...characterAttachmentManifest.primaryEntries,
+        ...characterAttachmentManifest.supplementaryEntries,
+      ];
       const characterRefUrls = characterRefEntries.map(e => e.url);
+
+      // Render-time reference-mapping fail-closed guard (RC2/RC3 fix,
+      // `planning/vd-start-frame-reference-mapping/plan.md` Phase 3,
+      // 2026-07-16) — REPLACES the removed `formatIdentityLockedImagePrompt`
+      // code-authored append (see this file's doc comment at that former
+      // helper's old definition site for the full RC2 writeup). The skill
+      // authors the identity-lock "Image N ↔ name" mapping itself, in its
+      // own prose, at planning time; code no longer appends a second,
+      // independently-authored mapping on top of it (that dual-authorship is
+      // exactly what produced the observed contradiction — prose said
+      // "ภาคิน (Image 1)" / "ไอริณ (Image 2)" while the removed append said
+      // "Image 1 = ไอริณ; Image 2 = ภาคิน"). Instead, validate the STORED
+      // prompt (after `stripExistingIdentityLockSuffix`, so a legacy
+      // code-authored bracket from before this migration is never
+      // mis-validated) against the REAL attachment order
+      // (`characterAttachmentManifest.primaryEntries`, 1-based `imageIndex`
+      // = attachment position) and fail closed on an EXPLICIT contradiction,
+      // BEFORE credits are reserved. Legacy prompts that never make an
+      // explicit "Image N" claim (i.e. authored before the skill wrote this
+      // mapping into its own prose) proceed unchanged — the validator is
+      // lenient by design (see `findCharacterImageIndexMappingMismatches`'s
+      // doc comment).
+      const referenceMappingMismatches = findCharacterImageIndexMappingMismatches(
+        softenedImagePrompt,
+        characterAttachmentManifest.primaryEntries.map((entry, index) => ({
+          imageIndex: index + 1,
+          characterName: entry.name,
+        })),
+      );
+      if (referenceMappingMismatches.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `พรอมต์ภาพไม่ตรงกับตัวละครในช็อต ${input.shotNumber} — มีการเพิ่ม/เปลี่ยนตัวละครของช็อตนี้หลังสร้างพรอมต์ ทำให้ลำดับรูปตัวละครที่แนบเลื่อน (ถ้าสร้างภาพตอนนี้ หน้าตัวละครอาจสลับกัน) วิธีแก้: สร้างพรอมต์ของช็อตนี้ใหม่ก่อน แล้วจึงสร้างภาพ`,
+        });
+      }
+
       // Location reference (Phase 2 of `planning/polished-toasting-gadget.md`
       // — location visual bible) — this shot's environment-lock reference,
       // resolved from the storyboard's own `distinct_locations[]` groups
@@ -8927,6 +9803,11 @@ export const verticalDramaEpisodesRouter = router({
           configJson: pricingModel.configJson ?? undefined,
         }
       );
+      assertRequiredCharacterReferenceCapacity(
+        input.shotNumber,
+        characterAttachmentManifest.primaryEntries.length,
+        imageCapabilities.maxReferenceImages,
+      );
       const {
         urls: referenceImageUrls,
         trimmedCount: trimmedProductReferenceCount,
@@ -8952,7 +9833,31 @@ export const verticalDramaEpisodesRouter = router({
       // `media.generateImageAsync` MCP-transport branch, which never calls
       // deductCredits at all for these models.
       const shouldChargeImageCredits = imageCreditCost > 0;
-      if (shouldChargeImageCredits) {
+
+      // Feature 135 — Hermes Grok media worker (section 09): resolve the
+      // transport-neutral decision BEFORE the credit reserve block below
+      // (not after) — structurally guarantees "no platform-credit reserve
+      // for hermes" regardless of a misconfigured catalog row's
+      // `creditCost`. `mcp`/`gateway` fall through to the pre-existing code
+      // below byte-identically (delegates to `resolveVdMcpTransportMetadata`
+      // unchanged); `hermes` is handled at the submit block further down
+      // (see the `transportDecision.kind === "hermes"` branch right before
+      // this mutation's existing `generateImageAsync` submit call).
+      const transportDecision = await resolveVdMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+        idempotencyKey: input.idempotencyKey,
+      });
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
+
+      if (transportDecision.kind !== "hermes" && shouldChargeImageCredits) {
         const hasCredits = await hasEnoughCredits(userId, imageCreditCost);
         if (!hasCredits) {
           throw new TRPCError({
@@ -8983,30 +9888,13 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // MCP-transport models (e.g. higgsfield/*, magnific-mcp/*) must be
-      // dispatched through the service's MCP branch, not the default
-      // gateway_api/Python-backend path — see `resolveVdMcpTransportMetadata`.
-      const transportMetadata = await resolveVdMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "image",
-        modelId: resolvedImageModelId,
-        configJson: pricingModel.configJson,
-        mcpConnectionId: input.mcpConnectionId,
-        idempotencyKey: input.idempotencyKey,
-      });
-
       // Identity-lock references — which character entries actually have a
       // reference image attached, after `mergeAndTrimReferenceImageUrls`'s
       // `maxReferenceImages` trimming. Still needed below (the soften>0
       // branch's `characterReferenceManifest` input), even though the
       // level-0 branch no longer formats a prompt from it — see that doc
       // comment.
-      const keptCharCount = Math.min(
-        characterRefEntries.length,
-        referenceImageUrls.length
-      );
-      const keptCharEntries = characterRefEntries.slice(0, keptCharCount);
+      const keptCharEntries = characterAttachmentManifest.primaryEntries;
 
       let renderStartFramePrompt: string;
       if (effectiveSoftenLevel === 0) {
@@ -9129,6 +10017,11 @@ export const verticalDramaEpisodesRouter = router({
       // Final-prompt QC (hard length cap) — enforced right before the
       // outgoing image render call. No-op (zero LLM calls / zero credits)
       // when the stored prompt is already within `VD_IMAGE_PROMPT_MAX`.
+      // `renderStartFramePrompt` is used UNMODIFIED (no code-authored
+      // identity-lock append — see the `referenceMappingMismatches` guard
+      // above's doc comment for why) — the skill's own prose already states
+      // the full identity-lock constraint, so there is no separate
+      // "protected fragment" to shield from QC trimming anymore either.
       const imagePromptQc = await ensurePromptWithinLimit({
         kind: "image",
         prompt: renderStartFramePrompt,
@@ -9166,6 +10059,73 @@ export const verticalDramaEpisodesRouter = router({
               eq(verticalDramaEpisodes.seriesId, seriesId)
             )
           );
+      }
+
+      // Feature 135 — Hermes Grok media worker (section 09, row 5): a
+      // completely separate submit path — no platform credit reserve (the
+      // block above already skipped it for a zero-cost hermes model), build
+      // the reference set from the same trimmed `referenceImageUrls`, and
+      // submit straight to `queueHermesMediaJob`.
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesOrderedRefsFromUrls,
+        } = await import("../services/hermesMediaReferences");
+        const hermesTraceId = crypto.randomUUID();
+        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+          tenantId,
+          userId,
+          urls: referenceImageUrls,
+          traceId: hermesTraceId,
+          connectionId: transportDecision.connectionId,
+        });
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId: resolvedImageModelId,
+            configJson: pricingModel.configJson,
+          }).providerModelId ?? resolvedImageModelId;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "image.edit" : "image.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: imagePromptQc.prompt,
+          settings: {
+            model: hermesProviderModelId,
+            aspectRatio: "9:16",
+            outputCount: 1,
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+          },
+          references,
+          entity: { type: "vertical_drama_shot", id: `${episodeId}:${input.shotNumber}` },
+          traceId: hermesTraceId,
+          tenantId,
+          requestedByUserId: userId,
+          idempotencyKey: input.idempotencyKey,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: imagePromptQc.prompt,
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_episode_id: String(episodeId),
+            __vd_shot_number: String(input.shotNumber),
+            __vd_purpose: "start_frame",
+          },
+          droppedReferenceCount,
+        });
+        return {
+          taskId: hermesTask.id,
+          modelId: resolvedImageModelId,
+          creditCost: 0,
+          trimmedProductReferenceCount,
+          droppedReferenceCount,
+        };
       }
 
       const userToken = getStartFrameMediaUserToken(ctx);
@@ -9261,6 +10221,10 @@ export const verticalDramaEpisodesRouter = router({
         // Required only when the episode's selected image model is
         // MCP-transport — see `resolveVdMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09, row 6). See
+        // `generateStartFrameImage`'s identical field.
+        hermesConnectionId: z.string().max(64).optional(),
         // Optional output resolution/size (storyboard-complete plan Phase
         // 6.2b) — same convention as `generateStartFrameImage`.
         resolution: z.string().trim().max(32).optional(),
@@ -9352,13 +10316,39 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      const characterRefEntries = await resolveShotCharacterReferenceEntries(
+      const characterAttachmentManifest =
+        await resolveRequiredShotCharacterAttachmentManifest(
         tenantId,
         userId,
         seriesId,
-        frame.requiredCharacterRefs
+        input.shotNumber,
+        frame.requiredCharacterRefs,
       );
+      const characterRefEntries = [
+        ...characterAttachmentManifest.primaryEntries,
+        ...characterAttachmentManifest.supplementaryEntries,
+      ];
       const characterRefUrls = characterRefEntries.map(e => e.url);
+
+      // Render-time reference-mapping fail-closed guard — same rationale and
+      // convention as `generateStartFrameImage`'s identical guard above (see
+      // that block's doc comment for the full RC2/RC3 writeup); validates
+      // the stripped STORED prompt (before the grid-authoring skill call
+      // below rewrites it), before credits are reserved.
+      const angleReferenceMappingMismatches = findCharacterImageIndexMappingMismatches(
+        softenedImagePrompt,
+        characterAttachmentManifest.primaryEntries.map((entry, index) => ({
+          imageIndex: index + 1,
+          characterName: entry.name,
+        })),
+      );
+      if (angleReferenceMappingMismatches.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `พรอมต์ภาพไม่ตรงกับตัวละครในช็อต ${input.shotNumber} — มีการเพิ่ม/เปลี่ยนตัวละครของช็อตนี้หลังสร้างพรอมต์ ทำให้ลำดับรูปตัวละครที่แนบเลื่อน (ถ้าสร้างภาพตอนนี้ หน้าตัวละครอาจสลับกัน) วิธีแก้: สร้างพรอมต์ของช็อตนี้ใหม่ก่อน แล้วจึงสร้างภาพ`,
+        });
+      }
+
       // Location reference (Phase 2 of `planning/polished-toasting-gadget.md`
       // — location visual bible) — same resolution + priority-ordering
       // rationale as `generateStartFrameImage`'s identical block above,
@@ -9418,6 +10408,11 @@ export const verticalDramaEpisodesRouter = router({
           configJson: pricingModel.configJson ?? undefined,
         }
       );
+      assertRequiredCharacterReferenceCapacity(
+        input.shotNumber,
+        characterAttachmentManifest.primaryEntries.length,
+        angleImageCapabilities.maxReferenceImages,
+      );
       const {
         urls: referenceImageUrls,
         trimmedCount: trimmedProductReferenceCount,
@@ -9435,7 +10430,26 @@ export const verticalDramaEpisodesRouter = router({
       // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
       // entirely — see the matching comment in `generateStartFrameImage`.
       const shouldChargeGridCredits = gridCreditCost > 0;
-      if (shouldChargeGridCredits) {
+
+      // Feature 135 — Hermes Grok media worker (section 09, row 6): resolve
+      // the transport-neutral decision BEFORE the credit reserve block below
+      // (not after) — structurally guarantees "no platform-credit reserve
+      // for hermes" — see `generateStartFrameImage`'s matching block.
+      const transportDecision = await resolveVdMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+        idempotencyKey: input.idempotencyKey,
+      });
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
+
+      if (transportDecision.kind !== "hermes" && shouldChargeGridCredits) {
         const hasCredits = await hasEnoughCredits(userId, gridCreditCost);
         if (!hasCredits) {
           throw new TRPCError({
@@ -9480,14 +10494,7 @@ export const verticalDramaEpisodesRouter = router({
       // wording so future tuning happens in skill.md, not here) from these
       // ground-truth facts. Code no longer authors any instructional prompt
       // text for this call site.
-      const keptAngleCharCount = Math.min(
-        characterRefEntries.length,
-        referenceImageUrls.length
-      );
-      const keptAngleCharEntries = characterRefEntries.slice(
-        0,
-        keptAngleCharCount
-      );
+      const keptAngleCharEntries = characterAttachmentManifest.primaryEntries;
       const gridProductLockFacts = await loadSeriesProductTieInFacts(
         tenantId,
         userId,
@@ -9591,6 +10598,9 @@ export const verticalDramaEpisodesRouter = router({
       // Final-prompt QC (hard length cap) — enforced on the FINAL grid
       // prompt (skill-authored prompt + the identity-map fact block), since
       // that concatenated string is what actually gets sent to the provider.
+      // No code-authored identity-lock append (no `protectedFragments`
+      // either) — see `generateStartFrameImage`'s matching guard/QC block
+      // above for the full RC2 rationale.
       const gridPromptQc = await ensurePromptWithinLimit({
         kind: "image",
         prompt: gridPromptWithIdentityMap,
@@ -9612,16 +10622,67 @@ export const verticalDramaEpisodesRouter = router({
         productRefUrls.length > 0
       );
 
-      // MCP-transport models — see the matching comment in `generateStartFrameImage`.
-      const transportMetadata = await resolveVdMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "image",
-        modelId: resolvedImageModelId,
-        configJson: pricingModel.configJson,
-        mcpConnectionId: input.mcpConnectionId,
-        idempotencyKey: input.idempotencyKey,
-      });
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesOrderedRefsFromUrls,
+        } = await import("../services/hermesMediaReferences");
+        const hermesTraceId = crypto.randomUUID();
+        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+          tenantId,
+          userId,
+          urls: referenceImageUrls,
+          traceId: hermesTraceId,
+          connectionId: transportDecision.connectionId,
+        });
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId: resolvedImageModelId,
+            configJson: pricingModel.configJson,
+          }).providerModelId ?? resolvedImageModelId;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "image.edit" : "image.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: gridPromptQc.prompt,
+          settings: {
+            model: hermesProviderModelId,
+            aspectRatio: "9:16",
+            outputCount: 1,
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+          },
+          references,
+          entity: { type: "vertical_drama_shot", id: `${episodeId}:${input.shotNumber}` },
+          traceId: hermesTraceId,
+          tenantId,
+          requestedByUserId: userId,
+          idempotencyKey: input.idempotencyKey,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: gridPromptQc.prompt,
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_episode_id: String(episodeId),
+            __vd_shot_number: String(input.shotNumber),
+            __vd_purpose: "angle_grid",
+          },
+          droppedReferenceCount,
+        });
+        return {
+          taskId: hermesTask.id,
+          modelId: resolvedImageModelId,
+          creditCost: 0,
+          trimmedProductReferenceCount,
+          droppedReferenceCount,
+        };
+      }
 
       const userToken = getStartFrameMediaUserToken(ctx);
       try {
@@ -9710,6 +10771,10 @@ export const verticalDramaEpisodesRouter = router({
         // Required only when the episode's selected image model is
         // MCP-transport — see `resolveVdMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09, row 7). See
+        // `generateStartFrameImage`'s identical field.
+        hermesConnectionId: z.string().max(64).optional(),
         // Optional output resolution/size (storyboard-complete plan Phase
         // 6.2b) — same convention as `generateStartFrameImage`.
         resolution: z.string().trim().max(32).optional(),
@@ -9827,7 +10892,25 @@ export const verticalDramaEpisodesRouter = router({
       // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
       // entirely — see the matching comment in `generateStartFrameImage`.
       const shouldChargeImageCredits = imageCreditCost > 0;
-      if (shouldChargeImageCredits) {
+
+      // Feature 135 — Hermes Grok media worker (section 09, row 7): resolve
+      // the transport-neutral decision BEFORE the credit reserve block below
+      // (not after) — see `generateStartFrameImage`'s matching block.
+      const transportDecision = await resolveVdMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+        idempotencyKey: input.idempotencyKey,
+      });
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
+
+      if (transportDecision.kind !== "hermes" && shouldChargeImageCredits) {
         const hasCredits = await hasEnoughCredits(userId, imageCreditCost);
         if (!hasCredits) {
           throw new TRPCError({
@@ -9854,17 +10937,6 @@ export const verticalDramaEpisodesRouter = router({
           },
         });
       }
-
-      // MCP-transport models — see the matching comment in `generateStartFrameImage`.
-      const transportMetadata = await resolveVdMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "image",
-        modelId: resolvedImageModelId,
-        configJson: pricingModel.configJson,
-        mcpConnectionId: input.mcpConnectionId,
-        idempotencyKey: input.idempotencyKey,
-      });
 
       // vertical-drama-skill-first-architecture plan, Phase 1 item 2: the
       // `vertical-drama-shot-image-action` skill authors the ENTIRE repair
@@ -10044,6 +11116,75 @@ export const verticalDramaEpisodesRouter = router({
         label: `image repair prompt (episode #${episodeId}, shot ${input.shotNumber})`,
       });
 
+      // Feature 135 — Hermes Grok media worker (section 09, row 7): a
+      // separate submit path — the sole reference here is `currentUrl` (the
+      // shot's current approved image), so this is always `image.edit`.
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesOrderedRefsFromUrls,
+        } = await import("../services/hermesMediaReferences");
+        const hermesTraceId = crypto.randomUUID();
+        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+          tenantId,
+          userId,
+          urls: [currentUrl],
+          traceId: hermesTraceId,
+          connectionId: transportDecision.connectionId,
+          roleFor: () => "current_image",
+        });
+        // The current-image reference is MANDATORY for a repair edit — a
+        // drop here (see `resolveHermesOrderedRefsFromUrls`'s audit log)
+        // leaves `references` empty, which `queueHermesMediaJob`'s contract
+        // validation then rejects (`image.edit` requires >= 1 reference) —
+        // fails loud, never silently downgrades to `image.generate`.
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId: resolvedImageModelId,
+            configJson: pricingModel.configJson,
+          }).providerModelId ?? resolvedImageModelId;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: "image.edit",
+          connectionId: transportDecision.connectionId,
+          prompt: repairPromptQc.prompt,
+          settings: {
+            model: hermesProviderModelId,
+            aspectRatio: "9:16",
+            outputCount: 1,
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+          },
+          references,
+          entity: { type: "vertical_drama_shot", id: `${episodeId}:${input.shotNumber}` },
+          traceId: hermesTraceId,
+          tenantId,
+          requestedByUserId: userId,
+          idempotencyKey: input.idempotencyKey,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: repairPromptQc.prompt,
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_episode_id: String(episodeId),
+            __vd_shot_number: String(input.shotNumber),
+            __vd_purpose: "repair",
+          },
+          droppedReferenceCount,
+        });
+        return {
+          taskId: hermesTask.id,
+          modelId: resolvedImageModelId,
+          creditCost: 0,
+        };
+      }
+
       const userToken = getStartFrameMediaUserToken(ctx);
       try {
         const task = await mediaGenerationService.generateImageAsync(
@@ -10138,6 +11279,11 @@ export const verticalDramaEpisodesRouter = router({
         // Required only when the episode's selected video model is
         // MCP-transport — see `resolveVdMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09, row 9).
+        // Required only when the resolved model is Hermes-transport and the
+        // caller has no default Hermes connection for video.
+        hermesConnectionId: z.string().max(64).optional(),
         // Optional output resolution (storyboard-complete plan Phase
         // 6.2b) — e.g. "720p"/"1080p"/"4K" per Veo's tiers. Same convention
         // as `generateStartFrameImage`.
@@ -10171,6 +11317,14 @@ export const verticalDramaEpisodesRouter = router({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: `No motion prompt for clip ${input.clipNumber} yet — generate the video motion prompt pack first`,
+        });
+      }
+      const artifactStatus = storyboardArtifactStatus(pack, row.storyboard);
+      if (artifactStatus === "stale") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Storyboard changed after this video prompt was created. Regenerate the prompt before paid video generation.",
         });
       }
       if (!clip.prompt?.trim()) {
@@ -10209,7 +11363,19 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // Resolution order (Phase 1.2): episode-level selection -> DEFAULT_MODELS.
+      // FAIL CLOSED: this is a paid, user-clicked action — require an
+      // explicit episode-level video model selection before generating.
+      // `resolveEpisodeVideoModel` itself stays tolerant (falls back to
+      // `DEFAULT_MODELS.video`) because it's shared with text-only
+      // capability lookups (`generateShotVideoPrompt`,
+      // `regenerateClipDialogue`), so the fail-closed check is enforced
+      // here instead, explicitly, only for the paid render.
+      if (!pack.selectedVideoModelId?.trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "กรุณาเลือกโมเดลวิดีโอก่อนสร้าง / Select a video model before generating.",
+        });
+      }
       const model = await resolveEpisodeVideoModel(pack);
 
       // Shot references (Phase 2.6): gather the clip's shot(s) linked
@@ -10262,33 +11428,129 @@ export const verticalDramaEpisodesRouter = router({
         configJson: model.configJson,
       });
       const maxReferenceImages = capabilities.maxReferenceImages ?? 0;
+      const startFrameAssetId = clip.startFrameAssetId
+        ? Number(clip.startFrameAssetId)
+        : undefined;
+      // Reference-mapping fix Phase 5b (`vd-start-frame-reference-mapping/
+      // plan.md`) — WHY this budget is `maxReferenceImages - 1` (not
+      // `maxReferenceImages`) whenever a start frame is present: the start
+      // frame is resolved and prepended to `idsToResolve` SEPARATELY, below,
+      // so from THIS point on it reads like it has its own "free" slot. It
+      // does NOT. `mediaGenerationService.generateVideoAsync` ->
+      // `resolveReferenceImageUrlsForModel` ->
+      // `getReferenceImageLimitForModel`/`getReferenceImageLimitFromConfig`
+      // (mediaProviderUtils.ts) slices the FINAL COMBINED
+      // `referenceImageUrls` array — start frame included — down to this
+      // exact same model's `configJson.maxReferenceImages`. Before this fix,
+      // extras were budgeted with the full `maxReferenceImages`, so
+      // `idsToResolve.length` could reach `1 (start frame) + maxReferenceImages`
+      // — one over the service's real cap — and the service would silently
+      // drop the LAST entry (per the priority ordering below, usually the
+      // location reference) at submission time, while `trimmedReferenceCount`
+      // (returned to the client for the UI warning) still reported the
+      // router's smaller, wrong trim count. Budgeting extras to
+      // `maxReferenceImages - (startFrame present ? 1 : 0)` here makes the
+      // router's own count match what the service will actually keep, so
+      // nothing is silently dropped downstream and the reported count is
+      // accurate. Byte-identical to the pre-fix behavior for every clip with
+      // no `startFrameAssetId` (the `- 1` term is 0).
+      const extraReferenceBudget = Math.max(
+        0,
+        maxReferenceImages - (startFrameAssetId ? 1 : 0)
+      );
       // Speaker-switch consolidated clips (2026-07-11 redesign) carry one
       // portrait per additional speaker in `clip.extraReferenceAssetIds`
       // (ordered by priority, anchor speaker already covered by
       // `startFrameAssetId` below) — merged IN FRONT OF the shot-level
       // manual reference list so they're kept first when trimmed to this
-      // model's `maxReferenceImages`. A clip without the field (every clip
+      // model's `extraReferenceBudget`. A clip without the field (every clip
       // predating this task, and every non-speaker-switch clip) behaves
-      // byte-identically: `?? []` contributes nothing. The location reference
-      // (if any) is appended LAST — lower priority than the start frame
-      // (always kept, resolved separately below) and every character/shot
-      // reference above, so it is the FIRST thing trimmed away once a
-      // model's `maxReferenceImages` caps out.
-      const orderedReferenceAssetIds = [
+      // byte-identically: `?? []` contributes nothing.
+      const manualReferenceAssetIds = [
         ...(clip.extraReferenceAssetIds ?? []).map(id => Number(id)),
         ...shotReferences
           .slice()
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map(r => Number(r.mediaAssetId)),
+      ];
+
+      // Reference-mapping fix Phase 5c (`vd-start-frame-reference-mapping/
+      // plan.md`) — best-effort auto-attach of this clip's REQUIRED
+      // characters' primary-portrait asset ids, so a multi-image-reference
+      // model gets identity-lock coverage for every character the clip's
+      // source shot(s) actually need — not only the anchor speaker riding
+      // `startFrameAssetId`/the switch-portrait `extraReferenceAssetIds`
+      // pair above (that pair only covers characters who SPEAK during a
+      // speaker switch; a silent/non-speaking required character, or a clip
+      // whose motion pack predates the 2026-07-11 speaker-switch redesign,
+      // gets none of that coverage otherwise). Gated on
+      // `maxReferenceImages > 1` — a single-reference-image model (Grok
+      // Imagine's `grok-imagine-video-1.5`, `maxReferenceImages: 1`) has NO
+      // room for anything beyond the start frame; that model's single start
+      // frame already carries 100% of identity (see plan.md Phase 5
+      // research), so this block must stay a complete no-op there —
+      // `remainingPortraitSlots` below is `<= 0` whenever
+      // `extraReferenceBudget <= 1`, but the outer `maxReferenceImages > 1`
+      // guard makes that explicit and byte-identical for Grok regardless of
+      // how many manual/speaker-switch refs are already present. Fills only
+      // whatever slots remain in `extraReferenceBudget` AFTER the
+      // speaker-switch + manual shot references above (never displaces a
+      // user-chosen reference), and is itself placed BEFORE the location
+      // reference below — the image-reference-path convention documented at
+      // `resolveShotCharacterReferenceEntries`'s "identity before
+      // environment" priority applies here too, so a tight budget drops the
+      // location before it ever drops a character portrait. Best-effort: a
+      // DB/lookup failure here must never fail a paid render — caught below
+      // and logged, same "log and continue" convention as this router's
+      // other non-blocking enrichment steps (e.g.
+      // `maybeBuildAndPersistTieInQualityReport`'s call site).
+      let characterPortraitReferenceAssetIds: number[] = [];
+      if (maxReferenceImages > 1) {
+        const remainingPortraitSlots =
+          extraReferenceBudget - manualReferenceAssetIds.length;
+        if (remainingPortraitSlots > 0) {
+          try {
+            const alreadyReferencedAssetIds = new Set([
+              ...(startFrameAssetId ? [startFrameAssetId] : []),
+              ...manualReferenceAssetIds,
+            ]);
+            const requiredPortraitAssetIds =
+              await resolveClipRequiredCharacterPortraitAssetIds(
+                tenantId,
+                userId,
+                seriesId,
+                row.startFramePlan as VerticalDramaStartFramePlan | null,
+                clip.sourceShotNumbers
+              );
+            characterPortraitReferenceAssetIds = requiredPortraitAssetIds
+              .filter(id => !alreadyReferencedAssetIds.has(id))
+              .slice(0, remainingPortraitSlots);
+          } catch (err) {
+            debugError(
+              "verticalDramaEpisodes.generateVideoClip",
+              `resolveClipRequiredCharacterPortraitAssetIds failed (episodeId=${episodeId}, clipNumber=${input.clipNumber}) — continuing without auto-attached portraits`,
+              err
+            );
+          }
+        }
+      }
+
+      // The location reference (if any) is appended LAST — lower priority
+      // than the start frame (always kept, resolved separately below) and
+      // every character/shot/portrait reference above, so it is the FIRST
+      // thing trimmed away once a model's `extraReferenceBudget` caps out.
+      const orderedReferenceAssetIds = [
+        ...manualReferenceAssetIds,
+        ...characterPortraitReferenceAssetIds,
         ...(clipLocationAssetId ? [clipLocationAssetId] : []),
       ];
       const trimmedReferenceCount = Math.max(
         0,
-        orderedReferenceAssetIds.length - maxReferenceImages
+        orderedReferenceAssetIds.length - extraReferenceBudget
       );
       const keptReferenceAssetIds =
-        maxReferenceImages > 0
-          ? orderedReferenceAssetIds.slice(0, maxReferenceImages)
+        extraReferenceBudget > 0
+          ? orderedReferenceAssetIds.slice(0, extraReferenceBudget)
           : [];
 
       // Resolve the approved start frame + kept reference assets to URLs in
@@ -10297,9 +11559,6 @@ export const verticalDramaEpisodesRouter = router({
       // frame (the generic "market" dispatch convention — see
       // `modelRegistry.ts`'s `grok-imagine-video-1-5-preview`/HappyHorse
       // entries) still gets the right image first.
-      const startFrameAssetId = clip.startFrameAssetId
-        ? Number(clip.startFrameAssetId)
-        : undefined;
       const idsToResolve = [
         ...(startFrameAssetId ? [startFrameAssetId] : []),
         ...keptReferenceAssetIds,
@@ -10325,6 +11584,38 @@ export const verticalDramaEpisodesRouter = router({
         delivery: d.delivery,
         subtext: d.subtext,
       }));
+      // Lip-sync discipline fix — resolve each distinct speaker's roster
+      // display name for the native-audio dialogue block (no roster is
+      // otherwise loaded in this mutation, unlike `generateShotVideoPrompt`,
+      // so this is the one targeted/minimal query added for this fix — kept
+      // to just the distinct `characterKey`s this clip's dialogue actually
+      // uses). Falls back to bare `characterKey` for any speaker with no
+      // roster row/name.
+      const videoClipDialogueCharacterKeys = Array.from(
+        new Set(
+          dialogueLines
+            .map(d => d.characterKey)
+            .filter((k): k is string => Boolean(k))
+        )
+      );
+      const videoClipCharacterIdentitySources =
+        await resolveShotCharacterIdentitySources(
+          tenantId,
+          seriesId,
+          videoClipDialogueCharacterKeys
+        );
+      const videoClipCharacterNameByKey = new Map(
+        videoClipCharacterIdentitySources
+          .filter((c): c is typeof c & { name: string } => Boolean(c.name))
+          .map(c => [c.characterKey, c.name])
+      );
+      const dialogueLinesWithSpeakerNames: VerticalDramaClipDialogueLine[] =
+        dialogueLines.map(l => ({
+          ...l,
+          speakerName: l.characterKey
+            ? videoClipCharacterNameByKey.get(l.characterKey)
+            : undefined,
+        }));
       const formatted = formatVideoClipRequest({
         clip: {
           clipNumber: clip.clipNumber,
@@ -10339,13 +11630,29 @@ export const verticalDramaEpisodesRouter = router({
           // opted in, so this stays additive.
           audioDirection: clip.audioDirection,
         },
-        dialogueLines,
+        dialogueLines: dialogueLinesWithSpeakerNames,
         dialogueLanguage: pack.dialogueLanguage,
         thaiAccent: pack.thaiAccent,
         modelId: model.id,
         model,
         aspectRatio: "9:16",
       });
+
+      // Dialogue-duplication fix (2026-07-15) — protect each individual
+      // spoken line, not the `buildNativeDialogueVerbatimBlock` boilerplate
+      // block. See the sub-shots path's identical fix (near
+      // `speakerSwitchGeneration.dialogue` above) for the full rationale.
+      // Shared by both QC passes below (base formatted prompt + final
+      // provider prompt) since both protect the same dialogue lines.
+      const videoClipDialogueLineFragments =
+        capabilities.nativeAudioDialogue === true
+          ? dialogueLinesWithSpeakerNames
+              .map(l => l.lineTh.trim())
+              // BARE, UNQUOTED line text (see the sub-shots site's comment):
+              // a straight-quoted fragment never matches the refiner's
+              // curly-quoted inline dialogue and gets wrongly re-appended.
+              .filter(Boolean)
+          : undefined;
 
       // Final-prompt QC (hard length cap) — the formatter folds
       // dialogue/delivery/acting direction text INTO `clip.prompt`, so the
@@ -10356,6 +11663,7 @@ export const verticalDramaEpisodesRouter = router({
       const videoPromptQc = await ensurePromptWithinLimit({
         kind: "video",
         prompt: formatted.prompt,
+        protectedFragments: videoClipDialogueLineFragments,
         userId,
         tenantId,
         seriesId,
@@ -10389,6 +11697,22 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
+      // Provider-ready post-condition: re-check after every formatter/style
+      // transform so native dialogue cannot be dropped at the last boundary.
+      const finalProviderPromptQc = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: formatted.prompt,
+        protectedFragments: videoClipDialogueLineFragments,
+        userId,
+        tenantId,
+        seriesId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:final-prompt-qc`
+          : undefined,
+        label: `final provider video prompt (episode #${episodeId}, clip ${input.clipNumber})`,
+      });
+      formatted.prompt = finalProviderPromptQc.prompt;
+
       const [pricingRow] = await db
         .select({
           creditCost: mediaModels.creditCost,
@@ -10413,7 +11737,28 @@ export const verticalDramaEpisodesRouter = router({
       // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
       // entirely — see the matching comment in `generateStartFrameImage`.
       const shouldChargeVideoCredits = videoCreditCost > 0;
-      if (shouldChargeVideoCredits) {
+
+      // Feature 135 — Hermes Grok media worker (section 09, row 9): resolve
+      // the transport-neutral decision BEFORE the credit reserve block below
+      // (not after) — structurally guarantees "no platform-credit reserve
+      // for hermes" regardless of what a misconfigured catalog row's
+      // `creditCost` might be, rather than relying solely on the zero-cost
+      // convention holding true.
+      const transportDecision = await resolveVdMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "video",
+        modelId: model.id,
+        configJson: pricingRow?.configJson ?? model.configJson ?? null,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+        idempotencyKey: input.idempotencyKey,
+      });
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
+
+      if (transportDecision.kind !== "hermes" && shouldChargeVideoCredits) {
         const hasCredits = await hasEnoughCredits(userId, videoCreditCost);
         if (!hasCredits) {
           throw new TRPCError({
@@ -10444,16 +11789,85 @@ export const verticalDramaEpisodesRouter = router({
         });
       }
 
-      // MCP-transport models — see the matching comment in `generateStartFrameImage`.
-      const transportMetadata = await resolveVdMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "video",
-        modelId: model.id,
-        configJson: pricingRow?.configJson ?? model.configJson ?? null,
-        mcpConnectionId: input.mcpConnectionId,
-        idempotencyKey: input.idempotencyKey,
-      });
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const { buildHermesMediaReferences, buildHermesMediaTaskEnvelope } = await import(
+          "../services/hermesMediaReferences"
+        );
+        const { effectiveHermesCapability } = await import("../../shared/hermesMedia");
+        const { getHermesConnection } = await import("../services/hermesConnectionService");
+
+        // Reference trimming via effective capability (§4.5): intersect the
+        // model row's own `maxReferenceImages` (already reflected in
+        // `idsToResolve`'s length via `extraReferenceBudget` above) with the
+        // CONNECTION's own capability manifest — e.g. Grok i2v's manifest
+        // caps `video.image_to_video` at 1, so only the start frame (index 0
+        // of the "identity before environment" assembly order) survives.
+        const connection = await getHermesConnection({
+          tenantId,
+          userId,
+          connectionId: transportDecision.connectionId,
+        });
+        const effective = effectiveHermesCapability(
+          { maxReferences: maxReferenceImages },
+          connection.capabilities,
+          "video.image_to_video",
+        );
+        const hermesIdsToResolve =
+          typeof effective.maxReferences === "number"
+            ? idsToResolve.slice(0, effective.maxReferences)
+            : idsToResolve;
+        const orderedRefs = hermesIdsToResolve.map((id, idx) => ({
+          assetId: String(id),
+          role: idx === 0 && startFrameAssetId ? "start_frame" : "reference",
+          label: `Image-${idx + 1}`,
+        }));
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId: model.id,
+            configJson: pricingRow?.configJson ?? model.configJson ?? null,
+          }).providerModelId ?? model.id;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: "video.image_to_video",
+          connectionId: transportDecision.connectionId,
+          prompt: formatted.prompt,
+          settings: {
+            model: hermesProviderModelId,
+            aspectRatio: "9:16",
+            durationSeconds: clip.durationSeconds ?? null,
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+          },
+          references,
+          entity: { type: "vertical_drama_shot", id: `${episodeId}:${input.clipNumber}` },
+          traceId: crypto.randomUUID(),
+          tenantId,
+          requestedByUserId: userId,
+          idempotencyKey: input.idempotencyKey,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "video",
+          model: hermesProviderModelId,
+          prompt: formatted.prompt,
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_episode_id: String(episodeId),
+            __vd_clip_number: String(input.clipNumber),
+          },
+        });
+        return {
+          taskId: hermesTask.id,
+          modelId: model.id,
+          creditCost: 0,
+          providerFamily: formatted.providerFamily,
+          ttsFallback: formatted.ttsFallback,
+          ttsLines: formatted.ttsLines,
+          trimmedReferenceCount: Math.max(0, idsToResolve.length - hermesIdsToResolve.length) + trimmedReferenceCount,
+        };
+      }
 
       const userToken = getStartFrameMediaUserToken(ctx);
       try {
@@ -10867,19 +12281,31 @@ export const verticalDramaEpisodesRouter = router({
           seriesId,
           frame.requiredCharacterRefs
         );
-      // Same helper (and the SAME "portraits first, then sheets" ordering
-      // guarantee — see its doc comment above)
-      // `generateStartFrameAngleVariations` already uses to build its own
-      // `characterReferenceManifest`: the order this resolves in is the same
-      // order the real paid render will actually attach reference images in
-      // later, so the "Image N" claims the skill writes here stay accurate
-      // for when this shot is eventually rendered.
+      // RC1 fix (`planning/vd-start-frame-reference-mapping/plan.md` Phase 1,
+      // 2026-07-16): `resolveShotCharacterReferenceEntries`'s underlying
+      // query has NO `ORDER BY` — its own return order is Postgres-arbitrary,
+      // NOT reliably `frame.requiredCharacterRefs` order. The comment that
+      // used to sit here claimed the two orders always matched; that claim
+      // was FALSE, and when Postgres happened to return rows in a different
+      // order than `requiredCharacterRefs`, the skill was told the WRONG
+      // "Image N" index for a character relative to what the paid render
+      // (`resolveRequiredShotCharacterAttachmentManifest`, which explicitly
+      // restores `requiredCharacterRefs` order) actually attaches later —
+      // the skill's own authored prose then correctly reflected the WRONG
+      // index it was given, contradicting the real attachment order. Re-sort
+      // via `reorderShotCharacterRefEntriesByKeyOrder` (the same helper
+      // `resolveShotVideoPromptCharacterReferenceImages` uses) so the
+      // manifest below is always in the SAME order the real render attaches
+      // reference images in.
       const shotStartFramePromptCharacterRefEntries =
-        await resolveShotCharacterReferenceEntries(
-          tenantId,
-          userId,
-          seriesId,
-          frame.requiredCharacterRefs
+        reorderShotCharacterRefEntriesByKeyOrder(
+          await resolveShotCharacterReferenceEntries(
+            tenantId,
+            userId,
+            seriesId,
+            frame.requiredCharacterRefs
+          ),
+          frame.requiredCharacterRefs ?? [],
         );
 
       // Location fact (Phase 2 of `planning/polished-toasting-gadget.md` —
@@ -10919,11 +12345,74 @@ export const verticalDramaEpisodesRouter = router({
         frame.imagePrompt
       );
 
+      // Speaker-order composition fix (start-frame character positioning) —
+      // this shot's dialogue speakers, in delivery order, deduped to first
+      // appearance, resolved via the SAME dialogue-resolution chain
+      // `generateShotVideoPrompt` uses (`resolveShotDialogueLines` — see
+      // that function's own doc comment for the full fallback order). This
+      // generator is not authoritative for dialogue and never triggers a
+      // dialogue-refresh itself (unlike `generateShotVideoPrompt`) — a shot
+      // with no resolvable dialogue simply leaves `speaking_order` empty
+      // (silent/solo shot, or dialogue not drafted yet), which
+      // `generateStartFrameShotPrompt` below then omits from the prompt
+      // entirely (byte-identical regression guard).
+      const shotStartFramePromptPack =
+        row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const shotStartFramePromptMatchingClip = shotStartFramePromptPack?.clips?.find(
+        c => c.sourceShotNumbers?.includes(input.shotNumber)
+      );
+      const shotStartFramePromptDeepStoryDraftsEnabled =
+        await resolveVerticalDramaDeepStoryDraftsFlag(tenantId);
+      let shotStartFramePromptDeepDraftShot: VdDeepDraftShotDraft | null = null;
+      if (shotStartFramePromptDeepStoryDraftsEnabled) {
+        const [shotStartFramePromptSeriesRow] = await db
+          .select({ bible: verticalDramaSeries.bible })
+          .from(verticalDramaSeries)
+          .where(
+            and(
+              eq(verticalDramaSeries.id, seriesId),
+              eq(verticalDramaSeries.tenantId, tenantId),
+              eq(verticalDramaSeries.userId, userId)
+            )
+          )
+          .limit(1);
+        const { getActiveBreakdown, readItemShotDrafts } = await import(
+          "../services/verticalDramaStoryBible"
+        );
+        const shotStartFramePromptPlanItem = getActiveBreakdown(
+          (shotStartFramePromptSeriesRow?.bible as Record<string, unknown> | null) ?? null
+        ).find(item => item.episodeNumber === Number(row.episodeNumber));
+        shotStartFramePromptDeepDraftShot = shotStartFramePromptPlanItem
+          ? ((readItemShotDrafts(shotStartFramePromptPlanItem) ?? []).find(
+              s => s.shot_number === input.shotNumber
+            ) ?? null)
+          : null;
+      }
+      const shotStartFramePromptDialogueLines = resolveShotDialogueLines({
+        shotNumber: input.shotNumber,
+        matchingClip: shotStartFramePromptMatchingClip,
+        dialogueAudioPlan: row.dialogueAudioPlan as {
+          dialogue_lines?: Array<Record<string, unknown>>;
+        } | null,
+        script: row.script as Record<string, unknown> | null,
+        storyboardShotCount: (row.storyboard as { shots?: unknown[] } | null)
+          ?.shots?.length,
+        deepDraftShot: shotStartFramePromptDeepDraftShot,
+      });
+      const shotStartFramePromptSpeakingOrder = Array.from(
+        new Set(
+          shotStartFramePromptDialogueLines
+            .map(l => l.characterKey?.trim())
+            .filter((k): k is string => Boolean(k))
+        )
+      );
+
       const {
         generateStartFrameShotPrompt,
         InsufficientCreditsError: StartFrameShotPromptInsufficientCreditsError,
         VdSchemaValidationError: StartFrameShotPromptSchemaValidationError,
         RateLimitExceededError: StartFrameShotPromptRateLimitExceededError,
+        VdReferenceMappingError: StartFrameShotPromptReferenceMappingError,
       } = await import("../services/verticalDramaStartFrameGeneration");
 
       let shotStartFramePromptResult: {
@@ -10976,6 +12465,14 @@ export const verticalDramaEpisodesRouter = router({
                 hasReferenceImage: Boolean(shotStartFramePromptLocationEntry.url),
               }
             : undefined,
+          // Speaker-order composition fix — see this procedure's own
+          // `shotStartFramePromptSpeakingOrder` resolution above. Omitted
+          // entirely (not merely `undefined`) when no speakers resolved, so
+          // a silent/solo shot or dialogue-not-yet-drafted shot produces the
+          // same prompt as before this field existed.
+          ...(shotStartFramePromptSpeakingOrder.length
+            ? { speakingOrder: shotStartFramePromptSpeakingOrder }
+            : {}),
           idempotencyKey: input.idempotencyKey,
         });
       } catch (err) {
@@ -10995,6 +12492,19 @@ export const verticalDramaEpisodesRouter = router({
           throw new TRPCError({
             code: "TOO_MANY_REQUESTS",
             message: err.message,
+          });
+        }
+        // RC3 fix (`planning/vd-start-frame-reference-mapping/plan.md` Phase
+        // 2, 2026-07-16) — the skill authored a prompt whose own "Image N ↔
+        // name" text still explicitly contradicted `characterReferenceManifest`
+        // after one corrective retry inside `generateStartFrameShotPrompt`.
+        // Fail closed here (a contradictory prompt is never persisted) with a
+        // clear Thai instruction, same convention as every other user-facing
+        // PRECONDITION_FAILED in this router.
+        if (err instanceof StartFrameShotPromptReferenceMappingError) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `พรอมต์ภาพไม่ตรงกับตัวละครในช็อต ${input.shotNumber} (ระบบลองแก้ให้อัตโนมัติแล้วแต่ยังไม่ตรง) — วิธีแก้: สร้างพรอมต์ของช็อตนี้ใหม่อีกครั้ง แล้วจึงสร้างภาพ`,
           });
         }
         throw new TRPCError({
@@ -11095,6 +12605,614 @@ export const verticalDramaEpisodesRouter = router({
         negativePrompt: shotStartFramePromptResult.negativePrompt,
         creditsUsed: shotStartFramePromptResult.creditsUsed,
       };
+    }),
+
+  /**
+   * Phase 6a (`planning/vd-start-frame-reference-mapping/plan.md` Phase 6 —
+   * user-controlled supplementary reference frames) — author ONE additional
+   * reference-frame image prompt for a shot. Reuses `generateStartFrameShotPrompt`
+   * (the SAME service `generateShotStartFramePrompt` above calls) in its new
+   * `referenceFrameMode` (see that service's `GenerateStartFrameShotPromptParams
+   * .referenceFrameMode` doc comment) — the user picks WHICH characters
+   * appear (not necessarily `frame.requiredCharacterRefs`) and types a
+   * free-text directive (pose/camera/action, e.g. "ไอริณโอบกอดภาคิน") that
+   * OUTRANKS `canonical_shot_summary` for action under the skill's new
+   * "Supplementary reference frame mode" section; every other identity/
+   * mapping/continuity rule still applies, including the mapping validator +
+   * one corrective retry + fail-closed `VdReferenceMappingError` — identical
+   * to the main flow.
+   *
+   * Deliberately does NOT touch `startFramePlan.frames[].imagePrompt` or any
+   * other persisted episode field (no `db.update` call anywhere in this
+   * mutation) — this is a prompt-authoring-only call the user must CONFIRM
+   * before spending credits on the paid render
+   * (`generateShotReferenceFrameImage`, immediately below). The completed
+   * render is only linked into the episode's reference set
+   * (`vertical_drama_shot_references`, `source: "reference_frame"`) by the
+   * CLIENT calling the pre-existing `linkShotReference` mutation once the
+   * user approves the image.
+   */
+  generateShotReferenceFramePrompt: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        characterKeys: z.array(z.string().min(1)).min(1).max(10),
+        instruction: z.string().trim().min(1).max(2000),
+        idempotencyKey,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frame = plan?.frames?.find(f => f.shotNumber === input.shotNumber);
+      if (!plan || !frame) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `No start-frame plan for shot ${input.shotNumber} yet — generate the start-frame plan first`,
+        });
+      }
+
+      // De-dupe the user's own character selection (same tolerant convention
+      // `resolveRequiredShotCharacterAttachmentManifest` uses below in the
+      // sibling image mutation) — the multi-select UI could conceivably
+      // resend the same key twice.
+      const referenceFrameCharacterKeys = Array.from(
+        new Set(input.characterKeys.map(key => key.trim()).filter(Boolean))
+      );
+
+      // Validate every selected key against the series roster BEFORE
+      // spending an LLM call — an unknown key can never resolve to a real
+      // portrait/identity fact at render time either, so failing fast here
+      // is strictly better than discovering it later at the paid image
+      // mutation.
+      const referenceFrameRosterRows = await db
+        .select({ characterKey: verticalDramaCharacters.characterKey })
+        .from(verticalDramaCharacters)
+        .where(
+          and(
+            eq(verticalDramaCharacters.tenantId, tenantId),
+            eq(verticalDramaCharacters.seriesId, seriesId),
+            inArray(verticalDramaCharacters.characterKey, referenceFrameCharacterKeys)
+          )
+        );
+      const referenceFrameKnownKeys = new Set(
+        referenceFrameRosterRows.map((r: { characterKey: string }) => r.characterKey)
+      );
+      const referenceFrameUnknownKeys = referenceFrameCharacterKeys.filter(
+        key => !referenceFrameKnownKeys.has(key)
+      );
+      if (referenceFrameUnknownKeys.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `ไม่พบตัวละครในรายการสำหรับ ${referenceFrameUnknownKeys.join(", ")}`,
+        });
+      }
+
+      // Manifest order = the USER'S selection order (Phase 6 design) — the
+      // SAME order `generateShotReferenceFrameImage`'s
+      // `resolveRequiredShotCharacterAttachmentManifest` call preserves
+      // (first-occurrence order of its own `characterKeys` input, which the
+      // client sends back unchanged as this mutation's own returned
+      // `characterKeys`). Tolerant of a selected character with no portrait
+      // yet at PROMPT time — same "informational for authoring, fail-closed
+      // only at render" convention `generateShotStartFramePrompt` uses for
+      // `frame.requiredCharacterRefs`; `resolveShotCharacterReferenceEntries`
+      // simply omits a portrait-less character here.
+      const referenceFrameCharacterRefEntries = reorderShotCharacterRefEntriesByKeyOrder(
+        await resolveShotCharacterReferenceEntries(
+          tenantId,
+          userId,
+          seriesId,
+          referenceFrameCharacterKeys
+        ),
+        referenceFrameCharacterKeys
+      );
+
+      const referenceFrameCharacterIdentitySources =
+        await resolveShotCharacterIdentitySources(
+          tenantId,
+          seriesId,
+          referenceFrameCharacterKeys
+        );
+
+      const referenceFrameLocationEntry = await resolveShotLocationReferenceEntry(
+        tenantId,
+        userId,
+        seriesId,
+        row.storyboard,
+        input.shotNumber,
+        frame.locationKey
+      );
+
+      const referenceFramePromptLanguage = (
+        row.motionPromptPack as VerticalDramaMotionPromptPack | null
+      )?.promptLanguage;
+
+      // Scene grounding only — same defensive stripping every other call
+      // site applies to a stored prompt before an LLM call.
+      const referenceFrameBasePrompt = stripExistingIdentityLockSuffix(
+        frame.imagePrompt ?? ""
+      );
+
+      const {
+        generateStartFrameShotPrompt,
+        InsufficientCreditsError: ReferenceFramePromptInsufficientCreditsError,
+        VdSchemaValidationError: ReferenceFramePromptSchemaValidationError,
+        RateLimitExceededError: ReferenceFramePromptRateLimitExceededError,
+        VdReferenceMappingError: ReferenceFramePromptReferenceMappingError,
+      } = await import("../services/verticalDramaStartFrameGeneration");
+
+      let referenceFramePromptResult: {
+        prompt: string;
+        negativePrompt: string;
+        creditsUsed: number;
+        model: string;
+      };
+      try {
+        referenceFramePromptResult = await generateStartFrameShotPrompt({
+          userId,
+          tenantId,
+          seriesId,
+          episodeId,
+          shotNumber: input.shotNumber,
+          instruction: input.instruction,
+          referenceFrameMode: true,
+          currentPrompt: referenceFrameBasePrompt,
+          currentNegativePrompt: frame.negativePrompt ?? "",
+          canonicalShotSummary: frame.canonicalShotSummary,
+          requiredCharacterRefs: referenceFrameCharacterKeys,
+          characters: referenceFrameCharacterIdentitySources,
+          characterReferenceManifest:
+            referenceFrameCharacterRefEntries.map((entry, idx) => ({
+              index: idx + 1,
+              characterId: null,
+              name: entry.name,
+            })),
+          promptLanguage: referenceFramePromptLanguage,
+          // Phase 6 design — no `speakingOrder` fact by design (this is an
+          // arbitrary user-directed pose/action, not necessarily this shot's
+          // dialogue beat).
+          location: referenceFrameLocationEntry
+            ? {
+                name: referenceFrameLocationEntry.name ?? "",
+                description:
+                  referenceFrameLocationEntry.description ??
+                  referenceFrameLocationEntry.name ??
+                  "",
+                hasReferenceImage: Boolean(referenceFrameLocationEntry.url),
+              }
+            : undefined,
+          idempotencyKey: input.idempotencyKey,
+        });
+      } catch (err) {
+        if (err instanceof ReferenceFramePromptInsufficientCreditsError) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Insufficient credits to author the reference-frame prompt",
+          });
+        }
+        if (err instanceof ReferenceFramePromptSchemaValidationError) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to author the reference-frame prompt — try again",
+          });
+        }
+        if (err instanceof ReferenceFramePromptRateLimitExceededError) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: err.message,
+          });
+        }
+        // Same fail-closed convention as `generateShotStartFramePrompt`'s
+        // matching catch branch — a contradictory prompt is never returned
+        // for the user to confirm.
+        if (err instanceof ReferenceFramePromptReferenceMappingError) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `พรอมต์เฟรมอ้างอิงไม่ตรงกับตัวละครในช็อต ${input.shotNumber} (ลองแก้ให้อัตโนมัติแล้วยังไม่ตรง) — วิธีแก้: กด "สร้างเฟรมอ้างอิง (AI)" ของช็อตนี้ใหม่อีกครั้ง`,
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to author the reference-frame prompt",
+        });
+      }
+
+      // Final-prompt QC (hard length cap) — keeps this mutation's returned
+      // prompt within `generateShotReferenceFrameImage`'s own `prompt` zod
+      // max (`VD_IMAGE_PROMPT_MAX`), so a user who confirms unmodified never
+      // hits a BAD_REQUEST on the render call.
+      const referenceFramePromptQc = await ensurePromptWithinLimit({
+        kind: "image",
+        prompt: referenceFramePromptResult.prompt,
+        userId,
+        tenantId,
+        seriesId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `reference-frame prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+      });
+
+      // Deliberately NOT persisted onto `startFramePlan.frames[]` — see this
+      // procedure's own doc comment.
+      return {
+        prompt: referenceFramePromptQc.prompt,
+        negativePrompt: referenceFramePromptResult.negativePrompt,
+        creditsUsed: referenceFramePromptResult.creditsUsed,
+        model: referenceFramePromptResult.model,
+        characterKeys: referenceFrameCharacterKeys,
+      };
+    }),
+
+  /**
+   * Phase 6a (`planning/vd-start-frame-reference-mapping/plan.md` Phase 6) —
+   * paid render of ONE user-confirmed reference-frame prompt
+   * (`generateShotReferenceFramePrompt` above). Mirrors
+   * `generateStartFrameImage`'s model-resolution / pricing / capabilities /
+   * render-time mapping guard / credit reserve-refund / MCP-transport /
+   * async-submit structure as closely as possible, with three deliberate
+   * differences: (1) the character set is the caller's OWN `characterKeys`
+   * (not `frame.requiredCharacterRefs`); (2) NO product reference is ever
+   * attached (a supplementary reference still is not the shot's tie-in
+   * carrier); (3) nothing is EVER persisted onto `startFramePlan` — the
+   * completed asset is linked into the episode's reference set only once the
+   * CLIENT calls `linkShotReference({source: "reference_frame"})`.
+   *
+   * Cap-10 guard (Phase 6 user spec: "no fixed count, cap 10 per shot") runs
+   * BEFORE any other resolution/credit work — counts this shot's already-
+   * LINKED `vertical_drama_shot_references` rows with `source:
+   * "reference_frame"` via the existing `listForShot` read path (no new
+   * query shape).
+   */
+  generateShotReferenceFrameImage: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        prompt: z.string().trim().min(1).max(VD_IMAGE_PROMPT_MAX),
+        negativePrompt: z.string().max(2000).optional(),
+        characterKeys: z.array(z.string().min(1)).min(1).max(10),
+        resolution: z.string().trim().max(32).optional(),
+        mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09, row 8). See
+        // `generateStartFrameImage`'s identical field.
+        hermesConnectionId: z.string().max(64).optional(),
+        idempotencyKey,
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for image generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId,
+        seriesId,
+        episodeId,
+      });
+
+      // (a) ownership + frame existence.
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frame = plan?.frames?.find(f => f.shotNumber === input.shotNumber);
+      if (!plan || !frame) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `No start-frame plan for shot ${input.shotNumber} yet — generate the start-frame plan first`,
+        });
+      }
+
+      // (b) cap-10 guard — reuses the existing shot-reference read path, no
+      // new query shape. Counts only rows this shot has ALREADY LINKED
+      // (`source: "reference_frame"`); the in-flight render being submitted
+      // right now is not yet a linked row.
+      const referenceFrameExistingRefs =
+        await verticalDramaShotReferencesService.listForShot(
+          { tenantId, userId, seriesId },
+          episodeId,
+          input.shotNumber
+        );
+      const referenceFrameExistingCount = referenceFrameExistingRefs.filter(
+        r => r.source === "reference_frame"
+      ).length;
+      if (referenceFrameExistingCount >= 10) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `เฟรมอ้างอิงของช็อตนี้ครบ 10 ภาพแล้ว — ลบภาพเก่าออกก่อนสร้างใหม่`,
+        });
+      }
+
+      // De-dupe the caller's own selection — same convention as the sibling
+      // prompt mutation above.
+      const referenceFrameCharacterKeys = Array.from(
+        new Set(input.characterKeys.map(key => key.trim()).filter(Boolean))
+      );
+
+      // (c) portraits resolved fail-closed, requiredCharacterRefs-order
+      // resolver with the SELECTED keys — throws PRECONDITION_FAILED
+      // (unknown character / missing approved portrait / duplicate-portrait
+      // collision) with its own Thai messages; identical convention to
+      // `generateStartFrameImage`'s identity-lock resolution.
+      const characterAttachmentManifest =
+        await resolveRequiredShotCharacterAttachmentManifest(
+          tenantId,
+          userId,
+          seriesId,
+          input.shotNumber,
+          referenceFrameCharacterKeys
+        );
+      const characterRefEntries = [
+        ...characterAttachmentManifest.primaryEntries,
+        ...characterAttachmentManifest.supplementaryEntries,
+      ];
+      const characterRefUrls = characterRefEntries.map(e => e.url);
+
+      // (d) render-time reference-mapping fail-closed guard — validates the
+      // USER-CONFIRMED (possibly hand-edited) prompt against the real
+      // attachment order, BEFORE credits are reserved. Same convention/
+      // rationale as `generateStartFrameImage`'s identical guard.
+      const referenceMappingMismatches = findCharacterImageIndexMappingMismatches(
+        input.prompt,
+        characterAttachmentManifest.primaryEntries.map((entry, index) => ({
+          imageIndex: index + 1,
+          characterName: entry.name,
+        })),
+      );
+      if (referenceMappingMismatches.length > 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `พรอมต์เฟรมอ้างอิงไม่ตรงกับตัวละครในช็อต ${input.shotNumber} — ตัวละครของช็อตนี้เปลี่ยนหลังสร้างพรอมต์ ทำให้ลำดับรูปตัวละครที่แนบเลื่อน วิธีแก้: กด "สร้างเฟรมอ้างอิง (AI)" ของช็อตนี้ใหม่ก่อนสร้างภาพ`,
+        });
+      }
+
+      // Location reference — same resolution/priority-ordering rationale as
+      // `generateStartFrameImage`'s identical block, including the Phase D
+      // per-shot override (`frame.locationKey`). NO product reference — see
+      // this procedure's own doc comment, item (2).
+      const locationRefEntry = await resolveShotLocationReferenceEntry(
+        tenantId,
+        userId,
+        seriesId,
+        row.storyboard,
+        input.shotNumber,
+        frame.locationKey
+      );
+      const locationRefUrls = locationRefEntry?.url ? [locationRefEntry.url] : [];
+
+      // (e) capacity assert + reference URL merge + model/pricing/credits/
+      // MCP/task submission — mirrors `generateStartFrameImage` structurally.
+      const resolvedImageModelId = await resolveEpisodeImageModelId(plan);
+
+      const [pricingRow] = await db
+        .select({
+          creditCost: mediaModels.creditCost,
+          configJson: mediaModels.configJson,
+        })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
+        .limit(1);
+      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      const imageCapabilities = resolveVerticalDramaCapabilities(
+        resolvedImageModelId,
+        {
+          type: "image",
+          configJson: pricingModel.configJson ?? undefined,
+        }
+      );
+      assertRequiredCharacterReferenceCapacity(
+        input.shotNumber,
+        characterAttachmentManifest.primaryEntries.length,
+        imageCapabilities.maxReferenceImages,
+      );
+      const {
+        urls: referenceImageUrls,
+        trimmedCount: trimmedReferenceCount,
+      } = mergeAndTrimReferenceImageUrls(
+        characterRefUrls,
+        locationRefUrls,
+        [], // NO product refs — see this procedure's own doc comment.
+        imageCapabilities.maxReferenceImages
+      );
+      assertResolutionOption(pricingModel, input.resolution);
+      const imageCreditCost = calculateCreditCost(pricingModel, {
+        numImages: 1,
+        ...(input.resolution ? { resolution: input.resolution } : {}),
+      });
+      // Zero-cost models (Higgsfield/Magnific MCP) skip reserve/refund
+      // entirely — see the matching comment in `generateStartFrameImage`.
+      const shouldChargeImageCredits = imageCreditCost > 0;
+
+      // Feature 135 — Hermes Grok media worker (section 09, row 8): resolve
+      // the transport-neutral decision BEFORE the credit reserve block below
+      // (not after) — see `generateStartFrameImage`'s matching block.
+      const transportDecision = await resolveVdMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+        idempotencyKey: input.idempotencyKey,
+      });
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
+
+      if (transportDecision.kind !== "hermes" && shouldChargeImageCredits) {
+        const hasCredits = await hasEnoughCredits(userId, imageCreditCost);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for reference-frame image render. Required: ${imageCreditCost}`,
+          });
+        }
+
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: imageCreditCost,
+          description: `Vertical Drama — reference-frame render (episode #${episodeId}, shot ${input.shotNumber}, reserved)`,
+          sourceType: "media_image",
+          idempotencyKey: input.idempotencyKey,
+          metadata: {
+            feature: "vertical_drama_series",
+            seriesId,
+            episodeId,
+            shotNumber: input.shotNumber,
+            type: "reservation",
+            creditCost: imageCreditCost,
+            modelId: resolvedImageModelId,
+          },
+        });
+      }
+
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesOrderedRefsFromUrls,
+        } = await import("../services/hermesMediaReferences");
+        const hermesTraceId = crypto.randomUUID();
+        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+          tenantId,
+          userId,
+          urls: referenceImageUrls,
+          traceId: hermesTraceId,
+          connectionId: transportDecision.connectionId,
+        });
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId: resolvedImageModelId,
+            configJson: pricingModel.configJson,
+          }).providerModelId ?? resolvedImageModelId;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "image.edit" : "image.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: input.prompt,
+          settings: {
+            model: hermesProviderModelId,
+            aspectRatio: "9:16",
+            outputCount: 1,
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+          },
+          references,
+          entity: { type: "vertical_drama_shot", id: `${episodeId}:${input.shotNumber}` },
+          traceId: hermesTraceId,
+          tenantId,
+          requestedByUserId: userId,
+          idempotencyKey: input.idempotencyKey,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: input.prompt,
+          extraParams: {
+            __vd_series_id: String(seriesId),
+            __vd_episode_id: String(episodeId),
+            __vd_shot_number: String(input.shotNumber),
+            __vd_purpose: "reference_frame",
+          },
+          droppedReferenceCount,
+        });
+        return {
+          taskId: hermesTask.id,
+          creditCost: 0,
+          modelId: resolvedImageModelId,
+          trimmedReferenceCount,
+          droppedReferenceCount,
+        };
+      }
+
+      const userToken = getStartFrameMediaUserToken(ctx);
+      try {
+        const task = await mediaGenerationService.generateImageAsync(
+          {
+            prompt: input.prompt,
+            negativePrompt: input.negativePrompt,
+            model: resolvedImageModelId,
+            numImages: 1,
+            aspectRatio: "9:16",
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+            ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
+            extraParams: {
+              __vd_series_id: String(seriesId),
+              __vd_episode_id: String(episodeId),
+              __vd_shot_number: String(input.shotNumber),
+              __vd_purpose: "reference_frame",
+            },
+            publicUrl: ctx.publicUrl ?? undefined,
+            ...(transportMetadata ? { transportMetadata } : {}),
+            auditContext: {
+              userId,
+              traceId: crypto.randomUUID(),
+              source: "trpc.verticalDramaEpisodes.generateShotReferenceFrameImage",
+              stage: "submission",
+            },
+          },
+          userToken
+        );
+        return {
+          taskId: task.id,
+          creditCost: imageCreditCost,
+          modelId: resolvedImageModelId,
+          trimmedReferenceCount,
+        };
+      } catch (err) {
+        if (shouldChargeImageCredits) {
+          await refundCredits({
+            userId,
+            amount: imageCreditCost,
+            description: `Refund: reference-frame render failed to submit (episode #${episodeId}, shot ${input.shotNumber})`,
+            sourceType: "media_image",
+            metadata: {
+              feature: "vertical_drama_series",
+              seriesId,
+              episodeId,
+              shotNumber: input.shotNumber,
+              error: err instanceof Error ? err.message : "Unknown error",
+            },
+          });
+        }
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Reference-frame image generation failed to submit",
+        });
+      }
     }),
 
   /**
@@ -11441,7 +13559,29 @@ export const verticalDramaEpisodesRouter = router({
         frame?.requiredCharacterRefs ?? [],
         shotVideoCharacterIdentitySources
       );
-
+      // Lip-sync discipline fix (video-clip prompt speaker/silent-listener
+      // attribution) — resolve each dialogue line's `characterKey` to its
+      // roster DISPLAY name using the identity sources already fetched
+      // above (no new DB query). Falls back to bare `characterKey` for any
+      // speaker with no roster row/name (mirrors the established
+      // `name || characterKey` convention). Used to build a speaker-
+      // attributed mirror of `dialogueLines` for prompt/QC purposes only —
+      // the canonical persisted `dialogueLines`/`clip.dialogue` arrays are
+      // never mutated with this extra field.
+      const shotVideoCharacterNameByKey = new Map(
+        shotVideoCharacterIdentitySources
+          .filter((c): c is typeof c & { name: string } => Boolean(c.name))
+          .map(c => [c.characterKey, c.name])
+      );
+      const withSpeakerNames = <T extends { characterKey?: string }>(
+        lines: readonly T[]
+      ): Array<T & { speakerName?: string }> =>
+        lines.map(l => ({
+          ...l,
+          speakerName: l.characterKey
+            ? shotVideoCharacterNameByKey.get(l.characterKey)
+            : undefined,
+        }));
       // Dialogue single-source-of-truth (planning/`polished-toasting-gadget.md`)
       // — a shot whose dialogue was actually resolved from the Overview
       // page's canonical source above (`deepDraftShotForDialogue`, either an
@@ -11583,6 +13723,18 @@ export const verticalDramaEpisodesRouter = router({
           storyboardShot,
           shotVideoCharacterIdentityMapBlock,
           dialogueLines,
+          // Synopsis grounding + silence signal (`planning/vd-video-prompt-
+          // skill-first/plan.md` Phase 1a/2) — same resolved deep-draft
+          // entry the non-split path threads into `shotContext` above; see
+          // `generateAndPersistSplitShotVideoPrompt`'s own param doc
+          // comments for how it's applied.
+          canonicalShotSummary: deepDraftShotForDialogue?.summary?.trim() || undefined,
+          beatIsSilent: Boolean(deepDraftShotForDialogue?.silence_intent),
+          // Lip-sync discipline fix — same `characterKey -> name` map the
+          // non-split path uses below (`shotVideoCharacterNameByKey`,
+          // resolved once from `shotVideoCharacterIdentitySources` — no new
+          // DB query for the split path either).
+          characterNameByKey: shotVideoCharacterNameByKey,
           tieInPlacement,
           tieInProductName,
           tieInProductCategory,
@@ -11633,10 +13785,23 @@ export const verticalDramaEpisodesRouter = router({
         characterReferenceImages: shotVideoCharacterReferenceImages,
         locationReferenceImage: shotVideoLocationReferenceImage ?? undefined,
         shotContext: {
+          // Synopsis grounding (`planning/vd-video-prompt-skill-first/
+          // plan.md` Phase 1a) — the canonical Overview-page beat, when this
+          // shot has a deep-drafted entry (`deepDraftShotForDialogue`,
+          // already resolved above for dialogue-source-of-truth purposes —
+          // no extra DB read). `undefined` whenever the deep-story-drafts
+          // flag is off or this shot has no deep-drafted entry yet,
+          // preserving today's byte-identical prompt for every caller that
+          // hasn't adopted deep drafts.
+          canonicalShotSummary: deepDraftShotForDialogue?.summary?.trim() || undefined,
+          // Persistence/pin root-cause fix (`planning/vd-video-prompt-
+          // skill-first/plan.md` Phase 2) — true only when this shot's
+          // deep-drafted entry explicitly marked it silent.
+          beatIsSilent: Boolean(deepDraftShotForDialogue?.silence_intent),
           description: storyboardShot?.description,
           camera: storyboardShot?.cameraSetup,
           emotion: undefined,
-          dialogueLines: dialogueLines.length ? dialogueLines : undefined,
+          dialogueLines: dialogueLines.length ? withSpeakerNames(dialogueLines) : undefined,
           characterIdentityMap: shotVideoCharacterIdentityMapBlock,
           productContext: tieInPlacement
             ? {
@@ -11708,22 +13873,6 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      // Final-prompt QC (hard length cap) — enforced BEFORE this prompt is
-      // persisted onto `motionPromptPack.clips[]` below. Zero-cost no-op
-      // when the generated prompt is already within `VD_VIDEO_PROMPT_MAX`.
-      const shotVideoPromptQc = await ensurePromptWithinLimit({
-        kind: "video",
-        prompt: result.prompt,
-        userId,
-        tenantId,
-        seriesId,
-        idempotencyKey: input.idempotencyKey
-          ? `${input.idempotencyKey}:prompt-qc`
-          : undefined,
-        label: `shot video prompt (episode #${episodeId}, shot ${input.shotNumber})`,
-      });
-      result.prompt = shotVideoPromptQc.prompt;
-
       // Wave-7D (spec §8.2.2 flow-through rule, `verticalDramaSeriesPresetMixV2`)
       // — same deterministic append `generateVideoClip` already does to the
       // PROVIDER payload, anchored the same way (after the QC cap, same as
@@ -11749,28 +13898,84 @@ export const verticalDramaEpisodesRouter = router({
         }
       }
 
-      // Persist-pin (planning/`polished-toasting-gadget.md`) — the
-      // video-prompt LLM's own `dialogue[]` output field is an ECHO of the
-      // resolved `dialogueLines` sent into it above, not a guaranteed
+      // Final post-transform validation: dialogue is protected after brand
+      // sanitization and preset-token appends, immediately before persist.
+      const finalVideoCapabilities = resolveVerticalDramaCapabilities(selectedVideoModel.id, {
+        type: selectedVideoModel.type,
+        aspectRatios: selectedVideoModel.aspectRatios,
+        configJson: selectedVideoModel.configJson,
+      });
+      const shotVideoPromptQc = await ensurePromptWithinLimit({
+        kind: "video",
+        prompt: result.prompt,
+        // Dialogue-duplication fix (2026-07-15) — protect each individual
+        // spoken line, not the `buildNativeDialogueVerbatimBlock` boilerplate
+        // block. See the sub-shots path's identical fix (near
+        // `speakerSwitchGeneration.dialogue` above) for the full rationale.
+        protectedFragments:
+          finalVideoCapabilities.nativeAudioDialogue === true
+            ? dialogueLines
+                .map(l => l.lineTh.trim())
+                // BARE, UNQUOTED line text (see the sub-shots site's comment):
+                // a straight-quoted fragment never matches the refiner's
+                // curly-quoted inline dialogue and gets wrongly re-appended.
+                .filter(Boolean)
+            : undefined,
+        userId,
+        tenantId,
+        seriesId,
+        idempotencyKey: input.idempotencyKey
+          ? `${input.idempotencyKey}:prompt-qc`
+          : undefined,
+        label: `shot video prompt (episode #${episodeId}, shot ${input.shotNumber})`,
+      });
+      result.prompt = shotVideoPromptQc.prompt;
+
+      // Persist-pin (planning/`polished-toasting-gadget.md`, anti-lock-in fix
+      // hardened by `planning/vd-video-prompt-skill-first/plan.md` Phase 2a)
+      // — the video-prompt LLM's own `dialogue[]` output field is an ECHO of
+      // the resolved `dialogueLines` sent into it above, not a guaranteed
       // pass-through (models occasionally reword/paraphrase a spoken line
       // while writing the surrounding motion prompt). Pin the PERSISTED (and
       // returned) dialogue back to `dialogueLines` verbatim — the exact
       // value that was resolved to feed the LLM, whether that came from the
       // new canonical Overview-page source (source 0) or any pre-existing
       // fallback source — so it can never silently drift from whatever the
-      // user actually sees/edits at the Overview page. The ONE exception:
-      // when a translation is actually required (`dialogueLanguage` set to a
-      // non-Thai locale), the LLM's own translated `dialogue[]` remains
-      // authoritative — there is no source-language line to pin back to in
-      // that case. Also skipped when `dialogueLines` is empty (this shot has
-      // no resolved source dialogue at all, so there is nothing to pin to —
-      // whatever `result.dialogue` the LLM invented, if anything, is kept).
+      // user actually sees/edits at the Overview page. Three cases:
+      //  (a) `dialogueLines` non-empty + Thai/undefined `dialogueLanguage` —
+      //      pin to `dialogueLines` (the case above).
+      //  (b) `dialogueLines` non-empty + translation actually required (a
+      //      non-Thai `dialogueLanguage`) — there is no source-language line
+      //      to pin back to, so the LLM's own translated `result.dialogue`
+      //      remains authoritative.
+      //  (c) `dialogueLines` is EMPTY (this shot has no resolved source
+      //      dialogue at all, including a genuinely SILENT beat) — ANTI-LOCK-
+      //      IN FIX (root cause of "silent beat becomes speaking,
+      //      permanently"): persist `[]`, never `result.dialogue`. Before
+      //      this fix, whatever line the video-prompt LLM happened to invent
+      //      on a single call got written here as `matchingClip.dialogue`,
+      //      which `resolveShotDialogueLines`'s Source 1 ("most
+      //      authoritative") then returns on every LATER call — turning a
+      //      one-time guess into permanent, code-enforced "ground truth"
+      //      that the deterministic dialogue-stitch/render-time formatter
+      //      then force-quotes with lip-sync forever after, even though the
+      //      beat was never actually meant to speak. A guess must never be
+      //      allowed to become durable ground truth just because the
+      //      resolved source happened to be empty on one call — the NEXT
+      //      call keeps resolving from the same (still-empty) source and
+      //      gets a fresh chance, instead of being pinned to the first
+      //      LLM's improvisation. (`result.prompt` — the LLM's own composed
+      //      motion-prompt PROSE for THIS generation — is unaffected by this
+      //      fix; only whether the invented `dialogue[]` line becomes
+      //      persisted authoritative data changes.)
       const shouldPinDialogueToResolvedSource =
         dialogueLines.length > 0 &&
         (pack?.dialogueLanguage === "th" || pack?.dialogueLanguage === undefined);
       const persistedDialogue = shouldPinDialogueToResolvedSource
         ? dialogueLines
-        : result.dialogue;
+        : dialogueLines.length > 0
+          ? result.dialogue
+          : [];
 
       // Persist onto the matching clip — create a minimal clip entry if the
       // pack exists but has no matching clip, or a minimal pack if the pack
@@ -11883,7 +14088,13 @@ export const verticalDramaEpisodesRouter = router({
 
         await tx
           .update(verticalDramaEpisodes)
-          .set({ motionPromptPack: updatedPack, updatedAt: new Date() })
+          .set({
+            motionPromptPack: stampArtifactForStoryboard(
+              updatedPack as unknown as Record<string, unknown>,
+              row.storyboard,
+            ),
+            updatedAt: new Date(),
+          })
           .where(
             and(
               eq(verticalDramaEpisodes.id, episodeId),
@@ -12242,6 +14453,11 @@ export const verticalDramaEpisodesRouter = router({
           "library",
           "upload",
           "previous_main",
+          // Phase 6 (`planning/vd-start-frame-reference-mapping/plan.md`) —
+          // user-controlled supplementary reference frame, linked by the
+          // client after `generateShotReferenceFrameImage` completes.
+          // `varchar(20)` column, no migration needed.
+          "reference_frame",
         ]),
         sortOrder: z.number().int().min(0).optional(),
       })

@@ -209,6 +209,7 @@ const { mockGetModelsByTypeAsync } = vi.hoisted(() => ({
 }));
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  isDbModelCatalogLoaded: () => true,
 }));
 
 const { mockResolveMediaTransport } = vi.hoisted(() => ({
@@ -216,6 +217,73 @@ const { mockResolveMediaTransport } = vi.hoisted(() => ({
 }));
 vi.mock("../../services/mediaTransportResolver", () => ({
   resolveMediaTransport: mockResolveMediaTransport,
+}));
+
+// Feature 135 — Hermes Grok media worker (section 09, row 4).
+const {
+  mockQueueHermesMediaJob,
+  mockBuildHermesMediaReferences,
+  mockResolveHermesReferenceAssetIdFromUrl,
+  mockListHermesConnections,
+} = vi.hoisted(() => ({
+  mockQueueHermesMediaJob: vi.fn(),
+  mockBuildHermesMediaReferences: vi.fn(async () => []),
+  mockResolveHermesReferenceAssetIdFromUrl: vi.fn(async () => null),
+  mockListHermesConnections: vi.fn(async () => []),
+}));
+vi.mock("../../services/hermesMediaScheduler", () => ({
+  queueHermesMediaJob: mockQueueHermesMediaJob,
+}));
+vi.mock("../../services/hermesMediaReferences", () => ({
+  buildHermesMediaReferences: mockBuildHermesMediaReferences,
+  buildHermesMediaTaskEnvelope: (params: {
+    taskId: string;
+    userId: number;
+    mediaType: string;
+    model: string;
+    prompt: string;
+  }) => ({
+    id: params.taskId,
+    userId: String(params.userId),
+    mediaType: params.mediaType,
+    status: "pending",
+    model: params.model,
+    prompt: params.prompt,
+    creditsUsed: 0,
+    createdAt: new Date().toISOString(),
+  }),
+  resolveHermesReferenceAssetIdFromUrl: mockResolveHermesReferenceAssetIdFromUrl,
+  resolveHermesOrderedRefsFromUrls: async (params: {
+    tenantId: string;
+    userId: number;
+    urls: string[];
+    roleFor?: (i: number) => string;
+    labelFor?: (i: number) => string;
+  }) => {
+    const orderedRefs: Array<{ assetId: string; role: string; label: string }> = [];
+    let droppedReferenceCount = 0;
+    for (let i = 0; i < params.urls.length; i++) {
+      const assetId = await mockResolveHermesReferenceAssetIdFromUrl({
+        tenantId: params.tenantId,
+        userId: params.userId,
+        url: params.urls[i],
+      });
+      if (!assetId) {
+        droppedReferenceCount += 1;
+        continue;
+      }
+      orderedRefs.push({
+        assetId,
+        role: params.roleFor ? params.roleFor(i) : "reference",
+        label: params.labelFor ? params.labelFor(i) : `Image-${i + 1}`,
+      });
+    }
+    return { orderedRefs, droppedReferenceCount };
+  },
+}));
+vi.mock("../../services/hermesConnectionService", () => ({
+  getHermesConnection: vi.fn(async () => ({ capabilities: null })),
+  listHermesConnections: mockListHermesConnections,
 }));
 
 vi.mock("../../services/verticalDramaCharacterStock", () => ({
@@ -442,6 +510,16 @@ describe("previewLocationPrompt", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("generateLocationImage", () => {
+  // `selectedImageModelId` is now a REQUIRED input (server fails closed — no
+  // silent DEFAULT_MODELS.image fallback), so every call must supply a model
+  // and the catalog lookup must resolve it as enabled. Default the catalog to
+  // a valid, enabled image model for this block's core-behavior cases.
+  beforeEach(() => {
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "google-banana-2-lite", type: "image", isEnabled: true },
+    ]);
+  });
+
   it("with approvedPrompt: skips generateLocationVisualPrompts entirely (no double-charge) and renders with 16:9 aspect ratio", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW])) // loadOwnedSeries
@@ -453,6 +531,7 @@ describe("generateLocationImage", () => {
       input: {
         seriesId: "10",
         locationId: "5",
+        selectedImageModelId: "google-banana-2-lite",
         approvedPrompt: "already-approved establishing plate prompt",
         approvedNegativePrompt: "no people",
       },
@@ -477,7 +556,7 @@ describe("generateLocationImage", () => {
 
     const result = await router.generateLocationImage({
       ctx: ctx(),
-      input: { seriesId: "10", locationId: "5" },
+      input: { seriesId: "10", locationId: "5", selectedImageModelId: "google-banana-2-lite" },
     });
 
     expect(mockGenerateLocationVisualPrompts).toHaveBeenCalledTimes(1);
@@ -495,7 +574,12 @@ describe("generateLocationImage", () => {
 
     await router.generateLocationImage({
       ctx: ctx(),
-      input: { seriesId: "10", locationId: "5", approvedPrompt: "approved prompt" },
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        selectedImageModelId: "google-banana-2-lite",
+        approvedPrompt: "approved prompt",
+      },
     });
 
     const [request] = mockGenerateImageAsync.mock.calls[0];
@@ -511,7 +595,12 @@ describe("generateLocationImage", () => {
 
     const result = await router.generateLocationImage({
       ctx: ctx(),
-      input: { seriesId: "10", locationId: "5", approvedPrompt: "approved prompt" },
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        selectedImageModelId: "google-banana-2-lite",
+        approvedPrompt: "approved prompt",
+      },
     });
 
     expect(mockHasEnoughCredits).not.toHaveBeenCalled();
@@ -529,7 +618,12 @@ describe("generateLocationImage", () => {
     await expect(
       router.generateLocationImage({
         ctx: ctx(),
-        input: { seriesId: "10", locationId: "5", approvedPrompt: "approved prompt" },
+        input: {
+          seriesId: "10",
+          locationId: "5",
+          selectedImageModelId: "google-banana-2-lite",
+          approvedPrompt: "approved prompt",
+        },
       }),
     ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
@@ -544,7 +638,12 @@ describe("generateLocationImage", () => {
     await expect(
       router.generateLocationImage({
         ctx: ctx(),
-        input: { seriesId: "10", locationId: "999", approvedPrompt: "x" },
+        input: {
+          seriesId: "10",
+          locationId: "999",
+          selectedImageModelId: "google-banana-2-lite",
+          approvedPrompt: "x",
+        },
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
@@ -562,20 +661,22 @@ describe("generateLocationImage", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("generateLocationImage — image-model picker (model-picker parity plan)", () => {
-  it("falls back to DEFAULT_MODELS.image when selectedImageModelId is absent (regression — byte-identical to pre-picker behavior)", async () => {
+  it("rejects with BAD_REQUEST when selectedImageModelId is absent (fails closed — no silent DEFAULT_MODELS.image fallback)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([SERIES_ROW]))
       .mockReturnValueOnce(selectChain([LOCATION_ROW]))
       .mockReturnValueOnce(selectChain([{ creditCost: 5, configJson: null }]));
 
-    await router.generateLocationImage({
-      ctx: ctx(),
-      input: { seriesId: "10", locationId: "5", approvedPrompt: "approved prompt" },
-    });
+    await expect(
+      router.generateLocationImage({
+        ctx: ctx(),
+        input: { seriesId: "10", locationId: "5", approvedPrompt: "approved prompt" },
+      })
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
-    expect(mockGetModelsByTypeAsync).not.toHaveBeenCalled();
-    const [request] = mockGenerateImageAsync.mock.calls[0];
-    expect(request.model).toBe("google-nano-banana-pro");
+    // Never renders and never even consults the catalog — the missing selection
+    // is rejected outright rather than silently substituting the default model.
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
   });
 
   it("honors a valid, enabled selectedImageModelId — prices + renders against it instead of DEFAULT_MODELS.image (the picker's whole point)", async () => {
@@ -721,6 +822,106 @@ describe("generateLocationImage — image-model picker (model-picker parity plan
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
 
     expect(mockResolveMediaTransport).not.toHaveBeenCalled();
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Feature 135 — Hermes Grok media worker (section 09, row 4): mirrors
+ * `verticalDramaCharacters.hermesTransport.test.ts`'s coverage for the
+ * shared decision helper's hermes arm.
+ */
+describe("generateLocationImage — Hermes transport (section 09, row 4)", () => {
+  beforeEach(() => {
+    // Defensive: `mockDb.select`/`mockGetModelsByTypeAsync` are shared,
+    // file-wide `vi.fn()`s whose queued `mockReturnValueOnce`/
+    // `mockResolvedValueOnce` entries survive `vi.clearAllMocks()` (only
+    // `mockReset()` clears a queued/default return) — reset both to a
+    // blank slate here so an earlier test's un-consumed queue entries can
+    // never leak into this suite's own sequence.
+    mockDb.select.mockReset();
+    mockGetModelsByTypeAsync.mockReset();
+    mockQueueHermesMediaJob.mockReset().mockResolvedValue({ created: true, taskId: "hermes_job-1", job: {} });
+    mockBuildHermesMediaReferences.mockReset().mockResolvedValue([]);
+    mockListHermesConnections.mockReset().mockResolvedValue([]);
+  });
+
+  it("routes into queueHermesMediaJob (image.generate — no reference), with no platform-credit reserve", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      { id: "hermes-grok/grok-imagine-image", type: "image", isEnabled: true },
+    ]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            creditCost: 0,
+            configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+          },
+        ]),
+      );
+
+    const result = await router.generateLocationImage({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        locationId: "5",
+        approvedPrompt: "approved prompt",
+        selectedImageModelId: "hermes-grok/grok-imagine-image",
+        hermesConnectionId: "hermes-conn-1",
+      },
+    });
+
+    expect(mockResolveMediaTransport).not.toHaveBeenCalled();
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(mockQueueHermesMediaJob).toHaveBeenCalledTimes(1);
+    expect(mockQueueHermesMediaJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "image.generate",
+        connectionId: "hermes-conn-1",
+        tenantId: "tenant-1",
+        requestedByUserId: 42,
+      }),
+    );
+    expect(result.taskId).toBe("hermes_job-1");
+    expect(result.creditsUsed.imageRender).toBe(0);
+  });
+
+  it("rejects with BAD_REQUEST (HERMES_CONNECTION_REQUIRED) when no hermesConnectionId is supplied and the caller has no default Hermes connection", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      { id: "hermes-grok/grok-imagine-image", type: "image", isEnabled: true },
+    ]);
+    mockListHermesConnections.mockResolvedValue([]);
+    mockDb.select
+      .mockReturnValueOnce(selectChain([SERIES_ROW]))
+      .mockReturnValueOnce(selectChain([LOCATION_ROW]))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            creditCost: 0,
+            configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+          },
+        ]),
+      );
+
+    await expect(
+      router.generateLocationImage({
+        ctx: ctx(),
+        input: {
+          seriesId: "10",
+          locationId: "5",
+          approvedPrompt: "approved prompt",
+          selectedImageModelId: "hermes-grok/grok-imagine-image",
+          // hermesConnectionId intentionally omitted
+        },
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+    expect(mockQueueHermesMediaJob).not.toHaveBeenCalled();
     expect(mockGenerateImageAsync).not.toHaveBeenCalled();
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });

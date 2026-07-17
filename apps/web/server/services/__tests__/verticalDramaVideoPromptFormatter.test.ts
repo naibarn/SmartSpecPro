@@ -24,6 +24,7 @@ import {
   resolveProviderFamily,
   type VerticalDramaClipDialogueLine,
 } from "../verticalDramaVideoPromptFormatter";
+import { buildNativeDialogueVerbatimBlock } from "@shared/verticalDramaSeries/nativeDialogue";
 
 function clip(over: Partial<Parameters<typeof formatVideoClipRequest>[0]["clip"]> = {}) {
   return {
@@ -75,6 +76,57 @@ describe("formatVideoClipRequest — Veo 3.1 (native audio)", () => {
     expect(result.prompt).toContain("Subtext/acting note:");
     expect(result.maxReferenceImages).toBe(3);
     expect(result.supportsStartFrame).toBe(true);
+  });
+
+  it("does not append a second spoken copy when the canonical native-dialogue block already exists", () => {
+    const line = dialogueLine();
+    // Lip-sync discipline fix — the formatter's own idempotency guard
+    // compares against whatever `buildNativeDialogueVerbatimBlock` (with the
+    // SAME `dialogueLanguageName` the formatter itself resolves — "Thai" by
+    // default) produces, so this must be built the same way rather than a
+    // hand-rolled literal.
+    const canonicalBlock = buildNativeDialogueVerbatimBlock([line], {
+      dialogueLanguageName: "Thai",
+    });
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: `Camera pushes in. ${canonicalBlock}` }),
+      dialogueLines: [line],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt.match(new RegExp(line.lineTh, "g"))).toHaveLength(1);
+    expect(result.generateAudio).toBe(true);
+    expect(result.ttsFallback).toBe(false);
+  });
+
+  it("attributes each speaker by DISPLAY NAME and includes the SILENT LISTENER rules when the canonical block is already embedded (2+ speakers)", () => {
+    // `formatVideoClipRequest` only embeds the canonical block itself when
+    // the base `clip.prompt` doesn't already carry it — in real usage
+    // `clip.prompt` was already produced by the shot-video-prompt service,
+    // which embeds the (speaker-attributed) canonical block via
+    // `appendMissingDialogueVerbatim`. Mirror that here rather than
+    // asserting on the separate acting-direction-only fallback clause
+    // (`buildNativeDialogueClause`), which is unrelated to this fix.
+    const lines = [
+      dialogueLine({ characterKey: "aria", speakerName: "อาเรีย", lineTh: "First line" }),
+      dialogueLine({ characterKey: "noah", speakerName: "โนอาห์", lineTh: "Second line" }),
+    ];
+    const canonicalBlock = buildNativeDialogueVerbatimBlock(lines, {
+      dialogueLanguageName: "Thai",
+    });
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: `Camera pushes in. ${canonicalBlock}` }),
+      dialogueLines: lines,
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt).toContain('อาเรีย: "First line"');
+    expect(result.prompt).toContain('โนอาห์: "Second line"');
+    expect(result.prompt).toContain("SILENT LISTENER");
+    expect(result.prompt.match(/First line/g)).toHaveLength(1);
+    expect(result.prompt.match(/Second line/g)).toHaveLength(1);
   });
 
   it("leaves the base prompt untouched for a silent clip with no start frame (no dialogue lines, no startFrameAssetId)", () => {
@@ -393,6 +445,46 @@ describe("resolveProviderFamily", () => {
       resolveProviderFamily("acme-video-1", { type: "video", provider: "acme", aliases: [] }),
     ).toBe("generic");
   });
+
+  // Feature 135 — Hermes Grok media worker (section 09, TDD §3.6): prompt
+  // style follows model FAMILY, not transport — `hermes-grok/grok-imagine-
+  // video` must resolve to the same "grok" family as the kie.ai gateway
+  // Grok rows, even though its transport is `hermes_worker`, not
+  // `gateway_api`. Locked with a literal-id test (not just the substring
+  // match `detectGrokOrSeedance` already happens to pass on) so a future
+  // provider-key rename can never silently regress the prompt variant.
+  it("resolves hermes-grok/grok-imagine-video to the 'grok' family (transport-independent — locks the literal id)", () => {
+    expect(
+      resolveProviderFamily("hermes-grok/grok-imagine-video", {
+        type: "video",
+        provider: "hermes-grok",
+        aliases: ["hermes grok imagine video", "grok imagine video via hermes", "hermes-grok-video"],
+        configJson: { transport: "hermes_worker" },
+      }),
+    ).toBe("grok");
+  });
+
+  it("still resolves the kie.ai gateway grok id and veo/seedance ids unchanged (regression)", () => {
+    expect(
+      resolveProviderFamily("grok-imagine-video-1-5-preview", {
+        type: "video",
+        provider: "kie.ai",
+        aliases: [],
+        configJson: {},
+      }),
+    ).toBe("grok");
+    expect(
+      resolveProviderFamily("veo-3-1", { type: "video", provider: "kie.ai", aliases: [], configJson: {} }),
+    ).toBe("veo");
+    expect(
+      resolveProviderFamily("bytedance/seedance-2.0/image-to-video", {
+        type: "video",
+        provider: "wavespeed_ai",
+        aliases: [],
+        configJson: {},
+      }),
+    ).toBe("seedance");
+  });
 });
 
 describe("formatVideoClipRequest — audioDirection (task #36 — optional NATIVE AUDIO DIRECTION prompt option)", () => {
@@ -451,5 +543,114 @@ describe("formatVideoClipRequest — audioDirection (task #36 — optional NATIV
       model: { type: "video", provider: "acme", aliases: [] },
     });
     expect(result.prompt).toContain("Footsteps echo on gravel.");
+  });
+});
+
+// Silence-aware / idempotent dialogue clause
+// (`planning/vd-video-prompt-skill-first/plan.md` Phase 3b) — the render-time
+// formatter must never force-embed a dialogue clause a silent/empty clip
+// never had, and must never append a SECOND dialogue clause on top of an
+// already-compliant skill-first `clip.prompt` (not just the exact
+// `buildNativeDialogueVerbatimBlock` string — any prose that already carries
+// the line verbatim).
+describe("formatVideoClipRequest — silence-aware / idempotent dialogue clause (planning/vd-video-prompt-skill-first/plan.md Phase 3b)", () => {
+  const veoModel = {
+    id: "veo3/generate-veo-3-video-lite",
+    type: "video" as const,
+    provider: "kie.ai",
+    aliases: ["veo 3.1 lite", "veo3-lite"],
+    configJson: {},
+  };
+  const seedanceModel = {
+    id: "seedance-1-0-lite-i2v-250428",
+    type: "video" as const,
+    provider: "byteplus_modelark",
+    aliases: [],
+    configJson: { maxReferenceImages: 1, hasAudio: false },
+  };
+
+  it("(a) empty dialogueLines: appends nothing at all, prompt stays byte-identical to the base clip prompt", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ startFrameAssetId: undefined }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+    expect(result.prompt).toBe(clip().prompt);
+    expect(result.generateAudio).toBe(false);
+    expect(result.ttsFallback).toBe(false);
+  });
+
+  it("(b) native-audio, already-embedded verbatim as SKILL-FIRST PROSE (not the canonical block shape): does not append a second dialogue clause", () => {
+    const line = dialogueLine();
+    const result = formatVideoClipRequest({
+      // No start frame — isolates this assertion from the (unrelated)
+      // start-frame grounding instruction.
+      clip: clip({
+        startFrameAssetId: undefined,
+        prompt: `Aria leans in and says "${line.lineTh}" with cold defiance.`,
+      }),
+      dialogueLines: [line],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt).toBe(
+      `Aria leans in and says "${line.lineTh}" with cold defiance.`,
+    );
+    expect(result.prompt.match(new RegExp(line.lineTh, "g"))).toHaveLength(1);
+    expect(result.generateAudio).toBe(true);
+    expect(result.ttsFallback).toBe(false);
+  });
+
+  it("(b) native-audio, NOT yet embedded: still appends the deterministic verbatim clause (unchanged safety-net behavior)", () => {
+    const line = dialogueLine();
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: "Aria stares out the window, jaw tight." }),
+      dialogueLines: [line],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt).toContain(line.lineTh);
+    expect(result.prompt).toContain("Aria stares out the window, jaw tight.");
+  });
+
+  it("non-native (mouth-movement) model: does not append a second mouth-movement clause when the base prompt already embeds the line verbatim", () => {
+    const line = dialogueLine();
+    const result = formatVideoClipRequest({
+      // No start frame — isolates this assertion from the (unrelated)
+      // start-frame grounding instruction this seedance model's
+      // `configJson.maxReferenceImages: 1` makes it eligible for.
+      clip: clip({
+        startFrameAssetId: undefined,
+        prompt: `Aria mouths the words "${line.lineTh}" silently to herself.`,
+      }),
+      dialogueLines: [line],
+      modelId: seedanceModel.id,
+      model: seedanceModel,
+    });
+
+    expect(result.prompt).toBe(
+      `Aria mouths the words "${line.lineTh}" silently to herself.`,
+    );
+    expect(result.prompt.match(new RegExp(line.lineTh, "g"))).toHaveLength(1);
+    // ttsFallback stays true regardless (the caller still routes this
+    // clip's dialogue to TTS — only the PROMPT clause is idempotent).
+    expect(result.ttsFallback).toBe(true);
+  });
+
+  it("non-native (mouth-movement) model: still appends the mouth-movement clause when not yet present (unchanged default behavior)", () => {
+    const line = dialogueLine();
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: "Aria stares out the window, jaw tight." }),
+      dialogueLines: [line],
+      modelId: seedanceModel.id,
+      model: seedanceModel,
+    });
+
+    expect(result.prompt).not.toContain(line.lineTh);
+    expect(result.prompt).toContain("mouth moves naturally");
+    expect(result.ttsFallback).toBe(true);
   });
 });

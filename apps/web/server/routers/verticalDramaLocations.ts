@@ -91,7 +91,12 @@ import { readPresetVisualIdentityFromBible } from "../services/verticalDramaChar
 import {
   resolveCharacterImageModelId,
   resolveVdCharacterMcpTransportMetadata,
+  // Feature 135 — Hermes Grok media worker (section 09): the transport-
+  // neutral decision function, reused verbatim from `verticalDramaCharacters.ts`
+  // the same way the two MCP helpers above already are.
+  resolveVdCharacterMediaTransportDecision,
 } from "./verticalDramaCharacters";
+import { resolveMediaModelTransportConfig } from "../../shared/mediaModelTransport";
 import { mediaGenerationLimiter } from "../services/rateLimiter";
 import { createAssetFromAttachment } from "../services/mediaAssetService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
@@ -494,18 +499,17 @@ export const verticalDramaLocationsRouter = router({
    * every prompt with "wide establishing shot, environment only, no
    * people:"), not a vertical character portrait or a 9:16 in-episode frame.
    *
-   * `selectedImageModelId`/`mcpConnectionId` (both optional — location
+   * `selectedImageModelId` (REQUIRED)/`mcpConnectionId` (optional — location
    * model-picker parity plan): the location tab's own model picker.
    * `selectedImageModelId` is resolved via `resolveCharacterImageModelId`
-   * (validated + must be enabled, falling back to `DEFAULT_MODELS.image`
-   * when absent — byte-identical resolution order to
-   * `generateCharacterImage`, reused verbatim, not duplicated — see this
-   * file's own top-of-file doc comment). `mcpConnectionId` is required only
-   * when the resolved model is MCP-transport (e.g. `higgsfield/*`,
-   * `magnific-mcp/*`) — see `resolveVdCharacterMcpTransportMetadata`, also
-   * reused verbatim. Absent `selectedImageModelId` is byte-identical to this
-   * procedure's pre-existing behavior (always priced + rendered against
-   * `DEFAULT_MODELS.image`).
+   * (validated + must be enabled). FAIL CLOSED: the caller must explicitly
+   * select a model — `resolveCharacterImageModelId` throws BAD_REQUEST when
+   * absent instead of silently falling back to `DEFAULT_MODELS.image`
+   * (byte-identical resolution behavior to `generateCharacterImage`, reused
+   * verbatim, not duplicated — see this file's own top-of-file doc comment).
+   * `mcpConnectionId` is required only when the resolved model is
+   * MCP-transport (e.g. `higgsfield/*`, `magnific-mcp/*`) — see
+   * `resolveVdCharacterMcpTransportMetadata`, also reused verbatim.
    */
   generateLocationImage: verticalDramaProcedure
     .input(
@@ -514,13 +518,18 @@ export const verticalDramaLocationsRouter = router({
         approvedPrompt: z.string().min(1).optional(),
         approvedNegativePrompt: z.string().optional(),
         // Caller-selected image model (location tab's own model picker) —
-        // validated + must be enabled; falls back to `DEFAULT_MODELS.image`
-        // when absent. See `resolveCharacterImageModelId`.
-        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        // validated + must be enabled. REQUIRED — no server-side fallback;
+        // throws BAD_REQUEST when absent. See `resolveCharacterImageModelId`.
+        selectedImageModelId: z.string().trim().min(1).max(128),
         // Required only when the selected model is MCP-transport (e.g.
         // `higgsfield/*`, `magnific-mcp/*`) — see
         // `resolveVdCharacterMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09, row 4).
+        // Required only when the resolved model is Hermes-transport and the
+        // caller has no default Hermes connection for images.
+        hermesConnectionId: z.string().max(64).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -614,8 +623,8 @@ export const verticalDramaLocationsRouter = router({
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
       //    from the prompt-generation LLM call above. Prices + generates
       //    against the CALLER-SELECTED model (location tab's own picker),
-      //    falling back to `DEFAULT_MODELS.image` when none was selected —
-      //    same "caller selection -> DEFAULT_MODELS" resolution order as
+      //    which is now REQUIRED — `resolveCharacterImageModelId` throws
+      //    BAD_REQUEST when none was selected, same fail-closed behavior as
       //    `generateCharacterImage`.
       const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
       const [pricingRow] = await db
@@ -630,7 +639,34 @@ export const verticalDramaLocationsRouter = router({
       // convention as `generateCharacterImage`/`generateStartFrameImage`
       // (`deductCredits`/`refundCredits` throw on amount <= 0 by design).
       const shouldChargeImageCredits = imageCreditCost > 0;
-      if (shouldChargeImageCredits) {
+
+      // MCP-transport models (e.g. higgsfield/*, magnific-mcp/*) must be
+      // dispatched through the service's MCP branch, not the default
+      // gateway_api/Python-backend path — see
+      // `resolveVdCharacterMcpTransportMetadata` (reused verbatim from
+      // `verticalDramaCharacters.ts`). Resolved BEFORE the credit reservation
+      // below (same ordering as `generateCharacterImage`) so a missing/
+      // invalid MCP connection fails fast without having reserved credits.
+      // Feature 135 — Hermes Grok media worker (section 09): resolve the
+      // transport-neutral decision FIRST — `mcp`/`gateway` fall through to
+      // the pre-existing code below byte-identically (delegates to
+      // `resolveVdCharacterMcpTransportMetadata` unchanged); `hermes` takes
+      // a completely separate early-return path, mirroring
+      // `generateCharacterImage`'s identical block. Resolved BEFORE the
+      // credit check/reserve below (not after) — structurally guarantees "no
+      // platform-credit reserve for hermes".
+      const transportDecision = await resolveVdCharacterMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+      });
+
+      if (transportDecision.kind !== "hermes" && shouldChargeImageCredits) {
         const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
         if (!hasImageCredits) {
           throw new TRPCError({
@@ -640,21 +676,61 @@ export const verticalDramaLocationsRouter = router({
         }
       }
 
-      // MCP-transport models (e.g. higgsfield/*, magnific-mcp/*) must be
-      // dispatched through the service's MCP branch, not the default
-      // gateway_api/Python-backend path — see
-      // `resolveVdCharacterMcpTransportMetadata` (reused verbatim from
-      // `verticalDramaCharacters.ts`). Resolved BEFORE the credit reservation
-      // below (same ordering as `generateCharacterImage`) so a missing/
-      // invalid MCP connection fails fast without having reserved credits.
-      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "image",
-        modelId: resolvedImageModelId,
-        configJson: pricingModel.configJson,
-        mcpConnectionId: input.mcpConnectionId,
-      });
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesOrderedRefsFromUrls,
+        } = await import("../services/hermesMediaReferences");
+        const hermesTraceId = crypto.randomUUID();
+        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+          tenantId,
+          userId,
+          urls: referenceUrl ? [referenceUrl] : [],
+          traceId: hermesTraceId,
+          connectionId: transportDecision.connectionId,
+          roleFor: () => "identity_lock",
+        });
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId: resolvedImageModelId,
+            configJson: pricingModel.configJson,
+          }).providerModelId ?? resolvedImageModelId;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "image.edit" : "image.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: establishingPlatePrompt,
+          settings: { model: hermesProviderModelId, aspectRatio: "16:9", outputCount: 1 },
+          references,
+          entity: { type: "vertical_drama_location", id: String(locationId) },
+          traceId: hermesTraceId,
+          tenantId,
+          requestedByUserId: userId,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: establishingPlatePrompt,
+          extraParams: { __vd_series_id: String(seriesId), __vd_location_id: String(locationId) },
+          droppedReferenceCount,
+        });
+        return {
+          taskId: hermesTask.id,
+          establishingPlatePrompt,
+          negativePrompt,
+          promptModel,
+          creditsUsed: { promptGeneration: promptCreditsUsed, imageRender: 0 },
+          droppedReferenceCount,
+        };
+      }
+
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
 
       if (shouldChargeImageCredits) {
         // Reserve credits BEFORE starting the task — `media.getTask`

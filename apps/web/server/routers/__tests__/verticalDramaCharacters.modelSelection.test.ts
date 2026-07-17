@@ -29,8 +29,11 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetModelsByTypeAsync } = vi.hoisted(() => ({
+const { mockGetModelsByTypeAsync, mockIsDbModelCatalogLoaded } = vi.hoisted(() => ({
   mockGetModelsByTypeAsync: vi.fn(),
+  // Default: the DB-backed catalog IS loaded, so the resolver runs its normal
+  // exists/enabled validation. Flip to `false` to exercise the cold-start guard.
+  mockIsDbModelCatalogLoaded: vi.fn(() => true),
 }));
 
 const { mockResolveMediaTransport } = vi.hoisted(() => ({
@@ -39,6 +42,7 @@ const { mockResolveMediaTransport } = vi.hoisted(() => ({
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  isDbModelCatalogLoaded: mockIsDbModelCatalogLoaded,
 }));
 
 vi.mock("../../services/mediaTransportResolver", () => ({
@@ -127,6 +131,7 @@ import { z } from "zod";
 import {
   resolveCharacterImageModelId,
   resolveVdCharacterMcpTransportMetadata,
+  resolveVdCharacterMediaTransportDecision,
   resolveReferencePortraitUrl,
 } from "../verticalDramaCharacters";
 import { verticalDramaCharacterStockService } from "../../services/verticalDramaCharacterStock";
@@ -135,14 +140,24 @@ function model(overrides: Partial<{ id: string; type: string; isEnabled: boolean
   return { id: "google-banana-2-lite", type: "image", isEnabled: true, ...overrides };
 }
 
-describe("resolveCharacterImageModelId — resolution order (caller selection -> DEFAULT_MODELS)", () => {
+describe("resolveCharacterImageModelId — resolution order (fail-closed, requires explicit selection)", () => {
   beforeEach(() => {
     mockGetModelsByTypeAsync.mockReset();
+    mockIsDbModelCatalogLoaded.mockReturnValue(true);
   });
 
-  it("returns DEFAULT_MODELS.image when no model was selected", async () => {
-    const resolved = await resolveCharacterImageModelId(undefined);
-    expect(resolved).toBe("google-nano-banana-pro");
+  it("throws BAD_REQUEST when no model was selected (fails closed, no silent DEFAULT_MODELS fallback)", async () => {
+    await expect(resolveCharacterImageModelId(undefined)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    // Bails out before touching the model catalog — nothing to resolve without a selection.
+    expect(mockGetModelsByTypeAsync).not.toHaveBeenCalled();
+  });
+
+  it("throws BAD_REQUEST for an empty/whitespace selection (treated as no selection)", async () => {
+    await expect(resolveCharacterImageModelId("   ")).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
     expect(mockGetModelsByTypeAsync).not.toHaveBeenCalled();
   });
 
@@ -158,6 +173,19 @@ describe("resolveCharacterImageModelId — resolution order (caller selection ->
     await expect(resolveCharacterImageModelId("does-not-exist")).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
+  });
+
+  // Cold-start / transient-DB guard: when the DB catalog is NOT loaded,
+  // `getModelsByType` serves only the small static fallback subset (no DB-only
+  // models like the higgsfield catalog). A valid user selection must NOT be
+  // falsely rejected as "unknown" in that window — trust it and let the actual
+  // generation validate it, rather than erroring or swapping a default.
+  it("trusts the selected model id when the DB model catalog is not loaded (cold start), instead of rejecting it", async () => {
+    mockIsDbModelCatalogLoaded.mockReturnValue(false);
+    // Static fallback catalog does NOT contain the higgsfield model.
+    mockGetModelsByTypeAsync.mockResolvedValue([model({ id: "google-nano-banana-pro" })]);
+    const resolved = await resolveCharacterImageModelId("higgsfield/gpt_image_2");
+    expect(resolved).toBe("higgsfield/gpt_image_2");
   });
 
   it("throws BAD_REQUEST for a disabled model (fails closed, does not silently substitute the default)", async () => {
@@ -245,6 +273,130 @@ describe("resolveVdCharacterMcpTransportMetadata — MCP-transport routing", () 
       mcpConnectionId: "conn-456",
     });
     expect(result).toMatchObject({ transport: "mcp", providerKey: "magnific" });
+  });
+});
+
+/**
+ * Feature 135 — Hermes Grok media worker (section 09): the transport-
+ * neutral generalization of `resolveVdCharacterMcpTransportMetadata`.
+ * Zero-regression baseline: every MCP/gateway fixture above still produces
+ * the identical outcome via this new function (it delegates to the
+ * existing helper UNCHANGED for those two arms) — covered again here as a
+ * `kind` discriminant instead of a bare `MediaTaskTransportMetadata | null`.
+ */
+describe("resolveVdCharacterMediaTransportDecision — transport-neutral decision (hermes/mcp/gateway)", () => {
+  beforeEach(() => {
+    mockResolveMediaTransport.mockReset();
+  });
+
+  it("gateway_api model with no MCP route -> { kind: 'gateway' } (byte-identical to the old null return)", async () => {
+    const decision = await resolveVdCharacterMediaTransportDecision({
+      tenantId: "tenant-1",
+      actorUserId: 1,
+      assetType: "image",
+      modelId: "google-banana-2-lite",
+      configJson: null,
+    });
+    expect(decision).toEqual({ kind: "gateway" });
+    expect(mockResolveMediaTransport).not.toHaveBeenCalled();
+  });
+
+  it("MCP-transport model with a connected mcpConnectionId -> { kind: 'mcp', transportMetadata }", async () => {
+    mockResolveMediaTransport.mockResolvedValue({
+      transport: "mcp",
+      providerKey: "higgsfield",
+      providerModelId: "nano_banana_pro",
+      connectionId: "conn-123",
+    });
+    const decision = await resolveVdCharacterMediaTransportDecision({
+      tenantId: "tenant-1",
+      actorUserId: 1,
+      assetType: "image",
+      modelId: "higgsfield/nano-banana-pro",
+      configJson: null,
+      mcpConnectionId: "conn-123",
+    });
+    expect(decision).toMatchObject({
+      kind: "mcp",
+      transportMetadata: { transport: "mcp", providerKey: "higgsfield" },
+    });
+  });
+
+  it("Hermes-transport model row + explicit hermesConnectionId -> { kind: 'hermes', connectionId }", async () => {
+    const decision = await resolveVdCharacterMediaTransportDecision({
+      tenantId: "tenant-1",
+      actorUserId: 1,
+      assetType: "image",
+      modelId: "hermes-grok/grok-imagine-image",
+      configJson: { transport: "hermes_worker", hermes: { providerModelId: "grok-imagine-image" } },
+      hermesConnectionId: "hermes-conn-1",
+    });
+    expect(decision).toEqual({ kind: "hermes", connectionId: "hermes-conn-1" });
+    // Never falls through to the MCP resolver for a hermes model.
+    expect(mockResolveMediaTransport).not.toHaveBeenCalled();
+  });
+
+  it("Hermes-transport model, no explicit id, injected default resolver returns a connection -> { kind: 'hermes' }", async () => {
+    const resolveDefaultHermesConnectionId = vi.fn(async () => "default-conn-1");
+    const decision = await resolveVdCharacterMediaTransportDecision(
+      {
+        tenantId: "tenant-1",
+        actorUserId: 1,
+        assetType: "image",
+        modelId: "hermes-grok/grok-imagine-image",
+        configJson: { transport: "hermes_worker" },
+      },
+      { resolveDefaultHermesConnectionId },
+    );
+    expect(decision).toEqual({ kind: "hermes", connectionId: "default-conn-1" });
+    expect(resolveDefaultHermesConnectionId).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 1,
+      assetType: "image",
+    });
+  });
+
+  it("Hermes-transport model, no explicit id, no default connection -> throws BAD_REQUEST (HERMES_CONNECTION_REQUIRED), never falls through to gateway", async () => {
+    const resolveDefaultHermesConnectionId = vi.fn(async () => null);
+    await expect(
+      resolveVdCharacterMediaTransportDecision(
+        {
+          tenantId: "tenant-1",
+          actorUserId: 1,
+          assetType: "image",
+          modelId: "hermes-grok/grok-imagine-image",
+          configJson: { transport: "hermes_worker" },
+        },
+        { resolveDefaultHermesConnectionId },
+      ),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST", message: expect.stringContaining("HERMES_CONNECTION_REQUIRED") });
+  });
+
+  it("MCP model + hermesConnectionId supplied -> BAD_REQUEST (cross-transport rejection)", async () => {
+    await expect(
+      resolveVdCharacterMediaTransportDecision({
+        tenantId: "tenant-1",
+        actorUserId: 1,
+        assetType: "image",
+        modelId: "higgsfield/nano-banana-pro",
+        configJson: null,
+        hermesConnectionId: "hermes-conn-1",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockResolveMediaTransport).not.toHaveBeenCalled();
+  });
+
+  it("gateway model + hermesConnectionId supplied -> BAD_REQUEST (cross-transport rejection)", async () => {
+    await expect(
+      resolveVdCharacterMediaTransportDecision({
+        tenantId: "tenant-1",
+        actorUserId: 1,
+        assetType: "image",
+        modelId: "google-banana-2-lite",
+        configJson: null,
+        hermesConnectionId: "hermes-conn-1",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 });
 

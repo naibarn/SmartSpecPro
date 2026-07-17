@@ -503,6 +503,13 @@ export interface AdBannerImageModelPricing {
   modelId: string;
   creditCost: number;
   maxReferenceImages: number;
+  /**
+   * Feature 135 — Hermes Grok media worker (section 09, remediation row
+   * 10). Reuses the SAME `media_models` row already read here for
+   * pricing/capabilities — the router's transport-decision helper needs
+   * this to detect a `hermes_worker`/`mcp` model without a second DB read.
+   */
+  configJson: Record<string, unknown> | null;
 }
 
 /**
@@ -539,6 +546,7 @@ export async function resolveAdBannerImageModelPricing(
     modelId,
     creditCost,
     maxReferenceImages: capabilities.maxReferenceImages ?? 0,
+    configJson: (row?.configJson as Record<string, unknown> | null | undefined) ?? null,
   };
 }
 
@@ -556,6 +564,17 @@ export interface SubmitAdBannerImageGenerationParams {
   maxReferenceImages: number;
   publicUrl?: string;
   userToken: string;
+  /**
+   * Feature 135 — Hermes Grok media worker (section 09, remediation row
+   * 10). Mirrors `generateCharacterImage`'s `transportMetadata` param —
+   * when the router resolved an MCP-transport model, it passes the
+   * resolved `MediaTaskTransportMetadata` through here so
+   * `mediaGenerationService.generateImageAsync`'s own MCP branch submits
+   * through the connected provider account instead of the gateway_api/
+   * Python-backend path. `undefined` for gateway_api models (byte-identical
+   * to before this param existed).
+   */
+  transportMetadata?: import("../../shared/mcpConnectTypes").MediaTaskTransportMetadata;
 }
 
 export interface SubmitAdBannerImageGenerationResult {
@@ -594,6 +613,7 @@ export async function submitAdBannerImageGeneration(
         __vd_ad_banner_id: params.bannerId,
       },
       publicUrl: params.publicUrl,
+      ...(params.transportMetadata ? { transportMetadata: params.transportMetadata } : {}),
       auditContext: {
         userId: params.userId,
         traceId: crypto.randomUUID(),

@@ -56,7 +56,10 @@ import {
   modelProviderMap,
   type VerticalDramaSeriesRow,
   type VerticalDramaGenrePresetRow,
+  type VerticalDramaCharacterRow,
   type VerticalDramaMemoryEventRow,
+  /** Production-grade full-story generation — see `loadSeriesLocationFacts` below. */
+  type VerticalDramaLocationRow,
 } from "../../drizzle/schema";
 import type {
   VerticalDramaStartFramePlan,
@@ -106,6 +109,13 @@ import {
   type VerticalDramaEpisodeBreakdownItem,
 } from "@shared/verticalDramaSeries/contentBudget";
 import type { VerticalDramaQualityLedgers } from "@shared/verticalDramaSeries/qualityLedgers";
+import {
+  normalizeLegacyRole,
+  narrativeRoleSchema,
+  roleTierSchema,
+  type NarrativeRole,
+  type RoleTier,
+} from "@shared/verticalDramaSeries/narrativeRole";
 /**
  * Series-level audience age rating (Phase 1 of a 2-phase feature — later
  * phases thread it into per-episode stages) — single source of truth for
@@ -166,6 +176,23 @@ import {
   readItemWorldRules,
   type DeepDraftRecapEpisode,
   type StoredEpisodeBreakdownItem,
+  /**
+   * Production-grade full-story generation
+   * (`planning/vertical-drama-full-story-production-grade`, added
+   * 2026-07-13) — `newLocations` on `generateStoryBibleDeep`'s result, the
+   * shape persisted into `vertical_drama_locations` after the bible write —
+   * see `runGenerateStoryBibleDeepJob` below.
+   */
+  type VdDeclaredLocation,
+  /**
+   * Resilient resume (added 2026-07-14,
+   * `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — the
+   * shape of a single deep-drafted episode; used to type the
+   * `resumeDraftedItems` a checkpoint's `unknown[]` `draftedItems` gets cast
+   * back to (see `runGenerateStoryBibleDeepJob`/`runExtendStoryDraftHorizonJob`
+   * below), matching `mergeDeepDraftItems`'s own draftedItems shape.
+   */
+  type DeepDraftedEpisodeItem,
 } from "../services/verticalDramaStoryBible";
 /**
  * Async story jobs (#28, added 2026-07-08) — generic submit -> jobId -> poll
@@ -180,6 +207,15 @@ import {
   submitVerticalDramaSystemFeedback,
   type VerticalDramaStoryJobPayload,
   type VerticalDramaStoryJobProgress,
+  /**
+   * Resilient resume (added 2026-07-14) — `VerticalDramaStoryJobResumeContext`
+   * is `runVerticalDramaStoryJobExecutor`'s new 3rd parameter (see
+   * `verticalDramaStoryJobs.ts`'s own doc comment); `VerticalDramaStoryJobCheckpoint`
+   * types the (domain-agnostic, `draftedItems: unknown[]`) checkpoint shape
+   * this router casts back to `DeepDraftedEpisodeItem[]`.
+   */
+  type VerticalDramaStoryJobResumeContext,
+  type VerticalDramaStoryJobCheckpoint,
 } from "../services/verticalDramaStoryJobs";
 /**
  * "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — replaces the season
@@ -292,6 +328,24 @@ import {
   VerticalDramaArcReplanGuardViolationError,
 } from "../services/verticalDramaArcReplan";
 import { verticalDramaSeriesMemoryService } from "../services/verticalDramaSeriesMemory";
+/**
+ * Production-grade full-story generation
+ * (`planning/vertical-drama-full-story-production-grade`, added 2026-07-13)
+ * — persists a deep story draft run's `new_locations` declarations into
+ * `vertical_drama_locations`; see `runGenerateStoryBibleDeepJob` below.
+ */
+import { persistDeepDraftDeclaredLocations } from "../services/verticalDramaLocationReconciliation";
+/**
+ * Auto-register story-introduced characters (`planning/vd-auto-register-story-characters/plan.md`)
+ * — INSERT-capable counterpart to this file's own `reconcileCharactersFromStoryBible`
+ * (which is UPDATE-only); persists a deep story draft run's dialogue
+ * speakers / shot `characters[]` names that are new to the roster; see
+ * `runGenerateStoryBibleDeepJob` / `runExtendStoryDraftHorizonJob` below.
+ */
+import {
+  ensureRosterCharactersFromStory,
+  type VdRosterAutoRegisterSummary,
+} from "../services/verticalDramaCharacterRosterAutoRegister";
 import { debugError } from "../_core/logger";
 import {
   resolveSeriesThumbnailUrls,
@@ -484,7 +538,14 @@ type GenrePresetDto = {
   seasonArc: string;
   tone: string;
   cliffhangerStyle: string;
-  characters: Array<{ name: string; role: string; description: string }>;
+  characters: Array<{
+    name: string;
+    role: string;
+    description: string;
+    narrativeRole?: NarrativeRole;
+    roleTier?: RoleTier;
+    occupation?: string;
+  }>;
   visualBible: string;
   /** VerticalDramaPresetVisualIdentity (spec 131 §8.2.2) — null for legacy presets */
   visualIdentityJson?: unknown;
@@ -695,6 +756,8 @@ async function recordDeepStoryDraftAuditEvent(params: {
   mode: VerticalDramaDeepStoryDraftMode;
   /** Live-bug fix (added 2026-07-08) — episode numbers still missing after chunk processing; see `GenerateStoryBibleDeepResult.missingEpisodes`. Always present (may be `[]`), per the LLM/Media debugging protocol's "audit log has the answer" rule. */
   missingEpisodes: number[];
+  /** Production-grade full-story generation, added 2026-07-13 — count of NEW `vertical_drama_locations` rows this run's declarations actually created (never counts a skipped-existing key). Optional — omitted for the `"extend"` action until that path is wired to the same persistence step. */
+  createdLocationCount?: number;
 }): Promise<void> {
   try {
     await db.insert(apiAuditEvents).values({
@@ -714,6 +777,7 @@ async function recordDeepStoryDraftAuditEvent(params: {
         idempotencyKey: params.idempotencyKey ?? null,
         mode: params.mode,
         missingEpisodes: params.missingEpisodes,
+        createdLocationCount: params.createdLocationCount ?? 0,
       },
     });
   } catch (error) {
@@ -723,6 +787,37 @@ async function recordDeepStoryDraftAuditEvent(params: {
       error
     );
   }
+}
+
+/**
+ * Deep-draft generate/extend `createdCharacters` response field
+ * (`planning/vd-stuck-generation-and-lost-characters/plan.md`, Set B) — the
+ * compact shape both `runGenerateStoryBibleDeepJob` and
+ * `runExtendStoryDraftHorizonJob` surface, mirroring the pre-existing
+ * `createdLocationCount` convention (always present, never `undefined`,
+ * zero/empty when the run auto-registered nothing). Unlike
+ * `createdLocationCount` (a bare number — locations don't need a name list
+ * client-side), this carries `names` too since the client's post-run
+ * toast/banner (B-client) names the newly-registered characters.
+ */
+export interface VdDeepDraftCreatedCharactersSummary {
+  count: number;
+  names: string[];
+}
+
+const EMPTY_DEEP_DRAFT_CREATED_CHARACTERS: VdDeepDraftCreatedCharactersSummary = {
+  count: 0,
+  names: [],
+};
+
+/** Projects `ensureRosterCharactersFromStory`'s `VdRosterAutoRegisterSummary` (previously discarded at both call sites) into the compact response shape above. */
+function toDeepDraftCreatedCharactersSummary(
+  summary: VdRosterAutoRegisterSummary
+): VdDeepDraftCreatedCharactersSummary {
+  return {
+    count: summary.createdCharacters.length,
+    names: summary.createdCharacters.map((c) => c.name),
+  };
 }
 
 /**
@@ -760,6 +855,126 @@ function mergeDeepDraftItems(
         : {}),
     } as StoredEpisodeBreakdownItem;
   });
+}
+
+/**
+ * Resilient resume (added 2026-07-14,
+ * `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — computes
+ * what `generateStoryBibleDeep`'s new `resumeDraftedItems`/
+ * `alreadyDraftedEpisodeNumbers` params should be for THIS run, shared by
+ * both `runGenerateStoryBibleDeepJob` and `runExtendStoryDraftHorizonJob`
+ * (same "small helper shared by both deep-draft executors" convention as
+ * `mergeDeepDraftItems` above).
+ *
+ * Two independent sources feed the skip set, unioned together:
+ *  1. `resume.checkpoint.completedEpisodeNumbers` — episodes THIS SAME job
+ *     (a same-jobId BullMQ redelivery after a mid-run crash) already
+ *     checkpointed earlier in an interrupted attempt. Applies REGARDLESS of
+ *     `mode` — this is the core crash-resume mechanism, not a plot-scope
+ *     decision.
+ *  2. Episodes already carrying a valid `VD_DEEP_DRAFT_SHOTS_PER_EPISODE`-shot
+ *     `shotDrafts` in the CURRENT active breakdown (`readItemShotDrafts(item)
+ *     !== null`) — but see the note below on why NO `mode`-based gate is
+ *     needed for this source.
+ *
+ * On "keep vs. rewrite plot" and `mode`: the task brief for this feature
+ * described gating source #2 on `VerticalDramaDeepStoryDraftMode` ("standard"
+ * = "keep the current plot", "premium" = "rewrite the plot"), asking that
+ * source #2 apply ONLY for "keep". That mapping does not hold against the
+ * real code — `mode` here is a QUALITY TIER (`generateStoryBibleDeep` single-
+ * pass vs. `generateStoryBibleDeepPremium`'s fan-out/judge/revise pipeline),
+ * orthogonal to plot scope; BOTH modes only ADD shot-level detail onto
+ * already-planned episodes and NEVER touch `workingTitle`/`logline`/
+ * `keyBeats` (see `generateStoryBibleDeep`'s own doc comment, and this
+ * router's `generateStoryBibleDeep` mutation's doc comment: "never invents
+ * new ... it never invents new workingTitle/logline/keyBeats/contentBudget").
+ * The actual "keep the current plot" vs. "rewrite everything" choice is a
+ * CLIENT-ONLY concept (`VerticalDramaDeepStoryDraftsPanel.tsx`'s
+ * `VerticalDramaDeepDraftScope`, never sent to the server): "rewrite"
+ * mechanically means the client calls the separate `generateStoryBible`
+ * mutation FIRST (an entirely different code path — it replaces
+ * `bible.episodeBreakdown` wholesale with brand-new items that have no
+ * `shotDrafts` at all) and only THEN enqueues this job. By the time THIS
+ * executor reads the active breakdown, a "rewrite" run's episodes therefore
+ * never have `shotDrafts` yet — source #2 naturally finds nothing to skip,
+ * with no `mode`-based special-casing required. A "keep" run's episodes may
+ * genuinely already have `shotDrafts` (from an earlier completed run), and
+ * skipping those is exactly the credit-safety behavior this feature exists
+ * for. Applying source #2 unconditionally is therefore BOTH simpler and
+ * strictly more correct than gating it on `mode` (which cannot express plot
+ * scope at all) — see this task's own Result Report for the full conflict
+ * writeup against the original brief.
+ */
+function resolveDeepDraftResumeState(
+  activeBreakdownItems: StoredEpisodeBreakdownItem[],
+  resume: VerticalDramaStoryJobResumeContext
+): {
+  alreadyDraftedEpisodeNumbers: number[];
+  resumeDraftedItems: DeepDraftedEpisodeItem[];
+} {
+  const alreadyDraftedFromBible = new Set(
+    activeBreakdownItems
+      .filter(item => readItemShotDrafts(item) !== null)
+      .map(item => item.episodeNumber)
+  );
+  const alreadyDraftedFromCheckpoint = new Set(
+    resume.checkpoint?.completedEpisodeNumbers ?? []
+  );
+  const alreadyDraftedEpisodeNumbers = [
+    ...new Set([...alreadyDraftedFromBible, ...alreadyDraftedFromCheckpoint]),
+  ];
+  const resumeDraftedItems = (resume.checkpoint?.draftedItems ??
+    []) as DeepDraftedEpisodeItem[];
+  return { alreadyDraftedEpisodeNumbers, resumeDraftedItems };
+}
+
+/**
+ * Resilient resume — wires `generateStoryBibleDeep`'s `onChunkComplete` to
+ * the job's `persistCheckpoint`, maintaining a local running accumulator
+ * (full-replacement, not a delta) across every chunk this run completes so
+ * each checkpoint write is race-free and self-contained (see
+ * `VerticalDramaStoryJobResumeContext.persistCheckpoint`'s own doc comment
+ * on why a full replacement is the simplest race-free shape). Seeded from
+ * the RESUMED checkpoint (if any) so a job that resumes and then completes
+ * ANOTHER chunk before finishing/crashing again still checkpoints the FULL
+ * set, not just this run's own new chunks.
+ */
+function createDeepDraftCheckpointRelay(
+  resume: VerticalDramaStoryJobResumeContext
+): (chunkDraftedItems: DeepDraftedEpisodeItem[]) => void {
+  let draftedItems: DeepDraftedEpisodeItem[] = [
+    ...((resume.checkpoint?.draftedItems ?? []) as DeepDraftedEpisodeItem[]),
+  ];
+  let completedEpisodeNumbers: number[] = [
+    ...(resume.checkpoint?.completedEpisodeNumbers ?? []),
+  ];
+  let chunkSizesDone: number[] = [...(resume.checkpoint?.chunkSizesDone ?? [])];
+
+  return (chunkDraftedItems: DeepDraftedEpisodeItem[]) => {
+    draftedItems = [...draftedItems, ...chunkDraftedItems];
+    completedEpisodeNumbers = [
+      ...completedEpisodeNumbers,
+      ...chunkDraftedItems.map(item => item.episodeNumber),
+    ];
+    chunkSizesDone = [...chunkSizesDone, chunkDraftedItems.length];
+    const checkpoint: VerticalDramaStoryJobCheckpoint = {
+      draftedItems,
+      completedEpisodeNumbers,
+      chunkSizesDone,
+      // Credits bookkeeping only (Redis checkpoint observability, NOT the
+      // real charged amount) — `onChunkComplete` doesn't carry the chunk's
+      // actual spend, so this is the same PER-CALL ESTIMATE
+      // `estimateDeepDraftJobCredits`'s own pre-check math uses, times the
+      // chunk count checkpointed so far. The FINAL response's `creditsUsed`
+      // still comes from `generateStoryBibleDeep`'s own real
+      // `result.creditsUsed` for THIS run's newly-drafted chunks, unaffected
+      // by this estimate.
+      creditsUsed:
+        chunkSizesDone.length * VD_DEEP_DRAFT_PER_CALL_CREDIT_ESTIMATE,
+      updatedAt: new Date().toISOString(),
+    };
+    resume.persistCheckpoint(checkpoint);
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1117,14 +1332,81 @@ async function resolveTieInDraftBootstrap(params: {
   };
 }
 
+/**
+ * Production-grade full-story generation
+ * (`planning/vertical-drama-full-story-production-grade`, added 2026-07-13)
+ * — loads THIS series' existing `vertical_drama_locations` roster as
+ * prompt/gate FACTS (`GenerateStoryBibleDeepParams.existingLocations`):
+ * `locationKey`, `name`, and a short description extracted from the `data`
+ * jsonb (`data.description` when present, undefined otherwise — the deep
+ * story draft prompt/gate treat an absent description as "no summary
+ * available", never a hard requirement).
+ *
+ * Best-effort — NEVER throws (a query failure degrades to `[]`, exactly
+ * like every other side-fact read in this file, e.g.
+ * `resolveTieInDraftBootstrap`'s defensive `productTieIn` reads): the deep
+ * story draft run must never be blocked by a location-roster lookup
+ * problem, and an empty roster is a perfectly valid "no known locations yet"
+ * fact for a brand-new series anyway.
+ */
+async function loadSeriesLocationFacts(
+  tenantId: string,
+  userId: number,
+  seriesId: number
+): Promise<
+  Array<{ locationKey: string; name: string; description?: string }>
+> {
+  let rows: VerticalDramaLocationRow[];
+  try {
+    rows = await db
+      .select()
+      .from(verticalDramaLocations)
+      .where(
+        and(
+          eq(verticalDramaLocations.tenantId, tenantId),
+          eq(verticalDramaLocations.userId, userId),
+          eq(verticalDramaLocations.seriesId, seriesId)
+        )
+      );
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Failed to load existing locations for deep story draft generation — continuing with an empty roster",
+      error
+    );
+    return [];
+  }
+  return rows.map(row => {
+    const data = (row.data as Record<string, unknown> | null) ?? null;
+    const description =
+      data &&
+      typeof data.description === "string" &&
+      data.description.trim().length > 0
+        ? data.description
+        : undefined;
+    return { locationKey: row.locationKey, name: row.name, description };
+  });
+}
+
 export async function runGenerateStoryBibleDeepJob(
   params: StoryJobExecutorOwner & {
     horizonEpisodes?: number;
     mode?: VerticalDramaDeepStoryDraftMode;
     idempotencyKey?: string;
   },
-  onProgress: (progress: VerticalDramaStoryJobProgress) => void
+  onProgress: (progress: VerticalDramaStoryJobProgress) => void,
+  /**
+   * Resilient resume (added 2026-07-14) — optional so every EXISTING test
+   * call site (which predates this param) keeps compiling and running
+   * byte-identically: `resume ?? { checkpoint: null, persistCheckpoint: () => {} }`
+   * below makes a call site that never passes it behave exactly like there
+   * is no checkpoint and no resume — a fresh run, drafting every requested
+   * episode, exactly like today.
+   */
+  resume?: VerticalDramaStoryJobResumeContext
 ) {
+  const resolvedResume: VerticalDramaStoryJobResumeContext =
+    resume ?? { checkpoint: null, persistCheckpoint: () => {} };
   const { tenantId, userId, seriesId } = params;
   const mode: VerticalDramaDeepStoryDraftMode = params.mode ?? "standard";
   const formatProfilesEnabled =
@@ -1174,6 +1456,35 @@ export async function runGenerateStoryBibleDeepJob(
     });
   }
 
+  // Production-grade full-story generation — the series' known location
+  // roster + character-bible names, threaded into the deep-draft prompt
+  // ("EXISTING LOCATIONS" FACT block) and the deterministic completeness
+  // gate (`location_key`/character-name membership checks). Loaded ONCE,
+  // BEFORE generation, so every chunk this run sees the SAME pre-run
+  // baseline — `generateStoryBibleDeep` grows its own in-memory copy as
+  // `new_locations` are accepted chunk-by-chunk within this one run.
+  const existingLocations = await loadSeriesLocationFacts(
+    tenantId,
+    userId,
+    seriesId
+  );
+  const characterBibleNames = readBibleRefinedCharacters(bible).map(
+    c => c.name
+  );
+
+  // Resilient resume — see `resolveDeepDraftResumeState`'s own doc comment
+  // for why source #2 (already-drafted-in-the-bible) applies unconditionally
+  // (no `mode` gate). Supported by BOTH modes: `generateStoryBibleDeep`
+  // forwards `resumeDraftedItems`/`alreadyDraftedEpisodeNumbers`/
+  // `onChunkComplete` straight through to `generateStoryBibleDeepPremium`
+  // when `mode === "premium"` (its own mode-switch at the very top passes
+  // `params` on unchanged) — see that function's own doc comment for its
+  // skip/union mechanics, which differ slightly from standard mode's
+  // (union happens at the END there, not seeded into a growing accumulator).
+  const { alreadyDraftedEpisodeNumbers, resumeDraftedItems } =
+    resolveDeepDraftResumeState(existingItems, resolvedResume);
+  const onChunkComplete = createDeepDraftCheckpointRelay(resolvedResume);
+
   let ledgerPlan: {
     ledgers: VerticalDramaQualityLedgers;
     creditsUsed: number;
@@ -1205,6 +1516,10 @@ export async function runGenerateStoryBibleDeepJob(
       episodeDurationSeconds: row.defaultEpisodeDurationSeconds,
       episodes: episodesToDraft,
       mode,
+      // Resilient resume — see the doc comment on this const block above.
+      resumeDraftedItems,
+      alreadyDraftedEpisodeNumbers,
+      onChunkComplete,
       // F131X + finale price_paid rule (both dormant without these — the
       // service's optional params default off; see #23's wiring note)
       totalEpisodeCount: row.targetEpisodeCount ?? undefined,
@@ -1223,6 +1538,10 @@ export async function runGenerateStoryBibleDeepJob(
       // above; always resolves to a concrete tier (defaults to the
       // least-restrictive "18plus" when absent/invalid).
       audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
+      // Production-grade full-story generation — see this function's own
+      // "existingLocations"/"characterBibleNames" load above.
+      existingLocations,
+      characterBibleNames,
       onProgress,
     });
   } catch (error) {
@@ -1245,12 +1564,61 @@ export async function runGenerateStoryBibleDeepJob(
   }
 
   const mergedItems = mergeDeepDraftItems(existingItems, result.draftedItems);
-  const horizonEndEpisode = result.draftedItems.reduce(
-    (max, item) => Math.max(max, item.episodeNumber),
+  // Silent-no-op fix (plan
+  // `planning/vertical-drama-deep-draft-update-all-noop`, added 2026-07-14)
+  // — compute over the MERGED (existing + newly-drafted) state, not just
+  // `result.draftedItems`. The old computation regressed
+  // `deepDraft.horizonEndEpisode` to 0 whenever a run drafted zero new
+  // episodes (empty `draftedItems.reduce(Math.max, 0) === 0`), even though
+  // episodes were already drafted from a prior run — see the plan's
+  // "secondary defect" section. This version never regresses: it's always
+  // the highest episode number that actually has shot drafts right now.
+  const horizonEndEpisode = mergedItems.reduce(
+    (max, item) =>
+      readItemShotDrafts(item) !== null
+        ? Math.max(max, item.episodeNumber)
+        : max,
     0
   );
   const generatedAt = new Date().toISOString();
   const totalCreditsUsed = result.creditsUsed + (ledgerPlan?.creditsUsed ?? 0);
+
+  // Defense-in-depth for an enqueue-then-state-changed race (added
+  // 2026-07-14, same plan as above) — the mutation's early-return (see
+  // `generateStoryBibleDeep`'s `remainingToDraft` guard) normally prevents a
+  // doomed "nothing to draft" job from ever being enqueued, but state can
+  // still shift between enqueue and this worker actually running (e.g. a
+  // concurrent run on the same series already drafted everything in the
+  // meantime). When that happens, `result.draftedItems` comes back empty
+  // and there is no ledger plan to persist either — skip the
+  // `appendBreakdownVersion` + bible write entirely (no junk version, no
+  // horizon regression) and return the CURRENT already-complete state with
+  // the corrected horizon computed above.
+  if (result.draftedItems.length === 0 && !ledgerPlan) {
+    return {
+      series: { ...row, id: String(row.id) },
+      creditsUsed: totalCreditsUsed,
+      model: result.model,
+      partial: false,
+      horizonEndEpisode,
+      chunkSizes: [],
+      warnings: result.warnings,
+      error: undefined,
+      mode,
+      callsMade: 0,
+      missingEpisodes: [],
+      tieInMismatchCount: result.tieInMismatchCount,
+      createdLocationCount: 0,
+      // Set B — this early-return path skips `ensureRosterCharactersFromStory`
+      // entirely (zero drafting work happened), so mirror `createdLocationCount`'s
+      // `0` above with the same "always present" empty shape.
+      createdCharacters: EMPTY_DEEP_DRAFT_CREATED_CHARACTERS,
+      // Signals to callers (tests, and any future caller) that this run
+      // did zero drafting work — distinct from `partial`, which means "did
+      // some work but stopped early on an error".
+      nothingDrafted: true,
+    };
+  }
 
   const nextBible = appendBreakdownVersion(bible, {
     source: "generate_story",
@@ -1271,6 +1639,68 @@ export async function runGenerateStoryBibleDeepJob(
     .where(seriesOwnershipWhere(tenantId, userId, seriesId))
     .returning();
 
+  // Production-grade full-story generation — persist any NEW locations this
+  // run declared into the durable `vertical_drama_locations` roster (Tab
+  // ฉาก), AFTER the bible write succeeds. Best-effort: a failure here must
+  // never fail the whole mutation or roll back the bible write, mirroring
+  // this router's established "audit/side-effect write must not fail the
+  // user-facing mutation" convention (see `recordDeepStoryDraftAuditEvent`'s
+  // own doc comment). Never overwrites an existing location's data — see
+  // `persistDeepDraftDeclaredLocations`'s own doc comment.
+  let createdLocationCount = 0;
+  // `result.newLocations ?? []` defensively tolerates a test double / older
+  // in-flight mock of `generateStoryBibleDeep` that predates this field —
+  // the REAL service always returns `[]` at minimum (see
+  // `GenerateStoryBibleDeepResult.newLocations`'s own doc comment).
+  const declaredNewLocations = result.newLocations ?? [];
+  if (declaredNewLocations.length > 0) {
+    try {
+      const locationPersistSummary = await persistDeepDraftDeclaredLocations(
+        { tenantId, userId, seriesId },
+        declaredNewLocations
+      );
+      createdLocationCount = locationPersistSummary.createdLocations.length;
+    } catch (error) {
+      debugError(
+        "verticalDramaSeries.deepStoryDraft",
+        "Failed to persist deep story draft declared locations",
+        error
+      );
+    }
+  }
+
+  // Auto-register story-introduced characters
+  // (`planning/vd-auto-register-story-characters/plan.md`) — same
+  // "best-effort, AFTER the bible write succeeds, never fail/roll back the
+  // user-facing mutation" convention as the location block just above.
+  // Candidates: this run's newly-drafted shots' `characters[]`/dialogue
+  // `speaker`s (`result.draftedItems`) PLUS the Story Bible's own
+  // `refinedCharacters` list (`characterBibleNames`, already loaded above
+  // for the deep-draft prompt) — see `ensureRosterCharactersFromStory`'s own
+  // doc comment for why the two sources are trusted differently.
+  //
+  // Set B — the returned `VdRosterAutoRegisterSummary` used to be discarded
+  // here; now captured into the mutation's `createdCharacters` response
+  // field (mirrors `createdLocationCount` just above), `EMPTY_...` on any
+  // failure (this best-effort block must never fail the mutation).
+  let createdCharacters: VdDeepDraftCreatedCharactersSummary = EMPTY_DEEP_DRAFT_CREATED_CHARACTERS;
+  try {
+    const rosterAutoRegisterSummary = await ensureRosterCharactersFromStory(
+      { tenantId, userId, seriesId },
+      {
+        refinedCharacters: characterBibleNames.map(name => ({ name })),
+        deepDraftShots: result.draftedItems.flatMap(item => item.shotDrafts),
+      }
+    );
+    createdCharacters = toDeepDraftCreatedCharactersSummary(rosterAutoRegisterSummary);
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Failed to auto-register story-introduced characters",
+      error
+    );
+  }
+
   await recordDeepStoryDraftAuditEvent({
     userId,
     seriesId,
@@ -1282,6 +1712,7 @@ export async function runGenerateStoryBibleDeepJob(
     idempotencyKey: params.idempotencyKey,
     mode,
     missingEpisodes: result.missingEpisodes,
+    createdLocationCount,
   });
 
   // Phase F (added 2026-07-09) — additive error-shaped audit event + auto
@@ -1383,6 +1814,23 @@ export async function runGenerateStoryBibleDeepJob(
     // active this run (see `GenerateStoryBibleDeepResult.tieInMismatchCount`'s
     // own doc comment).
     tieInMismatchCount: result.tieInMismatchCount,
+    // Production-grade full-story generation — count of NEW locations this
+    // run declared AND persisted into `vertical_drama_locations` (Tab ฉาก);
+    // always a number (never `undefined`), `0` when this run declared none.
+    createdLocationCount,
+    // Set B (vd-stuck-generation-and-lost-characters plan) — dialogue
+    // speakers / shot characters this run auto-registered into the roster
+    // (no DNA/portrait yet); always present, empty when none. See
+    // `VdDeepDraftCreatedCharactersSummary`'s own doc comment.
+    createdCharacters,
+    // Silent-no-op fix (plan
+    // `planning/vertical-drama-deep-draft-update-all-noop`, added
+    // 2026-07-14) — mirrors the early-return branch above so both shapes of
+    // this function's return value carry the same field; `false` here
+    // because reaching this point means `result.draftedItems.length > 0` OR
+    // a `ledgerPlan` was persisted (the early-return above is the only path
+    // that skips this bible write with zero drafted items).
+    nothingDrafted: result.draftedItems.length === 0,
   };
 }
 
@@ -1392,8 +1840,12 @@ export async function runExtendStoryDraftHorizonJob(
     mode?: VerticalDramaDeepStoryDraftMode;
     idempotencyKey?: string;
   },
-  onProgress: (progress: VerticalDramaStoryJobProgress) => void
+  onProgress: (progress: VerticalDramaStoryJobProgress) => void,
+  /** Resilient resume (added 2026-07-14) — see `runGenerateStoryBibleDeepJob`'s identical param doc comment. */
+  resume?: VerticalDramaStoryJobResumeContext
 ) {
+  const resolvedResume: VerticalDramaStoryJobResumeContext =
+    resume ?? { checkpoint: null, persistCheckpoint: () => {} };
   const { tenantId, userId, seriesId } = params;
   const mode: VerticalDramaDeepStoryDraftMode = params.mode ?? "standard";
   const formatProfilesEnabled =
@@ -1470,6 +1922,32 @@ export async function runExtendStoryDraftHorizonJob(
       cliffhangerLine: readItemCliffhangerLine(item),
     }));
 
+  // Production-grade full-story generation — parity with
+  // `runGenerateStoryBibleDeepJob`: the series' known location roster +
+  // character-bible names, threaded into the deep-draft prompt ("EXISTING
+  // LOCATIONS" FACT block) and the deterministic completeness gate. Loaded
+  // ONCE, BEFORE generation, so every extended chunk sees the SAME pre-run
+  // baseline (including locations already declared by the earlier
+  // generate/extend runs that populated `vertical_drama_locations`), and
+  // `generateStoryBibleDeep` grows its own in-memory copy as this run's
+  // `new_locations` are accepted chunk-by-chunk.
+  const existingLocations = await loadSeriesLocationFacts(
+    tenantId,
+    userId,
+    seriesId
+  );
+  const characterBibleNames = readBibleRefinedCharacters(bible).map(
+    c => c.name
+  );
+
+  // Resilient resume — see `runGenerateStoryBibleDeepJob`'s identical block
+  // and `resolveDeepDraftResumeState`'s own doc comment for the full
+  // rationale (applies here too, since `episodesToDraft` above can still
+  // include an episode a prior INTERRUPTED extend attempt already drafted).
+  const { alreadyDraftedEpisodeNumbers, resumeDraftedItems } =
+    resolveDeepDraftResumeState(existingItems, resolvedResume);
+  const onChunkComplete = createDeepDraftCheckpointRelay(resolvedResume);
+
   let ledgerPlan: {
     ledgers: VerticalDramaQualityLedgers;
     creditsUsed: number;
@@ -1502,6 +1980,10 @@ export async function runExtendStoryDraftHorizonJob(
       episodes: episodesToDraft,
       priorRecap: { items: recapItems, openThreads: [] },
       mode,
+      // Resilient resume — see the doc comment on this const block above.
+      resumeDraftedItems,
+      alreadyDraftedEpisodeNumbers,
+      onChunkComplete,
       // F131X + finale price_paid rule (see runGenerateStoryBibleDeepJob)
       totalEpisodeCount: row.targetEpisodeCount ?? undefined,
       formatProfilesEnabled,
@@ -1515,6 +1997,10 @@ export async function runExtendStoryDraftHorizonJob(
       // Series-level audience age rating (Phase 1) — see
       // `runGenerateStoryBibleDeepJob`'s identical wiring.
       audienceAgeRating: resolveAudienceAgeRating(bible.audienceAgeRating),
+      // Production-grade full-story generation — parity with
+      // `runGenerateStoryBibleDeepJob`; see the load just above this try.
+      existingLocations,
+      characterBibleNames,
       onProgress,
     });
   } catch (error) {
@@ -1563,6 +2049,56 @@ export async function runExtendStoryDraftHorizonJob(
     .where(seriesOwnershipWhere(tenantId, userId, seriesId))
     .returning();
 
+  // Production-grade full-story generation — parity with
+  // `runGenerateStoryBibleDeepJob`: persist any NEW locations this extend run
+  // declared into the durable `vertical_drama_locations` roster (Tab ฉาก),
+  // AFTER the bible write succeeds. Best-effort (a failure here must never
+  // fail the mutation or roll back the bible write); never overwrites an
+  // existing location — see `persistDeepDraftDeclaredLocations`'s own doc
+  // comment. `result.newLocations ?? []` defensively tolerates a test double
+  // predating the field; the real service always returns `[]` at minimum.
+  let createdLocationCount = 0;
+  const declaredNewLocations = result.newLocations ?? [];
+  if (declaredNewLocations.length > 0) {
+    try {
+      const locationPersistSummary = await persistDeepDraftDeclaredLocations(
+        { tenantId, userId, seriesId },
+        declaredNewLocations
+      );
+      createdLocationCount = locationPersistSummary.createdLocations.length;
+    } catch (error) {
+      debugError(
+        "verticalDramaSeries.deepStoryDraft",
+        "Failed to persist deep story draft declared locations (extend)",
+        error
+      );
+    }
+  }
+
+  // Auto-register story-introduced characters
+  // (`planning/vd-auto-register-story-characters/plan.md`) — parity with
+  // `runGenerateStoryBibleDeepJob`'s identical block above; see that block's
+  // own doc comment for the full rationale.
+  //
+  // Set B — see `runGenerateStoryBibleDeepJob`'s identical capture above.
+  let createdCharacters: VdDeepDraftCreatedCharactersSummary = EMPTY_DEEP_DRAFT_CREATED_CHARACTERS;
+  try {
+    const rosterAutoRegisterSummary = await ensureRosterCharactersFromStory(
+      { tenantId, userId, seriesId },
+      {
+        refinedCharacters: characterBibleNames.map(name => ({ name })),
+        deepDraftShots: result.draftedItems.flatMap(item => item.shotDrafts),
+      }
+    );
+    createdCharacters = toDeepDraftCreatedCharactersSummary(rosterAutoRegisterSummary);
+  } catch (error) {
+    debugError(
+      "verticalDramaSeries.deepStoryDraft",
+      "Failed to auto-register story-introduced characters (extend)",
+      error
+    );
+  }
+
   await recordDeepStoryDraftAuditEvent({
     userId,
     seriesId,
@@ -1574,6 +2110,7 @@ export async function runExtendStoryDraftHorizonJob(
     idempotencyKey: params.idempotencyKey,
     mode,
     missingEpisodes: result.missingEpisodes,
+    createdLocationCount,
   });
 
   // Phase F parity fix (deferred note, added 2026-07-09) — `runExtendStoryDraftHorizonJob`
@@ -1671,6 +2208,12 @@ export async function runExtendStoryDraftHorizonJob(
     missingEpisodes: result.missingEpisodes,
     // Task #22 — see `runGenerateStoryBibleDeepJob`'s identical field.
     tieInMismatchCount: result.tieInMismatchCount,
+    // Production-grade full-story generation — see
+    // `runGenerateStoryBibleDeepJob`'s identical field; count of NEW locations
+    // this extend run persisted into Tab ฉาก (always a number, `0` when none).
+    createdLocationCount,
+    // Set B — see `runGenerateStoryBibleDeepJob`'s identical field.
+    createdCharacters,
   };
 }
 
@@ -1684,7 +2227,18 @@ export async function runExtendStoryDraftHorizonJob(
  */
 export async function runVerticalDramaStoryJobExecutor(
   payload: VerticalDramaStoryJobPayload,
-  onProgress: (progress: VerticalDramaStoryJobProgress) => void
+  onProgress: (progress: VerticalDramaStoryJobProgress) => void,
+  /**
+   * Resilient resume (added 2026-07-14) — always passed by
+   * `runVerticalDramaStoryJob` (this is the concrete
+   * `VerticalDramaStoryJobExecutor` registered onto the BullMQ worker, see
+   * `verticalDramaStoryJobs.ts`'s `initVerticalDramaStoryJobsQueue`), so this
+   * stays a required param here (unlike the two job functions it dispatches
+   * to below, which keep it optional for their own pre-existing test call
+   * sites). Only `"deep_generate"`/`"extend"` forward it — `"improve_script"`
+   * has no checkpoint/resume concept of its own and simply never reads it.
+   */
+  resume: VerticalDramaStoryJobResumeContext
 ): Promise<unknown> {
   const owner: StoryJobExecutorOwner = {
     tenantId: payload.tenantId,
@@ -1702,7 +2256,8 @@ export async function runVerticalDramaStoryJobExecutor(
             idempotencyKey?: string;
           }),
         },
-        onProgress
+        onProgress,
+        resume
       );
     case "extend":
       return runExtendStoryDraftHorizonJob(
@@ -1714,7 +2269,8 @@ export async function runVerticalDramaStoryJobExecutor(
             idempotencyKey?: string;
           }),
         },
-        onProgress
+        onProgress,
+        resume
       );
     case "improve_script": {
       // Lazy `await import(...)` — see this file's own import block doc
@@ -1898,7 +2454,15 @@ async function recordVerticalDramaSystemFailureAuditEvent(params: {
  */
 function parseCharactersDraft(
   draft: string
-): Array<{ name: string; role: string; description: string }> {
+): Array<{
+  name: string;
+  role: string;
+  description: string;
+  narrativeRole?: NarrativeRole;
+  roleTier?: RoleTier;
+  occupation?: string;
+  roleReviewStatus: "ready" | "needs_role_review";
+}> {
   return draft
     .split("\n")
     .map(line => line.trim())
@@ -1906,15 +2470,35 @@ function parseCharactersDraft(
     .map(line => {
       const match = line.match(/^(.+?)\s+—\s+(.+?):\s*(.*)$/);
       if (match) {
+        const legacy = normalizeLegacyRole(match[2]);
         return {
           name: match[1].trim(),
           role: match[2].trim(),
           description: match[3].trim(),
+          narrativeRole: legacy.narrativeRole ?? undefined,
+          roleTier: legacy.roleTier ?? undefined,
+          occupation: match[2].trim(),
+          roleReviewStatus: legacy.reviewStatus,
         };
       }
-      return { name: line, role: "", description: "" };
+      return {
+        name: line,
+        role: "",
+        description: "",
+        occupation: undefined,
+        roleReviewStatus: "needs_role_review",
+      };
     });
 }
+
+const presetCharacterProfileSchema = z.object({
+  name: z.string().trim().min(1),
+  speechProfile: z.unknown().optional(),
+  personality: z.unknown().optional(),
+  narrativeRole: narrativeRoleSchema.nullable().optional(),
+  roleTier: roleTierSchema.nullable().optional(),
+  occupation: z.string().trim().max(160).nullable().optional(),
+});
 
 function toGenrePresetDto(row: VerticalDramaGenrePresetRow): GenrePresetDto {
   return {
@@ -1931,6 +2515,9 @@ function toGenrePresetDto(row: VerticalDramaGenrePresetRow): GenrePresetDto {
       name: string;
       role: string;
       description: string;
+      narrativeRole?: NarrativeRole;
+      roleTier?: RoleTier;
+      occupation?: string;
     }>,
     visualBible: row.visualBible,
     visualIdentityJson: row.visualIdentityJson ?? undefined,
@@ -1997,6 +2584,9 @@ export async function seedCharactersFromDraft(
     name: string;
     speechProfile?: unknown;
     personality?: unknown;
+    narrativeRole?: NarrativeRole | null;
+    roleTier?: RoleTier | null;
+    occupation?: string | null;
   }>
 ): Promise<void> {
   const parsed = parseCharactersDraft(charactersDraft).filter(
@@ -2034,6 +2624,11 @@ export async function seedCharactersFromDraft(
       data.personality = matchedProfile.personality;
     }
 
+    const legacy = normalizeLegacyRole(character.role);
+    const narrativeRole = matchedProfile?.narrativeRole ?? character.narrativeRole ?? legacy.narrativeRole;
+    const roleTier = matchedProfile?.roleTier ?? character.roleTier ?? legacy.roleTier;
+    const occupation = matchedProfile?.occupation ?? character.occupation ?? (character.role || null);
+
     return {
       tenantId,
       userId,
@@ -2041,11 +2636,75 @@ export async function seedCharactersFromDraft(
       characterKey: key,
       name: character.name,
       role: character.role || null,
+      narrativeRole: narrativeRole ?? null,
+      roleTier: roleTier ?? null,
+      occupation,
+      roleProvenance: matchedProfile?.narrativeRole || matchedProfile?.roleTier ? "ai_assigned" : "migrated",
+      roleReviewStatus: narrativeRole && roleTier ? "ready" : "needs_role_review",
       data: Object.keys(data).length > 0 ? data : null,
     } as typeof verticalDramaCharacters.$inferInsert;
   });
 
   await db.insert(verticalDramaCharacters).values(rows);
+}
+
+/**
+ * Persist the canonical narrative role emitted by Story Bible generation onto
+ * the durable character roster. Legacy free-text `role` is never overwritten;
+ * user-confirmed assignments are also never downgraded by a later AI run.
+ */
+async function reconcileCharactersFromStoryBible(
+  tenantId: string,
+  userId: number,
+  seriesId: number,
+  refinedCharacters: Array<{
+    name: string;
+    role?: string;
+    narrativeRole?: NarrativeRole;
+    roleTier?: RoleTier;
+    occupation?: string;
+  }>,
+): Promise<void> {
+  if (refinedCharacters.length === 0) return;
+  const roster = (await db
+    .select()
+    .from(verticalDramaCharacters)
+    .where(
+      and(
+        eq(verticalDramaCharacters.tenantId, tenantId),
+        eq(verticalDramaCharacters.userId, userId),
+        eq(verticalDramaCharacters.seriesId, seriesId),
+      ),
+    )) as VerticalDramaCharacterRow[];
+  const byName = new Map(roster.map(character => [
+    character.name.trim().toLocaleLowerCase(),
+    character,
+  ]));
+
+  for (const profile of refinedCharacters) {
+    const character = byName.get(profile.name.trim().toLocaleLowerCase());
+    if (!character || character.roleProvenance === "user_confirmed") continue;
+    const narrativeRole = profile.narrativeRole ?? null;
+    const roleTier = profile.roleTier ?? null;
+    await db
+      .update(verticalDramaCharacters)
+      .set({
+        narrativeRole,
+        roleTier,
+        occupation: profile.occupation ?? profile.role ?? character.occupation ?? character.role,
+        roleProvenance: narrativeRole || roleTier ? "ai_assigned" : "migrated",
+        roleReviewStatus: narrativeRole && roleTier ? "ready" : "needs_role_review",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(verticalDramaCharacters.id, character.id),
+          eq(verticalDramaCharacters.tenantId, tenantId),
+          eq(verticalDramaCharacters.userId, userId),
+          eq(verticalDramaCharacters.seriesId, seriesId),
+        ),
+      );
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2743,6 +3402,9 @@ export const verticalDramaSeriesRouter = router({
       // read by the Series Detail Characters tab) from the wizard's freeform
       // `bible.charactersDraft` text. Never allowed to fail series creation.
       const charactersDraft = input.bible?.charactersDraft;
+      const characterProfilesResult = presetCharacterProfileSchema
+        .array()
+        .safeParse(input.bible?.characterProfiles);
       if (
         typeof charactersDraft === "string" &&
         charactersDraft.trim().length > 0
@@ -2752,7 +3414,8 @@ export const verticalDramaSeriesRouter = router({
             tenantId,
             userId,
             Number(row.id),
-            charactersDraft
+            charactersDraft,
+            characterProfilesResult.success ? characterProfilesResult.data : undefined,
           );
         } catch (error) {
           debugError(
@@ -3821,6 +4484,13 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
+      await reconcileCharactersFromStoryBible(
+        tenantId,
+        userId,
+        seriesId,
+        result.expanded.refinedCharacters,
+      );
+
       const updatedBible = {
         ...bible,
         expandedSeasonArc: result.expanded.expandedSeasonArc,
@@ -3872,11 +4542,16 @@ export const verticalDramaSeriesRouter = router({
         horizonEpisodes: z.number().int().positive().optional(),
         idempotencyKey: z.string().trim().min(1).max(128).optional(),
         /**
-         * Premium multi-round drafts (W11-A, added 2026-07-08) — defaults to
-         * `"standard"` when omitted, running the EXACT W10-A pipeline
-         * byte-identically. `"premium"` runs the fan-out -> gates -> judge ->
-         * targeted-revise -> season-sweep pipeline instead (see
-         * `generateStoryBibleDeep`'s mode switch in the service).
+         * Premium multi-round drafts (W11-A, added 2026-07-08) — `"premium"`
+         * runs the fan-out -> gates -> judge -> targeted-revise -> season-sweep
+         * pipeline; `"standard"` runs the single-pass W10-A pipeline.
+         *
+         * Default CHANGED to `"premium"` when omitted (production-grade
+         * full-story generation, plan
+         * `planning/vertical-drama-full-story-production-grade`, added
+         * 2026-07-13) — the button's flow now uses the quality loop by
+         * default so it returns only complete, floor-passing content in one
+         * run; the client can still explicitly request `"standard"`.
          */
         mode: verticalDramaDeepStoryDraftModeSchema.optional(),
       })
@@ -3891,7 +4566,11 @@ export const verticalDramaSeriesRouter = router({
           message: "Invalid series id",
         });
       }
-      const mode: VerticalDramaDeepStoryDraftMode = input.mode ?? "standard";
+      // Production-grade full-story generation, added 2026-07-13 — default
+      // to "premium" (the quality-loop pipeline) when the client doesn't
+      // send a mode; an explicit "standard" request still runs the
+      // single-pass pipeline unchanged.
+      const mode: VerticalDramaDeepStoryDraftMode = input.mode ?? "premium";
 
       // Fail-fast sync validation — SAME guards the old synchronous body ran
       // (ownership + preconditions), so a doomed request never occupies the
@@ -3930,9 +4609,36 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
+      // Silent-no-op fix (plan
+      // `planning/vertical-drama-deep-draft-update-all-noop`, added
+      // 2026-07-14) — `episodesToDraft` above only reflects the resolved
+      // HORIZON, not what's actually undrafted within it. For a large series
+      // whose default horizon (or an explicitly-passed one) is fully covered
+      // by already-drafted episodes, enqueuing here would produce a job that
+      // makes zero LLM calls, charges zero credits, and "succeeds" in
+      // ~60ms — indistinguishable from "stopped" in the UI (see the plan's
+      // root-cause section). Filter to episodes that are still undrafted and
+      // short-circuit BEFORE enqueuing/charging when there's nothing left.
+      const remainingToDraft = episodesToDraft.filter(
+        item => readItemShotDrafts(item) === null
+      );
+      if (remainingToDraft.length === 0) {
+        // Pinned contract: this mutation's return type is now a union of
+        // `{ jobId, deduped, alreadyComplete: false }` (normal path, below)
+        // and `{ jobId: null, deduped: false, alreadyComplete: true }` (this
+        // early-complete path). Both branches share the same three keys so
+        // tRPC/TS infer one consistent object shape; the client narrows on
+        // `!jobId` to detect this case and must not attempt to poll it.
+        return { jobId: null, deduped: false, alreadyComplete: true as const };
+      }
+
       await ensureStoryJobCreditsAvailable(
         userId,
-        estimateDeepDraftJobCredits(episodesToDraft.length, mode)
+        // Credit precheck scoped to REMAINING (undrafted) episodes, not the
+        // full horizon — see the doc comment above. Already-drafted episodes
+        // inside the horizon must never count against the user's credit
+        // balance for this run.
+        estimateDeepDraftJobCredits(remainingToDraft.length, mode)
       );
 
       const { jobId, deduped } = await enqueueVerticalDramaStoryJob({
@@ -3946,7 +4652,7 @@ export const verticalDramaSeriesRouter = router({
           idempotencyKey: input.idempotencyKey,
         },
       });
-      return { jobId, deduped };
+      return { jobId, deduped, alreadyComplete: false as const };
     }),
 
   /**
@@ -5971,7 +6677,20 @@ export const verticalDramaSeriesRouter = router({
    * generation runs (plan.md §1, §8).
    */
   generateAdBannerImage: verticalDramaProcedure
-    .input(adBannerScopeInput)
+    .input(
+      adBannerScopeInput.extend({
+        // Feature 135 — Hermes Grok media worker (section 09, remediation
+        // row 10). This surface gains MCP support as a side effect of the
+        // shared transport-decision helper — `mcpConnectionId`/
+        // `sharedGroupId` are new for the banner picker (section 10 wires
+        // the UI); `hermesConnectionId` is required only when the resolved
+        // model is Hermes-transport and the caller has no default Hermes
+        // connection for images.
+        mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        hermesConnectionId: z.string().max(64).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       // Lazy-loaded (see this file's Ad Banner Overlay import-block doc
       // comment) — checked FIRST, fail-fast, before any DB read or paid call.
@@ -6047,12 +6766,52 @@ export const verticalDramaSeriesRouter = router({
         });
       }
 
-      const { DEFAULT_MODELS } =
-        await import("../services/mediaGenerationService");
-      const modelId = banner.generation.modelId || DEFAULT_MODELS.image;
+      // Feature 135 — Hermes Grok media worker (section 09, remediation row
+      // 10): fail-closed guard — the silent `DEFAULT_MODELS.image` fallback
+      // is gone. An empty `banner.generation.modelId` now throws BAD_REQUEST
+      // instead of silently substituting a system default the user never
+      // picked (same fail-closed convention as `resolveCharacterImageModelId`).
+      const modelId = banner.generation.modelId?.trim();
+      if (!modelId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "เลือกโมเดลภาพก่อนสร้างแบนเนอร์ / Select an image model before generating the banner.",
+        });
+      }
       const pricing = await resolveAdBannerImageModelPricing(modelId);
       const shouldChargeImageCredits = pricing.creditCost > 0;
-      if (shouldChargeImageCredits) {
+
+      const referenceImageUrls = await resolveAdBannerProductReferenceImageUrls(
+        rawProductTieIn,
+        {
+          userId,
+          tenantId,
+        }
+      );
+
+      // Route through the shared transport-decision helper — gateway_api
+      // (byte-identical to before), mcp (this surface gains MCP support as
+      // a side effect — pricing/charge stays identical, only the submit
+      // path's `transportMetadata` changes), or hermes (no platform-credit
+      // charge; submits straight to `queueHermesMediaJob`). Resolved BEFORE
+      // the credit check/reserve below (not after) — structurally
+      // guarantees "no platform-credit reserve for hermes". Reuses
+      // `pricing.configJson` (the SAME `media_models` row
+      // `resolveAdBannerImageModelPricing` already read above) — never a
+      // second DB read for the same row.
+      const { resolveVdCharacterMediaTransportDecision } = await import("./verticalDramaCharacters");
+      const transportDecision = await resolveVdCharacterMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId,
+        configJson: pricing.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+      });
+
+      if (transportDecision.kind !== "hermes" && shouldChargeImageCredits) {
         const hasCredits = await hasEnoughCredits(userId, pricing.creditCost);
         if (!hasCredits) {
           throw new TRPCError({
@@ -6062,13 +6821,72 @@ export const verticalDramaSeriesRouter = router({
         }
       }
 
-      const referenceImageUrls = await resolveAdBannerProductReferenceImageUrls(
-        rawProductTieIn,
-        {
-          userId,
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesOrderedRefsFromUrls,
+        } = await import("../services/hermesMediaReferences");
+        const { resolveMediaModelTransportConfig } = await import("../../shared/mediaModelTransport");
+        const hermesTraceId = crypto.randomUUID();
+        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
           tenantId,
-        }
-      );
+          userId,
+          urls: referenceImageUrls.slice(0, pricing.maxReferenceImages),
+          traceId: hermesTraceId,
+          connectionId: transportDecision.connectionId,
+          roleFor: () => "product",
+        });
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId,
+            configJson: pricing.configJson,
+          }).providerModelId ?? modelId;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "image.edit" : "image.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: promptText,
+          settings: {
+            model: hermesProviderModelId,
+            ...(banner.generation.aspectRatio ? { aspectRatio: banner.generation.aspectRatio } : {}),
+            outputCount: 1,
+          },
+          references,
+          entity: { type: "vertical_drama_ad_banner", id: banner.id },
+          traceId: hermesTraceId,
+          tenantId,
+          requestedByUserId: userId,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: promptText,
+          extraParams: { __vd_series_id: String(seriesId), __vd_ad_banner_id: banner.id },
+          droppedReferenceCount,
+        });
+        const hermesNextBanner: VdAdBannerDesign = {
+          ...banner,
+          status: "generating",
+          pendingTaskId: hermesTask.id,
+        };
+        const hermesNextBanners = banners.slice();
+        hermesNextBanners[bannerIndex] = hermesNextBanner;
+        await persistAdBannerDesigns(tenantId, userId, seriesId, rawProductTieIn, hermesNextBanners);
+        return {
+          taskId: hermesTask.id,
+          creditCost: 0,
+          banner: hermesNextBanner,
+          droppedReferenceCount,
+        };
+      }
+
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
 
       // Credits are RESERVED now; `getAdBannerImageStatus` reconciles once
       // the task completes/fails, same convention as `generateCharacterImage`.
@@ -6106,6 +6924,7 @@ export const verticalDramaSeriesRouter = router({
           maxReferenceImages: pricing.maxReferenceImages,
           publicUrl: ctx.publicUrl ?? undefined,
           userToken,
+          ...(transportMetadata ? { transportMetadata } : {}),
         });
       } catch (err) {
         if (shouldChargeImageCredits) {

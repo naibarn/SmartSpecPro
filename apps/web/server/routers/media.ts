@@ -135,10 +135,13 @@ const creditOriginSurfaceSchema = z.enum([
   "marketplace_capture",
   "storyboard_review",
 ]).optional();
-const mediaTransportSchema = z.enum(["gateway_api", "mcp"]).optional();
+// Feature 135 — Hermes Grok media worker (section 09): three-way transport
+// enum. Additive widening — existing "gateway_api"/"mcp" values and every
+// existing test fixture are unaffected.
+const mediaTransportSchema = z.enum(["gateway_api", "mcp", "hermes_worker"]).optional();
 
 function assertMcpFieldsOnlyWithMcpTransport(input: {
-  transport?: "gateway_api" | "mcp";
+  transport?: "gateway_api" | "mcp" | "hermes_worker";
   mcpConnectionId?: string;
   sharedGroupId?: number;
   mcpApprovalId?: string;
@@ -160,6 +163,26 @@ function assertMcpFieldsOnlyWithMcpTransport(input: {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "MCP connection, group, approval, and provider route fields cannot be used with transport=gateway_api",
+    });
+  }
+}
+
+/**
+ * Feature 135 — Hermes Grok media worker (section 09): mirrors
+ * `assertMcpFieldsOnlyWithMcpTransport` for the new `hermesConnectionId`
+ * field — a hermesConnectionId supplied for a non-hermes RESOLVED transport
+ * (the model's own transport, not just the raw `input.transport` value) is
+ * rejected, mirroring `mediaTransportResolver.ts`'s
+ * "hermesConnectionId requires transport=hermes_worker" rule.
+ */
+function assertHermesConnectionIdMatchesResolvedTransport(input: {
+  hermesConnectionId?: string;
+  resolvedIsHermes: boolean;
+}) {
+  if (input.hermesConnectionId && !input.resolvedIsHermes) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "hermesConnectionId requires transport=hermes_worker",
     });
   }
 }
@@ -2926,6 +2949,10 @@ export const mediaRouter = router({
         mcpProviderModelId: z.string().max(256).optional(),
         mcpToolName: z.string().max(128).optional(),
         mcpArgumentShape: z.string().max(128).optional(),
+        // Feature 135 — Hermes Grok media worker (section 09). Required
+        // only when the resolved transport is `hermes_worker` and the
+        // caller has no default Hermes connection for this asset type.
+        hermesConnectionId: z.string().max(64).optional(),
         idempotencyKey: z.string().max(128).optional(),
       })
     )
@@ -2986,6 +3013,87 @@ export const mediaRouter = router({
         modelId: model,
         configJson: dbModel.configJson,
       });
+      // Feature 135 — Hermes Grok media worker (section 09): three-way
+      // branch, computed BEFORE the MCP block so a hermes-transport model
+      // (or an explicit `transport: "hermes_worker"`) never falls through
+      // to the MCP/gateway paths below.
+      const shouldUseHermesTransport =
+        modelTransport.transport === "hermes_worker" || input.transport === "hermes_worker";
+      assertHermesConnectionIdMatchesResolvedTransport({
+        hermesConnectionId: input.hermesConnectionId,
+        resolvedIsHermes: shouldUseHermesTransport,
+      });
+
+      if (shouldUseHermesTransport) {
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        if (!tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required for Hermes media generation" });
+        }
+        const { resolveVdCharacterMediaTransportDecision } = await import("./verticalDramaCharacters");
+        const transportDecision = await resolveVdCharacterMediaTransportDecision({
+          tenantId,
+          actorUserId: ctx.user.id,
+          assetType: "image",
+          modelId: model,
+          configJson: (dbModel.configJson as Record<string, unknown> | null) ?? null,
+          hermesConnectionId: input.hermesConnectionId,
+        });
+        if (transportDecision.kind !== "hermes") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "hermesConnectionId requires transport=hermes_worker" });
+        }
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesReferenceAssetIdFromUrl,
+        } = await import("../services/hermesMediaReferences");
+        const resolvedRefIds = await Promise.all(
+          (input.referenceImageUrls ?? []).map(url =>
+            resolveHermesReferenceAssetIdFromUrl({ tenantId, userId: ctx.user.id, url }),
+          ),
+        );
+        const unresolvedIndex = resolvedRefIds.findIndex(assetId => !assetId);
+        if (unresolvedIndex !== -1) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Hermes media generation requires library-backed reference images; raw external URLs are not supported.",
+          });
+        }
+        const orderedRefs = resolvedRefIds.map((assetId, idx) => ({
+          assetId: assetId as string,
+          role: "reference",
+          label: `Image-${idx + 1}`,
+        }));
+        const references = await buildHermesMediaReferences({ tenantId, userId: ctx.user.id, orderedRefs });
+        const hermesProviderModelId =
+          modelTransport.transport === "hermes_worker" ? modelTransport.providerModelId ?? model : model;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "image.edit" : "image.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: input.prompt,
+          settings: {
+            model: hermesProviderModelId,
+            ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+            outputCount: input.numImages ?? 1,
+          },
+          references,
+          traceId: crypto.randomUUID(),
+          tenantId,
+          requestedByUserId: ctx.user.id,
+          idempotencyKey: input.idempotencyKey,
+        });
+        return buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId: ctx.user.id,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: input.prompt,
+          extraParams: input.extraParams,
+        });
+      }
+
       const shouldUseMcpTransport = modelTransport.transport === "mcp" || input.transport === "mcp";
 
       if (shouldUseMcpTransport) {
@@ -3183,6 +3291,10 @@ export const mediaRouter = router({
         mcpProviderModelId: z.string().max(256).optional(),
         mcpToolName: z.string().max(128).optional(),
         mcpArgumentShape: z.string().max(128).optional(),
+        // Feature 135 — Hermes Grok media worker (section 09). Required
+        // only when the resolved transport is `hermes_worker` and the
+        // caller has no default Hermes connection for this asset type.
+        hermesConnectionId: z.string().max(64).optional(),
         idempotencyKey: z.string().max(128).optional(),
       })
     )
@@ -3264,6 +3376,91 @@ export const mediaRouter = router({
         modelId: model,
         configJson: dbModel.configJson,
       });
+      // Feature 135 — Hermes Grok media worker (section 09): three-way
+      // branch — see `generateImageAsync`'s identical block for the full
+      // rationale.
+      const shouldUseHermesTransport =
+        modelTransport.transport === "hermes_worker" || input.transport === "hermes_worker";
+      assertHermesConnectionIdMatchesResolvedTransport({
+        hermesConnectionId: input.hermesConnectionId,
+        resolvedIsHermes: shouldUseHermesTransport,
+      });
+
+      if (shouldUseHermesTransport) {
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        if (!tenantId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required for Hermes media generation" });
+        }
+        const { resolveVdCharacterMediaTransportDecision } = await import("./verticalDramaCharacters");
+        const transportDecision = await resolveVdCharacterMediaTransportDecision({
+          tenantId,
+          actorUserId: ctx.user.id,
+          assetType: "video",
+          modelId: model,
+          configJson: (dbModel.configJson as Record<string, unknown> | null) ?? null,
+          hermesConnectionId: input.hermesConnectionId,
+        });
+        if (transportDecision.kind !== "hermes") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "hermesConnectionId requires transport=hermes_worker" });
+        }
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesReferenceAssetIdFromUrl,
+        } = await import("../services/hermesMediaReferences");
+        const combinedReferenceUrls = [
+          ...(input.referenceImageUrls ?? []),
+          ...(input.referenceVideoUrl ? [input.referenceVideoUrl] : []),
+          ...(input.referenceVideoUrls ?? []),
+        ];
+        const resolvedRefIds = await Promise.all(
+          combinedReferenceUrls.map(url =>
+            resolveHermesReferenceAssetIdFromUrl({ tenantId, userId: ctx.user.id, url }),
+          ),
+        );
+        const unresolvedIndex = resolvedRefIds.findIndex(assetId => !assetId);
+        if (unresolvedIndex !== -1) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Hermes media generation requires library-backed reference images; raw external URLs are not supported.",
+          });
+        }
+        const orderedRefs = resolvedRefIds.map((assetId, idx) => ({
+          assetId: assetId as string,
+          role: idx === 0 ? "start_frame" : "reference",
+          label: `Image-${idx + 1}`,
+        }));
+        const references = await buildHermesMediaReferences({ tenantId, userId: ctx.user.id, orderedRefs });
+        const hermesProviderModelId =
+          modelTransport.transport === "hermes_worker" ? modelTransport.providerModelId ?? model : model;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "video.image_to_video" : "video.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: input.prompt,
+          settings: {
+            model: hermesProviderModelId,
+            ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
+            ...(input.resolution ? { resolution: input.resolution } : {}),
+            durationSeconds: duration,
+          },
+          references,
+          traceId: crypto.randomUUID(),
+          tenantId,
+          requestedByUserId: ctx.user.id,
+          idempotencyKey: input.idempotencyKey,
+        });
+        return buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId: ctx.user.id,
+          mediaType: "video",
+          model: hermesProviderModelId,
+          prompt: input.prompt,
+          extraParams: normalizedExtraParams,
+        });
+      }
+
       const shouldUseMcpTransport = modelTransport.transport === "mcp" || input.transport === "mcp";
 
       if (shouldUseMcpTransport) {

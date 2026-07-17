@@ -21,6 +21,7 @@ const { mockGetModelsByTypeAsync } = vi.hoisted(() => ({
 
 vi.mock("../../services/modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
+  isDbModelCatalogLoaded: () => true,
   resolveVerticalDramaCapabilities: vi.fn(() => ({
     supportsStartFrame: true,
     maxReferenceImages: 3,
@@ -182,6 +183,7 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 import {
   assertModelSelectable,
   resolveEpisodeImageModelId,
+  resolveEpisodeVideoModel,
 } from "../verticalDramaEpisodes";
 
 function model(overrides: Partial<{ id: string; isEnabled: boolean }> = {}) {
@@ -223,14 +225,16 @@ describe("assertModelSelectable", () => {
   });
 });
 
-describe("resolveEpisodeImageModelId — resolution order (episode selection -> DEFAULT_MODELS)", () => {
+describe("resolveEpisodeImageModelId — resolution order (fail-closed, requires explicit episode selection)", () => {
   beforeEach(() => {
     mockGetModelsByTypeAsync.mockReset();
   });
 
-  it("returns DEFAULT_MODELS.image when the plan has no selection yet", async () => {
-    const resolved = await resolveEpisodeImageModelId(null);
-    expect(resolved).toBe("google-nano-banana-pro");
+  it("throws BAD_REQUEST when the plan has no selection yet (no silent DEFAULT_MODELS fallback)", async () => {
+    await expect(resolveEpisodeImageModelId(null)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    // Bails out before touching the catalog — nothing to resolve without a selection.
     expect(mockGetModelsByTypeAsync).not.toHaveBeenCalled();
   });
 
@@ -246,27 +250,103 @@ describe("resolveEpisodeImageModelId — resolution order (episode selection -> 
     expect(resolved).toBe("google-banana-2-lite");
   });
 
-  it("falls back to DEFAULT_MODELS.image when the episode's selected model no longer exists", async () => {
+  it("throws BAD_REQUEST when the episode's selected model no longer exists (fails closed)", async () => {
     mockGetModelsByTypeAsync.mockResolvedValue([
       { id: "some-other-model", type: "image", isEnabled: true },
     ]);
-    const resolved = await resolveEpisodeImageModelId({
-      mode: "single_frame_per_shot",
-      selectedImageModelId: "deleted-model",
-      frames: [],
-    } as any);
-    expect(resolved).toBe("google-nano-banana-pro");
+    await expect(
+      resolveEpisodeImageModelId({
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "deleted-model",
+        frames: [],
+      } as any)
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
-  it("falls back to DEFAULT_MODELS.image when the episode's selected model is disabled (fails closed)", async () => {
+  it("throws BAD_REQUEST when the episode's selected model is disabled (fails closed)", async () => {
     mockGetModelsByTypeAsync.mockResolvedValue([
       { id: "google-banana-2-lite", type: "image", isEnabled: false },
     ]);
-    const resolved = await resolveEpisodeImageModelId({
-      mode: "single_frame_per_shot",
-      selectedImageModelId: "google-banana-2-lite",
-      frames: [],
+    await expect(
+      resolveEpisodeImageModelId({
+        mode: "single_frame_per_shot",
+        selectedImageModelId: "google-banana-2-lite",
+        frames: [],
+      } as any)
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+});
+
+/**
+ * Feature 135 — Hermes Grok media worker (section 09, remediation row 9):
+ * `resolveEpisodeVideoModel` used to silently fall back to
+ * `DEFAULT_MODELS.video` (and even manufacture a synthetic last-resort
+ * `ModelDefinition`) when the pack had no selection or the selected model
+ * was gone/disabled. These tests encode the FIXED, fail-closed behavior —
+ * they replace/invert what would have been "falls back to DEFAULT_MODELS"
+ * assertions (this is one of the two remediation suites the zero-regression
+ * gate explicitly expects to flip from fallback-assertions to
+ * throw-assertions).
+ */
+describe("resolveEpisodeVideoModel — fail-closed (remediation row 9, no DEFAULT_MODELS.video fallback)", () => {
+  beforeEach(() => {
+    mockGetModelsByTypeAsync.mockReset();
+  });
+
+  it("throws BAD_REQUEST when the pack has no selection yet (DEFAULT_MODELS.video is never consulted)", async () => {
+    // The default row EXISTS in the catalog — proves the throw is NOT just
+    // an artifact of an empty catalog; the fallback path is truly gone.
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "veo3/generate-veo-3-video-lite", type: "video", isEnabled: true },
+    ]);
+    await expect(resolveEpisodeVideoModel(null)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mockGetModelsByTypeAsync).not.toHaveBeenCalled();
+  });
+
+  it("throws BAD_REQUEST for an empty/whitespace selectedVideoModelId (treated as no selection)", async () => {
+    await expect(
+      resolveEpisodeVideoModel({ selectedVideoModelId: "   " } as any),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("throws BAD_REQUEST when the selected model no longer exists in the catalog (no fallback)", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "veo3/generate-veo-3-video-lite", type: "video", isEnabled: true },
+    ]);
+    await expect(
+      resolveEpisodeVideoModel({ selectedVideoModelId: "deleted-model" } as any),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("throws BAD_REQUEST when the selected model is disabled (no fallback)", async () => {
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      { id: "veo-3-1", type: "video", isEnabled: false },
+    ]);
+    await expect(
+      resolveEpisodeVideoModel({ selectedVideoModelId: "veo-3-1" } as any),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("returns the full ModelDefinition for a valid, enabled selection (gateway model — unchanged happy path)", async () => {
+    const modelRow = { id: "veo-3-1", type: "video", isEnabled: true, creditCost: 50, aliases: [], configJson: {} };
+    mockGetModelsByTypeAsync.mockResolvedValue([modelRow]);
+    const resolved = await resolveEpisodeVideoModel({ selectedVideoModelId: "veo-3-1" } as any);
+    expect(resolved).toEqual(modelRow);
+  });
+
+  it("returns the full ModelDefinition for a valid Hermes-transport selection", async () => {
+    const modelRow = {
+      id: "hermes-grok/grok-imagine-video",
+      type: "video",
+      isEnabled: true,
+      creditCost: 0,
+      aliases: [],
+      configJson: { transport: "hermes_worker" },
+    };
+    mockGetModelsByTypeAsync.mockResolvedValue([modelRow]);
+    const resolved = await resolveEpisodeVideoModel({
+      selectedVideoModelId: "hermes-grok/grok-imagine-video",
     } as any);
-    expect(resolved).toBe("google-nano-banana-pro");
+    expect(resolved).toEqual(modelRow);
   });
 });

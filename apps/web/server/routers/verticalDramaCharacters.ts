@@ -39,8 +39,13 @@ import {
 import {
   verticalDramaCharacterStockService,
   VerticalDramaCharacterStockError,
+  VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE,
 } from "../services/verticalDramaCharacterStock";
-import { VERTICAL_DRAMA_CHARACTER_ASSET_STATES } from "@shared/verticalDramaSeries/characterAssets";
+import { isCharacterLockPolicyFailureMessage } from "@shared/verticalDramaSeries/characterLock";
+import {
+  VERTICAL_DRAMA_CHARACTER_ASSET_STATES,
+  type VdCharacterNeedsSetupReason,
+} from "@shared/verticalDramaSeries/characterAssets";
 import { readTargetAudienceRegionFromBible } from "@shared/verticalDramaSeries/targetAudienceRegion";
 import { mediaGenerationService, DEFAULT_MODELS } from "../services/mediaGenerationService";
 import { calculateCreditCost } from "../services/pricingCalculator";
@@ -48,6 +53,7 @@ import { hasEnoughCredits, deductCredits, refundCredits } from "../services/cred
 import { signBearerToken } from "../_core/tokens";
 import {
   generateCharacterVisualPrompts,
+  generateCharacterPortraitCandidates,
   InsufficientCreditsError,
   VdSchemaValidationError,
   readPresetVisualIdentityFromBible,
@@ -60,7 +66,10 @@ import { resolveMediaTransport } from "../services/mediaTransportResolver";
 import { normalizeMcpProviderModelIdForProvider } from "../services/mcpProviderModelAliases";
 import { resolveMcpRouteFromModelId, defaultMcpArgumentShape } from "../services/mcpModelRouteResolver";
 import type { MediaTaskTransportMetadata } from "../../shared/mcpConnectTypes";
-import { getModelsByTypeAsync } from "../services/modelRegistry";
+// Feature 135 — Hermes Grok media worker (section 09). Pure string helper
+// only (no DB import) — see this file's `resolveVdCharacterMediaTransportDecision`.
+import { formatHermesErrorMessage } from "../../shared/hermesMedia";
+import { getModelsByTypeAsync, isDbModelCatalogLoaded } from "../services/modelRegistry";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import { verticalDramaApprovedCharacterDesignSnapshotSchema } from "@shared/verticalDramaSeries/characterProfile";
@@ -87,6 +96,17 @@ import {
   type VerticalDramaCharacterVoiceConfig,
   type VerticalDramaVoiceCatalogEntry,
 } from "@shared/verticalDramaSeries/voiceCasting";
+import {
+  narrativeRoleSchema,
+  roleProvenanceSchema,
+  roleReviewStatusSchema,
+  roleTierSchema,
+  roleVisualIntentSchema,
+  type NarrativeRole,
+  type RoleTier,
+  type RoleVisualIntent,
+  type RoleReviewStatus,
+} from "@shared/verticalDramaSeries/narrativeRole";
 // F5 manual variant/twin CRUD
 // (`planning/vertical-drama-twin-variant-completeness/plan.md` W2) — TYPE-ONLY
 // imports only (erased at compile time, no runtime module load) so this
@@ -331,6 +351,12 @@ function mapStockError(err: unknown): never {
       case "media_asset_deleted":
         throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
       case "illegal_state_transition":
+      case "candidate_batch_not_found":
+      case "candidate_batch_expired":
+      case "candidate_batch_claimed":
+      case "candidate_not_ready":
+      case "manual_primary_exists":
+      case "candidate_integrity_error":
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: err.message });
       default:
         throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
@@ -418,6 +444,22 @@ function getCharacterPortraitUserToken(ctx: { userToken: string | null; user: { 
   return ctx.userToken || createCharacterPortraitMediaToken(ctx.user.id);
 }
 
+function readMediaTaskInternalParameter(
+  parameters: Record<string, unknown> | undefined,
+  key: string,
+): string | undefined {
+  if (!parameters) return undefined;
+  const direct = parameters[key];
+  if (typeof direct === "string") return direct;
+  for (const containerKey of ["extraParams", "extra_params"] as const) {
+    const container = parameters[containerKey];
+    if (!container || typeof container !== "object" || Array.isArray(container)) continue;
+    const value = (container as Record<string, unknown>)[key];
+    if (typeof value === "string") return value;
+  }
+  return undefined;
+}
+
 /**
  * Resolve MCP transport metadata for a character-portrait/turnaround/sheet
  * generation call when the caller-selected image model is MCP-transport
@@ -438,6 +480,7 @@ export async function resolveVdCharacterMcpTransportMetadata(params: {
   modelId: string;
   configJson: Record<string, unknown> | null;
   mcpConnectionId?: string;
+  sharedGroupId?: number;
   idempotencyKey?: string;
 }): Promise<MediaTaskTransportMetadata | null> {
   const modelTransport = resolveMediaModelTransportConfig({
@@ -464,13 +507,10 @@ export async function resolveVdCharacterMcpTransportMetadata(params: {
     argumentShape,
   }) ?? rawProviderModelId;
 
-  if (!params.mcpConnectionId) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `"${params.modelId}" requires a connected MCP provider account. Connect a ${providerKey} MCP account first, then re-select this model.`,
-    });
-  }
-
+  // NOTE: deliberately no "mcpConnectionId is required" pre-check — see the
+  // matching comment in `verticalDramaEpisodes.ts`. `resolveMediaTransport`
+  // auto-resolves the caller's own eligible connection and raises a precise
+  // error itself when there genuinely is none / the choice is ambiguous.
   return resolveMediaTransport({
     tenantId: params.tenantId,
     actorUserId: params.actorUserId,
@@ -478,6 +518,7 @@ export async function resolveVdCharacterMcpTransportMetadata(params: {
     assetType: params.assetType,
     requestedTransport: "mcp",
     mcpConnectionId: params.mcpConnectionId,
+    sharedGroupId: params.sharedGroupId,
     providerKey,
     providerModelId,
     model: providerModelId ?? params.modelId,
@@ -488,17 +529,142 @@ export async function resolveVdCharacterMcpTransportMetadata(params: {
 }
 
 /**
+ * Feature 135 — Hermes Grok media worker (section 09): transport-neutral
+ * generalization of `resolveVdCharacterMcpTransportMetadata` above. Returns
+ * a discriminated union instead of the old `MediaTaskTransportMetadata |
+ * null` shape so a caller can route into `queueHermesMediaJob` (hermes),
+ * the existing MCP submit path (mcp), or the existing gateway_api/Python
+ * backend path (gateway) — all from ONE call.
+ *
+ * Design point (do NOT rewrite the MCP logic): this function only detects
+ * `resolveMediaModelTransportConfig(...).transport === "hermes_worker"`
+ * FIRST; for every other model it delegates to
+ * `resolveVdCharacterMcpTransportMetadata` UNCHANGED — non-null becomes
+ * `{kind:"mcp"}`, null becomes `{kind:"gateway"}`. That makes the MCP/
+ * gateway arms byte-identical to today by construction; the existing
+ * exported symbol (and its tests, and `verticalDramaLocations.ts`'s import)
+ * are untouched.
+ *
+ * The episodes twin is `resolveVdMediaTransportDecision` (private) in
+ * `verticalDramaEpisodes.ts`, delegating to that file's private
+ * `resolveVdMcpTransportMetadata` the same way — keep the two copies
+ * byte-equivalent apart from the export keyword and name prefix.
+ */
+export type VdTransportDecision =
+  | { kind: "gateway" }
+  | { kind: "mcp"; transportMetadata: MediaTaskTransportMetadata }
+  | { kind: "hermes"; connectionId: string };
+
+export interface ResolveVdCharacterMediaTransportDecisionDeps {
+  /** Injectable for tests; default lazily reads section-03's connection
+   *  service so this file's module graph never statically pulls in that
+   *  service's own dependencies (mirrors this file's other lazy-import
+   *  conventions — see the top-of-file `listVoiceCatalog` doc comment). */
+  resolveDefaultHermesConnectionId?: (params: {
+    tenantId: string;
+    userId: number;
+    assetType: "image" | "video";
+  }) => Promise<string | null>;
+}
+
+async function defaultResolveDefaultHermesConnectionId(params: {
+  tenantId: string;
+  userId: number;
+  assetType: "image" | "video";
+}): Promise<string | null> {
+  const { listHermesConnections } = await import("../services/hermesConnectionService");
+  const connections = await listHermesConnections({
+    tenantId: params.tenantId,
+    userId: params.userId,
+    assetType: params.assetType,
+  });
+  const defaultConnection = connections.find(connection =>
+    params.assetType === "image" ? connection.defaultForImage : connection.defaultForVideo,
+  );
+  return defaultConnection?.id ?? null;
+}
+
+export async function resolveVdCharacterMediaTransportDecision(
+  params: {
+    tenantId: string;
+    actorUserId: number;
+    assetType: "image" | "video";
+    modelId: string;
+    configJson: Record<string, unknown> | null;
+    mcpConnectionId?: string;
+    sharedGroupId?: number;
+    hermesConnectionId?: string;
+    idempotencyKey?: string;
+  },
+  deps: ResolveVdCharacterMediaTransportDecisionDeps = {},
+): Promise<VdTransportDecision> {
+  const modelTransport = resolveMediaModelTransportConfig({
+    modelId: params.modelId,
+    configJson: params.configJson,
+  });
+
+  if (modelTransport.transport === "hermes_worker") {
+    const explicitConnectionId = params.hermesConnectionId?.trim();
+    if (explicitConnectionId) {
+      return { kind: "hermes", connectionId: explicitConnectionId };
+    }
+    const resolveDefault = deps.resolveDefaultHermesConnectionId ?? defaultResolveDefaultHermesConnectionId;
+    const defaultConnectionId = await resolveDefault({
+      tenantId: params.tenantId,
+      userId: params.actorUserId,
+      assetType: params.assetType,
+    });
+    if (defaultConnectionId) {
+      return { kind: "hermes", connectionId: defaultConnectionId };
+    }
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: formatHermesErrorMessage("HERMES_CONNECTION_REQUIRED"),
+    });
+  }
+
+  // Cross-transport rejection (mirrors `mediaTransportResolver.ts`'s
+  // "hermesConnectionId requires transport=hermes_worker" rule) — a
+  // hermesConnectionId supplied for a non-hermes model must never be
+  // silently ignored.
+  if (params.hermesConnectionId?.trim()) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "hermesConnectionId requires transport=hermes_worker",
+    });
+  }
+
+  const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
+    tenantId: params.tenantId,
+    actorUserId: params.actorUserId,
+    assetType: params.assetType,
+    modelId: params.modelId,
+    configJson: params.configJson,
+    mcpConnectionId: params.mcpConnectionId,
+    sharedGroupId: params.sharedGroupId,
+    idempotencyKey: params.idempotencyKey,
+  });
+  return transportMetadata ? { kind: "mcp", transportMetadata } : { kind: "gateway" };
+}
+
+/**
  * Resolve the effective image model id for a character generation call:
- * caller-supplied `selectedImageModelId` (validated + must be enabled),
- * falling back to `DEFAULT_MODELS.image` when absent — same fail-open-to-
- * known-good-default convention as `verticalDramaEpisodes.ts`'s
- * `resolveEpisodeImageModelId`. Unlike the episode router (which resolves
- * from a persisted plan field), the character tab passes the model
- * per-request, so this only needs to validate + default, not read a plan.
+ * caller-supplied `selectedImageModelId` (validated + must be enabled).
+ * FAIL CLOSED: the caller must explicitly select a model — no silent
+ * fallback to `DEFAULT_MODELS.image`. (Previously fell back silently; that
+ * let generation run on a model the user never chose. See
+ * `resolveEpisodeImageModelId` in verticalDramaEpisodes.ts for the same
+ * fail-closed convention.) The character tab passes the model per-request,
+ * so this only needs to validate, not read a persisted plan.
  */
 export async function resolveCharacterImageModelId(selectedImageModelId?: string): Promise<string> {
   const requested = selectedImageModelId?.trim();
-  if (!requested) return DEFAULT_MODELS.image;
+  if (!requested) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "กรุณาเลือกโมเดลภาพก่อนสร้าง / Select an image model before generating.",
+    });
+  }
   // Validate the caller-supplied model: must exist, must be an image model,
   // and must be enabled (same validation `verticalDramaEpisodes.ts`'s
   // `assertModelSelectable` performs — inlined here, rather than imported
@@ -507,6 +673,14 @@ export async function resolveCharacterImageModelId(selectedImageModelId?: string
   const models = await getModelsByTypeAsync("image");
   const model = models.find(m => m.id === requested);
   if (!model) {
+    // Cold-start / transient-DB guard: when the DB-backed model catalog is not
+    // loaded, `getModelsByType` serves only the small static fallback subset
+    // (no DB-only models like the higgsfield catalog). Do NOT reject a model we
+    // cannot verify yet — trust the caller's selection and let the downstream
+    // generation validate it, rather than falsely erroring or swapping a default.
+    if (!isDbModelCatalogLoaded()) {
+      return requested;
+    }
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: `Unknown image model "${requested}"`,
@@ -631,6 +805,37 @@ export function extractCharacterDescription(data: Record<string, unknown> | null
   return parts.length > 0 ? parts.join(" | ") : undefined;
 }
 
+/**
+ * Character-roster completeness signal (`vd-stuck-generation-and-lost-characters`
+ * plan, Set B) — pure, unit-testable without a DB. See
+ * `VdCharacterNeedsSetupReason`'s own doc comment (`@shared/verticalDramaSeries/characterAssets`)
+ * for what each reason means.
+ *
+ * `hasApprovedOrGeneratedPortrait` is `undefined` for any caller that hasn't
+ * batched a portrait lookup (see `characterRowToDto`'s own doc comment) — in
+ * that case `"missing_portrait"` is deliberately NOT added, since asserting
+ * "missing" without checking would be a false positive for a character that
+ * actually has one. Only `listCharacters` (which already loads the full
+ * asset manifest for the series) passes a real `true`/`false`.
+ */
+export function computeCharacterNeedsSetupReasons(params: {
+  data: Record<string, unknown> | null | undefined;
+  hasApprovedOrGeneratedPortrait: boolean | undefined;
+}): VdCharacterNeedsSetupReason[] {
+  const reasons: VdCharacterNeedsSetupReason[] = [];
+  if (params.data?.source === "auto_registered_from_story") {
+    reasons.push("auto_registered_from_story");
+  }
+  if (params.hasApprovedOrGeneratedPortrait === false) {
+    reasons.push("missing_portrait");
+  }
+  const description = params.data?.description;
+  if (typeof description !== "string" || description.trim().length === 0) {
+    reasons.push("missing_dna");
+  }
+  return reasons;
+}
+
 /** Browser-safe projection of a character roster row (never leaks internal ids as numbers). */
 /**
  * `includeVoiceConfig` (W12-A, default `false`) — only set `true` by callers
@@ -639,15 +844,37 @@ export function extractCharacterDescription(data: Record<string, unknown> | null
  * the DB column being null, keeps read payloads flags-off byte-identical even
  * in the edge case where a tenant had the flag on, cast a character, then had
  * it turned back off — the field simply stops being surfaced.
+ *
+ * `hasApprovedOrGeneratedPortrait` (Set B, added 2026-07-16) — optional,
+ * batched-by-the-caller signal feeding `needsSetup`/`needsSetupReasons` (see
+ * `computeCharacterNeedsSetupReasons`). Only `listCharacters` currently
+ * passes it (a single manifest query already loaded for the whole series —
+ * no N+1); every other call site (single-row create/update mutations) omits
+ * it, which safely skips the `"missing_portrait"` reason for that response
+ * rather than guessing.
  */
-function characterRowToDto(row: VerticalDramaCharacterRow, options: { includeVoiceConfig?: boolean } = {}) {
+function characterRowToDto(
+  row: VerticalDramaCharacterRow,
+  options: { includeVoiceConfig?: boolean; hasApprovedOrGeneratedPortrait?: boolean } = {},
+) {
+  const data = (row.data as Record<string, unknown> | null) ?? undefined;
+  const needsSetupReasons = computeCharacterNeedsSetupReasons({
+    data,
+    hasApprovedOrGeneratedPortrait: options.hasApprovedOrGeneratedPortrait,
+  });
   return {
     characterId: String(row.id),
     seriesId: String(row.seriesId),
     characterKey: row.characterKey,
     name: row.name,
     role: row.role ?? undefined,
-    data: (row.data as Record<string, unknown> | null) ?? undefined,
+    narrativeRole: row.narrativeRole ?? undefined,
+    roleTier: row.roleTier ?? undefined,
+    occupation: row.occupation ?? row.role ?? undefined,
+    roleVisualIntent: (row.roleVisualIntent as Record<string, unknown> | null) ?? undefined,
+    roleProvenance: row.roleProvenance ?? undefined,
+    roleReviewStatus: row.roleReviewStatus ?? undefined,
+    data,
     // planning/vertical-drama-character-variants/plan.md Phase E — expose the
     // Phase A schema columns so the Characters tab can group variant rows
     // under their parent and badge twin (shares-face) rows.
@@ -658,6 +885,12 @@ function characterRowToDto(row: VerticalDramaCharacterRow, options: { includeVoi
       row.sharesFaceWithCharacterId != null ? String(row.sharesFaceWithCharacterId) : undefined,
     createdAt: (row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt)).toISOString(),
     updatedAt: (row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt)).toISOString(),
+    // vd-stuck-generation-and-lost-characters plan, Set B — completeness
+    // signal so the client can badge/filter story-introduced characters that
+    // still need DNA/portrait work, independent of `roleReviewStatus` (which
+    // only tracks role-tier assignment and can clear while still fully bare).
+    needsSetup: needsSetupReasons.length > 0,
+    needsSetupReasons,
     ...(options.includeVoiceConfig
       ? { voiceConfig: (row.voiceConfig as VerticalDramaCharacterVoiceConfig | null) ?? undefined }
       : {}),
@@ -841,12 +1074,515 @@ export const verticalDramaCharactersRouter = router({
       // W12-A — additive `voiceConfig` field, flag-gated (see
       // `characterRowToDto`'s own doc comment for the byte-identical rationale).
       const voiceChainEnabled = await resolveVerticalDramaVoiceChainFlag(tenantId);
+
+      // Set B (vd-stuck-generation-and-lost-characters plan) — batched
+      // "has a usable portrait" signal for `needsSetup`/`needsSetupReasons`,
+      // derived from the manifest ALREADY loaded above (no extra query, no
+      // N+1). Same selection rule the roster card thumbnail uses
+      // (`resolveCharacterCardPortraitAsset` in
+      // `VerticalDramaCharacterStockPanel.tsx`): a `primary_portrait` asset
+      // in `approved`/`generated`/`imported` state counts; `draft`/`rejected`/
+      // `stale` do not.
+      const portraitCharacterIds = new Set(
+        manifest.assets
+          .filter(
+            (asset) =>
+              asset.role === "primary_portrait" &&
+              (asset.state === "approved" || asset.state === "generated" || asset.state === "imported"),
+          )
+          .map((asset) => asset.characterId),
+      );
+
       return {
         characters: rows.map((row: VerticalDramaCharacterRow) =>
-          characterRowToDto(row, { includeVoiceConfig: voiceChainEnabled }),
+          characterRowToDto(row, {
+            includeVoiceConfig: voiceChainEnabled,
+            hasApprovedOrGeneratedPortrait: portraitCharacterIds.has(String(row.id)),
+          }),
         ),
         manifest,
       };
+    }),
+
+  /** Submit every server-authored first-portrait candidate as an independent image task. */
+  generatePortraitCandidateBatch: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        batchId: z.string().uuid(),
+        // Required — no server-side fallback; caller must explicitly select
+        // an image model (fail-closed, see `resolveCharacterImageModelId`).
+        selectedImageModelId: z.string().trim().min(1).max(128),
+        mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09, row 3).
+        // Required only when the resolved model is Hermes-transport and
+        // the caller has no default Hermes connection for images.
+        hermesConnectionId: z.string().max(64).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const character = await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      const owner = { tenantId, userId, seriesId };
+      const primaryPortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+        owner,
+        characterId,
+      );
+      const isFaceLinkedVariant =
+        character.parentCharacterId != null || character.sharesFaceWithCharacterId != null;
+      if (primaryPortraitUrl || isFaceLinkedVariant) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "This character already has a canonical portrait or a parent/twin face source.",
+        });
+      }
+
+      let candidateCount: number;
+      try {
+        candidateCount = await verticalDramaCharacterStockService.getPortraitCandidateBatchCount(
+          owner,
+          characterId,
+          input.batchId,
+        );
+      } catch (err) {
+        mapStockError(err);
+      }
+
+      const resolvedImageModelId = await resolveCharacterImageModelId(
+        input.selectedImageModelId,
+      );
+      const [pricingRow] = await db
+        .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, resolvedImageModelId))
+        .limit(1);
+      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      const creditCostPerImage = calculateCreditCost(pricingModel, { numImages: 1 });
+      const totalReservedCredits = creditCostPerImage * candidateCount;
+
+      // Feature 135 — Hermes Grok media worker (section 09, row 3): resolve
+      // the transport ONCE (not per-candidate) so every candidate in this
+      // batch shares one Hermes connection. MCP/gateway models are
+      // untouched below — the existing per-candidate
+      // `resolveVdCharacterMcpTransportMetadata` call keeps running exactly
+      // as before for those (byte-equivalent regression baseline).
+      const transportDecision = await resolveVdCharacterMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+      });
+      if (transportDecision.kind === "hermes" && candidateCount > 4) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Hermes portrait candidate batches are capped at 4 candidates per submit.",
+        });
+      }
+      const hermesProviderModelId =
+        transportDecision.kind === "hermes"
+          ? resolveMediaModelTransportConfig({
+              modelId: resolvedImageModelId,
+              configJson: pricingModel.configJson,
+            }).providerModelId ?? resolvedImageModelId
+          : undefined;
+
+      if (transportDecision.kind !== "hermes" && totalReservedCredits > 0) {
+        const hasCredits = await hasEnoughCredits(userId, totalReservedCredits);
+        if (!hasCredits) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `Insufficient credits for ${candidateCount} portrait candidates. Required: ${totalReservedCredits}`,
+          });
+        }
+      }
+
+      let candidates;
+      try {
+        candidates = await verticalDramaCharacterStockService.claimPortraitCandidateBatch(
+          owner,
+          characterId,
+          input.batchId,
+        );
+      } catch (err) {
+        mapStockError(err);
+      }
+
+      if (transportDecision.kind !== "hermes" && totalReservedCredits > 0) {
+        await deductCredits({
+          userId,
+          tenantId,
+          amount: totalReservedCredits,
+          description:
+            `Vertical Drama — reserve ${candidateCount} character portrait candidates ` +
+            `(character #${characterId})`,
+          sourceType: "media_image",
+          metadata: {
+            feature: "vertical_drama_character_portrait_candidate_batch",
+            seriesId,
+            characterId,
+            batchId: input.batchId,
+            candidateCount,
+            creditCostPerImage,
+            type: "reservation",
+            modelId: resolvedImageModelId,
+          },
+        });
+      }
+
+      const userToken = getCharacterPortraitUserToken(ctx);
+      const submitted: Array<{
+        assetLinkId: string;
+        candidateId: string;
+        index: number;
+        status: "queued" | "failed";
+        taskId?: string;
+        errorMessage?: string;
+      }> = [];
+      for (const candidate of candidates) {
+        try {
+          let taskId: string;
+          if (transportDecision.kind === "hermes") {
+            // Feature 135 — Hermes Grok media worker (section 09, row 3):
+            // one independent `queueHermesMediaJob` call per candidate,
+            // sharing `transportDecision.connectionId`, each with its own
+            // `${batchId}:${candidateId}` idempotency key. No reference
+            // images for a portrait candidate — `image.generate`.
+            const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+            const result = await queueHermesMediaJob({
+              contractVersion: 1,
+              operation: "image.generate",
+              connectionId: transportDecision.connectionId,
+              prompt: candidate.portraitPrompt,
+              settings: {
+                model: hermesProviderModelId ?? resolvedImageModelId,
+                aspectRatio: "9:16",
+                outputCount: 1,
+              },
+              references: [],
+              entity: {
+                type: "vertical_drama_character_portrait_candidate",
+                id: String(candidate.assetLinkId),
+              },
+              traceId: crypto.randomUUID(),
+              tenantId,
+              requestedByUserId: userId,
+              idempotencyKey: `${input.batchId}:${candidate.candidateId}`,
+            });
+            taskId = result.taskId;
+          } else {
+            const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
+              tenantId,
+              actorUserId: userId,
+              assetType: "image",
+              modelId: resolvedImageModelId,
+              configJson: pricingModel.configJson,
+              mcpConnectionId: input.mcpConnectionId,
+              sharedGroupId: input.sharedGroupId,
+              idempotencyKey: `${input.batchId}:${candidate.candidateId}`,
+            });
+            const task = await mediaGenerationService.generateImageAsync(
+              {
+                prompt: candidate.portraitPrompt,
+                negativePrompt: candidate.negativePrompt,
+                model: resolvedImageModelId,
+                numImages: 1,
+                aspectRatio: "9:16",
+                extraParams: {
+                  __origin_surface: "vertical_drama_character_portrait_candidates",
+                  __reserved_credits: creditCostPerImage,
+                  __vd_series_id: String(seriesId),
+                  __vd_character_id: String(characterId),
+                  __vd_portrait_candidate_batch_id: input.batchId,
+                  __vd_portrait_candidate_id: candidate.candidateId,
+                  __vd_portrait_candidate_asset_link_id: String(candidate.assetLinkId),
+                },
+                publicUrl: ctx.publicUrl ?? undefined,
+                ...(transportMetadata ? { transportMetadata } : {}),
+                auditContext: {
+                  userId,
+                  traceId: crypto.randomUUID(),
+                  source: "trpc.verticalDramaCharacters.generatePortraitCandidateBatch",
+                  stage: "submission",
+                },
+              },
+              userToken,
+            );
+            taskId = task.id;
+          }
+          try {
+            await verticalDramaCharacterStockService.recordPortraitCandidateTask({
+              ...owner,
+              assetLinkId: candidate.assetLinkId,
+              taskId,
+              imageModel: resolvedImageModelId,
+            });
+          } catch (recordError) {
+            debugError(
+              "verticalDramaCharacters.generatePortraitCandidateBatch",
+              `Task ${taskId} submitted but candidate task metadata could not be recorded`,
+              recordError,
+            );
+          }
+          submitted.push({
+            assetLinkId: String(candidate.assetLinkId),
+            candidateId: candidate.candidateId,
+            index: candidate.index,
+            status: "queued",
+            taskId,
+          });
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Portrait candidate failed to submit";
+          await verticalDramaCharacterStockService.markPortraitCandidateSubmissionFailed({
+            ...owner,
+            assetLinkId: candidate.assetLinkId,
+            errorMessage,
+          });
+          if (transportDecision.kind !== "hermes" && creditCostPerImage > 0) {
+            await refundCredits({
+              userId,
+              amount: creditCostPerImage,
+              description:
+                `Refund: portrait candidate failed to submit (character #${characterId}, ` +
+                `${candidate.candidateId})`,
+              sourceType: "media_image",
+              metadata: {
+                feature: "vertical_drama_character_portrait_candidate_batch",
+                seriesId,
+                characterId,
+                batchId: input.batchId,
+                candidateId: candidate.candidateId,
+              },
+            });
+          }
+          submitted.push({
+            assetLinkId: String(candidate.assetLinkId),
+            candidateId: candidate.candidateId,
+            index: candidate.index,
+            status: "failed",
+            errorMessage,
+          });
+        }
+      }
+
+      return {
+        batchId: input.batchId,
+        model: resolvedImageModelId,
+        creditsReserved: totalReservedCredits,
+        candidates: submitted.sort((left, right) => left.index - right.index),
+      };
+    }),
+
+  /** Poll and durably settle one candidate without round-tripping private DNA through the browser. */
+  settlePortraitCandidate: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        assetLinkId: z.string().min(1),
+        taskId: z.string().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const assetLinkId = parseId(input.assetLinkId, "asset link id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      const owner = { tenantId, userId, seriesId };
+      let info;
+      try {
+        info = await verticalDramaCharacterStockService.getPortraitCandidateTaskInfo(
+          owner,
+          assetLinkId,
+        );
+      } catch (err) {
+        mapStockError(err);
+      }
+      if (info.taskId && input.taskId && info.taskId !== input.taskId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Task id does not match this portrait candidate.",
+        });
+      }
+      const taskId = info.taskId ?? input.taskId;
+      if (
+        taskId &&
+        info.mediaAssetId != null &&
+        info.imageUrl &&
+        ["completed", "selected", "superseded"].includes(info.status)
+      ) {
+        return {
+          assetLinkId: input.assetLinkId,
+          taskId,
+          status: "completed" as const,
+          imageUrl: info.imageUrl,
+        };
+      }
+      if (taskId && info.status === "failed") {
+        return {
+          assetLinkId: input.assetLinkId,
+          taskId,
+          status: "failed" as const,
+        };
+      }
+      if (!taskId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Portrait candidate has no submitted media task.",
+        });
+      }
+      const task = await mediaGenerationService.getTask(
+        taskId,
+        getCharacterPortraitUserToken(ctx),
+        {
+          userId,
+          source: "trpc.verticalDramaCharacters.settlePortraitCandidate",
+          stage: "poll",
+        },
+      );
+
+      if (!info.taskId && info.status === "submitting") {
+        const provenanceMatches =
+          task.mediaType === "image" &&
+          readMediaTaskInternalParameter(
+            task.parameters,
+            "__vd_portrait_candidate_asset_link_id",
+          ) === input.assetLinkId &&
+          readMediaTaskInternalParameter(
+            task.parameters,
+            "__vd_portrait_candidate_batch_id",
+          ) === info.batchId &&
+          readMediaTaskInternalParameter(
+            task.parameters,
+            "__vd_portrait_candidate_id",
+          ) === info.candidateId &&
+          readMediaTaskInternalParameter(task.parameters, "__vd_character_id") ===
+            String(info.characterId);
+        if (!provenanceMatches) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Task provenance does not match this portrait candidate.",
+          });
+        }
+        await verticalDramaCharacterStockService.recordPortraitCandidateTask({
+          ...owner,
+          assetLinkId,
+          taskId,
+          imageModel: task.model,
+        });
+      }
+
+      if (task.status === "completed" || task.status === "failed") {
+        const { reconcileTaskCredits } = await import("./media");
+        void reconcileTaskCredits({ task: task as any, userId }).catch(() => {});
+      }
+      if (task.status === "failed") {
+        await verticalDramaCharacterStockService.markPortraitCandidateSubmissionFailed({
+          ...owner,
+          assetLinkId,
+          errorMessage: task.errorMessage ?? "Portrait candidate render failed",
+        });
+        // Set A gap 7 (server half): classify the immediate synchronous
+        // response the same way `markPortraitCandidateSubmissionFailed`
+        // classifies the durable row, so the client can show a clear
+        // manual-retry message on THIS poll response without waiting for a
+        // manifest refetch. No soften-authoring path exists for character
+        // portrait-candidate prompts (unlike shot/start-frame's
+        // `vertical-drama-shot-image-action` skill) — auto-soften retry for
+        // candidates is deliberately deferred, see plan.md Set A.
+        const policyRejected = isCharacterLockPolicyFailureMessage(task.errorMessage);
+        return {
+          assetLinkId: input.assetLinkId,
+          taskId,
+          status: "failed" as const,
+          errorMessage: policyRejected
+            ? VD_PORTRAIT_CANDIDATE_POLICY_REJECTED_MESSAGE
+            : (task.errorMessage ?? undefined),
+          policyRejected,
+        };
+      }
+      if (task.status !== "completed") {
+        return { assetLinkId: input.assetLinkId, taskId, status: task.status };
+      }
+      if (!task.resultUrl) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Portrait candidate completed without a result URL.",
+        });
+      }
+
+      const { assetId } = await createAssetFromAttachment(
+        {
+          type: "image",
+          url: task.resultUrl,
+          mimeType: "image/jpeg",
+        } as any,
+        { tenantId, userId } as any,
+      );
+      let asset;
+      try {
+        asset = await verticalDramaCharacterStockService.attachGeneratedPortraitCandidate({
+          ...owner,
+          assetLinkId,
+          mediaAssetId: assetId,
+        });
+      } catch (err) {
+        mapStockError(err);
+      }
+      return {
+        assetLinkId: input.assetLinkId,
+        taskId,
+        status: "completed" as const,
+        imageUrl: task.resultUrl,
+        asset,
+      };
+    }),
+
+  /** Select one completed candidate as the canonical portrait and Character DNA. */
+  selectPortraitCandidate: verticalDramaProcedure
+    .input(
+      seriesScope.extend({
+        characterId: z.string().min(1),
+        assetLinkId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const characterId = parseId(input.characterId, "character id");
+      const assetLinkId = parseId(input.assetLinkId, "asset link id");
+      await loadOwnedSeries(tenantId, userId, seriesId);
+      await loadOwnedCharacter(tenantId, userId, seriesId, characterId);
+      try {
+        const asset = await verticalDramaCharacterStockService.selectPortraitCandidate({
+          tenantId,
+          userId,
+          seriesId,
+          characterId,
+          assetLinkId,
+        });
+        return { asset };
+      } catch (err) {
+        mapStockError(err);
+      }
     }),
 
   /**
@@ -870,6 +1606,12 @@ export const verticalDramaCharactersRouter = router({
         characterKey: z.string().trim().min(1).max(64),
         name: z.string().trim().min(1).max(255),
         role: z.string().trim().max(100).optional(),
+        narrativeRole: narrativeRoleSchema.optional(),
+        roleTier: roleTierSchema.optional(),
+        occupation: z.string().trim().max(160).optional(),
+        roleVisualIntent: roleVisualIntentSchema.optional(),
+        roleProvenance: roleProvenanceSchema.optional(),
+        roleReviewStatus: roleReviewStatusSchema.optional(),
         data: z.record(z.string(), z.unknown()).optional(),
       }),
     )
@@ -888,6 +1630,12 @@ export const verticalDramaCharactersRouter = router({
           characterKey: input.characterKey,
           name: input.name,
           role: input.role ?? null,
+          narrativeRole: input.narrativeRole ?? null,
+          roleTier: input.roleTier ?? null,
+          occupation: input.occupation ?? input.role ?? null,
+          roleVisualIntent: input.roleVisualIntent ?? null,
+          roleProvenance: input.roleProvenance ?? (input.narrativeRole && input.roleTier ? "user_confirmed" : "ai_assigned"),
+          roleReviewStatus: input.roleReviewStatus ?? (input.narrativeRole && input.roleTier ? "ready" : "needs_role_review"),
           data: input.data ?? null,
         } as typeof verticalDramaCharacters.$inferInsert)
         .returning();
@@ -902,6 +1650,12 @@ export const verticalDramaCharactersRouter = router({
         characterId: z.string().min(1),
         name: z.string().trim().min(1).max(255).optional(),
         role: z.string().trim().max(100).nullable().optional(),
+        narrativeRole: narrativeRoleSchema.nullable().optional(),
+        roleTier: roleTierSchema.nullable().optional(),
+        occupation: z.string().trim().max(160).nullable().optional(),
+        roleVisualIntent: roleVisualIntentSchema.nullable().optional(),
+        roleProvenance: roleProvenanceSchema.nullable().optional(),
+        roleReviewStatus: roleReviewStatusSchema.nullable().optional(),
         data: z.record(z.string(), z.unknown()).nullable().optional(),
       }),
     )
@@ -916,6 +1670,16 @@ export const verticalDramaCharactersRouter = router({
       const patch: Record<string, unknown> = { updatedAt: new Date() };
       if (input.name !== undefined) patch.name = input.name;
       if (input.role !== undefined) patch.role = input.role;
+      if (input.narrativeRole !== undefined) patch.narrativeRole = input.narrativeRole;
+      if (input.roleTier !== undefined) patch.roleTier = input.roleTier;
+      if (input.occupation !== undefined) patch.occupation = input.occupation;
+      if (input.roleVisualIntent !== undefined) patch.roleVisualIntent = input.roleVisualIntent;
+      if (input.roleProvenance !== undefined) patch.roleProvenance = input.roleProvenance;
+      if (input.roleReviewStatus !== undefined) patch.roleReviewStatus = input.roleReviewStatus;
+      if ((input.narrativeRole !== undefined || input.roleTier !== undefined) && input.roleProvenance === undefined) {
+        patch.roleProvenance = input.narrativeRole && input.roleTier ? "user_confirmed" : "migrated";
+        patch.roleReviewStatus = input.narrativeRole && input.roleTier ? "ready" : "needs_role_review";
+      }
       if (input.data !== undefined) patch.data = input.data;
 
       const [row] = await db
@@ -1016,6 +1780,15 @@ export const verticalDramaCharactersRouter = router({
           characterKey,
           name: parent.name,
           role: parent.role,
+          narrativeRole: parent.narrativeRole,
+          // Keep the person's canonical story role on variants so an
+          // outfit/age-stage render cannot silently lose heroine/hero/villain
+          // visual intent. `variantType` remains the identity-lock fact.
+          roleTier: parent.roleTier,
+          occupation: parent.occupation ?? parent.role,
+          roleVisualIntent: parent.roleVisualIntent,
+          roleProvenance: parent.roleProvenance,
+          roleReviewStatus: parent.roleReviewStatus,
           parentCharacterId: parent.id,
           variantLabel: input.variantLabel,
           variantType: input.variantType,
@@ -1063,6 +1836,9 @@ export const verticalDramaCharactersRouter = router({
         sharesFaceWithCharacterId: z.string().min(1),
         name: z.string().trim().min(1).max(255),
         role: z.string().trim().max(100).optional(),
+        narrativeRole: narrativeRoleSchema.optional(),
+        roleTier: roleTierSchema.optional(),
+        occupation: z.string().trim().max(160).optional(),
         customDescription: z.string().trim().max(2000).optional(),
         referenceMediaAssetId: z.string().min(1).optional(),
       }),
@@ -1089,6 +1865,11 @@ export const verticalDramaCharactersRouter = router({
           characterKey,
           name: input.name,
           role: input.role ?? source.role,
+          narrativeRole: input.narrativeRole ?? source.narrativeRole,
+          roleTier: input.roleTier ?? source.roleTier,
+          occupation: input.occupation ?? source.occupation ?? source.role,
+          roleProvenance: input.narrativeRole || input.roleTier ? "user_confirmed" : source.roleProvenance,
+          roleReviewStatus: input.roleTier ? "ready" : source.roleReviewStatus,
           sharesFaceWithCharacterId: source.id,
           data: description ? { description } : null,
         } as typeof verticalDramaCharacters.$inferInsert)
@@ -1650,13 +2431,14 @@ export const verticalDramaCharactersRouter = router({
     .input(
       seriesScope.extend({
         characterId: z.string().min(1),
+        portraitCandidateCount: z.number().int().min(1).max(5).optional(),
         // Free-text visual brief (framing/pose/crop/mood/outfit/setting/etc.)
-        // for THIS generation only
-        // (vertical-drama-character-custom-instruction plan) — threaded
-        // straight through to `generateCharacterVisualPrompts` as a raw fact;
-        // see that function's `customInstruction` doc comment. This is the
-        // PRIMARY path this field works through, since the UI always calls
-        // preview before confirm (see this procedure's own doc comment).
+        // for THIS generation only. It is passed through to
+        // `generateCharacterVisualPrompts` as a raw fact, then
+        // enforced in the previewed render prompt by
+        // `customInstruction` is passed to the active Visual Bible Skill as
+        // data; the skill owns precedence and wording for the generated
+        // prompt. This is the PRIMARY path because the UI previews first.
         customInstruction: z.string().trim().max(500).optional(),
       }),
     )
@@ -1707,6 +2489,110 @@ export const verticalDramaCharactersRouter = router({
         ? await loadCharacterDesignContext({ tenantId, userId }, seriesRow, character)
         : undefined;
 
+      if (input.portraitCandidateCount) {
+        const primaryPortraitUrl = await verticalDramaCharacterStockService.getPrimaryPortraitUrl(
+          { tenantId, userId, seriesId },
+          characterId,
+        );
+        const isFaceLinkedVariant =
+          character.parentCharacterId != null || character.sharesFaceWithCharacterId != null;
+        if (primaryPortraitUrl || isFaceLinkedVariant) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Multiple casting candidates are only available before this standalone character has a primary portrait.",
+          });
+        }
+
+        let candidateResult;
+        try {
+          candidateResult = await generateCharacterPortraitCandidates({
+            userId,
+            tenantId,
+            seriesId,
+            characterId,
+            characterKey: character.characterKey,
+            name: character.name,
+            role: character.role,
+            narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
+            roleTier: character.roleTier as RoleTier | null | undefined,
+            occupation: character.occupation,
+            roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
+            roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
+            description,
+            storyContext: seriesRow
+              ? {
+                  title: seriesRow.title,
+                  genre: seriesRow.genre ?? undefined,
+                  tone: seriesRow.tone ?? undefined,
+                }
+              : undefined,
+            targetAudienceRegion,
+            presetVisualIdentity,
+            customInstruction: input.customInstruction,
+            characterDesignContext,
+            portraitCandidateCount: input.portraitCandidateCount as 1 | 2 | 3 | 4 | 5,
+            allowLegacyApprovedDesignDnaReplacement: Boolean(
+              characterDesignContext?.approvedDesignDna,
+            ),
+          });
+        } catch (err) {
+          if (err instanceof InsufficientCreditsError) {
+            throw new TRPCError({ code: "FORBIDDEN", message: err.message });
+          }
+          if (err instanceof VdSchemaValidationError) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+          }
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              err instanceof Error
+                ? err.message
+                : "Character portrait candidate generation failed",
+          });
+        }
+
+        let draftBatch;
+        try {
+          draftBatch = await verticalDramaCharacterStockService.createPortraitCandidateDraftBatch({
+            tenantId,
+            userId,
+            seriesId,
+            characterId,
+            characterKey: character.characterKey,
+            sharedVisualLanguage: candidateResult.sharedVisualLanguage,
+            promptModel: candidateResult.model,
+            candidates: candidateResult.candidates.map((candidate) => ({
+              candidateId: candidate.candidateId,
+              portraitPrompt: candidate.portraitPrompt,
+              negativePrompt: candidate.negativePrompt,
+              visualIdentitySummary: candidate.visualIdentitySummary,
+              visualBibleSnapshot: candidate.visualBibleSnapshot,
+            })),
+          });
+        } catch (err) {
+          mapStockError(err);
+        }
+        const draftsByCandidateId = new Map(
+          draftBatch.candidates.map((candidate) => [candidate.candidateId, candidate]),
+        );
+        return {
+          mode: "candidate_batch" as const,
+          batchId: draftBatch.batchId,
+          candidateCount: candidateResult.candidates.length,
+          sharedVisualLanguage: candidateResult.sharedVisualLanguage,
+          model: candidateResult.model,
+          candidates: candidateResult.candidates.map((candidate) => ({
+            assetLinkId: String(draftsByCandidateId.get(candidate.candidateId)!.assetLinkId),
+            candidateId: candidate.candidateId,
+            index: draftsByCandidateId.get(candidate.candidateId)!.index,
+            portraitPrompt: candidate.portraitPrompt,
+            negativePrompt: candidate.negativePrompt,
+            visualIdentitySummary: candidate.visualIdentitySummary,
+          })),
+        };
+      }
+
       let promptResult;
       try {
         promptResult = await generateCharacterVisualPrompts({
@@ -1717,6 +2603,11 @@ export const verticalDramaCharactersRouter = router({
           characterKey: character.characterKey,
           name: character.name,
           role: character.role,
+          narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
+          roleTier: character.roleTier as RoleTier | null | undefined,
+          occupation: character.occupation,
+          roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
+          roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
           description,
           storyContext: seriesRow
             ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
@@ -1740,14 +2631,17 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
+      const renderPrompt = promptResult.portraitPrompt;
+
       return {
-        portraitPrompt: promptResult.portraitPrompt,
+        mode: "single" as const,
+        portraitPrompt: renderPrompt,
         turnaroundPrompt: promptResult.turnaroundPrompt,
         negativePrompt: promptResult.negativePrompt,
         model: promptResult.model,
         approvedDesignSnapshot: {
           characterKey: character.characterKey,
-          portraitPrompt: promptResult.portraitPrompt,
+          portraitPrompt: renderPrompt,
           ...(promptResult.negativePrompt
             ? { negativePrompt: promptResult.negativePrompt }
             : {}),
@@ -1761,11 +2655,9 @@ export const verticalDramaCharactersRouter = router({
    * `vertical-drama-character-visual-bible` skill as a direct, credit-gated
    * LLM call to produce a portrait prompt + negative prompt (see
    * `verticalDramaCharacterImageGeneration.ts`), then (2) render that prompt
-   * into an actual image via `mediaGenerationService.generateImage` (the
-   * SYNCHRONOUS single-prompt-in/single-image-out method — the same one
-   * `media.ts`'s `generateImage` mutation calls; chosen over
-   * `generateImageAsync` because this is a plain text-prompt portrait with
-   * no user-uploaded reference image and no need for job polling). The
+   * into an actual image via `mediaGenerationService.generateImageAsync`.
+   * The caller polls the returned media task, matching the rest of the
+   * character-tab generation workflow. The
    * rendered image is registered as a canonical `media_assets` row (never a
    * bare provider URL, matching this table's own doc comment) and linked
    * into the durable character-asset stock via the existing
@@ -1777,8 +2669,8 @@ export const verticalDramaCharactersRouter = router({
    * spend): the prompt-generation LLM call is credited inside
    * `generateCharacterVisualPrompts` itself; the image render is credited
    * here, mirroring `media.ts`'s own check-credits -> call -> deduct-credits
-   * convention (`mediaGenerationService.generateImage` does not deduct
-   * credits itself — the caller always does, using the backend-reported
+   * convention (the media-generation service does not deduct credits itself
+   * — the caller always does, using the backend-reported
    * `creditsUsed` when available).
    *
    * `approvedPrompt` / `approvedNegativePrompt` (optional): when the caller
@@ -1796,13 +2688,19 @@ export const verticalDramaCharactersRouter = router({
         approvedNegativePrompt: z.string().optional(),
         approvedDesignSnapshot: verticalDramaApprovedCharacterDesignSnapshotSchema.optional(),
         // Caller-selected image model (character tab's own model picker) —
-        // validated + must be enabled; falls back to `DEFAULT_MODELS.image`
-        // when absent. See `resolveCharacterImageModelId`.
-        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        // validated + must be enabled. REQUIRED — no server-side fallback;
+        // throws BAD_REQUEST when absent. See `resolveCharacterImageModelId`.
+        selectedImageModelId: z.string().trim().min(1).max(128),
         // Required only when the selected model is MCP-transport (e.g.
         // `higgsfield/*`, `magnific-mcp/*`) — see
         // `resolveVdCharacterMcpTransportMetadata`.
         mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09, row —
+        // `generateCharacterImage`). Required only when the resolved model
+        // is Hermes-transport and the caller has no default Hermes
+        // connection for images.
+        hermesConnectionId: z.string().max(64).optional(),
         // Optional explicit reference-image-picker override (Phase D1,
         // `planning/vertical-drama-reference-picker-outfit-lock/plan.md`) —
         // when present, pins the identity-lock reference image to this exact
@@ -1810,13 +2708,9 @@ export const verticalDramaCharactersRouter = router({
         // `primary_portrait` via `getPrimaryPortraitUrl`. Absent: behavior is
         // byte-identical to today's auto-resolution.
         referenceAssetLinkId: z.string().min(1).optional(),
-        // Free-text framing/pose/crop/mood hint for THIS generation only
-        // (vertical-drama-character-custom-instruction plan) — only consumed
-        // on the no-`approvedPrompt` fallback path below, since the normal UI
-        // flow always calls `previewCharacterPrompt` first (which already
-        // ran the LLM leg with this hint applied) and supplies its output as
-        // `approvedPrompt` here. Kept here too so a future caller that skips
-        // preview still gets the hint applied.
+        // Free-text visual brief for THIS generation only. It reaches the
+        // planner on the fallback path and is enforced on the exact provider
+        // prompt on BOTH fallback and approved-preview paths.
         customInstruction: z.string().trim().max(500).optional(),
       }),
     )
@@ -1939,6 +2833,11 @@ export const verticalDramaCharactersRouter = router({
             characterKey: character.characterKey,
             name: character.name,
             role: character.role,
+            narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
+            roleTier: character.roleTier as RoleTier | null | undefined,
+            occupation: character.occupation,
+            roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
+            roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
             description,
             storyContext: seriesRow
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
@@ -1969,13 +2868,12 @@ export const verticalDramaCharactersRouter = router({
         promptCreditsUsed = promptResult.creditsUsed;
         visualBibleToPersist = promptResult.visualBibleSnapshot;
       }
-
       // 2. Pre-flight credit check for the image render — a SEPARATE charge
       //    from the prompt-generation LLM call above. Prices + generates
       //    against the CALLER-SELECTED model (character tab's own picker),
-      //    falling back to `DEFAULT_MODELS.image` when none was selected —
-      //    previously this always priced + generated with
-      //    `DEFAULT_MODELS.image`, silently ignoring the selected model.
+      //    which is now REQUIRED — `resolveCharacterImageModelId` throws
+      //    BAD_REQUEST when none was selected instead of silently falling
+      //    back to `DEFAULT_MODELS.image`.
       const resolvedImageModelId = await resolveCharacterImageModelId(input.selectedImageModelId);
       const [pricingRow] = await db
         .select({ creditCost: mediaModels.creditCost, configJson: mediaModels.configJson })
@@ -1991,7 +2889,29 @@ export const verticalDramaCharactersRouter = router({
       // `generateStartFrameImage` (`deductCredits`/`refundCredits` throw on
       // amount <= 0 by design; see creditService.ts).
       const shouldChargeImageCredits = imageCreditCost > 0;
-      if (shouldChargeImageCredits) {
+
+      // Feature 135 — Hermes Grok media worker (section 09): resolve the
+      // transport-neutral decision BEFORE the credit check below (not
+      // after) — structurally guarantees a Hermes generation is never
+      // gated on the caller's SmartSpec credit balance (hermes bills
+      // `provider_account`, section-05's job). `mcp`/`gateway` fall through
+      // to the pre-existing code below byte-identically (via
+      // `resolveVdCharacterMcpTransportMetadata`, called unchanged just
+      // below); `hermes` takes a completely separate path — no platform
+      // credit reserve, submits straight to `queueHermesMediaJob`, and
+      // returns early with the same response shape.
+      const transportDecision = await resolveVdCharacterMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+      });
+
+      if (transportDecision.kind !== "hermes" && shouldChargeImageCredits) {
         const hasImageCredits = await hasEnoughCredits(userId, imageCreditCost);
         if (!hasImageCredits) {
           throw new TRPCError({
@@ -2001,18 +2921,95 @@ export const verticalDramaCharactersRouter = router({
         }
       }
 
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesOrderedRefsFromUrls,
+        } = await import("../services/hermesMediaReferences");
+        const hermesTraceId = crypto.randomUUID();
+        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+          tenantId,
+          userId,
+          urls: referencePortraitUrl ? [referencePortraitUrl] : [],
+          traceId: hermesTraceId,
+          connectionId: transportDecision.connectionId,
+          roleFor: () => "identity_lock",
+        });
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId: resolvedImageModelId,
+            configJson: pricingModel.configJson,
+          }).providerModelId ?? resolvedImageModelId;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "image.edit" : "image.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: portraitPrompt,
+          settings: { model: hermesProviderModelId, aspectRatio: "9:16", outputCount: 1 },
+          references,
+          entity: { type: "vertical_drama_character", id: String(characterId) },
+          traceId: hermesTraceId,
+          tenantId,
+          requestedByUserId: userId,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: portraitPrompt,
+          extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
+          droppedReferenceCount,
+        });
+
+        let hermesDnaPersistenceStatus: "persisted" | "skipped" | "failed" = "skipped";
+        let hermesDnaPersistenceWarning: string | null = null;
+        if (visualBibleToPersist) {
+          try {
+            await persistCharacterVisualBible(
+              { tenantId, userId, seriesId },
+              characterId,
+              visualBibleToPersist,
+            );
+            hermesDnaPersistenceStatus = "persisted";
+          } catch (error) {
+            hermesDnaPersistenceStatus = "failed";
+            hermesDnaPersistenceWarning =
+              "Image task submitted, but Character DNA could not be saved. The image task was not resubmitted.";
+            debugError(
+              "verticalDramaCharacters.generateCharacterImage",
+              `Character DNA persistence failed after media task ${hermesTask.id}`,
+              error,
+            );
+          }
+        } else if (input.approvedDesignSnapshot && input.approvedPrompt) {
+          hermesDnaPersistenceWarning =
+            "Character DNA was not saved because the approved prompt was edited after preview.";
+        }
+
+        return {
+          taskId: hermesTask.id,
+          portraitPrompt,
+          negativePrompt,
+          promptModel,
+          visualBibleSummary,
+          creditsUsed: { promptGeneration: promptCreditsUsed },
+          dnaPersistenceStatus: hermesDnaPersistenceStatus,
+          dnaPersistenceWarning: hermesDnaPersistenceWarning,
+          droppedReferenceCount,
+        };
+      }
+
       // MCP-transport models (e.g. higgsfield/*, magnific-mcp/*) must be
       // dispatched through the service's MCP branch, not the default
       // gateway_api/Python-backend path — see
-      // `resolveVdCharacterMcpTransportMetadata`.
-      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "image",
-        modelId: resolvedImageModelId,
-        configJson: pricingModel.configJson,
-        mcpConnectionId: input.mcpConnectionId,
-      });
+      // `resolveVdCharacterMcpTransportMetadata` (delegated to by
+      // `resolveVdCharacterMediaTransportDecision` above, unchanged).
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
 
       // 3. Submit — async (matches `media.generateImageAsync` + `media.getTask`
       //    convention; shows in Media History; avoids a long-blocking
@@ -2182,9 +3179,14 @@ export const verticalDramaCharactersRouter = router({
          *  never wired into a code-authored prompt string (that would be the
          *  exact violation this endpoint used to have). */
         sheetLanguage: z.enum(["en", "th"]).optional().default("en"),
-        // Caller-selected image model — see `generateCharacterImage`'s same field.
-        selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        // Caller-selected image model — see `generateCharacterImage`'s same
+        // field. REQUIRED — no server-side fallback.
+        selectedImageModelId: z.string().trim().min(1).max(128),
         mcpConnectionId: z.string().max(64).optional(),
+        sharedGroupId: z.number().int().positive().optional(),
+        // Feature 135 — Hermes Grok media worker (section 09). See
+        // `generateCharacterImage`'s identical field.
+        hermesConnectionId: z.string().max(64).optional(),
         // Optional explicit reference-image-picker override — see
         // `generateCharacterImage`'s identical field for the full contract.
         referenceAssetLinkId: z.string().min(1).optional(),
@@ -2305,6 +3307,11 @@ export const verticalDramaCharactersRouter = router({
             characterKey: character.characterKey,
             name: character.name,
             role: character.role,
+            narrativeRole: character.narrativeRole as NarrativeRole | null | undefined,
+            roleTier: character.roleTier as RoleTier | null | undefined,
+            occupation: character.occupation,
+            roleVisualIntent: character.roleVisualIntent as RoleVisualIntent | null | undefined,
+            roleReviewStatus: character.roleReviewStatus as RoleReviewStatus | null | undefined,
             description,
             storyContext: seriesRow
               ? { title: seriesRow.title, genre: seriesRow.genre ?? undefined, tone: seriesRow.tone ?? undefined }
@@ -2375,7 +3382,24 @@ export const verticalDramaCharactersRouter = router({
         numImages: resolvedSheetType === "turnaround" ? 1 : 2,
       });
       const shouldChargeSheetCredits = sheetCreditCost > 0;
-      if (shouldChargeSheetCredits) {
+
+      // Feature 135 — Hermes Grok media worker (section 09): resolve the
+      // transport-neutral decision BEFORE the credit check below (not
+      // after) — see `generateCharacterImage`'s identical block for the
+      // full rationale (a Hermes generation must never be gated on the
+      // caller's SmartSpec credit balance).
+      const transportDecision = await resolveVdCharacterMediaTransportDecision({
+        tenantId,
+        actorUserId: userId,
+        assetType: "image",
+        modelId: resolvedImageModelId,
+        configJson: pricingModel.configJson,
+        mcpConnectionId: input.mcpConnectionId,
+        sharedGroupId: input.sharedGroupId,
+        hermesConnectionId: input.hermesConnectionId,
+      });
+
+      if (transportDecision.kind !== "hermes" && shouldChargeSheetCredits) {
         const hasCredits = await hasEnoughCredits(userId, sheetCreditCost);
         if (!hasCredits) {
           throw new TRPCError({
@@ -2385,14 +3409,94 @@ export const verticalDramaCharactersRouter = router({
         }
       }
 
-      const transportMetadata = await resolveVdCharacterMcpTransportMetadata({
-        tenantId,
-        actorUserId: userId,
-        assetType: "image",
-        modelId: resolvedImageModelId,
-        configJson: pricingModel.configJson,
-        mcpConnectionId: input.mcpConnectionId,
-      });
+      if (transportDecision.kind === "hermes") {
+        const { queueHermesMediaJob } = await import("../services/hermesMediaScheduler");
+        const {
+          buildHermesMediaReferences,
+          buildHermesMediaTaskEnvelope,
+          resolveHermesOrderedRefsFromUrls,
+        } = await import("../services/hermesMediaReferences");
+        const hermesTraceId = crypto.randomUUID();
+        const { orderedRefs, droppedReferenceCount } = await resolveHermesOrderedRefsFromUrls({
+          tenantId,
+          userId,
+          urls: referencePortraitUrl ? [referencePortraitUrl] : [],
+          traceId: hermesTraceId,
+          connectionId: transportDecision.connectionId,
+          roleFor: () => "identity_lock",
+        });
+        const references = await buildHermesMediaReferences({ tenantId, userId, orderedRefs });
+        const hermesProviderModelId =
+          resolveMediaModelTransportConfig({
+            modelId: resolvedImageModelId,
+            configJson: pricingModel.configJson,
+          }).providerModelId ?? resolvedImageModelId;
+        const result = await queueHermesMediaJob({
+          contractVersion: 1,
+          operation: references.length > 0 ? "image.edit" : "image.generate",
+          connectionId: transportDecision.connectionId,
+          prompt: sheetPromptText,
+          settings: { model: hermesProviderModelId, aspectRatio: "9:16", outputCount: 1 },
+          references,
+          entity: { type: "vertical_drama_character", id: String(characterId) },
+          traceId: hermesTraceId,
+          tenantId,
+          requestedByUserId: userId,
+        });
+        const hermesTask = buildHermesMediaTaskEnvelope({
+          taskId: result.taskId,
+          userId,
+          mediaType: "image",
+          model: hermesProviderModelId,
+          prompt: sheetPromptText,
+          extraParams: { __vd_series_id: String(seriesId), __vd_character_id: String(characterId) },
+          droppedReferenceCount,
+        });
+        const hermesAssetTag = resolveCharacterSheetAssetTag(resolvedSheetType);
+
+        let hermesDnaPersistenceStatus: "persisted" | "skipped" | "failed" = "skipped";
+        let hermesDnaPersistenceWarning: string | null = null;
+        if (visualBibleToPersist) {
+          try {
+            await persistCharacterVisualBible(
+              { tenantId, userId, seriesId },
+              characterId,
+              visualBibleToPersist,
+            );
+            hermesDnaPersistenceStatus = "persisted";
+          } catch (error) {
+            hermesDnaPersistenceStatus = "failed";
+            hermesDnaPersistenceWarning =
+              "Image task submitted, but Character DNA could not be saved. The image task was not resubmitted.";
+            debugError(
+              "verticalDramaCharacters.generateCharacterSheet",
+              `Character DNA persistence failed after media task ${hermesTask.id}`,
+              error,
+            );
+          }
+        } else if (input.approvedDesignSnapshot && input.approvedPrompt) {
+          hermesDnaPersistenceWarning =
+            "Character DNA was not saved because the approved prompt was edited after preview.";
+        }
+
+        return {
+          taskId: hermesTask.id,
+          sheetType: resolvedSheetType,
+          sheetPrompt: sheetPromptText,
+          negativePrompt,
+          promptModel,
+          visualBibleSummary,
+          creditsUsed: { promptGeneration: promptCreditsUsed },
+          assetRole: hermesAssetTag.role,
+          assetMetadata: hermesAssetTag.metadata,
+          dnaPersistenceStatus: hermesDnaPersistenceStatus,
+          dnaPersistenceWarning: hermesDnaPersistenceWarning,
+          droppedReferenceCount,
+        };
+      }
+
+      const transportMetadata =
+        transportDecision.kind === "mcp" ? transportDecision.transportMetadata : undefined;
 
       if (shouldChargeSheetCredits) {
         await deductCredits({
