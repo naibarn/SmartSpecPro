@@ -1,0 +1,11 @@
+[Unit]
+Description=Resource envelope for SocratiCode MCP containers
+Documentation=file:/home/dev/projects/SmartSpecPro/docs/portable-skill-pack/specs/2026-07-18-socraticode-external-services-cutover-design.md
+
+[Slice]
+MemoryAccounting=yes
+MemoryHigh=5G
+MemoryMax=6G
+MemorySwapMax=0
+TasksAccounting=yes
+TasksMax=512

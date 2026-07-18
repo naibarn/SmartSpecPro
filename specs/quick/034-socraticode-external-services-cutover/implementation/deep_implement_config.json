@@ -11,7 +11,12 @@
     "section-02-resource-guard-and-cutover",
     "section-03-live-verification-and-convergence"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-launcher-tests-and-external-policy": {
+      "status": "complete",
+      "commit_hash": "334d749e2"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

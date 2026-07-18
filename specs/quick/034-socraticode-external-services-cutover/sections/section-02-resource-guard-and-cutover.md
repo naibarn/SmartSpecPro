@@ -48,3 +48,25 @@ On any blocking failure:
 - leave local Qdrant/Ollama stopped with restart `no`;
 - restore only validated external-safe files if needed;
 - do not re-enable persistent units or local fallback.
+
+## Implementation result
+
+Status: installed and ready for live MCP verification.
+
+Repository file added:
+
+- `ops/socraticode-runtime/systemd/socraticode.slice`
+
+Installed/runtime changes:
+
+- `/etc/systemd/system/socraticode.slice`
+- `/home/dev/tools/socraticode-docker/socraticode-mcp.sh`
+- `/home/dev/.codex/config.toml`
+- restart-policy metadata for the two stopped local data containers
+
+Backup and restore evidence:
+
+- `/home/dev/tools/socraticode-docker/backups/20260718T032904Z-external-only-cutover`
+
+Both local data-container start timestamps remained identical to the backup
+baseline. Watcher, indexer, and cleanup timer remained disabled/inactive.
