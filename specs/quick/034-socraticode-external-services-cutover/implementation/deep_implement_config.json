@@ -19,6 +19,11 @@
     "section-02-resource-guard-and-cutover": {
       "status": "complete",
       "commit_hash": "adc8c291a"
+    },
+    "section-03-live-verification-and-convergence": {
+      "status": "complete",
+      "commit_hash": "641515226",
+      "review_file": "code_review/section-03-review.md"
     }
   },
   "pre_commit": {
