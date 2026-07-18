@@ -235,6 +235,95 @@ describe("executeJsonPlanningCallWithRetry", () => {
     expect(mockExecute).toHaveBeenCalledTimes(3);
   });
 
+  /* ------------------------------------------------------------------------ */
+  /* `onSchemaRetriesExhausted` (2026-07-18, character-portrait lead-beauty   */
+  /* graceful-degradation fix) — OPTIONAL escape hatch. Every test ABOVE this */
+  /* block never supplies the option and already proves the exhaustion path  */
+  /* still hard-throws by default (byte-identical to before this option       */
+  /* existed). This block proves the opt-in contract itself, independent of  */
+  /* any one caller's own lead-beauty logic.                                 */
+  /* ------------------------------------------------------------------------ */
+  describe("onSchemaRetriesExhausted (opt-in graceful-degradation hook)", () => {
+    it("is NOT invoked while a retry could still succeed — only after every schema retry is exhausted", async () => {
+      const onSchemaRetriesExhausted = vi.fn().mockReturnValue(null);
+      mockExecute
+        .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000))
+        .mockResolvedValueOnce(successWith(VALID_JSON));
+
+      const result = await executeJsonPlanningCallWithRetry(
+        baseArgs({ onSchemaRetriesExhausted }),
+      );
+
+      expect(result.data).toEqual({ items: ["a", "b", "c"] });
+      expect(onSchemaRetriesExhausted).not.toHaveBeenCalled();
+    });
+
+    it("returning null preserves the exact original hard-throw (structural failures are never softened)", async () => {
+      const onSchemaRetriesExhausted = vi.fn().mockReturnValue(null);
+      mockExecute
+        .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000))
+        .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000))
+        .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000));
+
+      await expect(
+        executeJsonPlanningCallWithRetry(baseArgs({ onSchemaRetriesExhausted })),
+      ).rejects.toThrow(VdSchemaValidationError);
+      expect(mockExecute).toHaveBeenCalledTimes(3);
+      expect(onSchemaRetriesExhausted).toHaveBeenCalledTimes(1);
+    });
+
+    it("returning { data, warnings } ACCEPTS the last response instead of throwing, and echoes the warnings back", async () => {
+      const invalidButAcceptable = JSON.stringify({ items: ["only-one"] });
+      const onSchemaRetriesExhausted = vi.fn().mockReturnValue({
+        data: { items: ["a", "b", "c"] },
+        warnings: ["items: relaxed for this caller's own reason"],
+      });
+      mockExecute.mockResolvedValue(successWith(invalidButAcceptable));
+
+      const result = await executeJsonPlanningCallWithRetry(
+        baseArgs({ onSchemaRetriesExhausted }),
+      );
+
+      expect(mockExecute).toHaveBeenCalledTimes(3);
+      expect(result.data).toEqual({ items: ["a", "b", "c"] });
+      expect(result.warnings).toEqual(["items: relaxed for this caller's own reason"]);
+      expect(result.retried).toBe(true);
+      // Still returns a real `response` object (the LAST attempt's own raw
+      // response), not `undefined`, so callers reading `response.usage` etc.
+      // for credit accounting keep working.
+      expect((result.response as any).usage.completion_tokens).toBe(50);
+    });
+
+    it("passes the last attempt's parsed JSON and zod error to the hook", async () => {
+      const onSchemaRetriesExhausted = vi.fn().mockReturnValue(null);
+      mockExecute.mockResolvedValue(successWith(JSON.stringify({ items: ["only-one"] })));
+
+      await expect(
+        executeJsonPlanningCallWithRetry(baseArgs({ onSchemaRetriesExhausted })),
+      ).rejects.toThrow(VdSchemaValidationError);
+
+      expect(onSchemaRetriesExhausted).toHaveBeenCalledWith(
+        expect.objectContaining({
+          parsedJson: { items: ["only-one"] },
+          zodError: expect.anything(),
+        }),
+      );
+    });
+
+    it("every PRE-EXISTING caller that omits the option is completely unaffected (default undefined skips the new branch)", async () => {
+      mockExecute
+        .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000))
+        .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000))
+        .mockResolvedValueOnce(successWith(TRUNCATED_JSON, 4000));
+
+      // No `onSchemaRetriesExhausted` supplied — identical to `baseArgs()`.
+      await expect(executeJsonPlanningCallWithRetry(baseArgs())).rejects.toThrow(
+        VdSchemaValidationError,
+      );
+      expect(mockExecute).toHaveBeenCalledTimes(3);
+    });
+  });
+
   it("does NOT retry a FATAL error (auth failure) — retrying would only waste another call", async () => {
     mockExecute.mockResolvedValue({
       type: "error",

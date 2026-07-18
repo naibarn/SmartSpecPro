@@ -29,7 +29,7 @@ import {
   executeJsonPlanningCallWithRetry,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
-import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
+import { resolvePremiumLargeContextModelId } from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 import { renderCriteriaVersionMarker } from "./verticalDramaQualityCriteria";
 import { auditLogger } from "./auditLogger";
@@ -1366,19 +1366,30 @@ export function buildCharacterPortraitCandidatesUserPrompt(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Model resolution — reuse the quality large-context resolver (same auto-    */
-/* selection tier as "Improve script usage": context ≥1M, non-free,          */
-/* thinking-capable — Phase 6, `planning/vertical-drama-centralized-model-   */
-/* policy/plan.md`), but route through the centralized per-series override   */
+/* Model resolution — route through the centralized per-series override      */
 /* resolver first (`planning/vertical-drama-centralized-model-policy/plan.md`,*/
-/* Phase 2) so a series-wide `llmModelPolicy.defaultModelId` override wins    */
-/* here too.                                                                  */
+/* Phase 2) so a series-wide `llmModelPolicy.defaultModelId` override still   */
+/* wins here, same as every other stage.                                     */
+/*                                                                            */
+/* Auto-fallback tier (2026-07-18 CHANGED — character-portrait lead-beauty   */
+/* incident, see `selectPremiumLargeContextEligibleModels`'s doc comment):    */
+/* this stage used to share `resolveQualityLargeContextModelId` (the         */
+/* CHEAPEST eligible model) with "Improve script usage"/storyboard/start-    */
+/* frame-plan. That cheapest default (`google/gemini-3.1-flash-lite`)        */
+/* reliably wrote lead portrait prose too plain to pass the pre-existing     */
+/* `findLeadPromptQualityIssues` gate, hard-failing lead character creation  */
+/* on every retry (audit-2026-07-18.jsonl, 00:30-00:31 UTC). The user        */
+/* explicitly accepted higher per-generation cost for THIS stage only in     */
+/* exchange for reliably higher-quality portraits, so this now resolves to   */
+/* `resolvePremiumLargeContextModelId` (STRONGEST eligible model) instead —  */
+/* every OTHER stage still using `resolveQualityLargeContextModelId` keeps   */
+/* its cheapest-first cost policy completely unchanged.                      */
 /* -------------------------------------------------------------------------- */
 
 export async function resolveCharacterVisualBibleModel(
   seriesId: number,
 ): Promise<string> {
-  return resolveVerticalDramaSeriesModel(seriesId, resolveQualityLargeContextModelId);
+  return resolveVerticalDramaSeriesModel(seriesId, resolvePremiumLargeContextModelId);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1421,6 +1432,18 @@ export interface GenerateCharacterVisualPromptsResult {
   model: string;
   /** Persistable snapshot derived only from validated skill output. */
   visualBibleSnapshot: VerticalDramaApprovedCharacterVisualBible;
+  /**
+   * Non-fatal QC warnings (2026-07-18, lead-beauty graceful-degradation fix —
+   * FIX A, both accepted user decisions; see root-cause note on
+   * `resolveCharacterVisualBibleModel`/`executeJsonPlanningCallWithRetry`).
+   * Present ONLY when every corrective schema retry was exhausted and the
+   * response was accepted anyway because the ONLY remaining problem was the
+   * lead-beauty prose gate (`findLeadPromptQualityIssues`) — every
+   * structural/identity check (JSON shape, DNA required keys, role-tier
+   * compatibility, region/ethnicity anchor) still hard-fails as before.
+   * `undefined` on every normal, fully-passing generation.
+   */
+  warnings?: string[];
 }
 
 export interface GeneratedCharacterPortraitCandidate {
@@ -1429,6 +1452,8 @@ export interface GeneratedCharacterPortraitCandidate {
   negativePrompt: string | undefined;
   visualIdentitySummary: string;
   visualBibleSnapshot: VerticalDramaApprovedCharacterVisualBible;
+  /** Same FIX A contract as `GenerateCharacterVisualPromptsResult.warnings` — present only for a candidate accepted via the lead-beauty graceful-degradation hook, scoped to THIS candidate only (other candidates in the same batch may have passed strictly). */
+  warnings?: string[];
 }
 
 export interface GenerateCharacterPortraitCandidatesResult {
@@ -1437,6 +1462,14 @@ export interface GenerateCharacterPortraitCandidatesResult {
   raw: CharacterPortraitCandidateOutput;
   creditsUsed: number;
   model: string;
+  /**
+   * Flattened batch-level view of every candidate's `warnings` (2026-07-18,
+   * FIX A) — `"<candidate_id>: <field>: <message>"` per entry, `undefined`
+   * when no candidate in this batch needed the graceful-degradation hook.
+   * Per-candidate detail also stays on `GeneratedCharacterPortraitCandidate
+   * .warnings` for callers that want it scoped to one candidate.
+   */
+  warnings?: string[];
 }
 
 function isCompatibleReportedRoleTier(
@@ -2240,124 +2273,148 @@ export async function generateCharacterVisualPrompts(
     evidenceCorrections = [];
     return keyNormalized.output;
   }, characterVisualBibleOutputSchema);
-  const responseSchema = normalizedOutputSchema.superRefine((output, ctx) => {
-    const characterIndex = output.characters.findIndex(
-      (character) => character.character_id === params.characterKey,
-    );
-    if (characterIndex < 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["characters"],
-        message: `Response did not include the requested character_id "${params.characterKey}".`,
-      });
-      return;
-    }
-    const character = output.characters[characterIndex];
-    if (!character) return;
-    const reportedRoleTier = character.character_design_dna.role_tier;
-    if (
-      expectedRoleTier !== "other" &&
-      !isCompatibleReportedRoleTier(expectedRoleTier, reportedRoleTier)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["characters", characterIndex, "character_design_dna", "role_tier"],
-        message: `Reported role tier "${reportedRoleTier}" does not match authoritative input tier "${expectedRoleTier}".`,
-      });
-    }
+  // Parameterized (2026-07-18, lead-beauty graceful-degradation fix — FIX A,
+  // both accepted user decisions recorded on `resolveCharacterVisualBibleModel`'s
+  // and `executeJsonPlanningCallWithRetry`'s doc comments) so the exact same
+  // validation logic can be re-run with the lead-beauty QUALITY gate
+  // (`findLeadPromptQualityIssues`) either enforced (the normal/strict path,
+  // `enforceLeadBeautyQuality: true`, used for every real attempt) or relaxed
+  // (`false`, used ONLY by the `onSchemaRetriesExhausted` hook below, to
+  // prove that the lead-beauty gate was the ONLY remaining problem before
+  // accepting a degraded-but-usable response). EVERY other check here
+  // (JSON-shape, `character_design_dna` required keys via
+  // `mapCharacterDesignDna`, role-tier compatibility, the region/ethnicity
+  // anchor, the approved-DNA identity fingerprint, comparison-evidence
+  // agreement) is UNCHANGED between the two variants and stays hard-fail —
+  // only the lead-beauty loop below is gated.
+  const buildResponseSchema = (enforceLeadBeautyQuality: boolean) =>
+    normalizedOutputSchema.superRefine((output, ctx) => {
+      const characterIndex = output.characters.findIndex(
+        (character) => character.character_id === params.characterKey,
+      );
+      if (characterIndex < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["characters"],
+          message: `Response did not include the requested character_id "${params.characterKey}".`,
+        });
+        return;
+      }
+      const character = output.characters[characterIndex];
+      if (!character) return;
+      const reportedRoleTier = character.character_design_dna.role_tier;
+      if (
+        expectedRoleTier !== "other" &&
+        !isCompatibleReportedRoleTier(expectedRoleTier, reportedRoleTier)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["characters", characterIndex, "character_design_dna", "role_tier"],
+          message: `Reported role tier "${reportedRoleTier}" does not match authoritative input tier "${expectedRoleTier}".`,
+        });
+      }
 
-    // Region/ethnicity anchor enforcement (D1) — ONLY for an EXPLICIT
-    // per-character override (never for a character merely inheriting the
-    // series/global default — that would newly hard-gate every pre-existing
-    // series). See `regionAnchorCheckAttempts`'s doc comment above for why
-    // this only ever fires on the first attempt.
-    regionAnchorCheckAttempts += 1;
-    if (
-      params.resolvedCharacterRegion?.isExplicit &&
-      regionAnchorCheckAttempts === 1 &&
-      !promptContainsRegionEthnicityAnchor(
-        character.primary_portrait_prompt,
-        params.resolvedCharacterRegion,
-      )
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["characters", characterIndex, "primary_portrait_prompt"],
-        message:
-          `primary_portrait_prompt must make this character's explicit ethnicity/region ` +
-          `requirement (${params.resolvedCharacterRegion.descriptor}) unmistakably present, ` +
-          `in-line, in the prose — it currently reads as ethnicity-neutral.`,
-      });
-    }
+      // Region/ethnicity anchor enforcement (D1) — ONLY for an EXPLICIT
+      // per-character override (never for a character merely inheriting the
+      // series/global default — that would newly hard-gate every pre-existing
+      // series). See `regionAnchorCheckAttempts`'s doc comment above for why
+      // this only ever fires on the first attempt.
+      regionAnchorCheckAttempts += 1;
+      if (
+        params.resolvedCharacterRegion?.isExplicit &&
+        regionAnchorCheckAttempts === 1 &&
+        !promptContainsRegionEthnicityAnchor(
+          character.primary_portrait_prompt,
+          params.resolvedCharacterRegion,
+        )
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["characters", characterIndex, "primary_portrait_prompt"],
+          message:
+            `primary_portrait_prompt must make this character's explicit ethnicity/region ` +
+            `requirement (${params.resolvedCharacterRegion.descriptor}) unmistakably present, ` +
+            `in-line, in the prose — it currently reads as ethnicity-neutral.`,
+        });
+      }
 
-    // The skill remains the sole author of visual prose. This deterministic
-    // QC gate only rejects a lead response that is visibly under-cast or has
-    // villain-coded grammar, so the shared retry path can ask the skill to
-    // redesign it instead of silently accepting a misleading portrait.
-    for (const issue of findLeadPromptQualityIssues(character, expectedRoleTier)) {
-      const fieldPath = LEAD_PROMPT_FIELDS.includes(issue.field as LeadPromptField)
-        ? issue.field
-        : "negative_prompt";
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["characters", characterIndex, fieldPath],
-        message: issue.message,
-      });
-    }
-
-    let reportedDna: VerticalDramaCharacterDesignDna;
-    try {
-      reportedDna = mapCharacterDesignDna(character.character_design_dna);
-    } catch {
-      return;
-    }
-
-    const approvedDna = params.characterDesignContext?.approvedDesignDna;
-    if (
-      approvedDna &&
-      canonicalDesignIdentityFingerprint(reportedDna) !==
-        canonicalDesignIdentityFingerprint(approvedDna)
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["characters", characterIndex, "character_design_dna"],
-        message: "The response changed an already-approved canonical Character DNA identity.",
-      });
-    }
-
-    if (params.characterDesignContext) {
-      const expectedEvidence = authoritativeEvidence!;
-      const reportedEvidence = reportedDna.comparisonEvidence;
-      const evidenceFields = [
-        ["currentCastCompared", "current_cast_compared"],
-        ["recentSeriesCompared", "recent_series_compared"],
-        ["priorLeadDnaCompared", "prior_lead_dna_compared"],
-        ["historyCompleteness", "history_completeness"],
-      ] as const;
-      for (const [camelField, snakeField] of evidenceFields) {
-        if (reportedEvidence[camelField] !== expectedEvidence[camelField]) {
+      // The skill remains the sole author of visual prose. This deterministic
+      // QC gate only rejects a lead response that is visibly under-cast or has
+      // villain-coded grammar, so the shared retry path can ask the skill to
+      // redesign it instead of silently accepting a misleading portrait.
+      // SOFTENABLE — see `buildResponseSchema`'s doc comment; every other
+      // check in this callback stays hard-fail regardless of this flag.
+      if (enforceLeadBeautyQuality) {
+        for (const issue of findLeadPromptQualityIssues(character, expectedRoleTier)) {
+          const fieldPath = LEAD_PROMPT_FIELDS.includes(issue.field as LeadPromptField)
+            ? issue.field
+            : "negative_prompt";
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: [
-              "characters",
-              characterIndex,
-              "character_design_dna",
-              "comparison_evidence",
-              snakeField,
-            ],
-            message: `Reported comparison evidence must match the server-derived value ${JSON.stringify(expectedEvidence[camelField])}.`,
+            path: ["characters", characterIndex, fieldPath],
+            message: issue.message,
           });
         }
       }
-    }
-  });
+
+      let reportedDna: VerticalDramaCharacterDesignDna;
+      try {
+        reportedDna = mapCharacterDesignDna(character.character_design_dna);
+      } catch {
+        return;
+      }
+
+      const approvedDna = params.characterDesignContext?.approvedDesignDna;
+      if (
+        approvedDna &&
+        canonicalDesignIdentityFingerprint(reportedDna) !==
+          canonicalDesignIdentityFingerprint(approvedDna)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["characters", characterIndex, "character_design_dna"],
+          message: "The response changed an already-approved canonical Character DNA identity.",
+        });
+      }
+
+      if (params.characterDesignContext) {
+        const expectedEvidence = authoritativeEvidence!;
+        const reportedEvidence = reportedDna.comparisonEvidence;
+        const evidenceFields = [
+          ["currentCastCompared", "current_cast_compared"],
+          ["recentSeriesCompared", "recent_series_compared"],
+          ["priorLeadDnaCompared", "prior_lead_dna_compared"],
+          ["historyCompleteness", "history_completeness"],
+        ] as const;
+        for (const [camelField, snakeField] of evidenceFields) {
+          if (reportedEvidence[camelField] !== expectedEvidence[camelField]) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [
+                "characters",
+                characterIndex,
+                "character_design_dna",
+                "comparison_evidence",
+                snakeField,
+              ],
+              message: `Reported comparison evidence must match the server-derived value ${JSON.stringify(expectedEvidence[camelField])}.`,
+            });
+          }
+        }
+      }
+    });
+  const responseSchema = buildResponseSchema(true);
 
   // Single-character payload (portrait/turnaround/full-body/expression/
   // outfit prompts + attachment_package) — smaller than the multi-shot
   // storyboard/start-frame planners, but shares the same fragile
   // executeWithFallback+extractJson pattern, so it gets the same
   // one-retry-on-truncated/invalid-JSON safety net.
-  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
+  const {
+    data: validatedData,
+    response,
+    warnings: leadBeautyWarnings,
+  } = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt,
     userPrompt,
@@ -2366,6 +2423,27 @@ export async function generateCharacterVisualPrompts(
     maxTokens: 5500,
     schema: responseSchema,
     label: "Character visual bible",
+    // FIX A (2026-07-18, both accepted user decisions — see
+    // `buildResponseSchema`'s doc comment above): once every corrective retry
+    // is exhausted, prove the lead-beauty gate was the ONLY remaining problem
+    // by re-validating the exact same last response against the LENIENT
+    // variant (`enforceLeadBeautyQuality: false`). If that still fails,
+    // something structural/identity-related is ALSO wrong — return `null` to
+    // preserve the original hard-throw untouched. If it passes, accept the
+    // response and surface the specific lead-beauty issues as warnings rather
+    // than silently dropping them.
+    onSchemaRetriesExhausted: ({ parsedJson }) => {
+      const lenient = buildResponseSchema(false).safeParse(parsedJson);
+      if (!lenient.success) return null;
+      const character = lenient.data.characters.find(
+        (candidate) => candidate.character_id === params.characterKey,
+      );
+      if (!character) return null;
+      const warnings = findLeadPromptQualityIssues(character, expectedRoleTier).map(
+        (issue) => `${issue.field}: ${issue.message}`,
+      );
+      return { data: lenient.data, warnings };
+    },
   });
 
   if (evidenceCorrections.length > 0) {
@@ -2496,6 +2574,10 @@ export async function generateCharacterVisualPrompts(
     creditsUsed,
     model,
     visualBibleSnapshot,
+    // FIX A (2026-07-18) — non-empty ONLY when `onSchemaRetriesExhausted`
+    // accepted a response whose only remaining problem was the lead-beauty
+    // prose gate; `undefined`/absent on every normal successful validation.
+    warnings: leadBeautyWarnings,
   };
 }
 
@@ -2574,7 +2656,13 @@ export async function generateCharacterPortraitCandidates(
     return evidenceNormalized.output;
   }, characterPortraitCandidateOutputSchema);
 
-  const responseSchema = normalizedOutputSchema.superRefine((output, ctx) => {
+  // Parameterized (2026-07-18, FIX A — see `generateCharacterVisualPrompts`'s
+  // identical `buildResponseSchema` doc comment for the full rationale). Only
+  // the per-candidate lead-beauty loop below is gated by
+  // `enforceLeadBeautyQuality`; character_id/candidate-count/duplicate-id/
+  // role-tier/region-anchor/anti-clone-diversity checks are ALWAYS enforced.
+  const buildResponseSchema = (enforceLeadBeautyQuality: boolean) =>
+    normalizedOutputSchema.superRefine((output, ctx) => {
     const batch = output.portrait_candidate_batch;
     // Incremented ONCE per attempt (not per candidate) — every candidate in
     // a batch is the SAME character, so the "only ask for one corrective
@@ -2657,31 +2745,37 @@ export async function generateCharacterPortraitCandidates(
         });
       }
 
-      const leadIssues = findLeadPromptQualityIssues(
-        {
-          primary_portrait_prompt: candidate.primary_portrait_prompt,
-          turnaround_prompt: candidate.primary_portrait_prompt,
-          full_body_prompt: candidate.primary_portrait_prompt,
-          expression_sheet_prompt: candidate.primary_portrait_prompt,
-          outfit_sheet_prompt: candidate.primary_portrait_prompt,
-          negative_prompt: candidate.negative_prompt,
-        },
-        expectedRoleTier,
-      ).filter(
-        (issue) =>
-          issue.field === "primary_portrait_prompt" || issue.field === "negative_prompt",
-      );
-      for (const issue of leadIssues) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [
-            "portrait_candidate_batch",
-            "candidates",
-            candidateIndex,
-            issue.field,
-          ],
-          message: issue.message,
-        });
+      // SOFTENABLE (2026-07-18, FIX A) — every other check in this callback
+      // (character_id/candidate-count/duplicate-id/role-tier/region-anchor
+      // above, anti-clone diversity below) stays hard-fail regardless of
+      // `enforceLeadBeautyQuality`.
+      if (enforceLeadBeautyQuality) {
+        const leadIssues = findLeadPromptQualityIssues(
+          {
+            primary_portrait_prompt: candidate.primary_portrait_prompt,
+            turnaround_prompt: candidate.primary_portrait_prompt,
+            full_body_prompt: candidate.primary_portrait_prompt,
+            expression_sheet_prompt: candidate.primary_portrait_prompt,
+            outfit_sheet_prompt: candidate.primary_portrait_prompt,
+            negative_prompt: candidate.negative_prompt,
+          },
+          expectedRoleTier,
+        ).filter(
+          (issue) =>
+            issue.field === "primary_portrait_prompt" || issue.field === "negative_prompt",
+        );
+        for (const issue of leadIssues) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [
+              "portrait_candidate_batch",
+              "candidates",
+              candidateIndex,
+              issue.field,
+            ],
+            message: issue.message,
+          });
+        }
       }
     });
 
@@ -2693,9 +2787,41 @@ export async function generateCharacterPortraitCandidates(
       });
     }
   });
+  const responseSchema = buildResponseSchema(true);
+
+  /**
+   * Same-shape helper `onSchemaRetriesExhausted` uses to derive per-candidate
+   * lead-beauty warnings from an already lenient-validated batch — mirrors
+   * the exact filter (`primary_portrait_prompt`/`negative_prompt` only) the
+   * strict schema above applies, so the warning list matches precisely what
+   * was softened.
+   */
+  const collectLeadBeautyWarnings = (
+    candidate: Pick<
+      CharacterPortraitCandidate,
+      "candidate_id" | "primary_portrait_prompt" | "negative_prompt"
+    >,
+  ): string[] =>
+    findLeadPromptQualityIssues(
+      {
+        primary_portrait_prompt: candidate.primary_portrait_prompt,
+        turnaround_prompt: candidate.primary_portrait_prompt,
+        full_body_prompt: candidate.primary_portrait_prompt,
+        expression_sheet_prompt: candidate.primary_portrait_prompt,
+        outfit_sheet_prompt: candidate.primary_portrait_prompt,
+        negative_prompt: candidate.negative_prompt,
+      },
+      expectedRoleTier,
+    )
+      .filter((issue) => issue.field === "primary_portrait_prompt" || issue.field === "negative_prompt")
+      .map((issue) => `${candidate.candidate_id}: ${issue.field}: ${issue.message}`);
 
   const maxTokens = Math.min(14_000, 4_600 + params.portraitCandidateCount * 1_800);
-  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
+  const {
+    data: validatedData,
+    response,
+    warnings: leadBeautyWarnings,
+  } = await executeJsonPlanningCallWithRetry({
     model,
     systemPrompt,
     userPrompt,
@@ -2705,6 +2831,20 @@ export async function generateCharacterPortraitCandidates(
     retryMaxTokens: 16_000,
     schema: responseSchema,
     label: "Character portrait candidate batch",
+    // FIX A (2026-07-18) — see `generateCharacterVisualPrompts`'s identical
+    // hook for the full rationale. Structural/identity checks (character_id,
+    // candidate count, duplicate ids, role-tier, region anchor, anti-clone
+    // diversity) are UNCHANGED between strict/lenient, so if the lenient
+    // parse still fails, something other than lead-beauty prose is wrong and
+    // this correctly returns `null` to preserve the hard throw.
+    onSchemaRetriesExhausted: ({ parsedJson }) => {
+      const lenient = buildResponseSchema(false).safeParse(parsedJson);
+      if (!lenient.success) return null;
+      const warnings = lenient.data.portrait_candidate_batch.candidates.flatMap(
+        collectLeadBeautyWarnings,
+      );
+      return { data: lenient.data, warnings };
+    },
   });
 
   if (evidenceCorrections.length > 0) {
@@ -2780,12 +2920,20 @@ export async function generateCharacterPortraitCandidates(
           params.resolvedCharacterRegion,
         )
       : candidate.primary_portrait_prompt;
+    // FIX A (2026-07-18) — recomputed directly from the FINAL `validatedData`
+    // (not string-parsed from the flattened batch-level `leadBeautyWarnings`)
+    // so it's exactly `[]`/`undefined` on every normal strictly-passing
+    // generation (no candidate can have a lead-beauty issue if the strict
+    // schema already accepted the batch) and exactly matches which
+    // candidate(s) triggered the degradation hook otherwise.
+    const candidateWarnings = collectLeadBeautyWarnings(candidate);
     return {
       candidateId: candidate.candidate_id,
       portraitPrompt,
       negativePrompt: negativePrompt || undefined,
       visualIdentitySummary: candidate.visual_identity_summary,
       visualBibleSnapshot: buildCharacterVisualBibleSnapshot({ character: candidate, model }),
+      warnings: candidateWarnings.length > 0 ? candidateWarnings : undefined,
     };
   });
 
@@ -2795,5 +2943,6 @@ export async function generateCharacterPortraitCandidates(
     raw: validatedData,
     creditsUsed,
     model,
+    warnings: leadBeautyWarnings,
   };
 }

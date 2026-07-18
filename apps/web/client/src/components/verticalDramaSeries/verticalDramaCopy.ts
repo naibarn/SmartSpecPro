@@ -469,6 +469,19 @@ export const verticalDramaCopy = {
     th: "ใช้โหมดพรีเมียมสำหรับการขยายนี้",
     en: "Use premium mode for this extension",
   },
+  /**
+   * Sequel-aware extend default (client fix, 2026-07-18) — helper line shown
+   * ONLY under the extend premium checkbox for a lineage series
+   * (sequel/special edition; `VerticalDramaDeepStoryDraftsActions`'s
+   * `isLineageSeries` prop), explaining why the checkbox starts checked:
+   * mirrors the server's own sequel-aware default in
+   * `extendStoryDraftHorizon` (`routers/verticalDramaSeries.ts`), which
+   * only runs the `prior_season_continuity` judge dimension in premium.
+   */
+  deepStoryDraftsExtendPremiumLineageHint: {
+    th: "ตรวจความต่อเนื่องกับภาคก่อน (แนะนำ) — ใช้เครดิตมากกว่าโหมดมาตรฐาน",
+    en: "Continuity-checked against the prior season (recommended) — uses more credits than standard mode",
+  },
   deepStoryDraftsSummaryPremiumSuffix: {
     th: "· โหมดพรีเมียม",
     en: "· Premium mode",
@@ -745,6 +758,213 @@ export const wizardSteps: Array<{ id: string; th: string; en: string }> = [
   },
   { id: "review", th: "ตรวจสอบและสร้าง", en: "Review" },
 ];
+
+/**
+ * Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — same 6 step
+ * `id`s as `wizardSteps` (basic/story/characters/bible/product/review), only
+ * the TH/EN labels differ per `createMode` so the stepper pills read
+ * correctly for a sequel/special-edition wizard. The step COUNT never
+ * changes — `CreateSeriesWizard.tsx`'s `switch` is keyed on `step.id`, never
+ * the numeric index, specifically so adding/relabeling a step here can never
+ * silently renumber another step's case body.
+ */
+const sequelWizardSteps: Array<{ id: string; th: string; en: string }> = [
+  { id: "basic", th: "ตั้งค่าพื้นฐาน + ภาคก่อนหน้า", en: "Basic setup + prior season" },
+  { id: "story", th: "ปมใหม่ของภาคนี้", en: "This season's new conflict" },
+  {
+    id: "characters",
+    th: "ตัวละคร — ใครกลับมา",
+    en: "Characters — who returns",
+  },
+  { id: "bible", th: "วิชวลไบเบิล", en: "Visual bible" },
+  {
+    id: "product",
+    th: "สินค้าผูกเรื่อง (ไม่บังคับ)",
+    en: "Product tie-in (optional)",
+  },
+  { id: "review", th: "ตรวจสอบและสร้าง", en: "Review" },
+];
+
+const specialEditionWizardSteps: Array<{ id: string; th: string; en: string }> = [
+  {
+    id: "basic",
+    th: "ตั้งค่าพื้นฐาน + ซีรีส์ต้นฉบับ",
+    en: "Basic setup + parent series",
+  },
+  {
+    id: "story",
+    th: "จะรีวิว/แนะนำอะไร",
+    en: "What to review/introduce",
+  },
+  { id: "characters", th: "ตัวละคร (ยกมาอัตโนมัติ)", en: "Cast (auto-carried)" },
+  { id: "bible", th: "วิชวลไบเบิล", en: "Visual bible" },
+  {
+    id: "product",
+    th: "แหล่งข้อมูลภาคพิเศษ",
+    en: "Special edition sources",
+  },
+  { id: "review", th: "ตรวจสอบและสร้าง", en: "Review" },
+];
+
+/**
+ * Resolves the wizard's step list for a given `createMode`. For `undefined`
+ * (the original, non-lineage wizard) this returns the EXACT SAME array
+ * object as `wizardSteps` — never a new array with equal contents — so the
+ * stepper/`stepComplete`/`isLast` logic in `CreateSeriesWizard.tsx` (all of
+ * which key off `wizardSteps.length`/array identity in tests via
+ * `toBe`-style reference checks) is provably byte-identical to before this
+ * feature existed.
+ */
+export function resolveWizardSteps(
+  mode: VerticalDramaSeriesCreateMode | undefined
+): Array<{ id: string; th: string; en: string }> {
+  if (mode === "sequel") return sequelWizardSteps;
+  if (mode === "special_edition") return specialEditionWizardSteps;
+  return wizardSteps;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Season 2 / Special-edition lineage (Stage 2.6)                             */
+/* -------------------------------------------------------------------------- */
+
+/** Bilingual label for the 3-way create-mode toggle (original is never itself an option here — it's what showing NO lineage UI means). */
+export const createModeToggleCopy = {
+  label: { th: "โหมดการสร้าง", en: "Creation mode" },
+  original: { th: "ซีรีส์ใหม่", en: "New series" },
+  sequel: { th: "ภาค 2 / ภาคถัดไป", en: "Season 2 / next season" },
+  specialEdition: { th: "ภาคพิเศษ", en: "Special edition" },
+  hint: {
+    th: "เลือกภาค 2 หรือภาคพิเศษเพื่อยกตัวละคร/ความสัมพันธ์/ภาพจากซีรีส์เดิมของคุณมาใช้",
+    en: "Choose Season 2 or Special edition to carry over characters, relationships, and visuals from one of your existing series.",
+  },
+} as const;
+
+export const parentSeriesPickerCopy = {
+  label: { th: "เลือกซีรีส์ต้นฉบับ", en: "Choose the parent series" },
+  placeholder: { th: "ค้นหาซีรีส์ของคุณ…", en: "Search your series…" },
+  empty: { th: "ไม่พบซีรีส์", en: "No series found" },
+  required: {
+    th: "ต้องเลือกซีรีส์ต้นฉบับก่อนสร้าง",
+    en: "A parent series must be chosen before creating",
+  },
+} as const;
+
+export const seasonNumberFieldCopy = {
+  label: { th: "ภาคที่", en: "Season number" },
+} as const;
+
+export const genreLockedHintCopy = {
+  th: "แนวเรื่องสืบทอดจากซีรีส์ต้นฉบับ — เปลี่ยนแนวเรื่องไม่ได้ (ชื่อเรื่องตั้งไปแล้ว)",
+  en: "Genre is inherited from the parent series and cannot be changed here.",
+} as const;
+
+export const toneLockedHintCopy = {
+  th: "โทนเรื่องสืบทอดจากซีรีส์ต้นฉบับสำหรับภาคต่อ — แก้ไม่ได้",
+  en: "Tone is inherited from the parent series for a sequel and cannot be edited.",
+} as const;
+
+export const specialEditionEpisodeCountLockedHintCopy = {
+  th: "ภาคพิเศษจำกัดที่ 1-2 ตอนย่อยเสมอ",
+  en: "A special edition is always capped at 1-2 sub-episodes.",
+} as const;
+
+/** Bilingual labels for `VerticalDramaCarryOverAvailability` (Stage 2.2 carry-over draft). */
+export const carryOverAvailabilityCopy: Record<
+  VerticalDramaCarryOverAvailability,
+  { th: string; en: string }
+> = {
+  returns: { th: "กลับมาปกติ", en: "Returns" },
+  returns_with_explanation: {
+    th: "กลับมาแบบมีเหตุผลรองรับ",
+    en: "Returns (with explanation)",
+  },
+  write_out: { th: "เขียนออกจากเรื่อง", en: "Written out" },
+  cameo_only: { th: "รับเชิญสั้น ๆ", en: "Cameo only" },
+};
+
+export const carryOverCopy = {
+  proposeCta: { th: "ให้ AI เสนอการกลับมาของตัวละคร", en: "Propose cast carry-over" },
+  regenerateCta: { th: "เสนอใหม่", en: "Propose again" },
+  postFinaleStatusLabel: { th: "สถานะท้ายภาคก่อน", en: "Post-finale status" },
+  availabilityLabel: { th: "สถานะในภาคนี้", en: "Status in this season" },
+  returnJustificationLabel: {
+    th: "เหตุผลที่กลับมาได้",
+    en: "How they plausibly return",
+  },
+  suggestedStateUpdateLabel: {
+    th: "อัปเดตสถานะล่าสุด (แก้ไขได้)",
+    en: "Latest state update (editable)",
+  },
+  newCharacterSuggestionsTitle: {
+    th: "AI แนะนำตัวละครใหม่",
+    en: "AI-suggested new characters",
+  },
+  newConflictDirectionsTitle: { th: "แนวทางปมใหม่", en: "New conflict directions" },
+  antagonistStrategyTitle: { th: "กลยุทธ์ตัวร้าย", en: "Antagonist strategy" },
+  carriedRelationshipsTitle: {
+    th: "ความสัมพันธ์ที่ยกมา",
+    en: "Carried-over relationships",
+  },
+  carriedThreadsTitle: { th: "ปมค้างที่ยกมา", en: "Carried-over open threads" },
+  addSuggestionCta: { th: "เพิ่มเข้าโครงเรื่อง", en: "Add to draft" },
+  addedSuggestion: { th: "เพิ่มแล้ว", en: "Added" },
+} as const;
+
+export const specialEditionCopy = {
+  storyFunctionLabel: { th: "จุดประสงค์ของภาคพิเศษ", en: "Special edition purpose" },
+  storyFunctionReview: { th: "รีวิวตรงไปตรงมา", en: "Straightforward review" },
+  storyFunctionTieIn: {
+    th: "ผูกเป็นทางออกในเนื้อเรื่อง",
+    en: "Woven in as a story solution",
+  },
+  episodeCountLabel: { th: "จำนวนตอนย่อย (1-2)", en: "Sub-episode count (1-2)" },
+  marketplaceSourceTitle: { th: "1. สินค้าจากคลัง", en: "1. Marketplace product" },
+  uploadSourceTitle: { th: "2. อัปโหลดรูป + สรุป", en: "2. Upload images + summary" },
+  uploadSummaryLabel: {
+    th: "สรุปสั้น ๆ เกี่ยวกับสิ่งที่อัปโหลด",
+    en: "Short summary of what you uploaded",
+  },
+  uploadButtonLabel: { th: "อัปโหลดรูปภาพ", en: "Upload image" },
+  uploadingLabel: { th: "กำลังอัปโหลด…", en: "Uploading…" },
+  storyFunctionSourceTitle: { th: "3. จุดประสงค์เรื่อง", en: "3. Story function" },
+  generateBriefCta: { th: "ให้ AI ร่างภาคพิเศษ", en: "Draft the special edition" },
+  regenerateBriefCta: { th: "ร่างใหม่", en: "Draft again" },
+  suggestedPremiseLabel: {
+    th: "โจทย์ที่ AI ร่างให้ (แก้ไขได้ก่อนสร้าง)",
+    en: "AI-drafted premise (editable before creating)",
+  },
+  applyBriefCta: { th: "ใช้ข้อความนี้", en: "Use this text" },
+  productDescriptionLabel: {
+    th: "รายละเอียดสินค้า (ไม่บังคับ)",
+    en: "Product description (optional)",
+  },
+} as const;
+
+/** Coverage warning (review step, sequel only) — same copy fns as `verticalDramaSeriesMemoryCopy.ts`'s `coverageHeadlineText`/`coverageSecondaryText`, reused directly rather than duplicated. This is only the "see the full timeline" link's own copy. */
+export const lineageCoverageLinkCopy = {
+  th: "ดูรายละเอียดความจำซีรีย์ทั้งหมดในแท็บ \"ความจำซีรีย์\" ของซีรีส์ต้นฉบับ",
+  en: 'See the full timeline in the parent series\' "Series Memory" tab',
+} as const;
+
+export const lineageReviewSummaryCopy = {
+  sequelTitle: { th: "ภาคต่อจาก", en: "Sequel of" },
+  specialEditionTitle: { th: "ภาคพิเศษของ", en: "Special edition of" },
+  seasonNumberRow: { th: "ภาคที่", en: "Season" },
+} as const;
+
+/** Sidebar/series-card badge text (`VerticalDramaShell.tsx`). */
+export function sequelBadgeText(lang: VerticalDramaLang, seasonNumber: number): string {
+  return lang === "th" ? `ภาค ${seasonNumber}` : `Season ${seasonNumber}`;
+}
+
+export function specialEditionBadgeText(
+  lang: VerticalDramaLang,
+  parentTitle: string
+): string {
+  return lang === "th"
+    ? `ภาคพิเศษ ของ ${parentTitle}`
+    : `Special edition of ${parentTitle}`;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Preset Mix v2 — interpolated Copy Contract strings (spec §8.2.2.C,         */

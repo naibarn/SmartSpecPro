@@ -6,6 +6,18 @@ const mockListProductsQuery = vi.fn();
 const mockSynthesizeMutate = vi.fn();
 const mockGenerateStoryMutate = vi.fn();
 const mockCreateMutate = vi.fn();
+// Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) lineage mocks —
+// `mockUseTenantFeatureFlag` defaults to `false` in every `beforeEach` below
+// so every PRE-EXISTING test in this file (none of which touch lineage) keeps
+// exercising the flag-OFF/original-mode wizard, byte-identical to before this
+// feature existed. Lineage-specific `describe` blocks below flip it to `true`.
+const mockUseTenantFeatureFlag = vi.fn();
+const mockSeriesListQuery = vi.fn();
+const mockGetSeriesQuery = vi.fn();
+const mockGetSeriesMemoryQuery = vi.fn();
+const mockCarryOverMutate = vi.fn();
+const mockSpecialEditionMutate = vi.fn();
+const mockUploadMutate = vi.fn();
 
 let mockSynthesizeMutationState: {
   data: unknown;
@@ -16,10 +28,74 @@ let mockSynthesizeMutationState: {
   isPending: false,
 };
 
+let mockCarryOverMutationState: {
+  data: unknown;
+  isPending: boolean;
+  error?: { message?: string };
+} = { data: undefined, isPending: false };
+
+let mockSpecialEditionMutationState: {
+  data: unknown;
+  isPending: boolean;
+  error?: { message?: string };
+} = { data: undefined, isPending: false };
+
+vi.mock("@/hooks/useTenantFeatureFlag", () => ({
+  useTenantFeatureFlag: (flag: string) => mockUseTenantFeatureFlag(flag),
+}));
+
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     verticalDramaSeries: {
       listGenrePresets: { useQuery: () => mockListGenrePresetsQuery() },
+      list: { useQuery: () => mockSeriesListQuery() },
+      get: { useQuery: () => mockGetSeriesQuery() },
+      getSeriesMemory: { useQuery: () => mockGetSeriesMemoryQuery() },
+      proposeSeasonCarryOver: {
+        useMutation: (opts: { onError?: (err: unknown) => void } = {}) => ({
+          mutate: (input: unknown) => {
+            mockCarryOverMutate(input);
+            if (mockCarryOverMutationState.error) {
+              opts?.onError?.(mockCarryOverMutationState.error);
+            }
+          },
+          get data() {
+            return mockCarryOverMutationState.data;
+          },
+          get isPending() {
+            return mockCarryOverMutationState.isPending;
+          },
+          get error() {
+            return mockCarryOverMutationState.error;
+          },
+          reset: vi.fn(),
+        }),
+      },
+      proposeSpecialEditionBrief: {
+        useMutation: (opts: {
+          onSuccess?: (data: unknown) => void;
+          onError?: (err: unknown) => void;
+        } = {}) => ({
+          mutate: (input: unknown) => {
+            mockSpecialEditionMutate(input);
+            if (mockSpecialEditionMutationState.data) {
+              opts?.onSuccess?.(mockSpecialEditionMutationState.data);
+            } else if (mockSpecialEditionMutationState.error) {
+              opts?.onError?.(mockSpecialEditionMutationState.error);
+            }
+          },
+          get data() {
+            return mockSpecialEditionMutationState.data;
+          },
+          get isPending() {
+            return mockSpecialEditionMutationState.isPending;
+          },
+          get error() {
+            return mockSpecialEditionMutationState.error;
+          },
+          reset: vi.fn(),
+        }),
+      },
       synthesizeGenrePreset: {
         useMutation: (opts: {
           onSuccess?: (data: unknown) => void;
@@ -58,6 +134,14 @@ vi.mock("@/lib/trpc", () => ({
     },
     marketplaceCapture: {
       listProducts: { useQuery: () => mockListProductsQuery() },
+    },
+    ai: {
+      upload: {
+        useMutation: () => ({
+          mutateAsync: (input: unknown) => mockUploadMutate(input),
+          isPending: false,
+        }),
+      },
     },
   },
 }));
@@ -127,6 +211,29 @@ function selectCategoryAndPresets(ids: string[]) {
     fireEvent.click(screen.getByRole("button", { name: new RegExp(title) }));
   }
 }
+
+/**
+ * Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — file-wide
+ * defaults for every lineage mock. Runs BEFORE each describe block's own
+ * `beforeEach` (which calls `vi.clearAllMocks()` — this only clears call
+ * history, never a `mockReturnValue` implementation, so these defaults
+ * survive for every PRE-EXISTING test below without touching their bodies).
+ * `mockUseTenantFeatureFlag` defaults to `false` — the single most important
+ * regression guarantee: no test in this file that doesn't explicitly opt in
+ * touches any lineage code path.
+ */
+beforeEach(() => {
+  mockUseTenantFeatureFlag.mockReturnValue(false);
+  mockSeriesListQuery.mockReturnValue({ data: { series: [] }, isLoading: false });
+  mockGetSeriesQuery.mockReturnValue({ data: undefined, isLoading: false });
+  mockGetSeriesMemoryQuery.mockReturnValue({ data: undefined, isLoading: false });
+  mockCarryOverMutationState = { data: undefined, isPending: false };
+  mockSpecialEditionMutationState = { data: undefined, isPending: false };
+  mockUploadMutate.mockResolvedValue({
+    url: "https://example.test/upload.jpg",
+    fileType: "image/jpeg",
+  });
+});
 
 describe("CreateSeriesWizard — Sub-episode terminology", () => {
   beforeEach(() => {

@@ -64,6 +64,7 @@ import {
   llmProviders,
   modelProviderMap,
   type VerticalDramaSeriesRow,
+  type InsertVerticalDramaSeriesRow,
   type VerticalDramaGenrePresetRow,
   type VerticalDramaCharacterRow,
   /** Phase 6.2 — see `verticalDramaCharacterAliases` import above. */
@@ -1554,16 +1555,37 @@ async function resolveTieInDraftBootstrap(params: {
   items: StoredEpisodeBreakdownItem[];
   productTieIn: unknown;
   plannedCount: number;
+  /**
+   * Stage 2.5 follow-up (special-edition tie-in reaches generation, added
+   * 2026-07-18) — the series' own `createMode`. `"special_edition"` BYPASSES
+   * the `verticalDramaTieInReplan` flag gate below: a special edition IS a
+   * tie-in by definition (it exists to carry the product/place), so gating
+   * it on an UNRELATED flag (`verticalDramaTieInReplan`, meant for a regular
+   * series' own season-level tie-in replanning) made the entire
+   * special-edition mode product-blind for any tenant without that separate
+   * flag on. Special editions themselves are already gated behind
+   * `verticalDramaSeriesLineage` at `create` time (only that flag + an
+   * owned parent ever produce `createMode === "special_edition"` — see
+   * `create`'s own doc comment), so this bypass does not skip a flag check
+   * entirely, it defers to the mode's OWN flag. Every OTHER createMode
+   * (including `undefined`/original and `"sequel"`) keeps requiring
+   * `verticalDramaTieInReplan`, byte-identical to before this follow-up.
+   */
+  createMode?: string | null;
 }): Promise<{
   items: StoredEpisodeBreakdownItem[];
   context?: VdTieInDraftContext;
 }> {
+  const isSpecialEdition = params.createMode === "special_edition";
   const tieInReplanEnabled = await resolveVerticalDramaTieInReplanFlag(
     params.tenantId
   );
   const rawProductTieIn =
     (params.productTieIn as Record<string, unknown> | null) ?? null;
-  if (!tieInReplanEnabled || rawProductTieIn?.enabled !== true) {
+  if (!isSpecialEdition && !tieInReplanEnabled) {
+    return { items: params.items };
+  }
+  if (rawProductTieIn?.enabled !== true) {
     return { items: params.items };
   }
 
@@ -1623,6 +1645,25 @@ async function resolveTieInDraftBootstrap(params: {
       )
     : [];
 
+  // Stage 2.5 follow-up — special-edition-only facts (see
+  // `VdTieInDraftContext.specialEdition`'s own doc comment). `undefined` for
+  // every non-special-edition run, so `context` stays byte-identical to
+  // before this follow-up for a regular sequel/original series' own tie-in.
+  const specialEdition = isSpecialEdition
+    ? {
+        allowedStoryFunctions: Array.isArray(
+          rawProductTieIn.allowedStoryFunctions
+        )
+          ? rawProductTieIn.allowedStoryFunctions.filter(
+              (f): f is string => typeof f === "string"
+            )
+          : [],
+        hasReferenceImages:
+          Array.isArray(rawProductTieIn.referenceAssetIds) &&
+          rawProductTieIn.referenceAssetIds.length > 0,
+      }
+    : undefined;
+
   return {
     items: workingItems,
     context: {
@@ -1631,6 +1672,7 @@ async function resolveTieInDraftBootstrap(params: {
       benefitFocus,
       forbiddenClaims,
       placements,
+      ...(specialEdition ? { specialEdition } : {}),
     },
   };
 }
@@ -1852,12 +1894,15 @@ export async function runGenerateStoryBibleDeepJob(
   // first-time bootstrap's `tieIn` fields are actually persisted by the SAME
   // `appendBreakdownVersion` write below — see `resolveTieInDraftBootstrap`'s
   // own doc comment. `context` stays `undefined` (byte-identical run) unless
-  // the flag AND the series' tie-in are both on.
+  // the flag AND the series' tie-in are both on — UNLESS this is a special
+  // edition (`row.createMode`), which bypasses the flag (see
+  // `resolveTieInDraftBootstrap`'s own `createMode` doc comment).
   const tieInBootstrap = await resolveTieInDraftBootstrap({
     tenantId,
     items: rawExistingItems,
     productTieIn: row.productTieIn,
     plannedCount: row.targetEpisodeCount ?? rawExistingItems.length,
+    createMode: row.createMode,
   });
   const existingItems = tieInBootstrap.items;
 
@@ -2417,6 +2462,7 @@ export async function runExtendStoryDraftHorizonJob(
     items: rawExistingItems,
     productTieIn: row.productTieIn,
     plannedCount: row.targetEpisodeCount ?? rawExistingItems.length,
+    createMode: row.createMode,
   });
   const existingItems = tieInBootstrap.items;
 
@@ -4166,6 +4212,27 @@ export const verticalDramaSeriesRouter = router({
               row.bible as Record<string, unknown> | null,
               row.targetEpisodeCount
             ),
+            // Series lineage (Stage 2.6) — additive, `null`/absent for the
+            // overwhelming majority (original-mode series). The sidebar list
+            // card reads these to render a "ภาค N" / "ภาคพิเศษ ของ <parent>"
+            // badge; `list` (not `get`) is what the shell actually queries, so
+            // these must be projected here or the badge silently never renders.
+            createMode: row.createMode ?? null,
+            seasonNumber: row.seasonNumber ?? null,
+            parentSeriesId:
+              row.parentSeriesId != null ? String(row.parentSeriesId) : null,
+            // Only the parentTitle is surfaced (not the whole `lineage` blob —
+            // it carries carry-over decisions and is larger than a list card
+            // needs). Shape matches what `VerticalDramaShell`'s badge reads:
+            // `item.lineage?.parentTitle`.
+            lineage: (() => {
+              const parentTitle = (
+                row.lineage as { parentTitle?: unknown } | null
+              )?.parentTitle;
+              return typeof parentTitle === "string"
+                ? { parentTitle }
+                : null;
+            })(),
             createdAt: row.createdAt,
             updatedAt: row.updatedAt,
           };
@@ -4328,84 +4395,126 @@ export const verticalDramaSeriesRouter = router({
         };
       }
 
-      const [row] = await db
-        .insert(verticalDramaSeries)
-        .values({
-          tenantId,
-          userId,
-          title: input.title,
-          locale: input.locale ?? "th",
-          aspectRatio: input.aspectRatio ?? "9:16",
-          status: "draft",
-          targetEpisodeCount: input.targetEpisodeCount ?? 10,
-          defaultEpisodeDurationSeconds:
-            input.defaultEpisodeDurationSeconds ?? 60,
-          genre: input.genre ?? null,
-          tone: input.tone ?? null,
-          targetAudience: input.targetAudience ?? null,
-          agePolicyId: input.agePolicyId ?? null,
-          // Feature 132 §4.2 (F132A) — merge the top-level `userPremise` field
-          // into `bible.userPremise` when present, preserving every other
-          // `input.bible` key untouched.
-          //
-          // Series-level audience age rating (Phase 1) — unlike `userPremise`,
-          // `audienceAgeRating` is ALWAYS merged in (it has a safe default via
-          // `resolveAudienceAgeRating`, same "always defaulted" precedent as
-          // `locale: input.locale ?? "th"` above), so `bible` is no longer
-          // ever persisted as `null` — the "no premise, no bible" branch now
-          // persists an object carrying just `audienceAgeRating`.
-          bible: {
-            ...(input.userPremise
-              ? { ...(input.bible ?? {}), userPremise: input.userPremise }
-              : (input.bible ?? {})),
-            audienceAgeRating: resolveAudienceAgeRating(
-              input.audienceAgeRating
-            ),
-          },
-          memory: input.memory ?? null,
-          // Stage 2.5 — `resolvedProductTieIn` is only ever non-null for
-          // `createMode === "special_edition"` (see above); every other
-          // createMode (including `undefined` = original and `"sequel"`)
-          // writes `input.productTieIn` through completely unvalidated,
-          // exactly as before this task.
-          productTieIn: resolvedProductTieIn ?? input.productTieIn ?? null,
-          policy: input.policy ?? null,
-          // Stage 2.1 — NULL on every one of these 4 columns unless a valid,
-          // flag-gated, ownership-checked parent was resolved above. This is
-          // the "original mode writes NULL" structural guarantee described on
-          // `verticalDramaSeries.parentSeriesId`'s own schema.ts doc comment.
-          parentSeriesId: parentSeriesRow ? parentSeriesRow.id : null,
-          createMode: parentSeriesRow ? (input.createMode ?? null) : null,
-          seasonNumber: parentSeriesRow ? (input.seasonNumber ?? null) : null,
-          lineage: parentSeriesRow
-            ? ((input.lineage as VerticalDramaSeriesLineage | undefined) ?? null)
-            : null,
-        })
-        .returning();
+      // Feature 132 §4.2 (F132A) — merge the top-level `userPremise` field
+      // into `bible.userPremise` when present, preserving every other
+      // `input.bible` key untouched.
+      //
+      // Series-level audience age rating (Phase 1) — unlike `userPremise`,
+      // `audienceAgeRating` is ALWAYS merged in (it has a safe default via
+      // `resolveAudienceAgeRating`, same "always defaulted" precedent as
+      // `locale: input.locale ?? "th"` above), so `bible` is no longer ever
+      // persisted as `null` — the "no premise, no bible" branch now persists
+      // an object carrying just `audienceAgeRating`.
+      const insertValues: InsertVerticalDramaSeriesRow = {
+        tenantId,
+        userId,
+        title: input.title,
+        locale: input.locale ?? "th",
+        aspectRatio: input.aspectRatio ?? "9:16",
+        status: "draft",
+        targetEpisodeCount: input.targetEpisodeCount ?? 10,
+        defaultEpisodeDurationSeconds:
+          input.defaultEpisodeDurationSeconds ?? 60,
+        genre: input.genre ?? null,
+        tone: input.tone ?? null,
+        targetAudience: input.targetAudience ?? null,
+        agePolicyId: input.agePolicyId ?? null,
+        bible: {
+          ...(input.userPremise
+            ? { ...(input.bible ?? {}), userPremise: input.userPremise }
+            : (input.bible ?? {})),
+          audienceAgeRating: resolveAudienceAgeRating(input.audienceAgeRating),
+        },
+        memory: input.memory ?? null,
+        // Stage 2.5 — `resolvedProductTieIn` is only ever non-null for
+        // `createMode === "special_edition"` (see above); every other
+        // createMode (including `undefined` = original and `"sequel"`)
+        // writes `input.productTieIn` through completely unvalidated,
+        // exactly as before this task.
+        productTieIn: resolvedProductTieIn ?? input.productTieIn ?? null,
+        policy: input.policy ?? null,
+        // Stage 2.1 — NULL on every one of these 4 columns unless a valid,
+        // flag-gated, ownership-checked parent was resolved above. This is
+        // the "original mode writes NULL" structural guarantee described on
+        // `verticalDramaSeries.parentSeriesId`'s own schema.ts doc comment.
+        parentSeriesId: parentSeriesRow ? parentSeriesRow.id : null,
+        createMode: parentSeriesRow ? (input.createMode ?? null) : null,
+        seasonNumber: parentSeriesRow ? (input.seasonNumber ?? null) : null,
+        lineage: parentSeriesRow
+          ? ((input.lineage as VerticalDramaSeriesLineage | undefined) ?? null)
+          : null,
+      };
 
-      // Best-effort: clone the parent series' durable character/location
-      // roster (Stage 2.3) — runs BEFORE `charactersDraft`/`locationsDraft`
-      // seeding below so a cloned `characterKey` is already present when any
-      // later auto-registration pass looks it up (see
-      // `verticalDramaSeriesClone.ts`'s own header doc comment for the full
-      // table-by-table rationale).
-      if (parentSeriesRow) {
+      // Insert + cast/location clone transactional guarantee (Stage 2.3
+      // orphan-row fix): for a sequel/special-edition (`parentSeriesRow`
+      // set), the new row's INSERT and `cloneSeriesCastForLineage` now run
+      // inside ONE shared `db.transaction`, with the transaction's own `tx`
+      // handle passed into the clone (see `verticalDramaSeriesClone.ts`'s
+      // header doc comment for the full contract). Previously these were
+      // two independently-committed operations — the insert always
+      // committed, then the clone ran in its OWN transaction and a failure
+      // there was only `debugError`'d, never surfaced. That could persist a
+      // sequel row with `parentSeriesId`/`createMode`/`lineage` set and ZERO
+      // cloned cast while still returning a plain success. Now: a clone
+      // failure rolls back the just-inserted row too (no orphan can ever
+      // reach the database) and is re-thrown as a hard error — a sequel
+      // whose entire point is carrying the parent's cast forward must never
+      // report success while silently shipping an empty roster.
+      //
+      // Original-mode creates (`parentSeriesRow` null) take the plain
+      // non-transactional insert path below, byte-identical to before this
+      // change.
+      //
+      // Wrapped in an IIFE (rather than a `let row: VerticalDramaSeriesRow`
+      // declared up front) purely so `row`'s type is inferred from BOTH
+      // `.returning()` calls below exactly like the original single-insert
+      // code did — no new explicit annotation to drift out of sync with
+      // whatever shape `db.insert(...).returning()` actually infers.
+      const row = await (async () => {
+        if (!parentSeriesRow) {
+          const [insertedRow] = await db
+            .insert(verticalDramaSeries)
+            .values(insertValues)
+            .returning();
+          return insertedRow;
+        }
+
+        const parentSeriesIdForClone = parentSeriesRow.id;
         try {
-          await cloneSeriesCastForLineage({
-            tenantId,
-            userId,
-            parentSeriesId: parentSeriesRow.id,
-            childSeriesId: Number(row.id),
-            lineage: input.lineage as VerticalDramaSeriesLineage | undefined,
+          return await db.transaction(async tx => {
+            const [insertedRow] = await tx
+              .insert(verticalDramaSeries)
+              .values(insertValues)
+              .returning();
+            await cloneSeriesCastForLineage(
+              {
+                tenantId,
+                userId,
+                parentSeriesId: parentSeriesIdForClone,
+                childSeriesId: Number(insertedRow.id),
+                lineage: input.lineage as
+                  | VerticalDramaSeriesLineage
+                  | undefined,
+              },
+              tx
+            );
+            return insertedRow;
           });
         } catch (error) {
           debugError(
             "verticalDramaSeries.create",
-            `Failed to clone cast/locations for series ${row.id} from parent ${parentSeriesRow.id}`,
+            `Failed to clone cast/locations from parent ${parentSeriesIdForClone} — series creation rolled back, no orphan row persisted`,
             error
           );
+          if (error instanceof TRPCError) throw error;
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "Failed to copy the parent series' cast and locations. No series was created — please try again.",
+            cause: error instanceof Error ? error : undefined,
+          });
         }
-      }
+      })();
 
       // Best-effort: seed the durable character roster (`vertical_drama_characters`,
       // read by the Series Detail Characters tab) from the wizard's freeform
@@ -6120,12 +6229,23 @@ export const verticalDramaSeriesRouter = router({
           message: "Invalid series id",
         });
       }
-      const mode: VerticalDramaDeepStoryDraftMode = input.mode ?? "standard";
-
       // Fail-fast sync validation — see `generateStoryBibleDeep`'s own doc
       // comment on the deliberate double-guard (also re-run inside
       // `runExtendStoryDraftHorizonJob`).
       const row = await loadOwnedSeries(tenantId, userId, seriesId);
+
+      // Mode default is SEQUEL-AWARE (Stage 2.4b gap fix). For a normal series
+      // extend stays `"standard"` (the established cost default). For a lineage
+      // series (`parentSeriesId` set — a sequel/special edition), default to
+      // `"premium"` so the `prior_season_continuity` judge dimension — which
+      // ONLY scores in premium — actually runs on continuation episodes; a
+      // standard extend would draft episodes 11+ of a sequel with the lineage
+      // facts in the PROMPT but never continuity-CHECKED, defeating the whole
+      // "must not drift from the prior season" requirement. Still fully
+      // overridable: an explicit `input.mode` (incl. `"standard"`) always wins,
+      // so a user who wants to save credits can opt out.
+      const mode: VerticalDramaDeepStoryDraftMode =
+        input.mode ?? (row.parentSeriesId != null ? "premium" : "standard");
       const bible = (row.bible as Record<string, unknown> | null) ?? {};
       const existingItems = getActiveBreakdown(bible);
       if (existingItems.length === 0) {

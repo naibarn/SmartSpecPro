@@ -34,16 +34,25 @@ vi.mock("../verticalDramaStoryBible", async () => {
   };
 });
 // Phase 6 (`planning/vertical-drama-centralized-model-policy/plan.md`) —
-// `resolveCharacterVisualBibleModel`'s auto-fallback now uses
-// `resolveQualityLargeContextModelId` (was `resolveStoryBibleModel`).
+// `resolveCharacterVisualBibleModel`'s auto-fallback used
+// `resolveQualityLargeContextModelId` (was `resolveStoryBibleModel`), then
+// (2026-07-18, character-portrait lead-beauty-gate incident — see
+// `selectPremiumLargeContextEligibleModels`'s doc comment in
+// `verticalDramaImproveScript.ts`) was CHANGED to the new
+// `resolvePremiumLargeContextModelId` (strongest eligible model, not
+// cheapest) — this stage alone now trades cost for portrait-prose quality.
+// `resolveQualityLargeContextModelId` is still mocked here too since other
+// vertical-drama modules under test in this same file's suite may resolve it
+// transitively.
 vi.mock("../verticalDramaImproveScript", () => ({
   resolveQualityLargeContextModelId: vi.fn(),
+  resolvePremiumLargeContextModelId: vi.fn(),
 }));
 // Centralized per-series model policy resolver
 // (`planning/vertical-drama-centralized-model-policy/plan.md` Phase 2) — its
 // own override/fallback contract is covered by
 // `verticalDramaLlmModelPolicy.test.ts`; here it's mocked as a pure
-// passthrough to `autoFallback` (the mocked `resolveQualityLargeContextModelId`
+// passthrough to `autoFallback` (the mocked `resolvePremiumLargeContextModelId`
 // above) so this file's pre-existing "no override configured" behavior/
 // assertions (`resolveCharacterVisualBibleModel` now delegates through the
 // centralized resolver instead of being a plain alias) are unaffected and no
@@ -82,6 +91,7 @@ import {
   normalizeCharacterVisualBibleDnaKeys,
   normalizeCharacterVisualBibleAuthoritativeEvidence,
   resolveFaceSourceReferenceForCharacter,
+  resolveCharacterVisualBibleModel,
 } from "../verticalDramaCharacterImageGeneration";
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
 import { resolveCharacterTargetAudienceRegion } from "@shared/verticalDramaSeries/targetAudienceRegion";
@@ -92,14 +102,17 @@ import {
   InsufficientCreditsError,
   VdSchemaValidationError,
 } from "../verticalDramaStoryBible";
-import { resolveQualityLargeContextModelId } from "../verticalDramaImproveScript";
+import { resolvePremiumLargeContextModelId } from "../verticalDramaImproveScript";
 
 const mockExecute = vi.mocked(executeWithFallback);
 const mockHasEnoughCredits = vi.mocked(hasEnoughCredits);
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLM);
 const mockResolveModel = vi.mocked(resolveStoryBibleModel);
-const mockResolveQualityModel = vi.mocked(resolveQualityLargeContextModelId);
+// `resolveCharacterVisualBibleModel`'s auto-fallback (see the `vi.mock`
+// comment above) — renamed from `mockResolveQualityModel` alongside the
+// 2026-07-18 premium-model-for-this-stage fix.
+const mockResolveQualityModel = vi.mocked(resolvePremiumLargeContextModelId);
 const mockExistsSync = vi.mocked(fs.existsSync);
 const mockReadFileSync = vi.mocked(fs.readFileSync);
 const mockParseSkillFile = vi.mocked(parseSkillFile);
@@ -416,6 +429,27 @@ function successResponse(payload: unknown) {
     providerId: 1,
   } as any;
 }
+
+// FIX B (2026-07-18, character-portrait lead-beauty-gate incident) —
+// `resolveCharacterVisualBibleModel` must resolve through
+// `resolvePremiumLargeContextModelId` (STRONGEST eligible model), NOT the
+// cheapest-first `resolveQualityLargeContextModelId` every other stage still
+// uses. `resolveVerticalDramaSeriesModel` is mocked (see top of file) as a
+// pure passthrough to whichever `autoFallback` it's given, so asserting the
+// resolved value came from `mockResolveQualityModel` (now bound to
+// `resolvePremiumLargeContextModelId`) directly proves the wiring; the
+// override-wins-over-any-autoFallback contract itself is already covered
+// generically by `verticalDramaLlmModelPolicy.test.ts`.
+describe("resolveCharacterVisualBibleModel", () => {
+  it("delegates to resolvePremiumLargeContextModelId as its auto-fallback", async () => {
+    mockResolveQualityModel.mockResolvedValue("strong-flagship-model");
+
+    const model = await resolveCharacterVisualBibleModel(42);
+
+    expect(model).toBe("strong-flagship-model");
+    expect(mockResolveQualityModel).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("resolveCharacterRoleTier", () => {
   it.each([
@@ -2613,6 +2647,72 @@ describe("generateCharacterVisualPrompts — region/ethnicity anchor enforcement
   });
 });
 
+// FIX A (2026-07-18, character-portrait lead-beauty-gate incident — both
+// user-approved decisions recorded on `resolveCharacterVisualBibleModel`'s
+// and `executeJsonPlanningCallWithRetry`'s doc comments). Proves: (1) when
+// EVERY corrective retry's only remaining problem is the lead-beauty prose
+// gate (`findLeadPromptQualityIssues`), the response is ACCEPTED with a
+// non-fatal warning instead of throwing; (2) a genuinely STRUCTURAL problem
+// (a required field missing) still hard-fails exactly as before, even when a
+// lead-beauty issue is ALSO present — the softening never touches structural/
+// identity checks.
+describe("generateCharacterVisualPrompts — FIX A: lead-beauty graceful degradation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  it("accepts the response with a warning once every retry's ONLY remaining problem is the lead-beauty prose gate", async () => {
+    const plainLeadCharacter = validCharacter("char-1", "lead_female");
+    // Deliberately plain — no star marker, no appeal signal — the EXACT
+    // production failure mode (audit-2026-07-18.jsonl, 00:30-00:31 UTC):
+    // structurally valid, correct role tier, correct negative-prompt guards,
+    // but the portrait prose "reads too ordinary for a principal lead".
+    plainLeadCharacter.primary_portrait_prompt =
+      "A portrait of Alice, tall with dark hair, wearing a trench coat";
+    mockExecute.mockResolvedValue(successResponse(validOutput([plainLeadCharacter])));
+
+    const result = await generateCharacterVisualPrompts(
+      baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+    );
+
+    // Exhausted every corrective retry (1 initial + VD_SCHEMA_MAX_RETRIES=2)
+    // identically, since the mock never improves the response.
+    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(result.portraitPrompt).toBe(plainLeadCharacter.primary_portrait_prompt);
+    expect(result.warnings).toBeDefined();
+    expect(result.warnings!.length).toBeGreaterThan(0);
+    expect(result.warnings!.join(" ")).toContain("camera-ready lead beauty language");
+    // Accepted, not thrown — credits ARE charged, same as any other success.
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("still throws when a STRUCTURAL problem (a required field missing) remains, even alongside a lead-beauty issue", async () => {
+    const plainLeadCharacter = validCharacter("char-1", "lead_female") as Record<string, unknown>;
+    plainLeadCharacter.primary_portrait_prompt =
+      "A portrait of Alice, tall with dark hair, wearing a trench coat";
+    // Structural: a required field (`turnaround_prompt`) is missing — this
+    // must NEVER be softened, so the lenient re-validation inside the
+    // graceful-degradation hook must ALSO fail and the original hard throw
+    // must surface unchanged.
+    delete plainLeadCharacter.turnaround_prompt;
+    mockExecute.mockResolvedValue(successResponse(validOutput([plainLeadCharacter as any])));
+
+    await expect(
+      generateCharacterVisualPrompts(baseParams({ role: "นางเอก", roleTier: "lead_female" })),
+    ).rejects.toThrow(VdSchemaValidationError);
+    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+});
+
 describe("generateCharacterPortraitCandidates — region/ethnicity anchor enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -2676,5 +2776,78 @@ describe("generateCharacterPortraitCandidates — region/ethnicity anchor enforc
     result.candidates.forEach((candidate, index) => {
       expect(candidate.portraitPrompt).toBe(original[index]!.primary_portrait_prompt);
     });
+  });
+});
+
+// FIX A (2026-07-18) — same graceful-degradation contract as
+// `generateCharacterVisualPrompts`'s identical describe block above, proven
+// here for the batch/candidate path.
+describe("generateCharacterPortraitCandidates — FIX A: lead-beauty graceful degradation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveModel.mockResolvedValue("gpt-4o-mini");
+    mockResolveQualityModel.mockResolvedValue("gpt-4o-mini");
+    mockCalculateCredits.mockReturnValue(4);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({ metadata: {} as any, content: "System prompt body" });
+    mockHasEnoughCredits.mockResolvedValue(true);
+  });
+
+  /** Strips only the boilerplate beauty/appeal phrasing `validPortraitCandidate` hardcodes, leaving each candidate's differing identity fields (so anti-clone diversity still passes) and its negative_prompt guard markers (so the negative-prompt check still passes) untouched. */
+  function stripLeadBeautyLanguage(
+    candidate: ReturnType<typeof validPortraitCandidate>,
+  ): ReturnType<typeof validPortraitCandidate> {
+    return {
+      ...candidate,
+      primary_portrait_prompt: candidate.primary_portrait_prompt
+        .replace("strikingly beautiful leading-lady, camera-ready emotionally magnetic beauty, ", "")
+        .replace(", approachable heroic warmth", ""),
+    };
+  }
+
+  it("accepts the batch with per-candidate warnings once every retry's ONLY remaining problem is the lead-beauty prose gate", async () => {
+    const batch = validPortraitCandidateBatch(2);
+    batch.portrait_candidate_batch.candidates =
+      batch.portrait_candidate_batch.candidates.map(stripLeadBeautyLanguage);
+    mockExecute.mockResolvedValue(successResponse(batch));
+
+    const result = await generateCharacterPortraitCandidates({
+      ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+      portraitCandidateCount: 2,
+    });
+
+    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(result.warnings).toBeDefined();
+    expect(result.warnings!.length).toBeGreaterThan(0);
+    // Every candidate independently lost the same boilerplate, so every one
+    // of them should be flagged, each carrying its own candidate_id.
+    for (const candidate of result.candidates) {
+      expect(candidate.warnings).toBeDefined();
+      expect(candidate.warnings!.join(" ")).toContain("camera-ready lead beauty language");
+    }
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("still throws when a STRUCTURAL problem (incompatible reported role tier) remains, even alongside a lead-beauty issue", async () => {
+    const batch = validPortraitCandidateBatch(1);
+    batch.portrait_candidate_batch.candidates[0] = stripLeadBeautyLanguage(
+      batch.portrait_candidate_batch.candidates[0]!,
+    );
+    // Structural/identity: the reported role tier is genuinely incompatible
+    // with the expected `lead_female` tier — must never be softened.
+    (batch.portrait_candidate_batch.candidates[0]!.character_design_dna as any).role_tier =
+      "villain_male_open";
+    mockExecute.mockResolvedValue(successResponse(batch));
+
+    await expect(
+      generateCharacterPortraitCandidates({
+        ...baseParams({ role: "นางเอก", roleTier: "lead_female" }),
+        portraitCandidateCount: 1,
+      }),
+    ).rejects.toThrow(VdSchemaValidationError);
+    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 });

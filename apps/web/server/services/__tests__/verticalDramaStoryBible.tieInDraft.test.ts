@@ -256,6 +256,74 @@ describe("generateStoryBibleDeep — tie-in draft context prompt threading (task
 });
 
 /* -------------------------------------------------------------------------- */
+/* Special-edition tie-in facts reaching generation (Stage 2.5 follow-up,     */
+/* added 2026-07-18) — `VdTieInDraftContext.specialEdition`.                  */
+/* -------------------------------------------------------------------------- */
+
+function extractProductTieInBlock(systemPrompt: string): string {
+  const start = systemPrompt.indexOf("PRODUCT TIE-IN (season plan):");
+  expect(start).toBeGreaterThanOrEqual(0);
+  // Search for the end marker STARTING from `start` — the skill-authored
+  // prompt loaded ahead of this block (`loadFullStoryArchitectSkillSystemPrompt`)
+  // can itself contain similar "Respond with ONLY..." example phrasing
+  // earlier in the combined systemPrompt, so a plain `indexOf` from the very
+  // start of the string can match that earlier occurrence instead of the
+  // real one that actually terminates this block.
+  const end = systemPrompt.indexOf("Respond with ONLY a single JSON object", start);
+  expect(end).toBeGreaterThan(start);
+  return systemPrompt.slice(start, end).trim();
+}
+
+describe("generateStoryBibleDeep — special-edition tie-in facts (Stage 2.5 follow-up)", () => {
+  it("a non-special-edition context (specialEdition absent) renders the EXACT pre-existing 3-line block — byte-identical guarantee", async () => {
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+    await generateStoryBibleDeep(baseDeepParams({ tieInDraftContext: plannedTieInContext }));
+    const block = extractProductTieInBlock(systemPromptOf(0));
+    expect(block).toBe(
+      [
+        `PRODUCT TIE-IN (season plan): this season has a planned product tie-in for "Glow Serum" (category: cosmetics). Each Sub-episode's data below states "productTieIn.planned" true or false for THAT Sub-episode — follow it exactly, this is a season-level planning decision, not yours to make.`,
+        `For a "planned": true episode: weave the product naturally into exactly ONE shot's beat, like real TV-drama product placement — it must serve that scene's story beat (never unrealistically resolve the main conflict, never read like an advertisement/ad-speak). NEVER use any of these forbidden claims, verbatim or in spirit: รักษาสิว. Mark that ONE shot's "tie_in" as {"has_product_moment": true, "benefit_line": "<short natural in-scene benefit line the dialogue or visual can carry>"}; every OTHER shot in that episode must omit "tie_in" (or set "has_product_moment": false).`,
+        `For a "planned": false episode: do NOT introduce, mention, or visually feature the product at all this episode — every shot omits "tie_in" (or sets "has_product_moment": false).`,
+      ].join("\n"),
+    );
+    expect(block).not.toContain("SPECIAL EDITION");
+    expect(block).not.toContain("Verified reference photos");
+  });
+
+  it("a special-edition context with reference images adds the SPECIAL EDITION line + allowedStoryFunctions + the reference-photos line", async () => {
+    const specialEditionContext: VdTieInDraftContext = {
+      ...plannedTieInContext,
+      specialEdition: {
+        allowedStoryFunctions: ["plot_clue", "memory_trigger", "relationship_token"],
+        hasReferenceImages: true,
+      },
+    };
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+    await generateStoryBibleDeep(baseDeepParams({ tieInDraftContext: specialEditionContext }));
+    const block = extractProductTieInBlock(systemPromptOf(0));
+    expect(block).toContain("SPECIAL EDITION");
+    expect(block).toContain("plot_clue, memory_trigger, relationship_token");
+    expect(block).toContain("Verified reference photos of the real product/place exist");
+  });
+
+  it("a special-edition context WITHOUT reference images adds the SPECIAL EDITION line but omits the reference-photos line", async () => {
+    const specialEditionContext: VdTieInDraftContext = {
+      ...plannedTieInContext,
+      specialEdition: {
+        allowedStoryFunctions: ["soft_cta", "daily_use"],
+        hasReferenceImages: false,
+      },
+    };
+    mockLlmResponseOnce(chunkResponsePayload([1]));
+    await generateStoryBibleDeep(baseDeepParams({ tieInDraftContext: specialEditionContext }));
+    const block = extractProductTieInBlock(systemPromptOf(0));
+    expect(block).toContain("SPECIAL EDITION");
+    expect(block).toContain("soft_cta, daily_use");
+    expect(block).not.toContain("Verified reference photos");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
 /* Shot draft schema — tie_in marking (additive/passthrough)                  */
 /* -------------------------------------------------------------------------- */
 

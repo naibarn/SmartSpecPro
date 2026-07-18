@@ -924,6 +924,21 @@ export interface VerticalDramaDeepStoryDraftsActionsProps {
    * Omitted/undefined simply renders the preview without a clickable link.
    */
   onEditPremiseClick?: () => void;
+  /**
+   * Whether this series is a lineage series — a sequel or special edition
+   * (`createMode === "sequel" | "special_edition"`, equivalently
+   * `parentSeriesId != null`) — sourced by the parent
+   * (`VerticalDramaSeriesDetailPage.tsx`) from the `get` query's raw row.
+   * Drives ONLY the extend flow's `extendPremium` checkbox initial value —
+   * mirrors the server's own sequel-aware default in
+   * `extendStoryDraftHorizon` (`routers/verticalDramaSeries.ts`), so the
+   * checkbox reflects what actually runs instead of always starting
+   * unchecked while the server silently defaults to premium underneath it.
+   * Optional, defaults to `false` — every other call site (and the
+   * `hasPlan={false}` "no plan yet" call site, which never renders the
+   * extend control at all) is unaffected.
+   */
+  isLineageSeries?: boolean;
 }
 
 export function VerticalDramaDeepStoryDraftsActions({
@@ -936,6 +951,7 @@ export function VerticalDramaDeepStoryDraftsActions({
   onGenerateStoryBible,
   userPremise,
   onEditPremiseClick,
+  isLineageSeries = false,
 }: VerticalDramaDeepStoryDraftsActionsProps) {
   const utils = trpc.useUtils();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -949,7 +965,12 @@ export function VerticalDramaDeepStoryDraftsActions({
   const [mode, setMode] = useState<VerticalDramaDeepStoryDraftMode>("premium");
   // Extend has no confirm dialog to reset on (re)open, so this is an
   // ordinary, non-auto-resetting checkbox — see module header doc comment.
-  const [extendPremium, setExtendPremium] = useState(false);
+  // Initial value mirrors the server's own sequel-aware default
+  // (`extendStoryDraftHorizon`'s `input.mode ?? (row.parentSeriesId != null
+  // ? "premium" : "standard")`) via `isLineageSeries` — see that prop's doc
+  // comment. Once mounted the user's own toggling always wins; this only
+  // sets what the checkbox shows the FIRST time.
+  const [extendPremium, setExtendPremium] = useState(isLineageSeries);
   const [chainPhase, setChainPhase] = useState<VerticalDramaDeepDraftChainPhase>(null);
   // Transient — `partial` is only ever returned once, from the mutation
   // response itself; it is never persisted server-side. `null` clears the
@@ -1472,6 +1493,7 @@ export function VerticalDramaDeepStoryDraftsActions({
         </p>
       )}
       {hasPlan && deepDraftSummary && !readOnly && canExtend && (
+        <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -1485,7 +1507,13 @@ export function VerticalDramaDeepStoryDraftsActions({
                   seriesId,
                   additionalEpisodes: DEEP_DRAFT_EXTEND_DEFAULT_EPISODES,
                   idempotencyKey: crypto.randomUUID(),
-                  ...(extendPremium ? { mode: "premium" as const } : {}),
+                  // Always sent explicitly (was previously omitted when
+                  // unchecked) — the server defaults an OMITTED mode to
+                  // "premium" for a lineage series (sequel/special edition;
+                  // see `extendStoryDraftHorizon`'s doc comment), so leaving
+                  // this out when unchecked silently ran premium anyway and
+                  // gave the user no way to force "standard" on a sequel.
+                  mode: extendPremium ? "premium" : "standard",
                 });
                 await pollStoryJob(jobId, "extend");
               } catch {
@@ -1529,6 +1557,25 @@ export function VerticalDramaDeepStoryDraftsActions({
             />
             {pickCopy(lang, verticalDramaCopy.deepStoryDraftsExtendPremiumCheckboxLabel)}
           </label>
+        </div>
+        {/*
+          Sequel-aware default (client fix mirroring the server's own
+          `extendStoryDraftHorizon` sequel-aware `mode` default) — for a
+          lineage series only, explain WHY premium is preselected so the
+          checkbox isn't just an unexplained toggle. Non-lineage series never
+          render this line (checkbox starts unchecked there, same as before).
+        */}
+        {isLineageSeries && (
+          <p
+            className="text-xs text-muted-foreground"
+            data-testid="vd-deep-story-drafts-extend-premium-lineage-hint"
+          >
+            {pickCopy(
+              lang,
+              verticalDramaCopy.deepStoryDraftsExtendPremiumLineageHint
+            )}
+          </p>
+        )}
         </div>
       )}
 

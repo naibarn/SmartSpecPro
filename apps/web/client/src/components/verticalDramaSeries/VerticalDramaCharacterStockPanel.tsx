@@ -865,6 +865,33 @@ interface VdPortraitCandidateUiBatch {
   sharedVisualLanguage?: string;
   model?: string;
   candidates: VdPortraitCandidateUiItem[];
+  /** Non-fatal lead-beauty graceful-degradation warnings from the server
+   * (FIX A) — batch-level, shown above the candidate grid. */
+  warnings?: string[];
+}
+
+/** Amber, non-blocking note for the server's lead-beauty graceful-degradation
+ * warnings (FIX A) — a lead portrait was ACCEPTED despite reading a touch plain,
+ * shown so the creator can regenerate/edit if they want a more camera-ready look.
+ * `heading` is pre-translated by the caller (this component is lang-agnostic). */
+function PortraitLeadBeautyWarnings({
+  warnings,
+  heading,
+}: {
+  warnings?: string[];
+  heading: string;
+}) {
+  if (!warnings || warnings.length === 0) return null;
+  return (
+    <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+      <p className="font-medium">{heading}</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+        {warnings.map((warning, i) => (
+          <li key={`${i}-${warning.slice(0, 24)}`}>{warning}</li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 export interface VdCharacterPromptConfirmPayload<TSnapshot> {
@@ -2819,6 +2846,10 @@ export function VerticalDramaCharacterStockPanel({
       negativePrompt?: string;
       model?: string;
       approvedDesignSnapshot: VerticalDramaApprovedCharacterDesignSnapshot;
+      /** Non-fatal lead-beauty graceful-degradation warnings from the server
+       * (FIX A) — shown so the creator knows a lead portrait was accepted
+       * despite reading a touch plain, instead of the previous silent block. */
+      warnings?: string[];
     } | null>(null);
 
   /** Entry point for the portrait generate button (card grid + selected-
@@ -2862,6 +2893,7 @@ export function VerticalDramaCharacterStockPanel({
                 characterId,
                 sharedVisualLanguage: res.sharedVisualLanguage,
                 model: res.model,
+                warnings: "warnings" in res ? res.warnings : undefined,
                 candidates: res.candidates.map(candidate => ({
                   assetLinkId: candidate.assetLinkId,
                   candidateId: candidate.candidateId,
@@ -2882,6 +2914,7 @@ export function VerticalDramaCharacterStockPanel({
             negativePrompt: res.negativePrompt,
             model: res.model,
             approvedDesignSnapshot: res.approvedDesignSnapshot,
+            warnings: "warnings" in res ? res.warnings : undefined,
           });
         },
         onError: () => {
@@ -4957,6 +4990,20 @@ export function VerticalDramaCharacterStockPanel({
                               />
                             )}
 
+                          {pendingCharacterPromptPreview &&
+                            pendingCharacterPromptPreview.characterId ===
+                              c.characterId &&
+                            effectiveSelectedId !== c.characterId && (
+                              <PortraitLeadBeautyWarnings
+                                warnings={pendingCharacterPromptPreview.warnings}
+                                heading={t(
+                                  lang,
+                                  "AI ยอมรับ prompt นี้แม้ตัวนำยังดูธรรมดาไปหน่อย — แก้ prompt หรือสร้างใหม่ได้ถ้าอยากให้เด่นกว่านี้",
+                                  "AI accepted this prompt even though the lead reads a little plain — edit the prompt or regenerate for a more camera-ready look."
+                                )}
+                              />
+                            )}
+
                           {(isDropTarget || isAssigningThis) && (
                             <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-white/80 px-2 text-center text-xs font-medium text-sky-700">
                               {isAssigningThis ? (
@@ -5745,6 +5792,19 @@ export function VerticalDramaCharacterStockPanel({
                         />
                       )}
 
+                    {pendingCharacterPromptPreview &&
+                      pendingCharacterPromptPreview.characterId ===
+                        selectedCharacter.characterId && (
+                        <PortraitLeadBeautyWarnings
+                          warnings={pendingCharacterPromptPreview.warnings}
+                          heading={t(
+                            lang,
+                            "AI ยอมรับ prompt นี้แม้ตัวนำยังดูธรรมดาไปหน่อย — แก้ prompt หรือสร้างใหม่ได้ถ้าอยากให้เด่นกว่านี้",
+                            "AI accepted this prompt even though the lead reads a little plain — edit the prompt or regenerate for a more camera-ready look."
+                          )}
+                        />
+                      )}
+
                     {selectedPortraitCandidateBatches.length > 0 && (
                       <section
                         className="rounded-xl border bg-card p-3"
@@ -5806,6 +5866,17 @@ export function VerticalDramaCharacterStockPanel({
                                 <p className="mb-3 text-xs text-muted-foreground">
                                   {batch.sharedVisualLanguage}
                                 </p>
+                              )}
+
+                              {isActive && (
+                                <PortraitLeadBeautyWarnings
+                                  warnings={batch.warnings}
+                                  heading={t(
+                                    lang,
+                                    "AI ยอมรับภาพชุดนี้แม้ prompt ตัวนำยังดูธรรมดาไปหน่อย — สร้างใหม่หรือแก้ prompt ได้ถ้าอยากให้เด่นกว่านี้",
+                                    "AI accepted this batch even though the lead prompt reads a little plain — regenerate or edit the prompt for a more camera-ready look."
+                                  )}
+                                />
                               )}
 
                               <Grid

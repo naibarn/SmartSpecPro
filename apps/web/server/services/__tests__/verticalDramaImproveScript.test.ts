@@ -119,6 +119,8 @@ import {
   runImproveScriptJob,
   resolveQualityLargeContextModelId,
   selectQualityLargeContextEligibleModels,
+  selectPremiumLargeContextEligibleModels,
+  resolvePremiumLargeContextModelId,
   resolveStartFramePlanModel,
   resolveStoryboardModel,
   VD_IMPROVE_SCRIPT_SKILL_ID,
@@ -673,6 +675,86 @@ describe("selectQualityLargeContextEligibleModels", () => {
     const winner = await resolveQualityLargeContextModelId();
 
     expect(winner).toBe(selectQualityLargeContextEligibleModels(rows)[0]?.modelId);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* selectPremiumLargeContextEligibleModels / resolvePremiumLargeContextModelId */
+/* (2026-07-18, character-portrait lead-beauty-gate incident — FIX B) — the   */
+/* mirror-image STRONGEST-first selector used ONLY by                        */
+/* `resolveCharacterVisualBibleModel`                                        */
+/* (`verticalDramaCharacterImageGeneration.ts`). Proves (1) it picks the      */
+/* MOST expensive eligible model, the opposite of the cheapest-first sibling, */
+/* and (2) it shares the exact same eligibility bar (never drifts) by        */
+/* reusing `selectQualityLargeContextEligibleModels`'s own eligible set.      */
+/* -------------------------------------------------------------------------- */
+
+describe("selectPremiumLargeContextEligibleModels / resolvePremiumLargeContextModelId", () => {
+  const ROWS: EnabledLlmModelRow[] = [
+    makeModelRow({
+      modelId: "ineligible-non-thinking-most-expensive",
+      contextLength: 2_000_000,
+      pricingInput: "50.00",
+      pricingOutput: "50.00",
+      supportsThinking: false,
+    }),
+    makeModelRow({
+      modelId: "eligible-cheapest",
+      contextLength: 1_050_000,
+      pricingInput: "0.10",
+      pricingOutput: "0.10",
+      supportsThinking: true,
+    }),
+    makeModelRow({
+      modelId: "eligible-mid",
+      contextLength: 1_050_000,
+      pricingInput: "1.00",
+      pricingOutput: "1.00",
+      supportsThinking: true,
+    }),
+    makeModelRow({
+      modelId: "eligible-most-expensive",
+      contextLength: 1_050_000,
+      pricingInput: "5.00",
+      pricingOutput: "30.00",
+      supportsThinking: true,
+    }),
+  ];
+
+  it("picks the MOST expensive eligible model — the opposite of the cheapest-first sibling", () => {
+    const premiumOrder = selectPremiumLargeContextEligibleModels(ROWS).map((row) => row.modelId);
+    const cheapOrder = selectQualityLargeContextEligibleModels(ROWS).map((row) => row.modelId);
+
+    expect(premiumOrder).toEqual(["eligible-most-expensive", "eligible-mid", "eligible-cheapest"]);
+    // Exact reverse of the cheapest-first sibling — same 3 eligible rows,
+    // opposite order, proving the two selectors share one eligibility bar.
+    expect(premiumOrder).toEqual([...cheapOrder].reverse());
+    // The ineligible (non-thinking) row is excluded from BOTH regardless of
+    // its price — being expensive never substitutes for eligibility.
+    expect(premiumOrder).not.toContain("ineligible-non-thinking-most-expensive");
+  });
+
+  it("resolvePremiumLargeContextModelId resolves to the same winner selectPremiumLargeContextEligibleModels[0] picks", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue(ROWS);
+
+    const winner = await resolvePremiumLargeContextModelId();
+
+    expect(mockLoadEnabledLlmModelRows).toHaveBeenCalledWith({ autoSelectionOnly: true });
+    expect(winner).toBe("eligible-most-expensive");
+  });
+
+  it("returns null when nothing meets the eligibility bar (best-effort, never throws)", async () => {
+    mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+
+    const winner = await resolvePremiumLargeContextModelId();
+
+    expect(winner).toBeNull();
+  });
+
+  it("best-effort: swallows a loadEnabledLlmModelRows rejection and returns null instead of throwing", async () => {
+    mockLoadEnabledLlmModelRows.mockRejectedValue(new Error("db down"));
+
+    await expect(resolvePremiumLargeContextModelId()).resolves.toBeNull();
   });
 });
 

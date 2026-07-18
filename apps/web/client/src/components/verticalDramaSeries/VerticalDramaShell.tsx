@@ -44,7 +44,9 @@ import { cn } from "@/lib/utils";
 import { CreateSeriesWizard } from "./CreateSeriesWizard";
 import {
   pickCopy,
+  sequelBadgeText,
   seriesStatusCopy,
+  specialEditionBadgeText,
   useVerticalDramaLang,
   verticalDramaCopy,
   verticalDramaRoutes,
@@ -106,6 +108,20 @@ interface SidebarSeriesItem {
   targetEpisodeCount?: number | null;
   pendingApprovalCount: number;
   thumbnailUrl?: string | null;
+  /**
+   * Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — lineage
+   * badge fields. Feature-detected (same convention as `GenrePreset`'s
+   * `visualIdentityJson` in `CreateSeriesWizard.tsx`): `verticalDramaSeries
+   * .list` does NOT return these today (it only spreads a hand-picked field
+   * set, not the raw row), so this badge renders nothing until that
+   * procedure is extended to include them — a backend follow-up, not
+   * something this frontend-only task may add (`server/routers/
+   * verticalDramaSeries.ts` is out of scope here). Written defensively so it
+   * "just works" the moment the query starts returning them.
+   */
+  createMode?: string | null;
+  seasonNumber?: number | null;
+  lineage?: { parentTitle?: string } | null;
 }
 
 function statusDotClass(status: string): string {
@@ -307,6 +323,21 @@ export function VerticalDramaShell({
                         ? `/${item.targetEpisodeCount}`
                         : ""}
                     </span>
+                    {/* Stage 2.6 — lineage badge. Feature-detected: renders
+                        only once `list` starts including these fields (see
+                        `SidebarSeriesItem`'s own doc comment). */}
+                    {item.createMode === "sequel" &&
+                      typeof item.seasonNumber === "number" && (
+                        <span className="truncate pl-4 text-[11px] text-cyan-700">
+                          {sequelBadgeText(lang, item.seasonNumber)}
+                        </span>
+                      )}
+                    {item.createMode === "special_edition" &&
+                      item.lineage?.parentTitle && (
+                        <span className="truncate pl-4 text-[11px] text-cyan-700">
+                          {specialEditionBadgeText(lang, item.lineage.parentTitle)}
+                        </span>
+                      )}
                   </span>
                 </button>
               );

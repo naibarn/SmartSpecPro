@@ -329,6 +329,63 @@ export async function resolveQualityLargeContextModelId(): Promise<string | null
 }
 
 /**
+ * The mirror image of `selectQualityLargeContextEligibleModels` — SAME
+ * eligibility bar (context-length floor, non-free, `supportsThinking ===
+ * true`), sorted MOST-EXPENSIVE-first instead of cheapest-first.
+ *
+ * WHY (2026-07-18, character-portrait lead-beauty-gate incident — see
+ * `resolveCharacterVisualBibleModel` in
+ * `verticalDramaCharacterImageGeneration.ts` for the only caller, and the
+ * debugger report / audit log `audit-2026-07-18.jsonl` 00:30-00:31 UTC for
+ * the evidence trail): the character visual-bible stage was defaulting to
+ * `resolveQualityLargeContextModelId`'s CHEAPEST eligible model
+ * (`google/gemini-3.1-flash-lite`), which reliably wrote lead portrait prose
+ * too plain to pass the pre-existing `findLeadPromptQualityIssues` gate,
+ * hard-failing character creation for `lead_female`/`lead_male` characters
+ * on every retry. The user explicitly accepted higher per-generation cost
+ * for THIS stage only ("ปรับใช้ Model แรงขึ้นเฉพาะขั้น Character visual
+ * bible") in exchange for reliably higher-quality portraits.
+ *
+ * There is no admin-curated "premium/flagship" capability tier column on
+ * `model_provider_map` today, so summed input+output price-per-1M-tokens is
+ * used as this codebase's existing capability PROXY (frontier/flagship
+ * models are reliably the most expensive tier on every provider catalog
+ * currently onboarded) — reversing the SAME eligible list
+ * `selectQualityLargeContextEligibleModels` already computes (rather than
+ * re-deriving the filter here) guarantees the two selectors can never
+ * silently drift apart on what counts as "eligible" for this quality
+ * class of call.
+ *
+ * SCOPE — do not widen: this must stay the character-visual-bible stage's
+ * OWN resolver, never the new default for `resolveQualityLargeContextModelId`
+ * itself. Every other stage that depends on `resolveQualityLargeContextModelId`
+ * (`resolveStartFramePlanModel`, `resolveStoryboardModel`, the improve-script
+ * upgrade path) keeps its existing cheapest-first cost policy untouched.
+ */
+export function selectPremiumLargeContextEligibleModels(
+  rows: EnabledLlmModelRow[],
+): EnabledLlmModelRow[] {
+  return [...selectQualityLargeContextEligibleModels(rows)].reverse();
+}
+
+/**
+ * Best-effort, NEVER throws — same convention as `resolveQualityLargeContextModelId`
+ * and every other resolver in this codebase. Used ONLY as the auto-fallback
+ * for `resolveCharacterVisualBibleModel`; a per-series
+ * `llmModelPolicy.defaultModelId` override still wins ahead of this
+ * unchanged, via `resolveVerticalDramaSeriesModel`'s existing precedence
+ * contract (it accepts any `autoFallback` callback interchangeably).
+ */
+export async function resolvePremiumLargeContextModelId(): Promise<string | null> {
+  try {
+    const rows = await loadEnabledLlmModelRows({ autoSelectionOnly: true });
+    return selectPremiumLargeContextEligibleModels(rows)[0]?.modelId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Scoped resolvers for the `start_frame_render_plan`/`storyboard_shotgrid`
  * stages. Originally (2026-07-11) each had its own inline `llmModelPolicy`
  * field-reading logic; now (`planning/vertical-drama-centralized-model-policy/

@@ -834,7 +834,23 @@ export class VdSchemaValidationError extends Error {
   issueSummary: string | null;
   constructor(
     message: string,
-    public issues: unknown
+    public issues: unknown,
+    /**
+     * OPTIONAL, both new params below (2026-07-18, character-portrait
+     * lead-beauty graceful-degradation fix — root cause + user decision
+     * recorded on `executeJsonPlanningCallWithRetry`'s `onSchemaRetriesExhausted`
+     * doc comment). The JSON that was successfully PARSED but failed zod
+     * validation — kept ONLY so that hook can re-inspect/re-validate it with
+     * a lenient variant schema after every corrective retry is exhausted.
+     * Every one of this class's 5 OTHER pre-existing throw sites
+     * (`verticalDramaVideoMotionPromptGeneration.ts`, `verticalDramaAdBanner.ts`,
+     * `verticalDramaEpisodeContinuation.ts`, and this file's own 2 sites)
+     * simply omits this argument, so it stays `undefined` there — zero
+     * behavior change for any of them.
+     */
+    public parsedJson?: unknown,
+    /** Same rationale as `parsedJson` — the raw LLM response for THIS attempt, so the hook's accepted result can still return a real `response` object to its caller instead of `undefined`. */
+    public rawResponse?: unknown
   ) {
     const issueSummary = summarizeValidationIssues(issues);
     super(issueSummary ? `${message}: ${issueSummary}` : message);
@@ -1352,6 +1368,47 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
   };
   /** Human-readable label used only in log lines, e.g. "start-frame render plan". */
   label: string;
+  /**
+   * OPTIONAL escape hatch (2026-07-18, character-portrait lead-beauty
+   * graceful-degradation fix). `undefined` for every one of this function's
+   * PRE-EXISTING callers (story bible, episode script, storyboard,
+   * start-frame plan, video motion, ad banner, episode continuation) — since
+   * the new branch below only runs when this is supplied, their control flow
+   * and final-throw behavior is BYTE-IDENTICAL to before this option existed.
+   *
+   * Root cause this exists for: the cheapest-eligible-model auto-selector
+   * some VD stages use (`resolveQualityLargeContextModelId`) reliably writes
+   * lead-character portrait prose too plain to pass the pre-existing
+   * `findLeadPromptQualityIssues` gate in
+   * `verticalDramaCharacterImageGeneration.ts`, hard-failing lead character
+   * creation on every one of `VD_SCHEMA_MAX_RETRIES` retries (audit-2026-07-18
+   * .jsonl, 00:30-00:31 UTC). The user's fix (both accepted, binding):
+   * (1) soften the LEAD-BEAUTY QUALITY gate specifically to a non-fatal
+   * warning once retries are exhausted — never the structural/identity
+   * checks (JSON shape, `character_design_dna` required keys, role-tier
+   * compatibility, the region/ethnicity anchor) — combined with (2) a
+   * stronger default model for that one stage
+   * (`resolvePremiumLargeContextModelId`, see `verticalDramaImproveScript.ts`)
+   * so the softening is rarely even needed going forward.
+   *
+   * Contract: invoked EXACTLY ONCE, only when (a) every corrective schema
+   * retry has already been consumed (mirrors the schema-retry branch's own
+   * exhaustion guard, so this NEVER short-circuits a retry that might still
+   * succeed cleanly) and (b) the final failure is schema-classified with real
+   * parsed JSON to re-offer (never for a JSON-PARSE failure, where there is
+   * no `parsedJson`/`zodError` to reason about). Receives the last attempt's
+   * parsed-but-invalid JSON and its zod error; return a non-null
+   * `{ data, warnings }` to ACCEPT that response despite the validation
+   * failure (the caller is expected to have proven, e.g. by re-validating
+   * `parsedJson` against a lenient variant of its own schema, that the
+   * REMAINING issues are only the ones it has decided are safe to downgrade —
+   * this function has no opinion on which issues qualify). Return `null` to
+   * preserve today's exact hard-throw behavior.
+   */
+  onSchemaRetriesExhausted?: (ctx: {
+    parsedJson: unknown;
+    zodError: unknown;
+  }) => { data: T; warnings: string[] } | null;
 }): Promise<{
   data: T;
   response: Awaited<ReturnType<typeof executeWithFallback>> extends infer R
@@ -1360,6 +1417,8 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
       : never
     : never;
   retried: boolean;
+  /** Only present when `onSchemaRetriesExhausted` accepted a degraded response instead of throwing. Absent (`undefined`) on every normal successful parse, and for every caller that never supplies the option. */
+  warnings?: string[];
 }> {
   const attempt = async (userPrompt: string, maxTokens: number) => {
     const result = await executeWithFallback({
@@ -1388,7 +1447,13 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
     if (!validation.success) {
       throw new VdSchemaValidationError(
         `${params.label} response failed schema validation`,
-        validation.error
+        validation.error,
+        // `parsedJson`/`rawResponse` — see `VdSchemaValidationError`'s doc
+        // comment. Only ever read by the optional `onSchemaRetriesExhausted`
+        // hook below; every other catch site of this error class ignores
+        // these extra args entirely.
+        parsed,
+        result.response
       );
     }
     return { data: validation.data as T, response: result.response };
@@ -1462,6 +1527,38 @@ export async function executeJsonPlanningCallWithRetry<T>(params: {
         );
         await vdSleep(backoffMs);
         continue;
+      }
+
+      // Graceful-degradation escape hatch (opt-in — see `onSchemaRetriesExhausted`'s
+      // doc comment above). Only reached once the schema-retry branch's OWN
+      // exhaustion guard above has already declined to retry again, so this
+      // never fires instead of a retry that might still succeed cleanly —
+      // only as the very last resort before the unconditional throw below.
+      // Restricted to `VdSchemaValidationError` (never a raw JSON-parse
+      // failure, transient error, or fatal error) because only that error
+      // carries the `parsedJson`/`zodError` the hook needs to reason about.
+      if (
+        classification === "schema" &&
+        params.onSchemaRetriesExhausted &&
+        error instanceof VdSchemaValidationError
+      ) {
+        const degraded = params.onSchemaRetriesExhausted({
+          parsedJson: error.parsedJson,
+          zodError: error.issues,
+        });
+        if (degraded) {
+          debugError(
+            "vd_planning_retry",
+            `${params.label}: attempt ${attemptNumber} failed schema validation on every retry, but the graceful-degradation hook accepted the last response with ${degraded.warnings.length} warning(s) instead of failing the stage`,
+            { attemptNumber, warnings: degraded.warnings }
+          );
+          return {
+            data: degraded.data,
+            response: error.rawResponse,
+            retried: attemptNumber > 1,
+            warnings: degraded.warnings,
+          } as never;
+        }
       }
 
       // Fatal, or every available retry budget exhausted — fail the stage.
@@ -2833,6 +2930,37 @@ export interface VdTieInDraftContext {
   forbiddenClaims: string[];
   /** One entry per active-breakdown episode that already carries a `tieIn` decision (`planned` true OR false) — see `planSeasonTieInPlacements`. */
   placements: VdTieInDraftPlacementEntry[];
+  /**
+   * Special-edition-only facts (Stage 2.5 follow-up, added 2026-07-18) — a
+   * "ภาคพิเศษ" (`createMode === "special_edition"`) is a tie-in for its
+   * ENTIRE 1-2 sub-episode runtime, built by
+   * `buildSpecialEditionProductTieInConfig` (`verticalDramaProductTieIn.ts`)
+   * with an `allowedStoryFunctions` subset and (often) uploaded
+   * `referenceAssetIds`, but until this follow-up `resolveTieInDraftBootstrap`
+   * only ever forwarded `productName`/`productCategory`/`benefitFocus`/
+   * `forbiddenClaims`/`placements` — the model never learned WHICH story
+   * function the product/place is allowed to play (a straight review vs. a
+   * plot-solution) or that verified reference photos exist. `undefined` for
+   * EVERY non-special-edition run (including a regular sequel/original series
+   * with `productTieIn.enabled === true`) — this keeps every existing
+   * tie-in-block test byte-identical; only `resolveTieInDraftBootstrap`
+   * populates this, and only when the series' `createMode ===
+   * "special_edition"`.
+   */
+  specialEdition?: {
+    /** `VerticalDramaProductTieInConfig["allowedStoryFunctions"]` values (e.g. `"soft_cta"`/`"plot_clue"`) — the model must keep the placement's role within this set. */
+    allowedStoryFunctions: string[];
+    /**
+     * `true` when the series' `productTieIn.referenceAssetIds` is non-empty.
+     * Deliberately a boolean, NOT the asset ids themselves — media asset ids
+     * are storage handles for the storyboard/image-generation stage, not a
+     * fact a TEXT-drafting model can do anything with; the model only needs
+     * to know verified reference photos exist so it keeps its description of
+     * the product/place grounded in something real rather than inventing a
+     * generic one.
+     */
+    hasReferenceImages: boolean;
+  };
 }
 
 /**
@@ -2873,7 +3001,20 @@ function buildTieInDraftSystemBlock(
     `PRODUCT TIE-IN (season plan): this season has a planned product tie-in for "${context.productName}"${context.productCategory ? ` (category: ${context.productCategory})` : ""}. Each Sub-episode's data below states "productTieIn.planned" true or false for THAT Sub-episode — follow it exactly, this is a season-level planning decision, not yours to make.`,
     `For a "planned": true episode: weave the product naturally into exactly ONE shot's beat, like real TV-drama product placement — it must serve that scene's story beat (never unrealistically resolve the main conflict, never read like an advertisement/ad-speak). NEVER use any of these forbidden claims, verbatim or in spirit: ${forbidden}. Mark that ONE shot's "tie_in" as {"has_product_moment": true, "benefit_line": "<short natural in-scene benefit line the dialogue or visual can carry>"}; every OTHER shot in that episode must omit "tie_in" (or set "has_product_moment": false).`,
     `For a "planned": false episode: do NOT introduce, mention, or visually feature the product at all this episode — every shot omits "tie_in" (or sets "has_product_moment": false).`,
-  ].join("\n");
+    // Special-edition-only facts (Stage 2.5 follow-up) — see
+    // `VdTieInDraftContext.specialEdition`'s own doc comment. `null` (renders
+    // nothing) for every non-special-edition run, keeping this block
+    // byte-identical to before this follow-up whenever `specialEdition` is
+    // absent.
+    context.specialEdition
+      ? `This is a SPECIAL EDITION ("ภาคพิเศษ"): "${context.productName}" is the reason this whole mini-story exists, so it must appear across EVERY episode, not just some. Its role in the story must stay inside this allowed set: ${context.specialEdition.allowedStoryFunctions.join(", ") || "(none specified)"} — do not give it a function outside this list (e.g. do not turn it into a hard sales pitch if only "daily_use"/"soft_cta" are allowed).`
+      : null,
+    context.specialEdition?.hasReferenceImages
+      ? `Verified reference photos of the real product/place exist for this special edition — keep every description of its appearance consistent with a real, specific, recognizable item/place, not a generic invented one.`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -3176,16 +3317,39 @@ function buildSeasonLineagePromptBlock(
   lineage: VdSeasonLineageContext | undefined
 ): string | null {
   if (!lineage) return null;
+  // Only include facts that actually carry a value. An EMPTY array/object here
+  // is not neutral: serialized as `"carriedRelationships":[]` the model reads
+  // it as an assertion that the prior season had NO relationships — the exact
+  // over-claim that makes a zero-relationship parent (most parents, since
+  // script-derived memory yields no pairs) look like it was affirmatively
+  // "checked and found empty" rather than simply "not recorded". Omitting the
+  // key lets the model treat that dimension as unknown, not as none. Non-fact
+  // framing fields (`seasonNumber`, `parentTitle`) are always in the prose
+  // header above, never gated.
+  const facts: Record<string, unknown> = {};
+  if (lineage.priorSeasonSummary) {
+    facts.priorSeasonSummary = lineage.priorSeasonSummary;
+  }
+  if (lineage.carriedRelationships.length > 0) {
+    facts.carriedRelationships = lineage.carriedRelationships;
+  }
+  if (lineage.carriedThreads.length > 0) {
+    facts.carriedThreads = lineage.carriedThreads;
+  }
+  if (lineage.carriedCharacters.length > 0) {
+    facts.carriedCharacters = lineage.carriedCharacters;
+  }
+  if (lineage.writtenOutCharacters.length > 0) {
+    facts.writtenOutCharacters = lineage.writtenOutCharacters;
+  }
+  if (lineage.antagonistStrategy) {
+    facts.antagonistStrategy = lineage.antagonistStrategy;
+  }
+  if (Object.keys(lineage.characterKnowledge).length > 0) {
+    facts.characterKnowledge = lineage.characterKnowledge;
+  }
   return `SEASON LINEAGE (this is Season ${lineage.seasonNumber}, continuing the SAME story as "${lineage.parentTitle}" — every episode you draft MUST stay recognizably part of that same story world, genre, and tone; open a genuinely NEW conflict rather than re-running the prior season's already-resolved plot): ${JSON.stringify(
-    {
-      priorSeasonSummary: lineage.priorSeasonSummary,
-      carriedRelationships: lineage.carriedRelationships,
-      carriedThreads: lineage.carriedThreads,
-      carriedCharacters: lineage.carriedCharacters,
-      writtenOutCharacters: lineage.writtenOutCharacters,
-      antagonistStrategy: lineage.antagonistStrategy,
-      characterKnowledge: lineage.characterKnowledge,
-    }
+    facts
   )}`;
 }
 

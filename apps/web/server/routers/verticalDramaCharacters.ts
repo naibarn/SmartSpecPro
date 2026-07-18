@@ -3034,6 +3034,16 @@ export const verticalDramaCharactersRouter = router({
           candidateCount: candidateResult.candidates.length,
           sharedVisualLanguage: candidateResult.sharedVisualLanguage,
           model: candidateResult.model,
+          // Non-fatal lead-beauty graceful-degradation warnings (FIX A,
+          // `verticalDramaCharacterImageGeneration.ts`) — surfaced so the UI can
+          // tell the creator a lead portrait was accepted despite reading a
+          // touch plain, instead of the previous silent hard-block. Additive +
+          // conditional: absent when the strict gate passed (the common case now
+          // that the visual-bible stage uses a stronger model), byte-identical
+          // response otherwise.
+          ...(candidateResult.warnings?.length
+            ? { warnings: candidateResult.warnings }
+            : {}),
           candidates: candidateResult.candidates.map((candidate) => ({
             assetLinkId: String(draftsByCandidateId.get(candidate.candidateId)!.assetLinkId),
             candidateId: candidate.candidateId,
@@ -3041,6 +3051,9 @@ export const verticalDramaCharactersRouter = router({
             portraitPrompt: candidate.portraitPrompt,
             negativePrompt: candidate.negativePrompt,
             visualIdentitySummary: candidate.visualIdentitySummary,
+            ...(candidate.warnings?.length
+              ? { warnings: candidate.warnings }
+              : {}),
           })),
         };
       }
@@ -3092,6 +3105,11 @@ export const verticalDramaCharactersRouter = router({
         turnaroundPrompt: promptResult.turnaroundPrompt,
         negativePrompt: promptResult.negativePrompt,
         model: promptResult.model,
+        // Non-fatal lead-beauty warnings (FIX A) — see the candidate_batch
+        // branch above for the full rationale; additive + conditional.
+        ...(promptResult.warnings?.length
+          ? { warnings: promptResult.warnings }
+          : {}),
         approvedDesignSnapshot: {
           characterKey: character.characterKey,
           portraitPrompt: renderPrompt,

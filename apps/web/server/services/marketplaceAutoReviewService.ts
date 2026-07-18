@@ -9203,6 +9203,121 @@ function buildProductReferenceStoryboardSkillInputSnapshot(
   };
 }
 
+/**
+ * Resilience — Layer 2 (pipeline guarantee).
+ *
+ * Whatever fails mid-way through the product-reference-storyboard prompt
+ * skill loop, once we reach this function a prompt MUST be returned so
+ * image generation always proceeds. The storyboard-prompt LLM refinement
+ * is an enhancer, not a gate. See
+ * planning/marketplace-auto-review-storyboard-resilience/plan.md.
+ *
+ * Builds a deterministic prompt straight from the approved plan
+ * (bypassing the LLM prompt skill entirely), best-effort optimizes it for
+ * provider length limits, and runs preflight in ADVISORY mode only
+ * (never throws on a failed preflight result).
+ */
+async function buildDegradedMarketplaceAutoReviewStoryboardGridPromptFallback(input: {
+  tenantId: string;
+  auth: AuthContext;
+  runId: string;
+  plan: AutoReviewPlan;
+  unit: DirectImageUnit;
+  attempt: number;
+  overlayTextMode: MarketplaceAutoReviewOverlayTextMode;
+  originalError: unknown;
+}): Promise<{
+  prompt: string;
+  preflight: MarketplaceAutoReviewPromptPreflightResult;
+  skillRun: ProductReferenceStoryboardPromptSkillRunResult | null;
+  skillRuntime: Record<string, unknown> | null;
+}> {
+  const degradedReason =
+    input.originalError instanceof Error
+      ? input.originalError.message
+      : String(input.originalError);
+  const sourcePrompt = buildImagePromptForUnit(
+    input.plan,
+    input.unit,
+    input.overlayTextMode
+  );
+
+  let optimizedPrompt = sourcePrompt;
+  let finalPromptOptimizerAudit: Record<string, unknown> | null = null;
+  try {
+    const optimized =
+      await optimizeMarketplaceAutoReviewFinalImagePromptForProvider({
+        tenantId: input.tenantId,
+        userId: input.auth.userId,
+        runId: input.runId,
+        unitId: input.unit.unitId,
+        attempt: input.attempt,
+        sourcePrompt,
+      });
+    optimizedPrompt = optimized.prompt;
+    finalPromptOptimizerAudit = optimized.audit;
+  } catch (optimizerError) {
+    optimizedPrompt = sourcePrompt;
+    finalPromptOptimizerAudit = {
+      used: false,
+      failed: true,
+      error:
+        optimizerError instanceof Error
+          ? optimizerError.message
+          : String(optimizerError),
+    };
+  }
+
+  const repairDirectedPrompt = ensureTargetedRepairDirectiveInImagePrompt(
+    optimizedPrompt,
+    input.unit
+  );
+
+  const skillRuntime: Record<string, unknown> = {
+    degradedFallback: "plan_prompt",
+    degradedReason,
+    ...(finalPromptOptimizerAudit
+      ? { finalPromptOptimizer: finalPromptOptimizerAudit }
+      : {}),
+  };
+
+  const rawResult = validateMarketplaceAutoReviewImagePromptPreflight({
+    prompt: repairDirectedPrompt,
+    unit: input.unit,
+    plan: input.plan,
+    overlayTextMode: input.overlayTextMode,
+    skillRuntime,
+  });
+  // ADVISORY MODE: never throw on the preflight result here — this is the
+  // last-resort path and image generation must proceed regardless.
+  const result: MarketplaceAutoReviewPromptPreflightResult = {
+    ...rawResult,
+    warnings: [...rawResult.warnings, "storyboard_prompt_degraded_fallback"],
+  };
+
+  console.warn(
+    "[marketplaceAutoReview] storyboard_grid_prompt_degraded_fallback",
+    {
+      runId: input.runId,
+      unitId: input.unit.unitId,
+      attempt: input.attempt,
+      degradedReason,
+      preflightStatus: result.status,
+      preflightScore: result.score,
+      preflightBlockers: result.blockers,
+      promptLengthChars: repairDirectedPrompt.length,
+      fallbackUsed: true,
+    }
+  );
+
+  return {
+    prompt: repairDirectedPrompt,
+    preflight: result,
+    skillRun: null,
+    skillRuntime,
+  };
+}
+
 async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
   tenantId: string;
   auth: AuthContext;
@@ -9276,6 +9391,12 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
       input.publicUrl
     );
 
+  // Resilience — Layer 2: the whole prompt-skill attempt loop below (plus
+  // its trailing throw) is wrapped so that any failure that survives the
+  // loop's own retries falls back to a deterministic plan-derived prompt
+  // instead of failing the run. See buildDegradedMarketplaceAutoReview
+  // StoryboardGridPromptFallback above.
+  try {
   for (
     let promptSkillAttempt = 1;
     promptSkillAttempt <=
@@ -9512,6 +9633,49 @@ async function prepareMarketplaceAutoReviewImagePromptForSubmit(input: {
       "product-reference-storyboard prompt preflight failed before image provider submit"
     )
   );
+  } catch (loopError) {
+    console.error(
+      "[marketplaceAutoReview] storyboard_grid_prompt_skill_loop_failed_using_degraded_fallback",
+      {
+        runId: input.runId,
+        unitId: input.unit.unitId,
+        attempt: input.attempt,
+        error:
+          loopError instanceof Error ? loopError.message : String(loopError),
+        fallbackUsed: true,
+      }
+    );
+    return buildDegradedMarketplaceAutoReviewStoryboardGridPromptFallback({
+      tenantId: input.tenantId,
+      auth: input.auth,
+      runId: input.runId,
+      plan: input.plan,
+      unit: input.unit,
+      attempt: input.attempt,
+      overlayTextMode: input.overlayTextMode,
+      originalError: loopError,
+    });
+  }
+}
+
+export function prepareMarketplaceAutoReviewImagePromptForSubmitForTest(input: {
+  tenantId: string;
+  auth: AuthContext;
+  runId: string;
+  plan: AutoReviewPlan;
+  unit: DirectImageUnit;
+  attempt: number;
+  overlayTextMode: MarketplaceAutoReviewOverlayTextMode;
+  referenceImageGroups: ProductReferenceStoryboardReferenceImageGroups;
+  publicUrl?: string | null;
+  metadata?: RunMetadata | null;
+}): Promise<{
+  prompt: string;
+  preflight: MarketplaceAutoReviewPromptPreflightResult;
+  skillRun: ProductReferenceStoryboardPromptSkillRunResult | null;
+  skillRuntime: Record<string, unknown> | null;
+}> {
+  return prepareMarketplaceAutoReviewImagePromptForSubmit(input);
 }
 
 export function validateMarketplaceAutoReviewImagePromptPreflightForTest(input: {

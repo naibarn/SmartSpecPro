@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   computeModelPriority,
   selectBestLlmModel,
+  selectLlmModelCandidates,
   describeRequirementsMatch,
   type ModelPriorityInput,
   type CapabilityRequirements,
@@ -327,6 +328,107 @@ describe("selectBestLlmModel", () => {
       rows,
     );
     expect(result).toBe("tools-only");
+  });
+});
+
+describe("selectLlmModelCandidates", () => {
+  it("returns the full ranked candidate list sorted by priority ASC", () => {
+    const rows = [
+      makeRow("gpt-4o", { priority: 10, supportsVision: true }),
+      makeRow("claude-3", { priority: 5, supportsVision: true }),
+      makeRow("gemini", { priority: 20, supportsVision: true }),
+    ];
+    const result = selectLlmModelCandidates({ supportsVision: true }, rows);
+    expect(result).toEqual(["claude-3", "gpt-4o", "gemini"]);
+  });
+
+  it("returns the same first element as selectBestLlmModel for identical requirements", () => {
+    const rows = [
+      makeRow("gpt-4o", { priority: 10, supportsVision: true }),
+      makeRow("claude-3", { priority: 5, supportsVision: true }),
+    ];
+    const requirements = { supportsVision: true };
+    expect(selectLlmModelCandidates(requirements, rows)[0]).toBe(
+      selectBestLlmModel(requirements, rows),
+    );
+  });
+
+  it("truncates to maxCandidates", () => {
+    const rows = [
+      makeRow("a", { priority: 1, supportsVision: true }),
+      makeRow("b", { priority: 2, supportsVision: true }),
+      makeRow("c", { priority: 3, supportsVision: true }),
+      makeRow("d", { priority: 4, supportsVision: true }),
+    ];
+    const result = selectLlmModelCandidates({ supportsVision: true }, rows, 2);
+    expect(result).toEqual(["a", "b"]);
+  });
+
+  it("defaults maxCandidates to 5", () => {
+    const rows = Array.from({ length: 8 }, (_, i) =>
+      makeRow(`model-${i}`, { priority: i, supportsVision: true }),
+    );
+    const result = selectLlmModelCandidates({ supportsVision: true }, rows);
+    expect(result).toHaveLength(5);
+    expect(result).toEqual([
+      "model-0",
+      "model-1",
+      "model-2",
+      "model-3",
+      "model-4",
+    ]);
+  });
+
+  it("applies AND-logic capability filtering identical to selectBestLlmModel", () => {
+    const rows = [
+      makeRow("partial", {
+        supportsFunctionTools: true,
+        supportsVision: false,
+      }),
+      makeRow("full", { supportsFunctionTools: true, supportsVision: true }),
+    ];
+    const result = selectLlmModelCandidates(
+      { supportsFunctionTools: true, supportsVision: true },
+      rows,
+    );
+    expect(result).toEqual(["full"]);
+  });
+
+  it("applies contextLength filtering", () => {
+    const rows = [
+      makeRow("small", { contextLength: 4096, priority: 1 }),
+      makeRow("large", { contextLength: 1_000_000, priority: 2 }),
+    ];
+    const result = selectLlmModelCandidates({ contextLength: 500_000 }, rows);
+    expect(result).toEqual(["large"]);
+  });
+
+  it("returns empty array when no row qualifies", () => {
+    const rows = [makeRow("text-only", { supportsVision: false })];
+    const result = selectLlmModelCandidates({ supportsVision: true }, rows);
+    expect(result).toEqual([]);
+  });
+
+  it("returns empty array for empty rows input", () => {
+    expect(selectLlmModelCandidates({ supportsVision: true }, [])).toEqual([]);
+  });
+
+  it("excludes manual-only catalog rows same as selectBestLlmModel", () => {
+    const rows = [
+      makeRow("manual-review", {
+        priority: 1,
+        catalogEligibility: "manual-only",
+        supportsVision: true,
+      }),
+      makeRow("public-auto", {
+        priority: 20,
+        catalogEligibility: "public-chat",
+        supportsVision: true,
+      }),
+    ];
+    expect(selectLlmModelCandidates({ supportsVision: true }, rows)).toEqual([
+      "public-auto",
+    ]);
   });
 });
 

@@ -1168,7 +1168,7 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       expect(input.mode).toBe("premium");
     });
 
-    it("leaving it unchecked sends extendStoryDraftHorizon WITHOUT a `mode` key", async () => {
+    it("leaving it unchecked sends extendStoryDraftHorizon WITH mode: 'standard' explicitly (2026-07-18 fix — mode is always sent now, never omitted; an omitted mode defaults to premium server-side for a lineage series, which unchecking must be able to override)", async () => {
       render(
         <VerticalDramaDeepStoryDraftsActions
           lang="th"
@@ -1191,11 +1191,10 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
       await waitFor(() =>
         expect(mockExtendMutateAsync).toHaveBeenCalledTimes(1)
       );
-      const input = mockExtendMutateAsync.mock.calls[0][0] as Record<
-        string,
-        unknown
-      >;
-      expect("mode" in input).toBe(false);
+      const input = mockExtendMutateAsync.mock.calls[0][0] as {
+        mode?: string;
+      };
+      expect(input.mode).toBe("standard");
     });
 
     it("does NOT auto-reset after a successful extend (ordinary persistent toggle, not a per-open reset)", () => {
@@ -1244,6 +1243,111 @@ describe("VerticalDramaDeepStoryDraftsActions — consolidated primary action", 
         screen.queryByRole("checkbox", {
           name: "ใช้โหมดพรีเมียมสำหรับการขยายนี้",
         })
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  /**
+   * `isLineageSeries` prop (client fix, 2026-07-18) — mirrors the server's
+   * own sequel-aware `mode` default in `extendStoryDraftHorizon`
+   * (`input.mode ?? (row.parentSeriesId != null ? "premium" : "standard")`,
+   * `routers/verticalDramaSeries.ts`). Without this prop the checkbox always
+   * started unchecked while a sequel's extend silently ran premium anyway
+   * (mode omitted) — these tests prove the checkbox now reflects, and the
+   * user can now override, what the server actually runs.
+   */
+  describe("isLineageSeries prop — sequel-aware extend premium default (2026-07-18 fix)", () => {
+    function renderExtend(isLineageSeries: boolean | undefined) {
+      render(
+        <VerticalDramaDeepStoryDraftsActions
+          lang="th"
+          seriesId="10"
+          readOnly={false}
+          targetEpisodeCount={10}
+          hasPlan={true}
+          deepDraftSummary={{
+            horizonEndEpisode: 5,
+            episodesWithDrafts: 5,
+            totalEpisodes: 10,
+          }}
+          onGenerateStoryBible={resolvedOnGenerateStoryBible()}
+          isLineageSeries={isLineageSeries}
+        />
+      );
+    }
+
+    it("a lineage series (isLineageSeries=true) starts the checkbox CHECKED, and confirming sends mode: 'premium'", async () => {
+      renderExtend(true);
+      const checkbox = screen.getByRole("checkbox", {
+        name: "ใช้โหมดพรีเมียมสำหรับการขยายนี้",
+      });
+      expect(checkbox).toHaveAttribute("aria-checked", "true");
+
+      fireEvent.click(
+        screen.getByRole("button", { name: /ขยายร่างอีก 5 ตอนย่อย/ })
+      );
+      await waitFor(() =>
+        expect(mockExtendMutateAsync).toHaveBeenCalledTimes(1)
+      );
+      const input = mockExtendMutateAsync.mock.calls[0][0] as {
+        mode?: string;
+      };
+      expect(input.mode).toBe("premium");
+    });
+
+    it("a lineage series with the checkbox UNCHECKED by the user sends mode: 'standard' (proves the override actually works — the server would otherwise default an omitted mode to premium for this series)", async () => {
+      renderExtend(true);
+      const checkbox = screen.getByRole("checkbox", {
+        name: "ใช้โหมดพรีเมียมสำหรับการขยายนี้",
+      });
+      expect(checkbox).toHaveAttribute("aria-checked", "true");
+      fireEvent.click(checkbox);
+      expect(checkbox).toHaveAttribute("aria-checked", "false");
+
+      fireEvent.click(
+        screen.getByRole("button", { name: /ขยายร่างอีก 5 ตอนย่อย/ })
+      );
+      await waitFor(() =>
+        expect(mockExtendMutateAsync).toHaveBeenCalledTimes(1)
+      );
+      const input = mockExtendMutateAsync.mock.calls[0][0] as {
+        mode?: string;
+      };
+      expect(input.mode).toBe("standard");
+    });
+
+    it("a non-lineage series (isLineageSeries=false, and the default when the prop is omitted) starts the checkbox UNCHECKED, and confirming sends mode: 'standard' — byte-identical to pre-fix behavior modulo the now-explicit mode key", async () => {
+      renderExtend(undefined);
+      const checkbox = screen.getByRole("checkbox", {
+        name: "ใช้โหมดพรีเมียมสำหรับการขยายนี้",
+      });
+      expect(checkbox).toHaveAttribute("aria-checked", "false");
+
+      fireEvent.click(
+        screen.getByRole("button", { name: /ขยายร่างอีก 5 ตอนย่อย/ })
+      );
+      await waitFor(() =>
+        expect(mockExtendMutateAsync).toHaveBeenCalledTimes(1)
+      );
+      const input = mockExtendMutateAsync.mock.calls[0][0] as {
+        mode?: string;
+      };
+      expect(input.mode).toBe("standard");
+    });
+
+    it("shows the sequel continuity hint line for a lineage series", () => {
+      renderExtend(true);
+      expect(
+        screen.getByTestId("vd-deep-story-drafts-extend-premium-lineage-hint")
+      ).toBeInTheDocument();
+    });
+
+    it("does NOT show the sequel continuity hint line for a non-lineage series", () => {
+      renderExtend(false);
+      expect(
+        screen.queryByTestId(
+          "vd-deep-story-drafts-extend-premium-lineage-hint"
+        )
       ).not.toBeInTheDocument();
     });
   });

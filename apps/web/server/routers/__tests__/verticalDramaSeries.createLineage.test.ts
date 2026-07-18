@@ -20,16 +20,24 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDb } = vi.hoisted(() => ({
-  mockDb: {
+const { mockDb } = vi.hoisted(() => {
+  const db: any = {
     select: vi.fn(),
     update: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
     transaction: vi.fn(),
     instance: {},
-  },
-}));
+  };
+  // The `create` mutation now runs the insert + cast/location clone for a
+  // sequel/special-edition inside ONE `db.transaction` (orphan-row fix) — the
+  // fake `tx` handle passed to the callback IS this same mock `db` object, so
+  // every existing assertion against `mockDb.insert.mock.results[...]` still
+  // finds the insert call it expects, whether or not that call happened to
+  // run through a transaction.
+  db.transaction = vi.fn((fn: (tx: unknown) => unknown) => fn(db));
+  return { mockDb: db };
+});
 vi.mock("../../db", () => ({ db: mockDb }));
 
 vi.mock("../../_core/trpc", () => {
@@ -264,7 +272,11 @@ describe("create — season lineage (Stage 2.1/2.3)", () => {
         userId: 42,
         parentSeriesId: 16,
         childSeriesId: 10,
-      })
+      }),
+      // Insert + clone transactional guarantee (orphan-row fix) — the SAME
+      // `tx` handle the insert just ran on is passed through, not a bare
+      // second `undefined` arg.
+      expect.anything()
     );
     expect(result.series.id).toBe("10");
   });
@@ -283,7 +295,7 @@ describe("create — season lineage (Stage 2.1/2.3)", () => {
     expect(mockDb.insert).not.toHaveBeenCalled();
   });
 
-  it("a clone failure never fails series creation (best-effort, error logged)", async () => {
+  it("a clone failure HARD-THROWS — no orphan sequel row, never a plain success (orphan-row fix)", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesLineage: true });
     mockDb.select.mockReturnValueOnce(selectChain([PARENT_ROW]));
     mockDb.insert.mockReturnValueOnce(
@@ -291,12 +303,22 @@ describe("create — season lineage (Stage 2.1/2.3)", () => {
     );
     mockCloneSeriesCastForLineage.mockRejectedValue(new Error("db exploded"));
 
-    const result = await router.create({
-      ctx: ctx(),
-      input: { title: "My Sequel", parentSeriesId: "16" },
-    });
+    // Previously this resolved successfully with `result.series.id === "10"`
+    // — a sequel row persisted with `parentSeriesId` set and ZERO cloned
+    // cast, silently. Now the insert + clone run inside ONE `db.transaction`
+    // (this test's `mockDb.transaction` fake runs the callback against the
+    // SAME mock `db`, so the insert call above is still observable, but in
+    // the REAL Postgres driver a thrown error inside that callback rolls the
+    // whole transaction — insert included — back; no orphan row reaches the
+    // database).
+    await expect(
+      router.create({
+        ctx: ctx(),
+        input: { title: "My Sequel", parentSeriesId: "16" },
+      })
+    ).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" });
 
-    expect(result.series.id).toBe("10");
+    expect(mockCloneSeriesCastForLineage).toHaveBeenCalledTimes(1);
   });
 });
 

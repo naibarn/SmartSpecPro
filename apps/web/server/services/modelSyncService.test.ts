@@ -200,4 +200,149 @@ describe("syncProviderModels", () => {
       },
     ]);
   });
+
+  describe("Layer 3 — OpenRouter architecture-derived supportsVision", () => {
+    function mockModelProviderMapLookup(
+      rows: Array<{ providerModelId: string; supportsVision: boolean | null }>,
+    ) {
+      const where = vi.fn().mockResolvedValue(rows);
+      const from = vi.fn().mockReturnValue({ where });
+      mockDbSelect.mockReturnValueOnce({ from });
+    }
+
+    it("derives supportsVision=false from architecture.modality text->text and does not overwrite model_provider_map", async () => {
+      mockProviderLookup({
+        id: 99,
+        providerName: "openrouter",
+        displayName: "OpenRouter",
+        baseUrl: "https://openrouter.ai/api/v1",
+        apiKeyEncrypted: "encrypted",
+        availableModels: [],
+      });
+      const update = mockProviderUpdate();
+      // model_provider_map still has the stale supportsVision=true row —
+      // this must NOT be auto-corrected (it's admin-editable).
+      mockModelProviderMapLookup([
+        { providerModelId: "z-ai/glm-5.2", supportsVision: true },
+      ]);
+
+      vi.mocked(globalThis.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: "z-ai/glm-5.2",
+              name: "GLM 5.2",
+              context_length: 128000,
+              architecture: { modality: "text->text" },
+            },
+          ],
+        }),
+        status: 200,
+        statusText: "OK",
+      } as Response);
+
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const result = await syncProviderModels(99, "openrouter-key");
+
+      expect(result.success).toBe(true);
+      const syncedModels = update.set.mock.calls[0]?.[0]
+        ?.availableModels as Array<Record<string, unknown>>;
+      const model = syncedModels.find((m) => m.id === "z-ai/glm-5.2");
+      expect(model?.supportsVision).toBe(false);
+
+      // Never writes to model_provider_map from this sync path — the only
+      // db.update() call is the existing llmProviders.availableModels write.
+      expect(mockDbUpdate).toHaveBeenCalledTimes(1);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "[modelSync] vision_capability_mismatch",
+        expect.objectContaining({
+          modelId: "z-ai/glm-5.2",
+          storedSupportsVision: true,
+          openRouterDerivedSupportsVision: false,
+          action: "not_auto_corrected_supportsVision_is_admin_editable",
+        }),
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it("derives supportsVision=true from architecture.input_modalities including image", async () => {
+      mockProviderLookup({
+        id: 100,
+        providerName: "openrouter",
+        displayName: "OpenRouter",
+        baseUrl: "https://openrouter.ai/api/v1",
+        apiKeyEncrypted: "encrypted",
+        availableModels: [],
+      });
+      const update = mockProviderUpdate();
+      mockModelProviderMapLookup([]);
+
+      vi.mocked(globalThis.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: "openai/gpt-vision",
+              name: "GPT Vision",
+              context_length: 128000,
+              architecture: {
+                modality: "text+image->text",
+                input_modalities: ["text", "image"],
+              },
+            },
+          ],
+        }),
+        status: 200,
+        statusText: "OK",
+      } as Response);
+
+      const result = await syncProviderModels(100, "openrouter-key");
+
+      expect(result.success).toBe(true);
+      const syncedModels = update.set.mock.calls[0]?.[0]
+        ?.availableModels as Array<Record<string, unknown>>;
+      const model = syncedModels.find((m) => m.id === "openai/gpt-vision");
+      expect(model?.supportsVision).toBe(true);
+    });
+
+    it("leaves supportsVision undefined when architecture data is absent", async () => {
+      mockProviderLookup({
+        id: 101,
+        providerName: "openrouter",
+        displayName: "OpenRouter",
+        baseUrl: "https://openrouter.ai/api/v1",
+        apiKeyEncrypted: "encrypted",
+        availableModels: [],
+      });
+      const update = mockProviderUpdate();
+      mockModelProviderMapLookup([]);
+
+      vi.mocked(globalThis.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: "some/unknown-model",
+              name: "Unknown Model",
+              context_length: 32000,
+            },
+          ],
+        }),
+        status: 200,
+        statusText: "OK",
+      } as Response);
+
+      const result = await syncProviderModels(101, "openrouter-key");
+
+      expect(result.success).toBe(true);
+      const syncedModels = update.set.mock.calls[0]?.[0]
+        ?.availableModels as Array<Record<string, unknown>>;
+      const model = syncedModels.find((m) => m.id === "some/unknown-model");
+      expect(model?.supportsVision).toBeUndefined();
+    });
+  });
 });

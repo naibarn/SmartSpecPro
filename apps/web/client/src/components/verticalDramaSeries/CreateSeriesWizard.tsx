@@ -7,7 +7,7 @@
  * creates a series shell only and never triggers paid generation.
  */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ImageIcon,
@@ -29,6 +29,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import {
   Dialog,
   DialogContent,
@@ -64,14 +65,44 @@ import {
   DEFAULT_AUDIENCE_AGE_RATING,
   type AudienceAgeRating,
 } from "@shared/verticalDramaSeries/audienceAgeRating";
-import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
 import {
+  VERTICAL_DRAMA_CARRY_OVER_AVAILABILITIES,
+  type VerticalDramaCarryOverAvailability,
+  type VerticalDramaCarryOverCharacterDecision,
+  type VerticalDramaSeasonCarryOverDraft,
+  type VerticalDramaSeriesCreateMode,
+  type VerticalDramaSeriesLineage,
+} from "@shared/verticalDramaSeries/lineage";
+import type {
+  VdOpenThread,
+  VdRelationshipState,
+} from "@shared/verticalDramaSeries/seriesMemoryState";
+import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
+import { DisclosureBadge } from "./VerticalDramaSeriesMemoryStateTab";
+import {
+  carryOverAvailabilityCopy,
+  carryOverCopy,
+  createModeToggleCopy,
+  genreLockedHintCopy,
+  lineageCoverageLinkCopy,
+  lineageReviewSummaryCopy,
   mixWeightLabel,
+  parentSeriesPickerCopy,
   pickCopy,
+  resolveWizardSteps,
+  seasonNumberFieldCopy,
+  specialEditionCopy,
+  specialEditionEpisodeCountLockedHintCopy,
+  toneLockedHintCopy,
   verticalDramaCopy,
+  verticalDramaRoutes,
   visualStyleLabel,
-  wizardSteps,
 } from "./verticalDramaCopy";
+import {
+  coverageHeadlineText,
+  coverageSecondaryText,
+  threadClassCopy,
+} from "./verticalDramaSeriesMemoryCopy";
 
 interface WizardState {
   title: string;
@@ -138,6 +169,45 @@ interface WizardState {
    * `visualIdentityJson` (if any) into the new series' bible.
    */
   appliedPresetId?: string;
+  /**
+   * Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — season 2 /
+   * special-edition create modes. `undefined` is the ONLY valid "original
+   * series" value (never the string `"original"` — see
+   * `@shared/verticalDramaSeries/lineage`'s own doc comment on why: it
+   * mirrors the `createMode` DB column's own "NULL = original" invariant so
+   * a reset wizard is provably the pre-existing wizard, not a third enum
+   * member masquerading as one).
+   */
+  createMode?: VerticalDramaSeriesCreateMode;
+  /** The chosen parent series' id (string, same convention as every other id in this wizard/router). Required by `createValid` whenever `createMode` is set. */
+  parentSeriesId?: string;
+  /** Sequel only — kept as a plain numeric-text field like `targetEpisodeCount`, parsed at `create` time. */
+  seasonNumber?: string;
+  /** Free-form "โจทย์ภาคใหม่ที่อยากได้" sent to `proposeSeasonCarryOver` — separate from `userPremise` (which is a top-level `create` field for ALL modes). */
+  carryOverPremise: string;
+  /**
+   * User edits layered on top of `proposeSeasonCarryOver`'s AI-proposed
+   * `characters[]` — keyed by `characterKey` so `handleCreate` can merge
+   * them back into the draft without losing the AI's original judgment for
+   * any field the user never touched (see `resolveCarryOverCharacters`).
+   */
+  carryOverOverrides: Record<
+    string,
+    Partial<
+      Pick<
+        VerticalDramaCarryOverCharacterDecision,
+        "availability" | "returnJustification" | "suggestedStateUpdate"
+      >
+    >
+  >;
+  /** Stage 2.5 special-edition sources — story-function choice (source 3). */
+  storyFunctionChoice?: "review" | "tie_in_solution";
+  /** Stage 2.5 source 1 (marketplace) — description companion to the existing `productName`/`productId` fields shared with the Product tie-in step. */
+  productDescription?: string;
+  /** Stage 2.5 source 2 — uploaded reference images, kept as plain `{url,mimeType,fileName}` (never `resolveMediaAssetForImport`, which requires a series id that doesn't exist yet in this wizard). */
+  uploadedReferences: Array<{ url: string; mimeType: string; fileName: string }>;
+  /** Stage 2.5 source 2 — short summary of what was uploaded. */
+  uploadedSummary?: string;
 }
 
 const INITIAL_WIZARD: WizardState = {
@@ -159,6 +229,17 @@ const INITIAL_WIZARD: WizardState = {
   productTieInEnabled: false,
   productName: "",
   forbiddenClaims: "",
+  // Stage 2.6 — `createMode: undefined` (never `"original"`), see the field's
+  // own doc comment above.
+  createMode: undefined,
+  parentSeriesId: undefined,
+  seasonNumber: undefined,
+  carryOverPremise: "",
+  carryOverOverrides: {},
+  storyFunctionChoice: undefined,
+  productDescription: "",
+  uploadedReferences: [],
+  uploadedSummary: "",
 };
 
 /** Default weight for a newly-selected preset (spec §8.2.2.C.1 — "default equal"). */
@@ -262,6 +343,34 @@ export function resolveCreateSeriesPresetAction(params: {
   };
 }
 
+/**
+ * Stage 2.2/2.6 — folds the AI-proposed carry-over draft's `characters[]`
+ * with the user's per-`characterKey` overrides (`WizardState.carryOverOverrides`)
+ * into the final array `create` persists at `lineage.carryOver.characters`.
+ * Pure — exported for direct unit testing without rendering. A character
+ * with no override at all is forwarded UNCHANGED (the AI's own judgment);
+ * an override only ever replaces the 3 user-editable fields
+ * (`availability`/`returnJustification`/`suggestedStateUpdate`), never
+ * `characterKey`/`name`/`postFinaleStatus`.
+ */
+export function resolveCarryOverCharacters(
+  draftCharacters: VerticalDramaCarryOverCharacterDecision[],
+  overrides: Record<
+    string,
+    Partial<
+      Pick<
+        VerticalDramaCarryOverCharacterDecision,
+        "availability" | "returnJustification" | "suggestedStateUpdate"
+      >
+    >
+  >
+): VerticalDramaCarryOverCharacterDecision[] {
+  return draftCharacters.map(character => ({
+    ...character,
+    ...overrides[character.characterKey],
+  }));
+}
+
 export function CreateSeriesWizard({
   open,
   lang,
@@ -299,11 +408,88 @@ export function CreateSeriesWizard({
     () => Array.from(new Set(presets.map(p => p.category))),
     [presets]
   );
+  // Stage 2.5 3-source picker (source 1) — widened `enabled` (this query and
+  // component were already wired for the Product tie-in step): a special
+  // edition needs the marketplace picker even when the unrelated
+  // `productTieInEnabled` checkbox is off.
   const productsQuery = trpc.marketplaceCapture.listProducts.useQuery(
     { query: productSearch || undefined, limit: 20 },
-    { enabled: form.productTieInEnabled }
+    { enabled: form.productTieInEnabled || form.createMode === "special_edition" }
   );
   const products = productsQuery.data ?? [];
+
+  // Stage 2.6 — the whole lineage UI (mode toggle, picker, carry-over grid,
+  // special-edition sources) is hidden behind this tenant flag; `createMode`
+  // itself can only ever become non-`undefined` through UI this flag gates,
+  // so flag-off is provably identical to the pre-existing wizard.
+  const lineageEnabled = useTenantFeatureFlag("verticalDramaSeriesLineage");
+
+  const seriesListQuery = trpc.verticalDramaSeries.list.useQuery(
+    { limit: 100 },
+    { enabled: lineageEnabled && Boolean(form.createMode) }
+  );
+  const parentSeriesOptions = seriesListQuery.data?.series ?? [];
+
+  // Parent series full row (genre/tone/bible/memory snapshot) — used to
+  // prefill+lock genre/tone and seed `visualBible`/`lineage.priorSeasonSummary`.
+  // `get` is the ONLY existing procedure that returns the raw row (`list`
+  // does not carry `bible`/`memory`/`genre`/`tone`).
+  const parentSeriesQuery = trpc.verticalDramaSeries.get.useQuery(
+    { seriesId: form.parentSeriesId ?? "" },
+    { enabled: lineageEnabled && Boolean(form.parentSeriesId) }
+  );
+  const parentSeries = parentSeriesQuery.data?.series;
+
+  // Sequel-only — parent's memory coverage (review-step thin-season warning).
+  const parentMemoryQuery = trpc.verticalDramaSeries.getSeriesMemory.useQuery(
+    { seriesId: form.parentSeriesId ?? "" },
+    {
+      enabled:
+        lineageEnabled &&
+        form.createMode === "sequel" &&
+        Boolean(form.parentSeriesId),
+    }
+  );
+
+  const carryOverMutation =
+    trpc.verticalDramaSeries.proposeSeasonCarryOver.useMutation({
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? "เสนอการกลับมาของตัวละครไม่สำเร็จ"
+              : "Failed to propose cast carry-over")
+        );
+      },
+    });
+
+  const specialEditionMutation =
+    trpc.verticalDramaSeries.proposeSpecialEditionBrief.useMutation({
+      onSuccess: data => {
+        // Same "propose -> transient draft -> user applies" shape as
+        // `applyPresetDraft` — auto-fill `userPremise` only the FIRST time so
+        // a regenerate never silently clobbers a user's edits to the applied
+        // text. Functional `setForm` update (not the `set` helper closing
+        // over a possibly-stale `form`) since this runs asynchronously after
+        // the mutation resolves.
+        setForm(prev => ({
+          ...prev,
+          userPremise: prev.userPremise.trim()
+            ? prev.userPremise
+            : data.suggestedUserPremise,
+        }));
+      },
+      onError: (err: { message?: string }) => {
+        toast.error(
+          err?.message ||
+            (lang === "th"
+              ? "ร่างภาคพิเศษไม่สำเร็จ"
+              : "Failed to draft the special edition")
+        );
+      },
+    });
+
+  const uploadMutation = trpc.ai.upload.useMutation();
 
   const synthesizePresetMutation =
     trpc.verticalDramaSeries.synthesizeGenrePreset.useMutation({
@@ -364,6 +550,141 @@ export function CreateSeriesWizard({
 
   const set = <K extends keyof WizardState>(key: K, value: WizardState[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
+
+  // Stage 2.6 — once a parent series loads for a sequel/special edition,
+  // inherit genre (both modes) + tone (sequel only) verbatim and lock them in
+  // the UI (`Field`s below check `form.createMode`/`parentSeries` directly),
+  // and prefill `visualBible` from the parent's bible — but ONLY the very
+  // first time (never clobber an edit the user already made, e.g. by
+  // switching parents twice). Runs once per `parentSeriesId` via the ref
+  // guard, same pattern as `VerticalDramaCharacterReferencePanel`'s
+  // `defaultedForCharacterRef`.
+  const lineagePrefilledForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!form.createMode || !form.parentSeriesId || !parentSeries) return;
+    if (lineagePrefilledForRef.current === form.parentSeriesId) return;
+    lineagePrefilledForRef.current = form.parentSeriesId;
+    setForm(prev => ({
+      ...prev,
+      genre: parentSeries.genre ?? prev.genre,
+      tone:
+        prev.createMode === "sequel" ? parentSeries.tone ?? prev.tone : prev.tone,
+      visualBible: prev.visualBible.trim()
+        ? prev.visualBible
+        : typeof (parentSeries.bible as Record<string, unknown> | null)
+              ?.visualStyle === "string"
+          ? ((parentSeries.bible as Record<string, unknown>)
+              .visualStyle as string)
+          : prev.visualBible,
+    }));
+  }, [form.createMode, form.parentSeriesId, parentSeries]);
+
+  /** Switching create mode resets the parent-selection-dependent state so a stale pick from a different mode can never leak into `create`'s payload. */
+  function handleSetCreateMode(mode: VerticalDramaSeriesCreateMode | undefined) {
+    lineagePrefilledForRef.current = null;
+    setForm(prev => ({
+      ...prev,
+      createMode: mode,
+      parentSeriesId: undefined,
+      seasonNumber: mode === "sequel" ? "2" : undefined,
+      carryOverPremise: "",
+      carryOverOverrides: {},
+      storyFunctionChoice: mode === "special_edition" ? "review" : undefined,
+      // Stage 2.5 hard cap — clamp an existing (likely double-digit) planned
+      // count down to the 1-2 special-edition range the moment the mode is
+      // chosen, rather than waiting for the user to notice the field itself.
+      targetEpisodeCount:
+        mode === "special_edition"
+          ? String(Math.min(2, Math.max(1, Number(prev.targetEpisodeCount) || 1)))
+          : prev.targetEpisodeCount,
+    }));
+    carryOverMutation.reset();
+    specialEditionMutation.reset();
+  }
+
+  function handleSelectParentSeries(seriesId: string) {
+    lineagePrefilledForRef.current = null;
+    setForm(prev => ({
+      ...prev,
+      parentSeriesId: seriesId,
+      carryOverOverrides: {},
+    }));
+    carryOverMutation.reset();
+    specialEditionMutation.reset();
+  }
+
+  function setCarryOverOverride(
+    characterKey: string,
+    patch: Partial<
+      Pick<
+        VerticalDramaCarryOverCharacterDecision,
+        "availability" | "returnJustification" | "suggestedStateUpdate"
+      >
+    >
+  ) {
+    setForm(prev => ({
+      ...prev,
+      carryOverOverrides: {
+        ...prev.carryOverOverrides,
+        [characterKey]: { ...prev.carryOverOverrides[characterKey], ...patch },
+      },
+    }));
+  }
+
+  function handleProposeCarryOver() {
+    if (!form.parentSeriesId) return;
+    carryOverMutation.mutate({
+      parentSeriesId: form.parentSeriesId,
+      premise: form.carryOverPremise.trim() || undefined,
+    });
+  }
+
+  function handleProposeSpecialEditionBrief() {
+    if (!form.parentSeriesId || !form.storyFunctionChoice) return;
+    specialEditionMutation.mutate({
+      parentSeriesId: form.parentSeriesId,
+      targetEpisodeCount: Math.min(2, Math.max(1, Number(form.targetEpisodeCount) || 1)),
+      storyFunctionChoice: form.storyFunctionChoice,
+      marketplaceProductName: form.productName.trim() || undefined,
+      marketplaceProductDescription: form.productDescription?.trim() || undefined,
+      uploadedSummary: form.uploadedSummary?.trim() || undefined,
+    });
+  }
+
+  async function handleUploadReferenceFile(file: File) {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+    try {
+      const result = await uploadMutation.mutateAsync({
+        fileName: file.name,
+        fileType: file.type || "image/jpeg",
+        fileBase64: dataUrl,
+      });
+      setForm(prev => ({
+        ...prev,
+        uploadedReferences: [
+          ...prev.uploadedReferences,
+          {
+            url: result.url,
+            mimeType: result.fileType,
+            fileName: file.name,
+          },
+        ],
+      }));
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : lang === "th"
+            ? "อัปโหลดรูปไม่สำเร็จ"
+            : "Failed to upload image"
+      );
+    }
+  }
 
   function applyPreset(preset: (typeof presets)[number]) {
     set(
@@ -524,6 +845,14 @@ export function CreateSeriesWizard({
     } as Parameters<typeof synthesizePresetMutation.mutate>[0]);
   }
 
+  // Stage 2.6 — the ONLY thing that varies per `createMode` is the step
+  // LABELS; the id list/count never changes (see `resolveWizardSteps`'s own
+  // doc comment). `steps` for `form.createMode === undefined` is the exact
+  // same array reference as `wizardSteps` — every existing byte-identity
+  // guarantee below (`stepComplete`, `isLast`, the stepper markup) is
+  // therefore untouched for the original wizard.
+  const steps = resolveWizardSteps(form.createMode);
+
   // All steps are always reachable (freely-navigable tabs) — this only drives
   // a per-step completion badge so the user can see what's filled vs. still
   // needs attention before creating the series.
@@ -539,16 +868,73 @@ export function CreateSeriesWizard({
   }, [form]);
 
   // Hard requirement to actually create the series (title + Sub-episode count) —
-  // this only gates the final Create action, never tab navigation.
+  // this only gates the final Create action, never tab navigation. Stage 2.6
+  // adds: a sequel/special-edition create MUST have a chosen parent series.
   const createValid =
-    form.title.trim().length > 0 && Number(form.targetEpisodeCount) > 0;
+    form.title.trim().length > 0 &&
+    Number(form.targetEpisodeCount) > 0 &&
+    (!form.createMode || Boolean(form.parentSeriesId));
   const createBlockedReason = !createValid
-    ? lang === "th"
-      ? "กรุณากรอกชื่อซีรีย์และจำนวนตอนย่อยที่ถูกต้องในแท็บ 'ตั้งค่าพื้นฐาน'"
-      : "Enter a series title and a valid Sub-episode count in the 'Basic setup' tab"
+    ? form.createMode && !form.parentSeriesId
+      ? pickCopy(lang, parentSeriesPickerCopy.required)
+      : lang === "th"
+        ? "กรุณากรอกชื่อซีรีย์และจำนวนตอนย่อยที่ถูกต้องในแท็บ 'ตั้งค่าพื้นฐาน'"
+        : "Enter a series title and a valid Sub-episode count in the 'Basic setup' tab"
     : "";
 
-  const isLast = stepIndex === wizardSteps.length - 1;
+  const isLast = stepIndex === steps.length - 1;
+
+  // Stage 2.6 — folds the AI-proposed carry-over draft + the user's
+  // per-character overrides into the exact `VerticalDramaSeriesLineage`
+  // shape `create` persists. `undefined` whenever this isn't a lineage
+  // create (original mode, or a lineage mode with no draft/parent yet —
+  // `createValid` already blocks that latter case from ever reaching here
+  // for the picker itself, but the carry-over draft is optional even for a
+  // sequel: a user may create before proposing one).
+  const buildLineagePayload = ():
+    | VerticalDramaSeriesLineage
+    | undefined => {
+    if (!form.createMode || !form.parentSeriesId) return undefined;
+    const parentSeriesIdNum = Number(form.parentSeriesId);
+    const parentTitle = parentSeries?.title ?? "";
+    if (form.createMode === "sequel") {
+      const draft = carryOverMutation.data?.draft;
+      return {
+        contractVersion: 1,
+        parentSeriesId: parentSeriesIdNum,
+        parentTitle,
+        parentEpisodeCount: carryOverMutation.data?.parentEpisodeCount,
+        createMode: "sequel",
+        seasonNumber: Number(form.seasonNumber) || undefined,
+        priorSeasonSummary: parentSeries?.memory
+          ? ((parentSeries.memory as Record<string, unknown>)
+              .compactSummary as string | undefined)
+          : undefined,
+        carryOver: draft
+          ? {
+              contractVersion: 1,
+              characters: resolveCarryOverCharacters(
+                draft.characters,
+                form.carryOverOverrides
+              ),
+              newCharacterSuggestions: draft.newCharacterSuggestions,
+              newConflictDirections: draft.newConflictDirections,
+              antagonistStrategy: draft.antagonistStrategy,
+              carriedRelationships: draft.carriedRelationships,
+              carriedThreads: draft.carriedThreads,
+              premise: form.carryOverPremise.trim() || undefined,
+            }
+          : undefined,
+      };
+    }
+    return {
+      contractVersion: 1,
+      parentSeriesId: parentSeriesIdNum,
+      parentTitle,
+      parentEpisodeCount: specialEditionMutation.data?.parentEpisodeCount,
+      createMode: "special_edition",
+    };
+  };
 
   const handleCreate = () => {
     if (createMutation.isPending || generateStoryMutation.isPending) return;
@@ -583,20 +969,51 @@ export function CreateSeriesWizard({
               locationsDraft: form.locations,
             }
           : undefined,
-      productTieIn: form.productTieInEnabled
-        ? {
-            enabled: true,
-            productName: form.productName || undefined,
-            productId: form.productId || undefined,
-            productSource: form.productId ? "marketplace" : "manual",
-            forbiddenClaims: form.forbiddenClaims
-              ? form.forbiddenClaims
-                  .split(",")
-                  .map(s => s.trim())
-                  .filter(Boolean)
-              : [],
-          }
-        : undefined,
+      // Stage 2.5 special edition — a special edition IS a product tie-in for
+      // its entire runtime regardless of the (original-mode-only)
+      // `productTieInEnabled` checkbox, so this branch is sent unconditionally
+      // whenever `createMode === "special_edition"`, at the exact key path
+      // `verticalDramaSeries.ts`'s `create` handler reads
+      // (`rawProductTieIn.uploadedReferences`/`.storyFunctionChoice`/
+      // `.marketplaceCaptureId`, matching `buildSpecialEditionProductTieInConfig`'s
+      // own recognized-keys doc comment) — previously `form.uploadedReferences`
+      // and `form.storyFunctionChoice` were collected in the UI but never sent,
+      // silently dropping special-edition source 2 (uploaded images) and
+      // source 3 (story-function choice) at submit. `productSource` is left
+      // unset here on purpose — the server infers it (uploaded_reference >
+      // marketplace > manual) from `uploadedReferences`/`marketplaceCaptureId`.
+      // Original mode's own productTieIn payload (below) is unchanged.
+      productTieIn:
+        form.createMode === "special_edition"
+          ? {
+              enabled: true,
+              productName: form.productName || undefined,
+              productDescription: form.productDescription?.trim() || undefined,
+              marketplaceCaptureId: form.productId || undefined,
+              productImageUrl: form.productImageUrl || undefined,
+              storyFunctionChoice: form.storyFunctionChoice,
+              uploadedReferences: form.uploadedReferences,
+              forbiddenClaims: form.forbiddenClaims
+                ? form.forbiddenClaims
+                    .split(",")
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                : [],
+            }
+          : form.productTieInEnabled
+            ? {
+                enabled: true,
+                productName: form.productName || undefined,
+                productId: form.productId || undefined,
+                productSource: form.productId ? "marketplace" : "manual",
+                forbiddenClaims: form.forbiddenClaims
+                  ? form.forbiddenClaims
+                      .split(",")
+                      .map(s => s.trim())
+                      .filter(Boolean)
+                  : [],
+              }
+            : undefined,
       // Spec §8.2.2.A flow-through rule (section-15) — best-effort on the
       // server; a no-op when unset, invalid, or the preset has no
       // `visualIdentityJson`. See `applyPreset`/`applyPresetDraft` above.
@@ -612,6 +1029,19 @@ export function CreateSeriesWizard({
       // `userPremise` above this is always a defined value, so it is sent
       // directly (never `|| undefined`).
       audienceAgeRating: form.audienceAgeRating,
+      // Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — every
+      // one of these 4 fields is `undefined` for the original wizard
+      // (`form.createMode` starts and stays `undefined` unless the
+      // lineage-gated mode toggle is used), which the router's own doc
+      // comment says writes every matching `vertical_drama_series` column as
+      // `NULL` — the structural "original mode unchanged" guarantee.
+      parentSeriesId: form.createMode ? form.parentSeriesId : undefined,
+      createMode: form.createMode,
+      seasonNumber:
+        form.createMode === "sequel"
+          ? Number(form.seasonNumber) || undefined
+          : undefined,
+      lineage: buildLineagePayload(),
     } as Parameters<typeof createMutation.mutate>[0]);
   };
 
@@ -632,7 +1062,7 @@ export function CreateSeriesWizard({
 
           {/* Stepper — every step is always clickable; the dot shows completion, not access. */}
           <ol className="mt-3 flex flex-wrap gap-1.5" aria-label="wizard steps">
-            {wizardSteps.map((step, i) => (
+            {steps.map((step, i) => (
               <li key={step.id}>
                 <button
                   type="button"
@@ -665,7 +1095,7 @@ export function CreateSeriesWizard({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6 xl:p-7">
           <WizardStep
-            stepIndex={stepIndex}
+            stepId={steps[stepIndex]?.id ?? "basic"}
             lang={lang}
             form={form}
             set={set}
@@ -698,6 +1128,33 @@ export function CreateSeriesWizard({
             productsLoading={productsQuery.isLoading}
             productSearch={productSearch}
             onProductSearchChange={setProductSearch}
+            lineageEnabled={lineageEnabled}
+            onSetCreateMode={handleSetCreateMode}
+            parentSeriesOptions={parentSeriesOptions}
+            parentSeriesOptionsLoading={seriesListQuery.isLoading}
+            onSelectParentSeries={handleSelectParentSeries}
+            parentSeries={parentSeries}
+            carryOverDraft={carryOverMutation.data?.draft}
+            carryOverLoading={carryOverMutation.isPending}
+            carryOverError={
+              carryOverMutation.error?.message
+                ? String(carryOverMutation.error.message)
+                : undefined
+            }
+            onProposeCarryOver={handleProposeCarryOver}
+            onCarryOverPremiseChange={value => set("carryOverPremise", value)}
+            onCarryOverOverride={setCarryOverOverride}
+            specialEditionDraft={specialEditionMutation.data?.draft}
+            specialEditionLoading={specialEditionMutation.isPending}
+            specialEditionError={
+              specialEditionMutation.error?.message
+                ? String(specialEditionMutation.error.message)
+                : undefined
+            }
+            onProposeSpecialEditionBrief={handleProposeSpecialEditionBrief}
+            onUploadReferenceFile={handleUploadReferenceFile}
+            uploadPending={uploadMutation.isPending}
+            parentMemoryCoverage={parentMemoryQuery.data?.coverage}
           />
         </div>
 
@@ -753,7 +1210,7 @@ export function CreateSeriesWizard({
             ) : (
               <Button
                 onClick={() =>
-                  setStepIndex(i => Math.min(wizardSteps.length - 1, i + 1))
+                  setStepIndex(i => Math.min(steps.length - 1, i + 1))
                 }
               >
                 {lang === "th" ? "ถัดไป" : "Next"}
@@ -885,8 +1342,25 @@ interface MarketplaceProductOption {
   currency?: string | null;
 }
 
+/** One row of `verticalDramaSeries.list`'s output — the series picker's option shape (Stage 2.6). */
+interface ParentSeriesOption {
+  id: string;
+  title: string;
+  status: string;
+  targetEpisodeCount: number;
+}
+
+/** `verticalDramaSeries.get`'s `series` field — only the subset this wizard reads. */
+interface ParentSeriesDetail {
+  title: string;
+  genre: string | null;
+  tone: string | null;
+  bible: unknown;
+  memory: unknown;
+}
+
 function WizardStep({
-  stepIndex,
+  stepId,
   lang,
   form,
   set,
@@ -915,8 +1389,27 @@ function WizardStep({
   productsLoading,
   productSearch,
   onProductSearchChange,
+  lineageEnabled,
+  onSetCreateMode,
+  parentSeriesOptions,
+  parentSeriesOptionsLoading,
+  onSelectParentSeries,
+  parentSeries,
+  carryOverDraft,
+  carryOverLoading,
+  carryOverError,
+  onProposeCarryOver,
+  onCarryOverPremiseChange,
+  onCarryOverOverride,
+  specialEditionDraft,
+  specialEditionLoading,
+  specialEditionError,
+  onProposeSpecialEditionBrief,
+  onUploadReferenceFile,
+  uploadPending,
+  parentMemoryCoverage,
 }: {
-  stepIndex: number;
+  stepId: string;
   lang: "th" | "en";
   form: WizardState;
   set: <K extends keyof WizardState>(key: K, value: WizardState[K]) => void;
@@ -945,8 +1438,61 @@ function WizardStep({
   productsLoading: boolean;
   productSearch: string;
   onProductSearchChange: (value: string) => void;
+  /** Stage 2.6 — false hides ALL lineage UI below (mode toggle never renders), so `createMode` can never be set for a tenant without the flag. */
+  lineageEnabled: boolean;
+  onSetCreateMode: (mode: VerticalDramaSeriesCreateMode | undefined) => void;
+  parentSeriesOptions: ParentSeriesOption[];
+  parentSeriesOptionsLoading: boolean;
+  onSelectParentSeries: (seriesId: string) => void;
+  parentSeries?: ParentSeriesDetail;
+  carryOverDraft?: VerticalDramaSeasonCarryOverDraft;
+  carryOverLoading: boolean;
+  carryOverError?: string;
+  onProposeCarryOver: () => void;
+  onCarryOverPremiseChange: (value: string) => void;
+  onCarryOverOverride: (
+    characterKey: string,
+    patch: Partial<
+      Pick<
+        VerticalDramaCarryOverCharacterDecision,
+        "availability" | "returnJustification" | "suggestedStateUpdate"
+      >
+    >
+  ) => void;
+  specialEditionDraft?: {
+    storyShape: string;
+    premise: string;
+    charactersUsed: Array<{ characterKey: string; roleInSpecial: string }>;
+    episodeBriefs: Array<{
+      episodeNumber: number;
+      logline: string;
+      protagonistStake: string;
+      pricePaid: string;
+    }>;
+    continuityNotes: string;
+  };
+  specialEditionLoading: boolean;
+  specialEditionError?: string;
+  onProposeSpecialEditionBrief: () => void;
+  onUploadReferenceFile: (file: File) => void;
+  uploadPending: boolean;
+  parentMemoryCoverage?: {
+    targetEpisodeCount: number;
+    episodeRowCount: number;
+    episodesWithRealScript: number;
+    episodesWithMemory: number;
+    episodesWithMemoryAndRealScript: number;
+  };
 }) {
   const th = lang === "th";
+  // Stage 2.6 — used by both the "basic" (genre) and "story" (tone) cases
+  // below to lock the inherited fields, and by "characters"/"product"/
+  // "review" to swap in the lineage-specific body.
+  const isSequel = form.createMode === "sequel";
+  const isSpecialEdition = form.createMode === "special_edition";
+  const isLineageMode = isSequel || isSpecialEdition;
+  const [acceptedCharacterSuggestions, setAcceptedCharacterSuggestions] =
+    useState<Set<string>>(new Set());
   // Preset browser height: toggle between compact and tall; the list is also
   // user-draggable via CSS resize-y for anything in between.
   const [presetListExpanded, setPresetListExpanded] = useState(false);
@@ -962,8 +1508,8 @@ function WizardStep({
       behavior: "smooth",
       block: "center",
     });
-  switch (stepIndex) {
-    case 0: {
+  switch (stepId) {
+    case "basic": {
       // vd-premise-first-wizard plan (Phase 4.1) — the user's own story idea
       // is the SPINE, presets are supplements, never the reverse. This flag
       // drives both the hero premise field below and how the (now-optional,
@@ -971,6 +1517,124 @@ function WizardStep({
       const hasUserPremise = form.userPremise.trim().length > 0;
       return (
         <div className="grid gap-4">
+          {/* Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) —
+              the 3-way create-mode toggle + parent-series picker lives at the
+              TOP of the `basic` step body (never a new wizard step — see the
+              plan's own reasoning on why: adding a step would renumber every
+              other case). Entirely gone when the tenant flag is off, so the
+              rest of this step (and every other step) is provably unchanged
+              for every tenant without it. */}
+          {lineageEnabled && (
+            <div className="rounded-xl border bg-muted/20 p-4 shadow-sm">
+              <p className="text-sm font-semibold">
+                {pickCopy(lang, createModeToggleCopy.label)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {pickCopy(lang, createModeToggleCopy.hint)}
+              </p>
+              <div
+                className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-3"
+                role="group"
+                aria-label={pickCopy(lang, createModeToggleCopy.label)}
+              >
+                {(
+                  [
+                    { mode: undefined, copy: createModeToggleCopy.original },
+                    { mode: "sequel", copy: createModeToggleCopy.sequel },
+                    {
+                      mode: "special_edition",
+                      copy: createModeToggleCopy.specialEdition,
+                    },
+                  ] as const
+                ).map(option => {
+                  const selected = form.createMode === option.mode;
+                  return (
+                    <button
+                      key={option.mode ?? "original"}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => onSetCreateMode(option.mode)}
+                      className={cn(
+                        "rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors",
+                        selected
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "bg-background hover:bg-accent"
+                      )}
+                    >
+                      {pickCopy(lang, option.copy)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isLineageMode && (
+                <div className="mt-3 grid gap-3">
+                  <Field
+                    label={pickCopy(lang, parentSeriesPickerCopy.label)}
+                    helperText={
+                      !form.parentSeriesId
+                        ? pickCopy(lang, parentSeriesPickerCopy.required)
+                        : undefined
+                    }
+                  >
+                    <Select
+                      value={form.parentSeriesId ?? ""}
+                      onValueChange={v => onSelectParentSeries(v)}
+                    >
+                      <SelectTrigger
+                        aria-label={pickCopy(lang, parentSeriesPickerCopy.label)}
+                      >
+                        <SelectValue
+                          placeholder={pickCopy(
+                            lang,
+                            parentSeriesPickerCopy.placeholder
+                          )}
+                        />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[min(60vh,24rem)]">
+                        {parentSeriesOptionsLoading ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            {th ? "กำลังโหลด…" : "Loading…"}
+                          </div>
+                        ) : parentSeriesOptions.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            {pickCopy(lang, parentSeriesPickerCopy.empty)}
+                          </div>
+                        ) : (
+                          parentSeriesOptions.map(option => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.title}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  {isSequel && (
+                    <Field label={pickCopy(lang, seasonNumberFieldCopy.label)}>
+                      <Input
+                        type="number"
+                        min={2}
+                        value={form.seasonNumber ?? ""}
+                        onChange={e => set("seasonNumber", e.target.value)}
+                      />
+                    </Field>
+                  )}
+
+                  {isSpecialEdition && (
+                    <p className="rounded-md border border-dashed bg-background px-2.5 py-1.5 text-xs text-muted-foreground">
+                      {pickCopy(
+                        lang,
+                        specialEditionEpisodeCountLockedHintCopy
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Premise leads step 1 as a full-width hero input — everything
               below (presets, basic setup) builds on top of it, not the
               reverse (see plan.md "target behaviour" table). */}
@@ -1104,8 +1768,30 @@ function WizardStep({
                   <Input
                     type="number"
                     min={1}
+                    // Stage 2.5 — a special edition is hard-capped at 1-2
+                    // sub-episodes (`proposeSpecialEditionBrief`'s own zod
+                    // input enforces the same range server-side); the `max`
+                    // attribute is purely a UI nudge, never the enforcement
+                    // itself, same convention as every other numeric field in
+                    // this wizard.
+                    max={isSpecialEdition ? 2 : undefined}
                     value={form.targetEpisodeCount}
-                    onChange={e => set("targetEpisodeCount", e.target.value)}
+                    onChange={e => {
+                      if (!isSpecialEdition) {
+                        set("targetEpisodeCount", e.target.value);
+                        return;
+                      }
+                      const raw = e.target.value;
+                      const parsed = Number(raw);
+                      if (raw === "" || !Number.isFinite(parsed)) {
+                        set("targetEpisodeCount", raw);
+                        return;
+                      }
+                      set(
+                        "targetEpisodeCount",
+                        String(Math.min(2, Math.max(1, parsed)))
+                      );
+                    }}
                   />
                 </Field>
                 <Field
@@ -1207,16 +1893,23 @@ function WizardStep({
                   <Field
                     label={th ? "แนวเรื่อง" : "Genre"}
                     helperText={
-                      form.genre.trim()
-                        ? undefined
-                        : th
-                          ? "ว่างไว้ก็ได้ — AI จะเติมให้"
-                          : "Leave blank — AI will fill this in"
+                      // Stage 2.6 — genre is inherited from the parent series
+                      // for BOTH lineage modes and cannot be changed here
+                      // ("ชื่อเรื่องตั้งไปแล้ว เปลี่ยนแนวเรื่องไม่ได้", the
+                      // owner's own words in the plan's Context section).
+                      isLineageMode
+                        ? pickCopy(lang, genreLockedHintCopy)
+                        : form.genre.trim()
+                          ? undefined
+                          : th
+                            ? "ว่างไว้ก็ได้ — AI จะเติมให้"
+                            : "Leave blank — AI will fill this in"
                     }
                   >
                     <Input
                       value={form.genre}
                       onChange={e => set("genre", e.target.value)}
+                      disabled={isLineageMode}
                       placeholder={
                         th
                           ? "เว้นว่างไว้ให้ AI เติม หรือระบุเองที่นี่"
@@ -1351,7 +2044,92 @@ function WizardStep({
         </div>
       );
     }
-    case 1:
+    case "story": {
+      // Stage 2.6 — a special edition replaces this step entirely (per the
+      // plan's per-mode-step table: "story: แทนที่ — จะรีวิว/แนะนำอะไร"). A
+      // sequel keeps every existing field (tone additionally locked) and
+      // appends the AI's `newConflictDirections`/`antagonistStrategy` once
+      // proposed from the Characters step.
+      if (isSpecialEdition) {
+        return (
+          <div className="grid gap-4">
+            <Field label={pickCopy(lang, specialEditionCopy.storyFunctionLabel)}>
+              <div className="grid gap-1.5" role="radiogroup">
+                {(
+                  [
+                    ["review", specialEditionCopy.storyFunctionReview],
+                    ["tie_in_solution", specialEditionCopy.storyFunctionTieIn],
+                  ] as const
+                ).map(([value, copy]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={form.storyFunctionChoice === value}
+                    onClick={() => set("storyFunctionChoice", value)}
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-left text-xs font-medium transition-colors",
+                      form.storyFunctionChoice === value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "bg-background hover:bg-accent"
+                    )}
+                  >
+                    {pickCopy(lang, copy)}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            <div>
+              <Button
+                type="button"
+                onClick={onProposeSpecialEditionBrief}
+                disabled={
+                  specialEditionLoading ||
+                  !form.parentSeriesId ||
+                  !form.storyFunctionChoice
+                }
+                className="gap-2"
+              >
+                {specialEditionLoading && (
+                  <Loader2
+                    className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                )}
+                {specialEditionDraft
+                  ? pickCopy(lang, specialEditionCopy.regenerateBriefCta)
+                  : pickCopy(lang, specialEditionCopy.generateBriefCta)}
+              </Button>
+            </div>
+
+            {specialEditionError && (
+              <p role="alert" className="text-xs text-destructive">
+                {specialEditionError}
+              </p>
+            )}
+
+            {specialEditionDraft && (
+              <div className="grid gap-2 rounded-md border bg-background p-3 text-xs">
+                <p className="font-medium">{specialEditionDraft.premise}</p>
+                <p className="text-muted-foreground">
+                  {specialEditionDraft.continuityNotes}
+                </p>
+              </div>
+            )}
+
+            <Field
+              label={pickCopy(lang, specialEditionCopy.suggestedPremiseLabel)}
+            >
+              <Textarea
+                value={form.userPremise}
+                onChange={e => set("userPremise", e.target.value)}
+                rows={5}
+              />
+            </Field>
+          </div>
+        );
+      }
       return (
         <div className="grid gap-4">
           <Field label={th ? "โครงเรื่องหลัก" : "Main plot"}>
@@ -1369,10 +2147,14 @@ function WizardStep({
             />
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label={th ? "โทน" : "Tone"}>
+            <Field
+              label={th ? "โทน" : "Tone"}
+              helperText={isSequel ? pickCopy(lang, toneLockedHintCopy) : undefined}
+            >
               <Input
                 value={form.tone}
                 onChange={e => set("tone", e.target.value)}
+                disabled={isSequel}
               />
             </Field>
             <Field
@@ -1384,9 +2166,298 @@ function WizardStep({
               />
             </Field>
           </div>
+
+          {isSequel && carryOverDraft && (
+            <div className="grid gap-3 rounded-md border bg-muted/20 p-3">
+              <div>
+                <p className="text-xs font-semibold">
+                  {pickCopy(lang, carryOverCopy.newConflictDirectionsTitle)}
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {carryOverDraft.newConflictDirections.map((direction, i) => (
+                    <button
+                      key={`${i}-${direction}`}
+                      type="button"
+                      onClick={() =>
+                        set(
+                          "mainPlot",
+                          form.mainPlot.trim()
+                            ? `${form.mainPlot}\n${direction}`
+                            : direction
+                        )
+                      }
+                      className="rounded-full border bg-background px-2.5 py-1 text-left text-[11px] hover:border-primary hover:bg-accent"
+                    >
+                      {direction}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold">
+                  {pickCopy(lang, carryOverCopy.antagonistStrategyTitle)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {carryOverDraft.antagonistStrategy}
+                </p>
+              </div>
+            </div>
+          )}
+          {isSequel && !carryOverDraft && (
+            <p className="text-xs text-muted-foreground">
+              {th
+                ? 'ไปที่แท็บ "ตัวละคร" เพื่อให้ AI เสนอแนวทางปมใหม่ก่อน'
+                : 'Go to the "Characters" tab to have AI propose new conflict directions first.'}
+            </p>
+          )}
         </div>
       );
-    case 2:
+    }
+    case "characters": {
+      // Stage 2.6 — special edition: the ENTIRE parent cast carries over
+      // automatically (server-side clone-on-create, Stage 2.3); nothing to
+      // choose here (per the plan's table: "characters: ซ่อน (ยกทั้ง cast)").
+      if (isSpecialEdition) {
+        return (
+          <div className="rounded-md border border-dashed bg-muted/20 p-4 text-sm text-muted-foreground">
+            {th
+              ? "ตัวละครทั้งหมดจากซีรีส์ต้นฉบับจะถูกยกมาใช้ในภาคพิเศษนี้โดยอัตโนมัติ — ไม่ต้องเลือกที่นี่"
+              : "The entire cast from the parent series carries over into this special edition automatically — nothing to choose here."}
+          </div>
+        );
+      }
+
+      // Sequel: the AI-proposed carry-over grid (Stage 2.2/2.3).
+      if (isSequel) {
+        return (
+          <div className="grid gap-4">
+            <Field
+              label={
+                th
+                  ? "โจทย์ภาคใหม่ที่อยากได้ (ไม่บังคับ)"
+                  : "What you want for the new season (optional)"
+              }
+            >
+              <Textarea
+                value={form.carryOverPremise}
+                onChange={e => onCarryOverPremiseChange(e.target.value)}
+                rows={2}
+              />
+            </Field>
+            <div>
+              <Button
+                type="button"
+                onClick={onProposeCarryOver}
+                disabled={carryOverLoading || !form.parentSeriesId}
+                className="gap-2"
+              >
+                {carryOverLoading && (
+                  <Loader2
+                    className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                )}
+                {carryOverDraft
+                  ? pickCopy(lang, carryOverCopy.regenerateCta)
+                  : pickCopy(lang, carryOverCopy.proposeCta)}
+              </Button>
+            </div>
+
+            {carryOverError && (
+              <p role="alert" className="text-xs text-destructive">
+                {carryOverError}
+              </p>
+            )}
+
+            {carryOverDraft && (
+              <>
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {carryOverDraft.characters.map(character => {
+                    const override = form.carryOverOverrides[character.characterKey];
+                    const availability =
+                      override?.availability ?? character.availability;
+                    return (
+                      <div
+                        key={character.characterKey}
+                        data-testid={`vd-carryover-character-${character.characterKey}`}
+                        className="grid gap-1.5 rounded-md border bg-background p-2.5 text-xs"
+                      >
+                        <p className="font-medium">{character.name}</p>
+                        <p className="text-muted-foreground">
+                          {pickCopy(lang, carryOverCopy.postFinaleStatusLabel)}:{" "}
+                          {character.postFinaleStatus}
+                        </p>
+                        <Select
+                          value={availability}
+                          onValueChange={v =>
+                            onCarryOverOverride(character.characterKey, {
+                              availability: v as VerticalDramaCarryOverAvailability,
+                            })
+                          }
+                        >
+                          <SelectTrigger
+                            aria-label={pickCopy(
+                              lang,
+                              carryOverCopy.availabilityLabel
+                            )}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {VERTICAL_DRAMA_CARRY_OVER_AVAILABILITIES.map(
+                              value => (
+                                <SelectItem key={value} value={value}>
+                                  {pickCopy(
+                                    lang,
+                                    carryOverAvailabilityCopy[value]
+                                  )}
+                                </SelectItem>
+                              )
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {availability === "returns_with_explanation" && (
+                          <Input
+                            aria-label={pickCopy(
+                              lang,
+                              carryOverCopy.returnJustificationLabel
+                            )}
+                            value={
+                              override?.returnJustification ??
+                              character.returnJustification ??
+                              ""
+                            }
+                            onChange={e =>
+                              onCarryOverOverride(character.characterKey, {
+                                returnJustification: e.target.value,
+                              })
+                            }
+                          />
+                        )}
+                        <Textarea
+                          aria-label={pickCopy(
+                            lang,
+                            carryOverCopy.suggestedStateUpdateLabel
+                          )}
+                          value={
+                            override?.suggestedStateUpdate ??
+                            character.suggestedStateUpdate ??
+                            ""
+                          }
+                          onChange={e =>
+                            onCarryOverOverride(character.characterKey, {
+                              suggestedStateUpdate: e.target.value,
+                            })
+                          }
+                          rows={2}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {carryOverDraft.newCharacterSuggestions.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold">
+                      {pickCopy(lang, carryOverCopy.newCharacterSuggestionsTitle)}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {carryOverDraft.newCharacterSuggestions.map(
+                        (suggestion, i) => {
+                          const accepted =
+                            acceptedCharacterSuggestions.has(suggestion);
+                          return (
+                            <button
+                              key={`${i}-${suggestion}`}
+                              type="button"
+                              disabled={accepted}
+                              onClick={() => {
+                                set(
+                                  "characters",
+                                  form.characters.trim()
+                                    ? `${form.characters}\n${suggestion}`
+                                    : suggestion
+                                );
+                                setAcceptedCharacterSuggestions(
+                                  prev => new Set(prev).add(suggestion)
+                                );
+                              }}
+                              className={cn(
+                                "rounded-full border px-2.5 py-1 text-[11px]",
+                                accepted
+                                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700"
+                                  : "bg-background hover:border-primary hover:bg-accent"
+                              )}
+                            >
+                              {suggestion}{" "}
+                              {accepted
+                                ? `— ${pickCopy(lang, carryOverCopy.addedSuggestion)}`
+                                : `— ${pickCopy(lang, carryOverCopy.addSuggestionCta)}`}
+                            </button>
+                          );
+                        }
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {carryOverDraft.carriedRelationships.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold">
+                      {pickCopy(lang, carryOverCopy.carriedRelationshipsTitle)}
+                    </p>
+                    <div className="mt-1.5 grid gap-1.5">
+                      {carryOverDraft.carriedRelationships.map(
+                        (relationship: VdRelationshipState, i: number) => (
+                          <div
+                            key={`${relationship.pair.join("-")}-${i}`}
+                            className="flex flex-wrap items-center gap-2 rounded-md border bg-background p-2 text-xs"
+                          >
+                            <span className="font-medium">
+                              {relationship.pair.join(" ↔ ")}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {relationship.status}
+                            </span>
+                            <DisclosureBadge
+                              disclosure={relationship.disclosure}
+                              lang={lang}
+                            />
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {carryOverDraft.carriedThreads.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold">
+                      {pickCopy(lang, carryOverCopy.carriedThreadsTitle)}
+                    </p>
+                    <div className="mt-1.5 grid gap-1.5">
+                      {carryOverDraft.carriedThreads.map(
+                        (thread: VdOpenThread) => (
+                          <div
+                            key={thread.threadId}
+                            className="flex flex-wrap items-center gap-2 rounded-md border bg-background p-2 text-xs"
+                          >
+                            <Badge variant="outline" className="shrink-0">
+                              {pickCopy(lang, threadClassCopy[thread.threadClass])}
+                            </Badge>
+                            <span>{thread.description}</span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        );
+      }
+
       return (
         <div className="grid gap-4">
           <Field
@@ -1442,7 +2513,8 @@ function WizardStep({
           </Field>
         </div>
       );
-    case 3:
+    }
+    case "bible":
       return (
         <Field
           label={
@@ -1458,7 +2530,7 @@ function WizardStep({
           />
         </Field>
       );
-    case 4:
+    case "product": {
       return (
         <div className="grid gap-4">
           <label className="flex items-center gap-2 text-sm">
@@ -1619,9 +2691,67 @@ function WizardStep({
               </Field>
             </>
           )}
+
+          {/* Stage 2.5 (`planning/vd-series-memory-and-lineage/plan.md`) —
+              special-edition sources 1 (product description companion to the
+              marketplace picker above) + 2 (uploaded reference images +
+              summary). Source 3 (story function choice) lives on the "story"
+              step alongside the brief-generation trigger — see that case's
+              own doc comment for why. */}
+          {isSpecialEdition && (
+            <div className="grid gap-3 rounded-md border bg-muted/20 p-3">
+              <p className="text-xs font-semibold">
+                {pickCopy(lang, specialEditionCopy.marketplaceSourceTitle)}
+              </p>
+              <Field
+                label={pickCopy(lang, specialEditionCopy.productDescriptionLabel)}
+              >
+                <Textarea
+                  value={form.productDescription ?? ""}
+                  onChange={e => set("productDescription", e.target.value)}
+                  rows={2}
+                />
+              </Field>
+
+              <p className="text-xs font-semibold">
+                {pickCopy(lang, specialEditionCopy.uploadSourceTitle)}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="cursor-pointer rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent">
+                  {uploadPending
+                    ? pickCopy(lang, specialEditionCopy.uploadingLabel)
+                    : pickCopy(lang, specialEditionCopy.uploadButtonLabel)}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={uploadPending}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) onUploadReferenceFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {form.uploadedReferences.map(ref => (
+                  <Badge key={ref.url} variant="outline" className="gap-1">
+                    {ref.fileName}
+                  </Badge>
+                ))}
+              </div>
+              <Field label={pickCopy(lang, specialEditionCopy.uploadSummaryLabel)}>
+                <Textarea
+                  value={form.uploadedSummary ?? ""}
+                  onChange={e => set("uploadedSummary", e.target.value)}
+                  rows={2}
+                />
+              </Field>
+            </div>
+          )}
         </div>
       );
-    case 5:
+    }
+    case "review":
     default:
       return (
         <div className="grid gap-3 text-sm">
@@ -1665,6 +2795,60 @@ function WizardStep({
                   : "None"}
             </span>
           </div>
+
+          {/* Stage 2.6 — lineage summary + (sequel-only) thin-season memory
+              coverage warning, reusing the SAME copy fns as the Series
+              Memory tab (`coverageHeadlineText`/`coverageSecondaryText`)
+              rather than inventing a second dialect. */}
+          {isLineageMode && form.parentSeriesId && (
+            <div className="mt-2 grid gap-2 rounded-md border bg-muted/20 p-3 text-xs">
+              <p className="font-medium">
+                {isSequel
+                  ? pickCopy(lang, lineageReviewSummaryCopy.sequelTitle)
+                  : pickCopy(
+                      lang,
+                      lineageReviewSummaryCopy.specialEditionTitle
+                    )}{" "}
+                {parentSeries?.title ?? form.parentSeriesId}
+              </p>
+              {isSequel && form.seasonNumber && (
+                <p className="text-muted-foreground">
+                  {pickCopy(lang, lineageReviewSummaryCopy.seasonNumberRow)}{" "}
+                  {form.seasonNumber}
+                </p>
+              )}
+              {isSequel && parentMemoryCoverage && (
+                <div
+                  data-testid="vd-lineage-coverage-warning"
+                  className="grid gap-1 rounded-md border border-amber-300 bg-amber-50 p-2 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                >
+                  <p>
+                    {coverageHeadlineText(
+                      lang,
+                      parentMemoryCoverage.episodesWithRealScript,
+                      parentMemoryCoverage.targetEpisodeCount
+                    )}
+                  </p>
+                  <p>
+                    {coverageSecondaryText(
+                      lang,
+                      parentMemoryCoverage.episodesWithMemory,
+                      parentMemoryCoverage.targetEpisodeCount,
+                      parentMemoryCoverage.episodesWithMemoryAndRealScript
+                    )}
+                  </p>
+                  <a
+                    href={verticalDramaRoutes.seriesDetail(form.parentSeriesId)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    {pickCopy(lang, lineageCoverageLinkCopy)}
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       );
   }

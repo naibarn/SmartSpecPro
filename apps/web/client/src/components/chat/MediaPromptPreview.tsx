@@ -8,9 +8,10 @@
  */
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, X, Edit3, Loader2, Sparkles } from "lucide-react";
+import { Check, X, Edit3, Loader2, Sparkles, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface MediaPromptPreviewProps {
@@ -44,6 +45,20 @@ export function MediaPromptPreview({
 
   const handleConfirm = () => {
     onConfirm(isEditing ? editedPrompt : prompt, mediaParams);
+  };
+
+  /** Copy the currently-shown prompt (edited text when editing) so the user can
+   * paste it into another image/video tool. Mirrors the agency preview's copy
+   * (`MediaPromptPreviewContent.tsx`). Best-effort — `navigator.clipboard` is
+   * unavailable on insecure origins, so guard + toast the failure. */
+  const handleCopyPrompt = async () => {
+    const text = isEditing ? editedPrompt : prompt;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("คัดลอก prompt แล้ว");
+    } catch {
+      toast.error("คัดลอกไม่สำเร็จ — เลือกข้อความแล้วคัดลอกเอง");
+    }
   };
 
   const categoryLabel =
@@ -113,6 +128,19 @@ export function MediaPromptPreview({
           >
             <Edit3 className="h-3.5 w-3.5" />
             Edit Prompt
+          </Button>
+        )}
+
+        {!isExecuting && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCopyPrompt}
+            className="gap-1.5"
+            title="คัดลอก prompt ไปใช้ generate ที่อื่น"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            Copy Prompt
           </Button>
         )}
 

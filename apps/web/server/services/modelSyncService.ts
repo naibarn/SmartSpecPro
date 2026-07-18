@@ -7,7 +7,7 @@
  */
 
 import { db } from "../db";
-import { llmProviders } from "../../drizzle/schema";
+import { llmProviders, modelProviderMap } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { normalizeNvidiaHostedCatalogModel } from "./llmProviderCatalog";
 
@@ -37,6 +37,9 @@ interface OpenRouterModel {
     modality?: string;
     tokenizer?: string;
     instruct_type?: string;
+    /** e.g. ["text"] or ["text", "image"] — present on newer OpenRouter payloads. */
+    input_modalities?: string[];
+    output_modalities?: string[];
   };
 }
 
@@ -501,6 +504,37 @@ function normalizeOpenAICompatibleNativeModel(
 }
 
 /**
+ * Resilience — Layer 3 (stop the drift class).
+ *
+ * Derive supportsVision from OpenRouter's live `architecture.input_modalities`
+ * / `architecture.modality` fields when present. Returns `undefined` (unknown)
+ * when neither field is present so callers can fall back to existing data
+ * instead of assuming a value. See
+ * planning/marketplace-auto-review-storyboard-resilience/plan.md.
+ */
+function deriveOpenRouterSupportsVision(
+  architecture: OpenRouterModel["architecture"],
+): boolean | undefined {
+  if (!architecture) return undefined;
+
+  if (Array.isArray(architecture.input_modalities)) {
+    return architecture.input_modalities.some(
+      (modality) =>
+        typeof modality === "string" && modality.trim().toLowerCase() === "image",
+    );
+  }
+
+  if (typeof architecture.modality === "string" && architecture.modality.trim()) {
+    // Format: "<input modalities joined by +>-><output modalities>", e.g.
+    // "text->text" or "text+image->text".
+    const inputPart = architecture.modality.split("->")[0] ?? "";
+    return inputPart.toLowerCase().includes("image");
+  }
+
+  return undefined;
+}
+
+/**
  * Convert OpenRouter model to our format
  */
 function convertModel(model: OpenRouterModel): SyncedModel {
@@ -521,6 +555,7 @@ function convertModel(model: OpenRouterModel): SyncedModel {
     provider,
     description: model.description,
     createdAt: model.created, // Preserve creation timestamp
+    supportsVision: deriveOpenRouterSupportsVision(model.architecture),
   };
 }
 
@@ -548,6 +583,55 @@ function filterModelsByProvider(models: SyncedModel[], providerName: string): Sy
   return models.filter(m =>
     prefixes.some(prefix => m.id.toLowerCase().startsWith(prefix.toLowerCase()))
   );
+}
+
+/**
+ * Compare OpenRouter's live-derived supportsVision against the admin-editable
+ * model_provider_map.supportsVision column for the same providerId, and
+ * console.warn any mismatch. Never writes to model_provider_map — see the
+ * Layer 3 note at the call site.
+ */
+async function warnOnOpenRouterSupportsVisionMismatch(
+  providerId: number,
+  convertedModels: SyncedModel[],
+): Promise<void> {
+  try {
+    const derivedById = new Map<string, boolean>();
+    for (const model of convertedModels) {
+      if (typeof model.supportsVision === "boolean") {
+        derivedById.set(model.id, model.supportsVision);
+      }
+    }
+    if (derivedById.size === 0) return;
+
+    const mappedRows = await db
+      .select({
+        providerModelId: modelProviderMap.providerModelId,
+        supportsVision: modelProviderMap.supportsVision,
+      })
+      .from(modelProviderMap)
+      .where(eq(modelProviderMap.providerId, providerId));
+
+    for (const row of mappedRows) {
+      const derived = derivedById.get(row.providerModelId);
+      if (derived === undefined) continue;
+      const stored = row.supportsVision === true;
+      if (derived !== stored) {
+        console.warn("[modelSync] vision_capability_mismatch", {
+          providerId,
+          modelId: row.providerModelId,
+          storedSupportsVision: stored,
+          openRouterDerivedSupportsVision: derived,
+          action: "not_auto_corrected_supportsVision_is_admin_editable",
+        });
+      }
+    }
+  } catch (error) {
+    console.warn(
+      "[modelSync] vision_capability_mismatch_check_failed",
+      { providerId, error: error instanceof Error ? error.message : String(error) },
+    );
+  }
 }
 
 /**
@@ -615,6 +699,14 @@ export async function syncProviderModels(
       const allConvertedModels = allModels.map(convertModel);
       allProviderModels = filterModelsByProvider(allConvertedModels, provider.providerName);
       console.log(`[ModelSync] ${provider.providerName}: Using OpenRouter, found ${allProviderModels.length} models`);
+
+      // Resilience — Layer 3: supportsVision on model_provider_map is
+      // admin-editable (see multiProvider.ts upsertModelMapping /
+      // bulkSetAdminModelCatalogEnabled), so this sync path must NEVER
+      // auto-overwrite it. Only log a mismatch warning when OpenRouter's
+      // live architecture data disagrees with the stored capability flag,
+      // so an admin/operator can investigate and hotfix the stale row.
+      await warnOnOpenRouterSupportsVisionMismatch(providerId, allProviderModels);
     }
 
     // For native API, don't filter by date (we trust the provider's model list)

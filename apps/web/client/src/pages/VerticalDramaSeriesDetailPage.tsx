@@ -291,6 +291,12 @@ export default function VerticalDramaSeriesDetailPage() {
          *  when unset (fully automatic). Passed through `get`'s full-row
          *  spread, no server-side change needed for this new column. */
         llmModelPolicy?: unknown;
+        /** Series lineage (Stage 2.6) — raw DB columns, passed through
+         *  `get`'s full-row spread. `null`/absent for the overwhelming
+         *  majority (original-mode series). Read here only to derive
+         *  `isLineageSeries` below (extend-deep-draft premium default). */
+        createMode?: string | null;
+        parentSeriesId?: number | string | null;
       }
     | undefined;
   const episodes = (detailQuery.data?.episodes ?? []) as Array<{
@@ -317,6 +323,18 @@ export default function VerticalDramaSeriesDetailPage() {
   );
   const advancedPopulated = Boolean(series?.productTieIn?.enabled);
   const isArchived = series?.status === "archived";
+  // Extend deep-draft premium default (mirrors the server's own sequel-aware
+  // default in `extendStoryDraftHorizon` — `routers/verticalDramaSeries.ts`):
+  // a lineage series (sequel/special edition) should default the extend
+  // checkbox to premium so continuity-checking actually runs, instead of
+  // silently defaulting via server-side omission while the UI shows
+  // unchecked. `parentSeriesId != null` is the same lineage signal the
+  // server keys off of; `createMode` is checked too since it's the more
+  // explicit field when both are present.
+  const isLineageSeries =
+    series?.createMode === "sequel" ||
+    series?.createMode === "special_edition" ||
+    series?.parentSeriesId != null;
 
   const needsAttention = useMemo<Partial<Record<TabId, boolean>>>(() => {
     const flags: Partial<Record<TabId, boolean>> = {};
@@ -448,6 +466,7 @@ export default function VerticalDramaSeriesDetailPage() {
                   createdEpisodeNumbers={episodes.map(
                     episode => episode.episodeNumber
                   )}
+                  isLineageSeries={isLineageSeries}
                 />
 
                 {!isArchived && (
@@ -1622,6 +1641,7 @@ export function StoryBibleOverviewCard({
   deepDraftsFlagEnabled = false,
   deepDraftSummary,
   createdEpisodeNumbers = [],
+  isLineageSeries = false,
 }: {
   lang: "th" | "en";
   seriesId: string;
@@ -1651,6 +1671,17 @@ export function StoryBibleOverviewCard({
    * caller (including this file's own test suite) renders byte-identical.
    */
   createdEpisodeNumbers?: number[];
+  /**
+   * Extend deep-draft premium default (client fix, 2026-07-18) — whether the
+   * series is a lineage series (sequel/special edition), sourced by the
+   * parent page (`VerticalDramaSeriesDetailPage`'s own `isLineageSeries`,
+   * derived from `series.createMode`/`parentSeriesId`). Threaded straight
+   * through to both `VerticalDramaDeepStoryDraftsActions` call sites below —
+   * see that component's own `isLineageSeries` prop doc comment. Defaults to
+   * `false` so every pre-existing caller (including this file's own test
+   * suite) renders byte-identical.
+   */
+  isLineageSeries?: boolean;
 }) {
   const utils = trpc.useUtils();
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
@@ -2103,6 +2134,7 @@ export function StoryBibleOverviewCard({
                 onGenerateStoryBible={runGenerateStoryBible}
                 userPremise={expanded.userPremise}
                 onEditPremiseClick={onEditPremiseClick}
+                isLineageSeries={isLineageSeries}
               />
             )}
           </>

@@ -19,16 +19,23 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDb } = vi.hoisted(() => ({
-  mockDb: {
+const { mockDb } = vi.hoisted(() => {
+  const db: any = {
     select: vi.fn(),
     update: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
     transaction: vi.fn(),
     instance: {},
-  },
-}));
+  };
+  // `create` now runs the insert + cast/location clone for any resolved
+  // parent (sequel or special edition) inside ONE `db.transaction` — see
+  // `verticalDramaSeries.createLineage.test.ts`'s identical fake for the
+  // full rationale. The fake `tx` handle IS this same mock `db`, so every
+  // `mockDb.insert.mock.results[...]` assertion below still finds its call.
+  db.transaction = vi.fn((fn: (tx: unknown) => unknown) => fn(db));
+  return { mockDb: db };
+});
 vi.mock("../../db", () => ({ db: mockDb }));
 
 vi.mock("../../_core/trpc", () => {
