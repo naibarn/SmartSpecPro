@@ -1,0 +1,24 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/034-socraticode-external-services-cutover/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/034-socraticode-external-services-cutover/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "bash ops/socraticode-runtime/tests/test-external-launcher.sh && bash ops/socraticode-runtime/tests/test-cleanup.sh && node --test ops/socraticode-runtime/tests/watch-smartspecpro.test.mjs",
+  "sections": [
+    "section-01-launcher-tests-and-external-policy",
+    "section-02-resource-guard-and-cutover",
+    "section-03-live-verification-and-convergence"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-18T03:10:06.818269+00:00"
+}

@@ -8,6 +8,7 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf -- "${TMP_DIR}"' EXIT
 
 FAKE_DOCKER="${TMP_DIR}/fake-docker"
+FAKE_CURL="${TMP_DIR}/fake-curl"
 STATE_FILE="${TMP_DIR}/containers.tsv"
 ACTIONS_FILE="${TMP_DIR}/actions.log"
 PROC_ROOT="${TMP_DIR}/proc"
@@ -33,6 +34,10 @@ case "${command}" in
     awk -F '\t' 'NF >= 2 {print $1 "|" $2}' "${FAKE_DOCKER_STATE}"
     ;;
   inspect)
+    if [[ "$*" == *".State.Running"* ]]; then
+      printf 'true\n'
+      exit 0
+    fi
     id="${*: -1}"
     awk -F '\t' -v wanted="${id}" '$1 == wanted {print $3 "|" $4 "|" $5 "|" $6 "|" $7 "|" $8 "|" $9}' "${FAKE_DOCKER_STATE}"
     ;;
@@ -48,7 +53,21 @@ case "${command}" in
     ;;
 esac
 FAKE
-chmod +x "${FAKE_DOCKER}"
+
+cat > "${FAKE_CURL}" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+case "${*: -1}" in
+  */api/tags)
+    printf '{"models":[{"name":"nomic-embed-text:latest"}]}\n'
+    ;;
+  *)
+    printf '{"status":"ok"}\n'
+    ;;
+esac
+FAKE
+
+chmod +x "${FAKE_DOCKER}" "${FAKE_CURL}"
 
 write_state() {
   : > "${STATE_FILE}"
@@ -170,8 +189,10 @@ reset_proc
 write_state
 env \
   SOCRATICODE_DOCKER_BIN="${FAKE_DOCKER}" \
+  SOCRATICODE_CURL_BIN="${FAKE_CURL}" \
   SOCRATICODE_CLEANUP_SCRIPT="${CLEANUP_SCRIPT}" \
   SOCRATICODE_PROJECT_ROOT="${PROJECT_ROOT}" \
+  SOCRATICODE_SLOT_DIR="${TMP_DIR}/launcher-slots" \
   SOCRATICODE_PROC_ROOT="${PROC_ROOT}" \
   SOCRATICODE_NOW_EPOCH="${NOW}" \
   SOCRATICODE_CLEANUP_LOCK="${TMP_DIR}/cleanup.lock" \
