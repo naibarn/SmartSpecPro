@@ -16,6 +16,7 @@ let stdoutBuffer = "";
 let stderrBuffer = "";
 let statusText = "";
 let statusReceived = false;
+let toolsListed = false;
 
 const timeout = setTimeout(() => {
   child.kill("SIGTERM");
@@ -40,10 +41,19 @@ child.stdout.on("data", (chunk) => {
       child.stdin.write(`${JSON.stringify({
         jsonrpc: "2.0",
         id: 2,
+        method: "tools/list",
+        params: {},
+      })}\n`);
+    } else if (message.id === 2) {
+      const toolNames = message?.result?.tools?.map((tool) => tool.name) || [];
+      toolsListed = toolNames.includes("codebase_status");
+      child.stdin.write(`${JSON.stringify({
+        jsonrpc: "2.0",
+        id: 3,
         method: "tools/call",
         params: { name: "codebase_status", arguments: { projectPath } },
       })}\n`);
-    } else if (message.id === 2) {
+    } else if (message.id === 3) {
       statusText = message?.result?.content?.map((item) => item.text || "").join("\n") || "";
       statusReceived = true;
       child.stdin.end();
@@ -67,6 +77,7 @@ const exit = await new Promise((resolve) => {
 });
 clearTimeout(timeout);
 
+assert.equal(toolsListed, true, `tools/list did not expose codebase_status; stderr=${stderrBuffer}`);
 assert.equal(statusReceived, true, `status response missing; stderr=${stderrBuffer}`);
 assert.match(statusText, /Status: green/i);
 assert.equal(exit.code, 0, `launcher exited code=${exit.code} signal=${exit.signal}; stderr=${stderrBuffer}`);

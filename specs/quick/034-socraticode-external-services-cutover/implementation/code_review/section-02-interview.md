@@ -13,4 +13,3 @@ safe correction that did not change runtime behavior or user-approved limits.
 - Regenerated and verified checksums before installing runtime files.
 
 No additional changes were required by the targeted review.
-

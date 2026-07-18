@@ -15,6 +15,10 @@
     "section-01-launcher-tests-and-external-policy": {
       "status": "complete",
       "commit_hash": "334d749e2"
+    },
+    "section-02-resource-guard-and-cutover": {
+      "status": "complete",
+      "commit_hash": "adc8c291a"
     }
   },
   "pre_commit": {

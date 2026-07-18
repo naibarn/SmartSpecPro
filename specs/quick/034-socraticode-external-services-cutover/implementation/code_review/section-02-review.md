@@ -31,4 +31,3 @@ Approved.
 - No container or volume was deleted.
 
 No unresolved material findings remain before live MCP verification.
-
