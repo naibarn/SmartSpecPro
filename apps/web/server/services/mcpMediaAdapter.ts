@@ -45,6 +45,22 @@ const MCP_TASK_HARD_TIMEOUT_MS = Math.max(
   60 * 60_000,
   Number(process.env.MCP_MEDIA_TASK_HARD_TIMEOUT_MS ?? 24 * 60 * 60_000),
 );
+const MCP_IMAGE_TASK_HARD_TIMEOUT_MS = Math.max(
+  60 * 60_000,
+  Number(process.env.MCP_MEDIA_IMAGE_TASK_HARD_TIMEOUT_MS ?? 2 * 60 * 60_000),
+);
+const MCP_AUDIO_TASK_HARD_TIMEOUT_MS = Math.max(
+  60 * 60_000,
+  Number(process.env.MCP_MEDIA_AUDIO_TASK_HARD_TIMEOUT_MS ?? 2 * 60 * 60_000),
+);
+function getMcpTaskHardTimeoutMs(mediaType: MediaTask["mediaType"]): number {
+  if (mediaType === "image") return MCP_IMAGE_TASK_HARD_TIMEOUT_MS;
+  if (mediaType === "audio") return MCP_AUDIO_TASK_HARD_TIMEOUT_MS;
+  return MCP_TASK_HARD_TIMEOUT_MS;
+}
+export const getMcpTaskHardTimeoutMsForTest = (
+  mediaType: MediaTask["mediaType"],
+): number => getMcpTaskHardTimeoutMs(mediaType);
 const MCP_OUTPUT_MAX_BYTES_BY_TYPE: Record<MediaTask["mediaType"], number> = {
   image: 75 * 1024 * 1024,
   video: 1024 * 1024 * 1024,
@@ -1223,7 +1239,10 @@ export async function refreshMcpMediaTaskStatus(task: MediaTask): Promise<MediaT
   const providerJobId = metadata?.providerJobId ?? task.taskId;
 
   const createdAtMs = Date.parse(task.createdAt);
-  if (Number.isFinite(createdAtMs) && Date.now() - createdAtMs > MCP_TASK_HARD_TIMEOUT_MS) {
+  if (
+    Number.isFinite(createdAtMs) &&
+    Date.now() - createdAtMs > getMcpTaskHardTimeoutMs(task.mediaType)
+  ) {
     const timedOutTask: MediaTask = {
       ...task,
       status: "failed",

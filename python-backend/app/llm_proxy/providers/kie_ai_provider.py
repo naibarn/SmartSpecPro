@@ -485,6 +485,23 @@ def resolve_api_model(model: str, api_config: dict[str, Any] | None = None) -> s
     return normalize_model_name(model)
 
 
+def resolve_image_api_model(
+    model: str,
+    api_config: dict[str, Any] | None = None,
+    reference_image_urls: Any = None,
+) -> str:
+    """Resolve an opt-in image model variant from attached reference images."""
+    default_model = resolve_api_model(model, api_config)
+    if not isinstance(reference_image_urls, list) or not reference_image_urls:
+        return default_model
+
+    return _get_api_config_value(
+        api_config,
+        "kie_model_id_with_references",
+        "kieModelIdWithReferences",
+    ) or default_model
+
+
 def normalize_model_name(model: str) -> str:
     """Fallback conversion for legacy/internal model aliases."""
     normalized = FALLBACK_MODEL_NAME_MAP.get(model)
@@ -1407,8 +1424,14 @@ class KieAIProvider:
         api_config = kwargs.pop("api_config", None)
         extra_params = kwargs.pop("extra_params", None)
 
-        # Determine API model name
-        api_model = resolve_api_model(model, api_config)
+        # Determine API model name. Reference-driven variants are opt-in through
+        # catalog metadata, so unrelated Kie models keep their current behavior.
+        reference_image_urls = kwargs.get("reference_image_urls")
+        api_model = resolve_image_api_model(
+            model,
+            api_config,
+            reference_image_urls,
+        )
 
         # Build input parameters for image generation
         input_params = {
@@ -1437,8 +1460,8 @@ class KieAIProvider:
 
         # Add reference images for style transfer / img2img
         # The target field is driven by model config metadata passed through api_config.
-        if kwargs.get("reference_image_urls"):
-            ref_urls = kwargs["reference_image_urls"]
+        if reference_image_urls:
+            ref_urls = reference_image_urls
             if isinstance(ref_urls, list) and len(ref_urls) > 0:
                 reference_image_input_key, reference_image_input_type = _resolve_reference_image_input_config(
                     api_config,

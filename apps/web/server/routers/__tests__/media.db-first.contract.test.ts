@@ -13,6 +13,7 @@ const {
   mockDecrypt,
   mockResolveMediaTransport,
   mockSubmitMcpMediaGeneration,
+  mockGetMcpMediaTask,
 } = vi.hoisted(() => ({
   mockGenerateImage: vi.fn(),
   mockGenerateVideoAsync: vi.fn(),
@@ -26,6 +27,7 @@ const {
   mockDecrypt: vi.fn(),
   mockResolveMediaTransport: vi.fn(),
   mockSubmitMcpMediaGeneration: vi.fn(),
+  mockGetMcpMediaTask: vi.fn(),
 }));
 
 vi.mock("../../services/mediaGenerationService", () => ({
@@ -141,7 +143,7 @@ vi.mock("../../services/mediaTransportResolver", () => ({
 
 vi.mock("../../services/mcpMediaAdapter", () => ({
   cancelMcpMediaGeneration: vi.fn(),
-  getMcpMediaTask: vi.fn(),
+  getMcpMediaTask: mockGetMcpMediaTask,
   listMcpMediaTasks: vi.fn(),
   submitMcpMediaGeneration: (...args: unknown[]) => mockSubmitMcpMediaGeneration(...args),
 }));
@@ -2218,6 +2220,55 @@ describe("media.fetchTaskResult upstream error mapping", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
+    mockGetMcpMediaTask.mockResolvedValue(null);
+  });
+
+  it("refreshes an MCP task without forwarding it to the Python media endpoint", async () => {
+    const mcpTask = {
+      id: "mcp_live_task",
+      taskId: "provider-job-1",
+      userId: "123",
+      mediaType: "image",
+      status: "processing",
+      model: "higgsfield/gpt_image_2",
+      prompt: "test",
+      createdAt: new Date().toISOString(),
+    };
+    mockGetMcpMediaTask.mockResolvedValue(mcpTask);
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "mcp_live_task" } }),
+    ).resolves.toMatchObject({
+      success: true,
+      fetched: false,
+      task: mcpTask,
+    });
+    expect(mockGetMcpMediaTask).toHaveBeenCalledWith("mcp_live_task", 123);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("continues forwarding a direct provider task to Python", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        fetched: false,
+        message: "Task still in progress",
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const fn = mediaRouter.fetchTaskResult as Function;
+    await expect(
+      fn({ ctx: makeCtx(), input: { taskId: "direct-task-1" } }),
+    ).resolves.toMatchObject({ success: true, task: undefined });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/v1/media/tasks/direct-task-1/fetch-result",
+      expect.objectContaining({ method: "POST" }),
+    );
   });
 
   // Regression: a transient/expected 404 ("Task ... not found" — task row not

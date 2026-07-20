@@ -4113,6 +4113,22 @@ export const mediaRouter = router({
     .input(z.object({ taskId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
+        // MCP tasks are persisted and refreshed by the Node-side MCP adapter.
+        // Forwarding their IDs to Python can only produce a 404 because they
+        // do not exist in Python's media_tasks table. Besides being incorrect,
+        // repeated 404 retries can exhaust the shared backend rate limit.
+        const mcpTask = await getMcpMediaTask(input.taskId, ctx.user.id);
+        if (mcpTask) {
+          return {
+            success: true,
+            fetched: Boolean(mcpTask.resultUrl),
+            message: mcpTask.resultUrl
+              ? "MCP task result is available"
+              : "MCP task status refreshed",
+            task: mcpTask,
+          };
+        }
+
         const userToken = getUserToken(ctx);
         const runtime = await getAppRuntimeConfig();
 

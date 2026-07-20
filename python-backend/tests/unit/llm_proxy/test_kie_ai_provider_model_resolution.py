@@ -123,6 +123,82 @@ async def test_generate_image_uses_reference_image_config_metadata_for_array_fie
 
 
 @pytest.mark.asyncio
+async def test_generate_image_routes_to_configured_model_variant_when_references_exist():
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-1"}})
+
+    await provider.generate_image(
+        model="gpt-image-2-text-to-image",
+        prompt="Edit the attached product photo",
+        callback_url="",
+        reference_image_urls=["https://cdn.example.com/product.png"],
+        api_config={
+            "kie_model_id": "gpt-image-2-text-to-image",
+            "kie_model_id_with_references": "gpt-image-2-image-to-image",
+            "reference_image_input_key": "input_urls",
+            "reference_image_input_type": "array",
+        },
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, kwargs = provider.create_task.await_args
+    assert kwargs == {}
+    assert args[0] == "gpt-image-2-image-to-image"
+    assert args[1]["input_urls"] == ["https://cdn.example.com/product.png"]
+
+
+@pytest.mark.asyncio
+async def test_generate_image_keeps_default_model_variant_without_references():
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-1"}})
+
+    await provider.generate_image(
+        model="gpt-image-2-text-to-image",
+        prompt="Create a cinematic product photo",
+        callback_url="",
+        api_config={
+            "kie_model_id": "gpt-image-2-text-to-image",
+            "kie_model_id_with_references": "gpt-image-2-image-to-image",
+            "reference_image_input_key": "input_urls",
+            "reference_image_input_type": "array",
+        },
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, kwargs = provider.create_task.await_args
+    assert kwargs == {}
+    assert args[0] == "gpt-image-2-text-to-image"
+    assert "input_urls" not in args[1]
+
+
+@pytest.mark.asyncio
+async def test_generate_image_does_not_switch_non_opt_in_model_with_references():
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})
+    provider.create_task = AsyncMock(return_value={"data": {"taskId": "task-1"}})
+
+    await provider.generate_image(
+        model="other-canonical-model",
+        prompt="Edit the attached photo",
+        callback_url="",
+        reference_image_urls=["https://cdn.example.com/reference.png"],
+        api_config={
+            "kie_model_id": "other-provider-model",
+            "reference_image_input_key": "image_input",
+            "reference_image_input_type": "array",
+        },
+    )
+
+    provider.create_task.assert_awaited_once()
+    args, kwargs = provider.create_task.await_args
+    assert kwargs == {}
+    assert args[0] == "other-provider-model"
+    assert args[1]["image_input"] == ["https://cdn.example.com/reference.png"]
+
+
+@pytest.mark.asyncio
 async def test_generate_image_uses_nano_banana_2_lite_reference_images_without_api_config():
     provider = KieAIProvider(api_key="test-key")
     provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})

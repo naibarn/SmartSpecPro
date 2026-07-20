@@ -1387,6 +1387,13 @@
       "when": 1780000021000,
       "tag": "0211_vertical_drama_shot_references",
       "breakpoints": true
+    },
+    {
+      "idx": 198,
+      "version": "7",
+      "when": 1784512161809,
+      "tag": "0212_kie_gpt_image_2_auto_routing",
+      "breakpoints": true
     }
   ]
 }

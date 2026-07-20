@@ -134,6 +134,30 @@ describe("mcpMediaAdapter — stale reconciler + hard timeout", () => {
     vi.unstubAllGlobals();
   });
 
+  it("uses a shorter hard timeout for image/audio tasks while preserving the video window", async () => {
+    const { getMcpTaskHardTimeoutMsForTest } = await import("../mcpMediaAdapter");
+
+    expect(getMcpTaskHardTimeoutMsForTest("image")).toBe(2 * 60 * 60_000);
+    expect(getMcpTaskHardTimeoutMsForTest("audio")).toBe(2 * 60 * 60_000);
+    expect(getMcpTaskHardTimeoutMsForTest("video")).toBe(24 * 60 * 60_000);
+  });
+
+  it("hard-times-out an abandoned image task after the image-specific window", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { refreshMcpMediaTaskStatus } = await import("../mcpMediaAdapter");
+    const result = await refreshMcpMediaTaskStatus({
+      ...baseTask,
+      mediaType: "image",
+      createdAt: new Date(Date.now() - 3 * 60 * 60_000).toISOString(),
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.errorMessage).toBe("หมดเวลารอผลจากผู้ให้บริการ");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("marks a task failed when the provider positively rejects every status-check argument shape (job not found)", async () => {
     const fetchMock = vi.fn().mockImplementation(async () => new Response(
       JSON.stringify({

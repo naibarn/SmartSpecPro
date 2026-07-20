@@ -108,6 +108,11 @@ import {
   type MediaHistoryReferenceMediaAsset,
   type MediaHistoryReferenceImageConfig,
 } from "@/lib/mediaHistoryDebug";
+import {
+  createMediaHistoryPollState,
+  reserveMediaHistoryPoll,
+  setMediaHistoryRateLimit,
+} from "@/lib/mediaHistoryPolling";
 import { cn } from "@/lib/utils";
 
 type MediaType = "image" | "video" | "audio";
@@ -1370,12 +1375,13 @@ export default function MediaHistory() {
 
   // Mutation for fetching task result from provider
   const fetchResultMutation = trpc.media.fetchTaskResult.useMutation();
-
-  // Epoch-ms until which background polling is paused after hitting a 429
-  // rate-limit. Continuing to poll through the limit only deepens the window,
-  // so the poller respects the server-provided Retry-After (via the shared
-  // rateLimitBackoff helper) before trying again.
-  const pollRateLimitedUntilRef = useRef(0);
+  const mediaHistoryPollStateRef = useRef(createMediaHistoryPollState());
+  const pollTasksRef = useRef<MediaTask[]>(tasks);
+  const pollFetchResultRef = useRef(fetchResultMutation.mutateAsync);
+  const pollRefetchRef = useRef(refetch);
+  pollTasksRef.current = tasks;
+  pollFetchResultRef.current = fetchResultMutation.mutateAsync;
+  pollRefetchRef.current = refetch;
 
   // Mutation for deleting a task
   const deleteTaskMutation = trpc.media.deleteTask.useMutation({
@@ -2169,42 +2175,48 @@ export default function MediaHistory() {
 
   // Background fallback polling:
   // if provider callback/worker update is delayed, periodically refresh one pending task.
-  useEffect(() => {
-    const hasPendingTasks = tasks.some(
-      task =>
-        !task.resultUrl &&
-        (task.status === "processing" || task.status === "pending")
-    );
+  const hasPendingTasks = tasks.some(
+    task =>
+      !task.resultUrl &&
+      (task.status === "processing" || task.status === "pending")
+  );
 
-    if (!hasPendingTasks) return;
+  useEffect(() => {
+    if (!hasPendingTasks) {
+      mediaHistoryPollStateRef.current.nextAttemptAtByTask.clear();
+      return;
+    }
 
     const tick = async () => {
-      if (
-        document.visibilityState !== "visible" ||
-        fetchResultMutation.isPending ||
-        Date.now() < pollRateLimitedUntilRef.current
-      )
-        return;
-      const nextTask = tasks.find(
+      if (document.visibilityState !== "visible") return;
+
+      const nextTask = pollTasksRef.current.find(
         task =>
           !!task.taskId &&
           !task.resultUrl &&
           (task.status === "processing" || task.status === "pending")
       );
+      const pollKey = nextTask?.id ?? "__media_history_list__";
+      const pollState = mediaHistoryPollStateRef.current;
+      if (!reserveMediaHistoryPoll(pollState, pollKey, Date.now())) return;
+
+      pollState.inFlight = true;
       try {
         if (nextTask) {
-          await fetchResultMutation.mutateAsync({ taskId: nextTask.id });
+          await pollFetchResultRef.current({ taskId: nextTask.id });
         } else {
-          await refetch();
+          await pollRefetchRef.current();
         }
       } catch (error) {
         // A 429 means we're polling faster than the server allows. Pause for
         // the server-advised Retry-After window instead of retrying next tick.
         const backoffMs = rateLimitBackoffMs(error);
         if (backoffMs > 0) {
-          pollRateLimitedUntilRef.current = Date.now() + backoffMs;
+          setMediaHistoryRateLimit(pollState, Date.now(), backoffMs);
         }
         console.error("Background fetch task result failed:", error);
+      } finally {
+        pollState.inFlight = false;
       }
     };
 
@@ -2213,12 +2225,7 @@ export default function MediaHistory() {
       void tick();
     }, 15000);
     return () => window.clearInterval(interval);
-  }, [
-    tasks,
-    fetchResultMutation.isPending,
-    fetchResultMutation.mutateAsync,
-    refetch,
-  ]);
+  }, [hasPendingTasks]);
 
   useEffect(() => {
     const tracking = Object.entries(taskLibraryState).filter(

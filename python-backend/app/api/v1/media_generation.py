@@ -22,6 +22,7 @@ from app.llm_proxy.models import (
     VideoGenerationRequest,
     VideoGenerationResponse,
 )
+from app.llm_proxy.providers.kie_ai_provider import resolve_image_api_model
 from app.models.media_task import MediaTask, MediaType, TaskStatus
 from app.models.user import User
 from app.services.media_callback_service import (
@@ -51,6 +52,19 @@ except ImportError:
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+def _resolve_async_image_model(request: ImageGenerationRequest) -> str:
+    """Persist the actual opt-in Kie image variant used by async generation."""
+    api_config = request.api_config if isinstance(request.api_config, dict) else {}
+    reference_urls = request.reference_image_urls
+    variant_model = (
+        api_config.get("kie_model_id_with_references")
+        or api_config.get("kieModelIdWithReferences")
+    )
+    if not reference_urls or not isinstance(variant_model, str) or not variant_model.strip():
+        return request.model
+    return resolve_image_api_model(request.model, api_config, reference_urls)
 
 
 def _is_persistent_callback_pipeline_enabled() -> bool:
@@ -1763,17 +1777,29 @@ async def generate_image_async(
             detail="Async processing not available. Use /image endpoint instead."
         )
 
-    # Create task in database
+    effective_model = _resolve_async_image_model(request)
+    request_payload = request.dict()
+    request_payload["model"] = effective_model
+
+    if effective_model != request.model:
+        logger.info(
+            "async_image_model_variant_selected",
+            request_model=request.model,
+            effective_model=effective_model,
+            reference_image_count=len(request.reference_image_urls or []),
+        )
+
+    # Create task in database using the effective provider model so Media History
+    # reflects the model that actually received the request.
     task = await MediaTaskService.create_task(
         db,
         current_user,
         MediaType.IMAGE,
-        request.model,
+        effective_model,
         request.prompt,
         request.dict(exclude={'model', 'prompt'})
     )
 
-    request_payload = request.dict()
     should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
 
     if should_use_celery:
