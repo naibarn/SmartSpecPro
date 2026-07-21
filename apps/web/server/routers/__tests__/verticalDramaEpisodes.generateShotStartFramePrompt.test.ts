@@ -54,7 +54,6 @@ vi.mock("../../_core/trpc", () => {
     protectedProcedure: createProcedure(),
   };
 });
-
 vi.mock("../../middleware/requireFeatureFlag", () => ({
   requireFeatureFlag: () => (x: unknown) => x,
 }));
@@ -366,42 +365,152 @@ beforeEach(() => {
 });
 
 describe("generateShotStartFramePrompt", () => {
-  it("throws PRECONDITION_FAILED when there is no start-frame plan at all, and never calls the LLM service", async () => {
-    const episodeRow = baseEpisodeRow({ startFramePlan: null });
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow])); // loadOwnedEpisode
+  it("creates a minimal per-shot frame when no start-frame plan exists, without running the whole-episode planning stage", async () => {
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: null,
+      storyboard: {
+        shots: [
+          {
+            shot_number: 1,
+            required_character_refs: [],
+          },
+        ],
+      },
+    });
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ bible: null }])); // loadSeriesTargetAudienceRegion
 
-    await expect(
-      router.generateShotStartFramePrompt({
-        ctx: ctx(),
-        input: {
-          seriesId: "10",
-          episodeId: "100",
-          shotNumber: 1,
-          instruction: "make the lighting brighter",
-        },
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((value: any) => {
+        capturedSet = value;
+        return updateChain([episodeRow]);
       }),
-    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    });
 
-    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalled();
+    await router.generateShotStartFramePrompt({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        canonicalShotSummary: "The hero reaches the rain-soaked cafe.",
+      },
+    });
+
+    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledOnce();
+    expect(capturedSet.startFramePlan).toMatchObject({
+      mode: "single_frame_per_shot",
+      selectedImageModelId: "",
+      frames: [
+        {
+          shotNumber: 1,
+          imagePrompt: "regenerated start-frame prompt",
+          negativePrompt: "regenerated negative prompt",
+          requiredCharacterRefs: [],
+          productReferenceAssetIds: [],
+          canonicalShotSummary: "The hero reaches the rain-soaked cafe.",
+        },
+      ],
+    });
   });
 
-  it("throws PRECONDITION_FAILED when the plan exists but has no frame for the requested shot, and never calls the LLM service", async () => {
-    const episodeRow = baseEpisodeRow();
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow])); // loadOwnedEpisode
+  it("adds only the missing shot frame to an existing plan and preserves sibling frames", async () => {
+    const episodeRow = baseEpisodeRow({
+      storyboard: {
+        shots: [{ shot_number: 9, required_character_refs: [] }],
+      },
+    });
+    const originalFrames = episodeRow.startFramePlan.frames;
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ bible: null }])); // loadSeriesTargetAudienceRegion
 
-    await expect(
-      router.generateShotStartFramePrompt({
-        ctx: ctx(),
-        input: {
-          seriesId: "10",
-          episodeId: "100",
-          shotNumber: 9,
-          instruction: "make the lighting brighter",
-        },
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((value: any) => {
+        capturedSet = value;
+        return updateChain([episodeRow]);
       }),
-    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    });
 
-    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalled();
+    await router.generateShotStartFramePrompt({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 9,
+        instruction: "Create this shot prompt from its storyboard facts.",
+      },
+    });
+
+    expect(capturedSet.startFramePlan.frames).toHaveLength(3);
+    expect(capturedSet.startFramePlan.frames[0]).toBe(originalFrames[0]);
+    expect(capturedSet.startFramePlan.frames[1]).toBe(originalFrames[1]);
+    expect(capturedSet.startFramePlan.frames[2]).toMatchObject({
+      shotNumber: 9,
+      imagePrompt: "regenerated start-frame prompt",
+      negativePrompt: "regenerated negative prompt",
+      requiredCharacterRefs: [],
+      productReferenceAssetIds: [],
+    });
+  });
+
+  it("merges a newly materialized shot into the fresh row-locked plan created by a concurrent per-shot request", async () => {
+    const episodeRow = baseEpisodeRow({
+      startFramePlan: null,
+      storyboard: { shots: [{ shot_number: 1, required_character_refs: [] }] },
+    });
+    const concurrentPlan = {
+      mode: "single_frame_per_shot" as const,
+      selectedImageModelId: "google-nano-banana-pro",
+      frames: [
+        {
+          shotNumber: 2,
+          imagePrompt: "concurrent shot 2 prompt",
+          negativePrompt: "",
+          requiredCharacterRefs: [],
+          productReferenceAssetIds: [],
+        },
+      ],
+    };
+    mockDb.select
+      .mockReturnValueOnce(selectChain([episodeRow]))
+      .mockReturnValueOnce(selectChain([{ bible: null }]));
+
+    let capturedSet: any;
+    mockDb.update.mockReturnValueOnce({
+      set: vi.fn((value: any) => {
+        capturedSet = value;
+        return updateChain([episodeRow]);
+      }),
+    });
+    mockDb.transaction.mockImplementationOnce(
+      async (fn: (tx: unknown) => unknown) => {
+        const tx = {
+          select: () => selectChain([{ startFramePlan: concurrentPlan }]),
+          update: (...args: unknown[]) => (mockDb.update as any)(...args),
+        };
+        return fn(tx);
+      }
+    );
+
+    await router.generateShotStartFramePrompt({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
+    });
+
+    expect(capturedSet.startFramePlan.selectedImageModelId).toBe(
+      "google-nano-banana-pro"
+    );
+    expect(capturedSet.startFramePlan.frames).toEqual([
+      expect.objectContaining({
+        shotNumber: 1,
+        imagePrompt: "regenerated start-frame prompt",
+      }),
+      concurrentPlan.frames[0],
+    ]);
   });
 
   it("happy path: persists prompt+negative prompt onto ONLY the target shot's frame; every sibling frame stays the exact same object reference", async () => {

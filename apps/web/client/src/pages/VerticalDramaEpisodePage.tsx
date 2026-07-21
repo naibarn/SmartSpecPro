@@ -1033,14 +1033,6 @@ function EpisodeWorkspaceShell({
         setRepairError(err.message);
       },
     });
-  // Separate mutation instance from `repairMutation` above — the one-click
-  // "generate prompt + image" flow (2026-07-05 fix) runs this SILENTLY (no
-  // repair dialog shown, no free-text typing required from the user) to
-  // auto-compose a missing shot's image prompt, so it must not touch the
-  // repair dialog's own status state (`repairJobStatus` etc.), which only
-  // reflects the dialog's own explicit submissions.
-  const silentRepairMutation =
-    trpc.verticalDramaEpisodes.repairStageOutput.useMutation();
   // planning/`polished-toasting-gadget.md` Fix A — dedicated mutation for
   // the "ให้ AI ปรับ" (AI-adjust) button next to a shot's start-frame
   // prompt. Bypasses `repairMutation`/`repairStageOutput` entirely (that
@@ -3187,46 +3179,6 @@ function EpisodeWorkspaceShell({
           shot => shot.shotNumber === shotNumber
         )?.summary?.trim() || undefined;
 
-      if (!plan || !plan.frames?.length || !frame) {
-        // No plan yet, OR this specific shot has no frame entry (e.g. a plan
-        // that only holds a placeholder frame created by the per-shot
-        // character-reference override for a different shot) — generate real
-        // prompts for every shot first (same call as the panel's own "Generate
-        // start-frame prompts" button), then refetch until this shot's frame
-        // shows up. A placeholder frame that DOES exist for this shot (empty
-        // imagePrompt but carrying manually-set requiredCharacterRefs) is
-        // intentionally NOT force-regenerated here — it falls through to the
-        // per-shot re-author path below, which preserves those manual refs.
-        const outcome = await runStageMutation.mutateAsync({
-          seriesId,
-          episodeId,
-          stage: "start_frame_render_plan",
-          mode: "full",
-        });
-        if (outcome.result.status === "failed") {
-          toast.error(
-            lang === "th"
-              ? `เตรียมพรอมต์ภาพไม่สำเร็จ${outcome.result.errors[0]?.message ? `: ${outcome.result.errors[0].message}` : ""}`
-              : `Failed to prepare image prompts${outcome.result.errors[0]?.message ? `: ${outcome.result.errors[0].message}` : ""}`,
-            {
-              action: {
-                label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
-                onClick: () =>
-                  void handleGeneratePromptAndImage(shotNumber, mode, reauthor),
-              },
-            }
-          );
-          return;
-        }
-        const refreshed =
-          await utils.verticalDramaEpisodes.getEpisodeDetail.fetch({
-            seriesId,
-            episodeId,
-          });
-        plan = refreshed?.startFramePlan as typeof plan;
-        frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
-      }
-
       // The start-frame plan is a materialized snapshot. This button is
       // "สร้าง prompt + ภาพ" — it ALWAYS re-authors the shot's prompt through
       // the dedicated per-shot skill before the paid image render (2026-07-15
@@ -3240,13 +3192,28 @@ function EpisodeWorkspaceShell({
       // Render-only reuse stays available via the "สร้างภาพ (AI)" button,
       // which calls this function with `reauthor = false` to skip exactly this
       // re-authoring step and render the existing prompt as-is.
-      if (reauthor && canonicalShotSummary) {
+      // This dedicated per-shot mutation can now materialize its own minimal
+      // frame when the episode/shot has no start-frame plan entry yet. Do not
+      // call the whole-episode `runStage(start_frame_render_plan)` here: rapid
+      // clicks used to start the same long LLM plan many times concurrently,
+      // which exceeded the proxy timeout even though those duplicate runs
+      // later completed. Render-only still reuses an existing prompt, but a
+      // missing prompt must be authored once before the image can be queued.
+      if (reauthor || !frame?.imagePrompt?.trim()) {
         try {
           await generateShotStartFramePromptMutation.mutateAsync({
             seriesId,
             episodeId,
             shotNumber,
             canonicalShotSummary,
+            ...(!canonicalShotSummary
+              ? {
+                  instruction:
+                    lang === "th"
+                      ? `สร้าง image prompt สำหรับช็อตที่ ${shotNumber} ให้ครบถ้วนตามรายละเอียด storyboard และตัวละครที่กำหนดของช็อตนี้`
+                      : `Generate a complete image prompt for shot ${shotNumber}, following this shot's storyboard details and required characters.`,
+                }
+              : {}),
             idempotencyKey: crypto.randomUUID(),
           });
         } catch (err) {
@@ -3259,56 +3226,6 @@ function EpisodeWorkspaceShell({
           );
           return;
         }
-        const refreshed =
-          await utils.verticalDramaEpisodes.getEpisodeDetail.fetch({
-            seriesId,
-            episodeId,
-          });
-        plan = refreshed?.startFramePlan as typeof plan;
-        frame = plan?.frames?.find(f => f.shotNumber === shotNumber);
-      }
-
-      if (!frame?.imagePrompt?.trim()) {
-        if (reauthor && canonicalShotSummary) {
-          toast.error(
-            lang === "th"
-              ? "สร้างพรอมต์จากเรื่องย่อล่าสุดไม่สำเร็จ ลองใหม่อีกครั้ง"
-              : "Failed to create a prompt from the latest shot source — try again."
-          );
-          return;
-        }
-        // Plan exists but this specific shot has no prompt — auto-compose an
-        // instruction and repair it SILENTLY (no dialog, no typing).
-        const autoInstruction =
-          lang === "th"
-            ? `สร้าง image prompt สำหรับช็อตที่ ${shotNumber} ให้ครบถ้วนตามรายละเอียด storyboard และตัวละครที่กำหนดของช็อตนี้`
-            : `Generate a complete image prompt for shot ${shotNumber}, following this shot's storyboard details and required characters.`;
-        try {
-          await silentRepairMutation.mutateAsync({
-            seriesId,
-            episodeId,
-            stage: "start_frame_render_plan",
-            target: { parentShotNumber: shotNumber },
-            instruction: autoInstruction,
-          });
-        } catch (err) {
-          toast.error(
-            err instanceof Error
-              ? err.message
-              : lang === "th"
-                ? "เตรียมพรอมต์ภาพไม่สำเร็จ"
-                : "Failed to prepare the image prompt",
-            {
-              action: {
-                label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
-                onClick: () =>
-                  void handleGeneratePromptAndImage(shotNumber, mode, reauthor),
-              },
-            }
-          );
-          return;
-        }
-        invalidateRuns();
         const refreshed =
           await utils.verticalDramaEpisodes.getEpisodeDetail.fetch({
             seriesId,

@@ -12221,7 +12221,10 @@ export const verticalDramaEpisodesRouter = router({
    * persisting onto ONE frame inside `startFramePlan.frames[]` via a
    * `db.transaction(...).for("update")` row-lock + fresh re-read
    * immediately before merging (same 2026-07-11 lost-update-race-fix shape
-   * `generateShotVideoPrompt` uses for `motionPromptPack.clips[]`).
+   * `generateShotVideoPrompt` uses for `motionPromptPack.clips[]`). When the
+   * requested frame does not exist yet, this procedure materializes only
+   * that frame from the persisted storyboard facts; the per-shot UI never
+   * needs to run the long whole-episode start-frame planning stage first.
    */
   generateShotStartFramePrompt: verticalDramaProcedure
     .input(
@@ -12247,14 +12250,51 @@ export const verticalDramaEpisodesRouter = router({
         episodeId,
       });
 
-      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
-      const frame = plan?.frames?.find(f => f.shotNumber === input.shotNumber);
-      if (!plan || !frame) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `No start-frame plan for shot ${input.shotNumber} yet — generate the start-frame plan first`,
-        });
-      }
+      const existingPlan =
+        row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const basePlan: VerticalDramaStartFramePlan =
+        existingPlan && Array.isArray(existingPlan.frames)
+          ? existingPlan
+          : {
+              mode: "single_frame_per_shot",
+              selectedImageModelId: "",
+              frames: [],
+            };
+      const storyboardShots = Array.isArray(
+        (row.storyboard as Record<string, unknown> | null)?.shots
+      )
+        ? (((row.storyboard as Record<string, unknown>).shots ?? []) as Array<
+            Record<string, unknown>
+          >)
+        : [];
+      const storyboardShot = storyboardShots.find(
+        shot =>
+          Number(shot.shot_number ?? shot.shotNumber) === input.shotNumber
+      );
+      const storyboardCharacterRefs = Array.isArray(
+        storyboardShot?.required_character_refs
+      )
+        ? (storyboardShot.required_character_refs as unknown[])
+        : Array.isArray(storyboardShot?.characters)
+          ? (storyboardShot.characters as unknown[])
+          : Array.isArray(storyboardShot?.characterIds)
+            ? (storyboardShot.characterIds as unknown[])
+            : [];
+      const frame = basePlan.frames.find(
+        f => f.shotNumber === input.shotNumber
+      ) ?? {
+        shotNumber: input.shotNumber,
+        imagePrompt: "",
+        negativePrompt: "",
+        requiredCharacterRefs: Array.from(
+          new Set(
+            storyboardCharacterRefs
+              .map(value => String(value).trim())
+              .filter(Boolean)
+          )
+        ),
+        productReferenceAssetIds: [],
+      };
 
       // Resolve region/product-lock/character-identity facts — the SAME
       // router-private helpers `repairShotImage`/
@@ -12567,21 +12607,25 @@ export const verticalDramaEpisodesRouter = router({
           .limit(1);
         const freshPlan =
           (freshRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
-          plan;
+          basePlan;
         const targetIndex = freshPlan.frames.findIndex(
           f => f.shotNumber === input.shotNumber
         );
-        if (targetIndex === -1) return;
-
         const updatedFrames = freshPlan.frames.slice();
-        updatedFrames[targetIndex] = {
-          ...updatedFrames[targetIndex],
+        const updatedFrame = {
+          ...(targetIndex === -1 ? frame : updatedFrames[targetIndex]),
           imagePrompt: shotStartFramePromptResult.prompt,
           negativePrompt: shotStartFramePromptResult.negativePrompt,
           ...(input.canonicalShotSummary
             ? { canonicalShotSummary: input.canonicalShotSummary }
             : {}),
         };
+        if (targetIndex === -1) {
+          updatedFrames.push(updatedFrame);
+          updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+        } else {
+          updatedFrames[targetIndex] = updatedFrame;
+        }
         const updatedPlan: VerticalDramaStartFramePlan = {
           ...freshPlan,
           frames: updatedFrames,
