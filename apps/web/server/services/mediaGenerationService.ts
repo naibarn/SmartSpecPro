@@ -1359,9 +1359,32 @@ function resolveExtraParamsUrls(extraParams: Record<string, any>, publicUrl?: st
   return resolved;
 }
 
-function buildPythonBackendExtraParams(extraParams: Record<string, any>, publicUrl?: string | null): Record<string, any> {
+function normalizeAspectRatioExtraParams(
+  extraParams: Record<string, any>,
+  aspectRatio?: string | null,
+): Record<string, any> {
+  const normalized = { ...extraParams };
+  const canonical = String(aspectRatio ?? "").trim();
+  if (!canonical) return normalized;
+
+  for (const key of ["aspect_ratio", "aspectRatio", "aspect.ratio"] as const) {
+    if (Object.prototype.hasOwnProperty.call(normalized, key)) {
+      normalized[key] = canonical;
+    }
+  }
+  return normalized;
+}
+
+function buildPythonBackendExtraParams(
+  extraParams: Record<string, any>,
+  publicUrl?: string | null,
+  aspectRatio?: string | null,
+): Record<string, any> {
   return resolveExtraParamsUrls(
-    stripProviderInternalExtraParams(stripClientOnlyExtraParams(extraParams)),
+    normalizeAspectRatioExtraParams(
+      stripProviderInternalExtraParams(stripClientOnlyExtraParams(extraParams)),
+      aspectRatio,
+    ),
     publicUrl,
   );
 }
@@ -1369,8 +1392,9 @@ function buildPythonBackendExtraParams(extraParams: Record<string, any>, publicU
 export function buildPythonBackendExtraParamsForTest(
   extraParams: Record<string, any>,
   publicUrl?: string | null,
+  aspectRatio?: string | null,
 ): Record<string, any> {
-  return buildPythonBackendExtraParams(extraParams, publicUrl);
+  return buildPythonBackendExtraParams(extraParams, publicUrl, aspectRatio);
 }
 
 function assertValidAudioModelExtraParams(modelId: string, extraParams: Record<string, unknown> | undefined): void {
@@ -2103,7 +2127,7 @@ export class MediaGenerationService {
     // Add extra params from dynamic input fields
     // Resolve any relative URLs (e.g., image_input with /uploads/... paths)
     if ((request as any).extraParams) {
-      payload.extra_params = buildPythonBackendExtraParams((request as any).extraParams, publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams((request as any).extraParams, publicUrl, request.aspectRatio);
     }
 
     // Add reference images if provided (1-5 images)
@@ -2227,7 +2251,7 @@ export class MediaGenerationService {
     // Add extra params from dynamic input fields
     // Resolve any relative URLs (e.g., image_input with /uploads/... paths)
     if ((request as any).extraParams) {
-      payload.extra_params = buildPythonBackendExtraParams((request as any).extraParams, publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams((request as any).extraParams, publicUrl, request.aspectRatio);
     }
 
     // Add reference images for img2vid
@@ -2454,7 +2478,7 @@ export class MediaGenerationService {
 
     // Add extraParams for model-specific fields
     if (request.extraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(request.extraParams, publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams(request.extraParams, publicUrl, request.aspectRatio);
     }
 
     // Add reference images if provided (1-5 images)
@@ -2612,7 +2636,7 @@ export class MediaGenerationService {
 
     // Add extraParams for additional model-specific parameters
     if (request.extraParams) {
-      payload.extra_params = buildPythonBackendExtraParams(request.extraParams, publicUrl);
+      payload.extra_params = buildPythonBackendExtraParams(request.extraParams, publicUrl, request.aspectRatio);
     }
 
     this.logMediaRequest({

@@ -36,6 +36,23 @@ describe("normalizeMediaPrompt", () => {
 });
 
 describe("buildPythonBackendExtraParams", () => {
+  it("normalizes existing duplicated ratio aliases to the top-level value", () => {
+    expect(buildPythonBackendExtraParamsForTest({
+      aspect_ratio: "16:9",
+      aspectRatio: "16:9",
+      nsfw_checker: false,
+    }, undefined, "9:16")).toEqual({
+      aspect_ratio: "9:16",
+      aspectRatio: "9:16",
+      nsfw_checker: false,
+    });
+  });
+
+  it("does not invent a ratio alias when the model has none", () => {
+    expect(buildPythonBackendExtraParamsForTest({ nsfw_checker: false }, undefined, "9:16"))
+      .toEqual({ nsfw_checker: false });
+  });
+
   it("keeps persisted provenance but removes provider-internal manifest/debug metadata before backend submit", () => {
     expect(
       buildPythonBackendExtraParamsForTest(

@@ -19,6 +19,32 @@ export interface BuildMediaStudioCommonPayloadParams {
   resolution?: string;
 }
 
+export interface ResolveMediaStudioGenerationAspectRatioParams {
+  studioAspectRatio: string;
+  specializedAspectRatio?: string | null;
+}
+
+export function resolveMediaStudioGenerationAspectRatio(
+  params: ResolveMediaStudioGenerationAspectRatioParams,
+): string {
+  return params.specializedAspectRatio || params.studioAspectRatio;
+}
+
+export function syncMediaStudioAspectRatioAliases(
+  values: Record<string, unknown>,
+  aspectRatio: string,
+): Record<string, unknown> {
+  let changed = false;
+  const next = { ...values };
+  for (const key of ["aspectRatio", "aspect_ratio"] as const) {
+    if (Object.prototype.hasOwnProperty.call(values, key) && values[key] !== aspectRatio) {
+      next[key] = aspectRatio;
+      changed = true;
+    }
+  }
+  return changed ? next : values;
+}
+
 export function buildMediaStudioCommonPayload(
   params: BuildMediaStudioCommonPayloadParams,
 ): Record<string, unknown> {

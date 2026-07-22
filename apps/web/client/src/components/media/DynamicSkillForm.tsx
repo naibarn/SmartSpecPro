@@ -664,6 +664,9 @@ export default function DynamicSkillForm({
 
     schema.sections.forEach((section) => {
       section.fields.forEach((field) => {
+        if (excludeFields.includes(field.id)) {
+          return;
+        }
         const contextualDefault = getContextualFieldDefault(field, uiLanguage);
         const defaultValue = contextualDefault ?? field.default ?? field.defaultValue;
         if (defaultValue === undefined) {
@@ -687,7 +690,7 @@ export default function DynamicSkillForm({
     if (Object.keys(nextValues).length > 0) {
       onChange({ ...values, ...nextValues });
     }
-  }, [schema, values, onChange, uiLanguage]);
+  }, [schema, values, onChange, uiLanguage, excludeFields]);
 
   // Helper to get localized text
   const getText = (en: string | undefined, th: string | undefined) => {

@@ -299,7 +299,11 @@ import {
   selectHighestImageResolutionInput,
   type ModelInputField,
 } from "@/lib/mediaModelInputs";
-import { buildMediaStudioCommonPayload } from "@/lib/mediaStudioPayload";
+import {
+  buildMediaStudioCommonPayload,
+  resolveMediaStudioGenerationAspectRatio,
+  syncMediaStudioAspectRatioAliases,
+} from "@/lib/mediaStudioPayload";
 import {
   buildHyperframesRenderLibrarySaveInputFromSession,
   findMediaStudioRenderLibrarySession,
@@ -15979,6 +15983,15 @@ export default function MediaStudio() {
     setUseAdvancedMode(true);
   }, [selectedSkillId, setDynamicFormValues, setUseAdvancedMode]);
 
+  // The visible Media Studio selector owns the generation aspect ratio. Keep
+  // legacy skill aliases aligned when they already exist, without creating
+  // hidden fields for skills that do not define them.
+  useEffect(() => {
+    setDynamicFormValues((prev: Record<string, any>) =>
+      syncMediaStudioAspectRatioAliases(prev, aspectRatio)
+    );
+  }, [aspectRatio, setDynamicFormValues]);
+
   // Keep a max prompt length field aligned with the selected media model limit.
   // This field is used by prompt-creation skills that can overflow the model's prompt cap.
   useEffect(() => {
@@ -18741,17 +18754,18 @@ export default function MediaStudio() {
       activeTab === "video" &&
       selectedSkillId === VEO_STORYBOARD_SKILL_ID &&
       isVeoProviderModelId(selectedVeoProviderModelId);
-    const finalAspectRatio = shouldUseVeoStoryboardAspectSync
-      ? resolveVeoSyncedAspectRatio({
+    const finalAspectRatio = resolveMediaStudioGenerationAspectRatio({
+      studioAspectRatio: aspectRatio,
+      specializedAspectRatio: shouldUseVeoStoryboardAspectSync
+        ? resolveVeoSyncedAspectRatio({
           generationType: selectedVeoGenerationType,
           studioAspectRatio: aspectRatio,
           modelInputValues,
           skillAspectRatio:
             dynamicFormValues.aspectRatio ?? dynamicFormValues.aspect_ratio,
         })
-      : useAdvancedMode && dynamicFormValues.aspectRatio
-        ? dynamicFormValues.aspectRatio
-        : aspectRatio;
+        : undefined,
+    });
 
     // Build extra params from dynamic model input fields
     const rawConfig = selectedModelData?.configJson;
@@ -20926,8 +20940,10 @@ export default function MediaStudio() {
         targetTab === "video" &&
         tabState.selectedSkillId === VEO_STORYBOARD_SKILL_ID &&
         isVeoProviderModelId(retryVeoProviderModelId);
-      const finalAspectRatio = shouldUseVeoStoryboardAspectSync
-        ? resolveVeoSyncedAspectRatio({
+      const finalAspectRatio = resolveMediaStudioGenerationAspectRatio({
+        studioAspectRatio: tabState.aspectRatio,
+        specializedAspectRatio: shouldUseVeoStoryboardAspectSync
+          ? resolveVeoSyncedAspectRatio({
             generationType:
               tabState.modelInputValues.generationType ??
               tabState.dynamicFormValues.generationType,
@@ -20937,9 +20953,8 @@ export default function MediaStudio() {
               tabState.dynamicFormValues.aspectRatio ??
               tabState.dynamicFormValues.aspect_ratio,
           })
-        : tabState.useAdvancedMode && tabState.dynamicFormValues.aspectRatio
-          ? tabState.dynamicFormValues.aspectRatio
-          : tabState.aspectRatio;
+          : undefined,
+      });
       const retryMarketplaceContext =
         (task as MediaStudioQueueGenerationTask).marketplaceProduct ??
         getMarketplaceContextFromFields(tabState.dynamicFormValues) ??
