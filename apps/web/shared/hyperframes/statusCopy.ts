@@ -248,6 +248,24 @@ export const HYPERFRAMES_BLOCKER_COPY: Record<
     label: { en: "Operator permission required", th: "ต้องใช้สิทธิ์ operator" },
     description: { en: "This recovery action is available only to operators.", th: "การกู้คืนนี้ทำได้เฉพาะ operator" },
   },
+  sequential_storyboard_disabled: {
+    copyId: "hyperframes.blocker.sequential_storyboard_disabled",
+    label: { en: "Sequential storyboard disabled", th: "โหมด 9 ภาพต่อเนื่องยังไม่เปิด" },
+    description: {
+      en: "The 9-image sequential storyboard mode is not enabled for this tenant.",
+      th: "โหมด Storyboard แบบ 9 ภาพต่อเนื่องยังไม่เปิดใช้งานสำหรับ tenant นี้",
+    },
+    nextAction: { en: "Use the 3x3 storyboard", th: "ใช้โหมด Storyboard 3x3" },
+  },
+  sequential_video_model_no_start_frame: {
+    copyId: "hyperframes.blocker.sequential_video_model_no_start_frame",
+    label: { en: "Video model has no start-frame support", th: "โมเดลวิดีโอไม่รองรับภาพเริ่มต้น" },
+    description: {
+      en: "The selected video model does not support a start frame, so it cannot be used with the 9-shot sequential full-video mode.",
+      th: "โมเดลวิดีโอที่เลือกไม่รองรับภาพเริ่มต้น (start frame) จึงใช้กับโหมดวิดีโอเต็มแบบ 9 ภาพต่อเนื่องไม่ได้ กรุณาเลือกโมเดลวิดีโออื่น",
+    },
+    nextAction: { en: "Choose a start-frame capable video model", th: "เลือกโมเดลวิดีโอที่รองรับภาพเริ่มต้น" },
+  },
 };
 
 export function getHyperframesStatusCopy(

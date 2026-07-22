@@ -1,0 +1,26 @@
+OUTPUT FORMAT LOCK: Plain prompt text only. Single 9:16 photorealistic cinematic frame.
+TEXT POLICY: No text/captions/labels/watermarks/UI, no black caption bars/subtitles/video seconds, no timecodes/frame labels/measurement overlays/dimension text/glyphs. Prohibit marketplace/mobile app screenshots, phone screens, storefront UIs, price/rating/review widgets, cart/checkout flows, and platform marks. Prohibit Shopee/Lazada/TikTok Shop logos. Use only supplied references.
+STORYBOARD GUIDE CONTRACT (visual meaning only; never render this text in the image):
+Shot-by-shot storyboard guide
+
+SPOKEN STORY REFERENCE (backend narration only; never render captions, subtitles, timecodes, or shot numbers):
+Cell 1 spoken-story reference only: open with the customer problem
+Narration meaning only, never render speech as text.
+
+PRODUCT DETAIL / PRODUCT FACTS LOCK:
+PRODUCT FACTS LOCK: Greenforst table place bedside. Do not alter shape, material, or shelf count.
+
+GLOBAL VISUAL QUALITY LOCK:
+Photorealistic cinematic commercial film stills, natural skin texture, believable human anatomy, real lens depth, grounded shadows, warm but realistic lighting, coherent camera language, no plastic skin, no waxy faces, no catalog-rendered flat product.
+Character identity lock: do not reveal a face unless an approved character identity asset pack is explicitly supplied by the runtime metadata. If supplied, keep the visible face consistent with that pack; never create a new recognizable face from imagination.
+The product must match the attached reference images exactly. Do not add drawers, panels, handles, extra shelves, extra logos, alternate materials, alternate colors, or changed proportions.
+
+
+START FRAME: establish the opening visual state for this shot before motion begins.
+Shot 1: open with the customer problem
+Storyboard guide for this shot: 1. open with the customer problem /: slow push-in
+Dialogue contract: align the visual beat with the separate spoken line, but never render speech as on-screen text.
+Camera and light: slow push-in; slow push-in; realistic cinematic light with dimensional shadows.
+Visual content: bedside organize items
+Product continuity: context first; product must remain exact to reference images and product facts.
+Human continuity: if a person appears without an approved character identity asset pack, keep the person hands-only or face-hidden for the whole shot so there is no face drift risk. Do not rotate from back/side to a newly invented face.

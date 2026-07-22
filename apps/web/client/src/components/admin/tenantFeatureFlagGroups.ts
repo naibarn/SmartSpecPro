@@ -299,6 +299,8 @@ export const BASE_TENANT_FLAG_GROUPS: TenantFlagGroup[] = [
       { key: "storyboardPreviewMatchCaptureHighEnabled", label: "Preview Match High Quality", description: "Allow high-quality browser capture jobs" },
       { key: "storyboardClientCaptureExperimentEnabled", label: "Client Capture Experiment", description: "Allow experimental untrusted client-side capture paths" },
       { key: "hermesMediaWorker", label: "Grok via Hermes — Tenant rollout", description: "Tenant rollout gate for Grok image/video generation through the user's own Hermes worker. Platform enablement is also required in Admin Settings → Infrastructure → Tasks. This is NOT the agent-gateway Hermes Runtime." },
+      { key: "marketplaceSequentialStoryboard", label: "Storyboard 9 ภาพต่อเนื่อง (Sequential)", description: "เปิดโหมดสร้างรีวิวแบบ 9 ภาพแยก (1 prompt ต่อ 1 ภาพ) พร้อมล็อกสินค้าหลายมุม — Feature 136" },
+      { key: "marketplaceReviewEvidenceGuard", label: "Evidence Guard สำหรับรีวิวสินค้า", description: "เปิดการ์ดหลักฐานร่วมทั้งสองโหมด: assembly guard, guardian presence, claim whitelist — Feature 136" },
     ],
   },
   {

@@ -23,6 +23,14 @@ interface AutoStoryboardAdvancedOverridesProps {
   imageModelOptions?: ReadonlyArray<{ value: string; label: string }>;
   videoModelOptions?: ReadonlyArray<{ value: string; label: string }>;
   visionQaModelOptions?: ReadonlyArray<{ value: string; label: string }>;
+  /**
+   * Feature 136 (section 11, §6.6). Flag-gated: `frameStrategyOptions`
+   * conditionally appends the sequential option; the array is otherwise
+   * byte-identical. Default `false` keeps every existing caller/test
+   * (including the shipped `AutoStoryboardAdvancedOverrides.test.tsx`)
+   * unchanged.
+   */
+  sequentialStrategyEnabled?: boolean;
   videoSegmentPreview?: {
     loading?: boolean;
     error?: string | null;
@@ -181,6 +189,7 @@ export function AutoStoryboardAdvancedOverrides({
   videoModelOptions: providedVideoModelOptions,
   visionQaModelOptions: providedVisionQaModelOptions,
   videoSegmentPreview,
+  sequentialStrategyEnabled = false,
 }: AutoStoryboardAdvancedOverridesProps) {
   const copy = getMarketplaceHyperframesUiCopy(locale);
   const fields = plan?.overrideDiff.fields ?? [];
@@ -226,6 +235,15 @@ export function AutoStoryboardAdvancedOverrides({
     creativeBrief: labels.creativeBrief,
     motionDirection: labels.motionDirection,
     characterPresenceMode: labels.characterPresenceMode,
+    // Feature 136 (section 11, §6.6 item 3) — override-diff labels for the
+    // five new Feature 136 override keys (section 01). `confirmedAttributes`
+    // is included here for label purposes only; the evidence panel (not
+    // this component) owns writing/pruning that key (binding decision §3.4).
+    confirmedAttributes: copy.confirmedAttributesLabel,
+    forbiddenClaims: copy.forbiddenClaimsLabel,
+    targetAudience: copy.targetAudienceLabel,
+    userRequirements: copy.userRequirementsLabel,
+    sequentialImagePromptMaxChars: copy.sequentialImagePromptMaxCharsLabel,
   };
   const describeFields = (fieldNames: string[]) =>
     fieldNames.map(field => fieldLabels[field] ?? field);
@@ -282,6 +300,16 @@ export function AutoStoryboardAdvancedOverrides({
       value: "video_shot_start_stop",
       label: thai ? "เฟรมเริ่ม/จบแต่ละช็อต" : "Start/stop frame pairs",
     },
+    // Feature 136 (section 11, §6.6 item 1) — flag-gated third option; the
+    // array above is otherwise byte-identical for every existing caller.
+    ...(sequentialStrategyEnabled
+      ? ([
+          {
+            value: "sequential_shot_storyboard",
+            label: copy.sequentialStrategyOptionLabel,
+          },
+        ] as const)
+      : []),
   ] as const;
   const videoStructureOptions = [
     {

@@ -62,6 +62,14 @@ export function AutoStoryboardReviewPlanSummary({
         : plan?.display.summary ?? copy.autoReviewFallbackSummary;
   const handlePrimaryAction = primaryUsesStandard ? onUseStandard : onStart;
   const isActiveRun = Boolean(plan?.activeRunId);
+  // Feature 136 (section 11, §6.7) — always-visible active-strategy label.
+  // `frameStrategy` can be `"auto"` before the backend resolves a concrete
+  // strategy; `frameStrategyLabels` only covers the three concrete values.
+  const frameStrategy = plan?.defaults.frameStrategy;
+  const frameStrategyLabel =
+    frameStrategy && frameStrategy !== "auto"
+      ? copy.frameStrategyLabels[frameStrategy]
+      : copy.autoSelected;
 
   return (
     <section
@@ -135,7 +143,7 @@ export function AutoStoryboardReviewPlanSummary({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+      <div className="mt-4 grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             {copy.template}
@@ -154,6 +162,14 @@ export function AutoStoryboardReviewPlanSummary({
         </div>
         <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            {copy.locale === "th" ? "เฟรม" : "Frames"}
+          </p>
+          <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
+            {frameStrategyLabel}
+          </p>
+        </div>
+        <div className="rounded-md border bg-white p-3 dark:border-slate-700 dark:bg-slate-950">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
             {copy.estimate}
           </p>
           <p className="mt-1 font-medium text-slate-900 dark:text-slate-100">
@@ -161,6 +177,12 @@ export function AutoStoryboardReviewPlanSummary({
               ? copy.creditsEstimated(plan.creditEstimate.estimatedCredits)
               : copy.previewPolicy}
           </p>
+          {plan?.creditEstimate?.imageJobCount &&
+          plan.creditEstimate.imageJobCount > 1 ? (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {copy.imageJobsEstimated(plan.creditEstimate.imageJobCount)}
+            </p>
+          ) : null}
         </div>
       </div>
 

@@ -23,6 +23,10 @@ import { AutoReviewCreativePresetSelectionSchema } from "./autoReviewCreativePre
 import { HyperframesFeatureAccessProjectionSchema } from "./featureAccess";
 import { HyperframesTemplateDescriptorSchema } from "./contracts";
 import {
+  SequentialEvidencePreviewSchema,
+  SequentialReferenceCapacitySchema,
+} from "../marketplaceCapture/sequentialEvidencePreview";
+import {
   HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC,
   HYPERFRAMES_FINAL_COMPOSITE_SHOT_MAX_SEC,
   HYPERFRAMES_FINAL_RENDER_PROMPT_MAX_CHARS,
@@ -66,6 +70,13 @@ export const GetAutoStoryboardReviewPlanOutputSchema = z
     access: HyperframesFeatureAccessProjectionSchema,
     plan: HyperframesAutoStoryboardReviewPlanSchema,
     templates: z.array(HyperframesTemplateDescriptorSchema).default([]),
+    // Feature 136 (section 05, §5.4) — optional, populated ONLY when the
+    // tenant flag is on AND the resolved strategy is sequential (see
+    // `getHyperframesAutoStoryboardReviewPlanWithEvidence`). Optional-absent
+    // is mandatory: these keys must not serialize at all when unpopulated,
+    // keeping the section-01 plan snapshot byte-identical.
+    evidencePreview: SequentialEvidencePreviewSchema.optional(),
+    referenceCapacity: SequentialReferenceCapacitySchema.optional(),
   })
   .strict();
 

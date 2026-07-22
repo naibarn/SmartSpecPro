@@ -91,6 +91,13 @@ export const hyperframesBlockerCodes = [
   "qa_failed",
   "library_save_disabled",
   "operator_permission_required",
+  "sequential_storyboard_disabled",
+  // Feature 136 section 09 (§5.2) — sequential full-video plan-surface
+  // blocker: the selected video model has no start-frame support, so the
+  // sequential 9-shot full-video mode cannot proceed. Unlike
+  // `sequential_storyboard_disabled` this is a REAL blocker (not a
+  // sanitize-and-warn case) — the plan is genuinely unusable as configured.
+  "sequential_video_model_no_start_frame",
 ] as const;
 
 export const hyperframesCostClasses = [
@@ -344,6 +351,11 @@ export const HyperframesCreditEstimateSchema = z
     fps: z.number().int().min(1),
     durationSeconds: z.number().min(0.1),
     estimatedFrameCount: z.number().int().min(1),
+    // Feature 136 (section 10, §5.2) — transparency field only, never a
+    // credit input (binding decision §3.1). Optional + no default so zod
+    // omits it from every parsed object that doesn't set it, keeping every
+    // pre-Feature-136 estimate byte-identical (section 01 §7.4 tripwire).
+    imageJobCount: z.number().int().min(1).max(64).optional(),
     estimatedRenderPixels: z.number().int().min(1),
     estimatedStorageBytes: z.number().int().min(0),
     profileMultiplier: z.number().min(0),

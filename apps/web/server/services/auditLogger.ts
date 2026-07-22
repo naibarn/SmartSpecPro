@@ -192,6 +192,16 @@ export type AuditEventType =
   | "hermes_media_usage_recorded"
   | "vertical_drama_season_critique_apply_error"
   | "vertical_drama_deep_generate_error"
+  // Feature 136 (Marketplace Auto Review: Sequential Shot Storyboard)
+  // section 12 §5.1/§5.3 — frozen 7-name observability event catalog.
+  // Additive only; see `marketplaceAutoReviewObservability.ts`.
+  | "sequential_skill_plan_round"
+  | "sequential_prompt_degraded_fallback"
+  | "final_image_prompt_over_provider_budget"
+  | "final_video_prompt_over_provider_budget"
+  | "sequential_reference_angles_trimmed"
+  | "marketplace_review_evidence_guard_occurrence"
+  | "marketplace_review_mode_metrics"
   | "error";
 
 export interface AuditLogEntry {

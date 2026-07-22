@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { AutoReviewCreativePresetSelectionSchema } from "../../shared/hyperframes/autoReviewCreativePresets";
+import { MARKETPLACE_START_FRAME_PROMPT_STYLES } from "../../shared/marketplaceCapture/startFramePromptStyle";
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { signBearerToken } from "../_core/tokens";
 import { issueMarketplaceExtensionToken } from "../services/marketplaceExtensionAuthService";
@@ -36,6 +37,8 @@ import {
   getMarketplaceAutoReviewRun,
   listMarketplaceAutoReviewRuns,
   queueMarketplaceAutoReviewAdvance,
+  regenerateMarketplaceAutoReviewSequentialShot,
+  saveMarketplaceAutoReviewSequentialShotOverride,
   selectMarketplaceAutoReviewImageAttemptForStoryboardReview,
   startMarketplaceAutoReviewRun,
 } from "../services/marketplaceAutoReviewService";
@@ -676,9 +679,23 @@ export const marketplaceCaptureRouter = router({
           .enum(["storyboard_images", "full_video"])
           .default("storyboard_images"),
         frameStrategy: z
-          .enum(["auto", "storyboard_3x3_split", "video_shot_start_stop"])
+          .enum([
+            "auto",
+            "storyboard_3x3_split",
+            "video_shot_start_stop",
+            "sequential_shot_storyboard",
+          ])
           .optional()
           .default("auto"),
+        // Feature 136 section 13 (§4 deliverable 2) — optional cinematic
+        // prompt style layer for the sequential storyboard's start-frame /
+        // video prompts (section-01 `frameStrategy` precedent: additive,
+        // nothing else in this procedure changes). No `.default()` — an
+        // absent value keeps today's `evidence_product` behavior with zero
+        // wire-shape change for every existing caller.
+        startFramePromptStyle: z
+          .enum(MARKETPLACE_START_FRAME_PROMPT_STYLES)
+          .optional(),
         audioStrategy: z
           .enum([
             "auto",
@@ -811,6 +828,38 @@ export const marketplaceCaptureRouter = router({
             auditMetadata: z.record(z.unknown()).optional(),
             fileEvidence: z.record(z.unknown()).optional(),
             sourceRefs: z.array(z.string().max(512)).max(50).optional(),
+            // Feature 136 (section 02, §5.2) — multi-angle product reference
+            // layer for the `sequential_shot_storyboard` strategy. Additive
+            // and optional; unrelated to (and never written into) the
+            // existing single-anchor `productReferenceAssetPack`.
+            productAngleImages: z
+              .array(
+                z.object({
+                  url: z.string().min(1).max(4096),
+                  ref: z.string().max(512),
+                  hash: z.string().max(256).optional().nullable(),
+                  storageKey: z.string().max(1024).optional().nullable(),
+                  source: z.enum([
+                    "marketplace_product_image",
+                    "upload",
+                    "library",
+                  ]),
+                  angleLabel: z.enum([
+                    "front",
+                    "back",
+                    "side",
+                    "top",
+                    "base",
+                    "detail",
+                    "package",
+                    "parts_diagram",
+                    "scale",
+                    "other",
+                  ]),
+                })
+              )
+              .max(8)
+              .optional(),
           })
           .passthrough()
           .optional()
@@ -1181,6 +1230,48 @@ export const marketplaceCaptureRouter = router({
         input,
         authFromCtx(ctx)
       )
+    ),
+
+  // Feature 136 (section 08, §6.1) — additive, sequential-shot-storyboard
+  // only. Re-runs exactly one of the 9 sequential units through the
+  // existing image submit -> QA -> repair machinery; the media `userToken`
+  // is required to submit, so runtime is threaded through like `advanceAuto
+  // ReviewRun`.
+  regenerateAutoReviewSequentialShot: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        shotId: z.number().int().min(1).max(9),
+        refreshPrompt: z.boolean().optional().default(false),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      regenerateMarketplaceAutoReviewSequentialShot(
+        input,
+        authFromCtx(ctx),
+        autoReviewRuntimeFromCtx(ctx)
+      )
+    ),
+
+  // Feature 136 (section 08, §6.1) — additive. Validates and persists a user
+  // edit (dialogue / image prompt / video prompt) at
+  // `metadataJson.sequentialStoryboard.shotOverrides[shotId]`; no provider
+  // spend, so no runtime/userToken needed.
+  saveAutoReviewSequentialShotOverride: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().min(1).max(64),
+        shotId: z.number().int().min(1).max(9),
+        dialogue: z.string().trim().max(2000).optional(),
+        startFrameImagePrompt: z.string().trim().max(4000).optional(),
+        videoPrompt: z.string().trim().max(2000).optional(),
+        clear: z.boolean().optional().default(false),
+      })
+    )
+    .output(z.any())
+    .mutation(async ({ input, ctx }) =>
+      saveMarketplaceAutoReviewSequentialShotOverride(input, authFromCtx(ctx))
     ),
 
   cancelAutoReviewRun: protectedProcedure

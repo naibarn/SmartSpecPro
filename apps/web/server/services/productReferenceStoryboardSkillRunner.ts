@@ -36,6 +36,16 @@ export const PRODUCT_REFERENCE_STORYBOARD_PROMPT_OPTIMIZER_SKILL_ID =
   "product-reference-storyboard-prompt-optimizer";
 export const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 3800;
 const PRODUCT_REFERENCE_STORYBOARD_PROMPT_PREFERRED_CHARS = 3600;
+/**
+ * Feature 136 (section 04) — frozen cross-file literal, duplicated (not
+ * imported) from `productReviewSequentialStoryboardSkillRunner.ts`'s
+ * `SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER`: that module imports
+ * `optimizeProductReferenceStoryboardPrompt` FROM this file, so this file
+ * cannot import back from it without a circular dependency. Must stay
+ * byte-identical to that module's exported constant.
+ */
+const SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER_FOR_OPTIMIZER =
+  "Use @Image1 as the absolute product identity reference";
 const PRODUCT_REFERENCE_STORYBOARD_MIN_COMPLETION_TOKENS = 4000;
 const PRODUCT_REFERENCE_STORYBOARD_OUTPUT_AUDIT_PREVIEW_CHARS = 500;
 const PRODUCT_REFERENCE_STORYBOARD_FULL_OUTPUT_LOG_DIR = (
@@ -1772,6 +1782,17 @@ export async function optimizeProductReferenceStoryboardPrompt(input: {
   promptAttempt?: number | null;
   model?: string | null;
   maxOutputChars: number;
+  /**
+   * Feature 136 (section 04, §5.3 deliverable) — optional. When set, the
+   * source prompt is a Marketplace Auto Review SEQUENTIAL mode per-shot
+   * prompt (one photorealistic start frame, or one self-contained video
+   * prompt), not a 3x3 grid prompt. Absent = legacy 3x3 behavior,
+   * byte-identical output for every existing caller (the extra system-prompt
+   * line and `optimizerInputs.prompt_kind` key are only added when this is
+   * present; `sanitizeUserInputs` already drops `undefined`-valued keys, and
+   * `.filter(Boolean)` already drops an empty system-prompt line).
+   */
+  promptKind?: "sequential_image" | "sequential_video" | null;
 }): Promise<{
   execution: Awaited<ReturnType<typeof executeSharedSkillTextRuntime>>;
   value: SharedSkillRuntimeTextResult;
@@ -1809,11 +1830,21 @@ export async function optimizeProductReferenceStoryboardPrompt(input: {
     preferred_target_chars: preferredTargetChars,
     preserve_storyboard_contract: true,
     optimization_strength: "auto",
+    // Feature 136 (section 04) — additive; `sanitizeUserInputs` drops
+    // `undefined` values, so an absent `input.promptKind` leaves this key
+    // out entirely (byte-identical to today for every existing 3x3 caller).
+    prompt_kind: input.promptKind ?? undefined,
   });
   const promptLengthPlan = buildPromptLengthPlan(
     input.maxOutputChars,
     resolvePromptLanguageHintFromInputs(optimizerInputs)
   );
+  const sequentialPromptKindDirective =
+    input.promptKind === "sequential_image"
+      ? "This source prompt is a Marketplace Auto Review SEQUENTIAL mode single-shot START-FRAME IMAGE prompt (Feature 136), not a 3x3 grid prompt: it describes exactly ONE photorealistic frame, not nine `Frame N:` lines. Do not impose 3x3 grid structure or invent Frame 1-9 lines; preserve the single-shot reference-lock block (`@ImageN` bindings), product/character continuity, camera framing, and negative constraints, compressed to fit the budget."
+      : input.promptKind === "sequential_video"
+        ? `This source prompt is a Marketplace Auto Review SEQUENTIAL mode single-shot SELF-CONTAINED VIDEO prompt (Feature 136): it MUST keep the mandatory global identity block beginning with the exact sentence "${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER_FOR_OPTIMIZER}" verbatim and unparaphrased, keep the scene/camera/one clear action/dialogue/audio content, and must NOT impose 3x3 grid \`Frame N:\` structure.`
+        : "";
   const systemPrompt = [
     loadPromptTemplate(optimizerSkill),
     promptLengthPlan?.directive,
@@ -1823,6 +1854,7 @@ export async function optimizeProductReferenceStoryboardPrompt(input: {
     "Use one shared CAMERA/LIGHT/DEPTH: block and one shared PRODUCT VERIFY: block. Do not repeat those blocks in every frame.",
     "Remove VISUAL:, STORY MATCH:, HUMAN REALISM:, quoted voiceover lines, timecodes, subtitles, captions, and any frame labels likely to render as visible text.",
     "Never return JSON, markdown fences, analysis, character counts, or a partial prompt.",
+    sequentialPromptKindDirective,
   ]
     .filter(Boolean)
     .join("\n\n");

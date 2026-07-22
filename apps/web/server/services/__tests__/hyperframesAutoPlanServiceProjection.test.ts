@@ -56,6 +56,14 @@ describe("hyperframesAutoPlanService summary projection integration", () => {
     vi.doMock("../marketplaceAutoReviewService", () => ({
       listMarketplaceAutoReviewRuns,
     }));
+    // Feature 136 (section 01, §5.8) — getHyperframesAutoStoryboardReviewPlan
+    // now reads the sequential-storyboard tenant flag directly via
+    // getTenantFeatureFlags(), which calls getDb(). This suite has no
+    // DATABASE_URL, so getDb() throws unless mocked here (mirrors the
+    // `vi.mock("../../db", ...)` pattern used elsewhere in this test suite).
+    vi.doMock("../../db", () => ({
+      getDb: vi.fn(async () => null),
+    }));
     vi.doMock("../hyperframesFeatureAccessService", async () => {
       const actual = await vi.importActual<
         typeof import("../hyperframesFeatureAccessService")
@@ -152,6 +160,14 @@ describe("hyperframesAutoPlanService summary projection integration", () => {
     vi.doMock("../marketplaceAutoReviewService", () => ({
       listMarketplaceAutoReviewRuns,
     }));
+    // Feature 136 (section 01, §5.8) — getHyperframesAutoStoryboardReviewPlan
+    // now reads the sequential-storyboard tenant flag directly via
+    // getTenantFeatureFlags(), which calls getDb(). This suite has no
+    // DATABASE_URL, so getDb() throws unless mocked here (mirrors the
+    // `vi.mock("../../db", ...)` pattern used elsewhere in this test suite).
+    vi.doMock("../../db", () => ({
+      getDb: vi.fn(async () => null),
+    }));
     vi.doMock("../hyperframesFeatureAccessService", async () => {
       const actual = await vi.importActual<
         typeof import("../hyperframesFeatureAccessService")
@@ -233,6 +249,14 @@ describe("hyperframesAutoPlanService summary projection integration", () => {
     }));
     vi.doMock("../marketplaceAutoReviewService", () => ({
       listMarketplaceAutoReviewRuns,
+    }));
+    // Feature 136 (section 01, §5.8) — getHyperframesAutoStoryboardReviewPlan
+    // now reads the sequential-storyboard tenant flag directly via
+    // getTenantFeatureFlags(), which calls getDb(). This suite has no
+    // DATABASE_URL, so getDb() throws unless mocked here (mirrors the
+    // `vi.mock("../../db", ...)` pattern used elsewhere in this test suite).
+    vi.doMock("../../db", () => ({
+      getDb: vi.fn(async () => null),
     }));
     vi.doMock("../hyperframesFeatureAccessService", async () => {
       const actual = await vi.importActual<
@@ -331,6 +355,14 @@ describe("hyperframesAutoPlanService summary projection integration", () => {
     }));
     vi.doMock("../marketplaceAutoReviewService", () => ({
       listMarketplaceAutoReviewRuns,
+    }));
+    // Feature 136 (section 01, §5.8) — getHyperframesAutoStoryboardReviewPlan
+    // now reads the sequential-storyboard tenant flag directly via
+    // getTenantFeatureFlags(), which calls getDb(). This suite has no
+    // DATABASE_URL, so getDb() throws unless mocked here (mirrors the
+    // `vi.mock("../../db", ...)` pattern used elsewhere in this test suite).
+    vi.doMock("../../db", () => ({
+      getDb: vi.fn(async () => null),
     }));
     vi.doMock("../hyperframesFeatureAccessService", async () => {
       const actual = await vi.importActual<
@@ -440,6 +472,14 @@ describe("hyperframesAutoPlanService summary projection integration", () => {
     }));
     vi.doMock("../marketplaceAutoReviewService", () => ({
       listMarketplaceAutoReviewRuns,
+    }));
+    // Feature 136 (section 01, §5.8) — getHyperframesAutoStoryboardReviewPlan
+    // now reads the sequential-storyboard tenant flag directly via
+    // getTenantFeatureFlags(), which calls getDb(). This suite has no
+    // DATABASE_URL, so getDb() throws unless mocked here (mirrors the
+    // `vi.mock("../../db", ...)` pattern used elsewhere in this test suite).
+    vi.doMock("../../db", () => ({
+      getDb: vi.fn(async () => null),
     }));
     vi.doMock("../hyperframesFeatureAccessService", async () => {
       const actual = await vi.importActual<

@@ -45,6 +45,10 @@ describe("HyperFrames auto plan contract", () => {
     const defaults = buildDefaultHyperframesAutoPlanDefaults();
 
     expect(HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES).toEqual({
+      // Feature 136 section 09 (§5.2) — `outputMode` became overridable
+      // (previously hardcoded with no override path) so the start-frame
+      // capability blocker can ever be reachable at plan time.
+      outputMode: defaults.outputMode,
       platformPresetId: defaults.platformPreset.presetId,
       frameStrategy: defaults.frameStrategy,
       audioStrategy: defaults.audioStrategy,
@@ -60,6 +64,20 @@ describe("HyperFrames auto plan contract", () => {
       characterPresenceMode: defaults.characterPresenceMode,
       qualityMode: defaults.qualityMode,
       visionQaModel: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.visionQaModel,
+      // Feature 136 — these five keys are decorative-only (required by the
+      // `satisfies Record<...>` constraint) and intentionally NOT derived
+      // from `defaults`, since `buildDefaultHyperframesAutoPlanDefaults()`
+      // never sets them (they stay absent-by-default; binding decision
+      // §3.4, section-01-flags-and-schemas.md).
+      confirmedAttributes: "",
+      forbiddenClaims: "",
+      targetAudience: "",
+      userRequirements: "",
+      sequentialImagePromptMaxChars: "4000",
+      // Feature 136 section 13 — same decorative-only rationale as the five
+      // keys above (`buildDefaultHyperframesAutoPlanDefaults()` never sets
+      // it; stays absent-by-default).
+      startFramePromptStyle: "evidence_product",
     });
   });
 

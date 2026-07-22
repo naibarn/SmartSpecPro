@@ -1,0 +1,467 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProductReviewSequentialStoryboardSkillOutput",
+  "description": "Validates the strict JSON object every invocation of this skill returns (the initial Phase A-G build AND every loop round Phase H/I/J re-invocation share this one schema; loopReport accumulates across rounds). No markdown fences, no prose outside the object. claim_trace is QC-internal audit data and must never be forwarded to an image/video provider.",
+  "type": "object",
+  "additionalProperties": true,
+  "definitions": {
+    "claimConfidenceLevel": {
+      "type": "string",
+      "enum": [
+        "visual_verified",
+        "text_verified",
+        "user_confirmed",
+        "conditional",
+        "unsupported",
+        "conflicting"
+      ]
+    },
+    "referenceManifestItem": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["index", "role", "url"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "angleLabel": { "type": "string" },
+        "url": { "type": "string", "minLength": 1 },
+        "evidence_only": { "type": "boolean", "default": false }
+      }
+    },
+    "loopRoundScores": {
+      "type": "object",
+      "description": "The eight shared score dimensions every round (H/I/J) returns, each scored 0-10.",
+      "additionalProperties": true,
+      "required": [
+        "evidence_accuracy",
+        "product_consistency",
+        "narrative_quality",
+        "dialogue_continuity",
+        "visual_feasibility",
+        "compliance_safety",
+        "prompt_completeness",
+        "length_compliance"
+      ],
+      "properties": {
+        "evidence_accuracy": { "type": "number", "minimum": 0, "maximum": 10 },
+        "product_consistency": { "type": "number", "minimum": 0, "maximum": 10 },
+        "narrative_quality": { "type": "number", "minimum": 0, "maximum": 10 },
+        "dialogue_continuity": { "type": "number", "minimum": 0, "maximum": 10 },
+        "visual_feasibility": { "type": "number", "minimum": 0, "maximum": 10 },
+        "compliance_safety": { "type": "number", "minimum": 0, "maximum": 10 },
+        "prompt_completeness": { "type": "number", "minimum": 0, "maximum": 10 },
+        "length_compliance": { "type": "number", "minimum": 0, "maximum": 10 }
+      }
+    },
+    "loopRound": {
+      "type": "object",
+      "description": "One round's complete evaluation. Candidates carry best-of-N (up to candidate_count) comparative scoring; the round's own top-level scores belong to the retained/selected candidate.",
+      "additionalProperties": true,
+      "required": [
+        "evidence_accuracy",
+        "product_consistency",
+        "narrative_quality",
+        "dialogue_continuity",
+        "visual_feasibility",
+        "compliance_safety",
+        "prompt_completeness",
+        "length_compliance"
+      ],
+      "properties": {
+        "evidence_accuracy": { "type": "number", "minimum": 0, "maximum": 10 },
+        "product_consistency": { "type": "number", "minimum": 0, "maximum": 10 },
+        "narrative_quality": { "type": "number", "minimum": 0, "maximum": 10 },
+        "dialogue_continuity": { "type": "number", "minimum": 0, "maximum": 10 },
+        "visual_feasibility": { "type": "number", "minimum": 0, "maximum": 10 },
+        "compliance_safety": { "type": "number", "minimum": 0, "maximum": 10 },
+        "prompt_completeness": { "type": "number", "minimum": 0, "maximum": 10 },
+        "length_compliance": { "type": "number", "minimum": 0, "maximum": 10 },
+        "notes": { "type": "string" },
+        "candidates": {
+          "type": "array",
+          "description": "Optional best-of-N candidate sets (up to candidate_count) with comparative scores and selection rationale.",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["candidate_id", "scores", "selection_rationale"],
+            "properties": {
+              "candidate_id": { "type": "string" },
+              "scores": { "$ref": "#/definitions/loopRoundScores" },
+              "selection_rationale": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "skillVersion",
+    "evidenceProfile",
+    "claimWhitelist",
+    "conflicts",
+    "reviewStrategy",
+    "childSubjectPolicy",
+    "globalContinuity",
+    "shots",
+    "loopReport",
+    "finalQc",
+    "referenceManifest"
+  ],
+  "properties": {
+    "skillVersion": {
+      "title": "Skill version",
+      "description": "Must stay in lockstep with the skill.md frontmatter version.",
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "evidenceProfile": {
+      "title": "Product evidence profile (Phase A, §10.1)",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "visible_identity",
+        "declared_attributes",
+        "verified_claims",
+        "conditional_claims",
+        "conflicts",
+        "excluded_claims",
+        "missing_information",
+        "assembly_documented",
+        "assembly_evidence",
+        "product_reference_model_conflict"
+      ],
+      "properties": {
+        "visible_identity": {
+          "title": "Visible identity",
+          "description": "What Phase A visually confirms from the attached (non evidence-only) reference images: category/subtype, silhouette, countable parts, material, colorway, scale.",
+          "type": "string"
+        },
+        "declared_attributes": {
+          "title": "Declared attributes",
+          "description": "Seller-declared attributes extracted from product_description/product_specs, each tagged with how it was sourced.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["attribute", "value"],
+            "properties": {
+              "attribute": { "type": "string" },
+              "value": { "type": "string" },
+              "source": { "type": "string", "enum": ["product_description", "product_specs", "user_requirements", "confirmed_attributes"] }
+            }
+          }
+        },
+        "verified_claims": {
+          "title": "Verified claims",
+          "description": "Claims confirmed by images and/or text (visual_verified or text_verified confidence only).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["text", "confidence"],
+            "properties": {
+              "text": { "type": "string" },
+              "confidence": { "$ref": "#/definitions/claimConfidenceLevel" }
+            }
+          }
+        },
+        "conditional_claims": {
+          "title": "Conditional claims",
+          "description": "Claims that may only be narrated as design intent (conditional confidence), e.g. a feature seen in references whose real-world effect cannot be proven.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["text", "confidence"],
+            "properties": {
+              "text": { "type": "string" },
+              "confidence": { "$ref": "#/definitions/claimConfidenceLevel" }
+            }
+          }
+        },
+        "conflicts": {
+          "title": "Image-vs-text conflicts (evidence-profile copy)",
+          "description": "Same conflict list promoted to the top-level `conflicts` field for the section-11 confirm/reject review panel; kept here too so Phase A's output stays self-descriptive.",
+          "type": "array",
+          "items": { "type": "object", "additionalProperties": true }
+        },
+        "excluded_claims": {
+          "title": "Excluded claims",
+          "description": "Claims rejected outright: forbidden_claims matches, unsupported/conflicting confidence, or claim-safety category bans (superlative, guarantee, medical, price, fabricated popularity).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["text", "reason"],
+            "properties": {
+              "text": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "missing_information": {
+          "title": "Missing information",
+          "description": "Attributes or claims that could not be resolved from evidence and are neither claimed nor narrated.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "assembly_documented": {
+          "title": "Assembly documented",
+          "description": "True only when explicit assembly/disassembly/internal-mechanism evidence exists (text steps, parts/diagram reference, or user confirmation). Gates whether any shot may use demonstration_type assembly_demo.",
+          "type": "boolean"
+        },
+        "assembly_evidence": {
+          "title": "Assembly evidence",
+          "description": "Enumerates exactly which evidence made assembly_documented true (empty array when false).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["evidence_type", "detail"],
+            "properties": {
+              "evidence_type": {
+                "type": "string",
+                "enum": ["explicit_text_steps", "parts_diagram_image", "user_confirmation"]
+              },
+              "detail": { "type": "string" }
+            }
+          }
+        },
+        "product_reference_model_conflict": {
+          "title": "Product reference model conflict",
+          "description": "REQUIRED, NULLABLE. null means Phase A found one consistent product across every attached (non evidence-only) reference image. A non-null object means the attached references depict DIFFERENT product models/variants and the skill cannot determine which is the review subject; section-04's preflight turns this into the product_reference_model_conflict hard-fail blocker until the user resolves roles or confirms. Distinct from the soft image-vs-text `conflicts[]` list, which is excluded rather than blocking. An absent key here is itself a schema violation — silence must never be mistaken for \"checked and clean\".",
+          "type": ["object", "null"],
+          "properties": {
+            "detected": { "type": "boolean" },
+            "conflicting_reference_indexes": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 1 }
+            },
+            "detail": { "type": "string" }
+          },
+          "required": ["detected", "conflicting_reference_indexes", "detail"]
+        }
+      }
+    },
+    "claimWhitelist": {
+      "title": "Claim whitelist (Phase C)",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["text", "confidence"],
+        "properties": {
+          "text": { "type": "string" },
+          "confidence": { "$ref": "#/definitions/claimConfidenceLevel" },
+          "source_type": { "type": "string" }
+        }
+      }
+    },
+    "conflicts": {
+      "title": "Image-vs-text conflicts (top-level, section-11 review surface)",
+      "description": "Promoted echo of evidenceProfile.conflicts. The confirm/reject/forbidden-words evidence review panel (section-11) reads and writes against this top-level array via confirmedAttributes/forbiddenClaims overrides.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["attribute", "resolution"],
+        "properties": {
+          "attribute": { "type": "string" },
+          "claimed_value": { "type": "string" },
+          "visual_finding": { "type": "string" },
+          "resolution": {
+            "type": "string",
+            "enum": ["excluded", "confirmed_by_user", "pending"]
+          }
+        }
+      }
+    },
+    "reviewStrategy": {
+      "title": "Review strategy (Phase B/D)",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["hook_type", "narrative_pattern", "selected_features", "excluded_features"],
+      "properties": {
+        "hook_type": { "type": "string" },
+        "narrative_pattern": { "type": "string" },
+        "selected_features": { "type": "array", "items": { "type": "string" } },
+        "excluded_features": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "childSubjectPolicy": {
+      "title": "Child subject policy (echo + computed)",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["productChildRelated", "guardianPolicyActive"],
+      "properties": {
+        "productChildRelated": { "type": "boolean" },
+        "childDepictionPlanned": { "type": "boolean" },
+        "guardianReferenceIndex": { "type": ["integer", "null"], "minimum": 1 },
+        "guardianPolicyActive": {
+          "type": "boolean",
+          "description": "Computed: true when productChildRelated && childDepictionPlanned. When true, every shot with depicts_minor=true must also have guardian_required=true and the guardian visible."
+        }
+      }
+    },
+    "globalContinuity": {
+      "title": "Global continuity (Phase D-G)",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["product_identity", "character_identity", "wardrobe", "environment", "lighting", "video_global_block"],
+      "properties": {
+        "product_identity": { "type": "string", "description": "Short canonical product-identity summary reused to fill [PRODUCT IDENTITY SUMMARY] in every video prompt's global block." },
+        "character_identity": { "type": ["string", "null"], "description": "Short canonical character-identity summary, or null for character-less products." },
+        "wardrobe": { "type": ["string", "null"] },
+        "environment": { "type": "string" },
+        "lighting": { "type": "string" },
+        "video_global_block": {
+          "type": "string",
+          "description": "The fully compiled global video block (Phase G) that is prepended to every shot's video_prompt. Must open with the exact sentence \"Use @Image1 as the absolute product identity reference\"."
+        }
+      }
+    },
+    "shots": {
+      "title": "Shots (Phase D-G)",
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "shot_id",
+          "purpose",
+          "duration_seconds",
+          "demonstration_type",
+          "depicts_minor",
+          "guardian_required",
+          "transition_from_previous",
+          "visual_summary",
+          "dialogue",
+          "estimated_speech_seconds",
+          "start_frame_image_prompt",
+          "image_prompt_character_count",
+          "video_prompt",
+          "video_prompt_character_count",
+          "claim_trace",
+          "qc"
+        ],
+        "properties": {
+          "shot_id": { "type": "integer", "minimum": 1, "maximum": 9 },
+          "purpose": {
+            "type": "string",
+            "description": "One of the nine narrative beats, e.g. hook, product_reveal, who_it_suits, primary_function_demo, secondary_function_demo, design_construction_feature, material_tactile_detail, real_use_demo_result, balanced_summary_cta (category patterns may re-weight beat order/emphasis)."
+          },
+          "duration_seconds": { "type": "number", "minimum": 3, "maximum": 10 },
+          "demonstration_type": {
+            "type": "string",
+            "enum": [
+              "finished_product_showcase",
+              "usage_demo",
+              "feature_closeup",
+              "benefit_narration",
+              "problem_solution",
+              "assembly_demo"
+            ]
+          },
+          "depicts_minor": { "type": "boolean" },
+          "guardian_required": { "type": "boolean" },
+          "transition_from_previous": { "type": "string" },
+          "visual_summary": { "type": "string" },
+          "dialogue": { "type": "string", "description": "This shot's slice of the ONE continuous Thai review dialogue." },
+          "estimated_speech_seconds": { "type": "number", "minimum": 0 },
+          "start_frame_image_prompt": { "type": "string", "minLength": 1 },
+          "image_prompt_character_count": { "type": "integer", "minimum": 0 },
+          "video_prompt": { "type": "string", "minLength": 1 },
+          "video_prompt_character_count": { "type": "integer", "minimum": 0 },
+          "claim_trace": {
+            "type": "array",
+            "description": "QC-internal only. Never forwarded to an image/video provider.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["text", "support"],
+              "properties": {
+                "text": { "type": "string" },
+                "support": { "$ref": "#/definitions/claimConfidenceLevel" }
+              }
+            }
+          },
+          "qc": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["evidence_accuracy", "continuity", "compliance", "length_valid", "status"],
+            "properties": {
+              "evidence_accuracy": { "type": "number", "minimum": 0, "maximum": 10 },
+              "continuity": { "type": "number", "minimum": 0, "maximum": 10 },
+              "compliance": { "type": "number", "minimum": 0, "maximum": 10 },
+              "length_valid": { "type": "boolean" },
+              "status": { "type": "string", "enum": ["pass", "needs_revision", "fail"] }
+            }
+          },
+          "start_frame_prompt_engine": {
+            "title": "Start-frame prompt engine (Feature 136 section 13, optional)",
+            "description": "Stamped POST-HOC by the TS runner, never emitted by the skill itself: which engine authored this shot's start_frame_image_prompt wording. Absent from the skill's own JSON output — documented here only so downstream consumers (UI badge, observability) can rely on it once the runner adds it.",
+            "type": "string",
+            "enum": ["evidence_product", "policy_safe_rewrite", "cinematic_narrative"]
+          },
+          "video_prompt_engine": {
+            "title": "Video prompt engine (Feature 136 section 13, optional)",
+            "description": "Stamped POST-HOC by the TS runner, never emitted by the skill itself: which engine authored this shot's video_prompt wording.",
+            "type": "string",
+            "enum": ["evidence_product", "vertical_drama_shot_video_prompt"]
+          }
+        }
+      }
+    },
+    "loopReport": {
+      "title": "Loop report (Phase H/I/J)",
+      "description": "Cumulative report up to the current round. Rounds not yet run may be absent.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["selected_version"],
+      "properties": {
+        "round_1": { "$ref": "#/definitions/loopRound" },
+        "round_2": { "$ref": "#/definitions/loopRound" },
+        "round_3": { "$ref": "#/definitions/loopRound" },
+        "selected_version": {
+          "type": "string",
+          "description": "Identifier of the retained best version (e.g. a round/candidate id) the runner should keep."
+        }
+      }
+    },
+    "finalQc": {
+      "title": "Final QC (Phase K)",
+      "description": "All nine booleans must be true before this object may be emitted as a passing result.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "all_claims_supported",
+        "all_shots_under_10_seconds",
+        "hook_within_3_seconds",
+        "price_absent",
+        "overclaims_absent",
+        "all_image_prompts_within_budget",
+        "all_video_prompts_within_budget",
+        "global_block_present_in_every_video_prompt",
+        "guardian_policy_satisfied"
+      ],
+      "properties": {
+        "all_claims_supported": { "type": "boolean" },
+        "all_shots_under_10_seconds": { "type": "boolean" },
+        "hook_within_3_seconds": { "type": "boolean" },
+        "price_absent": { "type": "boolean" },
+        "overclaims_absent": { "type": "boolean" },
+        "all_image_prompts_within_budget": { "type": "boolean" },
+        "all_video_prompts_within_budget": { "type": "boolean" },
+        "global_block_present_in_every_video_prompt": { "type": "boolean" },
+        "guardian_policy_satisfied": { "type": "boolean" }
+      }
+    },
+    "referenceManifest": {
+      "title": "Reference manifest (echo of input, for audit)",
+      "type": "array",
+      "items": { "$ref": "#/definitions/referenceManifestItem" }
+    }
+  }
+}

@@ -52,6 +52,10 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         autoSelected: "เลือกอัตโนมัติ",
         previewPolicy: "นโยบาย preview",
         creditsEstimated: (credits: number) => `ประมาณ ${credits} credits`,
+        // Feature 136 (section 10, §5.5) — transparency line shown only when
+        // creditEstimate.imageJobCount > 1 (sequential storyboard strategy).
+        imageJobsEstimated: (jobs: number) =>
+          `สร้างภาพ ${jobs} งาน (คิดเครดิตต่อภาพตอนสร้างจริง)`,
         autoBlockedStandardAvailable:
           "Auto ถูกบล็อก แต่ยังใช้ Standard Order ได้ตามปกติ",
         advancedOverrides: "ตัวเลือก Auto ขั้นสูง",
@@ -77,6 +81,82 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           "Manual render controls ยังพร้อมใช้เป็น retry หรือ fallback",
         snapshotComparison: "Snapshot comparison",
         noSnapshots: "ยังไม่มี snapshot",
+        // Feature 136 (section 11, §6.10) — sequential 9-image storyboard UI.
+        frameStrategyLabels: {
+          storyboard_3x3_split: "ตาราง storyboard 3x3",
+          video_shot_start_stop: "เฟรมเริ่ม/จบแต่ละช็อต",
+          sequential_shot_storyboard: "9 ภาพต่อเนื่อง (Sequential)",
+        } as Record<
+          "storyboard_3x3_split" | "video_shot_start_stop" | "sequential_shot_storyboard",
+          string
+        >,
+        sequentialStrategyOptionLabel:
+          "9 ภาพต่อเนื่อง (Sequential) — 1 prompt ต่อ 1 ภาพ",
+        sequentialStrategyOptionDescription:
+          "สร้างภาพแยก 9 ภาพเป็นเรื่องเดียวต่อเนื่อง เน้นสินค้าตรงทุกมุม",
+        angleChipLabels: {
+          front: "ด้านหน้า",
+          back: "ด้านหลัง",
+          side: "ด้านข้าง",
+          top: "ด้านบน",
+          base: "ฐาน",
+          detail: "จุดเด่น/ระยะใกล้",
+          package: "บรรจุภัณฑ์",
+          parts_diagram: "ผังชิ้นส่วน",
+          scale: "เทียบขนาด",
+          other: "อื่น ๆ",
+        } as Record<
+          | "front"
+          | "back"
+          | "side"
+          | "top"
+          | "base"
+          | "detail"
+          | "package"
+          | "parts_diagram"
+          | "scale"
+          | "other",
+          string
+        >,
+        referenceCapacityMeter: (n: number, cap: number, model: string) =>
+          `ใช้ได้ ${n}/${cap} ภาพอ้างอิงต่อภาพ (โมเดล ${model})`,
+        referenceTrimWarning: (labels: string[]) =>
+          `มุมที่จะถูกตัดออก: ${labels.join(", ")}`,
+        referenceEvidenceOnly: "ใช้เป็นหลักฐานเท่านั้น (ไม่แนบเข้าโมเดล)",
+        referenceCapacityImpossible: (model: string) =>
+          `ความจุภาพอ้างอิงของโมเดล ${model} ไม่พอสำหรับภาพที่บังคับต้องมี (เช่น ภาพสินค้าหลัก) กรุณาลดจำนวนภาพอ้างอิงหรือเปลี่ยนโมเดล`,
+        evidenceReviewTitle: "ตรวจหลักฐานและข้อขัดแย้ง",
+        evidenceReviewDescription:
+          "ตรวจข้อมูลที่ระบบดึงจากหน้าสินค้า ยืนยันหรือตัดออกก่อนเริ่มสร้างรีวิว",
+        evidenceVerifiedHighlights: "ข้อมูลที่ตรวจสอบแล้ว",
+        evidenceNeedsConfirmation: "ต้องยืนยัน",
+        evidenceConfirm: "ยืนยัน",
+        evidenceReject: "ตัดออก",
+        evidenceExcluded: "จะไม่ถูกใช้ในรีวิว",
+        forbiddenClaimsLabel: "คำที่ห้ามใช้",
+        targetAudienceLabel: "กลุ่มเป้าหมาย (ไม่บังคับ)",
+        userRequirementsLabel: "ความต้องการเพิ่มเติม (ไม่บังคับ)",
+        confirmedAttributesLabel: "แอตทริบิวต์ที่ยืนยันแล้ว",
+        sequentialImagePromptMaxCharsLabel:
+          "จำนวนตัวอักษรสูงสุดของ prompt ภาพ",
+        guardianNoticeTitle: "นโยบายการปรากฏตัวของผู้ปกครอง",
+        guardianNoticeBody:
+          "สินค้านี้เกี่ยวกับเด็ก — ทุกเฟรมที่มีเด็กใช้งานสินค้า ระบบจะใส่ผู้ปกครองอยู่ในฉากด้วยเสมอ คุณสามารถอัปโหลดรูปตัวละครผู้ใหญ่ เพื่อกำหนดหน้าตาผู้ปกครองได้",
+        guardianNoticeAttach: "อัปโหลด reference",
+        guardianNoticeAttached: "แนบรูป reference ผู้ปกครองแล้ว",
+        guardianBadge: "มีผู้ปกครองในเฟรม",
+        sequentialShotsTitle: "ช็อตทั้ง 9 ภาพ",
+        regenerateShot: "สร้างภาพนี้ใหม่",
+        saveShotEdits: "บันทึกการแก้ไข",
+        promptCharCount: (n: number, max: number) => `${n}/${max} ตัวอักษร`,
+        promptOverBudget:
+          "ยาวเกินงบตัวอักษรที่แนะนำ ระบบฝั่งเซิร์ฟเวอร์จะตรวจสอบอีกครั้งตอนบันทึก",
+        loopReportTitle: "รายงานรอบตรวจสอบ",
+        loopReportRound: (n: number) => `รอบที่ ${n}`,
+        loopReportSelected: (n: number) => `เวอร์ชันที่เลือก: ${n}`,
+        loopReportCandidates: (n: number) => `มี ${n} ตัวเลือก`,
+        loopReportDegraded:
+          "ระบบใช้ prompt สำรองแบบอัตโนมัติ เนื่องจากไม่มีรอบตรวจสอบใดผ่านเกณฑ์",
       }
     : {
         locale: resolved,
@@ -105,6 +185,10 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
         autoSelected: "Auto selected",
         previewPolicy: "Preview policy",
         creditsEstimated: (credits: number) => `${credits} credits est.`,
+        // Feature 136 (section 10, §5.5) — transparency line shown only when
+        // creditEstimate.imageJobCount > 1 (sequential storyboard strategy).
+        imageJobsEstimated: (jobs: number) =>
+          `${jobs} image jobs (billed per image at generation)`,
         autoBlockedStandardAvailable:
           "Auto is blocked, Standard Order remains available.",
         advancedOverrides: "Advanced overrides",
@@ -129,5 +213,158 @@ export function getMarketplaceHyperframesUiCopy(locale?: string | null) {
           "Manual render controls are available as retry or fallback.",
         snapshotComparison: "Snapshot comparison",
         noSnapshots: "No snapshots yet.",
+        // Feature 136 (section 11, §6.10) — sequential 9-image storyboard UI.
+        frameStrategyLabels: {
+          storyboard_3x3_split: "3x3 storyboard grid",
+          video_shot_start_stop: "Start/stop frame pairs",
+          sequential_shot_storyboard: "Sequential 9 images",
+        } as Record<
+          "storyboard_3x3_split" | "video_shot_start_stop" | "sequential_shot_storyboard",
+          string
+        >,
+        sequentialStrategyOptionLabel:
+          "Sequential 9 images — one prompt per image",
+        sequentialStrategyOptionDescription:
+          "Nine separate images telling one continuous story, product-accurate from every angle",
+        angleChipLabels: {
+          front: "Front",
+          back: "Back",
+          side: "Side",
+          top: "Top",
+          base: "Base",
+          detail: "Detail / close-up",
+          package: "Packaging",
+          parts_diagram: "Parts diagram",
+          scale: "Scale reference",
+          other: "Other",
+        } as Record<
+          | "front"
+          | "back"
+          | "side"
+          | "top"
+          | "base"
+          | "detail"
+          | "package"
+          | "parts_diagram"
+          | "scale"
+          | "other",
+          string
+        >,
+        referenceCapacityMeter: (n: number, cap: number, model: string) =>
+          `Using ${n}/${cap} reference images per frame (model ${model})`,
+        referenceTrimWarning: (labels: string[]) =>
+          `Angles that will be trimmed: ${labels.join(", ")}`,
+        referenceEvidenceOnly: "Evidence only (not attached to the model)",
+        referenceCapacityImpossible: (model: string) =>
+          `Model ${model} cannot fit even the required reference images (e.g. the primary product). Reduce reference images or choose a different model.`,
+        evidenceReviewTitle: "Evidence & conflict review",
+        evidenceReviewDescription:
+          "Review the facts pulled from the product page. Confirm or exclude them before generation starts.",
+        evidenceVerifiedHighlights: "Verified highlights",
+        evidenceNeedsConfirmation: "Needs confirmation",
+        evidenceConfirm: "Confirm",
+        evidenceReject: "Exclude",
+        evidenceExcluded: "Will not be used in the review",
+        forbiddenClaimsLabel: "Words to avoid",
+        targetAudienceLabel: "Target audience (optional)",
+        userRequirementsLabel: "Additional requirements (optional)",
+        confirmedAttributesLabel: "Confirmed attributes",
+        sequentialImagePromptMaxCharsLabel: "Max image prompt characters",
+        guardianNoticeTitle: "Guardian presence policy",
+        guardianNoticeBody:
+          "This product involves children — every frame where a child uses the product will always include a guardian in the scene. You can upload an adult character reference to control how the guardian looks.",
+        guardianNoticeAttach: "Upload reference",
+        guardianNoticeAttached: "Guardian reference attached",
+        guardianBadge: "Guardian in frame",
+        sequentialShotsTitle: "All 9 shots",
+        regenerateShot: "Regenerate this image",
+        saveShotEdits: "Save edits",
+        promptCharCount: (n: number, max: number) => `${n}/${max} characters`,
+        promptOverBudget:
+          "Over the recommended character budget — the server re-validates on save.",
+        loopReportTitle: "Loop report",
+        loopReportRound: (n: number) => `Round ${n}`,
+        loopReportSelected: (n: number) => `Selected version: ${n}`,
+        loopReportCandidates: (n: number) => `${n} candidate${n === 1 ? "" : "s"}`,
+        loopReportDegraded:
+          "The system used an automatic fallback prompt because no loop round passed review.",
       };
+}
+
+/**
+ * Feature 136 (section 11, §6.10) — optional per-blocker-id "what to fix"
+ * hint line for the sequential per-shot editor. The AUTHORITATIVE rejection
+ * MESSAGE always comes from
+ * `shared/marketplaceCapture/sequentialShotBlockerCopy.ts` (section 08,
+ * server-owned Thai sentences) — this map is deliberately limited to a
+ * short supplementary hint and must never duplicate those sentences.
+ * Unknown blocker ids simply have no hint (caller falls back to the server
+ * message alone).
+ */
+export const SEQUENTIAL_SHOT_BLOCKER_HINTS: Readonly<
+  Record<string, { th: string; en: string }>
+> = {
+  sequential_prompt_set_incomplete: {
+    th: "กรอก prompt ภาพและวิดีโอของช็อตนี้ให้ครบ",
+    en: "Fill in both the image and video prompt for this shot.",
+  },
+  prompt_too_long_for_image_provider: {
+    th: "ลองตัดรายละเอียดที่ไม่จำเป็นออกจาก prompt ภาพ",
+    en: "Trim non-essential detail from the image prompt.",
+  },
+  prompt_too_long_for_video_provider: {
+    th: "ลองตัดรายละเอียดที่ไม่จำเป็นออกจาก prompt วิดีโอ",
+    en: "Trim non-essential detail from the video prompt.",
+  },
+  video_global_block_missing: {
+    th: 'เพิ่มประโยคล็อกสินค้า ("Use @Image1 as the absolute product identity reference") ไว้ต้น prompt วิดีโอ',
+    en: 'Add the product-identity lock sentence ("Use @Image1 as the absolute product identity reference") back to the start of the video prompt.',
+  },
+  guardian_directive_missing: {
+    th: "เพิ่มคำอธิบายผู้ปกครองที่อยู่ในภาพให้ชัดเจน",
+    en: "Describe the guardian present in the frame explicitly.",
+  },
+  minor_safety_clothing_lock_missing: {
+    th: "เพิ่มคำล็อกความปลอดภัยเรื่องเครื่องแต่งกายของเด็กกลับเข้าไปใน prompt",
+    en: "Add the child clothing-safety lock back into the prompt.",
+  },
+  assembly_demo_unverified: {
+    th: "เปลี่ยนคำอธิบายให้ไม่ใช่การประกอบ/ถอดชิ้นส่วน หรือยืนยันหลักฐานจากหน้าสินค้าก่อน",
+    en: "Rephrase away from assembly/disassembly, or confirm evidence from the product page first.",
+  },
+  price_claim_detected: {
+    th: "ลบคำเกี่ยวกับราคา/โปรโมชันออกจากข้อความ",
+    en: "Remove price or promotion wording from the text.",
+  },
+  reference_index_mapping_mismatch: {
+    th: "แก้ข้อความอ้างอิง @ImageN ให้ตรงกับภาพที่แนบจริง",
+    en: "Fix the @ImageN reference wording to match the images actually attached.",
+  },
+  product_reference_model_conflict: {
+    th: "ตรวจสอบว่าทุกภาพอ้างอิงเป็นสินค้ารุ่นเดียวกัน",
+    en: "Check that every reference image shows the same product model.",
+  },
+  shot_duration_exceeds_max: {
+    th: "ลดความยาวช็อตให้อยู่ในช่วงที่กำหนด",
+    en: "Shorten the shot to fit the allowed duration range.",
+  },
+  dialogue_exceeds_shot_duration: {
+    th: "ตัดบทพูดให้สั้นลงให้พอดีกับความยาวช็อต",
+    en: "Shorten the dialogue to fit the shot duration.",
+  },
+};
+
+/**
+ * Returns the optional "what to fix" hint for a blocker id, or `null` when
+ * none is defined — callers must fall back to the server message alone in
+ * that case (never invent a hint).
+ */
+export function getSequentialShotBlockerHint(
+  blockerId: string | undefined | null,
+  locale: MarketplaceHyperframesUiLocale = "en"
+): string | null {
+  const id = typeof blockerId === "string" ? blockerId.trim() : "";
+  const hint = id ? SEQUENTIAL_SHOT_BLOCKER_HINTS[id] : undefined;
+  if (!hint) return null;
+  return locale === "th" ? hint.th : hint.en;
 }

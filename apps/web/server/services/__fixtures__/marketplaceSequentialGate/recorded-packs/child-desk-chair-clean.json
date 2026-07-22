@@ -1,0 +1,237 @@
+{
+  "skillVersion": "1.0.0",
+  "evidenceProfile": {
+    "assembly_documented": false,
+    "assembly_evidence": [],
+    "product_reference_model_conflict": null
+  },
+  "claimWhitelist": [],
+  "conflicts": [],
+  "reviewStrategy": {
+    "tone": "friendly_expert"
+  },
+  "childSubjectPolicy": {
+    "productChildRelated": true,
+    "childDepictionPlanned": true,
+    "guardianReferenceIndex": 5
+  },
+  "globalContinuity": {
+    "setting": "home interior",
+    "lighting": "natural daylight"
+  },
+  "shots": [
+    {
+      "shot_id": 1,
+      "purpose": "hook",
+      "duration_seconds": 5,
+      "demonstration_type": "finished_product_showcase",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "",
+      "visual_summary": "Shot 1: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (1)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 1 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 1, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 2,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "usage_demo",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 2: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (2)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 2 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 2, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 3,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "usage_demo",
+      "depicts_minor": true,
+      "guardian_required": true,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 3: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (3)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 3 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 3, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 4,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "usage_demo",
+      "depicts_minor": true,
+      "guardian_required": true,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 4: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (4)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 4 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 4, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 5,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "feature_closeup",
+      "depicts_minor": true,
+      "guardian_required": true,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 5: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (5)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 5 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 5, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 6,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "feature_closeup",
+      "depicts_minor": true,
+      "guardian_required": true,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 6: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (6)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 6 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 6, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 7,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "feature_closeup",
+      "depicts_minor": true,
+      "guardian_required": true,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 7: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (7)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 7 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 7, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 8,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "benefit_narration",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 8: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (8)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 8 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 8, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 9,
+      "purpose": "cta",
+      "duration_seconds": 5,
+      "demonstration_type": "benefit_narration",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 9: child-safe desk chair shown in a bright home study corner.",
+      "dialogue": "เก้าอี้เด็กตัวนี้ปรับความสูงได้ นั่งสบาย ส่งเสริมท่านั่งที่ถูกต้องสำหรับลูกน้อย (9)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Bright home study corner, child-safe desk chair, natural daylight, shot 9 continuity.",
+      "image_prompt_character_count": 141,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera holds steady on the desk chair, shot 9, gentle handheld motion, natural home lighting.",
+      "video_prompt_character_count": 149,
+      "claim_trace": [
+        {
+          "text": "ปรับความสูงได้",
+          "support": "visual_verified"
+        }
+      ]
+    }
+  ],
+  "loopReport": {
+    "selected_version": "round_1"
+  },
+  "finalQc": {
+    "all_claims_supported": true,
+    "all_shots_under_10_seconds": true,
+    "hook_within_3_seconds": true,
+    "price_absent": true,
+    "overclaims_absent": true,
+    "all_image_prompts_within_budget": true,
+    "all_video_prompts_within_budget": true,
+    "global_block_present_in_every_video_prompt": true,
+    "guardian_policy_satisfied": true
+  },
+  "referenceManifest": []
+}

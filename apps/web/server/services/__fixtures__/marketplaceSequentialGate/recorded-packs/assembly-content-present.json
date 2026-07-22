@@ -1,0 +1,237 @@
+{
+  "skillVersion": "1.0.0",
+  "evidenceProfile": {
+    "assembly_documented": false,
+    "assembly_evidence": [],
+    "product_reference_model_conflict": null
+  },
+  "claimWhitelist": [],
+  "conflicts": [],
+  "reviewStrategy": {
+    "tone": "friendly_expert"
+  },
+  "childSubjectPolicy": {
+    "productChildRelated": false,
+    "childDepictionPlanned": false,
+    "guardianReferenceIndex": null
+  },
+  "globalContinuity": {
+    "setting": "home interior",
+    "lighting": "natural daylight"
+  },
+  "shots": [
+    {
+      "shot_id": 1,
+      "purpose": "hook",
+      "duration_seconds": 5,
+      "demonstration_type": "finished_product_showcase",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "",
+      "visual_summary": "Shot 1: fully assembled desk in a tidy home office, finished-product framing only.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (1)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 1 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 1, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 2,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "finished_product_showcase",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 2: fully assembled desk in a tidy home office, finished-product framing only.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (2)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 2 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 2, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 3,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "finished_product_showcase",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 3: fully assembled desk in a tidy home office, finished-product framing only.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (3)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 3 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 3, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 4,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "usage_demo",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 4: fully assembled desk in a tidy home office, finished-product framing only.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (4)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 4 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 4, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 5,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "assembly_demo",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 5: close-up of screws and allen key during desk assembly.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (5)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 5 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 5, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 6,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "usage_demo",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 6: fully assembled desk in a tidy home office, finished-product framing only.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (6)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 6 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 6, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 7,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "usage_demo",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 7: fully assembled desk in a tidy home office, finished-product framing only.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (7)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 7 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 7, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 8,
+      "purpose": "demo",
+      "duration_seconds": 5,
+      "demonstration_type": "usage_demo",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 8: fully assembled desk in a tidy home office, finished-product framing only.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (8)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 8 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 8, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    },
+    {
+      "shot_id": 9,
+      "purpose": "cta",
+      "duration_seconds": 5,
+      "demonstration_type": "usage_demo",
+      "depicts_minor": false,
+      "guardian_required": false,
+      "transition_from_previous": "cut",
+      "visual_summary": "Shot 9: fully assembled desk in a tidy home office, finished-product framing only.",
+      "dialogue": "โต๊ะทำงานตัวนี้ให้พื้นที่ใช้งานที่กว้างขึ้นสำหรับบ้านคุณ (9)",
+      "estimated_speech_seconds": 4,
+      "start_frame_image_prompt": "Use @Image1 as the absolute product identity reference. Fully assembled desk in a tidy home office, shot 9 continuity, no parts or tools visible.",
+      "image_prompt_character_count": 145,
+      "video_prompt": "Use @Image1 as the absolute product identity reference. Camera glides across the finished desk, shot 9, calm daily home-office life, natural lighting.",
+      "video_prompt_character_count": 150,
+      "claim_trace": [
+        {
+          "text": "พื้นที่ใช้งานกว้างขึ้น",
+          "support": "visual_verified"
+        }
+      ]
+    }
+  ],
+  "loopReport": {
+    "selected_version": "round_1"
+  },
+  "finalQc": {
+    "all_claims_supported": true,
+    "all_shots_under_10_seconds": true,
+    "hook_within_3_seconds": true,
+    "price_absent": true,
+    "overclaims_absent": true,
+    "all_image_prompts_within_budget": true,
+    "all_video_prompts_within_budget": true,
+    "global_block_present_in_every_video_prompt": true,
+    "guardian_policy_satisfied": true
+  },
+  "referenceManifest": []
+}

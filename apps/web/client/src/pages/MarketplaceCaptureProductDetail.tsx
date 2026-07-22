@@ -54,6 +54,18 @@ import {
   AutoStoryboardAdvancedOverrides,
   AutoStoryboardStoryMotionFields,
 } from "@/components/marketplaceCapture/AutoStoryboardAdvancedOverrides";
+// Feature 136 (section 11) — sequential 9-image storyboard UI. Data
+// plumbing (section 02) already lives in this file; these components add
+// the picker/meter/evidence-review/guardian-notice UI on top of it.
+import { SequentialProductAngleChips } from "@/components/marketplaceCapture/SequentialProductAngleChips";
+import { SequentialEvidenceReviewPanel } from "@/components/marketplaceCapture/SequentialEvidenceReviewPanel";
+import {
+  buildSequentialAngleSelectionEntries,
+  isSequentialFrameStrategy,
+  projectSequentialGuardianState,
+  resolveSequentialCapacityMeter,
+  type SequentialAngleLabel,
+} from "@/lib/marketplaceSequentialStoryboardUi";
 import { McpConnectionPicker } from "@/components/media/McpConnectionPicker";
 import { getMarketplaceHyperframesUiCopy } from "@/components/marketplaceCapture/hyperframesUiCopy";
 import type {
@@ -198,6 +210,27 @@ type UploadedReferenceAnchor = {
 };
 type AutoReviewAnchorDropRole = "product" | "character" | "environment";
 type ImageDimensions = { width: number; height: number };
+// Feature 136 (section 02, §5.1) — multi-angle product reference layer, data
+// plumbing only (selection UI/chips/meter land in section 11).
+type AutoReviewProductAngleLabel =
+  | "front"
+  | "back"
+  | "side"
+  | "top"
+  | "base"
+  | "detail"
+  | "package"
+  | "parts_diagram"
+  | "scale"
+  | "other";
+type AutoReviewProductAngleImageEntry = {
+  url: string;
+  ref: string;
+  hash?: string | null;
+  storageKey?: string | null;
+  source: "marketplace_product_image" | "upload" | "library";
+  angleLabel: AutoReviewProductAngleLabel;
+};
 
 const PRODUCT_MEDIA_DRAG_MIME = "application/x-smartspec-product-media";
 const PRODUCT_IMAGE_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
@@ -2447,6 +2480,12 @@ export default function MarketplaceCaptureProductDetail() {
   const [autoReviewCreativePresets, setAutoReviewCreativePresets] = useState<
     AutoReviewCreativePresetSelection[]
   >([]);
+  // Feature 136 (section 02) — selected multi-angle product reference
+  // images; default empty. Section 11 owns the picker UI (chips/meter) that
+  // populates this via `setAutoReviewProductAngleLabels`; this exact state
+  // identifier is a cross-section contract section 11 depends on.
+  const [autoReviewProductAngleLabels, setAutoReviewProductAngleLabels] =
+    useState<AutoReviewProductAngleImageEntry[]>([]);
   const [
     autoReviewPrimaryCharacterDetails,
     setAutoReviewPrimaryCharacterDetails,
@@ -2810,6 +2849,19 @@ export default function MarketplaceCaptureProductDetail() {
       }
     );
   const autoStoryboardPlan = autoStoryboardPlanQuery.data?.plan ?? null;
+  // Feature 136 (section 11) — siblings of `plan` on the query response
+  // (section 05), present only when the tenant flag is on AND the
+  // resolved strategy is sequential. Read directly from the query result;
+  // never re-derived here.
+  const autoStoryboardEvidencePreview =
+    autoStoryboardPlanQuery.data?.evidencePreview ?? null;
+  const autoStoryboardReferenceCapacity =
+    autoStoryboardPlanQuery.data?.referenceCapacity ?? null;
+  const sequentialStrategyEnabled =
+    tenantFeatureFlags.marketplaceSequentialStoryboard === true;
+  const sequentialStrategySelected = isSequentialFrameStrategy(
+    autoStoryboardOverrides.frameStrategy ?? autoStoryboardPlan?.defaults.frameStrategy
+  );
   const autoStoryboardPlanLoading =
     autoStoryboardPlanQuery.isLoading && !autoStoryboardPlan;
   const autoStoryboardPlanHadError = Boolean(
@@ -4501,12 +4553,18 @@ export default function MarketplaceCaptureProductDetail() {
             : null,
         },
         sourceRefs,
+        // Feature 136 (section 02, §5.1) — additive; omitted entirely when
+        // no angle images are selected (back-compat, router field optional).
+        ...(autoReviewProductAngleLabels.length > 0
+          ? { productAngleImages: autoReviewProductAngleLabels }
+          : {}),
       };
     },
     [
       autoReviewCharacterBrief,
       autoReviewCharacterMode,
       autoReviewCreativePresets,
+      autoReviewProductAngleLabels,
       autoReviewStorytellingStructure,
       autoReviewTone,
       characterAnchor,
@@ -4840,6 +4898,82 @@ export default function MarketplaceCaptureProductDetail() {
         className="mt-2 min-h-20 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
       />
     </label>
+  );
+
+  // Feature 136 (section 11, §6.8) — multi-angle product reference chips +
+  // capacity meter + evidence review. `autoReviewProductAngleLabels` /
+  // `setAutoReviewProductAngleLabels` (section 02) stay the single source
+  // of truth `buildAutoReviewReferenceAnchors` reads to emit
+  // `productAngleImages[]`; this block only derives a
+  // `Record<imageId, angleLabel>` view for the chips UI and adapts the
+  // chips' `onAngleLabelChange(imageId, label)` callback back onto that
+  // same array state (upsert by url), so the payload is never re-plumbed.
+  const autoReviewProductAngleLabelsByImageId = useMemo(() => {
+    const map: Record<string, SequentialAngleLabel> = {};
+    for (const image of productImageOptions) {
+      const entry = autoReviewProductAngleLabels.find(
+        candidate => candidate.url === image.url
+      );
+      if (entry) map[image.id] = entry.angleLabel;
+    }
+    return map;
+  }, [productImageOptions, autoReviewProductAngleLabels]);
+  const handleAutoReviewAngleLabelChange = useCallback(
+    (imageId: string, label: SequentialAngleLabel) => {
+      const image = productImageOptions.find(candidate => candidate.id === imageId);
+      if (!image || !image.url) return;
+      setAutoReviewProductAngleLabels(previous => {
+        const next = previous.filter(entry => entry.url !== image.url);
+        next.push({
+          url: image.url,
+          ref: image.removableId
+            ? `product-image:${image.removableId}`
+            : `product-image-option:${image.id}`,
+          hash: image.hash || null,
+          storageKey: null,
+          source: "marketplace_product_image",
+          angleLabel: label,
+        });
+        return next;
+      });
+    },
+    [productImageOptions]
+  );
+  const autoReviewAngleSelectionEntries = useMemo(
+    () =>
+      buildSequentialAngleSelectionEntries({
+        images: productImageOptions,
+        primaryImageId: resolvedProductAnchorImage?.id ?? null,
+        angleLabels: autoReviewProductAngleLabelsByImageId,
+      }),
+    [productImageOptions, resolvedProductAnchorImage, autoReviewProductAngleLabelsByImageId]
+  );
+  // `modelCap` always comes from the server (`referenceCapacity.modelCap`,
+  // binding decision §3.2) — never the model registry.
+  const autoReviewReferenceCapacityMeter = useMemo(
+    () =>
+      resolveSequentialCapacityMeter({
+        modelCap: autoStoryboardReferenceCapacity?.modelCap ?? 0,
+        entries: autoReviewAngleSelectionEntries,
+        guardianReserved:
+          autoReviewCharacterMode === "uploaded_reference" || Boolean(characterAnchorUrl),
+        environmentAttached: Boolean(environmentAnchorUrl),
+      }),
+    [
+      autoStoryboardReferenceCapacity,
+      autoReviewAngleSelectionEntries,
+      autoReviewCharacterMode,
+      characterAnchorUrl,
+      environmentAnchorUrl,
+    ]
+  );
+  const autoReviewGuardianState = useMemo(
+    () =>
+      projectSequentialGuardianState({
+        planChildSubjectPolicy: autoStoryboardEvidencePreview?.childSubjectPolicy ?? null,
+        characterReferenceAttached: Boolean(characterAnchorUrl),
+      }),
+    [autoStoryboardEvidencePreview, characterAnchorUrl]
   );
 
   const characterChoicePanel = (
@@ -5251,12 +5385,27 @@ export default function MarketplaceCaptureProductDetail() {
             value={autoStoryboardOverrides}
             onChange={setAutoStoryboardOverrides}
           />
+          {/* Feature 136 (section 11) — SequentialEvidenceReviewPanel renders
+              SequentialGuardianNotice internally per its own composition
+              order (disclosure header -> guardian notice -> highlights ->
+              needsConfirmation -> free-text fields); writes through the
+              SAME `autoStoryboardOverrides` state as the advanced panel
+              below, never a separate payload. */}
+          <SequentialEvidenceReviewPanel
+            enabled={sequentialStrategyEnabled && sequentialStrategySelected}
+            evidencePreview={autoStoryboardEvidencePreview}
+            value={autoStoryboardOverrides}
+            onChange={setAutoStoryboardOverrides}
+            guardian={autoReviewGuardianState}
+            onOpenCharacterUpload={() => setAutoReviewCharacterMode("uploaded_reference")}
+          />
           <AutoStoryboardAdvancedOverrides
             plan={autoStoryboardPlan}
             open={showAutoStoryboardAdvanced}
             onOpenChange={setShowAutoStoryboardAdvanced}
             value={autoStoryboardOverrides}
             onChange={setAutoStoryboardOverrides}
+            sequentialStrategyEnabled={sequentialStrategyEnabled}
             onResetToAuto={() => {
               setAutoStoryboardOverrides({});
               setShowAutoStoryboardAdvanced(false);
@@ -8234,6 +8383,27 @@ export default function MarketplaceCaptureProductDetail() {
                 add local product photos.
               </div>
             )}
+
+            {/* Feature 136 (section 11) — multi-angle product reference
+                chips + capacity meter, mounted on the Product Images
+                surface. `capacity.modelCap` always comes from the server
+                (`plan.referenceCapacity`); this component never consults
+                the model registry. */}
+            <div className="mt-4">
+              <SequentialProductAngleChips
+                enabled={sequentialStrategyEnabled && sequentialStrategySelected}
+                images={productImageOptions}
+                primaryImageId={resolvedProductAnchorImage?.id ?? null}
+                angleLabels={autoReviewProductAngleLabelsByImageId}
+                onAngleLabelChange={handleAutoReviewAngleLabelChange}
+                capacity={autoReviewReferenceCapacityMeter}
+                modelLabel={
+                  autoStoryboardOverrides.imageModel ||
+                  autoStoryboardPlan?.defaults.imageModel ||
+                  ""
+                }
+              />
+            </div>
 
             {history.length > 0 ? (
               <>

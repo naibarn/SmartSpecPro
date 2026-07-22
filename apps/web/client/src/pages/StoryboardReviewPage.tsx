@@ -23,6 +23,16 @@ import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions, type S
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { HyperframesStoryboardReviewPanel } from "@/components/marketplaceCapture/HyperframesStoryboardReviewPanel";
+// Feature 136 (section 11, §6.9) — sequential 9-image storyboard per-shot
+// review + loop report. `projectSequentialShotCards` returns `[]` for
+// legacy 3x3 runs, so `SequentialShotReviewSection` self-disables with no
+// extra strategy branching needed in this page beyond the query `enabled`
+// guard below.
+import { SequentialShotReviewSection } from "@/components/marketplaceCapture/SequentialShotReviewSection";
+import {
+  projectSequentialLoopReport,
+  projectSequentialShotCards,
+} from "@/lib/marketplaceSequentialStoryboardUi";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { trpc } from "@/lib/trpc";
@@ -4115,6 +4125,87 @@ export default function StoryboardReviewPage() {
         );
       },
     },
+  );
+  // Feature 136 (section 11, §6.9) — full run metadata, NEVER the
+  // `summary: true` list query (`listAutoReviewRuns` strips
+  // `sequentialStoryboard` from the response entirely).
+  const autoReviewRunQuery = trpc.marketplaceCapture.getAutoReviewRun.useQuery(
+    { runId: effectiveHyperframesRunId ?? "" },
+    { enabled: Boolean(effectiveHyperframesRunId) },
+  );
+  const sequentialShotCards = useMemo(
+    () => projectSequentialShotCards((autoReviewRunQuery.data as any)?.metadataJson),
+    [autoReviewRunQuery.data],
+  );
+  const sequentialLoopReport = useMemo(
+    () => projectSequentialLoopReport((autoReviewRunQuery.data as any)?.metadataJson),
+    [autoReviewRunQuery.data],
+  );
+  const [sequentialRegeneratingShotId, setSequentialRegeneratingShotId] =
+    useState<number | null>(null);
+  const [sequentialSavingShotId, setSequentialSavingShotId] = useState<number | null>(null);
+  const [sequentialShotError, setSequentialShotError] = useState<{
+    shotId: number;
+    blockerId: string;
+    message: string;
+  } | null>(null);
+  const regenerateSequentialShotMutation =
+    trpc.marketplaceCapture.regenerateAutoReviewSequentialShot.useMutation({
+      onSuccess: () => {
+        void trpcUtils.marketplaceCapture.getAutoReviewRun.invalidate({
+          runId: effectiveHyperframesRunId ?? "",
+        });
+      },
+      onError: error => toast.error(error.message),
+      onSettled: () => setSequentialRegeneratingShotId(null),
+    });
+  const saveSequentialShotOverrideMutation =
+    trpc.marketplaceCapture.saveAutoReviewSequentialShotOverride.useMutation({
+      onSuccess: () => {
+        setSequentialShotError(null);
+        void trpcUtils.marketplaceCapture.getAutoReviewRun.invalidate({
+          runId: effectiveHyperframesRunId ?? "",
+        });
+      },
+      onError: (error, variables) => {
+        // Server rejection message ends with "[ids: id1, id2, ...]"
+        // (`buildSequentialShotOverrideRejectionMessage`, section 08) — the
+        // first id is the primary blocker for this card's error display.
+        const idMatch = /\[ids:\s*([^,\]]+)/.exec(error.message);
+        setSequentialShotError({
+          shotId: variables.shotId,
+          blockerId: idMatch ? idMatch[1].trim() : "unknown",
+          message: error.message,
+        });
+      },
+      onSettled: () => setSequentialSavingShotId(null),
+    });
+  const handleRegenerateSequentialShot = useCallback(
+    (shotId: number) => {
+      if (!effectiveHyperframesRunId) return;
+      setSequentialRegeneratingShotId(shotId);
+      regenerateSequentialShotMutation.mutate({ runId: effectiveHyperframesRunId, shotId });
+    },
+    [effectiveHyperframesRunId, regenerateSequentialShotMutation],
+  );
+  const handleSaveSequentialShotEdits = useCallback(
+    (input: {
+      shotId: number;
+      dialogue: string;
+      imagePrompt: string;
+      videoPrompt: string;
+    }) => {
+      if (!effectiveHyperframesRunId) return;
+      setSequentialSavingShotId(input.shotId);
+      saveSequentialShotOverrideMutation.mutate({
+        runId: effectiveHyperframesRunId,
+        shotId: input.shotId,
+        dialogue: input.dialogue,
+        startFrameImagePrompt: input.imagePrompt,
+        videoPrompt: input.videoPrompt,
+      });
+    },
+    [effectiveHyperframesRunId, saveSequentialShotOverrideMutation],
   );
   const createHyperframesPreviewMutation =
     trpc.marketplaceCapture.createHyperframesPreview.useMutation({
@@ -10204,6 +10295,20 @@ export default function StoryboardReviewPage() {
 
       {hyperframesContextAvailable ? (
         <div className="border-b bg-sky-50 px-2 py-1.5 sm:px-3">
+          {/* Feature 136 (section 11) — self-disables (renders null) for
+              legacy 3x3 runs via the empty-shots projection; no additional
+              frame-strategy branching needed here. */}
+          <SequentialShotReviewSection
+            shots={sequentialShotCards}
+            loopReport={sequentialLoopReport}
+            budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
+            busyShotId={sequentialRegeneratingShotId}
+            savingShotId={sequentialSavingShotId}
+            shotError={sequentialShotError}
+            onRegenerateShot={handleRegenerateSequentialShot}
+            onSaveShotEdits={handleSaveSequentialShotEdits}
+            locale={locale}
+          />
           {isHyperframesFinalPanelExpanded ? (
             <HyperframesStoryboardReviewPanel
               render={hyperframesRenderProjection}

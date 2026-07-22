@@ -1,0 +1,44 @@
+{
+  "fixtureId": "undocumented_assembly_desk",
+  "description": "spec §11.5 — flat-pack-looking furniture whose captured evidence contains no assembly steps or parts image; the skill must pivot to benefit_narration/problem_solution beats instead of depicting assembly.",
+  "loopInput": {
+    "productName": "Compact Home Office Desk",
+    "productDescription": "Flat-pack-style compact desk for small home offices.",
+    "productSpecs": "Dimensions 100x50x75cm; material: engineered wood + steel legs.",
+    "productTruthText": "ผู้ขายไม่ได้ให้เอกสารขั้นตอนการประกอบหรือภาพชิ้นส่วนแยกชิ้นมาด้วย มีเพียงภาพสินค้าที่ประกอบสำเร็จแล้วเท่านั้น",
+    "referenceManifest": [
+      {
+        "index": 1,
+        "role": "product",
+        "angleLabel": "front",
+        "url": "asset-ref:product-front"
+      },
+      {
+        "index": 2,
+        "role": "product",
+        "angleLabel": "side",
+        "url": "asset-ref:product-side"
+      },
+      {
+        "index": 3,
+        "role": "product",
+        "angleLabel": "detail",
+        "url": "asset-ref:product-detail"
+      }
+    ],
+    "childSubjectPolicy": {
+      "productChildRelated": false,
+      "childDepictionPlanned": false,
+      "guardianReferenceIndex": null
+    }
+  },
+  "expectations": {
+    "fixtureId": "undocumented_assembly_desk",
+    "expectShotCount": 9,
+    "childSubjectPolicyActive": false,
+    "assemblyDocumented": false,
+    "imagePromptMaxChars": 4000,
+    "videoPromptMaxChars": 2000,
+    "globalBlockMarker": "Use @Image1 as the absolute product identity reference"
+  }
+}

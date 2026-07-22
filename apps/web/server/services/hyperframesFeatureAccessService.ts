@@ -134,6 +134,20 @@ function blocker(
   };
 }
 
+/**
+ * Feature 136 (section 10, §5.3) — clamp to [1, 64]; non-finite / non-integer
+ * input normalizes to 1 (never throws — estimates are advisory). Combined
+ * with the `imageJobCount > 1` echo guard below, this keeps
+ * `buildHyperframesCreditEstimate` byte-identical for every caller that never
+ * passes the field.
+ */
+function normalizeHyperframesImageJobCount(value: number | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value)) {
+    return 1;
+  }
+  return Math.min(64, Math.max(1, value));
+}
+
 export function buildHyperframesCreditEstimate(input: {
   tenantId: string;
   userId?: number | string;
@@ -147,6 +161,10 @@ export function buildHyperframesCreditEstimate(input: {
   quotaDecision?: HyperframesQuotaDecision;
   freePreviewApplied?: boolean;
   workerComplexityMultiplier?: number;
+  // Feature 136 (section 10, §5.3) — transparency field only; see
+  // `normalizeHyperframesImageJobCount` below for clamping and binding
+  // decision §3.1 for why it never multiplies `estimatedCredits`.
+  imageJobCount?: number;
 }): HyperframesCreditEstimate {
   const preset = input.platformPreset ?? getHyperframesPlatformPreset("generic_vertical_9_16");
   const durationSeconds =
@@ -173,6 +191,9 @@ export function buildHyperframesCreditEstimate(input: {
           ? 0.4
           : 0.65;
   const workerComplexityMultiplier = input.workerComplexityMultiplier ?? 1;
+  // Feature 136 (section 10, §5.3) — normalized once; never affects the
+  // credit math below (binding decision §3.1).
+  const imageJobCount = normalizeHyperframesImageJobCount(input.imageJobCount);
   const rawComputeUnits = estimatedRenderPixels / HYPERFRAMES_PIXEL_FRAME_CREDIT_UNIT;
   const estimatedCredits = Math.ceil(
     rawComputeUnits *
@@ -223,6 +244,9 @@ export function buildHyperframesCreditEstimate(input: {
     compositionChargeRef:
       input.renderIntent === "final" ? `${idempotencyKey}:charge` : null,
     compositionRefundRef: null,
+    // Feature 136 (section 10, §5.3) — echo ONLY when > 1, so the default
+    // path (every existing strategy) stays byte-identical (section 01 §7.4).
+    ...(imageJobCount > 1 ? { imageJobCount } : {}),
   };
 }
 

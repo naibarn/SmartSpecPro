@@ -15,6 +15,10 @@ import {
   getDefaultHyperframesTemplate,
   getHyperframesPlatformPreset,
 } from "./templates";
+import {
+  DEFAULT_MARKETPLACE_START_FRAME_PROMPT_STYLE,
+  MARKETPLACE_START_FRAME_PROMPT_STYLES,
+} from "../marketplaceCapture/startFramePromptStyle";
 
 export const HyperframesSpokenLanguageSchema = z.enum([
   "en",
@@ -38,6 +42,42 @@ export type HyperframesSpokenLanguage = z.infer<
   typeof HyperframesSpokenLanguageSchema
 >;
 
+/**
+ * Feature 136 (Marketplace Auto Review: Sequential Shot Storyboard) — section
+ * 01 §5.3.2. Five new optional override fields shared between the defaults
+ * schema and the override-input schema. Deliberately `.optional()` with NO
+ * `.default()` on either side (binding decision §3.4): an unconditional
+ * default would inject new keys into every `getAutoStoryboardReviewPlan`
+ * response and break byte-identical output for flag-off tenants. Bounds are
+ * binding for cross-section consistency (spec §5.3.2).
+ */
+const feature136AutoPlanOverrideFieldSchemas = {
+  confirmedAttributes: z
+    .record(z.string().trim().min(1).max(120), z.string().trim().max(500))
+    .refine(value => Object.keys(value).length <= 40, {
+      message: "confirmedAttributes cannot exceed 40 entries",
+    })
+    .optional(),
+  forbiddenClaims: z
+    .array(z.string().trim().min(1).max(200))
+    .max(50)
+    .optional(),
+  targetAudience: z.string().trim().min(1).max(500).optional(),
+  userRequirements: z.string().trim().min(1).max(2000).optional(),
+  sequentialImagePromptMaxChars: z.number().int().min(1000).max(4000).optional(),
+  /**
+   * Feature 136 section 13 (§4 deliverable 2) — optional cinematic-prompt
+   * style layer for the sequential storyboard's start-frame/video prompts.
+   * `.optional()` with NO `.default()`, same rationale as the five fields
+   * above: an unconditional default would inject a new key into every
+   * `getAutoStoryboardReviewPlan` response and break byte-identical output
+   * for tenants/runs that never ask for it. Default value materializes only
+   * inside `productReviewSequentialStoryboardSkillRunner.ts` (section 13
+   * §5), never here.
+   */
+  startFramePromptStyle: z.enum(MARKETPLACE_START_FRAME_PROMPT_STYLES).optional(),
+};
+
 export const HyperframesAutoPlanDefaultsSchema = z
   .object({
     outputMode: z.enum(["storyboard_images", "full_video"]),
@@ -45,6 +85,7 @@ export const HyperframesAutoPlanDefaultsSchema = z
       "auto",
       "storyboard_3x3_split",
       "video_shot_start_stop",
+      "sequential_shot_storyboard",
     ]),
     audioStrategy: z.enum([
       "auto",
@@ -79,6 +120,7 @@ export const HyperframesAutoPlanDefaultsSchema = z
     platformPreset: HyperframesPlatformPresetSchema,
     templateId: z.string().min(1),
     templateVersion: z.string().min(1),
+    ...feature136AutoPlanOverrideFieldSchemas,
   })
   .strict();
 
@@ -157,8 +199,19 @@ export type HyperframesAutoOverrideDiff = z.infer<
 >;
 
 const HyperframesAutoPlanOverrideFieldSchemas = {
+  // Feature 136 section 09 (§5.2) — added so a caller can request
+  // `full_video` at plan time (needed for the start-frame capability
+  // blocker below to ever be reachable; `outputMode` was previously
+  // hardcoded to `"storyboard_images"` with no override path at all).
+  // `.optional()`, defaults unchanged ⇒ byte-identical for every existing
+  // caller that never mentions it.
+  outputMode: z.enum(["storyboard_images", "full_video"]).optional(),
   frameStrategy: z
-    .enum(["storyboard_3x3_split", "video_shot_start_stop"])
+    .enum([
+      "storyboard_3x3_split",
+      "video_shot_start_stop",
+      "sequential_shot_storyboard",
+    ])
     .optional(),
   audioStrategy: z
     .enum(["auto", "native_video_audio", "separate_tts_voiceover", "silent"])
@@ -187,6 +240,7 @@ const HyperframesAutoPlanOverrideFieldSchemas = {
   platformPresetId: z
     .enum(["generic_vertical_9_16", "tiktok_reels_shorts_9_16"])
     .optional(),
+  ...feature136AutoPlanOverrideFieldSchemas,
 };
 
 export const HyperframesAutoPlanOverrideInputSchema = z
@@ -198,6 +252,8 @@ export type HyperframesAutoPlanOverrideInput = z.infer<
 >;
 
 export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
+  // Feature 136 section 09 (§5.2) — see the schema comment above.
+  outputMode: "storyboard_images",
   platformPresetId: "generic_vertical_9_16",
   frameStrategy: "storyboard_3x3_split",
   audioStrategy: "native_video_audio",
@@ -213,7 +269,49 @@ export const HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES = {
   characterPresenceMode: "auto",
   qualityMode: "balanced",
   visionQaModel: "",
+  // Feature 136 — decorative string entries only, required by the
+  // `satisfies Record<...>` compile-time constraint below.
+  // `buildDefaultHyperframesAutoPlanDefaults` must NOT read these: the five
+  // new override fields stay absent-by-default (binding decision §3.4).
+  confirmedAttributes: "",
+  forbiddenClaims: "",
+  targetAudience: "",
+  userRequirements: "",
+  sequentialImagePromptMaxChars: "4000",
+  // Feature 136 section 13 — decorative string entry only, required by the
+  // `satisfies Record<...>` compile-time constraint below.
+  // `buildDefaultHyperframesAutoPlanDefaults` must NOT read this: the field
+  // stays absent-by-default (same rationale as the five fields above).
+  startFramePromptStyle: DEFAULT_MARKETPLACE_START_FRAME_PROMPT_STYLE,
 } as const satisfies Record<keyof HyperframesAutoPlanOverrideInput, string>;
+
+/**
+ * Feature 136 (section 10, §5.1) — shared source of truth for the sequential
+ * storyboard's fixed image job count and worker-complexity factor. No server
+ * imports here (client-safe); the server estimate call site and the client
+ * plan-summary component both read from this module.
+ */
+/** Fixed sequential unit count (spec §5 v1: shot_count = 9, MAX_SHOT_COUNT). */
+export const HYPERFRAMES_SEQUENTIAL_STORYBOARD_IMAGE_JOB_COUNT = 9;
+
+/** Sequential worker-complexity factor (spec §22; tune here, not via env/DB). */
+export const HYPERFRAMES_SEQUENTIAL_STORYBOARD_COMPLEXITY_FACTOR = 1.1;
+
+/**
+ * Image jobs a run of this strategy submits, for estimate display only
+ * (binding decision §3.1 — never multiplies `estimatedCredits`). Reads only
+ * `frameStrategy`; the result never depends on `shotCount` (binding decision
+ * §3.3). `video_shot_start_stop` actually submits `shots.length × 2` jobs but
+ * that correction is deliberately deferred (section-10 spec §9) to avoid
+ * changing an existing strategy's byte-identical plan output.
+ */
+export function resolveHyperframesAutoPlanImageJobCount(
+  defaults: Pick<HyperframesAutoPlanDefaults, "frameStrategy">
+): number {
+  return defaults.frameStrategy === "sequential_shot_storyboard"
+    ? HYPERFRAMES_SEQUENTIAL_STORYBOARD_IMAGE_JOB_COUNT
+    : 1;
+}
 
 export function buildDefaultHyperframesAutoPlanDefaults(
   input: {
@@ -233,7 +331,10 @@ export function buildDefaultHyperframesAutoPlanDefaults(
     platformPresetId,
   });
   return HyperframesAutoPlanDefaultsSchema.parse({
-    outputMode: "storyboard_images",
+    // Feature 136 section 09 (§5.2) — was hardcoded; now single-sourced from
+    // the same base-values constant every other overridable field reads
+    // from, so `applyHyperframesAutoPlanOverrides` can actually change it.
+    outputMode: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.outputMode,
     frameStrategy: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.frameStrategy,
     audioStrategy: HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.audioStrategy,
     shotCount: Number(HYPERFRAMES_BASE_AUTO_PLAN_OVERRIDE_VALUES.shotCount),
@@ -268,6 +369,13 @@ export function normalizeHyperframesAutoPlanOverrides(
     return {};
   }
   const normalized: Partial<HyperframesAutoPlanDefaults> = {};
+  // Feature 136 section 09 (§5.2) — see the schema comment above.
+  const outputMode = HyperframesAutoPlanOverrideFieldSchemas.outputMode.safeParse(
+    overrides.outputMode
+  );
+  if (outputMode.success && outputMode.data) {
+    normalized.outputMode = outputMode.data;
+  }
   const frameStrategy =
     HyperframesAutoPlanOverrideFieldSchemas.frameStrategy.safeParse(
       overrides.frameStrategy
@@ -372,6 +480,59 @@ export function normalizeHyperframesAutoPlanOverrides(
     normalized.platformPreset = getHyperframesPlatformPreset(
       platformPresetId.data
     );
+  }
+  // Feature 136 (section 01, §5.3.4) — five new optional override fields.
+  // Each drops silently on validation failure (out-of-bounds values,
+  // non-integers, or empty-after-trim strings via `.min(1)`), mirroring the
+  // existing field patterns above. None of these inject a default value.
+  const confirmedAttributes =
+    HyperframesAutoPlanOverrideFieldSchemas.confirmedAttributes.safeParse(
+      overrides.confirmedAttributes
+    );
+  if (confirmedAttributes.success && confirmedAttributes.data !== undefined) {
+    normalized.confirmedAttributes = confirmedAttributes.data;
+  }
+  const forbiddenClaims =
+    HyperframesAutoPlanOverrideFieldSchemas.forbiddenClaims.safeParse(
+      overrides.forbiddenClaims
+    );
+  if (forbiddenClaims.success && forbiddenClaims.data !== undefined) {
+    normalized.forbiddenClaims = forbiddenClaims.data;
+  }
+  const targetAudience =
+    HyperframesAutoPlanOverrideFieldSchemas.targetAudience.safeParse(
+      overrides.targetAudience
+    );
+  if (targetAudience.success && targetAudience.data) {
+    normalized.targetAudience = targetAudience.data;
+  }
+  const userRequirements =
+    HyperframesAutoPlanOverrideFieldSchemas.userRequirements.safeParse(
+      overrides.userRequirements
+    );
+  if (userRequirements.success && userRequirements.data) {
+    normalized.userRequirements = userRequirements.data;
+  }
+  const sequentialImagePromptMaxChars =
+    HyperframesAutoPlanOverrideFieldSchemas.sequentialImagePromptMaxChars.safeParse(
+      overrides.sequentialImagePromptMaxChars
+    );
+  if (
+    sequentialImagePromptMaxChars.success &&
+    sequentialImagePromptMaxChars.data
+  ) {
+    normalized.sequentialImagePromptMaxChars =
+      sequentialImagePromptMaxChars.data;
+  }
+  // Feature 136 section 13 (§4 deliverable 2) — same "safeParse, assign only
+  // on success with a present value, never inject a default" convention as
+  // the five fields above.
+  const startFramePromptStyle =
+    HyperframesAutoPlanOverrideFieldSchemas.startFramePromptStyle.safeParse(
+      overrides.startFramePromptStyle
+    );
+  if (startFramePromptStyle.success && startFramePromptStyle.data) {
+    normalized.startFramePromptStyle = startFramePromptStyle.data;
   }
   return normalized;
 }

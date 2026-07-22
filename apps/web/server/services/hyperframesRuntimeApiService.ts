@@ -25,18 +25,24 @@ import {
   type HyperframesCreativePreset,
 } from "@shared/hyperframes/creativePresets";
 import { listHyperframesTemplateRegistry } from "./hyperframesTemplateRegistry";
-import { getHyperframesAutoStoryboardReviewPlan } from "./hyperframesAutoPlanService";
+import {
+  getHyperframesAutoStoryboardReviewPlan,
+  getHyperframesAutoStoryboardReviewPlanWithEvidence,
+} from "./hyperframesAutoPlanService";
 import {
   buildHyperframesCreditEstimate,
   resolveHyperframesFeatureAccessForTenant,
   type HyperframesAuthContext,
 } from "./hyperframesFeatureAccessService";
 import {
+  assertMarketplaceSequentialStoryboardAllowed,
+  assertMarketplaceAutoReviewSequentialVideoModelSupported,
   getMarketplaceAutoReviewRun,
   startMarketplaceAutoReviewRun,
   queueMarketplaceAutoReviewAdvance,
   type MarketplaceAutoReviewReferenceAnchorsInput,
 } from "./marketplaceAutoReviewService";
+import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { getMarketplaceProductWithAccess } from "./marketplaceProductService";
 import {
   buildHyperframesCompositionInput,
@@ -1113,11 +1119,17 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
   includeTemplates?: boolean;
   overrides?: Record<string, unknown>;
 }) {
-  const plan = await getHyperframesAutoStoryboardReviewPlan({
-    productId: input.productId,
-    auth: input.auth,
-    overrides: input.overrides,
-  });
+  // Feature 136 (section 05 §5.7) — the `WithEvidence` variant shares 100%
+  // of the plain plan getter's internals; the two optional fields below are
+  // spread in ONLY when defined so a flag-off / non-sequential response's
+  // JSON shape stays byte-identical to before this section (section-01
+  // snapshot tripwire).
+  const { plan, evidencePreview, referenceCapacity } =
+    await getHyperframesAutoStoryboardReviewPlanWithEvidence({
+      productId: input.productId,
+      auth: input.auth,
+      overrides: input.overrides,
+    });
   return {
     contractVersion:
       HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION as typeof HYPERFRAMES_MARKETPLACE_CONTRACT_VERSION,
@@ -1129,6 +1141,8 @@ export async function getAutoStoryboardReviewPlanForApi(input: {
           renderIntent: plan.defaults.renderIntent,
         })
       : [],
+    ...(evidencePreview !== undefined ? { evidencePreview } : {}),
+    ...(referenceCapacity !== undefined ? { referenceCapacity } : {}),
   };
 }
 
@@ -1374,6 +1388,28 @@ export async function startAutoStoryboardReviewForApi(input: {
   const referenceAnchors =
     input.referenceAnchors ??
     buildAutoStoryboardProductReferenceAnchors(productBundle);
+  // Feature 136 (section 01, §5.7) — defense-in-depth FORBIDDEN gate against
+  // `plan.defaults.frameStrategy`. The plan service already sanitizes
+  // flag-off sequential requests (§5.8), so this only fires when the flag is
+  // toggled off in the window between the plan fetch above and this start
+  // call — exactly the race this second gate exists for.
+  if (plan.defaults.frameStrategy === "sequential_shot_storyboard") {
+    const gateFlags = await getTenantFeatureFlags(
+      input.auth.tenantId ?? "default"
+    );
+    assertMarketplaceSequentialStoryboardAllowed({
+      frameStrategy: plan.defaults.frameStrategy,
+      marketplaceSequentialStoryboard: gateFlags.marketplaceSequentialStoryboard,
+    });
+  }
+  // Feature 136 section 09 (§5.1) — start-frame capability gate, second
+  // entry point (defense in depth, section-01 precedent). No-op for every
+  // combination except sequential + full_video + an unsupported model.
+  assertMarketplaceAutoReviewSequentialVideoModelSupported({
+    outputMode: plan.defaults.outputMode,
+    frameStrategy: plan.defaults.frameStrategy,
+    videoModel: plan.defaults.videoModel,
+  });
   const run = await startMarketplaceAutoReviewRun(
     {
       productId: input.productId,
@@ -1398,6 +1434,20 @@ export async function startAutoStoryboardReviewForApi(input: {
       visionQaModel: cleanText(plan.defaults.visionQaModel) || undefined,
       referenceAnchors,
       transportMetadata: input.transportMetadata,
+      // Feature 136 (section 05 §5.8) — forward the resolved confirmation-loop
+      // overrides exactly like every other `plan.defaults.*` field above
+      // (the `expectedPlanHash` guard already covers these five fields —
+      // section 01 — so a changed confirmation invalidates a stale plan
+      // hash with no new code here).
+      confirmedAttributes: plan.defaults.confirmedAttributes,
+      forbiddenClaims: plan.defaults.forbiddenClaims,
+      targetAudience: plan.defaults.targetAudience,
+      userRequirements: plan.defaults.userRequirements,
+      sequentialImagePromptMaxChars: plan.defaults.sequentialImagePromptMaxChars,
+      // Feature 136 section 13 (§4 deliverable 2) — forward the resolved
+      // cinematic-prompt style, same additive pattern as the five fields
+      // above (the `expectedPlanHash` guard already covers this field too).
+      startFramePromptStyle: plan.defaults.startFramePromptStyle,
     },
     input.auth,
     input.runtime ?? {}

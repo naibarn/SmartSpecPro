@@ -1,0 +1,38 @@
+PRODUCT REFERENCE STORYBOARD SKILL CONTRACT:
+skill: product-reference-storyboard
+generation_mode: multi_frame_storyboard
+storyboard_layout_preset: canvas_9_16_grid_3x3_frame_9_16_exact
+aspect_ratio: 9:16
+storyboard_guide: Shot-by-shot storyboard guide
+voiceover_script: separate spoken contract; never render as text.
+product_detail: PRODUCT FACTS LOCK: Greenforst table place bedside. Do not alter shape, material, or sh...
+reference_product_images: supplied separately as immutable product reference images
+production_concept_details: product; 1 active shots; Greenforst table place bedside
+
+LAYOUT LOCK: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow solid black gutter lines, no collage/masonry layout, no labels/numbers/text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.
+OUTPUT FORMAT LOCK: Plain prompt text only. One final 9:16 storyboard image, not separate images.
+TEXT POLICY: No text/captions/labels/watermarks/UI, no black caption bars/subtitles/video seconds, no timecodes/frame labels/measurement overlays/dimension text/glyphs. Prohibit marketplace/mobile app screenshots, phone screens, storefront UIs, price/rating/review widgets, cart/checkout flows, and platform marks. Prohibit Shopee/Lazada/TikTok Shop logos. Use only supplied references.
+CINEMATIC REALISM LOCK: photorealistic product-film stills, varied camera, realistic lens/light/depth, grounded shadows.
+PRODUCT REFERENCE LOCK / PRODUCT VISUAL SOURCE LOCK: @Image1/supplied product reference image is the primary visual source of truth; written description is secondary and must never override; recreate/match the exact same actual reference product; no added/removed parts.
+TEXT RENDERING POLICY: no seconds/timecodes, frame labels, dimension text, marketplace/mobile app screenshots, logos, prices, ratings, review widgets, or cart/checkout flows.
+PROOF/REVIEW VISUAL LOCK: show real product use; no review cards/stars/screens/UI/ratings/text.
+
+CAMERA/LIGHT/DEPTH: slow push-in; slow push-in
+PRODUCT VERIFY: Greenforst; Greenforst table place bedside; PRODUCT FACTS LOCK: Greenforst table place bedside. Do not alter shape, material, or shelf count.; context first
+HUMAN REALISM: people only if needed; same approved identity if supplied, otherwise hands-only/no invented face; natural anatomy.
+
+REQUESTED STORY SHOTS: 1. Frames 1-1 active; remaining frames reserved.
+SHOT-BY-SHOT STORYBOARD PROMPT:
+LAYOUT LOCK: one single 9:16 image, strict 3x3 grid, EXACTLY 9 PANELS / 9 CELLS ONLY, exactly 3 equal-width columns, exactly 3 equal-height rows, clean narrow solid black gutter lines, no collage/masonry layout, no labels/numbers/text. Each panel occupies exactly one cell. Never split one panel into two cells. Wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel.
+Frame 1 | VISUAL: bedside organize items | STORY MATCH:spoken meaning.
+Frame 2 reserved | VISUAL: continuity | STORY MATCH: reserve.
+Frame 3 reserved | VISUAL: continuity | STORY MATCH: reserve.
+Frame 4 reserved | VISUAL: continuity | STORY MATCH: reserve.
+Frame 5 reserved | VISUAL: continuity | STORY MATCH: reserve.
+Frame 6 reserved | VISUAL: continuity | STORY MATCH: reserve.
+Frame 7 reserved | VISUAL: continuity | STORY MATCH: reserve.
+Frame 8 reserved | VISUAL: continuity | STORY MATCH: reserve.
+Frame 9 reserved | VISUAL: continuity | STORY MATCH: reserve.
+
+FINAL GRID/TEXT LOCK: strict 3x3, nine-cell grid, clean narrow solid black gutter lines, one panel per cell, never 2x5/5x2/10 panels, no captions/frame labels/seconds/timecodes/measurements.
+REPAIR SCOPE LOCK: if this is a repair attempt, still regenerate the full 3x3 storyboard grid as one 9:16 canvas with all 9 panels; never output a single standalone scene.

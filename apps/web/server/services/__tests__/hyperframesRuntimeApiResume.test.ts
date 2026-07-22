@@ -47,11 +47,20 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
 
     vi.doMock("../hyperframesAutoPlanService", () => ({
       getHyperframesAutoStoryboardReviewPlan,
+      // Feature 136 (section 05): the service under test now imports the
+      // evidence-aware plan getter, so the mock must expose it.
+      getHyperframesAutoStoryboardReviewPlanWithEvidence:
+        getHyperframesAutoStoryboardReviewPlan,
     }));
     vi.doMock("../marketplaceAutoReviewService", () => ({
       getMarketplaceAutoReviewRun,
       startMarketplaceAutoReviewRun,
       queueMarketplaceAutoReviewAdvance,
+      // Feature 136 start-gates (sections 01 and 09). The service imports both,
+      // so the mock must expose them or module init fails. No-ops here: these
+      // suites never exercise a sequential run.
+      assertMarketplaceSequentialStoryboardAllowed: vi.fn(),
+      assertMarketplaceAutoReviewSequentialVideoModelSupported: vi.fn(),
     }));
     vi.doMock("../hyperframesTemplateRegistry", () => ({
       listHyperframesTemplateRegistry: vi.fn(() => []),
@@ -158,10 +167,15 @@ describe("startAutoStoryboardReviewForApi resume fallback", () => {
 
     vi.doMock("../hyperframesAutoPlanService", () => ({
       getHyperframesAutoStoryboardReviewPlan,
+      getHyperframesAutoStoryboardReviewPlanWithEvidence:
+        getHyperframesAutoStoryboardReviewPlan,
     }));
     vi.doMock("../marketplaceAutoReviewService", () => ({
       getMarketplaceAutoReviewRun,
       startMarketplaceAutoReviewRun,
+      // Feature 136 start-gates — see the note on the sibling mock above.
+      assertMarketplaceSequentialStoryboardAllowed: vi.fn(),
+      assertMarketplaceAutoReviewSequentialVideoModelSupported: vi.fn(),
     }));
     vi.doMock("../hyperframesTemplateRegistry", () => ({
       listHyperframesTemplateRegistry: vi.fn(() => []),
