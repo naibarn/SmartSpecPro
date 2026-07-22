@@ -54,6 +54,10 @@ import {
   AutoStoryboardAdvancedOverrides,
   AutoStoryboardStoryMotionFields,
 } from "@/components/marketplaceCapture/AutoStoryboardAdvancedOverrides";
+// Feature 136 (frame-strategy discoverability fix) — top-level card
+// promoting `frameStrategy` out of the collapsed advanced-overrides panel.
+// Renders null when the tenant flag is off (see mount site below).
+import { AutoStoryboardFrameStrategyCard } from "@/components/marketplaceCapture/AutoStoryboardFrameStrategyCard";
 // Feature 136 (section 11) — sequential 9-image storyboard UI. Data
 // plumbing (section 02) already lives in this file; these components add
 // the picker/meter/evidence-review/guardian-notice UI on top of it.
@@ -5378,6 +5382,12 @@ export default function MarketplaceCaptureProductDetail() {
               setAutoStoryboardOverrides({});
               setShowAutoStoryboardAdvanced(false);
             }}
+          />
+          <AutoStoryboardFrameStrategyCard
+            enabled={sequentialStrategyEnabled}
+            plan={autoStoryboardPlan}
+            value={autoStoryboardOverrides}
+            onChange={setAutoStoryboardOverrides}
           />
           {characterChoicePanel}
           {creativeDirectionPanel}
