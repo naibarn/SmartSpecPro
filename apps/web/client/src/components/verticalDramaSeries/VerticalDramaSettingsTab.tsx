@@ -277,6 +277,11 @@ export function VerticalDramaSettingsTab({
       await Promise.all(mutations);
       toast.success(lang === "th" ? "บันทึกการตั้งค่าแล้ว" : "Settings saved");
       void utils.verticalDramaSeries.get.invalidate();
+      // A title change must also refresh the series LIST cache — the create
+      // wizard's "source series" (sequel/special-edition) dropdown reads its
+      // option labels from `verticalDramaSeries.list`, so without this it
+      // keeps showing the pre-rename title until that cache expires.
+      void utils.verticalDramaSeries.list.invalidate();
       onSaved?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : undefined;

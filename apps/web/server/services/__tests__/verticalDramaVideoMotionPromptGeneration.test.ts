@@ -1653,7 +1653,15 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
 
-  it("folds native audio direction onto the prompt as an appended SFX cue when native audio direction is enabled and the model supports it", async () => {
+  // Recorded gap-4 fix (2026-07-22) — this function used to fold
+  // `audio_direction` onto `prompt` as an appended "SFX cues: ..." tail
+  // here, which double-appended the sound direction once
+  // `verticalDramaVideoPromptFormatter.ts`'s render-time formatter ALSO
+  // appended `clip.audioDirection` a second time. The skill now writes the
+  // closing sound clause directly into `prompt` itself, so this function
+  // must never append it — `audioDirection` is still returned separately,
+  // unaffected, for the UI "เสียง:" block + audit trail.
+  it("never appends native audio direction onto the prompt as an SFX cue — audioDirection is still returned separately", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       nativeAudioDialogue: false,
       supportsNativeAudio: true,
@@ -1668,7 +1676,10 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
       baseSpeakerSwitchParams({ nativeAudioEnabled: true }),
     );
 
-    expect(result.prompt).toContain("SFX cues: A kettle whistles in the background.");
+    expect(result.prompt).toBe(
+      "A continuous kitchen argument, cutting between Alice and Bob across the clip.",
+    );
+    expect(result.prompt).not.toContain("SFX cues:");
     expect(result.audioDirection).toBe("A kettle whistles in the background.");
   });
 

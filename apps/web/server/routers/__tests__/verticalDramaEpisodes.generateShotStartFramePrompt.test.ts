@@ -310,6 +310,23 @@ function updateChain(returned: unknown[]) {
   return chain;
 }
 
+/**
+ * `generateShotStartFramePrompt` (verticalDramaEpisodes.ts ~:12793) resolves
+ * the TARGET shot's own `frame.approvedMediaAssetId` into a vision-ready URL
+ * via a dedicated `resolveMediaAssetUrlsByIds` `media_assets` lookup — the
+ * LAST `db.select` call before the (mocked) `generateStartFrameShotPrompt`
+ * service call. Every test whose target frame carries `approvedMediaAssetId`
+ * (the fixtures below use "900") must provision this as the final entry in
+ * its `mockDb.select` chain, matching the `{ id, originalUrl }` shape
+ * `resolveMediaAssetUrlsByIds` selects — otherwise the real (unmocked) call
+ * falls through to `.from` on `undefined`.
+ */
+function approvedMediaAssetSelectChain(assetId = 900) {
+  return selectChain([
+    { id: assetId, originalUrl: `https://cdn.example.test/media/${assetId}.png` },
+  ]);
+}
+
 function baseEpisodeRow(over: Record<string, unknown> = {}) {
   return {
     id: 100,
@@ -519,7 +536,8 @@ describe("generateShotStartFramePrompt", () => {
 
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([{ bible: null }])); // loadSeriesTargetAudienceRegion
+      .mockReturnValueOnce(selectChain([{ bible: null }])) // loadSeriesTargetAudienceRegion
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
     // Shot 1 (the target) has empty requiredCharacterRefs/productReferenceAssetIds,
     // so loadSeriesProductTieInFacts/resolveShotCharacterIdentitySources/
     // resolveShotCharacterReferenceEntries all short-circuit with no DB call.
@@ -546,6 +564,13 @@ describe("generateShotStartFramePrompt", () => {
       prompt: "regenerated start-frame prompt",
       negativePrompt: "regenerated negative prompt",
       creditsUsed: 4,
+      // The procedure's own return statement always includes these two
+      // (two-mode start-frame image prompt switch stamp) — `false`/
+      // `undefined` here because this test's `mockGenerateStartFrameShotPrompt`
+      // resolved value (set in `beforeEach`) carries neither `usedVision` nor
+      // `frameStamp`.
+      usedVision: false,
+      promptMode: undefined,
     });
 
     const updatedFrames = capturedSet.startFramePlan.frames;
@@ -604,7 +629,8 @@ describe("generateShotStartFramePrompt", () => {
       ) // resolveShotCharacterIdentitySources
       .mockReturnValueOnce(
         selectChain([{ id: 5, name: "Hero Name", characterKey: "hero" }]),
-      ); // resolveShotCharacterReferenceEntries's characterRows query
+      ) // resolveShotCharacterReferenceEntries's characterRows query
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     mockGetPrimaryPortraitUrl.mockResolvedValueOnce("https://cdn/hero-portrait.png");
 
@@ -687,7 +713,8 @@ describe("generateShotStartFramePrompt", () => {
           { id: 2, name: "Villain Name", characterKey: "villain" },
           { id: 1, name: "Hero Name", characterKey: "hero" },
         ]),
-      );
+      )
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     mockGetPrimaryPortraitUrl
       .mockResolvedValueOnce("https://cdn/villain-portrait.png")
@@ -722,7 +749,8 @@ describe("generateShotStartFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ bible: null }]));
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
       router.generateShotStartFramePrompt({
@@ -739,7 +767,8 @@ describe("generateShotStartFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ bible: null }]));
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
       router.generateShotStartFramePrompt({
@@ -756,7 +785,8 @@ describe("generateShotStartFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ bible: null }]));
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
       router.generateShotStartFramePrompt({
@@ -773,7 +803,8 @@ describe("generateShotStartFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ bible: null }]));
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
       router.generateShotStartFramePrompt({
@@ -788,7 +819,8 @@ describe("generateShotStartFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ bible: null }]));
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     await expect(
       router.generateShotStartFramePrompt({
@@ -802,7 +834,8 @@ describe("generateShotStartFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ bible: null }]));
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
     mockDb.update.mockReturnValueOnce({ set: vi.fn(() => updateChain([episodeRow])) });
 
     await router.generateShotStartFramePrompt({
@@ -831,7 +864,8 @@ describe("generateShotStartFramePrompt", () => {
     const episodeRow = baseEpisodeRow();
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ bible: null }]));
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({
@@ -867,7 +901,8 @@ describe("generateShotStartFramePrompt", () => {
 
     mockDb.select
       .mockReturnValueOnce(selectChain([staleEpisodeRow]))
-      .mockReturnValueOnce(selectChain([{ bible: null }]));
+      .mockReturnValueOnce(selectChain([{ bible: null }]))
+      .mockReturnValueOnce(approvedMediaAssetSelectChain()); // resolveMediaAssetUrlsByIds (frame.approvedMediaAssetId "900")
 
     let capturedSet: any;
     mockDb.update.mockReturnValueOnce({

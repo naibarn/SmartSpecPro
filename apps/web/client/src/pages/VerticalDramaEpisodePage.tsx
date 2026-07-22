@@ -52,6 +52,14 @@ import {
   type VerticalDramaRepairJobStatus,
   type VerticalDramaRepairTarget,
 } from "@/components/verticalDramaSeries/VerticalDramaRepairDialog";
+import {
+  VideoPromptAiEditDialog,
+  type VideoPromptAiEditJobStatus,
+} from "@/components/verticalDramaSeries/VideoPromptAiEditDialog";
+import {
+  ImagePromptAiEditDialog,
+  type ImagePromptAiEditJobStatus,
+} from "@/components/verticalDramaSeries/ImagePromptAiEditDialog";
 import type { VerticalDramaRunRow } from "@/components/verticalDramaSeries/VerticalDramaRunsList";
 import type {
   RunResult,
@@ -822,6 +830,37 @@ function EpisodeWorkspaceShell({
   const [repairTemplate, setRepairTemplate] = useState<string | undefined>(
     undefined
   );
+
+  // Video prompt AI-edit dialog — separate from the generic RepairDialog;
+  // opened when the user clicks "ให้ AI ปรับ" on a video prompt box and
+  // routes straight into `generateShotVideoPromptMutation` with an
+  // instruction + optional reference image URLs.
+  const [videoPromptAiEditTarget, setVideoPromptAiEditTarget] = useState<{
+    shotNumber: number;
+    clipNumber: number;
+    subShotNumber: number | undefined;
+    shotLabel?: string;
+    shotImageUrl?: string;
+  } | null>(null);
+  const [videoPromptAiEditJobStatus, setVideoPromptAiEditJobStatus] =
+    useState<VideoPromptAiEditJobStatus>("idle");
+  const [videoPromptAiEditError, setVideoPromptAiEditError] = useState<
+    string | undefined
+  >(undefined);
+
+  // Start-frame image prompt AI-edit dialog — separate from the generic
+  // RepairDialog and VideoPromptAiEditDialog; routes into
+  // `generateShotStartFramePromptMutation` with instruction + optional start frame.
+  const [imagePromptAiEditTarget, setImagePromptAiEditTarget] = useState<{
+    shotNumber: number;
+    currentPrompt: string;
+    shotImageUrl?: string;
+  } | null>(null);
+  const [imagePromptAiEditJobStatus, setImagePromptAiEditJobStatus] =
+    useState<ImagePromptAiEditJobStatus>("idle");
+  const [imagePromptAiEditError, setImagePromptAiEditError] = useState<
+    string | undefined
+  >(undefined);
 
   // Image swap target (Media History/Library picker), independent of the
   // LLM-driven repair flow above — a direct, no-cost asset pick. Either a
@@ -2332,6 +2371,16 @@ function EpisodeWorkspaceShell({
   const selectedThaiAccent =
     episodeDetailQuery.data?.motionPromptPack?.thaiAccent ?? null;
 
+  /* ---- Start-frame image-prompt engine mode
+   *  (planning/vd-start-frame-prompt-modes/plan.md) — per-sub-episode
+   *  choice of which engine writes the start-frame image prompt.
+   *  `"auto"` (default/absent) follows the episode's selected IMAGE model
+   *  family at generation time; the user can also pin one explicitly.
+   *  Read straight off the episode's own `startFramePlan`, mirroring the
+   *  `motionPromptPack` reads above. */
+  const selectedImagePromptMode =
+    episodeDetailQuery.data?.startFramePlan?.imagePromptMode ?? "auto";
+
   const setEpisodeVideoPromptLanguageMutation =
     trpc.verticalDramaEpisodes.setEpisodeVideoPromptLanguage.useMutation({
       onSuccess: () => {
@@ -2364,6 +2413,32 @@ function EpisodeWorkspaceShell({
       seriesId,
       episodeId,
       thaiAccent: value as VerticalDramaThaiAccent,
+    });
+  };
+
+  /* ---- Start-frame image-prompt engine mode
+   *  (planning/vd-start-frame-prompt-modes/plan.md) — free JSONB-patch
+   *  setter, same convention as `setEpisodeVideoPromptLanguageMutation`
+   *  above (own dedicated mutation since it patches `startFramePlan`, not
+   *  `motionPromptPack`). */
+  const setEpisodeImagePromptModeMutation =
+    trpc.verticalDramaEpisodes.setEpisodeImagePromptMode.useMutation({
+      onSuccess: () => {
+        toast.success(
+          lang === "th"
+            ? "บันทึกโหมดพรอมต์ภาพแล้ว"
+            : "Image prompt mode saved."
+        );
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  const handleSelectImagePromptMode = (mode: string) => {
+    setEpisodeImagePromptModeMutation.mutate({
+      seriesId,
+      episodeId,
+      mode: mode as "auto" | "policy_safe_rewrite" | "cinematic_narrative",
     });
   };
 
@@ -5195,13 +5270,18 @@ function EpisodeWorkspaceShell({
               shotNumber,
               clipNumber,
               subShotNumber,
-              currentPrompt
-            ) =>
-              openRepair(
-                "video_motion_prompt_pack",
-                { parentShotNumber: shotNumber, subShotNumber, clipNumber },
-                currentPrompt
-              ),
+              _currentPrompt,
+              shotImageUrl
+            ) => {
+              setVideoPromptAiEditTarget({
+                shotNumber,
+                clipNumber,
+                subShotNumber,
+                shotImageUrl,
+              });
+              setVideoPromptAiEditJobStatus("idle");
+              setVideoPromptAiEditError(undefined);
+            },
             onChangeStartFrame: shotNumber =>
               setImageSwapTarget({ type: "startFrame", shotNumber }),
             onGenerateStartFramePlan: () =>
@@ -5214,12 +5294,15 @@ function EpisodeWorkspaceShell({
             generatingStartFramePlan:
               runStageMutation.isPending &&
               runStageMutation.variables?.stage === "start_frame_render_plan",
-            onEditStartFramePrompt: (shotNumber, currentPrompt) =>
-              openRepair(
-                "start_frame_render_plan",
-                { parentShotNumber: shotNumber },
-                currentPrompt
-              ),
+            onEditStartFramePrompt: (shotNumber, currentPrompt, shotImageUrl) => {
+              setImagePromptAiEditTarget({
+                shotNumber,
+                currentPrompt,
+                shotImageUrl,
+              });
+              setImagePromptAiEditJobStatus("idle");
+              setImagePromptAiEditError(undefined);
+            },
             onGenerateVideoPromptPack: handleGenerateVideoPromptPack,
             generatingVideoPromptPack,
             onRepairMissingShotCharacters: handleRepairMissingShotCharacters,
@@ -5306,6 +5389,8 @@ function EpisodeWorkspaceShell({
             onSelectDialogueLanguage: handleSelectDialogueLanguage,
             selectedThaiAccent,
             onSelectThaiAccent: handleSelectThaiAccent,
+            imagePromptMode: selectedImagePromptMode,
+            onSelectImagePromptMode: handleSelectImagePromptMode,
             // Task #36 — `onSelectNativeAudioEnabled` is wired ONLY while
             // the F131AC rollout flag is on (`nativeAudioPromptsEnabled`);
             // omitting the callback while pending keeps the panel's toggle
@@ -5501,6 +5586,117 @@ function EpisodeWorkspaceShell({
             episodeBreakdownStatusQuery.data?.plannedEpisodeCount
           }
           seasonPlanTabHref={`${verticalDramaRoutes.seriesDetail(seriesId)}?tab=overview`}
+        />
+
+        {/* Video prompt AI-edit dialog — opened from "ให้ AI ปรับ" on a video
+             prompt box (InlineEditablePromptBox's onAiAdjust handler), wired
+             directly into generateShotVideoPromptMutation with an instruction
+             and optional reference image URLs. Separate from the generic
+             RepairDialog so it can surface example chips + image attachment. */}
+        <VideoPromptAiEditDialog
+          locale={lang}
+          open={videoPromptAiEditTarget != null}
+          onOpenChange={open => {
+            if (!open) setVideoPromptAiEditTarget(null);
+          }}
+          shotLabel={
+            videoPromptAiEditTarget
+              ? lang === "th"
+                ? `ช็อต ${videoPromptAiEditTarget.shotNumber}`
+                : `Shot ${videoPromptAiEditTarget.shotNumber}`
+              : undefined
+          }
+          shotImageUrl={videoPromptAiEditTarget?.shotImageUrl}
+          jobStatus={videoPromptAiEditJobStatus}
+          errorReason={videoPromptAiEditError}
+          onSubmit={({ instruction, attachShotImage }) => {
+            const target = videoPromptAiEditTarget;
+            if (!target) return;
+            if (!requireModelSelectedOrToast("video")) return;
+            setVideoPromptAiEditJobStatus("submitting");
+            setVideoPromptAiEditError(undefined);
+            generateShotVideoPromptMutation.mutate(
+              {
+                seriesId,
+                episodeId,
+                shotNumber: target.shotNumber,
+                instruction,
+                attachShotImage,
+                idempotencyKey: crypto.randomUUID(),
+              },
+              {
+                onSuccess: data => {
+                  setUsedVisionByShot(prev => ({
+                    ...prev,
+                    [target.shotNumber]: data.usedVision,
+                  }));
+                  setVideoPromptAiEditJobStatus("succeeded");
+                  void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+                  // Close dialog automatically after a short success delay
+                  setTimeout(() => setVideoPromptAiEditTarget(null), 1200);
+                },
+                onError: err => {
+                  setVideoPromptAiEditJobStatus("failed");
+                  setVideoPromptAiEditError(err.message);
+                },
+              }
+            );
+          }}
+        />
+
+        {/* Start-frame image prompt AI-edit dialog — opened when the user
+             clicks "ให้ AI ปรับ" on a start frame prompt box. */}
+        <ImagePromptAiEditDialog
+          locale={lang}
+          open={imagePromptAiEditTarget != null}
+          onOpenChange={open => {
+            if (!open) setImagePromptAiEditTarget(null);
+          }}
+          shotLabel={
+            imagePromptAiEditTarget
+              ? lang === "th"
+                ? `ช็อต ${imagePromptAiEditTarget.shotNumber}`
+                : `Shot ${imagePromptAiEditTarget.shotNumber}`
+              : undefined
+          }
+          currentPrompt={imagePromptAiEditTarget?.currentPrompt}
+          shotImageUrl={imagePromptAiEditTarget?.shotImageUrl}
+          jobStatus={imagePromptAiEditJobStatus}
+          errorReason={imagePromptAiEditError}
+          onSubmit={({ instruction, attachShotImage }) => {
+            const target = imagePromptAiEditTarget;
+            if (!target) return;
+            if (!requireModelSelectedOrToast("image")) return;
+            setImagePromptAiEditJobStatus("submitting");
+            setImagePromptAiEditError(undefined);
+            generateShotStartFramePromptMutation.mutate(
+              {
+                seriesId,
+                episodeId,
+                shotNumber: target.shotNumber,
+                instruction,
+                attachShotImage,
+                idempotencyKey: crypto.randomUUID(),
+              },
+              {
+                onSuccess: data => {
+                  if ("usedVision" in data && typeof data.usedVision === "boolean") {
+                    setUsedVisionByShot(prev => ({
+                      ...prev,
+                      [target.shotNumber]: data.usedVision,
+                    }));
+                  }
+                  setImagePromptAiEditJobStatus("succeeded");
+                  void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+                  setTimeout(() => setImagePromptAiEditTarget(null), 1200);
+                },
+                onError: err => {
+                  setImagePromptAiEditJobStatus("failed");
+                  setImagePromptAiEditError(err.message);
+                },
+              }
+            );
+          }}
         />
 
         {/* Repair instruction capture — entered from the approval bar / failed stage. */}

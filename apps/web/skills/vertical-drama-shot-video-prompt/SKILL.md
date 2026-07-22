@@ -1,7 +1,7 @@
 ---
 name: Vertical Drama Shot Video Prompt
 description: Generate ONE image-grounded video-clip motion prompt for a single vertical-drama storyboard shot, analyzing the shot's approved start-frame image (or its generating image prompt when vision input is unavailable).
-version: 1.0.0
+version: 1.1.0
 category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
@@ -64,7 +64,17 @@ Return ONLY a single JSON object (no markdown, no commentary) matching:
       "subtext": "string (optional)"
     }
   ],
-  "audio_direction": "string (optional — ONLY when the caller states native_audio: true for this shot; see the NATIVE AUDIO DIRECTION section below)"
+  "audio_direction": "string (optional — ONLY when the caller states native_audio: true for this shot; the SAME sound direction you must also write into `prompt` itself — see the NATIVE AUDIO DIRECTION section below)",
+  "frame_analysis": {
+    "people": [
+      {
+        "name": "string (character name from the CHARACTER IDENTITY MAP)",
+        "position": "left | center-left | center | center-right | right",
+        "note": "string (optional — short pose/orientation audit cue, never appearance prose)"
+      }
+    ],
+    "position_source": "image | image_prompt_text"
+  }
 }
 ```
 
@@ -126,6 +136,43 @@ The caller tells you two independent language settings for this shot:
    (see rule 5 below), the quoted line itself stays in the speech language
    even though the surrounding acting direction is written in the prompt
    language.
+
+## FRAME ANALYSIS FIRST — MANDATORY whenever a start-frame image is attached and 2+ characters are established
+
+Do this BEFORE writing a single word of `prompt`. Look at the attached
+start-frame image and work out, for every established character in the
+CHARACTER IDENTITY MAP:
+
+1. **Who is where on screen.** Match each person visible in the image to
+   their name by comparing against the labeled character reference portraits
+   attached below the start frame. Never assume the image obeyed the
+   image-prompt text — image models frequently place characters on the
+   opposite side from what was requested. The IMAGE is the ground truth.
+2. **Their screen-position bucket**: `left`, `center-left`, `center`,
+   `center-right`, or `right` — always from the VIEWER's side of the screen.
+3. **Who they are facing** / where their attention sits in the frozen frame.
+
+Report that reading in the `frame_analysis` output field (see the JSON
+contract above) with `"position_source": "image"`. Then USE it everywhere:
+
+- Every speech cue in `prompt` anchors the speaker by NAME + the SCREEN
+  POSITION you read from the image — "คุณกฤต on the left says with quiet
+  menace: …" — and every silent listener is anchored the same way — "ภาคิน
+  on the right listens, mouth closed."
+- Position is how a video model decides whose mouth moves: a wrong position
+  IS a wrong speaker. This field exists because unverified position guessing
+  is the single most common cause of a line being spoken by the wrong
+  character.
+- The `note` field is a short pose/orientation audit cue only ("foreground
+  shoulder, back three-quarter to camera") — never wardrobe or facial
+  description, and nothing from `note` may be copied into `prompt` as
+  appearance prose (rule 1 below applies in full).
+
+When NO image is attached (vision unavailable), derive the best-known
+positions from the image-prompt text instead, set `"position_source":
+"image_prompt_text"`, and still anchor every speech cue by name + position.
+When fewer than 2 characters are established, `frame_analysis` is optional —
+include it when it helps, or omit it.
 
 ## Hard rules — MANDATORY
 
@@ -246,12 +293,18 @@ The caller tells you two independent language settings for this shot:
 8. **Prompt length limit — MANDATORY:** `prompt` MUST be **2000 characters or
    fewer**, INCLUDING any embedded dialogue/delivery text (this is the base
    motion prompt the router formats into the final provider request, so write
-   with that combined budget in mind). Prioritize movement/camera continuation
-   and dialogue delivery direction first; compress or drop the least
-   story-critical detail if the full description would exceed the limit. A
-   downstream quality-control pass will refine/compress any prompt that is
-   still over the limit, but a well-written prompt should not rely on that
-   fallback.
+   with that combined budget in mind). AIM for **≤1800 characters** so the
+   final formatted request keeps headroom (the caller may append an
+   SFX/ambient tail from `audio_direction` when the budget allows). When the
+   full description would not fit, spend the budget in this strict priority
+   order and drop from the bottom, never the top:
+   1) who-speaks-where — name + screen-position speech cues, lip-sync and
+      silent-listener discipline; 2) the single primary camera move
+   continuing the start frame; 3) emotion and acting texture per the CAMERA
+   & EMOTION GRAMMAR section; 4) atmosphere/environment evolution; 5) any
+   sound texture (always the first thing to drop). A downstream
+   quality-control pass will refine/compress any prompt that is still over
+   the limit, but a well-written prompt should not rely on that fallback.
 9. **Product lock — MANDATORY when the caller gives you a PRODUCT TIE-IN
    directive for this shot:** the tied-in product must remain visually
    unchanged while in motion — same shape, proportions, physical size
@@ -386,6 +439,121 @@ The caller tells you two independent language settings for this shot:
    licenses describing appearance (rule 1 still applies in full) and never
    overrides the SPEAKER / SILENT LISTENER lip-sync discipline (rule 12): a
    listener turns toward and watches the speaker, but their mouth stays closed.
+15. **No music, ever — MANDATORY.** Never direct background music, score,
+   soundtrack, melody, humming, or singing anywhere in `prompt` (nor in
+   `audio_direction` — its own rules already forbid it). Music licensing is
+   owned by a separate layer; a rendered clip must never generate its own
+   music. An in-scene DIEGETIC sound source the story itself shows (a phone
+   ringing, a TV murmuring, rain on glass) is a sound effect, not music —
+   describe it as an effect with no melody/song wording. Spare sound budget
+   goes to diegetic SFX and ambience per rule 8's priority order.
+
+## MODEL-FAMILY SHAPING — MANDATORY
+
+The caller supplies a `TARGET VIDEO MODEL` fact block naming the exact video
+model this prompt will be rendered on and its family: `grok`, `veo`,
+`seedance`, or `other`. Your `prompt` is consumed by THAT model — shape the
+writing for it. Every Hard Rule above still applies for every family; this
+section tunes how you spend the budget and phrase the direction. Never name
+the model or its family inside `prompt` itself.
+
+### family: grok (Grok Imagine / Grok video)
+
+- Grok has NO negative-prompt channel — it will never see
+  `negative_motion_prompt` (still return that field for other consumers).
+  Every constraint that would break the shot must be stated POSITIVELY inside
+  `prompt`: the silent listener's mouth stays closed, exactly N people in
+  frame, no on-screen text.
+- Identity reaches the render through ONE start frame only — no extra
+  reference images survive to the video call. The name + screen-position
+  anchors from FRAME ANALYSIS carry ALL identity disambiguation; make them
+  unmissable and repeat the position anchor at every speaking beat.
+- Native audio is supported: embed each line verbatim with an explicit speech
+  cue and strong lip-sync wording per rule 5.
+- Style: compact, kinetic, action-first sentences. Put the most load-bearing
+  direction (who speaks where, the primary camera move) in the first two
+  sentences. Skip long lens/film-stock jargon lists. Aim ≤1500 characters
+  for grok even though the hard cap is 2000 — grok follows short, dense
+  direction better than long prose.
+
+### family: veo (Veo 3 / 3.1)
+
+- Native audio with strong lip-sync: embed dialogue verbatim per rule 5, each
+  line introduced by its name + screen-position speech cue.
+- ALWAYS state positively, near the top of `prompt`: "No subtitles, no
+  captions, no on-screen text." Veo tends to burn subtitles into the frame
+  whenever quoted dialogue is present, and the negative prompt alone does not
+  prevent it.
+- Veo rewards precise, professional cinematography vocabulary — shot size,
+  ONE concrete primary camera move (slow dolly-in, handheld push, rack
+  focus), lighting mood, shallow depth of field — while rule 6's
+  one-primary-move discipline still governs.
+- Direct in-scene sound through `audio_direction` (diegetic SFX + ambience
+  only, never music) — the caller appends it to the final request when the
+  budget allows.
+
+### family: seedance (Seedance / ByteDance)
+
+- Seedance is the strongest multi-shot family: when this shot genuinely
+  needs an internal cut (a reaction reverse, an insert already implied by
+  the beat), narrate the sequence explicitly and sequentially — "The clip
+  opens on … / mid-clip, cut to a reverse angle on … / in the final
+  seconds …" — one cut per story beat, and re-anchor identity by name +
+  screen position IMMEDIATELY after every cut. Do not force a cut into a
+  beat that plays stronger as one continuous move (rule 6 still governs the
+  default).
+- CHECK the native_audio fact: when native audio is NOT supported, embed NO
+  spoken transcript in `prompt` — direct visible mouth movement, facial
+  emotion, and body language instead, and return the lines only in
+  `dialogue` for the separate TTS layer. On a silent render, sound-texture
+  prose is wasted budget — spend it on motion instead.
+- Concrete camera verbs work well: push-in, pull-back, tracking, orbit,
+  crane-down. Keep every move physically continuous from the start frame.
+
+### family: other
+
+- Assume the most conservative profile: every critical constraint stated
+  positively in `prompt` (never rely on the negative prompt reaching the
+  model), dialogue handled strictly per the native_audio fact, universal
+  cinematography vocabulary, no model-specific idioms.
+
+## CAMERA & EMOTION GRAMMAR — MANDATORY
+
+Camera movement must be MOTIVATED by the emotional beat — the camera moves
+because the feeling moves, never as decoration. Read the shot's emotion from
+the authoritative beat, the shot description, and each dialogue line's
+emotion/delivery facts, and let that emotion pick the camera behavior:
+
+- **Ordinary conversation / exposition** — steady OTS or two-shot, slow
+  drift or a quiet hold; let the performance carry the beat.
+- **Flirtation / warmth / intimacy** — slow, soft push-ins; linger on the
+  listener's reaction a half-beat after a line lands; gentle handheld sway
+  that reads as breath, never shake.
+- **Crying / grief / heartbreak** — ONE patient push-in toward the face,
+  then HOLD; let the moment breathe; micro-movements only. Never whip, drift
+  away, or cut away from the emotional peak.
+- **Anger / confrontation** — tighter framing and a firmer, faster push;
+  low-angle when one side dominates the exchange; a beat of complete
+  stillness right before the hardest line lands harder than constant motion.
+- **Fear / dread / suspense** — creeping dolly, held-breath pacing, slightly
+  low or subtly canted energy; the motion slows as the tension rises.
+- **Shock / revelation** — the motion stops WITH the character: a sudden
+  settle, then one reactive reframe toward what changed; reaction first,
+  subject second.
+
+Two enforcement rules on top of the mapping:
+
+1. **Name the speaker's emotion in the speech cue.** Every speech cue states
+   HOW the line is delivered as a specific felt emotion, never a neutral
+   "says" — e.g. "…says with cold, quiet fury:", "…whispers, voice breaking
+   with grief:", "…teases with a warm half-smile:". Match the
+   emotion/delivery facts supplied for that line; when none are supplied,
+   infer the emotion from the authoritative beat — never leave a line
+   emotionally unmarked.
+2. **The arc inside the clip follows the beat.** If the beat turns (calm →
+   threat, hope → hurt), the camera and the performance turn WITH it at the
+   right moment mid-clip (rule 3's more-than-one-moment-of-change), and the
+   final frames land the emotional state the next shot will pick up.
 
 ## NATIVE AUDIO DIRECTION (conditional — only when the caller states `native_audio: true` for this shot)
 
@@ -395,14 +563,24 @@ this is an OPTION the caller turns on per shot, never assumed. The caller's
 instructions sometimes state `native_audio: true` for this shot — this means
 the selected video model has this native-audio capability AND the caller
 wants you to DIRECT that audio channel. When (and ONLY when) the caller
-states `native_audio: true`, return the additional `audio_direction` field:
-a short (1-3 sentence) audio direction for this shot, written in the PROMPT
-LANGUAGE, describing what the video model itself should render as this
-clip's in-scene audio. When the caller does NOT state `native_audio: true`
-for this shot, omit `audio_direction` entirely — never invent audio
-direction unprompted.
+states `native_audio: true`, you must do BOTH of the following:
 
-Write `audio_direction` in TWO TIERS, in this order:
+1. **WRITE THE SOUND DIRECTION INTO `prompt` ITSELF — MANDATORY.** Close
+   `prompt` with one short, final sound clause (1-2 sentences, in the PROMPT
+   LANGUAGE) directing the clip's in-scene sound. Nothing downstream appends
+   it for you and the user is never asked to add it by hand: if it is not in
+   `prompt`, the rendered clip has no sound direction at all. Place it LAST,
+   after all motion/camera/dialogue direction, so the model reads performance
+   first and sound last.
+2. **Also return the same direction in `audio_direction`** — same content,
+   standalone (it is displayed to the user and kept for audit). The two must
+   agree; never let `audio_direction` say something `prompt` does not.
+
+When the caller does NOT state `native_audio: true` for this shot, write NO
+sound clause in `prompt` and omit `audio_direction` entirely — never invent
+audio direction unprompted.
+
+Write the sound direction (in both places) in TWO TIERS, in this order:
 
 1. **SFX cues — PRIMARY, always produce this tier whenever `native_audio:
    true` applies.** Concrete sound-effect cues tied DIRECTLY to visible
@@ -421,7 +599,17 @@ Write `audio_direction` in TWO TIERS, in this order:
    shot's emotional beat (a hushed, low-level bed for a tense quiet moment;
    a fuller, more present bed for a chaotic or high-energy beat).
 
-**Hard content rules for `audio_direction` — NON-NEGOTIABLE:**
+**Budget:** the in-`prompt` sound clause counts toward the 2000-character
+hard cap (rule 8). It is the LAST tier in rule 8's priority order, so when
+the shot is dialogue-heavy and the budget is tight, compress the sound clause
+to a single short sentence (SFX cues only, ambience dropped) rather than
+cutting camera, emotion, or speaker/position direction. Only when even one
+short sentence will not fit may you leave the sound clause out of `prompt` —
+in that case still return `audio_direction` so the user can see what this
+shot's sound should be.
+
+**Hard content rules for the sound direction (both in `prompt` and in
+`audio_direction`) — NON-NEGOTIABLE:**
 
 1. **NEVER include speech, dialogue, voices, or vocals of any kind** — no
    character speaking, murmuring, humming, or vocalizing. Spoken dialogue is
@@ -429,11 +617,14 @@ Write `audio_direction` in TWO TIERS, in this order:
    above) — a model-generated voice here would double-voice the character
    against the TTS track.
 2. **NEVER include music, melody, lyrics, or score of any kind** — no
-   soundtrack, no instrumental cue, no singing. Music (and its own ducking/
-   rights controls) is owned entirely by a separate, optional background-
-   music layer.
+   soundtrack, no instrumental cue, no singing, no humming. Music (and its
+   own ducking/rights controls) is owned entirely by a separate, optional
+   background-music layer, and a model-generated score is a licensing risk.
+   An in-scene DIEGETIC source the story itself shows (a phone ringing, a TV
+   murmuring, rain on glass) is a sound EFFECT, not music — describe it as an
+   effect, with no melody/song/tune wording.
 3. Stay strictly within SFX cues + ambient soundscape + intensity guidance —
-   nothing else belongs in `audio_direction`.
+   nothing else belongs in the sound direction.
 
 ## User repair instruction (optional)
 

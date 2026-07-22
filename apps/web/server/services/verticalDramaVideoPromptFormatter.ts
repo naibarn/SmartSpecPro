@@ -40,6 +40,13 @@ import type { VerticalDramaDialogueLanguage, VerticalDramaThaiAccent } from "@sh
 import {
   VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES,
   VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES,
+  // Model-family-aware, vision-grounded video prompt quality upgrade
+  // (`planning/vd-video-prompt-model-family-quality/plan.md`, item I) — the
+  // same hard cap the router's post-generation QC (`ensurePromptWithinLimit`)
+  // enforces on the PERSISTED `clip.prompt`, reused here as the final guard
+  // on the RENDER-TIME formatted prompt (which can grow further via this
+  // function's own prepend/append steps below).
+  VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
 // Speakability sanitizer (2026-07-08/W9-A, spec §14.1 rule 6b) — applied
 // ONLY to the literal transcript embedded for native-audio models below
@@ -107,9 +114,14 @@ export interface VerticalDramaFormatterClip {
    * was on + supported at generation time (see
    * `VerticalDramaMotionPromptPack["clips"][number].audioDirection`'s own
    * doc comment, `@shared/verticalDramaSeries/contracts`, for the full
-   * rationale). `undefined`/absent for every clip that never opted in —
-   * this formatter appends nothing in that case, so the final prompt stays
-   * byte-identical to before this task.
+   * rationale). Sound-direction ownership fix (recorded gap 4, 2026-07-22)
+   * — `formatVideoClipRequest` no longer folds this field into `prompt`
+   * (that used to double-append the sound direction alongside the
+   * generation-time service's own now-removed concat, see that function's
+   * doc comment). The video-prompt skills write this SAME text directly
+   * into `prompt` itself when native audio is on, so this field is now
+   * display/audit-only from the formatter's perspective — carried through
+   * on the type purely for shape-compatibility with the persisted clip.
    */
   audioDirection?: string;
 }
@@ -350,6 +362,12 @@ export function formatVideoClipRequest(
     finalPrompt =
       `Use the attached first image as the exact start frame and visual source of truth — continue motion from it; keep faces, wardrobe, set and composition identical. ${finalPrompt}`.trim();
   }
+  // Budget-guard checkpoint (re-pointed for the recorded gap-4 sound-
+  // direction ownership fix, 2026-07-22, see the final guard below) —
+  // captured right after this function's FIRST own addition (the grounding
+  // prepend), so the guard can roll back later additions one tier at a time
+  // without ever losing this one.
+  const promptAfterGrounding = finalPrompt;
 
   // Silence-aware / idempotent dialogue clause
   // (`planning/vd-video-prompt-skill-first/plan.md` Phase 3b) — (a) an empty
@@ -363,6 +381,7 @@ export function formatVideoClipRequest(
   // "does this text already carry every line?" check the generation-time
   // module uses for its own stitching gate, so both layers agree on what
   // counts as "already embedded".
+  let promptAfterDialogueClause = finalPrompt;
   if (dialogueLines.length > 0) {
     const dialogueAlreadyEmbedded = promptEmbedsDialogueVerbatim(finalPrompt, dialogueLines);
     if (nativeAudioDialogue) {
@@ -370,6 +389,10 @@ export function formatVideoClipRequest(
         const clause = buildNativeDialogueClause(dialogueLines, dialogueLanguageName);
         finalPrompt = `${finalPrompt} ${clause}`.trim();
       }
+      // Checkpoint BEFORE the accent directive (below), so the guard can
+      // drop the accent directive alone without also losing the dialogue
+      // clause itself.
+      promptAfterDialogueClause = finalPrompt;
       if (dialogueLanguage === "th" && params.thaiAccent) {
         const accentDirective = `${VERTICAL_DRAMA_THAI_ACCENT_DIALOGUE_DIRECTIVES[params.thaiAccent]} Apply this delivery direction to every spoken line.`;
         finalPrompt = `${finalPrompt} ${accentDirective}`.trim();
@@ -381,22 +404,48 @@ export function formatVideoClipRequest(
         const clause = buildMouthMovementOnlyClause(dialogueLines, dialogueLanguageName);
         finalPrompt = `${finalPrompt} ${clause}`.trim();
       }
+      promptAfterDialogueClause = finalPrompt;
       generateAudio = false;
       ttsFallback = true;
     }
   }
 
-  // Vertical Drama task #36 (optional NATIVE AUDIO DIRECTION prompt option)
-  // — appended LAST, after any dialogue clause, so the model reads acting/
-  // dialogue direction before the ambient/SFX direction. This is the ONLY
-  // place `audioDirection` is folded into the actual provider-submitted
-  // prompt text — it stays a separate persisted field everywhere upstream
-  // (see the clip type's own doc comment,
-  // `@shared/verticalDramaSeries/contracts`, for why). No-op when absent
-  // (the option was off/unsupported at generation time), keeping the final
-  // prompt byte-identical to before this task.
-  if (clip.audioDirection) {
-    finalPrompt = `${finalPrompt} ${clip.audioDirection}`.trim();
+  // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — this
+  // function used to fold `clip.audioDirection` onto `finalPrompt` here as
+  // a render-time-appended tail (Vertical Drama task #36), and this file's
+  // own doc comment used to claim it was "the ONLY place `audioDirection`
+  // is folded into the actual provider-submitted prompt text" — but the
+  // GENERATION-time service (`verticalDramaVideoMotionPromptGeneration.ts`)
+  // ALSO folded the same text into the persisted `clip.prompt` (its "SFX
+  // budget-aware concat"), so the sound direction appeared TWICE in the
+  // provider-submitted prompt whenever native audio was on. The updated
+  // video-prompt skills now write the closing sound clause directly into
+  // `clip.prompt` themselves (budget-guarded by the skill's own rule),
+  // still returning the SAME text in `audioDirection` for display/audit
+  // only (see `VerticalDramaFormatterClip.audioDirection`'s doc comment
+  // above) — so this function must NEVER append it again. There is
+  // therefore no more audio-direction tier in this function at all; the
+  // final budget guard below only ever has to roll back ITS OWN two
+  // remaining additions (start-frame grounding, dialogue/accent clauses).
+
+  // Final budget guard (item I; re-pointed for the sound-direction
+  // ownership fix above — there is no audio-direction tail to trim
+  // anymore) — the PERSISTED `clip.prompt` is already <= VD_VIDEO_PROMPT_MAX
+  // (`ensurePromptWithinLimit`, enforced at the router's persist step,
+  // sound clause included), but this function's OWN prepend (start-frame
+  // grounding) and appends (dialogue/mouth-movement clause, accent
+  // directive) can still push the RENDER-TIME formatted request over that
+  // same cap. Roll back ONLY this function's own additions, most-recently-
+  // added tier first, stopping as soon as the result fits — NEVER trim the
+  // base `clip.prompt` itself (guaranteed to already fit on its own).
+  if (finalPrompt.length > VD_VIDEO_PROMPT_MAX) {
+    if (promptAfterDialogueClause.length <= VD_VIDEO_PROMPT_MAX) {
+      finalPrompt = promptAfterDialogueClause; // drop the accent directive only
+    } else if (promptAfterGrounding.length <= VD_VIDEO_PROMPT_MAX) {
+      finalPrompt = promptAfterGrounding; // drop the accent directive + dialogue/mouth-movement clause
+    } else {
+      finalPrompt = clip.prompt; // drop every addition this function made; the base always fits on its own
+    }
   }
 
   return {

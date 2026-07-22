@@ -105,6 +105,11 @@ import {
   VdSchemaValidationError as StartFrameVdSchemaValidationError,
   type StartFrameRenderPlanProjection,
   type VdReferenceMappingWarning,
+  // Gap-5 fix (recorded, 2026-07-22) — the canonical persisted per-frame
+  // shape, used to type the `previousFramesByShotNumber` map built below
+  // (`generateRealStartFramePlan`) and threaded through to
+  // `projectStartFramePlan`'s carry-over param.
+  type VerticalDramaStartFramePlanFrame,
 } from "./verticalDramaStartFrameGeneration";
 import {
   generateVideoMotionPromptPack,
@@ -2740,6 +2745,27 @@ export class VerticalDramaEpisodePipeline {
       episode.startFramePlan as { selectedImageModelId?: string } | null
     )?.selectedImageModelId;
 
+    // Gap-5 fix (recorded, 2026-07-22) — the episode's PRE-regen
+    // `startFramePlan.frames`, keyed by shot number, so
+    // `projectStartFramePlan` (invoked inside `generateStartFrameRenderPlan`
+    // below) can carry over per-frame user/durable state a fresh LLM
+    // projection has no way to re-derive on its own: `approvedMediaAssetId`,
+    // `locationKey`, `angleGrid`/`angleGridAssetIds`, and
+    // `productReferenceAssetIds`/`productRefsCustomized` (the latter pair
+    // also restores this pipeline's OWN documented
+    // `resolveFrameProductReferenceAssetIds` contract below — "auto-
+    // resolution must never overwrite that choice on a plan regen" — which
+    // needs `productRefsCustomized` to actually survive a regen to do its
+    // job). Empty episode `startFramePlan`/no prior `frames` (first-ever
+    // generation) naturally yields an empty map, so every frame's carry-over
+    // is a no-op — byte-identical to today for a brand-new episode.
+    const previousStartFrames = (
+      episode.startFramePlan as { frames?: VerticalDramaStartFramePlanFrame[] } | null
+    )?.frames;
+    const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>(
+      (previousStartFrames ?? []).map(frame => [frame.shotNumber, frame]),
+    );
+
     // Shared-field prompt-language fix — the episode-level video-prompt
     // language plan (`motionPromptPack.promptLanguage`, set via
     // `setEpisodeVideoPromptLanguage`) now ALSO governs image/start-frame
@@ -2937,6 +2963,7 @@ export class VerticalDramaEpisodePipeline {
       targetAudienceRegion,
       promptLanguage: existingImagePromptLanguagePlan?.promptLanguage,
       episodePlanContext,
+      previousFramesByShotNumber,
       characters: characterIdentitySources,
       storyboardShots: shots.map(s => {
         // The real `storyboard_shotgrid` LLM output uses snake_case fields
@@ -3514,7 +3541,50 @@ export class VerticalDramaEpisodePipeline {
             description: g.description,
             shotNumbers: g.shot_numbers,
           }));
-          await reconcileEpisodeLocations(owner, distinctLocationGroups);
+          const reconciliation = await reconcileEpisodeLocations(
+            owner,
+            distinctLocationGroups
+          );
+          const bindingByIncomingIdentity = new Map(
+            (reconciliation.locationBindings ?? []).map(binding => [
+              `${binding.incomingLocationKey}\u0000${binding.incomingLocationName}`,
+              binding.canonicalLocationKey,
+            ])
+          );
+          const canonicalDistinctLocations = (
+            generated.storyboard.distinct_locations ?? []
+          ).map(group => {
+            const canonicalLocationKey = bindingByIncomingIdentity.get(
+              `${group.location_key}\u0000${group.location_name}`
+            );
+            return canonicalLocationKey &&
+              canonicalLocationKey !== group.location_key
+              ? { ...group, location_key: canonicalLocationKey }
+              : group;
+          });
+          const hasCanonicalKeyChanges = canonicalDistinctLocations.some(
+            (group, index) =>
+              group !== generated.storyboard.distinct_locations?.[index]
+          );
+          if (hasCanonicalKeyChanges) {
+            const canonicalStoryboard = {
+              ...generated.storyboard,
+              distinct_locations: canonicalDistinctLocations,
+            };
+            await db
+              .update(verticalDramaEpisodes)
+              .set({ storyboard: canonicalStoryboard, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, owner.episodeId),
+                  eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+                  eq(verticalDramaEpisodes.userId, owner.userId),
+                  eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+                )
+              );
+            generated.storyboard = canonicalStoryboard;
+            payload = { stage, ...canonicalStoryboard };
+          }
         } catch (reconcileError) {
           debugError(
             "vd_location_reconciliation",

@@ -245,6 +245,15 @@ const {
 });
 vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaShotVideoPrompt: mockGenerateVerticalDramaShotVideoPrompt,
+  // Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
+  // quality/plan.md` Phase 2) — the router now calls THIS export name
+  // (`generateShotVideoPrompt`'s non-split path); aliased to the SAME mock
+  // as the plain generator above so every pre-existing test in this file
+  // (which configures `mockGenerateVerticalDramaShotVideoPrompt` and never
+  // touches `promptQuality`) stays byte-identical — `result.promptQuality`
+  // simply reads `undefined` for those tests, which is harmless (a plain
+  // property read, never dereferenced).
+  generateJudgedVerticalDramaShotVideoPrompt: mockGenerateVerticalDramaShotVideoPrompt,
   generateVerticalDramaClipDialogue: mockGenerateVerticalDramaClipDialogue,
   appendPresetVisualIdentityStyleTokensToMotionPrompt:
     mockAppendPresetVisualIdentityStyleTokensToMotionPrompt,
@@ -373,7 +382,27 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
       ],
     },
     dialogueAudioPlan: null,
-    motionPromptPack: null,
+    // Feature 135 (Hermes Grok media worker, remediation row 9) —
+    // `resolveEpisodeVideoModel` now FAILS CLOSED (BAD_REQUEST) whenever
+    // `motionPromptPack.selectedVideoModelId` is missing, so the default
+    // fixture must carry a selection that resolves against this file's
+    // default mocked catalog (`mockGetModelsByTypeAsync`'s "veo-3-1" row,
+    // set in `beforeEach` below). `clips: []` is behaviorally identical to
+    // the previous `motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] }` default for every other
+    // consumer in this file (`shouldRegenerateDialogueForVideoPrompt` /
+    // `hasDuplicateDialogueOnOtherClip` both treat `pack: null` and
+    // `pack.clips: []` the same — `!pack?.clips?.length` is `true` either
+    // way, and the final persist's `if (freshPack)` branch spreads whatever
+    // fixture fields are here, so `durationProfileId`/`motionMode` below
+    // are never asserted on by any test — only `.clips` is) — only
+    // `resolveEpisodeVideoModel`'s selection check cares about this field.
+    motionPromptPack: {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [],
+      warnings: [],
+    },
     ...over,
   };
 }
@@ -409,6 +438,14 @@ beforeEach(() => {
     creditsUsed: 3,
     model: "gpt-vision",
     usedVision: true,
+    // Model-family-aware, vision-grounded video prompt quality upgrade
+    // (`planning/vd-video-prompt-model-family-quality/plan.md`) — always
+    // present on the real service return value; "veo-3-1" (this file's
+    // default mocked model row) is a veo-family id.
+    family: "veo",
+    // Judged best-of-2 quality loop (Phase 2) — always present on the real
+    // `generateJudgedVerticalDramaShotVideoPrompt` return value.
+    promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
   });
   mockGenerateVerticalDramaClipDialogue.mockResolvedValue({
     dialogue: [{ lineTh: "บทสดใหม่ของช็อตนี้", characterKey: "hero" }],
@@ -465,6 +502,18 @@ describe("generateShotVideoPrompt", () => {
       dialogue: [],
       creditsUsed: 3,
       usedVision: true,
+      // Model-family-aware, vision-grounded video prompt quality upgrade
+      // (`planning/vd-video-prompt-model-family-quality/plan.md`) — always
+      // stamped onto the mutation return; see the dedicated
+      // "promptModelTarget" describe block below for focused coverage.
+      promptModelTarget: {
+        family: "veo",
+        modelId: "veo-3-1",
+        generatedAt: expect.any(String),
+      },
+      // Judged best-of-2 quality loop (Phase 2) — the mutation return
+      // includes the service's own `promptQuality` verbatim.
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
     });
 
     expect(mockGenerateVerticalDramaShotVideoPrompt).toHaveBeenCalledWith(
@@ -489,9 +538,21 @@ describe("generateShotVideoPrompt", () => {
       expect.objectContaining({
         clipNumber: 1,
         sourceShotNumbers: [1],
+        startFrameAssetId: "900",
         prompt: "generated motion prompt",
         negativeMotionPrompt: "no glitching",
         dialogue: [],
+        // Model-family-aware, vision-grounded video prompt quality upgrade
+        // (`planning/vd-video-prompt-model-family-quality/plan.md`) — the
+        // non-split persist site stamps this on every fresh clip.
+        promptModelTarget: {
+          family: "veo",
+          modelId: "veo-3-1",
+          generatedAt: expect.any(String),
+        },
+        // Judged best-of-2 quality loop (Phase 2) — persisted on the clip
+        // too, next to `promptModelTarget`.
+        promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
       }),
     ]);
   });
@@ -1189,42 +1250,66 @@ describe("generateShotVideoPrompt", () => {
     ]);
   });
 
-  it("creates a minimal pack when motionPromptPack is entirely absent", async () => {
+  // Superseded test (Feature 135 — Hermes Grok media worker, remediation row
+  // 9, doc comment at `resolveEpisodeVideoModel`'s definition,
+  // verticalDramaEpisodes.ts ~:2963-2977). ORIGINAL test (quoted from the
+  // pre-repair file): named "creates a minimal pack when motionPromptPack is
+  // entirely absent", fixture `baseEpisodeRow({ motionPromptPack: null })`,
+  // and asserted the mutation SUCCEEDED, persisting
+  // `capturedSet.motionPromptPack` as `{ selectedVideoModelId:
+  // "veo3/generate-veo-3-video-lite", clips: [...] }` — i.e. it asserted
+  // that an absent pack silently fell back to `DEFAULT_MODELS.video` and
+  // materialized a fresh pack from that guess.
+  //
+  // Reading: that fallback branch is exactly what Feature 135 deliberately
+  // REMOVED — `resolveEpisodeVideoModel` now throws `BAD_REQUEST` for any
+  // empty/absent `pack?.selectedVideoModelId` before this mutation ever
+  // reaches its persist step, and `DEFAULT_MODELS.video` is "never
+  // consulted" (the function's own doc comment). This makes the OLD
+  // assertion's premise false under current, intentional production
+  // behavior — not a regression to chase, but the guard doing its job (a
+  // model selection can no longer be silently invented on the user's
+  // behalf). The old fixture also proves the `else` branch that used to
+  // build that minimal pack (verticalDramaEpisodes.ts ~:14601-14626) is now
+  // dead code: reaching it requires a falsy `freshPack`, but `freshPack =
+  // freshRow?.motionPromptPack ?? pack` can only be falsy if the OUTER
+  // `pack` was falsy too — and `resolveEpisodeVideoModel(pack)` already
+  // throws before that point whenever `pack` is null/absent. Rewritten
+  // below to verify the actual current contract instead: an entirely
+  // absent pack fails closed, asking the user to pick a video model first,
+  // and never persists anything.
+  it("fails closed with BAD_REQUEST when motionPromptPack is entirely absent (no video model selected yet), and never persists", async () => {
     const episodeRow = baseEpisodeRow({ motionPromptPack: null });
 
+    // `resolveEpisodeVideoModel` (the guard under test here) only runs AFTER
+    // `loadOwnedEpisode` / `resolveMediaAssetUrlsByIds` / the locale lookup /
+    // `loadSeriesKnownSpeakerKeys` — the same 4 pre-existing selects every
+    // other test in this file queues (see e.g. the Wave-7D "does not append…
+    // flags-off byte-identical" test's `toHaveBeenCalledTimes(4)` assertion)
+    // — so all 4 must be provisioned even though this call throws right
+    // after the 4th, before any 5th select would ever be issued.
     mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
-      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup (hoisted before resolveShotDialogueLines — planning/`polished-toasting-gadget.md`)
+      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
+      .mockReturnValueOnce(selectChain([{ locale: "th" }])) // locale lookup
       .mockReturnValueOnce(selectChain([])); // loadSeriesKnownSpeakerKeys
 
-    let capturedSet: any;
-    mockDb.update.mockReturnValueOnce({
-      set: vi.fn((v: any) => {
-        capturedSet = v;
-        return updateChain([episodeRow]);
+    await expect(
+      router.generateShotVideoPrompt({
+        ctx: ctx(),
+        input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
       }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "กรุณาเลือกโมเดลวิดีโอก่อนสร้าง / Select a video model before generating.",
     });
 
-    await router.generateShotVideoPrompt({
-      ctx: ctx(),
-      input: { seriesId: "10", episodeId: "100", shotNumber: 1 },
-    });
-
-    expect(capturedSet.motionPromptPack).toMatchObject({
-      selectedVideoModelId: "veo3/generate-veo-3-video-lite",
-      clips: [
-        expect.objectContaining({
-          clipNumber: 1,
-          sourceShotNumbers: [1],
-          prompt: "generated motion prompt",
-        }),
-      ],
-    });
+    expect(mockGenerateVerticalDramaShotVideoPrompt).not.toHaveBeenCalled();
+    expect(mockDb.update).not.toHaveBeenCalled();
   });
 
   it("passes idempotencyKey through to the service call", async () => {
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -1331,7 +1416,7 @@ describe("generateShotVideoPrompt", () => {
     });
 
     it("persists the raw nativeAudioEnabled preference onto a brand-new pack even though the rollout gate is off", async () => {
-      const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+      const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -1375,7 +1460,7 @@ describe("generateShotVideoPrompt", () => {
         model: "gpt-vision",
         usedVision: true,
       });
-      const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+      const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -1409,7 +1494,7 @@ describe("generateShotVideoPrompt", () => {
     });
 
     it("instruction absent: the service call receives repairInstruction: undefined (byte-identical to pre-fix behavior — the \"สร้างพรอมต์วิดีโอ (AI)\" button never sends this field)", async () => {
-      const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+      const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
       mockDb.select
         .mockReturnValueOnce(selectChain([episodeRow]))
         .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -1440,7 +1525,7 @@ describe("generateShotVideoPrompt", () => {
  */
 describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)", () => {
   it("omits shotDurationSeconds/targetSpeechSeconds when the flag is off (default — byte-identical to before)", async () => {
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -1460,7 +1545,7 @@ describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)",
 
   it("passes shotDurationSeconds + targetSpeechSeconds (via targetVerticalDramaSpeechSeconds) when the flag is on", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesSpeechBudget: true });
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null }); // storyboard shot 1 durationSeconds: 6
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } }); // storyboard shot 1 durationSeconds: 6
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -1481,7 +1566,7 @@ describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)",
   it("maps dialogue via the shot's sourceBeatIndexes (source 3a) instead of the positional guess when the flag is on", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesSpeechBudget: true });
     const episodeRow = baseEpisodeRow({
-      motionPromptPack: null,
+      motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] },
       script: {
         structure: {
           beats: [
@@ -1550,7 +1635,7 @@ describe("generateShotVideoPrompt — story-density reform wiring (flag-gated)",
   it("still falls back to the positional guess (source 3b) when the flag is on but the shot has no sourceBeatIndexes", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesSpeechBudget: true });
     const episodeRow = baseEpisodeRow({
-      motionPromptPack: null,
+      motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] },
       script: {
         scene_dialogue_summary: [{ scene: 1, dialogue_lines: ['hero: "legacy positional line"'] }],
       },
@@ -1615,7 +1700,7 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
 
   it("appends the preset's style tokens onto the persisted first-pass prompt when the flag is on and the series carries a preset identity", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: true });
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
@@ -1652,7 +1737,7 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
     // default implementation, same footgun documented elsewhere in this
     // file's test suite).
     mockGetTenantFeatureFlags.mockResolvedValue({});
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -1673,7 +1758,7 @@ describe("generateShotVideoPrompt — preset visual identity flow-through (Wave-
 
   it("does not append when the flag is on but the series carries no preset identity (legacy/non-preset series)", async () => {
     mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesPresetMixV2: true });
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -1844,7 +1929,7 @@ describe("generateShotVideoPrompt — episodePlanContext excludes the next-episo
 
   it("omits the cliffhanger line from episodePlanContext while keeping title/logline/keyBeats", async () => {
     mockGetActiveBreakdown.mockReturnValue([diaperEpisodeBreakdownItem()]);
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] }, episodeNumber: 1 });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }])) // resolveMediaAssetUrlsByIds
@@ -1877,7 +1962,7 @@ describe("generateShotVideoPrompt — episodePlanContext excludes the next-episo
     mockGetActiveBreakdown.mockReturnValue([
       diaperEpisodeBreakdownItem({ cliffhanger_line: undefined }),
     ]);
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] }, episodeNumber: 1 });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -2378,7 +2463,7 @@ describe("generateShotVideoPrompt — canonicalShotSummary / beatIsSilent + anti
         dialogue_lines: [{ speaker: "หนูนา", line: "TESTMARK123" }],
       },
     ]);
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] }, episodeNumber: 1 });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -2403,7 +2488,7 @@ describe("generateShotVideoPrompt — canonicalShotSummary / beatIsSilent + anti
   });
 
   it("byte-identical: canonicalShotSummary is undefined and beatIsSilent is false when the deep-story-drafts flag is off (default)", async () => {
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] } });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))
@@ -2447,7 +2532,7 @@ describe("generateShotVideoPrompt — canonicalShotSummary / beatIsSilent + anti
       model: "gpt-vision",
       usedVision: true,
     });
-    const episodeRow = baseEpisodeRow({ motionPromptPack: null, episodeNumber: 1 });
+    const episodeRow = baseEpisodeRow({ motionPromptPack: { selectedVideoModelId: "veo-3-1", clips: [] }, episodeNumber: 1 });
     mockDb.select
       .mockReturnValueOnce(selectChain([episodeRow]))
       .mockReturnValueOnce(selectChain([{ id: 900, originalUrl: "https://cdn/900.png" }]))

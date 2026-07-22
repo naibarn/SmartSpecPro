@@ -77,12 +77,15 @@ import type {
   VdOpenThread,
   VdRelationshipState,
 } from "@shared/verticalDramaSeries/seriesMemoryState";
+import { detectGenrePollution } from "@shared/verticalDramaSeries/genrePollutionGuard";
 import { VerticalDramaBlendReportPanel } from "./VerticalDramaBlendReportPanel";
 import { DisclosureBadge } from "./VerticalDramaSeriesMemoryStateTab";
 import {
   carryOverAvailabilityCopy,
   carryOverCopy,
+  createSeriesNoSeedActionCopy,
   createModeToggleCopy,
+  defaultLlmModelFieldCopy,
   genreLockedHintCopy,
   lineageCoverageLinkCopy,
   lineageReviewSummaryCopy,
@@ -208,6 +211,14 @@ interface WizardState {
   uploadedReferences: Array<{ url: string; mimeType: string; fileName: string }>;
   /** Stage 2.5 source 2 — short summary of what was uploaded. */
   uploadedSummary?: string;
+  /**
+   * Manual LLM model pin at creation time (mirrors
+   * `VerticalDramaSettingsTab`'s post-creation "Settings" field) — sent as
+   * `create`'s `defaultModelId`. `null` (the default) = automatic, byte-
+   * identical to the pre-existing wizard payload. Mode-independent: shown
+   * and honored for every `createMode` (new / sequel / special edition).
+   */
+  defaultModelId: string | null;
 }
 
 const INITIAL_WIZARD: WizardState = {
@@ -240,7 +251,19 @@ const INITIAL_WIZARD: WizardState = {
   productDescription: "",
   uploadedReferences: [],
   uploadedSummary: "",
+  defaultModelId: null,
 };
+
+/**
+ * Manual LLM model override — sentinel `<Select>` value standing in for
+ * "automatic" (`null`/unset `defaultModelId`), since Radix `Select.Item`
+ * doesn't accept an empty-string value. Same value/convention as
+ * `VerticalDramaSettingsTab`'s own `AUTOMATIC_LLM_MODEL_VALUE` (kept as a
+ * separate local const there — no shared module currently exports this
+ * sentinel — but the literal MUST stay identical since both pickers write to
+ * the same server-side `defaultModelId` contract).
+ */
+const AUTOMATIC_LLM_MODEL_VALUE = "__automatic__";
 
 /** Default weight for a newly-selected preset (spec §8.2.2.C.1 — "default equal"). */
 const DEFAULT_MIX_WEIGHT: VerticalDramaPresetMixWeight = 3;
@@ -269,13 +292,15 @@ export function clampMixWeight(value: number): VerticalDramaPresetMixWeight {
  * | yes | 1..5  | synthesize_premise_and_presets (premise primary, preset(s) as flavor) |
  * | no  | 1     | apply_preset_verbatim         (unchanged legacy "Use this preset") |
  * | no  | 2..5  | synthesize_presets_only        (unchanged legacy AI preset mix) |
- * | no  | 0     | blocked                        (nothing to build from) |
+ * | no  | 0     | synthesize_from_basics when defaults/basic facts exist |
+ * | no  | 0     | blocked only when no basic seed exists at all |
  */
 export type CreateSeriesPresetActionKind =
   | "apply_preset_verbatim"
   | "synthesize_from_premise_only"
   | "synthesize_premise_and_presets"
   | "synthesize_presets_only"
+  | "synthesize_from_basics"
   | "blocked";
 
 export interface CreateSeriesPresetAction {
@@ -293,9 +318,17 @@ export interface CreateSeriesPresetAction {
 export function resolveCreateSeriesPresetAction(params: {
   hasUserPremise: boolean;
   presetCount: number;
+  hasBasicSeed?: boolean;
+  hasLineageSeed?: boolean;
   lang: "th" | "en";
 }): CreateSeriesPresetAction {
-  const { hasUserPremise, presetCount, lang } = params;
+  const {
+    hasUserPremise,
+    presetCount,
+    hasBasicSeed = false,
+    hasLineageSeed = false,
+    lang,
+  } = params;
   const th = lang === "th";
 
   // No premise + exactly 1 preset — legacy verbatim path, byte-identical to
@@ -312,15 +345,23 @@ export function resolveCreateSeriesPresetAction(params: {
     return presetCount === 0
       ? {
           kind: "synthesize_from_premise_only",
-          label: th
-            ? "ให้ AI สร้างโครงเรื่องจากโจทย์"
-            : "Let AI build the story from your premise",
+          label: hasLineageSeed
+            ? th
+              ? "ให้ AI สร้างภาคต่อจากเรื่องเดิม + โจทย์"
+              : "Let AI continue the original story with your premise"
+            : th
+              ? "ให้ AI สร้างโครงเรื่องจากโจทย์"
+              : "Let AI build the story from your premise",
         }
       : {
           kind: "synthesize_premise_and_presets",
-          label: th
-            ? "ให้ AI ผสมโจทย์กับ preset"
-            : "Let AI mix your premise with the preset(s)",
+          label: hasLineageSeed
+            ? th
+              ? "ให้ AI สร้างภาคต่อจากเรื่องเดิม + โจทย์ + preset"
+              : "Let AI continue the original story with your premise and presets"
+            : th
+              ? "ให้ AI ผสมโจทย์กับ preset"
+              : "Let AI mix your premise with the preset(s)",
         };
   }
 
@@ -332,15 +373,47 @@ export function resolveCreateSeriesPresetAction(params: {
     };
   }
 
-  // No premise and fewer than 2 presets (i.e. 0) — genuinely nothing to
-  // build from.
+  // No premise/preset, but the wizard still has useful planning facts
+  // (defaults count: locale, audience tier, Sub-episode count; plus any
+  // title/genre/tone/business/lineage facts the creator supplied).
+  if (hasBasicSeed) {
+    return {
+      kind: "synthesize_from_basics",
+      label: pickCopy(lang, createSeriesNoSeedActionCopy.label),
+    };
+  }
+
+  // Pure helper fallback for callers that truly have no seed at all. The
+  // actual wizard normally has defaults, so users are not trapped here.
   return {
     kind: "blocked",
-    label: th ? "ให้ AI ผสมเป็น Preset" : "Mix into a preset",
-    blockedReason: th
-      ? "พิมพ์โจทย์เรื่องที่อยากได้ หรือเลือก preset อย่างน้อย 2 แบบก่อนให้ AI ช่วย"
-      : "Type a story premise, or choose at least 2 presets first",
+    label: pickCopy(lang, createSeriesNoSeedActionCopy.label),
+    blockedReason: pickCopy(lang, createSeriesNoSeedActionCopy.blockedReason),
   };
+}
+
+/**
+ * AI synthesis returns separate `title` and `category` fields. The wizard's
+ * genre must never be populated from `draft.title`: doing so makes the final
+ * create payload fail the genre-pollution guard, and in lineage modes it also
+ * overwrites the inherited parent genre despite that field being locked.
+ */
+export function resolveGenreAfterPresetDraft(
+  currentGenre: string,
+  draftCategory: string,
+  seriesTitle: string,
+): string {
+  const existing = currentGenre.trim();
+  if (existing && !detectGenrePollution(existing, seriesTitle)) {
+    return existing;
+  }
+
+  const category = draftCategory.trim();
+  const clampedCategory =
+    clampToCreateSeriesLimit(category, "genre") ?? category;
+  return detectGenrePollution(clampedCategory, seriesTitle)
+    ? ""
+    : clampedCategory;
 }
 
 /**
@@ -429,6 +502,12 @@ export function CreateSeriesWizard({
     { enabled: lineageEnabled && Boolean(form.createMode) }
   );
   const parentSeriesOptions = seriesListQuery.data?.series ?? [];
+
+  // Manual LLM model pin (mirrors `VerticalDramaSettingsTab`'s own query) —
+  // mode-independent, so always enabled (no `enabled` gate).
+  const planningModelsQuery =
+    trpc.verticalDramaSeries.listQualityPlanningModels.useQuery();
+  const planningModels = planningModelsQuery.data ?? [];
 
   // Parent series full row (genre/tone/bible/memory snapshot) — used to
   // prefill+lock genre/tone and seed `visualBible`/`lineage.priorSeasonSummary`.
@@ -729,36 +808,43 @@ export function CreateSeriesWizard({
   }
 
   function applyPresetDraft(draft: SynthesizedGenrePresetDraft) {
-    setForm(prev => ({
-      ...prev,
-      title: prev.title.trim() ? prev.title : draft.title,
-      genre: clampToCreateSeriesLimit(draft.title, "genre") ?? draft.title,
-      logline: draft.logline,
-      mainPlot: draft.mainPlot,
-      seasonArc: draft.seasonArc,
-      tone: clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone,
-      cliffhangerStyle: draft.cliffhangerStyle,
-      characters: draft.characters
-        .map(c => `${c.name} — ${c.role}: ${c.description}`)
-        .join("\n"),
-      characterProfiles: draft.characters.map(c => ({
-        name: c.name,
-        role: c.role,
-        description: c.description,
-        narrativeRole: c.narrativeRole,
-        roleTier: c.roleTier,
-        occupation: c.occupation,
-      })),
-      visualBible: draft.visualBible,
-      // An AI-mixed draft is not itself a single stored preset row — clear
-      // any single-preset `appliedPresetId` a prior "Use this preset" click
-      // may have left behind so `create` doesn't stamp the wrong identity.
-      appliedPresetId: undefined,
-      // Feature 132 §4.1 (F132A) distinctness rule — `userPremise` is
-      // creative-intent input, never overwritten by preset application.
-      // `prev` is already spread above, so `userPremise` is deliberately not
-      // listed here (leaving it untouched).
-    }));
+    setForm(prev => {
+      const resolvedTitle = prev.title.trim() ? prev.title : draft.title;
+      return {
+        ...prev,
+        title: resolvedTitle,
+        genre: resolveGenreAfterPresetDraft(
+          prev.genre,
+          draft.category,
+          resolvedTitle,
+        ),
+        logline: draft.logline,
+        mainPlot: draft.mainPlot,
+        seasonArc: draft.seasonArc,
+        tone: clampToCreateSeriesLimit(draft.tone, "tone") ?? draft.tone,
+        cliffhangerStyle: draft.cliffhangerStyle,
+        characters: draft.characters
+          .map(c => `${c.name} — ${c.role}: ${c.description}`)
+          .join("\n"),
+        characterProfiles: draft.characters.map(c => ({
+          name: c.name,
+          role: c.role,
+          description: c.description,
+          narrativeRole: c.narrativeRole,
+          roleTier: c.roleTier,
+          occupation: c.occupation,
+        })),
+        visualBible: draft.visualBible,
+        // An AI-mixed draft is not itself a single stored preset row — clear
+        // any single-preset `appliedPresetId` a prior "Use this preset" click
+        // may have left behind so `create` doesn't stamp the wrong identity.
+        appliedPresetId: undefined,
+        // Feature 132 §4.1 (F132A) distinctness rule — `userPremise` is
+        // creative-intent input, never overwritten by preset application.
+        // `prev` is already spread above, so `userPremise` is deliberately not
+        // listed here (leaving it untouched).
+      };
+    });
     toast.success(
       lang === "th"
         ? "ใช้ draft นี้แล้ว — แก้ไขต่อได้ทุกแท็บ"
@@ -788,6 +874,14 @@ export function CreateSeriesWizard({
     setMixCategories(prev => {
       if (prev.includes(category))
         return prev.filter(value => value !== category);
+      if (prev.length >= 5) {
+        toast.info(
+          lang === "th"
+            ? "เลือกหมวดแนวเรื่องได้สูงสุด 5 หมวด"
+            : "Choose up to 5 story categories"
+        );
+        return prev;
+      }
       return [...prev, category];
     });
   }
@@ -804,6 +898,18 @@ export function CreateSeriesWizard({
     const action = resolveCreateSeriesPresetAction({
       hasUserPremise: form.userPremise.trim().length > 0,
       presetCount: mixPresetIds.length,
+      hasLineageSeed: Boolean(form.createMode && form.parentSeriesId),
+      hasBasicSeed: Boolean(
+        form.title.trim() ||
+          form.genre.trim() ||
+          form.tone.trim() ||
+          mixCategories.length > 0 ||
+          mixBusinessContext.trim() ||
+          form.productName.trim() ||
+          Number(form.targetEpisodeCount) > 0 ||
+          form.audienceAgeRating ||
+          (form.createMode && form.parentSeriesId)
+      ),
       lang,
     });
     if (action.kind === "blocked") {
@@ -817,12 +923,17 @@ export function CreateSeriesWizard({
     synthesizePresetMutation.mutate({
       locale: lang,
       selectedPresetIds: mixPresetIds,
-      selectedCategories: [],
+      // Category chips are filters while presets are selected. With zero
+      // presets, however, the chosen categories become legitimate basics-only
+      // genre seeds instead of forcing the creator to pick a preset card.
+      selectedCategories: mixPresetIds.length === 0 ? mixCategories : [],
       primarySelectionId: mixPrimarySelectionId,
       businessContext: mixBusinessContext || undefined,
       productContext: form.productName || undefined,
       targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
       toneHint: form.tone || undefined,
+      seriesTitleHint: form.title.trim() || undefined,
+      genreHint: form.genre.trim() || undefined,
       // Preset Mix v2 (spec §8.2.2.C.1, section-15) — sent ALONGSIDE legacy
       // `selectedPresetIds` unconditionally; the SERVER decides whether the
       // tenant's `verticalDramaSeriesPresetMixV2` flag is on and only then
@@ -842,6 +953,10 @@ export function CreateSeriesWizard({
       // preset-mix synthesis to match the series' target maturity tier.
       // Always a defined enum value (see `handleCreate` above).
       audienceAgeRating: form.audienceAgeRating,
+      // A sequel/special edition can synthesize before its series row exists;
+      // pass the same bounded lineage/carry-over snapshot that `create` will
+      // persist so the basics-only draft respects continuity.
+      lineageContext: buildLineagePayload(),
     } as Parameters<typeof synthesizePresetMutation.mutate>[0]);
   }
 
@@ -938,10 +1053,15 @@ export function CreateSeriesWizard({
 
   const handleCreate = () => {
     if (createMutation.isPending || generateStoryMutation.isPending) return;
+    const resolvedGenre = resolveGenreAfterPresetDraft(
+      form.genre,
+      synthesizePresetMutation.data?.draft.category ?? "",
+      form.title,
+    );
     createMutation.mutate({
       title: form.title.trim(),
       locale: form.locale,
-      genre: form.genre.trim() || undefined,
+      genre: resolvedGenre || undefined,
       tone: form.tone.trim() || undefined,
       targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
       defaultEpisodeDurationSeconds:
@@ -1029,6 +1149,12 @@ export function CreateSeriesWizard({
       // `userPremise` above this is always a defined value, so it is sent
       // directly (never `|| undefined`).
       audienceAgeRating: form.audienceAgeRating,
+      // Manual LLM model pin (mirrors `VerticalDramaSettingsTab`'s
+      // post-creation "Settings" field) — `null` (the untouched default) is
+      // the server's "automatic" value, so leaving this picker on Automatic
+      // sends the exact same `null` this payload sent before this field
+      // existed (byte-identical automatic behavior). Mode-independent.
+      defaultModelId: form.defaultModelId,
       // Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) — every
       // one of these 4 fields is `undefined` for the original wizard
       // (`form.createMode` starts and stays `undefined` unless the
@@ -1155,6 +1281,7 @@ export function CreateSeriesWizard({
             onUploadReferenceFile={handleUploadReferenceFile}
             uploadPending={uploadMutation.isPending}
             parentMemoryCoverage={parentMemoryQuery.data?.coverage}
+            planningModels={planningModels}
           />
         </div>
 
@@ -1408,6 +1535,7 @@ function WizardStep({
   onUploadReferenceFile,
   uploadPending,
   parentMemoryCoverage,
+  planningModels,
 }: {
   stepId: string;
   lang: "th" | "en";
@@ -1483,6 +1611,8 @@ function WizardStep({
     episodesWithMemory: number;
     episodesWithMemoryAndRealScript: number;
   };
+  /** Manual LLM model pin at creation time (mirrors `VerticalDramaSettingsTab`'s query of the same name) — mode-independent. */
+  planningModels: Array<{ modelId: string; label: string }>;
 }) {
   const th = lang === "th";
   // Stage 2.6 — used by both the "basic" (genre) and "story" (tone) cases
@@ -1515,6 +1645,17 @@ function WizardStep({
       // drives both the hero premise field below and how the (now-optional,
       // now-narrow) preset library and its copy present themselves.
       const hasUserPremise = form.userPremise.trim().length > 0;
+      const hasBasicSeed = Boolean(
+        form.title.trim() ||
+          form.genre.trim() ||
+          form.tone.trim() ||
+          mixCategories.length > 0 ||
+          mixBusinessContext.trim() ||
+          form.productName.trim() ||
+          Number(form.targetEpisodeCount) > 0 ||
+          form.audienceAgeRating ||
+          (form.createMode && form.parentSeriesId)
+      );
       return (
         <div className="grid gap-4">
           {/* Stage 2.6 (`planning/vd-series-memory-and-lineage/plan.md`) —
@@ -1642,13 +1783,21 @@ function WizardStep({
             <Field
               label={
                 th
-                  ? "โจทย์เรื่องที่อยากได้ (แกนเรื่องหลัก, ไม่บังคับ)"
-                  : "Story premise — your story's spine (optional)"
+                  ? isSequel || isSpecialEdition
+                    ? "โจทย์ภาคใหม่ที่อยากได้ (ทิศทางต่อจากเรื่องเดิม, ไม่บังคับ)"
+                    : "โจทย์เรื่องที่อยากได้ (แกนเรื่องหลัก, ไม่บังคับ)"
+                  : isSequel || isSpecialEdition
+                    ? "New-installment premise — direction layered onto canon (optional)"
+                    : "Story premise — your story's spine (optional)"
               }
               helperText={
                 th
-                  ? "ถ้าระบุ ระบบจะใช้โจทย์ของคุณเป็นแกนเรื่องหลัก แล้วนำ preset ที่เลือกด้านล่าง (0–5 แบบ ไม่บังคับ) มาผสมเสริมความเข้มข้นและความร่วมสมัย — ไม่เลือก preset เลยก็ได้ ให้ AI สร้างจากโจทย์ล้วน ๆ"
-                  : "If provided, the system uses your premise as the primary story spine and blends any preset(s) you choose below (0-5, optional) to intensify and add contemporary flavor — skip presets entirely and AI will build purely from your premise."
+                  ? isSequel || isSpecialEdition
+                    ? "ระบบจะยึดเรื่องเดิม ตัวละคร ความสัมพันธ์ และปมค้างเป็นแกนหลัก แล้วใช้โจทย์นี้กำหนดทิศทางของภาคใหม่ — ไม่สร้างเรื่องใหม่ที่ไม่เกี่ยวข้อง"
+                    : "ถ้าระบุ ระบบจะใช้โจทย์ของคุณเป็นแกนเรื่องหลัก แล้วนำ preset ที่เลือกด้านล่าง (0–5 แบบ ไม่บังคับ) มาผสมเสริมความเข้มข้นและความร่วมสมัย — ไม่เลือก preset เลยก็ได้ ให้ AI สร้างจากโจทย์ล้วน ๆ"
+                  : isSequel || isSpecialEdition
+                    ? "The original story, cast, relationships, and open threads remain primary canon; this premise only directs the new installment."
+                    : "If provided, the system uses your premise as the primary story spine and blends any preset(s) you choose below (0-5, optional) to intensify and add contemporary flavor — skip presets entirely and AI will build purely from your premise."
               }
             >
               <Textarea
@@ -1701,6 +1850,8 @@ function WizardStep({
                   presets={presets}
                   selectedPresetIds={mixPresetIds}
                   hasUserPremise={hasUserPremise}
+                  hasBasicSeed={hasBasicSeed}
+                  hasLineageSeed={Boolean(form.createMode && form.parentSeriesId)}
                   loading={mixDraftLoading}
                   errorMessage={mixDraftError}
                   draft={mixDraft}
@@ -1815,6 +1966,39 @@ function WizardStep({
                       {AUDIENCE_AGE_RATINGS.map(r => (
                         <SelectItem key={r} value={r}>
                           {AUDIENCE_AGE_RATING_LABELS[r][th ? "th" : "en"]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                {/* Manual LLM model pin at creation time — mirrors
+                    `VerticalDramaSettingsTab`'s post-creation "Settings"
+                    field, same copy/sentinel convention. Mode-independent:
+                    rendered for every `createMode` (new / sequel / special
+                    edition), never gated by `isLineageMode`. */}
+                <Field
+                  label={pickCopy(lang, defaultLlmModelFieldCopy.label)}
+                  helperText={pickCopy(lang, defaultLlmModelFieldCopy.helper)}
+                >
+                  <Select
+                    value={form.defaultModelId ?? AUTOMATIC_LLM_MODEL_VALUE}
+                    onValueChange={v =>
+                      set(
+                        "defaultModelId",
+                        v === AUTOMATIC_LLM_MODEL_VALUE ? null : v
+                      )
+                    }
+                  >
+                    <SelectTrigger data-testid="vd-wizard-default-llm-model">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[min(60vh,24rem)]">
+                      <SelectItem value={AUTOMATIC_LLM_MODEL_VALUE}>
+                        {pickCopy(lang, defaultLlmModelFieldCopy.automatic)}
+                      </SelectItem>
+                      {planningModels.map(model => (
+                        <SelectItem key={model.modelId} value={model.modelId}>
+                          {model.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1965,9 +2149,10 @@ function WizardStep({
                       ? th
                         ? "ไม่เลือกเลยก็ได้ — AI จะสร้างเรื่องจากโจทย์ของคุณด้านบน หรือเลือก preset เพื่อเพิ่มรสชาติ"
                         : "Skip this entirely — AI builds from your premise above, or choose presets to add flavor."
-                      : th
-                        ? "เลือก preset เดี่ยว หรือให้ AI ผสมหลายแนวเป็น draft เดียว"
-                        : "Choose one preset or let AI mix several flavors into one draft."}
+                      : pickCopy(
+                          lang,
+                          createSeriesNoSeedActionCopy.optionalPresetHint
+                        )}
                   </p>
                 </div>
                 <Button
@@ -2028,6 +2213,8 @@ function WizardStep({
                       presets={presets}
                       selectedPresetIds={mixPresetIds}
                       hasUserPremise={hasUserPremise}
+                      hasBasicSeed={hasBasicSeed}
+                      hasLineageSeed={Boolean(form.createMode && form.parentSeriesId)}
                       loading={mixDraftLoading}
                       errorMessage={mixDraftError}
                       draft={mixDraft}
@@ -3081,8 +3268,8 @@ function MixAndMatchPresetPanel({
                   ? "เสริมให้สมบูรณ์ (ไม่บังคับ)"
                   : "Enrich it further (optional)"
                 : th
-                  ? "เลือก Preset ได้ 1-5 แบบ"
-                  : "Choose 1-5 presets"}
+                  ? "เลือก Preset 0-5 แบบ (ไม่บังคับ)"
+                  : "Choose 0-5 presets (optional)"}
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {hasUserPremise
@@ -3090,8 +3277,8 @@ function MixAndMatchPresetPanel({
                   ? "ไม่เลือกเลยก็ได้ — AI จะสร้างเรื่องจากโจทย์ของคุณล้วน ๆ หรือเลือก preset 0-5 แบบเพื่อเสริมรสชาติและความร่วมสมัย"
                   : "Skip this entirely — AI builds purely from your premise, or choose 0-5 presets to add flavor and contemporary touches."
                 : th
-                  ? "เลือก 1 แบบเพื่อใช้ preset เดี่ยวแบบเดิม หรือเลือก 2-5 แบบเพื่อให้ AI ช่วย mix เป็น draft เดียว"
-                  : "Choose 1 preset to use it directly, or choose 2-5 presets for AI to mix into one draft."}
+                  ? "ไม่เลือกเลยเพื่อให้ AI สร้างจากข้อมูลพื้นฐาน, เลือก 1 แบบเพื่อใช้ preset เดี่ยว หรือเลือก 2-5 แบบเพื่อให้ AI ผสมเป็น draft เดียว"
+                  : "Choose none to let AI build from basics, 1 preset to use it directly, or 2-5 presets for AI to mix into one draft."}
             </p>
             {hasUserPremise && (
               <Badge
@@ -3114,8 +3301,8 @@ function MixAndMatchPresetPanel({
           </p>
           <p className="text-[11px] text-muted-foreground">
             {th
-              ? `${selectedCategories.length} หมวดที่ใช้กรอง`
-              : `${selectedCategories.length} filter categories`}
+              ? `${selectedCategories.length} หมวดที่เลือก`
+              : `${selectedCategories.length} categories selected`}
           </p>
         </div>
         <div className="relative">
@@ -3373,6 +3560,8 @@ function PresetSynthesisActionPanel({
   presets,
   selectedPresetIds,
   hasUserPremise,
+  hasBasicSeed,
+  hasLineageSeed,
   loading,
   errorMessage,
   draft,
@@ -3386,6 +3575,8 @@ function PresetSynthesisActionPanel({
   presets: GenrePreset[];
   selectedPresetIds: string[];
   hasUserPremise: boolean;
+  hasBasicSeed: boolean;
+  hasLineageSeed?: boolean;
   loading: boolean;
   errorMessage?: string;
   draft?: SynthesizedGenrePresetDraft;
@@ -3401,6 +3592,8 @@ function PresetSynthesisActionPanel({
   const presetAction = resolveCreateSeriesPresetAction({
     hasUserPremise,
     presetCount: selectionCount,
+    hasBasicSeed,
+    hasLineageSeed,
     lang,
   });
   const canApplySingle =
@@ -3408,7 +3601,8 @@ function PresetSynthesisActionPanel({
   const canGenerate =
     (presetAction.kind === "synthesize_from_premise_only" ||
       presetAction.kind === "synthesize_premise_and_presets" ||
-      presetAction.kind === "synthesize_presets_only") &&
+      presetAction.kind === "synthesize_presets_only" ||
+      presetAction.kind === "synthesize_from_basics") &&
     !loading;
   const selectedSinglePreset =
     selectionCount === 1
@@ -3466,9 +3660,9 @@ function PresetSynthesisActionPanel({
         )}
       </div>
 
-      {/* Requirement: a disabled CTA must never be silent about why. `blocked`
-          only ever occurs when there's no premise AND fewer than 2 presets —
-          i.e. only at this component's non-hero (legacy) call site. */}
+      {/* Defensive fallback: a disabled CTA must never be silent about why.
+          The real wizard always has defaults/basic facts, so zero presets
+          normally resolves to `synthesize_from_basics`, not `blocked`. */}
       {presetAction.kind === "blocked" && presetAction.blockedReason && (
         <p
           role="note"

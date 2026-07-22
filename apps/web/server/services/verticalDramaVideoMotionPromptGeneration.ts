@@ -39,6 +39,23 @@ import { resolveVerticalDramaCapabilities, type ModelDefinition } from "./modelR
 import { detectProviderFamily } from "./verticalDramaProviderRouting";
 import {
   executeJsonPlanningCallWithRetry,
+  executeVisionAwareJsonCallWithRetry,
+  // Pre-existing gap fix (found while extending the compliance-retry blocks
+  // for `planning/vd-video-prompt-model-family-quality/plan.md`): both
+  // `generateVerticalDramaShotVideoPrompt`'s and
+  // `generateVerticalDramaShotVideoPromptSpeakerSwitch`'s hand-rolled
+  // corrective-retry blocks call `runVisionAwareJsonAttempt` directly
+  // (needed because they use a CUSTOM correction prompt/maxTokens, unlike
+  // `executeVisionAwareJsonCallWithRetry`'s fixed first/retry-token
+  // contract), but this name was never imported — the call sites were
+  // silently swallowed by their own `try/catch` (best-effort by design),
+  // so the corrective retry never actually reran the LLM. Restoring the
+  // import makes the pre-existing dialogue-verbatim retry (and this task's
+  // new position-anchor retry) actually execute.
+  runVisionAwareJsonAttempt,
+  buildVisionAwareContent,
+  type VisionAwareContent,
+  type VisionAwareImageInput,
   extractJson,
   InsufficientCreditsError,
   VdSchemaValidationError,
@@ -69,6 +86,16 @@ import {
   // doc comment in `subShots.ts` for why this is extracted rather than
   // inlined here.
   deriveDistinctSpeakerCharacterKeysFromWindows,
+  // Model-family-aware, vision-grounded video prompt quality upgrade
+  // (`planning/vd-video-prompt-model-family-quality/plan.md`) — used by
+  // `buildCandidateFactSheet`'s `overCap` fact (judged quality loop, Phase
+  // 2), the same hard cap the router's post-generation QC
+  // (`ensurePromptWithinLimit`) enforces on the persisted `clip.prompt`.
+  // Sound-direction ownership fix (recorded gap 4, 2026-07-22) removed this
+  // module's OWN generation-time SFX/ambient concat (the skill now writes
+  // its closing sound clause directly into `prompt`, budget-guarded by the
+  // skill itself), so this is the only remaining use of the constant here.
+  VD_VIDEO_PROMPT_MAX,
 } from "@shared/verticalDramaSeries";
 import { targetVerticalDramaSpeechSeconds } from "@shared/verticalDramaSeries/dialogueQuality";
 import { VD_PRODUCT_LOCK_VIDEO_INSTRUCTION } from "./verticalDramaProductTieIn";
@@ -81,6 +108,18 @@ import {
 // section-15 change D, Wave-4A completing the "motion prompts" leg of the
 // rule). Type-only — pure/shared, no runtime import needed here.
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+// Model-family-aware, vision-grounded video prompt quality upgrade
+// (`planning/vd-video-prompt-model-family-quality/plan.md`) — the shared,
+// dependency-free family resolver both this service (fact block + result
+// stamping) and the client (badge/mismatch) use as the single source of
+// truth. Deliberately separate from `detectProviderFamily`
+// (`./verticalDramaProviderRouting`, render/request routing) — that stays
+// completely untouched by this task.
+import {
+  resolveVideoPromptTargetFamily,
+  videoPromptFamilySupportsNegativePrompt,
+  type VideoPromptModelFamily,
+} from "@shared/verticalDramaSeries/videoPromptModelFamily";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -970,163 +1009,41 @@ const shotVideoPromptOutputSchema = z
      * validates unchanged.
      */
     audio_direction: z.string().optional(),
+    /**
+     * Model-family-aware, vision-grounded video prompt quality upgrade
+     * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the
+     * skill's "FRAME ANALYSIS FIRST" reading of who is where on screen in
+     * the attached start frame, requested via the fact block's conditional
+     * `frame_analysis: REQUIRED` line whenever 2+ characters are established
+     * (see `buildTargetVideoModelFactBlock`). LENIENT by design (VD
+     * weak-model JSON failure class — cheaper models return sloppy
+     * enums/shapes): `position`/`position_source` accept ANY string, never
+     * an enum, and every field is optional so a model that ignores the
+     * request, or returns a malformed shape, still validates unchanged.
+     * Normalized (trimmed, capped) downstream by `normalizeFrameAnalysis`
+     * before being surfaced on the result — never trusted raw.
+     */
+    frame_analysis: z
+      .object({
+        people: z
+          .array(
+            z
+              .object({
+                name: z.string(),
+                position: z.string(),
+                note: z.string().optional(),
+              })
+              .passthrough(),
+          )
+          .optional(),
+        position_source: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 
 export type ShotVideoPromptOutput = z.infer<typeof shotVideoPromptOutputSchema>;
-
-/* -------------------------------------------------------------------------- */
-/* Shared vision-aware executeWithFallback -> extractJson -> schema-validate  */
-/* retry harness (speaker-aware sub-shots task) — used by BOTH               */
-/* `generateVerticalDramaShotVideoPrompt` and                                 */
-/* `generateVerticalDramaShotVideoPromptSpeakerSwitch` below, so the "one     */
-/* retry on truncated/invalid JSON with a raised token ceiling" pattern is    */
-/* defined exactly once instead of copy-pasted per generator. Deliberately    */
-/* local to this file (NOT the shared `executeJsonPlanningCallWithRetry` in   */
-/* `verticalDramaStoryBible.ts`) — that helper only accepts a plain string     */
-/* `userPrompt`, but both callers here need the vision-aware `image_url`      */
-/* content shape (see this module's earlier vision-support doc comment).      */
-/* -------------------------------------------------------------------------- */
-
-type VisionAwareContent =
-  | string
-  | Array<
-      | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string; detail: "high" } }
-    >;
-
-/**
- * One image to attach to a vision-aware LLM call, with an optional
- * preceding text label (see `buildVisionAwareContent`) — used to name
- * character-reference portraits so the model can visually anchor a face to
- * a name (multi-character disambiguation fix,
- * `polished-toasting-gadget.md`).
- */
-interface VisionAwareImageInput {
-  url: string;
-  label?: string;
-}
-
-/**
- * Build the vision-aware message content: text + one-or-more images when
- * vision is available, plain text otherwise. Each image may carry an
- * optional `label`, rendered as its own preceding `{type:"text"}` part
- * (omitted when absent) — used to name character-reference portraits so the
- * model can visually anchor a face to a name. Called with a single `{url}`
- * entry (no label) — every caller before this multi-image widening, and
- * every caller today that omits `characterReferenceImages` — output is
- * byte-identical to the original single-image shape.
- */
-function buildVisionAwareContent(
-  text: string,
-  hasVision: boolean,
-  images: VisionAwareImageInput[],
-): VisionAwareContent {
-  if (!hasVision) return text;
-  const parts: Array<
-    | { type: "text"; text: string }
-    | { type: "image_url"; image_url: { url: string; detail: "high" } }
-  > = [{ type: "text" as const, text }];
-  for (const image of images) {
-    if (image.label) {
-      parts.push({ type: "text" as const, text: image.label });
-    }
-    parts.push({
-      type: "image_url" as const,
-      image_url: { url: image.url, detail: "high" as const },
-    });
-  }
-  return parts;
-}
-
-type VisionAwareCallResponse = Awaited<ReturnType<typeof executeWithFallback>> extends infer R
-  ? R extends { type: "success"; response: infer Resp }
-    ? Resp
-    : never
-  : never;
-
-/** ONE executeWithFallback -> extractJson -> zod-safeParse attempt (no retry). Throws `VdSchemaValidationError` on a malformed/truncated response. */
-async function runVisionAwareJsonAttempt<T>(args: {
-  model: string;
-  systemPrompt: string;
-  content: VisionAwareContent;
-  userId: number;
-  maxTokens: number;
-  schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
-}): Promise<{ data: T; response: VisionAwareCallResponse }> {
-  const result = await executeWithFallback({
-    model: args.model,
-    messages: [
-      { role: "system", content: args.systemPrompt },
-      { role: "user", content: args.content },
-    ],
-    stream: false,
-    userId: args.userId,
-    maxTokens: args.maxTokens,
-    temperature: 0.7,
-  });
-
-  if (result.type !== "success") {
-    throw new Error(
-      result.type === "error"
-        ? `LLM request failed: ${result.error}`
-        : "LLM request did not reach a successful provider response",
-    );
-  }
-
-  const responseContent = result.response.choices?.[0]?.message?.content ?? "";
-  const parsed = extractJson(responseContent);
-  const validation = args.schema.safeParse(parsed);
-  if (!validation.success) {
-    throw new VdSchemaValidationError(
-      "Shot video prompt response failed schema validation",
-      validation.error,
-    );
-  }
-  return { data: validation.data as T, response: result.response };
-}
-
-/**
- * Wraps `runVisionAwareJsonAttempt` with the ONE-retry-on-truncation/
- * validation-failure convention already established for this module's shot-
- * level generators: on a `VdSchemaValidationError`, retries exactly once with
- * (a) an appended strict-JSON instruction and (b) a higher `retryMaxTokens`
- * ceiling. Any other error (rate limit, provider failure) is never retried
- * here — it propagates immediately.
- */
-async function executeVisionAwareJsonCallWithRetry<T>(args: {
-  model: string;
-  systemPrompt: string;
-  userPromptText: string;
-  hasVision: boolean;
-  images: VisionAwareImageInput[];
-  userId: number;
-  schema: { safeParse: (value: unknown) => { success: boolean; data?: T; error?: unknown } };
-  firstAttemptMaxTokens: number;
-  retryMaxTokens: number;
-}): Promise<{ data: T; response: VisionAwareCallResponse }> {
-  try {
-    return await runVisionAwareJsonAttempt<T>({
-      model: args.model,
-      systemPrompt: args.systemPrompt,
-      content: buildVisionAwareContent(args.userPromptText, args.hasVision, args.images),
-      userId: args.userId,
-      maxTokens: args.firstAttemptMaxTokens,
-      schema: args.schema,
-    });
-  } catch (firstError) {
-    if (!(firstError instanceof VdSchemaValidationError)) throw firstError;
-    const retryText = `${args.userPromptText}\n\nYour previous response was truncated or was not valid JSON. Return ONLY complete, valid, compact JSON (no markdown fences, no commentary, no trailing text).`;
-    return runVisionAwareJsonAttempt<T>({
-      model: args.model,
-      systemPrompt: args.systemPrompt,
-      content: buildVisionAwareContent(retryText, args.hasVision, args.images),
-      userId: args.userId,
-      maxTokens: args.retryMaxTokens,
-      schema: args.schema,
-    });
-  }
-}
 
 /**
  * Character reference image input for shot-video-prompt generation
@@ -1158,6 +1075,7 @@ function buildShotVideoPromptVisionImages(
   imageUrl: string,
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[],
   locationReferenceImage?: { url: string; name?: string },
+  additionalImageUrls?: string[],
 ): VisionAwareImageInput[] {
   return [
     { url: imageUrl },
@@ -1173,7 +1091,191 @@ function buildShotVideoPromptVisionImages(
           },
         ]
       : []),
+    // VideoPromptAiEditDialog — user-supplied additional reference images;
+    // appended after all system-resolved reference images so the model
+    // always sees the start frame first.
+    ...(additionalImageUrls ?? []).map((url, i) => ({
+      url,
+      label: `Additional reference image ${i + 1} (user-supplied)`,
+    })),
   ];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Model-family-aware, vision-grounded video prompt quality upgrade           */
+/* (`planning/vd-video-prompt-model-family-quality/plan.md`) — shared helpers */
+/* used by BOTH `generateVerticalDramaShotVideoPrompt` and                    */
+/* `generateVerticalDramaShotVideoPromptSpeakerSwitch` below.                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Resolve the video-prompt-shaping family for the selected video model.
+ * Never throws — `resolveVideoPromptTargetFamily` is a pure string-matching
+ * function with no expected failure modes, but the fact block this feeds
+ * must NEVER block/fail generation (per the plan's "emit family 'other'
+ * gracefully" requirement), so any unexpected error still degrades to the
+ * safe, universal-defaults `"other"` family instead of throwing. Exported
+ * (alongside `buildTargetVideoModelFactBlock` below) purely so the real-
+ * skill-file gate test (taught-not-wired memory) can call it directly
+ * without spinning up a full mocked LLM call.
+ */
+export function resolveShotVideoPromptModelFamily(
+  modelId: string,
+  model: { name?: string; provider?: string; configJson?: Record<string, any> },
+): VideoPromptModelFamily {
+  try {
+    return resolveVideoPromptTargetFamily({
+      modelId,
+      name: model.name,
+      provider: model.provider,
+      configJson: model.configJson,
+    });
+  } catch {
+    return "other";
+  }
+}
+
+/**
+ * Build the `TARGET VIDEO MODEL (MANDATORY MODEL-FAMILY SHAPING)` fact
+ * block both user-prompt builders inject — a purely FACTUAL announcement
+ * (skill-first architecture: the actual per-family creative guidance lives
+ * entirely in skill.md's "MODEL-FAMILY SHAPING" section, never duplicated
+ * here). Always present (every shot's prompt should be shaped for its
+ * target model); the trailing `frame_analysis: REQUIRED` line is the ONE
+ * conditional piece, gated on `hasEstablishedCharacters` (mirrors the
+ * router's own `characterReferenceImages.length >= 2` gate for resolving
+ * reference portraits in the first place — see both generator functions'
+ * own `hasEstablishedCharacters` local). Exported for the real-skill-file
+ * gate test — see `resolveShotVideoPromptModelFamily`'s doc comment above.
+ */
+export function buildTargetVideoModelFactBlock(params: {
+  family: VideoPromptModelFamily;
+  modelId: string;
+  modelName?: string;
+  maxReferenceImages?: number;
+  hasEstablishedCharacters: boolean;
+}): string {
+  const modelLabel = params.modelName
+    ? `${params.modelName} (${params.modelId})`
+    : params.modelId;
+  return [
+    `TARGET VIDEO MODEL (MANDATORY MODEL-FAMILY SHAPING):`,
+    `- family: ${params.family}`,
+    `- model: "${modelLabel}"`,
+    `- negative_prompt_supported: ${videoPromptFamilySupportsNegativePrompt(params.family) ? "yes" : "no"}`,
+    `- reference_images_accepted: ${params.maxReferenceImages ?? 0}`,
+    params.hasEstablishedCharacters
+      ? `- frame_analysis: REQUIRED — return the frame_analysis output field per the skill's "FRAME ANALYSIS FIRST" section, reading positions from the ATTACHED IMAGE.`
+      : null,
+    `Apply the skill's "MODEL-FAMILY SHAPING" section for this family.`,
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join("\n");
+}
+
+/**
+ * Locate where a dialogue line's text starts inside `prompt`, tolerant of
+ * whitespace differences (same token-by-token escaped-regex technique
+ * `appendMissingDialogueVerbatim` already uses to find/strip a compliant
+ * LLM's own inline quote) — returns the character index of the FIRST token,
+ * or -1 when the line isn't found at all (e.g. the compliance check for
+ * dialogue-verbatim embedding already failed, or the model paraphrased it).
+ */
+function findQuotedLineStartIndex(prompt: string, lineTh: string): number {
+  const tokens = lineTh.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return -1;
+  const pattern = tokens.map(token => token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+  const match = new RegExp(pattern, "u").exec(prompt);
+  return match ? match.index : -1;
+}
+
+/** Screen-position vocabulary the skill's FRAME ANALYSIS FIRST section teaches. */
+const POSITION_ANCHOR_WORDS = /\b(center-left|center-right|left|center|right)\b/i;
+
+/**
+ * Position-anchor compliance check (`planning/vd-video-prompt-model-family-
+ * quality/plan.md`, item C) — returns a short, human-readable issue string
+ * per dialogue line whose speaker/screen-position isn't anchored near its
+ * quoted text in `prompt`, per the skill's "FRAME ANALYSIS FIRST" section:
+ * (1) when `hasEstablishedCharacters` is true, `frame_analysis.people` must
+ * be present and non-empty; (2) each line's quoted text must be preceded
+ * within ~200 chars by the speaker's name; (3) a position word
+ * (left/center/right/center-left/center-right) must appear in that same
+ * preceding window. Lenient by construction (VD weak-model JSON failure
+ * class) — reads plain strings only, never enforces an enum shape on
+ * `frame_analysis`. A line whose quote can't be located in `prompt` at all
+ * is skipped here (that failure mode is what the dialogue-verbatim check
+ * already governs) rather than double-reported.
+ *
+ * `hasEstablishedCharacters` MUST be the caller's own already-computed
+ * "2+ established characters" signal (the same one that gates the
+ * `frame_analysis: REQUIRED` fact line in `buildTargetVideoModelFactBlock`)
+ * — never re-derived here — so this check never flags the (1) issue for
+ * shots where the skill was never asked for `frame_analysis` in the first
+ * place (fewer than 2 established characters, where the skill deliberately
+ * leaves `frame_analysis`/position anchoring optional). Per-line name/
+ * position checks (2)/(3) are unaffected by this flag and still run for
+ * every dialogue line whose quote is found, established characters or not.
+ */
+function findPositionAnchorIssues(
+  data: Pick<ShotVideoPromptOutput, "prompt" | "frame_analysis">,
+  dialogueLines: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
+  hasEstablishedCharacters: boolean,
+): string[] {
+  const issues: string[] = [];
+  const people = data.frame_analysis?.people;
+  if (hasEstablishedCharacters && (!Array.isArray(people) || people.length === 0)) {
+    issues.push(`frame_analysis.people is missing or empty`);
+  }
+  const prompt = data.prompt ?? "";
+  const ANCHOR_WINDOW_CHARS = 200;
+  for (const line of dialogueLines) {
+    const speaker = line.speakerName ?? line.characterKey;
+    const quoteIndex = findQuotedLineStartIndex(prompt, line.lineTh);
+    if (quoteIndex < 0) continue;
+    const window = prompt.slice(Math.max(0, quoteIndex - ANCHOR_WINDOW_CHARS), quoteIndex);
+    const hasName = speaker ? window.includes(speaker) : true;
+    const hasPosition = POSITION_ANCHOR_WORDS.test(window);
+    if (!hasName || !hasPosition) {
+      const missing = [!hasName ? "speaker name" : null, !hasPosition ? "position anchor" : null]
+        .filter(Boolean)
+        .join(" and ");
+      issues.push(`"${line.lineTh}"${speaker ? ` (${speaker})` : ""} — missing ${missing} within ~200 chars before the quote`);
+    }
+  }
+  return issues;
+}
+
+/**
+ * Normalize the LLM's raw `frame_analysis` output into the compact shape
+ * persisted on the clip (`VerticalDramaMotionPromptPack["clips"][number]
+ * .frameAnalysis`, `@shared/verticalDramaSeries/contracts`) — trims each
+ * name/position to <=80 chars, drops any person missing a usable name or
+ * position, and caps the list at 6 people. Returns `undefined` when there's
+ * nothing usable (absent, malformed, or empty after filtering) so the
+ * result field is omitted entirely rather than persisting a useless empty
+ * shape — mirrors this file's established "omit when there's nothing to
+ * say" convention.
+ */
+function normalizeFrameAnalysis(
+  raw: ShotVideoPromptOutput["frame_analysis"],
+): { people: Array<{ name: string; position: string }>; positionSource?: string } | undefined {
+  if (!raw || !Array.isArray(raw.people)) return undefined;
+  const people = raw.people
+    .map(p => ({
+      name: typeof p?.name === "string" ? p.name.trim().slice(0, 80) : "",
+      position: typeof p?.position === "string" ? p.position.trim().slice(0, 80) : "",
+    }))
+    .filter(p => p.name.length > 0 && p.position.length > 0)
+    .slice(0, 6);
+  if (people.length === 0) return undefined;
+  return {
+    people,
+    positionSource:
+      typeof raw.position_source === "string" && raw.position_source.trim().length > 0
+        ? raw.position_source.trim().slice(0, 40)
+        : undefined,
+  };
 }
 
 export interface GenerateVerticalDramaShotVideoPromptParams {
@@ -1360,9 +1462,22 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
     };
   };
   selectedVideoModelId: string;
-  /** The resolved video model row, so the native-audio/dialogue decision below matches `verticalDramaVideoPromptFormatter.ts`'s capability logic exactly. */
+  /**
+   * The resolved video model row, so the native-audio/dialogue decision
+   * below matches `verticalDramaVideoPromptFormatter.ts`'s capability logic
+   * exactly. `name` (model-family-aware prompt quality upgrade,
+   * `planning/vd-video-prompt-model-family-quality/plan.md`) feeds the
+   * `TARGET VIDEO MODEL` fact block's `model: "<display name> (<modelId>)"`
+   * line and `resolveVideoPromptTargetFamily`'s family classification —
+   * kept OPTIONAL (unlike `ModelDefinition.name`, which is required) so
+   * every existing caller/test that only supplies
+   * `type`/`aspectRatios`/`configJson`/`provider`/`aliases`/`id` keeps
+   * compiling unchanged; falls back to just the modelId in the fact block
+   * when absent.
+   */
   selectedVideoModel: Pick<ModelDefinition, "type" | "aspectRatios" | "configJson" | "provider" | "aliases"> & {
     id?: string;
+    name?: string;
   };
   locale: VerticalDramaSeriesLocale;
   /**
@@ -1465,6 +1580,23 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
    * no new instruction text is rendered at all when absent.
    */
   repairInstruction?: string;
+  /**
+   * VideoPromptAiEditDialog — optional user-supplied reference image URLs
+   * (publicly accessible) that the user attached in the AI-adjust dialog for
+   * additional visual context (e.g. a location shot, a pose reference).
+   * Appended to `buildShotVideoPromptVisionImages` after the system-resolved
+   * start frame and character/location reference images, so the model always
+   * sees the start frame first. Omitted / empty when the caller is the plain
+   * "สร้างพรอมต์วิดีโอ (AI)" button — byte-identical prompt in that case.
+   */
+  /**
+   * Whether to attach the shot's start frame image (and character/location reference images)
+   * to the LLM vision call (`hasVision`). Defaults to true when omitted.
+   * When false (e.g. user unchecked "แนบภาพของช็อตนี้" in VideoPromptAiEditDialog),
+   * vision images are not sent, and the prompt relies on text instructions/descriptions only.
+   */
+  attachShotImage?: boolean;
+  additionalImageUrls?: string[];
 }
 
 export interface GenerateVerticalDramaShotVideoPromptResult {
@@ -1495,12 +1627,42 @@ export interface GenerateVerticalDramaShotVideoPromptResult {
    * doc comment (`@shared/verticalDramaSeries/contracts`) for why.
    */
   audioDirection?: string;
+  /**
+   * Model-family-aware, vision-grounded video prompt quality upgrade
+   * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the video-
+   * prompt-shaping family (grok/veo/seedance/other) this call's fact block
+   * resolved for `params.selectedVideoModel`/`selectedVideoModelId`. Always
+   * present (never throws — see `resolveShotVideoPromptModelFamily`); the
+   * router stamps this onto the persisted clip's `promptModelTarget.family`
+   * so the storyboard UI can show a family badge.
+   */
+  family: VideoPromptModelFamily;
+  /**
+   * Model-family-aware, vision-grounded video prompt quality upgrade — the
+   * normalized `frame_analysis` reading (see `normalizeFrameAnalysis`), when
+   * the skill returned one usable. `undefined` when fewer than 2 characters
+   * were established, no vision was attached, or the model returned nothing
+   * usable — never a hard requirement.
+   */
+  frameAnalysis?: { people: Array<{ name: string; position: string }>; positionSource?: string };
+  /**
+   * Model-family-aware, vision-grounded video prompt quality upgrade — non-
+   * blocking, human-readable warning(s) surfaced when the position-anchor
+   * compliance check (item C) still found issues after its one corrective
+   * retry. `undefined` when there is nothing to report (every call before
+   * this task, and the overwhelming majority of calls after it). The router
+   * records these onto the pack's existing `warnings` mechanism the same
+   * way other pack warnings are recorded — this field never blocks or
+   * degrades the returned `prompt` itself (fail-open by design).
+   */
+  warnings?: string[];
 }
 
 function buildShotVideoPromptUserPrompt(
   params: GenerateVerticalDramaShotVideoPromptParams,
   nativeAudioDialogue: boolean,
   nativeAudioDirectionEnabled: boolean,
+  targetVideoModelFactBlock: string,
 ): string {
   const { shotContext } = params;
   const promptLanguage = params.promptLanguage ?? "en";
@@ -1601,35 +1763,31 @@ function buildShotVideoPromptUserPrompt(
     isRetentionEndingShot
       ? `is_retention_ending_shot: true — this clip is the EPISODE'S FINAL SHOT (the retention-loop ending).`
       : null,
-    // Retention hooks (W7, router-wiring package) — grounding TEXT context
-    // (see `hookText`/`retentionLoopDescription`'s own doc comments above),
-    // only ever rendered alongside the structural marker it supports.
     isOpeningShot && params.hookText
       ? `Episode hook (verbatim, from the script — ground this shot's opening energy in it, do not invent a different hook): ${params.hookText}`
       : null,
     isRetentionEndingShot && params.retentionLoopDescription
       ? `Episode retention loop (verbatim, from the script — this shot must land/hold this exact unresolved beat): ${params.retentionLoopDescription}`
       : null,
-    // Part B3 — reference-only episode scene-setting context, same
-    // "do not copy verbatim" contract as the start-frame/pack-level builders.
     params.episodePlanContext
       ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
       : null,
-    params.imagePrompt
+    params.imagePrompt && params.attachShotImage !== false
       ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (left / center / right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
-      : null,
+      : params.imagePrompt && params.attachShotImage === false
+        ? `Start frame image description (note: the start frame image itself is not attached for this run; base your adjustments on this description and user instructions): ${params.imagePrompt}`
+        : null,
     shotContext.characterIdentityMap ?? null,
-    // Multi-character reference images (multi-character disambiguation fix,
-    // `polished-toasting-gadget.md`) — factual announcement only; see
-    // `characterReferenceImageNames`'s doc comment above.
-    characterReferenceImageNames.length > 0
+    characterReferenceImageNames.length > 0 && params.attachShotImage !== false
       ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
       : null,
-    // Location reference image (Phase E of `planning/polished-toasting-
-    // gadget.md` — location visual bible) — factual announcement only; see
-    // `locationReferenceImageName`'s doc comment above.
-    params.locationReferenceImage
+    params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
+    // reference images above; the actual creative use is in the
+    // `repairInstruction` field or left to the model's own judgment).
+    (params.additionalImageUrls?.length ?? 0) > 0
+      ? `Additional reference image(s) attached at the end (user-supplied, ${params.additionalImageUrls!.length} image${params.additionalImageUrls!.length === 1 ? "" : "s"}): use them as supplementary visual context alongside the start frame.`
       : null,
     `Dialogue for this shot (source lines, already in ${dialogueLanguageName}):\n${dialogueBlock}`,
     dialogueLines.length === 0
@@ -1662,6 +1820,12 @@ function buildShotVideoPromptUserPrompt(
     nativeAudioDirectionEnabled
       ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot: SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
       : null,
+    // Model-family-aware, vision-grounded video prompt quality upgrade
+    // (`planning/vd-video-prompt-model-family-quality/plan.md`) — grouped
+    // with the other target-model-capability facts immediately above
+    // (native-audio/NATIVE AUDIO DIRECTION), close to the end of the prompt
+    // so the model reads it right before actually writing "prompt".
+    targetVideoModelFactBlock,
     // planning/`polished-toasting-gadget.md` Fix B — an ADDITIONAL directive
     // layered on top of every Hard Rule above, per skill.md's "User repair
     // instruction (optional)" section; omitted entirely (byte-identical
@@ -1757,7 +1921,9 @@ export async function generateVerticalDramaShotVideoPrompt(
     throw new InsufficientCreditsError();
   }
 
-  const { model, hasVision } = await resolveShotVideoPromptModel(params.seriesId);
+  const resolvedModel = await resolveShotVideoPromptModel(params.seriesId);
+  const model = resolvedModel.model;
+  const hasVision = params.attachShotImage === false ? false : resolvedModel.hasVision;
   // Vision fallback surface (`planning/vd-video-prompt-skill-first/plan.md`
   // Phase 1b) — a visible server-log signal (instead of a silent guess) that
   // this generation ran without ever seeing the actual start-frame image, so
@@ -1807,10 +1973,30 @@ export async function generateVerticalDramaShotVideoPrompt(
   // only produces the base motion prompt + dialogue for it to format).
   void detectProviderFamily;
 
+  // Model-family-aware, vision-grounded video prompt quality upgrade
+  // (`planning/vd-video-prompt-model-family-quality/plan.md`) — mirrors the
+  // router's OWN `characterReferenceImages.length >= 2` gate for resolving
+  // reference portraits in the first place (`resolveShotVideoPromptCharacterReferenceImages`
+  // call site in `verticalDramaEpisodes.ts`), so this is the exact same
+  // "established characters" signal, computed once here.
+  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const family = resolveShotVideoPromptModelFamily(
+    params.selectedVideoModelId,
+    params.selectedVideoModel,
+  );
+  const targetVideoModelFactBlock = buildTargetVideoModelFactBlock({
+    family,
+    modelId: params.selectedVideoModelId,
+    modelName: params.selectedVideoModel.name,
+    maxReferenceImages: capabilities.maxReferenceImages,
+    hasEstablishedCharacters,
+  });
+
   const userPromptText = buildShotVideoPromptUserPrompt(
     params,
     nativeAudioDialogue,
     nativeAudioDirectionEnabled,
+    targetVideoModelFactBlock,
   );
 
   let outcome = await executeVisionAwareJsonCallWithRetry<ShotVideoPromptOutput>({
@@ -1822,10 +2008,12 @@ export async function generateVerticalDramaShotVideoPrompt(
       params.imageUrl,
       params.characterReferenceImages,
       params.locationReferenceImage,
+      params.additionalImageUrls,
     ),
     userId: params.userId,
     schema: shotVideoPromptOutputSchema,
-    firstAttemptMaxTokens: 2000,
+    // Bumped 2000 -> 2600 (frame_analysis headroom); retry ceiling unchanged.
+    firstAttemptMaxTokens: 2600,
     retryMaxTokens: 4000,
   });
 
@@ -1852,16 +2040,44 @@ export async function generateVerticalDramaShotVideoPrompt(
     : (params.shotContext.dialogueLines?.length ?? 0) > 0
       ? params.shotContext.dialogueLines!
       : outcome.data.dialogue ?? [];
-  if (
-    nativeAudioDialogue &&
-    !promptEmbedsDialogueVerbatim(outcome.data.prompt, requiredDialogue)
-  ) {
+  const dialogueVerbatimMissing =
+    nativeAudioDialogue && !promptEmbedsDialogueVerbatim(outcome.data.prompt, requiredDialogue);
+
+  // Position-anchor compliance check (`planning/vd-video-prompt-model-
+  // family-quality/plan.md`, item C) — extends the dialogue-verbatim retry
+  // immediately below with a SECOND, independently-gated failure signal
+  // that SHARES the same one-retry budget rather than spending an extra LLM
+  // call: only evaluated when this shot has 2+ established characters
+  // (`hasEstablishedCharacters` above), vision was actually attached, and
+  // native-audio verbatim dialogue applies. Fail-open by design
+  // (`findPositionAnchorIssues`'s own doc comment) — a still-imperfect
+  // anchor after the retry only produces a warning below, never a
+  // reversion/failure. When `hasEstablishedCharacters` is false (every
+  // caller before this task), this is always `[]` and the whole retry
+  // block below reduces to byte-identical dialogue-verbatim-only behavior.
+  const initialPositionAnchorIssues =
+    hasEstablishedCharacters && hasVision && nativeAudioDialogue && requiredDialogue.length > 0
+      ? findPositionAnchorIssues(outcome.data, requiredDialogue, hasEstablishedCharacters)
+      : [];
+
+  const warnings: string[] = [];
+
+  if (dialogueVerbatimMissing || initialPositionAnchorIssues.length > 0) {
     try {
       const dialogueForRetry = requiredDialogue;
-      const quotedLines = dialogueForRetry
-        .map((l) => `"${l.lineTh}"`)
-        .join(", ");
-      const complianceRetryText = `${userPromptText}\n\nCOMPLIANCE CORRECTION (MANDATORY): your previous "prompt" did NOT include the dialogue line(s) verbatim in quotes — it only described mouth movement. This video model DOES support native lip-synced audio, so you MUST quote the exact spoken line(s) ${quotedLines} inside "prompt", each wrapped in quotation marks exactly as given, alongside the acting/delivery direction. Rewrite "prompt" now so it contains the verbatim quoted line(s).`;
+      const correctionParts: string[] = [];
+      if (dialogueVerbatimMissing) {
+        const quotedLines = dialogueForRetry.map((l) => `"${l.lineTh}"`).join(", ");
+        correctionParts.push(
+          `COMPLIANCE CORRECTION (MANDATORY): your previous "prompt" did NOT include the dialogue line(s) verbatim in quotes — it only described mouth movement. This video model DOES support native lip-synced audio, so you MUST quote the exact spoken line(s) ${quotedLines} inside "prompt", each wrapped in quotation marks exactly as given, alongside the acting/delivery direction. Rewrite "prompt" now so it contains the verbatim quoted line(s).`,
+        );
+      }
+      if (initialPositionAnchorIssues.length > 0) {
+        correctionParts.push(
+          `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, or these quoted line(s) were not anchored by the speaker's NAME and SCREEN POSITION (left/center-left/center/center-right/right) close to the quote: ${initialPositionAnchorIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from the ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and screen position.`,
+        );
+      }
+      const complianceRetryText = `${userPromptText}\n\n${correctionParts.join("\n\n")}`;
       const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
         model,
         systemPrompt,
@@ -1872,17 +2088,20 @@ export async function generateVerticalDramaShotVideoPrompt(
             params.imageUrl,
             params.characterReferenceImages,
             params.locationReferenceImage,
+            params.additionalImageUrls,
           ),
         ),
         userId: params.userId,
         maxTokens: 2000,
         schema: shotVideoPromptOutputSchema,
       });
+      // Dialogue-verbatim adoption stays a hard gate, unchanged from before
+      // this fix: never adopt a corrected response that regresses verbatim
+      // dialogue embedding, even when the SAME retry was also asked to fix
+      // position anchors.
       if (
-        promptEmbedsDialogueVerbatim(
-          correctedOutcome.data.prompt,
-          dialogueForRetry,
-        )
+        !nativeAudioDialogue ||
+        promptEmbedsDialogueVerbatim(correctedOutcome.data.prompt, dialogueForRetry)
       ) {
         outcome = correctedOutcome;
       }
@@ -1892,6 +2111,18 @@ export async function generateVerticalDramaShotVideoPrompt(
     } catch {
       // Corrective retry is best-effort only; never fail the whole call
       // over it — keep the original outcome.
+    }
+
+    // Fail-open re-check (never reverts, never throws): whatever `outcome`
+    // ended up being (corrected or original), surface a warning when
+    // position anchors are still missing rather than blocking generation.
+    if (initialPositionAnchorIssues.length > 0) {
+      const remainingIssues = findPositionAnchorIssues(outcome.data, requiredDialogue, hasEstablishedCharacters);
+      if (remainingIssues.length > 0) {
+        warnings.push(
+          `Shot ${params.shotNumber}: video-prompt position-anchor check still incomplete after 1 corrective retry — ${remainingIssues.join("; ")}`,
+        );
+      }
     }
   }
 
@@ -1948,10 +2179,25 @@ export async function generateVerticalDramaShotVideoPrompt(
   const stitchedBasePrompt = promptEmbedsDialogueVerbatim(data.prompt, dialogueForStitch)
     ? data.prompt.trim()
     : appendMissingDialogueVerbatim(data.prompt, dialogueForStitch, dialogueBlockOptions);
+  // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — this
+  // function used to fold ` SFX cues: <audioDirection>` onto the returned
+  // `prompt` here (the "SFX budget-aware concat", item E of `planning/vd-
+  // video-prompt-model-family-quality/plan.md`), and
+  // `verticalDramaVideoPromptFormatter.ts`'s render-time formatter ALSO
+  // appended `clip.audioDirection` onto the same prompt — a genuine
+  // double-append bug whenever native audio was on. The updated skills
+  // (`vertical-drama-shot-video-prompt[-subshots]/skill.md`, "WRITE THE
+  // SOUND DIRECTION INTO `prompt` ITSELF" mandate, budget-guarded by the
+  // skill's own rule 8 priority) now write the closing sound clause
+  // directly into `data.prompt` themselves when `native_audio: true`, so
+  // `stitchedBasePrompt` (the skill's own text, only touched by the
+  // dialogue-verbatim safety net above) is returned completely as-is —
+  // NEVER append a second copy here or in the formatter (that append is
+  // removed too, see that file). `audioDirection` keeps being returned/
+  // persisted unchanged below — the UI "เสียง:" block and audit trail read
+  // it from there, independent of what's now embedded in `prompt`.
   return {
-    prompt: resolvedAudioDirection
-      ? `${stitchedBasePrompt} SFX cues: ${resolvedAudioDirection}`
-      : stitchedBasePrompt,
+    prompt: stitchedBasePrompt,
     negativeMotionPrompt: data.negative_motion_prompt || undefined,
     dialogue: data.dialogue,
     creditsUsed,
@@ -1959,6 +2205,9 @@ export async function generateVerticalDramaShotVideoPrompt(
     usedVision: hasVision,
     requiredDisclosure: data.requiredDisclosure || undefined,
     audioDirection: resolvedAudioDirection,
+    family,
+    frameAnalysis: normalizeFrameAnalysis(data.frame_analysis),
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
 
@@ -2058,6 +2307,12 @@ export interface GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
   usedVision: boolean;
   requiredDisclosure?: string;
   audioDirection?: string;
+  /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.family`'s identical doc comment. */
+  family: VideoPromptModelFamily;
+  /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.frameAnalysis`'s identical doc comment. */
+  frameAnalysis?: { people: Array<{ name: string; position: string }>; positionSource?: string };
+  /** Model-family-aware, vision-grounded video prompt quality upgrade — see `GenerateVerticalDramaShotVideoPromptResult.warnings`'s identical doc comment. */
+  warnings?: string[];
 }
 
 /**
@@ -2074,6 +2329,7 @@ function buildSpeakerSwitchUserPrompt(
   params: GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams,
   nativeAudioDialogue: boolean,
   nativeAudioDirectionEnabled: boolean,
+  targetVideoModelFactBlock: string,
 ): string {
   const { shotContext, subShotWindows } = params;
   const promptLanguage = params.promptLanguage ?? "en";
@@ -2158,21 +2414,30 @@ function buildSpeakerSwitchUserPrompt(
     shotContext.beatIsSilent
       ? `SILENT BEAT (MANDATORY): this shot is intentionally silent — no character speaks aloud. Express the beat purely through action, expression, and camera. Return "dialogue" as [] and do NOT write any spoken line, lip-sync direction, or verbatim dialogue block.`
       : null,
-    params.imagePrompt
+    params.imagePrompt && params.attachShotImage !== false
       ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (left / center / right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
-      : null,
+      : params.imagePrompt && params.attachShotImage === false
+        ? `Start frame image description (note: the start frame image itself is not attached for this run; base your adjustments on this description and user instructions): ${params.imagePrompt}`
+        : null,
     shotContext.characterIdentityMap ?? null,
     // Multi-character reference images (multi-character disambiguation fix,
     // `polished-toasting-gadget.md`) — factual announcement only; see
     // `characterReferenceImageNames`'s doc comment above.
-    characterReferenceImageNames.length > 0
+    characterReferenceImageNames.length > 0 && params.attachShotImage !== false
       ? `Character reference images attached below the start frame, each preceded by a text label naming the character: ${characterReferenceImageNames.join(", ")}.`
       : null,
     // Location reference image (Phase E of `planning/polished-toasting-
     // gadget.md` — location visual bible) — factual announcement only; see
     // `locationReferenceImageName`'s doc comment above.
-    params.locationReferenceImage
+    params.locationReferenceImage && params.attachShotImage !== false
       ? `Environment/location reference image attached below the start frame (and any character reference images), preceded by a text label naming the location: ${locationReferenceImageName}.`
+      : null,
+    // VideoPromptAiEditDialog — factual announcement of user-supplied
+    // additional images (same purely-factual convention as character/location
+    // reference images above; the actual creative use is in the
+    // `repairInstruction` field or left to the model's own judgment).
+    (params.additionalImageUrls?.length ?? 0) > 0 && params.attachShotImage !== false
+      ? `Additional reference image(s) attached at the end (user-supplied, ${params.additionalImageUrls!.length} image${params.additionalImageUrls!.length === 1 ? "" : "s"}): use them as supplementary visual context alongside the start frame.`
       : null,
     `Timed segment facts (structured facts only, in chronological order — return exactly ONE combined "prompt" for the whole shot):\n${segmentBlocks}`,
     shotContext.productContext
@@ -2195,6 +2460,10 @@ function buildSpeakerSwitchUserPrompt(
     nativeAudioDirectionEnabled
       ? `NATIVE AUDIO DIRECTION (native_audio: true): the selected video model (${params.selectedVideoModelId}) generates synchronized audio natively as part of the clip — return an additional "audio_direction" field directing the model's own in-clip audio for this shot (ONCE for the whole shot, not per segment): SFX cues tied to this shot's visible on-screen actions FIRST (primary, always produce), then a brief ambient soundscape matched to the scene's mood/location and this shot's emotional-beat intensity SECOND (secondary enrichment). NEVER include speech/dialogue/voices/vocals (dialogue comes only from "dialogue"/text-to-speech) and NEVER include music/melody/lyrics/score (a separate background-music layer owns that) in "audio_direction".`
       : null,
+    // Model-family-aware, vision-grounded video prompt quality upgrade
+    // (`planning/vd-video-prompt-model-family-quality/plan.md`) — mirrors
+    // `buildShotVideoPromptUserPrompt`'s identical insertion point.
+    targetVideoModelFactBlock,
     // planning/`polished-toasting-gadget.md` Fix B — an ADDITIONAL directive
     // layered on top of every Hard Rule above, per skill.md's "Hard rules —
     // MANDATORY" section; omitted entirely (byte-identical prompt) when the
@@ -2239,7 +2508,9 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     throw new InsufficientCreditsError();
   }
 
-  const { model, hasVision } = await resolveShotVideoPromptModel(params.seriesId);
+  const resolvedModel = await resolveShotVideoPromptModel(params.seriesId);
+  const model = resolvedModel.model;
+  const hasVision = params.attachShotImage === false ? false : resolvedModel.hasVision;
   // Vision fallback surface (`planning/vd-video-prompt-skill-first/plan.md`
   // Phase 1b) — same signal as `generateVerticalDramaShotVideoPrompt`'s
   // identical block above.
@@ -2266,10 +2537,32 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   const dialogueLanguageName =
     VERTICAL_DRAMA_DIALOGUE_LANGUAGE_ENGLISH_NAMES[params.dialogueLanguage ?? "th"];
 
+  // Model-family-aware, vision-grounded video prompt quality upgrade
+  // (`planning/vd-video-prompt-model-family-quality/plan.md`) — see
+  // `generateVerticalDramaShotVideoPrompt`'s identical block above. This
+  // path's `characterReferenceImages` is always >= 2 in practice (the
+  // router only reaches this function when `computeSpeakerSwitchSubShotPlan`
+  // decided the shot needs cutting between 2+ speakers), but the SAME
+  // structural check is used here rather than assuming that invariant, so
+  // this stays correct even if a future caller supplies fewer.
+  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const family = resolveShotVideoPromptModelFamily(
+    params.selectedVideoModelId,
+    params.selectedVideoModel,
+  );
+  const targetVideoModelFactBlock = buildTargetVideoModelFactBlock({
+    family,
+    modelId: params.selectedVideoModelId,
+    modelName: params.selectedVideoModel.name,
+    maxReferenceImages: capabilities.maxReferenceImages,
+    hasEstablishedCharacters,
+  });
+
   const userPromptText = buildSpeakerSwitchUserPrompt(
     params,
     nativeAudioDialogue,
     nativeAudioDirectionEnabled,
+    targetVideoModelFactBlock,
   );
 
   const allDialogueLines = params.shotContext.dialogueLines ?? [];
@@ -2308,37 +2601,82 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
       params.imageUrl,
       params.characterReferenceImages,
       params.locationReferenceImage,
+      params.additionalImageUrls,
     ),
     userId: params.userId,
     schema: shotVideoPromptOutputSchema,
-    firstAttemptMaxTokens: 3000,
+    // Bumped 3000 -> 3600 (frame_analysis headroom); retry ceiling unchanged.
+    firstAttemptMaxTokens: 3600,
     retryMaxTokens: 6000,
   });
 
-  if (nativeAudioDialogue && !promptEmbedsDialogueVerbatim(outcome.data.prompt, dialogue)) {
+  const dialogueVerbatimMissing =
+    nativeAudioDialogue && !promptEmbedsDialogueVerbatim(outcome.data.prompt, dialogue);
+
+  // Position-anchor compliance check — see
+  // `generateVerticalDramaShotVideoPrompt`'s identical block above for the
+  // full rationale. `dialogueForBlock` (not the stripped `dialogue` array)
+  // carries `speakerName`, needed to check the name-anchor half of the
+  // check.
+  const initialPositionAnchorIssues =
+    hasEstablishedCharacters && hasVision && nativeAudioDialogue && dialogue.length > 0
+      ? findPositionAnchorIssues(outcome.data, dialogueForBlock, hasEstablishedCharacters)
+      : [];
+
+  const warnings: string[] = [];
+
+  if (dialogueVerbatimMissing || initialPositionAnchorIssues.length > 0) {
     try {
-      const quotedLines = dialogue.map(line => `"${line.lineTh}"`).join(", ");
+      const correctionParts: string[] = [];
+      if (dialogueVerbatimMissing) {
+        const quotedLines = dialogue.map(line => `"${line.lineTh}"`).join(", ");
+        correctionParts.push(
+          `COMPLIANCE CORRECTION (MANDATORY): quote every timed dialogue line verbatim inside "prompt": ${quotedLines}.`,
+        );
+      }
+      if (initialPositionAnchorIssues.length > 0) {
+        correctionParts.push(
+          `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, or these quoted line(s) were not anchored by the speaker's NAME and SCREEN POSITION (left/center-left/center/center-right/right) close to the quote: ${initialPositionAnchorIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from the ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and screen position.`,
+        );
+      }
       const correctedOutcome = await runVisionAwareJsonAttempt<ShotVideoPromptOutput>({
         model,
         systemPrompt,
         content: buildVisionAwareContent(
-          `${userPromptText}\n\nCOMPLIANCE CORRECTION (MANDATORY): quote every timed dialogue line verbatim inside "prompt": ${quotedLines}.`,
+          `${userPromptText}\n\n${correctionParts.join("\n\n")}`,
           hasVision,
           buildShotVideoPromptVisionImages(
             params.imageUrl,
             params.characterReferenceImages,
             params.locationReferenceImage,
+            params.additionalImageUrls,
           ),
         ),
         userId: params.userId,
         maxTokens: 3000,
         schema: shotVideoPromptOutputSchema,
       });
-      if (promptEmbedsDialogueVerbatim(correctedOutcome.data.prompt, dialogue)) {
+      // Dialogue-verbatim adoption stays a hard gate, unchanged from before
+      // this fix — see `generateVerticalDramaShotVideoPrompt`'s identical
+      // block above.
+      if (
+        !nativeAudioDialogue ||
+        promptEmbedsDialogueVerbatim(correctedOutcome.data.prompt, dialogue)
+      ) {
         outcome = correctedOutcome;
       }
     } catch {
-      // Deterministic append below still guarantees the post-condition.
+      // Deterministic append below still guarantees the dialogue-verbatim
+      // post-condition; position-anchor is fail-open by design (see below).
+    }
+
+    if (initialPositionAnchorIssues.length > 0) {
+      const remainingIssues = findPositionAnchorIssues(outcome.data, dialogueForBlock, hasEstablishedCharacters);
+      if (remainingIssues.length > 0) {
+        warnings.push(
+          `Shot ${params.shotNumber}: video-prompt position-anchor check still incomplete after 1 corrective retry — ${remainingIssues.join("; ")}`,
+        );
+      }
     }
   }
 
@@ -2410,10 +2748,16 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   const stitchedBasePrompt = promptEmbedsDialogueVerbatim(data.prompt, dialogueForStitch)
     ? data.prompt.trim()
     : appendMissingDialogueVerbatim(data.prompt, dialogueForStitch, dialogueBlockOptions);
+  // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — mirrors
+  // `generateVerticalDramaShotVideoPrompt`'s identical fix above: this
+  // function no longer folds an SFX tail onto `prompt` (the skill now
+  // writes its closing sound clause directly into `data.prompt` itself, and
+  // the render-time formatter no longer appends `clip.audioDirection`
+  // either — see both files' updated doc comments). `stitchedBasePrompt` is
+  // returned completely as-is; `audioDirection` keeps being returned/
+  // persisted unchanged for the UI/audit trail.
   return {
-    prompt: resolvedAudioDirection
-      ? `${stitchedBasePrompt} SFX cues: ${resolvedAudioDirection}`
-      : stitchedBasePrompt,
+    prompt: stitchedBasePrompt,
     negativeMotionPrompt: data.negative_motion_prompt || undefined,
     dialogue,
     durationSeconds,
@@ -2423,6 +2767,778 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
     usedVision: hasVision,
     requiredDisclosure: data.requiredDisclosure || undefined,
     audioDirection: resolvedAudioDirection,
+    family,
+    frameAnalysis: normalizeFrameAnalysis(data.frame_analysis),
+    warnings: warnings.length > 0 ? warnings : undefined,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Phase 2 — Judged best-of-2 quality loop                                    */
+/* (`planning/vd-video-prompt-model-family-quality/plan.md`, Phase 2)         */
+/*                                                                            */
+/* Generates K=2 candidates per shot in parallel via the EXISTING generator   */
+/* functions above (untouched), computes a deterministic per-candidate FACT   */
+/* SHEET in TS (facts only — no creative thresholds), asks the NEW            */
+/* `vertical-drama-video-prompt-judge` skill to pick a winner and decide      */
+/* accept/repair, and — only on `repair` — runs ONE additional regeneration   */
+/* of the winner, then picks winner-vs-repaired MECHANICALLY from hard facts  */
+/* alone (never a second LLM judgment). Hard call-count bound: 2 generations  */
+/* (parallel) + 1 judge + <=1 repair = <=4 LLM calls per invocation, by       */
+/* construction (no loop, no re-judge, no 3rd candidate).                    */
+/* -------------------------------------------------------------------------- */
+
+const JUDGE_SKILL_FOLDER_PATH = path.join("skills", "vertical-drama-video-prompt-judge");
+
+let cachedJudgeSystemPrompt: string | null = null;
+
+/** Read the `vertical-drama-video-prompt-judge` skill's markdown body verbatim — same resolution strategy as every other loader in this file (lowercase `skill.md` first). */
+function loadJudgeSystemPrompt(): string {
+  if (cachedJudgeSystemPrompt) return cachedJudgeSystemPrompt;
+
+  for (const dir of resolveSkillDirCandidates(JUDGE_SKILL_FOLDER_PATH)) {
+    const manifestPath = resolveSkillManifestPath(dir);
+    if (manifestPath && fs.existsSync(manifestPath)) {
+      const raw = fs.readFileSync(manifestPath, "utf-8");
+      const { content } = parseSkillFile(raw);
+      if (content && content.trim().length > 0) {
+        cachedJudgeSystemPrompt = content;
+        return cachedJudgeSystemPrompt;
+      }
+    }
+  }
+
+  throw new Error(
+    `Could not locate skill.md for "vertical-drama-video-prompt-judge" under any known skills directory`,
+  );
+}
+
+/**
+ * Lenient judge output schema — same VD weak-model JSON failure class
+ * rationale as `shotVideoPromptOutputSchema.frame_analysis`: `verdict` is a
+ * bare string (normalized to `"accept" | "repair"` downstream, any other
+ * value including absence defaults to `"accept"`), `scores` is a passthrough
+ * array (audit/debugging only — never used for the mechanical decision), and
+ * `.passthrough()` at the top level tolerates extra fields. `winner_index`
+ * is the one field callers actually branch on, so it stays a plain
+ * `z.number()` — a response that can't even supply that number is not a
+ * usable judge response and should fail schema validation (triggering the
+ * existing JSON retry, then fail-open).
+ */
+const judgeOutputSchema = z
+  .object({
+    winner_index: z.number(),
+    verdict: z.string().optional(),
+    scores: z.array(z.object({}).passthrough()).optional(),
+    repair_instruction: z.string().optional(),
+  })
+  .passthrough();
+
+type JudgeOutput = z.infer<typeof judgeOutputSchema>;
+
+/**
+ * Candidate B's decorrelation directive (`plan.md` Phase 2 design) — an
+ * ADDITIONAL directive layered on top of any user `repairInstruction`, never
+ * a replacement (same "additional, not replacement" convention every other
+ * `repairInstruction` use in this file already follows). Deliberately never
+ * touches dialogue facts/speakers/positions/silence — those are ground
+ * truth, not something a "different camera interpretation" may vary.
+ */
+const VD_VIDEO_PROMPT_VARIATION_DIRECTIVE =
+  "VARIATION DIRECTIVE: explore a different, equally valid camera/motion interpretation of the same beat. Never change dialogue facts, speakers, positions, or the silent/speaking nature of the beat.";
+
+/** Joins 1-2 optional instruction strings with a blank line; `undefined` when both are empty/absent. */
+function combineRepairInstructions(...parts: Array<string | undefined>): string | undefined {
+  const nonEmpty = parts
+    .map(p => p?.trim())
+    .filter((p): p is string => Boolean(p && p.length > 0));
+  return nonEmpty.length > 0 ? nonEmpty.join("\n\n") : undefined;
+}
+
+/** Appends `extra` onto `existing`, returning `undefined` (not `[]`) when the combined list is empty — matches this file's "omit an empty optional array" convention. */
+function appendWarnings(existing: string[] | undefined, extra: string[]): string[] | undefined {
+  const combined = [...(existing ?? []), ...extra];
+  return combined.length > 0 ? combined : undefined;
+}
+
+/**
+ * Deterministic per-candidate FACT SHEET (`plan.md` Phase 2 design) — facts
+ * only, computed by code, never a creative judgment. Reuses
+ * `findPositionAnchorIssues` (item C) and `VD_VIDEO_PROMPT_MAX` (item E) so
+ * the judge's facts and the generator's own compliance checks can never
+ * silently disagree with each other. Takes the caller's own
+ * `hasEstablishedCharacters` signal and threads it straight into
+ * `findPositionAnchorIssues` (never re-derives it), so a solo/no-established-
+ * character candidate — where `frame_analysis` is legitimately optional —
+ * never gets a false `positionAnchorIssueCount` defect from a missing
+ * `frame_analysis` the skill was never asked to return.
+ */
+interface VdVideoPromptCandidateFactSheet {
+  chars: number;
+  overCap: boolean;
+  musicTermHits: string[];
+  /** `null` when the candidate's family isn't `veo` (fact not applicable). */
+  veoSubtitleGuardPresent: boolean | null;
+  /** One entry per required dialogue line — `occurrences` 0 (missing), 1 (correct), or >1 (duplicated). */
+  perLineVerbatimCoverage: Array<{ lineTh: string; occurrences: number }>;
+  positionAnchorIssueCount: number;
+  positionAnchorIssues: string[];
+}
+
+const MUSIC_TERM_REGEX = /\b(music|soundtrack|score|melody|singing|humming|song|lyrics)\b/gi;
+const VEO_SUBTITLE_GUARD_REGEX = /no subtitles|no captions|no on-screen text/i;
+
+/** Counts every verbatim occurrence of `lineTh` in `prompt` (whitespace-tolerant) — reuses the same escaped-token-regex technique as `findQuotedLineStartIndex`/`appendMissingDialogueVerbatim`, but counts ALL matches (duplication detection) instead of just the first. */
+function countVerbatimOccurrences(prompt: string, lineTh: string): number {
+  const tokens = lineTh.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return 0;
+  const pattern = tokens.map(token => token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s+");
+  const matches = prompt.match(new RegExp(pattern, "gu"));
+  return matches ? matches.length : 0;
+}
+
+function buildCandidateFactSheet(
+  data: {
+    prompt: string;
+    audioDirection?: string;
+    frameAnalysis?: { people?: Array<{ name: string; position: string }> } | undefined;
+  },
+  requiredDialogue: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
+  family: VideoPromptModelFamily,
+  /**
+   * Same "2+ established characters" signal the generator itself computes
+   * (`hasEstablishedCharacters`) — threaded through so the fact sheet's
+   * `positionAnchorIssueCount` never flags a missing `frame_analysis` for a
+   * shot where the skill was never asked to return one (fewer than 2
+   * established characters). See `findPositionAnchorIssues`'s doc comment.
+   */
+  hasEstablishedCharacters: boolean,
+): VdVideoPromptCandidateFactSheet {
+  const chars = data.prompt.length;
+  const musicHaystack = `${data.prompt} ${data.audioDirection ?? ""}`;
+  const musicTermHits = Array.from(
+    new Set((musicHaystack.match(MUSIC_TERM_REGEX) ?? []).map(m => m.toLowerCase())),
+  );
+  const positionAnchorIssues = findPositionAnchorIssues(
+    { prompt: data.prompt, frame_analysis: data.frameAnalysis as ShotVideoPromptOutput["frame_analysis"] },
+    requiredDialogue,
+    hasEstablishedCharacters,
+  );
+  return {
+    chars,
+    overCap: chars > VD_VIDEO_PROMPT_MAX,
+    musicTermHits,
+    veoSubtitleGuardPresent: family === "veo" ? VEO_SUBTITLE_GUARD_REGEX.test(data.prompt) : null,
+    perLineVerbatimCoverage: requiredDialogue.map(line => ({
+      lineTh: line.lineTh,
+      occurrences: countVerbatimOccurrences(data.prompt, line.lineTh),
+    })),
+    positionAnchorIssueCount: positionAnchorIssues.length,
+    positionAnchorIssues,
+  };
+}
+
+/**
+ * MECHANICAL winner-vs-repaired comparison (`plan.md` Phase 2 design) — used
+ * ONLY after a `repair` verdict, never for the initial A-vs-B pick (that's
+ * the judge's job). Priority order, exactly as specified: (1) over-cap flag
+ * — not-over-cap wins; (2) required-line verbatim coverage — more lines with
+ * EXACTLY 1 occurrence wins; (3) position-anchor issue count — fewer wins;
+ * tie at every step falls through to the next, and a full tie favors the
+ * repaired candidate (`"b"`). No LLM call, no creative judgment.
+ */
+function pickBetterCandidateByHardFacts(
+  original: VdVideoPromptCandidateFactSheet,
+  repaired: VdVideoPromptCandidateFactSheet,
+): "a" | "b" {
+  if (original.overCap !== repaired.overCap) return original.overCap ? "b" : "a";
+  const coverageScore = (sheet: VdVideoPromptCandidateFactSheet) =>
+    sheet.perLineVerbatimCoverage.filter(l => l.occurrences === 1).length;
+  const originalCoverage = coverageScore(original);
+  const repairedCoverage = coverageScore(repaired);
+  if (originalCoverage !== repairedCoverage) return originalCoverage > repairedCoverage ? "a" : "b";
+  if (original.positionAnchorIssueCount !== repaired.positionAnchorIssueCount) {
+    return original.positionAnchorIssueCount < repaired.positionAnchorIssueCount ? "a" : "b";
+  }
+  return "b";
+}
+
+/**
+ * Shared judge user-prompt builder — used by BOTH the non-split and
+ * speaker-switch judged orchestrators below. `extraFacts` carries the
+ * speaker-switch path's timed-segment facts (see
+ * `buildJudgeTimedSegmentFacts`); `undefined`/omitted for the non-split
+ * path.
+ */
+function buildJudgeUserPrompt(args: {
+  shotNumber: number;
+  shotDurationSeconds?: number;
+  beatText: string;
+  cameraSetup?: string;
+  characterIdentityMap?: string;
+  requiredDialogue: Array<{ lineTh: string; characterKey?: string; speakerName?: string; emotion?: string }>;
+  targetVideoModelFactBlock: string;
+  extraFacts?: string;
+  candidates: Array<{
+    prompt: string;
+    negativeMotionPrompt?: string;
+    dialogue?: Array<{ characterKey?: string; lineTh: string; emotion?: string }>;
+    frameAnalysis?: { people?: Array<{ name: string; position: string }>; positionSource?: string };
+    factSheet: VdVideoPromptCandidateFactSheet;
+  }>;
+}): string {
+  const dialogueBlock = args.requiredDialogue.length
+    ? args.requiredDialogue
+        .map((l, i) => {
+          const speaker = l.speakerName ?? l.characterKey ?? "character";
+          const parts = [`${i + 1}. ${speaker}: "${l.lineTh}"`];
+          if (l.emotion) parts.push(`emotion: ${l.emotion}`);
+          return parts.join(" | ");
+        })
+        .join("\n")
+    : "(no required source dialogue for this shot)";
+
+  const candidateBlocks = args.candidates
+    .map((c, i) =>
+      [
+        `CANDIDATE ${i}:`,
+        `prompt: ${JSON.stringify(c.prompt)}`,
+        `negative_motion_prompt: ${JSON.stringify(c.negativeMotionPrompt ?? "")}`,
+        `dialogue: ${JSON.stringify(c.dialogue ?? [])}`,
+        `frame_analysis: ${JSON.stringify(c.frameAnalysis ?? null)}`,
+        `FACT SHEET (computed by code — trust for anything mechanical): ${JSON.stringify(c.factSheet)}`,
+      ].join("\n"),
+    )
+    .join("\n\n");
+
+  return [
+    `Shot number: ${args.shotNumber}`,
+    typeof args.shotDurationSeconds === "number" ? `Clip duration: ${args.shotDurationSeconds}s` : null,
+    `AUTHORITATIVE SHOT BEAT: ${args.beatText}`,
+    args.cameraSetup ? `Camera setup: ${args.cameraSetup}` : null,
+    args.characterIdentityMap ?? null,
+    `Required dialogue lines (source of truth — verbatim wording + speaker + emotion):\n${dialogueBlock}`,
+    args.extraFacts ?? null,
+    args.targetVideoModelFactBlock,
+    `--- CANDIDATES ---`,
+    candidateBlocks,
+    VD_COMPACT_JSON_INSTRUCTION,
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join("\n\n");
+}
+
+/** Timed-segment facts for the speaker-switch judged orchestrator — compact per-segment anchor/duration/line-count summary (the judge doesn't need the full cumulative-timestamp prose the GENERATION skill needs, just where the boundaries are). */
+function buildJudgeTimedSegmentFacts(subShotWindows: SpeakerSwitchSubShotWindow[]): string {
+  let cursorSeconds = 0;
+  const lines = subShotWindows.map(w => {
+    const startSeconds = round2(cursorSeconds);
+    cursorSeconds += w.durationSeconds;
+    const endSeconds = round2(cursorSeconds);
+    return `Segment ${w.subShotNumber}: [${startSeconds}s, ${endSeconds}s) anchor speaker ${w.characterKey}, ${w.lineIndexes.length} line(s).`;
+  });
+  return `Timed segments (this shot cuts between speakers):\n${lines.join("\n")}`;
+}
+
+/**
+ * Execute the judge LLM call end-to-end (credit check -> call -> deduct),
+ * reusing `executeVisionAwareJsonCallWithRetry`'s existing
+ * `VdSchemaValidationError`-triggered one-JSON-retry machinery (1200 first /
+ * 2000 retry tokens). Vision is the START-FRAME IMAGE ONLY (no character/
+ * location reference images — the judge only needs to verify on-screen
+ * position, not re-confirm identity). Returns `null` on ANY failure
+ * (insufficient credits, LLM error, both JSON attempts invalid) so the
+ * caller can fail-open to candidate A — this function NEVER throws.
+ */
+async function callVerticalDramaVideoPromptJudge(args: {
+  userId: number;
+  tenantId?: string;
+  seriesId: number;
+  episodeId: number;
+  shotNumber: number;
+  imageUrl?: string;
+  attachShotImage?: boolean;
+  idempotencyKey?: string;
+  userPromptText: string;
+}): Promise<{ data: JudgeOutput; creditsUsed: number; model: string } | null> {
+  try {
+    const hasCredits = await hasEnoughCredits(args.userId, 1);
+    if (!hasCredits) throw new InsufficientCreditsError();
+
+    const resolvedModel = await resolveShotVideoPromptModel(args.seriesId);
+    const model = resolvedModel.model;
+    const hasVision = args.attachShotImage === false ? false : resolvedModel.hasVision;
+    const systemPrompt = loadJudgeSystemPrompt();
+
+    const outcome = await executeVisionAwareJsonCallWithRetry<JudgeOutput>({
+      model,
+      systemPrompt,
+      userPromptText: args.userPromptText,
+      hasVision,
+      images: args.imageUrl ? [{ url: args.imageUrl }] : [],
+      userId: args.userId,
+      schema: judgeOutputSchema,
+      firstAttemptMaxTokens: 1200,
+      retryMaxTokens: 2000,
+    });
+
+    const usage = outcome.response.usage;
+    const creditsUsed = calculateCreditsForLLM(
+      usage?.prompt_tokens ?? 0,
+      usage?.completion_tokens ?? 0,
+      model,
+    );
+
+    await deductCredits({
+      userId: args.userId,
+      tenantId: args.tenantId,
+      amount: creditsUsed,
+      description: `Vertical Drama — judge shot video prompt candidates (episode #${args.episodeId}, shot #${args.shotNumber})`,
+      sourceType: "skill",
+      idempotencyKey: args.idempotencyKey,
+      metadata: {
+        model,
+        llmModel: model,
+        feature: "vertical_drama_series",
+        seriesId: args.seriesId,
+        episodeId: args.episodeId,
+        shotNumber: args.shotNumber,
+        usedVision: hasVision,
+        inputTokens: usage?.prompt_tokens ?? 0,
+        outputTokens: usage?.completion_tokens ?? 0,
+      },
+    });
+
+    return { data: outcome.data, creditsUsed, model };
+  } catch {
+    // Fail-open — the caller ships candidate A + a warning. Never throw.
+    return null;
+  }
+}
+
+export interface GenerateVerticalDramaShotVideoPromptQuality {
+  mode: "judged" | "single";
+  candidates: number;
+  verdict?: "accept" | "repair";
+  repaired: boolean;
+}
+
+export interface GenerateJudgedVerticalDramaShotVideoPromptParams
+  extends GenerateVerticalDramaShotVideoPromptParams {
+  /**
+   * Judged best-of-2 quality loop opt-out (`plan.md` Phase 2) — defaults to
+   * `true` (ON) for the paid per-shot generate/AI-adjust action. `false`
+   * calls the plain single generator exactly once, byte-compatible with
+   * Phase 1's result shape plus a `promptQuality: { mode: "single",
+   * candidates: 1, repaired: false }` tag.
+   */
+  qualityLoop?: boolean;
+}
+
+export interface GenerateJudgedVerticalDramaShotVideoPromptResult
+  extends GenerateVerticalDramaShotVideoPromptResult {
+  promptQuality: GenerateVerticalDramaShotVideoPromptQuality;
+}
+
+/**
+ * Judged best-of-2 quality loop wrapper around `generateVerticalDramaShotVideoPrompt`
+ * (`plan.md` Phase 2) — see this section's own top-of-block doc comment for
+ * the full design. `generateVerticalDramaShotVideoPrompt` itself is
+ * completely untouched; this function only ever calls it (never reimplements
+ * any of its generation logic).
+ */
+export async function generateJudgedVerticalDramaShotVideoPrompt(
+  params: GenerateJudgedVerticalDramaShotVideoPromptParams,
+): Promise<GenerateJudgedVerticalDramaShotVideoPromptResult> {
+  if (params.qualityLoop === false) {
+    const single = await generateVerticalDramaShotVideoPrompt(params);
+    return { ...single, promptQuality: { mode: "single", candidates: 1, repaired: false } };
+  }
+
+  const candidateAParams: GenerateVerticalDramaShotVideoPromptParams = {
+    ...params,
+    idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:candidate-a` : undefined,
+  };
+  const candidateBParams: GenerateVerticalDramaShotVideoPromptParams = {
+    ...params,
+    repairInstruction: combineRepairInstructions(params.repairInstruction, VD_VIDEO_PROMPT_VARIATION_DIRECTIVE),
+    idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:candidate-b` : undefined,
+  };
+
+  const [settledA, settledB] = await Promise.allSettled([
+    generateVerticalDramaShotVideoPrompt(candidateAParams),
+    generateVerticalDramaShotVideoPrompt(candidateBParams),
+  ]);
+
+  if (settledA.status === "rejected" && settledB.status === "rejected") {
+    throw settledA.reason;
+  }
+  if (settledA.status === "rejected" || settledB.status === "rejected") {
+    const survivor = (
+      settledA.status === "fulfilled" ? settledA : (settledB as PromiseFulfilledResult<GenerateVerticalDramaShotVideoPromptResult>)
+    ).value;
+    return {
+      ...survivor,
+      warnings: appendWarnings(survivor.warnings, [
+        `Shot ${params.shotNumber}: quality loop — one candidate failed to generate; shipped the survivor without judging.`,
+      ]),
+      promptQuality: { mode: "single", candidates: 1, repaired: false },
+    };
+  }
+
+  const candidateA = settledA.value;
+  const candidateB = settledB.value;
+  const candidates = [candidateA, candidateB];
+
+  const requiredDialogue = params.shotContext.beatIsSilent ? [] : (params.shotContext.dialogueLines ?? []);
+  const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
+    type: params.selectedVideoModel.type,
+    aspectRatios: params.selectedVideoModel.aspectRatios,
+    configJson: params.selectedVideoModel.configJson,
+  });
+  const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
+  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const targetVideoModelFactBlock = buildTargetVideoModelFactBlock({
+    family,
+    modelId: params.selectedVideoModelId,
+    modelName: params.selectedVideoModel.name,
+    maxReferenceImages: capabilities.maxReferenceImages,
+    hasEstablishedCharacters,
+  });
+
+  const factSheetA = buildCandidateFactSheet(
+    { prompt: candidateA.prompt, audioDirection: candidateA.audioDirection, frameAnalysis: candidateA.frameAnalysis },
+    requiredDialogue,
+    family,
+    hasEstablishedCharacters,
+  );
+  const factSheetB = buildCandidateFactSheet(
+    { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis },
+    requiredDialogue,
+    family,
+    hasEstablishedCharacters,
+  );
+
+  const judgeUserPromptText = buildJudgeUserPrompt({
+    shotNumber: params.shotNumber,
+    shotDurationSeconds: params.shotDurationSeconds,
+    beatText:
+      params.shotContext.canonicalShotSummary?.trim() || params.shotContext.description || "(no beat/description supplied)",
+    cameraSetup: params.shotContext.camera,
+    characterIdentityMap: params.shotContext.characterIdentityMap,
+    requiredDialogue,
+    targetVideoModelFactBlock,
+    candidates: [
+      {
+        prompt: candidateA.prompt,
+        negativeMotionPrompt: candidateA.negativeMotionPrompt,
+        dialogue: candidateA.dialogue,
+        frameAnalysis: candidateA.frameAnalysis,
+        factSheet: factSheetA,
+      },
+      {
+        prompt: candidateB.prompt,
+        negativeMotionPrompt: candidateB.negativeMotionPrompt,
+        dialogue: candidateB.dialogue,
+        frameAnalysis: candidateB.frameAnalysis,
+        factSheet: factSheetB,
+      },
+    ],
+  });
+
+  const judgeOutcome = await callVerticalDramaVideoPromptJudge({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    seriesId: params.seriesId,
+    episodeId: params.episodeId,
+    shotNumber: params.shotNumber,
+    imageUrl: params.imageUrl,
+    attachShotImage: params.attachShotImage,
+    idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:judge` : undefined,
+    userPromptText: judgeUserPromptText,
+  });
+
+  if (!judgeOutcome) {
+    return {
+      ...candidateA,
+      creditsUsed: candidateA.creditsUsed + candidateB.creditsUsed,
+      warnings: appendWarnings(candidateA.warnings, [
+        `Shot ${params.shotNumber}: quality-loop judge unavailable — shipped candidate A without judging.`,
+      ]),
+      promptQuality: { mode: "judged", candidates: 2, repaired: false },
+    };
+  }
+
+  const winnerIndex = Math.round(judgeOutcome.data.winner_index) === 1 ? 1 : 0;
+  const winner = candidates[winnerIndex];
+  const winnerFactSheet = winnerIndex === 0 ? factSheetA : factSheetB;
+  const normalizedVerdict: "accept" | "repair" =
+    judgeOutcome.data.verdict?.trim().toLowerCase() === "repair" ? "repair" : "accept";
+  const totalCreditsAfterJudge = candidateA.creditsUsed + candidateB.creditsUsed + judgeOutcome.creditsUsed;
+
+  if (normalizedVerdict === "accept") {
+    return {
+      ...winner,
+      creditsUsed: totalCreditsAfterJudge,
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
+    };
+  }
+
+  // verdict === "repair" — ONE repair regeneration of the winner, then a
+  // MECHANICAL (never LLM) hard-fact comparison decides winner vs repaired.
+  let repairedResult: GenerateVerticalDramaShotVideoPromptResult | null = null;
+  try {
+    repairedResult = await generateVerticalDramaShotVideoPrompt({
+      ...params,
+      repairInstruction: combineRepairInstructions(params.repairInstruction, judgeOutcome.data.repair_instruction),
+      idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:repair` : undefined,
+    });
+  } catch {
+    repairedResult = null;
+  }
+
+  if (!repairedResult) {
+    return {
+      ...winner,
+      creditsUsed: totalCreditsAfterJudge,
+      warnings: appendWarnings(winner.warnings, [
+        `Shot ${params.shotNumber}: quality-loop repair attempt failed — shipped the judge's winning candidate as-is.`,
+      ]),
+      promptQuality: { mode: "judged", candidates: 2, verdict: "repair", repaired: false },
+    };
+  }
+
+  const totalCreditsAfterRepair = totalCreditsAfterJudge + repairedResult.creditsUsed;
+  const repairedFactSheet = buildCandidateFactSheet(
+    { prompt: repairedResult.prompt, audioDirection: repairedResult.audioDirection, frameAnalysis: repairedResult.frameAnalysis },
+    requiredDialogue,
+    family,
+    hasEstablishedCharacters,
+  );
+
+  if (pickBetterCandidateByHardFacts(winnerFactSheet, repairedFactSheet) === "b") {
+    return {
+      ...repairedResult,
+      creditsUsed: totalCreditsAfterRepair,
+      promptQuality: { mode: "judged", candidates: 2, verdict: "repair", repaired: true },
+    };
+  }
+
+  return {
+    ...winner,
+    creditsUsed: totalCreditsAfterRepair,
+    warnings: appendWarnings(winner.warnings, [
+      `Shot ${params.shotNumber}: quality-loop repair did not improve on hard facts (cap/coverage/position-anchor) — shipped the original winner instead.`,
+    ]),
+    promptQuality: { mode: "judged", candidates: 2, verdict: "repair", repaired: false },
+  };
+}
+
+export interface GenerateJudgedVerticalDramaShotVideoPromptSpeakerSwitchParams
+  extends GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams {
+  /** Same opt-out as `GenerateJudgedVerticalDramaShotVideoPromptParams.qualityLoop`. */
+  qualityLoop?: boolean;
+}
+
+export interface GenerateJudgedVerticalDramaShotVideoPromptSpeakerSwitchResult
+  extends GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult {
+  promptQuality: GenerateVerticalDramaShotVideoPromptQuality;
+}
+
+/**
+ * Judged best-of-2 quality loop wrapper around
+ * `generateVerticalDramaShotVideoPromptSpeakerSwitch` — sibling to
+ * `generateJudgedVerticalDramaShotVideoPrompt` above (same design, see that
+ * function's doc comment); the only differences are the underlying
+ * generator, its distinct result shape (`dialogue`/`durationSeconds`/
+ * `distinctSpeakerCharacterKeys`), and the extra timed-segment facts in the
+ * judge's user prompt (`buildJudgeTimedSegmentFacts`).
+ */
+export async function generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch(
+  params: GenerateJudgedVerticalDramaShotVideoPromptSpeakerSwitchParams,
+): Promise<GenerateJudgedVerticalDramaShotVideoPromptSpeakerSwitchResult> {
+  if (params.qualityLoop === false) {
+    const single = await generateVerticalDramaShotVideoPromptSpeakerSwitch(params);
+    return { ...single, promptQuality: { mode: "single", candidates: 1, repaired: false } };
+  }
+
+  const candidateAParams: GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams = {
+    ...params,
+    idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:candidate-a` : undefined,
+  };
+  const candidateBParams: GenerateVerticalDramaShotVideoPromptSpeakerSwitchParams = {
+    ...params,
+    repairInstruction: combineRepairInstructions(params.repairInstruction, VD_VIDEO_PROMPT_VARIATION_DIRECTIVE),
+    idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:candidate-b` : undefined,
+  };
+
+  const [settledA, settledB] = await Promise.allSettled([
+    generateVerticalDramaShotVideoPromptSpeakerSwitch(candidateAParams),
+    generateVerticalDramaShotVideoPromptSpeakerSwitch(candidateBParams),
+  ]);
+
+  if (settledA.status === "rejected" && settledB.status === "rejected") {
+    throw settledA.reason;
+  }
+  if (settledA.status === "rejected" || settledB.status === "rejected") {
+    const survivor = (
+      settledA.status === "fulfilled"
+        ? settledA
+        : (settledB as PromiseFulfilledResult<GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult>)
+    ).value;
+    return {
+      ...survivor,
+      warnings: appendWarnings(survivor.warnings, [
+        `Shot ${params.shotNumber}: quality loop — one candidate failed to generate; shipped the survivor without judging.`,
+      ]),
+      promptQuality: { mode: "single", candidates: 1, repaired: false },
+    };
+  }
+
+  const candidateA = settledA.value;
+  const candidateB = settledB.value;
+  const candidates = [candidateA, candidateB];
+
+  const requiredDialogue = params.shotContext.beatIsSilent ? [] : (params.shotContext.dialogueLines ?? []);
+  const capabilities = resolveVerticalDramaCapabilities(params.selectedVideoModelId, {
+    type: params.selectedVideoModel.type,
+    aspectRatios: params.selectedVideoModel.aspectRatios,
+    configJson: params.selectedVideoModel.configJson,
+  });
+  const family = resolveShotVideoPromptModelFamily(params.selectedVideoModelId, params.selectedVideoModel);
+  const hasEstablishedCharacters = (params.characterReferenceImages?.length ?? 0) >= 2;
+  const targetVideoModelFactBlock = buildTargetVideoModelFactBlock({
+    family,
+    modelId: params.selectedVideoModelId,
+    modelName: params.selectedVideoModel.name,
+    maxReferenceImages: capabilities.maxReferenceImages,
+    hasEstablishedCharacters,
+  });
+
+  const factSheetA = buildCandidateFactSheet(
+    { prompt: candidateA.prompt, audioDirection: candidateA.audioDirection, frameAnalysis: candidateA.frameAnalysis },
+    requiredDialogue,
+    family,
+    hasEstablishedCharacters,
+  );
+  const factSheetB = buildCandidateFactSheet(
+    { prompt: candidateB.prompt, audioDirection: candidateB.audioDirection, frameAnalysis: candidateB.frameAnalysis },
+    requiredDialogue,
+    family,
+    hasEstablishedCharacters,
+  );
+
+  const judgeUserPromptText = buildJudgeUserPrompt({
+    shotNumber: params.shotNumber,
+    shotDurationSeconds: params.shotDurationSeconds,
+    beatText:
+      params.shotContext.canonicalShotSummary?.trim() || params.shotContext.description || "(no beat/description supplied)",
+    cameraSetup: params.shotContext.camera,
+    characterIdentityMap: params.shotContext.characterIdentityMap,
+    requiredDialogue,
+    targetVideoModelFactBlock,
+    extraFacts: buildJudgeTimedSegmentFacts(params.subShotWindows),
+    candidates: [
+      {
+        prompt: candidateA.prompt,
+        negativeMotionPrompt: candidateA.negativeMotionPrompt,
+        dialogue: candidateA.dialogue,
+        frameAnalysis: candidateA.frameAnalysis,
+        factSheet: factSheetA,
+      },
+      {
+        prompt: candidateB.prompt,
+        negativeMotionPrompt: candidateB.negativeMotionPrompt,
+        dialogue: candidateB.dialogue,
+        frameAnalysis: candidateB.frameAnalysis,
+        factSheet: factSheetB,
+      },
+    ],
+  });
+
+  const judgeOutcome = await callVerticalDramaVideoPromptJudge({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    seriesId: params.seriesId,
+    episodeId: params.episodeId,
+    shotNumber: params.shotNumber,
+    imageUrl: params.imageUrl,
+    attachShotImage: params.attachShotImage,
+    idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:judge` : undefined,
+    userPromptText: judgeUserPromptText,
+  });
+
+  if (!judgeOutcome) {
+    return {
+      ...candidateA,
+      creditsUsed: candidateA.creditsUsed + candidateB.creditsUsed,
+      warnings: appendWarnings(candidateA.warnings, [
+        `Shot ${params.shotNumber}: quality-loop judge unavailable — shipped candidate A without judging.`,
+      ]),
+      promptQuality: { mode: "judged", candidates: 2, repaired: false },
+    };
+  }
+
+  const winnerIndex = Math.round(judgeOutcome.data.winner_index) === 1 ? 1 : 0;
+  const winner = candidates[winnerIndex];
+  const winnerFactSheet = winnerIndex === 0 ? factSheetA : factSheetB;
+  const normalizedVerdict: "accept" | "repair" =
+    judgeOutcome.data.verdict?.trim().toLowerCase() === "repair" ? "repair" : "accept";
+  const totalCreditsAfterJudge = candidateA.creditsUsed + candidateB.creditsUsed + judgeOutcome.creditsUsed;
+
+  if (normalizedVerdict === "accept") {
+    return {
+      ...winner,
+      creditsUsed: totalCreditsAfterJudge,
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
+    };
+  }
+
+  let repairedResult: GenerateVerticalDramaShotVideoPromptSpeakerSwitchResult | null = null;
+  try {
+    repairedResult = await generateVerticalDramaShotVideoPromptSpeakerSwitch({
+      ...params,
+      repairInstruction: combineRepairInstructions(params.repairInstruction, judgeOutcome.data.repair_instruction),
+      idempotencyKey: params.idempotencyKey ? `${params.idempotencyKey}:repair` : undefined,
+    });
+  } catch {
+    repairedResult = null;
+  }
+
+  if (!repairedResult) {
+    return {
+      ...winner,
+      creditsUsed: totalCreditsAfterJudge,
+      warnings: appendWarnings(winner.warnings, [
+        `Shot ${params.shotNumber}: quality-loop repair attempt failed — shipped the judge's winning candidate as-is.`,
+      ]),
+      promptQuality: { mode: "judged", candidates: 2, verdict: "repair", repaired: false },
+    };
+  }
+
+  const totalCreditsAfterRepair = totalCreditsAfterJudge + repairedResult.creditsUsed;
+  const repairedFactSheet = buildCandidateFactSheet(
+    { prompt: repairedResult.prompt, audioDirection: repairedResult.audioDirection, frameAnalysis: repairedResult.frameAnalysis },
+    requiredDialogue,
+    family,
+    hasEstablishedCharacters,
+  );
+
+  if (pickBetterCandidateByHardFacts(winnerFactSheet, repairedFactSheet) === "b") {
+    return {
+      ...repairedResult,
+      creditsUsed: totalCreditsAfterRepair,
+      promptQuality: { mode: "judged", candidates: 2, verdict: "repair", repaired: true },
+    };
+  }
+
+  return {
+    ...winner,
+    creditsUsed: totalCreditsAfterRepair,
+    warnings: appendWarnings(winner.warnings, [
+      `Shot ${params.shotNumber}: quality-loop repair did not improve on hard facts (cap/coverage/position-anchor) — shipped the original winner instead.`,
+    ]),
+    promptQuality: { mode: "judged", candidates: 2, verdict: "repair", repaired: false },
   };
 }
 

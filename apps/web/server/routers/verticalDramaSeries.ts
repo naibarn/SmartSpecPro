@@ -3742,6 +3742,19 @@ export const createSeriesInput = z.object({
   createMode: z.enum(VERTICAL_DRAMA_SERIES_CREATE_MODES).optional(),
   seasonNumber: z.number().int().positive().optional(),
   lineage: z.record(z.string(), z.unknown()).optional(),
+  /**
+   * Manual LLM model override (same contract as `setSeriesLlmModelPolicy`'s
+   * `defaultModelId`, added so the wizard can pin the series' model
+   * ATOMICALLY at creation time — the wizard fires its background
+   * story-generation mutation the instant `create` returns, so a follow-up
+   * `setSeriesLlmModelPolicy` call would race that generation). Omitted OR
+   * explicit `null` -> automatic (the stage's own quality/large-context
+   * model selector picks the model, `llmModelPolicy.defaultModelId` written
+   * as `null`); a non-null string is validated against the same eligible set
+   * `setSeriesLlmModelPolicy` uses and, if not eligible, `create` throws
+   * `BAD_REQUEST` before any row is inserted.
+   */
+  defaultModelId: z.string().min(1).nullable().optional(),
 })
   /**
    * Stage 1.5 (`planning/vd-series-memory-and-lineage/plan.md`) — genre
@@ -4251,6 +4264,38 @@ export const verticalDramaSeriesRouter = router({
       const tenantId = requireTenantId(ctx.tenantId);
       const userId = ctx.user.id;
 
+      // Manual LLM model override (`input.defaultModelId`) — validated BEFORE
+      // any other work (mirrors `setSeriesLlmModelPolicy`'s own eligibility
+      // check exactly, so the two never drift) and PERSISTED atomically in
+      // this same insert below (see `insertValues.llmModelPolicy`), rather
+      // than via a follow-up `setSeriesLlmModelPolicy` call — the wizard
+      // fires its background story-generation mutation the instant `create`
+      // returns, which would otherwise race an un-pinned series. Skipped
+      // entirely (no DB round-trip) when omitted/`null` — the common,
+      // "automatic" case.
+      if (input.defaultModelId != null) {
+        const { loadEnabledLlmModelRows } = await import(
+          "../services/enabledLlmModels"
+        );
+        const { selectQualityLargeContextEligibleModels } = await import(
+          "../services/verticalDramaImproveScript"
+        );
+        const eligibleRows = await loadEnabledLlmModelRows({
+          autoSelectionOnly: true,
+        });
+        const eligibleModelIds = new Set(
+          selectQualityLargeContextEligibleModels(eligibleRows).map(
+            row => row.modelId
+          )
+        );
+        if (!eligibleModelIds.has(input.defaultModelId)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Model "${input.defaultModelId}" is not eligible for this planning stage`,
+          });
+        }
+      }
+
       // Season/special-edition lineage (Stage 2.1/2.3) — resolved BEFORE the
       // insert so the new row's `parentSeriesId`/`createMode`/`seasonNumber`/
       // `lineage` columns are written correctly at creation time (no
@@ -4443,6 +4488,14 @@ export const verticalDramaSeriesRouter = router({
         lineage: parentSeriesRow
           ? ((input.lineage as VerticalDramaSeriesLineage | undefined) ?? null)
           : null,
+        // Manual LLM model override — pinned ATOMICALLY in this same insert
+        // (validated above); `undefined`/`null` `input.defaultModelId` both
+        // persist `{ defaultModelId: null }` (automatic), byte-identical to
+        // this table's pre-existing default (the column was never set here
+        // before, which also always meant `null`/automatic).
+        llmModelPolicy: {
+          defaultModelId: input.defaultModelId ?? null,
+        } satisfies VerticalDramaSeriesLlmModelPolicy,
       };
 
       // Insert + cast/location clone transactional guarantee (Stage 2.3

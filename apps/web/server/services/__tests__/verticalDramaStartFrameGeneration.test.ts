@@ -46,6 +46,7 @@ import {
   RateLimitExceededError,
   appendPresetVisualIdentityFragmentsToImagePrompt,
   mergePresetVisualIdentityNegativeFragments,
+  type VerticalDramaStartFramePlanFrame,
 } from "../verticalDramaStartFrameGeneration";
 import { executeWithFallback } from "../llmRouter";
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "../creditService";
@@ -394,6 +395,237 @@ describe("projectStartFramePlan", () => {
     };
     const plan = projectStartFramePlan(raw as any, "");
     expect(plan.selectedImageModelId).toBe("llm-claimed-model");
+  });
+
+  // Gap-5 fix (recorded, 2026-07-22) — a plan regeneration used to silently
+  // wipe per-frame user/durable state (`approvedMediaAssetId`, `locationKey`,
+  // `angleGrid`/`angleGridAssetIds`, `productReferenceAssetIds`/
+  // `productRefsCustomized`) because this function never accepted the prior
+  // plan's frames at all. `previousFramesByShotNumber` (the new 5th param)
+  // fixes that with an explicit, testable merge contract.
+  describe("previousFramesByShotNumber carry-over (gap-5 fix, 2026-07-22)", () => {
+    it("(a) carries over prior approved asset, location override, angle-grid state, and product refs on a regen, while imagePrompt/negativePrompt are replaced with the fresh skill output", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(3)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          3,
+          {
+            shotNumber: 3,
+            imagePrompt: "STALE prompt that must be replaced",
+            negativePrompt: "stale negative",
+            requiredCharacterRefs: ["char-1"],
+            productReferenceAssetIds: ["asset-101"],
+            productRefsCustomized: true,
+            approvedMediaAssetId: "media-42",
+            locationKey: "loc-kitchen",
+            angleGrid: { imageUrl: "https://cdn.example.com/grid.png", dismissedIndexes: [2] },
+            angleGridAssetIds: [501, 502],
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        previousFramesByShotNumber,
+      );
+
+      const frame = plan.frames[0];
+      // Replaced — the whole point of regenerating.
+      expect(frame?.imagePrompt).toBe("Start frame prompt for shot 3");
+      expect(frame?.negativePrompt).toBe("blurry");
+      // Carried over.
+      expect(frame?.approvedMediaAssetId).toBe("media-42");
+      expect(frame?.locationKey).toBe("loc-kitchen");
+      expect(frame?.angleGrid).toEqual({
+        imageUrl: "https://cdn.example.com/grid.png",
+        dismissedIndexes: [2],
+      });
+      expect(frame?.angleGridAssetIds).toEqual([501, 502]);
+      expect(frame?.productReferenceAssetIds).toEqual(["asset-101"]);
+      expect(frame?.productRefsCustomized).toBe(true);
+    });
+
+    it("(b) never carries over promptMode — a regen from the legacy batch skill must clear any prior mode stamp so the engine badge clears and the render-time preset append resumes", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(5)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          5,
+          {
+            shotNumber: 5,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            promptMode: {
+              mode: "cinematic_narrative",
+              resolvedFrom: "user",
+              imageModelFamily: "gemini",
+              imageModelId: "gemini-2",
+              generatedAt: "2026-07-01T00:00:00.000Z",
+            },
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        previousFramesByShotNumber,
+      );
+
+      expect(plan.frames[0]).not.toHaveProperty("promptMode");
+    });
+
+    it("(c) byte-identical output when no previous frames are supplied — omits every new carry-over field entirely, same as every pre-existing caller", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(7)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+
+      const withoutParam = projectStartFramePlan(raw as any, "fallback-model");
+      const withUndefinedParam = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        undefined,
+      );
+
+      expect(withoutParam).toEqual(withUndefinedParam);
+      const frame = withoutParam.frames[0];
+      expect(frame?.productReferenceAssetIds).toEqual([]);
+      expect(frame).not.toHaveProperty("approvedMediaAssetId");
+      expect(frame).not.toHaveProperty("locationKey");
+      expect(frame).not.toHaveProperty("angleGrid");
+      expect(frame).not.toHaveProperty("angleGridAssetIds");
+      expect(frame).not.toHaveProperty("productRefsCustomized");
+      expect(frame).not.toHaveProperty("promptMode");
+    });
+
+    it("(d) a shot present in the new plan but absent from the prior plan's frames is unaffected — no carry-over fields, fresh prompt only", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(2), validRequest(9)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      // The prior plan only ever had shot 2 (e.g. the series just grew from
+      // fewer shots, or shot 9 is brand new to this regen).
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          2,
+          {
+            shotNumber: 2,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: ["asset-7"],
+            approvedMediaAssetId: "media-2",
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        previousFramesByShotNumber,
+      );
+
+      const shot2 = plan.frames.find((f) => f.shotNumber === 2);
+      const shot9 = plan.frames.find((f) => f.shotNumber === 9);
+      expect(shot2?.approvedMediaAssetId).toBe("media-2");
+      expect(shot2?.productReferenceAssetIds).toEqual(["asset-7"]);
+      // Shot 9 has no prior state to carry over — behaves exactly like the
+      // no-previous-frames-at-all case, for THIS shot only.
+      expect(shot9).not.toHaveProperty("approvedMediaAssetId");
+      expect(shot9?.productReferenceAssetIds).toEqual([]);
+      expect(shot9?.imagePrompt).toBe("Start frame prompt for shot 9");
+    });
+
+    it("canonicalShotSummary: the projection's own freshly-resolved value wins over a carried-over prior one when both are present", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(6)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          6,
+          {
+            shotNumber: 6,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            canonicalShotSummary: "OLD stale summary from a prior regen",
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        new Map([[6, "FRESH canonical summary from the current Overview page"]]),
+        previousFramesByShotNumber,
+      );
+
+      expect(plan.frames[0]?.canonicalShotSummary).toBe(
+        "FRESH canonical summary from the current Overview page",
+      );
+    });
+
+    it("canonicalShotSummary: falls back to the carried-over prior value when the projection has none for this shot", () => {
+      const raw = {
+        render_plan_summary: {},
+        start_frame_requests: [validRequest(6)],
+        plain_text_render_plan: "text",
+        downstream_video_input_manifest: {},
+      };
+      const previousFramesByShotNumber = new Map<number, VerticalDramaStartFramePlanFrame>([
+        [
+          6,
+          {
+            shotNumber: 6,
+            imagePrompt: "stale",
+            negativePrompt: "",
+            requiredCharacterRefs: [],
+            productReferenceAssetIds: [],
+            canonicalShotSummary: "carried-over summary",
+          },
+        ],
+      ]);
+
+      const plan = projectStartFramePlan(
+        raw as any,
+        "fallback-model",
+        undefined,
+        undefined,
+        previousFramesByShotNumber,
+      );
+
+      expect(plan.frames[0]?.canonicalShotSummary).toBe("carried-over summary");
+    });
   });
 });
 

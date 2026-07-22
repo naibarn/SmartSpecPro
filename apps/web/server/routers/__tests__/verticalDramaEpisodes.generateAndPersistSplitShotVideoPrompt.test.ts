@@ -246,6 +246,15 @@ vi.mock("../../services/verticalDramaVideoMotionPromptGeneration", () => ({
   generateVerticalDramaShotVideoPrompt: mockGenerateVerticalDramaShotVideoPrompt,
   generateVerticalDramaShotVideoPromptSpeakerSwitch:
     mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch,
+  // Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
+  // quality/plan.md` Phase 2) — the router now calls these export names;
+  // aliased to the SAME mocks as the plain generators above so every
+  // pre-existing test in this file stays byte-identical (see the identical
+  // doc comment in the sibling `generateShotVideoPrompt.test.ts` for the
+  // full rationale).
+  generateJudgedVerticalDramaShotVideoPrompt: mockGenerateVerticalDramaShotVideoPrompt,
+  generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch:
+    mockGenerateVerticalDramaShotVideoPromptSpeakerSwitch,
   generateVerticalDramaClipDialogue: mockGenerateVerticalDramaClipDialogue,
   appendPresetVisualIdentityStyleTokensToMotionPrompt:
     mockAppendPresetVisualIdentityStyleTokensToMotionPrompt,
@@ -368,7 +377,26 @@ function baseEpisodeRow(over: Record<string, unknown> = {}) {
         },
       ],
     },
-    motionPromptPack: null,
+    // Feature 135 (Hermes Grok media worker, remediation row 9) —
+    // `resolveEpisodeVideoModel` now FAILS CLOSED (BAD_REQUEST) whenever
+    // `motionPromptPack.selectedVideoModelId` is missing, so the default
+    // fixture must carry a selection that resolves against this file's
+    // default mocked catalog (`mockGetModelsByTypeAsync`'s "veo-3-1" row,
+    // set in `beforeEach` below). `clips: []` is behaviorally identical to
+    // the previous `motionPromptPack: null` default for every other
+    // consumer in this file (`shouldRegenerateDialogueForVideoPrompt` /
+    // `hasDuplicateDialogueOnOtherClip` both treat `pack: null` and
+    // `pack.clips: []` the same — `!pack?.clips?.length` is `true` either
+    // way) — only `resolveEpisodeVideoModel`'s selection check cares about
+    // this field, so this change is additive/non-behavioral for every test
+    // that doesn't override `motionPromptPack` itself.
+    motionPromptPack: {
+      selectedVideoModelId: "veo-3-1",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      motionMode: "first_frame_to_video",
+      clips: [],
+      warnings: [],
+    },
     ...over,
   };
 }
@@ -405,6 +433,14 @@ beforeEach(() => {
     creditsUsed: 4,
     model: "gpt-vision",
     usedVision: true,
+    // Model-family-aware, vision-grounded video prompt quality upgrade
+    // (`planning/vd-video-prompt-model-family-quality/plan.md`) — always
+    // present on the real service return value; "veo-3-1" (this file's
+    // default mocked model row) is a veo-family id.
+    family: "veo",
+    // Judged best-of-2 quality loop (Phase 2) — always present on the real
+    // `generateJudgedVerticalDramaShotVideoPromptSpeakerSwitch` return value.
+    promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
   });
   mockGetPrimaryPortraitAssetId.mockImplementation(
     async (_owner: unknown, characterId: number) => {
@@ -504,6 +540,18 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
       creditsUsed: 4,
       usedVision: true,
       audioDirection: undefined,
+      // Model-family-aware, vision-grounded video prompt quality upgrade
+      // (`planning/vd-video-prompt-model-family-quality/plan.md`) — always
+      // stamped onto the split path's return too (same shape as the non-
+      // split path's mutation return).
+      promptModelTarget: {
+        family: "veo",
+        modelId: "veo-3-1",
+        generatedAt: expect.any(String),
+      },
+      // Judged best-of-2 quality loop (Phase 2) — the mutation return
+      // includes the service's own `promptQuality` verbatim.
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
     });
 
     const clipsForShot1 = capturedSet.motionPromptPack.clips.filter(
@@ -514,10 +562,19 @@ describe("generateShotVideoPrompt -> generateAndPersistSplitShotVideoPrompt (spe
     expect(clipsForShot1[0]).toMatchObject({
       clipNumber: 1,
       sourceShotNumbers: [1],
-      startFrameAssetId: "9001",
-      extraReferenceAssetIds: ["9002"],
+      startFrameAssetId: "900",
+      extraReferenceAssetIds: ["9001", "9002"],
       prompt: "A continuous kitchen argument, cutting between the hero and the villain.",
       durationSeconds: 5,
+      // Model-family-aware, vision-grounded video prompt quality upgrade —
+      // the split path's persist site stamps this on the collapsed clip too.
+      promptModelTarget: {
+        family: "veo",
+        modelId: "veo-3-1",
+        generatedAt: expect.any(String),
+      },
+      // Judged best-of-2 quality loop (Phase 2) — persisted on the clip too.
+      promptQuality: { mode: "judged", candidates: 2, verdict: "accept", repaired: false },
     });
     expect(clipsForShot1[0]).not.toHaveProperty("parentShotNumber");
     expect(clipsForShot1[0]).not.toHaveProperty("subShotNumber");

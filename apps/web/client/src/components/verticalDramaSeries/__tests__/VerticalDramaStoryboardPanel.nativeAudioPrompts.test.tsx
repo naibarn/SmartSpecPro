@@ -75,7 +75,7 @@ describe("VerticalDramaStoryboardPanel — native audio direction toggle (task #
     ).not.toBeInTheDocument();
   });
 
-  it("renders the toggle, checked by default, plus the helper hint, when wired and the selected model supports native audio", () => {
+  it("renders the toggle, checked by default, plus the helper hint, when wired and the selected model supports native audio", async () => {
     render(
       <VerticalDramaStoryboardPanel
         {...(baseProps({
@@ -88,8 +88,14 @@ describe("VerticalDramaStoryboardPanel — native audio direction toggle (task #
       />
     );
 
+    // `HermesConnectionPicker`/`ModelSelectorDialog` (elsewhere in this
+    // panel's tree) call `useScopedTranslation` -> `react-i18next`'s
+    // `useTranslation`, which suspends on namespace load in jsdom with no
+    // local `<Suspense>` boundary — same fix as the sibling
+    // `VerticalDramaStoryboardPanel.modelFamilyBadge.test.tsx` suite: await
+    // the first query so the commit lands before asserting.
     expect(
-      screen.getByTestId("vd-storyboard-native-audio-toggle")
+      await screen.findByTestId("vd-storyboard-native-audio-toggle")
     ).toBeInTheDocument();
     const toggle = screen.getByTestId("vd-storyboard-native-audio-switch");
     expect(toggle.getAttribute("aria-checked")).toBe("true");
@@ -98,7 +104,7 @@ describe("VerticalDramaStoryboardPanel — native audio direction toggle (task #
     ).toBeInTheDocument();
   });
 
-  it("calls onSelectNativeAudioEnabled with the new value when the switch is clicked", () => {
+  it("calls onSelectNativeAudioEnabled with the new value when the switch is clicked", async () => {
     const onSelectNativeAudioEnabled = vi.fn();
     render(
       <VerticalDramaStoryboardPanel
@@ -112,11 +118,13 @@ describe("VerticalDramaStoryboardPanel — native audio direction toggle (task #
       />
     );
 
-    fireEvent.click(screen.getByTestId("vd-storyboard-native-audio-switch"));
+    fireEvent.click(
+      await screen.findByTestId("vd-storyboard-native-audio-switch")
+    );
     expect(onSelectNativeAudioEnabled).toHaveBeenCalledWith(false);
   });
 
-  it("reflects nativeAudioEnabled: false as an unchecked switch", () => {
+  it("reflects nativeAudioEnabled: false as an unchecked switch", async () => {
     render(
       <VerticalDramaStoryboardPanel
         {...(baseProps({
@@ -130,9 +138,9 @@ describe("VerticalDramaStoryboardPanel — native audio direction toggle (task #
     );
 
     expect(
-      screen.getByTestId("vd-storyboard-native-audio-switch").getAttribute(
-        "aria-checked"
-      )
+      (
+        await screen.findByTestId("vd-storyboard-native-audio-switch")
+      ).getAttribute("aria-checked")
     ).toBe("false");
   });
 });

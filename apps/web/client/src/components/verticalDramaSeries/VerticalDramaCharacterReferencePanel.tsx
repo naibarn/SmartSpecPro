@@ -184,6 +184,34 @@ export function VerticalDramaCharacterReferencePanel({
     { enabled: Boolean(characterId) }
   );
   const numericCharacterId = Number(characterId);
+  /** IDENTITY-SAFE swap gallery (user rule, 2026-07-18): a reference swap may
+   * only offer images that are THE SAME PERSON as the selected primary —
+   * i.e. the character's own approved images plus its "looks" (outfit/
+   * age-stage variant rows, which share the face by design). It must NEVER
+   * offer `role === "portrait_candidate"` assets: those are the FIRST-BATCH
+   * casting options, deliberately generated as clearly DIFFERENT people, and
+   * only the chosen one was re-roled to `primary_portrait` on selection
+   * (`verticalDramaCharacterStock.ts` settle). Swapping to an unselected
+   * candidate silently recasts the shot with a different human. */
+  const swapCharacterFamilyIds = (() => {
+    if (!Number.isFinite(numericCharacterId)) return new Set<string>();
+    const characters = (manifestQuery.data?.characters ?? []) as Array<{
+      characterId: string;
+      parentCharacterId?: string | null;
+    }>;
+    const self = characters.find(
+      c => String(c.characterId) === String(numericCharacterId)
+    );
+    // Look-family root: the base character (a variant's parent, else itself).
+    const rootId = self?.parentCharacterId ?? String(numericCharacterId);
+    const family = new Set<string>([String(numericCharacterId), String(rootId)]);
+    for (const c of characters) {
+      if (c.parentCharacterId != null && String(c.parentCharacterId) === String(rootId)) {
+        family.add(String(c.characterId));
+      }
+    }
+    return family;
+  })();
   const characterAssets = (
     (manifestQuery.data?.manifest?.assets ?? []) as Array<{
       assetLinkId: string;
@@ -196,8 +224,9 @@ export function VerticalDramaCharacterReferencePanel({
   ).filter(
     a =>
       Number.isFinite(numericCharacterId) &&
-      String(a.characterId) === String(numericCharacterId) &&
-      Boolean(a.mediaAssetId)
+      swapCharacterFamilyIds.has(String(a.characterId)) &&
+      Boolean(a.mediaAssetId) &&
+      a.role !== "portrait_candidate"
   );
 
   // Default to the character's own gallery the moment it has at least one

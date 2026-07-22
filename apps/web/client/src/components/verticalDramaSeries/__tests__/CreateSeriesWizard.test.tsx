@@ -15,6 +15,7 @@ const mockUseTenantFeatureFlag = vi.fn();
 const mockSeriesListQuery = vi.fn();
 const mockGetSeriesQuery = vi.fn();
 const mockGetSeriesMemoryQuery = vi.fn();
+const mockPlanningModelsQuery = vi.fn();
 const mockCarryOverMutate = vi.fn();
 const mockSpecialEditionMutate = vi.fn();
 const mockUploadMutate = vi.fn();
@@ -51,6 +52,9 @@ vi.mock("@/lib/trpc", () => ({
       list: { useQuery: () => mockSeriesListQuery() },
       get: { useQuery: () => mockGetSeriesQuery() },
       getSeriesMemory: { useQuery: () => mockGetSeriesMemoryQuery() },
+      listQualityPlanningModels: {
+        useQuery: () => mockPlanningModelsQuery(),
+      },
       proposeSeasonCarryOver: {
         useMutation: (opts: { onError?: (err: unknown) => void } = {}) => ({
           mutate: (input: unknown) => {
@@ -227,6 +231,7 @@ beforeEach(() => {
   mockSeriesListQuery.mockReturnValue({ data: { series: [] }, isLoading: false });
   mockGetSeriesQuery.mockReturnValue({ data: undefined, isLoading: false });
   mockGetSeriesMemoryQuery.mockReturnValue({ data: undefined, isLoading: false });
+  mockPlanningModelsQuery.mockReturnValue({ data: [], isLoading: false });
   mockCarryOverMutationState = { data: undefined, isPending: false };
   mockSpecialEditionMutationState = { data: undefined, isPending: false };
   mockUploadMutate.mockResolvedValue({
@@ -768,7 +773,10 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     );
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ userPremise: "โจทย์นี้ต้องไม่หาย" })
+      expect.objectContaining({
+        userPremise: "โจทย์นี้ต้องไม่หาย",
+        genre: "sci_fi_mecha",
+      })
     );
   });
 
@@ -813,47 +821,55 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
     );
   });
 
-  it("no premise + 0 presets: the CTA stays disabled with the legacy label, and the stale '2 preset minimum' copy is gone from the tree", () => {
+  it("no premise + 0 presets: basics-only synthesis is enabled and forwards basic facts", () => {
     renderWizard();
 
     const button = screen.getByRole("button", {
-      name: /ให้ AI ผสมเป็น Preset/,
+      name: /ให้ AI สร้างทั้งหมดให้/,
     });
-    expect(button).toBeDisabled();
-    // The pre-Phase-3 hard-coded toast copy claimed a 2-preset minimum even
-    // when a premise could satisfy the gate on its own — that copy must not
-    // appear anywhere in the rendered step.
-    expect(
-      screen.queryByText(/เลือกอย่างน้อย 2 preset/)
-    ).not.toBeInTheDocument();
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedPresetIds: [],
+        selectedCategories: [],
+        selections: [],
+        userPremise: undefined,
+        targetEpisodeCount: 10,
+        audienceAgeRating: "18plus",
+      })
+    );
   });
 
   /* ------------------------------------------------------------------ */
   /* CTA discoverability follow-up (2026-07-17)                          */
   /* ------------------------------------------------------------------ */
 
-  it("no premise + 0 presets: the disabled CTA explains itself inline instead of being silently disabled", () => {
-    // This is the exact failure the user reported: a disabled button with no
-    // stated reason. `resolveCreateSeriesPresetAction`'s `blockedReason` must
-    // now render next to the CTA, not just fire as a toast if clicked.
+  it("no premise + 0 presets: copy makes clear that presets are optional", () => {
     renderWizard();
     const button = screen.getByRole("button", {
-      name: /ให้ AI ผสมเป็น Preset/,
+      name: /ให้ AI สร้างทั้งหมดให้/,
     });
-    expect(button).toBeDisabled();
-    expect(screen.getByRole("note")).toHaveTextContent(
-      "พิมพ์โจทย์เรื่องที่อยากได้ หรือเลือก preset อย่างน้อย 2 แบบก่อนให้ AI ช่วย"
-    );
+    expect(button).toBeEnabled();
+    expect(
+      screen.getByText(/ไม่ต้องเลือก preset ก็ได้/)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
   });
 
-  it("typing a premise clears the blocked-state explanation (the action is no longer blocked)", () => {
+  it("typing a premise switches the basics-only action to the premise-primary action", () => {
     renderWizard();
-    expect(screen.getByRole("note")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /ให้ AI สร้างทั้งหมดให้/ })
+    ).toBeInTheDocument();
 
     const textarea = getPremiseTextarea();
     fireEvent.change(textarea, { target: { value: "มีโจทย์แล้ว" } });
 
-    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /ให้ AI สร้างโครงเรื่องจากโจทย์/ })
+    ).toBeInTheDocument();
   });
 
   it("renders the primary CTA directly under the premise textarea (hero), ahead of the optional preset rail in document order — never both at once", () => {
@@ -911,5 +927,84 @@ describe("CreateSeriesWizard — User Premise (F132A)", () => {
       target: { value: "เรื่องย่อที่เขียนเอง" },
     });
     expect(loglineTextarea.value).toBe("เรื่องย่อที่เขียนเอง");
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Manual LLM model pin at creation time (mirrors the Settings-tab picker)    */
+/* -------------------------------------------------------------------------- */
+
+describe("CreateSeriesWizard — LLM model pin at creation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSynthesizeMutationState = { data: undefined, isPending: false };
+    mockListGenrePresetsQuery.mockReturnValue({
+      data: { presets: [presetOne, presetTwo] },
+      isLoading: false,
+    });
+    mockListProductsQuery.mockReturnValue({ data: [], isLoading: false });
+    mockPlanningModelsQuery.mockReturnValue({
+      data: [
+        { modelId: "google/gemini-3.1-flash-lite-preview", label: "Google — Gemini 3.1 Flash Lite Preview" },
+        { modelId: "anthropic/claude-quality-large", label: "Anthropic — Claude Quality Large" },
+      ],
+      isLoading: false,
+    });
+  });
+
+  function fillTitleAndCreate(title: string) {
+    const titleLabel = screen.getByText("ชื่อซีรีย์ *");
+    const titleInput = titleLabel
+      .closest("div")
+      ?.querySelector("input") as HTMLInputElement;
+    fireEvent.change(titleInput, { target: { value: title } });
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบและสร้าง/ }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /สร้างซีรีย์และเนื้อเรื่องเต็ม/ })
+    );
+  }
+
+  it("renders the Automatic option plus every mocked listQualityPlanningModels row", () => {
+    renderWizard();
+    const trigger = screen.getByTestId("vd-wizard-default-llm-model");
+    fireEvent.click(trigger);
+
+    // The trigger's own `SelectValue` already renders this text (it's the
+    // pre-selected default), so once opened there are 2 matches (trigger +
+    // dropdown item) — `getAllByText` avoids a false "multiple elements"
+    // failure that `getByText` would throw here.
+    expect(
+      screen.getAllByText("อัตโนมัติ (เลือกโมเดลที่ดีที่สุดให้อัตโนมัติ)").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByText("Google — Gemini 3.1 Flash Lite Preview")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Anthropic — Claude Quality Large")
+    ).toBeInTheDocument();
+  });
+
+  it("untouched (left on Automatic): create payload sends defaultModelId: null — byte-identical to before this field existed", () => {
+    renderWizard();
+    fillTitleAndCreate("Automatic Series");
+
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultModelId: null })
+    );
+  });
+
+  it("after picking a specific model from the dropdown, create payload sends that modelId", () => {
+    renderWizard();
+    const trigger = screen.getByTestId("vd-wizard-default-llm-model");
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByText("Anthropic — Claude Quality Large"));
+
+    fillTitleAndCreate("Pinned Model Series");
+
+    expect(mockCreateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultModelId: "anthropic/claude-quality-large",
+      })
+    );
   });
 });

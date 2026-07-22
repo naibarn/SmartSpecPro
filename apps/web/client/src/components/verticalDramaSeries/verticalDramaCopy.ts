@@ -108,6 +108,20 @@ export const verticalDramaCopy = {
   sidebarExpand: { th: "ขยายแถบด้านข้าง", en: "Expand sidebar" },
   sidebarEmpty: { th: "ไม่พบโปรเจกต์ที่ตรงกัน", en: "No matching projects" },
   sidebarError: { th: "โหลดรายการไม่สำเร็จ", en: "Failed to load projects" },
+  /**
+   * Lineage-aware sidebar filter chips (findable-fast fix, added 2026-07-18,
+   * `planning/vd-series-memory-and-lineage/plan.md` follow-up). Default chip
+   * is "main" — root stories only, so a heavy special-edition count never
+   * buries the main story list. See `resolveSidebarSeriesView` in
+   * `VerticalDramaShell.tsx` for the filtering rules these labels attach to.
+   */
+  sidebarFilterGroupLabel: {
+    th: "ตัวกรองโปรเจกต์",
+    en: "Project filter",
+  },
+  sidebarFilterMain: { th: "เรื่องหลัก", en: "Main stories" },
+  sidebarFilterSpecial: { th: "ตอนพิเศษ", en: "Special editions" },
+  sidebarFilterAll: { th: "ทั้งหมด", en: "All" },
   saveAsPreset: { th: "บันทึกเป็น Preset", en: "Save as preset" },
   saveAsPresetDialogTitle: {
     th: "บันทึกซีรีย์นี้เป็น Preset",
@@ -853,6 +867,49 @@ export const seasonNumberFieldCopy = {
   label: { th: "ภาคที่", en: "Season number" },
 } as const;
 
+/**
+ * Create-Series wizard — no preset/no premise path. Defaults such as locale,
+ * audience tier, and Sub-episode count are already useful planning facts, so
+ * the primary action remains available even when the creator leaves every
+ * optional creative field blank.
+ */
+export const createSeriesNoSeedActionCopy = {
+  label: {
+    th: "ให้ AI สร้างทั้งหมดให้",
+    en: "Let AI build it all",
+  },
+  optionalPresetHint: {
+    th: "ไม่ต้องเลือก preset ก็ได้ — กด “ให้ AI สร้างทั้งหมดให้” เพื่อสร้าง draft จากข้อมูลพื้นฐาน แล้วนำไปเติมโครงเรื่อง ตัวละคร และวิชวลไบเบิลทุกแท็บ",
+    en: "No preset needed — choose “Let AI build it all” to create a draft from the basic setup and fill the story, characters, and visual-bible tabs.",
+  },
+  blockedReason: {
+    th: "ไม่ต้องเลือก preset ก็ได้ — พิมพ์โจทย์ 1 บรรทัดเพื่อดูตัวอย่างก่อน หรือกด 'ถัดไป' จนถึงแท็บสุดท้ายแล้วกด 'สร้าง' ให้ AI คิดเนื้อเรื่องให้ทั้งหมด",
+    en: "No preset needed — type a one-line premise to preview, or click Next to the last tab and press Create to let AI build the whole story.",
+  },
+} as const;
+
+/**
+ * Create-Series wizard's LLM-model-pin picker (mirrors
+ * `VerticalDramaSettingsTab`'s own "Settings" tab field of the same name/
+ * copy) — lets the user pin `defaultModelId` at creation time for ALL create
+ * modes (new / sequel / special edition), same `AUTOMATIC_LLM_MODEL_VALUE`
+ * sentinel convention re-declared locally in `CreateSeriesWizard.tsx`.
+ */
+export const defaultLlmModelFieldCopy = {
+  label: {
+    th: "โมเดล LLM สำหรับสร้างเนื้อหาละคร (แต่งบท/ตัวละคร/storyboard)",
+    en: "LLM model for drama content generation (script/characters/storyboard)",
+  },
+  automatic: {
+    th: "อัตโนมัติ (เลือกโมเดลที่ดีที่สุดให้อัตโนมัติ)",
+    en: "Automatic (best model auto-selected)",
+  },
+  helper: {
+    th: "มีผลกับทุกขั้นตอนของซีรีย์นี้ที่ใช้ LLM — แต่งบท, วิเคราะห์/สร้างตัวละคร, storyboard และอื่นๆ ตั้งครั้งเดียวใช้ได้ทั้งหมด",
+    en: "Applies to every LLM-driven step of this series — script writing, character analysis/generation, storyboard, and more. Set it once, it covers everything.",
+  },
+} as const;
+
 export const genreLockedHintCopy = {
   th: "แนวเรื่องสืบทอดจากซีรีส์ต้นฉบับ — เปลี่ยนแนวเรื่องไม่ได้ (ชื่อเรื่องตั้งไปแล้ว)",
   en: "Genre is inherited from the parent series and cannot be changed here.",
@@ -964,6 +1021,18 @@ export function specialEditionBadgeText(
   return lang === "th"
     ? `ภาคพิเศษ ของ ${parentTitle}`
     : `Special edition of ${parentTitle}`;
+}
+
+/**
+ * "+N ภาค" — the collapsed count badge on a main story's season-expander in
+ * the sidebar (`VerticalDramaShell.tsx`'s "เรื่องหลัก" filter chip). Only
+ * ever rendered when a main row has 1+ sequel rows pointing at it.
+ */
+export function sidebarChildSeasonsCountText(
+  lang: VerticalDramaLang,
+  count: number
+): string {
+  return lang === "th" ? `+${count} ภาค` : `+${count} season${count === 1 ? "" : "s"}`;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -1,7 +1,7 @@
 /**
  * Vertical Drama Series — final-prompt quality control (hard length caps).
  *
- * Enforces `VD_IMAGE_PROMPT_MAX` (3500 chars) / `VD_VIDEO_PROMPT_MAX` (2000
+ * Enforces `VD_IMAGE_PROMPT_MAX` (3800 chars) / `VD_VIDEO_PROMPT_MAX` (2000
  * chars) on any FINAL prompt string BEFORE it is used for real generation or
  * persisted/displayed in the UI. When a prompt is already within its cap this
  * is a zero-cost, zero-LLM-call no-op (`refined: false`, `creditsUsed: 0`) —

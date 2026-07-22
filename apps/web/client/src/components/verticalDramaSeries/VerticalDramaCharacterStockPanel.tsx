@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Clock,
   Grid3x3,
+  Copy,
   ImagePlus,
   Loader2,
   Merge,
@@ -5517,11 +5518,20 @@ export function VerticalDramaCharacterStockPanel({
                                 padding={2}
                                 variant={selected ? "blue" : "muted"}
                               >
-                                <span
-                                  role="radio"
-                                  aria-checked={selected}
-                                  className="block text-center text-sm font-semibold"
-                                >
+                                {/* Plain display span — MUST NOT carry an
+                                  interactive role. `SelectableCard` makes the
+                                  whole card clickable via `useClickableContainer`,
+                                  which treats any child matching
+                                  `[role="radio"]`/button/etc. as a nested
+                                  interactive element and DELIBERATELY swallows
+                                  the container click for it. A `role="radio"`
+                                  here therefore ate every click that landed on
+                                  the number (i.e. the obvious target), so
+                                  changing the count "was very hard" — you could
+                                  only hit the thin card padding around it.
+                                  Accessibility is already provided by the
+                                  card's own hidden checkbox (`aria-label`). */}
+                                <span className="block text-center text-sm font-semibold">
                                   {count}
                                 </span>
                               </SelectableCard>
@@ -5983,10 +5993,62 @@ export function VerticalDramaCharacterStockPanel({
                                                     : t(lang, "เลือกได้", "Available")}
                                           </Badge>
                                         </header>
-                                        {candidate.portraitPrompt && isPreviewOnly && (
-                                          <p className="line-clamp-4 text-[11px] text-muted-foreground">
-                                            {candidate.portraitPrompt}
-                                          </p>
+                                        {candidate.portraitPrompt && (
+                                          <div className="space-y-1">
+                                            {/* `portraitPrompt` is the FULL prompt
+                                              actually sent to the image model (the
+                                              router submits it verbatim); the text
+                                              in the card body above is only the
+                                              human-readable `visualIdentitySummary`.
+                                              Clamped to 4 lines for layout — the
+                                              copy button always copies the FULL
+                                              string, and stays available even after
+                                              generation so the prompt can be reused
+                                              in another tool. */}
+                                            {isPreviewOnly && (
+                                              <p className="line-clamp-4 text-[11px] text-muted-foreground">
+                                                {candidate.portraitPrompt}
+                                              </p>
+                                            )}
+                                            <Button
+                                              type="button"
+                                              size="sm"
+                                              variant="ghost"
+                                              className="h-6 w-full gap-1 text-[11px] text-muted-foreground"
+                                              onClick={async () => {
+                                                try {
+                                                  await navigator.clipboard.writeText(
+                                                    candidate.portraitPrompt ?? ""
+                                                  );
+                                                  toast.success(
+                                                    t(
+                                                      lang,
+                                                      "คัดลอก prompt เต็มแล้ว",
+                                                      "Full prompt copied"
+                                                    )
+                                                  );
+                                                } catch {
+                                                  toast.error(
+                                                    t(
+                                                      lang,
+                                                      "คัดลอกไม่สำเร็จ",
+                                                      "Copy failed"
+                                                    )
+                                                  );
+                                                }
+                                              }}
+                                            >
+                                              <Copy
+                                                aria-hidden="true"
+                                                className="h-3 w-3"
+                                              />
+                                              {t(
+                                                lang,
+                                                "คัดลอก prompt เต็ม",
+                                                "Copy full prompt"
+                                              )}
+                                            </Button>
+                                          </div>
                                         )}
                                         <Button
                                           type="button"

@@ -274,7 +274,7 @@ shot.
 
 ## Prompt length limit — MANDATORY
 
-Every `start_frame_requests[].prompt` MUST be **3500 characters or fewer**.
+Every `start_frame_requests[].prompt` MUST be **3800 characters or fewer**.
 Write vivid, specific cinematic language within that budget — do not pad with
 repeated adjectives or restate the same detail in multiple phrasings. If a
 shot's full description would exceed the limit, prioritize (in order):

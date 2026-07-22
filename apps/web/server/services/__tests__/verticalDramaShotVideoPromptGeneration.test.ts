@@ -639,8 +639,16 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
 
     expect(mockExecute).toHaveBeenCalledTimes(2);
     // Falls back to the FIRST (original) outcome rather than the still-
-    // non-compliant retry, and never throws.
-    expect(result.prompt).toBe("His mouth moves as if speaking the warning line naturally.");
+    // non-compliant retry, and never throws. The skill-first stitching gate
+    // (`planning/vd-video-prompt-skill-first/plan.md` Phase 3a) still
+    // appends the deterministic dialogue-verbatim safety net on top of that
+    // original text, since neither attempt embedded the line verbatim — the
+    // exact same contract the sibling "still applies the deterministic
+    // safety net" coverage in `verticalDramaVideoMotionPromptGeneration
+    // .test.ts` asserts for this scenario.
+    expect(result.prompt).toContain("His mouth moves as if speaking the warning line naturally.");
+    expect(result.prompt).toContain("Native dialogue (verbatim)");
+    expect(result.prompt).toContain('"หยุดนะ"');
   });
 
   it("does NOT trigger the compliance retry when the model has no native audio (mouth-movement-only prose is correct there)", async () => {
@@ -838,9 +846,13 @@ describe("generateVerticalDramaShotVideoPrompt — duration-aware prompt (spec �
       expect(result.audioDirection).toBe(
         "Door slams shut; distant rain patters against the window.",
       );
-      expect(result.prompt).toContain(
-        "SFX cues: Door slams shut; distant rain patters against the window.",
-      );
+      // Sound-direction ownership fix (recorded gap 4, 2026-07-22) — this
+      // function no longer appends an SFX tail onto `prompt` itself (the
+      // skill now writes the sound clause into `prompt` directly; this mock
+      // doesn't simulate that, so the returned prompt is exactly what the
+      // mocked model returned, byte-for-byte).
+      expect(result.prompt).toBe("Camera holds steady.");
+      expect(result.prompt).not.toContain("SFX cues:");
     });
 
     it("leaves audioDirection undefined when enabled + supported but the model's response has no audio_direction field", async () => {
@@ -1035,6 +1047,324 @@ describe("generateVerticalDramaShotVideoPrompt — duration-aware prompt (spec �
       const textPart = (call.messages[1].content as any[]).find((p) => p.type === "text");
       expect(textPart.text).not.toContain("Episode hook");
       expect(textPart.text).not.toContain("Episode retention loop");
+    });
+  });
+});
+
+/**
+ * Model-family-aware, vision-grounded video prompt quality upgrade
+ * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the
+ * `TARGET VIDEO MODEL` fact block, `frame_analysis` parsing/normalization,
+ * the position-anchor corrective-retry extension, and the SFX budget-aware
+ * concat. Own top-level `describe`/`beforeEach` (mirrors the file's existing
+ * per-block setup convention) so this coverage never depends on state left
+ * behind by the sibling blocks above.
+ */
+describe("model-family-aware, vision-grounded video prompt quality upgrade (planning/vd-video-prompt-model-family-quality/plan.md)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockHasEnoughCredits.mockResolvedValue(true);
+    mockIsAllowed.mockReturnValue(true);
+    mockCalculateCredits.mockReturnValue(5);
+    mockDeductCredits.mockResolvedValue(undefined as any);
+    mockResolveSkillDirCandidates.mockReturnValue([
+      "/fake/skills/vertical-drama-shot-video-prompt",
+    ]);
+    mockResolveSkillManifestPath.mockReturnValue(
+      "/fake/skills/vertical-drama-shot-video-prompt/skill.md",
+    );
+    mockExistsSync.mockReturnValue(true);
+    mockReadFileSync.mockReturnValue("---\nname: test\n---\nSystem prompt body" as any);
+    mockParseSkillFile.mockReturnValue({
+      metadata: {} as any,
+      content: "System prompt body",
+    });
+    mockLoadEnabledLlmModelRows.mockResolvedValue([
+      { modelId: "vision-model-1" } as any,
+    ]);
+    mockSelectBestLlmModel.mockReturnValue("vision-model-1");
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: false,
+      verticalDramaReady: true,
+    });
+  });
+
+  describe("TARGET VIDEO MODEL fact block", () => {
+    it("emits 'TARGET VIDEO MODEL' + 'family: veo' for a veo model row (baseParams' default higgsfield/veo3_1_lite)", async () => {
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(baseParams());
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p: any) => p.type === "text");
+      expect(textPart.text).toContain("TARGET VIDEO MODEL");
+      expect(textPart.text).toContain("family: veo");
+    });
+
+    it("emits 'family: grok' + 'negative_prompt_supported: no' for a grok model row", async () => {
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          selectedVideoModelId: "grok-imagine-video-1.5",
+          selectedVideoModel: {
+            type: "video",
+            aspectRatios: ["9:16"],
+            configJson: {},
+            provider: "hermes_grok",
+            aliases: [],
+            id: "grok-imagine-video-1.5",
+          },
+        }),
+      );
+
+      const call = mockExecute.mock.calls[0][0];
+      const textPart = (call.messages[1].content as any[]).find((p: any) => p.type === "text");
+      expect(textPart.text).toContain("family: grok");
+      expect(textPart.text).toContain("negative_prompt_supported: no");
+    });
+
+    it("returns the resolved family on the result even when the fact block's request is byte-simple (solo shot, no established characters)", async () => {
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(baseParams());
+
+      expect(result.family).toBe("veo");
+    });
+
+    it("requests frame_analysis (REQUIRED line) only when 2+ characters are established, and omits it for a solo shot", async () => {
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          characterReferenceImages: [
+            { characterKey: "character-1", name: "ฝ้าย", url: "https://example.com/portrait-1.png" },
+            { characterKey: "character-2", url: "https://example.com/portrait-2.png" },
+          ],
+        }),
+      );
+      const establishedCall = mockExecute.mock.calls[0][0];
+      const establishedText = (establishedCall.messages[1].content as any[]).find(
+        (p: any) => p.type === "text",
+      ).text;
+      expect(establishedText).toContain("frame_analysis: REQUIRED");
+
+      mockExecute.mockClear();
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+      await generateVerticalDramaShotVideoPrompt(baseParams());
+      const soloCall = mockExecute.mock.calls[0][0];
+      const soloText = (soloCall.messages[1].content as any[]).find(
+        (p: any) => p.type === "text",
+      ).text;
+      expect(soloText).not.toContain("frame_analysis: REQUIRED");
+    });
+  });
+
+  describe("frame_analysis parsing/normalization", () => {
+    it("parses and normalizes frame_analysis from the LLM response (trims strings, drops empty entries)", async () => {
+      mockExecute.mockResolvedValue(
+        successResponse({
+          prompt: "Camera holds steady.",
+          dialogue: [],
+          frame_analysis: {
+            people: [
+              { name: "  ฝ้าย  ", position: " left ", note: "foreground" },
+              { name: "character-2", position: "right" },
+              { name: "", position: "center" },
+            ],
+            position_source: "image",
+          },
+        }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          characterReferenceImages: [
+            { characterKey: "character-1", name: "ฝ้าย", url: "https://example.com/portrait-1.png" },
+            { characterKey: "character-2", url: "https://example.com/portrait-2.png" },
+          ],
+        }),
+      );
+
+      // Trimmed, and the empty-name entry is dropped by normalization.
+      expect(result.frameAnalysis).toEqual({
+        people: [
+          { name: "ฝ้าย", position: "left" },
+          { name: "character-2", position: "right" },
+        ],
+        positionSource: "image",
+      });
+    });
+
+    it("leaves frameAnalysis undefined when the LLM response has no usable frame_analysis field", async () => {
+      mockExecute.mockResolvedValue(
+        successResponse({ prompt: "Camera holds steady.", dialogue: [] }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(baseParams());
+
+      expect(result.frameAnalysis).toBeUndefined();
+    });
+  });
+
+  describe("position-anchor compliance retry (item C)", () => {
+    it("triggers exactly one corrective retry (never a second) when a quoted dialogue line lacks a nearby name/position anchor, then ACCEPTS the result regardless (fail-open) and surfaces a warning", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      // BOTH attempts return the SAME poorly-anchored (but verbatim-quoted)
+      // prompt — the retry does NOT fix it, proving the fail-open "accept
+      // regardless" contract rather than a throw/block.
+      mockExecute.mockResolvedValue(
+        successResponse({
+          prompt: 'Someone says quietly: "อย่าเข้ามา" before turning away.',
+          dialogue: [{ lineTh: "อย่าเข้ามา", characterKey: "หนูนา" }],
+        }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          characterReferenceImages: [
+            { characterKey: "character-1", name: "หนูนา", url: "https://example.com/portrait-1.png" },
+            { characterKey: "character-2", name: "ตัวร้าย", url: "https://example.com/portrait-2.png" },
+          ],
+          shotContext: {
+            description: "desc",
+            camera: "cam",
+            emotion: "urgent",
+            dialogueLines: [
+              { lineTh: "อย่าเข้ามา", characterKey: "หนูนา", speakerName: "หนูนา" },
+            ],
+          },
+        }),
+      );
+
+      // Exactly ONE corrective retry (cost policy) — never a second LLM pass.
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      const retryCall = mockExecute.mock.calls[1][0];
+      const retryText = (retryCall.messages[1].content as any[]).find(
+        (p: any) => p.type === "text",
+      ).text;
+      expect(retryText).toContain("POSITION-ANCHOR CORRECTION");
+      expect(retryText).toContain("อย่าเข้ามา");
+
+      // Fail-open: generation is never blocked/thrown over a still-imperfect
+      // anchor — the result is accepted and a warning is surfaced instead.
+      expect(result.prompt).toContain("อย่าเข้ามา");
+      expect(result.warnings?.length).toBeGreaterThan(0);
+      expect(result.warnings?.[0]).toContain("position-anchor");
+    });
+
+    it("does NOT trigger the position-anchor retry when fewer than 2 characters are established, even with native audio + dialogue", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: true,
+        verticalDramaReady: true,
+      });
+      mockExecute.mockResolvedValue(
+        successResponse({
+          prompt: 'Someone says quietly: "อย่าเข้ามา" before turning away.',
+          dialogue: [{ lineTh: "อย่าเข้ามา", characterKey: "หนูนา" }],
+        }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseParams({
+          shotContext: {
+            description: "desc",
+            camera: "cam",
+            emotion: "urgent",
+            dialogueLines: [{ lineTh: "อย่าเข้ามา", characterKey: "หนูนา" }],
+          },
+        }),
+      );
+
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+      expect(result.warnings).toBeUndefined();
+    });
+  });
+
+  // Recorded gap-4 fix (2026-07-22) — this block used to be "SFX budget-
+  // aware concat (item E)" and asserted a LENGTH-DEPENDENT code-side concat
+  // (skip the tail over 2000 chars, append it when it fit). That concat is
+  // now deleted entirely: the skill writes the closing sound clause
+  // directly into `prompt` itself (budget-guarded by the skill's own rule),
+  // and this function must NEVER fold `audio_direction` onto `prompt`
+  // itself, regardless of length — doing so used to double the sound
+  // direction in the actual provider-submitted prompt, because
+  // `verticalDramaVideoPromptFormatter.ts`'s render-time formatter ALSO
+  // appended `clip.audioDirection` a second time (see that file's own test
+  // suite for the formatter-side half of this fix).
+  describe("sound-direction ownership fix (recorded gap 4, 2026-07-22) — no code-side SFX concat", () => {
+    it("never appends an SFX/ambient tail onto the returned prompt, even when the combined length would have fit the old 2000-char cap", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: false,
+        supportsNativeAudio: true,
+        verticalDramaReady: true,
+      });
+      mockExecute.mockResolvedValue(
+        successResponse({
+          prompt: "Camera holds steady.",
+          dialogue: [],
+          audio_direction: "Rain taps the window.",
+        }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseParams({ nativeAudioEnabled: true }),
+      );
+
+      expect(result.prompt).toBe("Camera holds steady.");
+      expect(result.prompt).not.toContain("SFX cues:");
+      // Still returned separately so the UI "เสียง:" block + audit trail can
+      // read it — unaffected by this fix.
+      expect(result.audioDirection).toBe("Rain taps the window.");
+    });
+
+    it("never appends an SFX/ambient tail even when the combined length would have exceeded the old 2000-char cap", async () => {
+      mockResolveVerticalDramaCapabilities.mockReturnValue({
+        supportsStartFrame: true,
+        maxReferenceImages: 3,
+        nativeAudioDialogue: false,
+        supportsNativeAudio: true,
+        verticalDramaReady: true,
+      });
+      const longBasePrompt = "A".repeat(1950);
+      const longAudioDirection = "B".repeat(200);
+      mockExecute.mockResolvedValue(
+        successResponse({
+          prompt: longBasePrompt,
+          dialogue: [],
+          audio_direction: longAudioDirection,
+        }),
+      );
+
+      const result = await generateVerticalDramaShotVideoPrompt(
+        baseParams({ nativeAudioEnabled: true }),
+      );
+
+      expect(result.prompt).toBe(longBasePrompt);
+      expect(result.prompt).not.toContain("SFX cues:");
+      expect(result.prompt.length).toBeLessThanOrEqual(2000);
+      expect(result.audioDirection).toBe(longAudioDirection);
     });
   });
 });

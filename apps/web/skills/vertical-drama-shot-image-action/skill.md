@@ -391,7 +391,7 @@ action):
 
 ## Prompt length limit — MANDATORY
 
-`prompt` MUST be **3500 characters or fewer** (the same hard cap used across every
+`prompt` MUST be **3800 characters or fewer** (the same hard cap used across every
 other Vertical Drama image-prompt skill in this pipeline). Write vivid, specific
 language within that budget — do not pad with repeated adjectives or restate the
 same detail in multiple phrasings. If a shot's scene content plus this action's

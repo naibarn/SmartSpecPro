@@ -10,6 +10,20 @@ import { z } from "zod";
 import type { VerticalDramaMemoryRetrievalPolicy } from "./memory";
 import type { VerticalDramaAssemblyManifest } from "./assembly";
 import { VERTICAL_DRAMA_DEFAULT_DURATION_PROFILE_ID } from "./assembly";
+// Model-family-aware, vision-grounded video prompt quality upgrade
+// (`planning/vd-video-prompt-model-family-quality/plan.md`) — type-only, the
+// resolver/label map themselves live in `videoPromptModelFamily.ts` and are
+// used by the server (fact block + persist stamping) and client (badge).
+import type { VideoPromptModelTarget } from "./videoPromptModelFamily";
+// Start-frame image-prompt two-mode switch
+// (`planning/vd-start-frame-prompt-modes/plan.md`) — type-only, mirroring
+// `VideoPromptModelTarget`'s import above; the resolver/skill-folder map
+// live in `imagePromptModelFamily.ts` and are used by the server (fact block
+// + persist stamping) and (later) the client (mode control + engine badge).
+import type {
+  VdImagePromptMode,
+  VdImagePromptModeStamp,
+} from "./imagePromptModelFamily";
 
 /* -------------------------------------------------------------------------- */
 /* Pipeline stages & warnings (spec §11.5)                                    */
@@ -461,6 +475,22 @@ export type VerticalDramaShotgrid = {
 export type VerticalDramaStartFramePlan = {
   mode: "single_frame_per_shot" | "contact_sheet_3x3_batch";
   selectedImageModelId: string;
+  /**
+   * Per-sub-episode start-frame image-prompt mode switch
+   * (`planning/vd-start-frame-prompt-modes/plan.md`) — which of the two
+   * per-shot start-frame prompt skills `generateShotStartFramePrompt`
+   * authors a shot's prompt with. `"auto"` (or absent, the default for
+   * every plan created before this field existed) resolves at generation
+   * time from the episode's selected image model family — GPT-family ->
+   * `policy_safe_rewrite`, everything else -> `cinematic_narrative` (see
+   * `resolveDefaultImagePromptMode` in `imagePromptModelFamily.ts`). An
+   * explicit `policy_safe_rewrite`/`cinematic_narrative` value always wins
+   * over that default and is remembered per sub-episode until changed via
+   * `setEpisodeImagePromptMode`. Never affects `generateShotReferenceFramePrompt`
+   * (supplementary reference frames), which always uses the legacy
+   * `vertical-drama-shot-start-frame-prompt` skill regardless of this field.
+   */
+  imagePromptMode?: VdImagePromptMode | "auto";
   frames: Array<{
     shotNumber: number;
     imagePrompt: string;
@@ -557,6 +587,41 @@ export type VerticalDramaStartFramePlan = {
      * `[]` (fully backward compatible).
      */
     angleGridAssetIds?: number[];
+    /**
+     * Which engine authored THIS frame's current `imagePrompt` (`planning/
+     * vd-start-frame-prompt-modes/plan.md`) — present only when a
+     * `generateShotStartFramePrompt` call resolved and used one of the two
+     * new modes; absent for a frame still carrying a legacy-skill-authored
+     * or never-regenerated prompt (no false claims). Mirrors the video
+     * path's `promptModelTarget` badge convention. The render path
+     * (`generateStartFrameImage`'s preset-visual-identity append) reads this
+     * stamp to skip its code-side positive-text append for a stamped frame —
+     * the skill already wove those fragments into its own prose, per the
+     * "NO CODE-SIDE PROMPT APPENDING" rule.
+     */
+    promptMode?: VdImagePromptModeStamp;
+    /**
+     * Mode 1's top-level `safety_adjustments` OR mode 2's
+     * `analysis_summary.safety_adjustments` — each entry an
+     * `"original → rewritten"` pair the skill applied to keep the prompt
+     * policy-safe. Display/audit only; absent when the mode returned none
+     * (nothing needed rewriting) or the frame predates this field.
+     */
+    promptSafetyAdjustments?: string[];
+    /**
+     * Mode 2 (`cinematic_narrative`)'s director's-notes extras, normalized
+     * and trimmed to a display-only subset of its full `analysis_summary` +
+     * self-check output — never required by the renderer or the reference-
+     * mapping validator. Absent for mode 1 frames (no `analysis_summary`)
+     * and for any frame predating this field.
+     */
+    promptAnalysis?: {
+      storyMeaning?: string;
+      primaryEmotion?: string;
+      decisiveMoment?: string;
+      qualityScore?: number;
+      qualityFlags?: string[];
+    };
   }>;
 };
 
@@ -879,6 +944,59 @@ export type VerticalDramaMotionPromptPack = {
      * for this clip (or predates this task).
      */
     audioDirection?: string;
+    /**
+     * Model-family-aware, vision-grounded video prompt quality upgrade
+     * (`planning/vd-video-prompt-model-family-quality/plan.md`) — which
+     * video model family (grok/veo/seedance/other) this clip's `prompt` was
+     * shaped for at generation time, stamped by
+     * `generateVerticalDramaShotVideoPrompt`/
+     * `generateVerticalDramaShotVideoPromptSpeakerSwitch`'s router callers
+     * (both persist sites) so the storyboard UI can show a family badge and
+     * warn when the episode's currently-selected video model no longer
+     * matches. `undefined` for any clip generated before this task, or a
+     * legacy clip produced by the bulk motion-prompt-pack generator (out of
+     * scope for this task — see the plan's "Out of scope" section) — the
+     * badge simply renders nothing in that case.
+     */
+    promptModelTarget?: VideoPromptModelTarget;
+    /**
+     * Model-family-aware, vision-grounded video prompt quality upgrade
+     * (`planning/vd-video-prompt-model-family-quality/plan.md`) — the
+     * compact, normalized "who is where on screen" reading the generation
+     * LLM returned via the skill's `frame_analysis` output field (FRAME
+     * ANALYSIS FIRST section), when this shot had 2+ established characters.
+     * `people` is trimmed to at most 6 entries (name/position each ≤80
+     * chars); `positionSource` mirrors the skill's own
+     * `"image" | "image_prompt_text"` value verbatim (lenient — never
+     * enum-validated here, weak models may return other short strings).
+     * Debugging/future-UI aid only; never required for rendering.
+     * `undefined` when fewer than 2 characters were established, no vision
+     * was attached and the model returned nothing usable, or for any clip
+     * generated before this task.
+     */
+    frameAnalysis?: {
+      people: Array<{ name: string; position: string }>;
+      positionSource?: string;
+    };
+    /**
+     * Judged best-of-2 quality loop (`planning/vd-video-prompt-model-family-
+     * quality/plan.md` Phase 2) — compact record of how this clip's prompt
+     * was produced: `mode` is `"judged"` (the K=2-candidates-plus-judge loop
+     * ran) or `"single"` (the loop was skipped — `qualityLoop: false`, or
+     * one of the 2 candidates failed to generate so its survivor shipped
+     * unjudged); `candidates` is how many were generated (1 or 2); `verdict`
+     * is the judge's own `"accept" | "repair"` call, omitted when the judge
+     * was never reached or failed (fail-open); `repaired` is true only when
+     * a repair regeneration actually shipped (mechanically beat the
+     * original winner on hard facts). `undefined` for any clip generated
+     * before this task.
+     */
+    promptQuality?: {
+      mode: string;
+      candidates: number;
+      verdict?: string;
+      repaired: boolean;
+    };
     /**
      * Additive (2026-07-06 fix — completed video renders were never
      * persisted anywhere, only shown as a transient toast) — durable record
@@ -1236,7 +1354,7 @@ export type VerticalDramaEpisodeRun = {
  * shared here so client-side inline prompt editors can render the same
  * `n / VD_IMAGE_PROMPT_MAX` counter without duplicating the number.
  */
-export const VD_IMAGE_PROMPT_MAX = 3500;
+export const VD_IMAGE_PROMPT_MAX = 3800;
 
 /**
  * Hard character cap for any VIDEO prompt (motion prompt, formatted

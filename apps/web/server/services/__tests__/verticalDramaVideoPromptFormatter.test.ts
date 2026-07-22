@@ -487,7 +487,7 @@ describe("resolveProviderFamily", () => {
   });
 });
 
-describe("formatVideoClipRequest — audioDirection (task #36 — optional NATIVE AUDIO DIRECTION prompt option)", () => {
+describe("formatVideoClipRequest — audioDirection (task #36 — optional NATIVE AUDIO DIRECTION prompt option; recorded gap-4 fix, 2026-07-22: no longer appended into prompt)", () => {
   const veoModel = {
     id: "veo3/generate-veo-3-video-lite",
     type: "video" as const,
@@ -506,7 +506,7 @@ describe("formatVideoClipRequest — audioDirection (task #36 — optional NATIV
     expect(result.prompt).toBe(clip().prompt);
   });
 
-  it("appends audioDirection to the end of a silent (no-dialogue) clip's prompt", () => {
+  it("never appends audioDirection onto a silent (no-dialogue) clip's prompt — the skill now owns writing the sound clause into prompt itself", () => {
     const result = formatVideoClipRequest({
       clip: clip({
         startFrameAssetId: undefined,
@@ -517,12 +517,12 @@ describe("formatVideoClipRequest — audioDirection (task #36 — optional NATIV
       modelId: veoModel.id,
       model: veoModel,
     });
-    expect(result.prompt).toBe(
-      `${clip().prompt} Door slams shut; distant rain patters against the window.`,
-    );
+    // Byte-identical to the no-audioDirection case above: this field plays
+    // no role in the formatted prompt anymore.
+    expect(result.prompt).toBe(clip().prompt);
   });
 
-  it("appends audioDirection AFTER the dialogue clause (ordering: acting/dialogue direction first, ambient/SFX direction last)", () => {
+  it("never appends audioDirection after the dialogue clause — audioDirection plays no role in the formatted prompt at all", () => {
     const result = formatVideoClipRequest({
       clip: clip({ audioDirection: "Rain taps steadily on the glass." }),
       dialogueLines: [dialogueLine()],
@@ -530,19 +530,154 @@ describe("formatVideoClipRequest — audioDirection (task #36 — optional NATIV
       model: veoModel,
     });
     const dialogueIndex = result.prompt.indexOf("เราไม่ได้จบกันแค่นี้หรอกนะ");
-    const audioIndex = result.prompt.indexOf("Rain taps steadily on the glass.");
     expect(dialogueIndex).toBeGreaterThan(-1);
-    expect(audioIndex).toBeGreaterThan(dialogueIndex);
+    expect(result.prompt).not.toContain("Rain taps steadily on the glass.");
   });
 
-  it("appends audioDirection independent of provider family (generic/non-Veo model)", () => {
+  it("never appends audioDirection regardless of provider family (generic/non-Veo model)", () => {
     const result = formatVideoClipRequest({
       clip: clip({ audioDirection: "Footsteps echo on gravel." }),
       dialogueLines: [],
       modelId: "acme-video-1",
       model: { type: "video", provider: "acme", aliases: [] },
     });
-    expect(result.prompt).toContain("Footsteps echo on gravel.");
+    expect(result.prompt).not.toContain("Footsteps echo on gravel.");
+  });
+
+  // Coordinator-requested end-to-end double-append proof (recorded gap 4) —
+  // the realistic post-fix scenario: the skill already wrote its sound
+  // clause directly into `clip.prompt` at generation time, AND the SAME
+  // text is separately persisted on `clip.audioDirection` (for the UI
+  // "เสียง:" block + audit trail) — the formatted request must contain that
+  // sound text exactly ONCE, never twice.
+  it("no double-append end-to-end: clip.prompt already contains the skill-written sound clause + a set audioDirection carrying the SAME text -> the formatted request contains that text exactly once", () => {
+    const soundClause = "A kettle whistles softly in the background as rain taps the window.";
+    const result = formatVideoClipRequest({
+      clip: clip({
+        prompt: `${clip().prompt} ${soundClause}`,
+        startFrameAssetId: undefined,
+        audioDirection: soundClause,
+      }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    const occurrences = result.prompt.split(soundClause).length - 1;
+    expect(occurrences).toBe(1);
+  });
+});
+
+// Model-family-aware, vision-grounded video prompt quality upgrade
+// (`planning/vd-video-prompt-model-family-quality/plan.md`, item I) — the
+// persisted `clip.prompt` is already <= VD_VIDEO_PROMPT_MAX
+// (`ensurePromptWithinLimit`, enforced at the router's persist step, sound
+// clause included since the recorded gap-4 fix), but this function's OWN
+// prepend (start-frame grounding) and appends (dialogue/mouth-movement
+// clause, accent directive) can still push the RENDER-TIME formatted
+// request over that same cap.
+//
+// Recorded gap-4 fix (2026-07-22) removed the audioDirection tail entirely
+// (see the `audioDirection` describe block above), so the guard below no
+// longer has a single tail to trim — it now rolls back this function's OWN
+// remaining tiers one at a time, most-recently-added first (accent
+// directive -> dialogue/mouth-movement clause -> start-frame grounding),
+// and NEVER trims the base `clip.prompt` itself. Each test below PROBES the
+// real per-fixture tier overhead with a trivially short base prompt first,
+// then sizes a base prompt precisely around the 2000-char cap — this avoids
+// brittle hardcoded character counts that would silently drift out of sync
+// with the actual clause-building text.
+describe("formatVideoClipRequest — final VD_VIDEO_PROMPT_MAX tiered guard, recorded gap-4 fix (planning/vd-video-prompt-model-family-quality/plan.md, item I)", () => {
+  const veoModel = {
+    id: "veo3/generate-veo-3-video-lite",
+    type: "video" as const,
+    provider: "kie.ai",
+    aliases: ["veo 3.1 lite", "veo3-lite"],
+    configJson: {},
+  };
+
+  it("drops ONLY the accent directive when grounding + dialogue clause + accent directive together exceed VD_VIDEO_PROMPT_MAX, keeping grounding + dialogue clause + base intact", () => {
+    const line = dialogueLine();
+    const probe = formatVideoClipRequest({
+      clip: clip({ prompt: "X" }),
+      dialogueLines: [line],
+      modelId: veoModel.id,
+      model: veoModel,
+      thaiAccent: "standard_central_thai",
+    });
+    const overheadWithAccent = probe.prompt.length - 1;
+    const basePrompt = "C".repeat(2000 - overheadWithAccent + 40);
+
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: basePrompt }),
+      dialogueLines: [line],
+      modelId: veoModel.id,
+      model: veoModel,
+      thaiAccent: "standard_central_thai",
+    });
+
+    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+    expect(result.prompt).toContain(basePrompt);
+    expect(result.prompt).toContain("Use the attached first image");
+    expect(result.prompt).toContain(line.lineTh);
+    expect(result.prompt).not.toContain("Apply this delivery direction to every spoken line.");
+  });
+
+  it("drops the accent directive AND the dialogue clause when even grounding + dialogue clause alone exceeds VD_VIDEO_PROMPT_MAX, keeping grounding + base intact", () => {
+    const line = dialogueLine();
+    const probe = formatVideoClipRequest({
+      clip: clip({ prompt: "X" }),
+      dialogueLines: [line],
+      modelId: veoModel.id,
+      model: veoModel,
+      // No thaiAccent this time — isolates the grounding+dialogue-clause overhead.
+    });
+    const overheadNoAccent = probe.prompt.length - 1;
+    const basePrompt = "C".repeat(2000 - overheadNoAccent + 40);
+
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: basePrompt }),
+      dialogueLines: [line],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+    expect(result.prompt).toContain(basePrompt);
+    expect(result.prompt).toContain("Use the attached first image");
+    expect(result.prompt).not.toContain(line.lineTh);
+  });
+
+  it("drops the grounding prepend too when even grounding + base alone would exceed VD_VIDEO_PROMPT_MAX, leaving only the base prompt (which always fits on its own)", () => {
+    const probe = formatVideoClipRequest({
+      clip: clip({ prompt: "X" }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+    const groundingOverhead = probe.prompt.length - 1;
+    const basePrompt = "C".repeat(2000 - groundingOverhead + 40);
+
+    const result = formatVideoClipRequest({
+      clip: clip({ prompt: basePrompt }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt).toBe(basePrompt);
+    expect(result.prompt.length).toBeLessThanOrEqual(2000);
+  });
+
+  it("never involves clip.audioDirection in the guard at all — a set audioDirection has zero effect on the formatted prompt or its length, regardless of size", () => {
+    const result = formatVideoClipRequest({
+      clip: clip({ startFrameAssetId: undefined, audioDirection: "E".repeat(1900) }),
+      dialogueLines: [],
+      modelId: veoModel.id,
+      model: veoModel,
+    });
+
+    expect(result.prompt).toBe(clip().prompt);
   });
 });
 

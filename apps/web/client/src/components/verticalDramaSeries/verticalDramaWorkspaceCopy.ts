@@ -574,6 +574,19 @@ export const VD_COPY = {
     thaiAccentLabel: "Thai speech accent",
     videoPromptLanguageSaved: "Language settings saved.",
 
+    /* ---- Start-frame image-prompt engine mode
+       (planning/vd-start-frame-prompt-modes/plan.md) — per-sub-episode
+       select shown right after the prompt-language select; the two engine
+       labels are also reused (full form) for the "auto" hint line and
+       (short form) for the per-shot image-prompt card's engine badge. ---- */
+    imagePromptModeLabel: "Image prompt mode",
+    imagePromptModeLabelAutoTemplate: "Image prompt mode — Auto (using: {engine})",
+    imagePromptModeAuto: "Auto",
+    imagePromptModePolicySafe: "Synopsis-direct (policy-safe)",
+    imagePromptModeCinematic: "Cinematic narrative",
+    imagePromptModePolicySafeShort: "Synopsis-direct",
+    imagePromptModeCinematicShort: "Cinematic",
+
     /* ---- Native audio direction toggle (task #36, added 2026-07-09) ---- */
     nativeAudioToggleLabel:
       "Include SFX & ambient sound cues in video prompts (entire Sub-episode)",
@@ -891,6 +904,15 @@ export const VD_COPY = {
     characterCustomInstructionLabel: "Additional details (optional)",
     characterCustomInstructionPlaceholder:
       "e.g. front-facing, half-body, full-body",
+
+    /* ---- Video-prompt model-family badge + mismatch warning
+       (planning/vd-video-prompt-model-family-quality/plan.md) — shown on the
+       storyboard video-prompt card when the clip carries a
+       `promptModelTarget` (absent on legacy clips, which show neither). ---- */
+    videoPromptModelFamilyBadgeTitle:
+      "Video prompt was generated for this model",
+    videoPromptModelMismatchWarning:
+      "This video prompt was generated for {generated} but the current video model is {current} — regenerate the prompt for best results.",
   },
   th: {
     runDryRun: "รันแบบทดสอบ",
@@ -1255,6 +1277,17 @@ export const VD_COPY = {
     thaiAccentLabel: "สำเนียงพูดไทย",
     videoPromptLanguageSaved: "บันทึกการตั้งค่าภาษาแล้ว",
 
+    /* ---- โหมดเอนจินพรอมต์ภาพเริ่มต้นต่อตอนย่อย
+       (planning/vd-start-frame-prompt-modes/plan.md) ---- */
+    imagePromptModeLabel: "โหมดพรอมต์ภาพ",
+    imagePromptModeLabelAutoTemplate:
+      "โหมดพรอมต์ภาพ — อัตโนมัติ (กำลังใช้: {engine})",
+    imagePromptModeAuto: "อัตโนมัติ",
+    imagePromptModePolicySafe: "เรื่องย่อโดยตรง (ปลอดภัยตามนโยบาย)",
+    imagePromptModeCinematic: "ตีความเชิงภาพยนตร์",
+    imagePromptModePolicySafeShort: "เรื่องย่อโดยตรง",
+    imagePromptModeCinematicShort: "ตีความภาพยนตร์",
+
     /* ---- Native audio direction toggle (task #36, added 2026-07-09) ---- */
     nativeAudioToggleLabel:
       "รวมเสียงประกอบในพรอมต์วิดีโอทั้งตอนย่อย (SFX + บรรยากาศ)",
@@ -1544,6 +1577,12 @@ export const VD_COPY = {
     characterCustomInstructionLabel: "รายละเอียดเพิ่มเติม (ไม่บังคับ)",
     characterCustomInstructionPlaceholder:
       "เช่น หน้าตรง, ภาพครึ่งตัว, ภาพเต็มตัว",
+
+    /* ---- แบดจ์กลุ่มโมเดล + คำเตือนพรอมต์วิดีโอไม่ตรงโมเดล
+       (planning/vd-video-prompt-model-family-quality/plan.md) ---- */
+    videoPromptModelFamilyBadgeTitle: "พรอมต์วิดีโอนี้ถูกสร้างมาสำหรับโมเดลนี้",
+    videoPromptModelMismatchWarning:
+      "พรอมต์วิดีโอนี้ถูกสร้างมาสำหรับ {generated} แต่โมเดลวิดีโอปัจจุบันคือ {current} — แนะนำให้สร้างพรอมต์ใหม่เพื่อผลลัพธ์ที่ดีที่สุด",
   },
 } as const;
 

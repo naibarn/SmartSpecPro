@@ -105,6 +105,17 @@ import {
   type VerticalDramaQualityPolicy,
   type VerticalDramaQualityRepairGroup,
 } from "@shared/verticalDramaSeries/qualityPolicy";
+import { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
+export { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
+import {
+  VIDEO_PROMPT_MODEL_FAMILY_LABELS,
+  resolveVideoPromptTargetFamily,
+  type VideoPromptModelFamily,
+} from "@shared/verticalDramaSeries/videoPromptModelFamily";
+import {
+  resolveImagePromptTargetFamily,
+  resolveDefaultImagePromptMode,
+} from "@shared/verticalDramaSeries/imagePromptModelFamily";
 import {
   vdCopy,
   vdCopyWithCount,
@@ -228,6 +239,52 @@ async function downloadStoryboardMediaUrl(
     window.open(url, "_blank", "noopener,noreferrer");
   }
 }
+
+/** Best-effort label for a clip's `promptModelTarget.family`
+ *  (planning/vd-video-prompt-model-family-quality/plan.md) — the client
+ *  interface keeps `family` as a plain `string` (see
+ *  `VerticalDramaMotionPromptClipView`'s doc comment) for resilience to any
+ *  value the server might stamp before the client is redeployed, so this
+ *  safely looks it up against the known `VIDEO_PROMPT_MODEL_FAMILY_LABELS`
+ *  map and falls back to a capitalized rendering of the raw value for
+ *  anything unrecognized, instead of throwing or showing "undefined". */
+function videoPromptModelFamilyLabel(family: string): string {
+  if (family in VIDEO_PROMPT_MODEL_FAMILY_LABELS) {
+    return VIDEO_PROMPT_MODEL_FAMILY_LABELS[family as VideoPromptModelFamily];
+  }
+  return family ? family.charAt(0).toUpperCase() + family.slice(1) : family;
+}
+
+/** Full display label for a start-frame image-prompt engine mode
+ *  (`planning/vd-start-frame-prompt-modes/plan.md`) — used by the
+ *  mode-select's options/"auto" hint and the engine badge's tooltip. `mode`
+ *  is kept as a plain `string` (see `VerticalDramaStartFramePlanFrame
+ *  .promptMode` doc comment) for the same forward-resilience reason as
+ *  `videoPromptModelFamilyLabel` above, so an unrecognized value falls back
+ *  to itself instead of throwing or showing "undefined". */
+function imagePromptModeFullLabel(
+  mode: string,
+  t2: ReturnType<typeof vdCopy>
+): string {
+  if (mode === "policy_safe_rewrite") return t2.imagePromptModePolicySafe;
+  if (mode === "cinematic_narrative") return t2.imagePromptModeCinematic;
+  return mode;
+}
+
+/** Short display label for the same engine mode — used only by the
+ *  compact per-shot image-prompt-card badge (space-constrained), never by
+ *  the mode-select itself. */
+function imagePromptModeShortLabel(
+  mode: string,
+  t2: ReturnType<typeof vdCopy>
+): string {
+  if (mode === "policy_safe_rewrite") {
+    return t2.imagePromptModePolicySafeShort;
+  }
+  if (mode === "cinematic_narrative") return t2.imagePromptModeCinematicShort;
+  return mode;
+}
+
 /** Mirrors `VD_PRODUCT_REFERENCE_IMAGE_CAP` (`server/services/verticalDramaProductTieIn.ts`)
  *  — duplicated here (not imported) since that module lives under
  *  `server/services/`, not `@shared/`, matching this file's existing
@@ -506,6 +563,24 @@ export interface VerticalDramaStartFramePlanFrame {
    *  to the storyboard's own `distinct_locations[]` grouping for this shot. */
   locationKey?: string;
   angleGrid?: VerticalDramaAngleGridView;
+  /** Start-frame image-prompt engine stamp (`planning/vd-start-frame-prompt-
+   *  modes/plan.md`) — recorded when this frame's image prompt was
+   *  (re)generated, mirroring `VerticalDramaStartFramePlan["frames"][number]
+   *  .promptMode` in `@shared/verticalDramaSeries/contracts.ts`. `mode` is
+   *  kept as a plain `string` (not the narrower `VdImagePromptMode` union)
+   *  for the same forward-resilience reason as the video side's
+   *  `promptModelTarget.family` above — narrowed with a safe lookup at
+   *  render time (`imagePromptModeFullLabel`/`imagePromptModeShortLabel`
+   *  below). Absent on every frame generated before this feature (or via
+   *  the legacy start-frame skill path); the engine badge stays hidden
+   *  when this is undefined. */
+  promptMode?: {
+    mode: string;
+    resolvedFrom?: string;
+    imageModelFamily?: string;
+    imageModelId?: string;
+    generatedAt?: string;
+  };
 }
 
 export interface VerticalDramaStartFramePlanView {
@@ -582,6 +657,23 @@ export interface VerticalDramaMotionPromptClipView {
     /** See `VerticalDramaMotionPromptPack["clips"][number]["videoTask"].source`
      *  in `@shared/verticalDramaSeries/contracts.ts` — additive. */
     source?: "generated" | "upload";
+  };
+  /** Model-family metadata stamped when this clip's video prompt was
+   *  (re)generated (planning/vd-video-prompt-model-family-quality/plan.md) —
+   *  mirrors `VerticalDramaMotionPromptPack["clips"][number].promptModelTarget`
+   *  in `@shared/verticalDramaSeries/contracts.ts`. `family` is kept as a
+   *  plain `string` here (not the narrower `VideoPromptModelFamily` union
+   *  from `@shared/verticalDramaSeries/videoPromptModelFamily.ts`) for
+   *  resilience to any value the server might stamp before the client is
+   *  redeployed — narrowed with a safe lookup at render time
+   *  (`videoPromptModelFamilyLabel` below). Absent on legacy clips generated
+   *  before this feature; the badge and mismatch warning both stay hidden
+   *  when this is undefined. */
+  promptModelTarget?: {
+    family: string;
+    modelId: string;
+    modelName?: string;
+    generatedAt: string;
   };
 }
 
@@ -862,7 +954,8 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     clipNumber: number,
     subShotNumber: number | undefined,
-    currentPrompt: string
+    currentPrompt: string,
+    shotImageUrl?: string
   ) => void;
   /** Opens the Media History/Library picker scoped to this shot's start frame. */
   onChangeStartFrame?: (shotNumber: number) => void;
@@ -902,8 +995,12 @@ interface VerticalDramaStoryboardPanelProps {
   /** Runs `start_frame_render_plan` for real (mode "full", spends credits) — generates every shot's image prompt at once. Shown only while no plan exists yet. */
   onGenerateStartFramePlan?: () => void;
   generatingStartFramePlan?: boolean;
-  /** Opens the repair dialog for `start_frame_render_plan`, prefilled with the current image prompt as an editable template. */
-  onEditStartFramePrompt?: (shotNumber: number, currentPrompt: string) => void;
+  /** Opens the AI adjust dialog for `start_frame_render_plan` (or generic repair if opened without shotImageUrl). */
+  onEditStartFramePrompt?: (
+    shotNumber: number,
+    currentPrompt: string,
+    shotImageUrl?: string
+  ) => void;
   /** Panel-level "generate video prompts" (2026-07-05 fix) — runs
    *  `dialogue_audio_plan` then `video_motion_prompt_pack` for real (mode
    *  "full", spends credits), populating every clip's "พรอมต์วิดีโอ" box and
@@ -1033,6 +1130,20 @@ interface VerticalDramaStoryboardPanelProps {
    *  the same `setEpisodeVideoPromptLanguage` mutation as `dialogueLanguage`. */
   selectedThaiAccent?: string | null;
   onSelectThaiAccent?: (value: string) => void;
+
+  /* ---- Start-frame image-prompt engine mode
+     (`planning/vd-start-frame-prompt-modes/plan.md`) ----
+     Per-sub-episode choice of which engine writes the start-frame image
+     prompt: `"auto"` (default/absent) follows the episode's selected IMAGE
+     model family (GPT-family → policy-safe synopsis rewrite, everything
+     else → cinematic narrative), or the user can pin one explicitly.
+     Persisted via `setEpisodeImagePromptMode` (free — same JSONB-patch
+     convention as `selectedPromptLanguage` above). Kept as a plain
+     `string` (not the shared `VdImagePromptMode` union) for the same
+     forward-resilience reason as `promptModelTarget.family` on the video
+     side. */
+  imagePromptMode?: string;
+  onSelectImagePromptMode?: (mode: string) => void;
 
   /* ---- Native audio direction toggle (task #36, added 2026-07-09) ----
    *  Optional per-episode preference for whether shot video-prompt
@@ -1461,6 +1572,8 @@ export function VerticalDramaStoryboardPanel({
   onSelectThaiAccent,
   nativeAudioEnabled = false,
   onSelectNativeAudioEnabled,
+  imagePromptMode = "auto",
+  onSelectImagePromptMode,
   shotReferencesByShot = {},
   onAddShotReference,
   onRemoveShotReference,
@@ -1613,6 +1726,44 @@ export function VerticalDramaStoryboardPanel({
     modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
     configJson: selectedVideoModel?.configJson,
   });
+  /** Model-family the CURRENTLY selected video model resolves to
+   *  (planning/vd-video-prompt-model-family-quality/plan.md) — used only by
+   *  the storyboard video-prompt card's mismatch warning, comparing this
+   *  against each clip's stamped `promptModelTarget.family`. `undefined`
+   *  while no video model is selected yet, so the warning never fires
+   *  against `resolveVideoPromptTargetFamily`'s "other" default for an
+   *  absent model. */
+  const currentVideoPromptModelFamily = (
+    selectedVideoModel?.modelId ?? selectedVideoModelId
+  )
+    ? resolveVideoPromptTargetFamily({
+        modelId: selectedVideoModel?.modelId ?? selectedVideoModelId,
+        name: selectedVideoModel?.name,
+        provider: selectedVideoModel?.provider,
+        configJson: selectedVideoModel?.configJson as
+          | Record<string, unknown>
+          | undefined,
+      })
+    : undefined;
+  /** Model-family the CURRENTLY selected image model resolves to
+   *  (`planning/vd-start-frame-prompt-modes/plan.md`) — used only to show
+   *  which engine "auto" currently resolves to on the image-prompt-mode
+   *  select's label. Unlike `currentVideoPromptModelFamily` above, this is
+   *  always computed (never `undefined`) since the mode select's "auto"
+   *  hint should still show a sensible engine guess even before an image
+   *  model has been picked (matching `resolveImagePromptTargetFamily`'s
+   *  "other" default for an absent/unrecognized model). */
+  const currentImagePromptModelFamily = resolveImagePromptTargetFamily({
+    modelId: selectedImageModel?.modelId ?? selectedImageModelId,
+    name: selectedImageModel?.name,
+    provider: selectedImageModel?.provider,
+    configJson: selectedImageModel?.configJson as
+      | Record<string, unknown>
+      | undefined,
+  });
+  const resolvedAutoImagePromptMode = resolveDefaultImagePromptMode(
+    currentImagePromptModelFamily
+  );
   const imageModelUsesMcp =
     Boolean(selectedImageModelId) &&
     selectedImageModelTransport.transport === "mcp";
@@ -2374,6 +2525,39 @@ export function VerticalDramaStoryboardPanel({
                   testId="vd-storyboard-select-prompt-language"
                 />
               ) : null}
+              {/* Start-frame image-prompt engine mode
+                (`planning/vd-start-frame-prompt-modes/plan.md`) — reuses the
+                exact `LanguageSelect` visual pattern above. While the value
+                is "auto" the label line shows which engine auto currently
+                resolves to, derived from the selected image model's family. */}
+              {onSelectImagePromptMode ? (
+                <LanguageSelect
+                  label={
+                    imagePromptMode === "auto"
+                      ? vdCopyWithParams(t2.imagePromptModeLabelAutoTemplate, {
+                          engine: imagePromptModeFullLabel(
+                            resolvedAutoImagePromptMode,
+                            t2
+                          ),
+                        })
+                      : t2.imagePromptModeLabel
+                  }
+                  value={imagePromptMode}
+                  onChange={onSelectImagePromptMode}
+                  options={[
+                    { value: "auto", label: t2.imagePromptModeAuto },
+                    {
+                      value: "policy_safe_rewrite",
+                      label: t2.imagePromptModePolicySafe,
+                    },
+                    {
+                      value: "cinematic_narrative",
+                      label: t2.imagePromptModeCinematic,
+                    },
+                  ]}
+                  testId="vd-storyboard-image-prompt-mode-select"
+                />
+              ) : null}
               {onSelectDialogueLanguage ? (
                 <LanguageSelect
                   label={t2.dialogueLanguageLabel}
@@ -2793,8 +2977,17 @@ export function VerticalDramaStoryboardPanel({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => setConfirmingGenerateAllImages(true)}
-              disabled={!selectedImageModelId}
+              // Same "explain, don't silently disable" contract as the
+              // one-click generate button below — missing model opens the
+              // picker instead of leaving the button dead.
+              onClick={() => {
+                if (!selectedImageModelId) {
+                  toast.error(t2.selectImageModelFirst);
+                  setIsImageModelDialogOpen(true);
+                  return;
+                }
+                setConfirmingGenerateAllImages(true);
+              }}
               title={
                 !selectedImageModelId ? t2.selectImageModelFirst : undefined
               }
@@ -2926,8 +3119,15 @@ export function VerticalDramaStoryboardPanel({
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => setConfirmingVideoPromptPack(true)}
-              disabled={generatingVideoPromptPack || !selectedVideoModelId}
+              onClick={() => {
+                if (!selectedVideoModelId) {
+                  toast.error(t2.selectVideoModelFirst);
+                  setIsVideoModelDialogOpen(true);
+                  return;
+                }
+                setConfirmingVideoPromptPack(true);
+              }}
+              disabled={generatingVideoPromptPack}
               title={
                 !selectedVideoModelId ? t2.selectVideoModelFirst : undefined
               }
@@ -3119,8 +3319,14 @@ export function VerticalDramaStoryboardPanel({
                       size="sm"
                       variant="outline"
                       className="w-full gap-1 text-xs"
-                      onClick={() => onOpenRepairImageDialog(shotNumber)}
-                      disabled={!selectedImageModelId}
+                      onClick={() => {
+                        if (!selectedImageModelId) {
+                          toast.error(t2.selectImageModelFirst);
+                          setIsImageModelDialogOpen(true);
+                          return;
+                        }
+                        onOpenRepairImageDialog(shotNumber);
+                      }}
                       title={
                         !selectedImageModelId
                           ? t2.selectImageModelFirst
@@ -3188,13 +3394,23 @@ export function VerticalDramaStoryboardPanel({
                         size="sm"
                         className="w-full gap-1 text-xs"
                         variant={frame?.imagePrompt ? "outline" : "default"}
-                        onClick={() =>
-                          setChoosingGenerateModeForShot(shotNumber)
-                        }
-                        disabled={
-                          generatingPromptAndImageForShot.has(shotNumber) ||
-                          !selectedImageModelId
-                        }
+                        // Missing-model is NOT a disabled state — a silently
+                        // dead button with only a hover tooltip is exactly the
+                        // "กดไม่ติด ไม่รู้สาเหตุ" report this fixes. Clicking
+                        // with no model now explains itself (toast) AND opens
+                        // the image-model picker so the user can fix it in
+                        // place. Only an in-flight generation disables.
+                        onClick={() => {
+                          if (!selectedImageModelId) {
+                            toast.error(t2.selectImageModelFirst);
+                            setIsImageModelDialogOpen(true);
+                            return;
+                          }
+                          setChoosingGenerateModeForShot(shotNumber);
+                        }}
+                        disabled={generatingPromptAndImageForShot.has(
+                          shotNumber
+                        )}
                         title={
                           !selectedImageModelId
                             ? t2.selectImageModelFirst
@@ -3274,11 +3490,17 @@ export function VerticalDramaStoryboardPanel({
                         size="sm"
                         variant="outline"
                         className="w-full gap-1 text-xs"
-                        onClick={() => setConfirmingImageForShot(shotNumber)}
-                        disabled={
-                          generatingStartFrameImageForShot.has(shotNumber) ||
-                          !selectedImageModelId
-                        }
+                        onClick={() => {
+                          if (!selectedImageModelId) {
+                            toast.error(t2.selectImageModelFirst);
+                            setIsImageModelDialogOpen(true);
+                            return;
+                          }
+                          setConfirmingImageForShot(shotNumber);
+                        }}
+                        disabled={generatingStartFrameImageForShot.has(
+                          shotNumber
+                        )}
                         title={
                           !selectedImageModelId
                             ? t2.selectImageModelFirst
@@ -3353,13 +3575,17 @@ export function VerticalDramaStoryboardPanel({
                         size="sm"
                         variant="outline"
                         className="w-full gap-1 text-xs"
-                        onClick={() =>
-                          setConfirmingAngleVariationsForShot(shotNumber)
-                        }
+                        onClick={() => {
+                          if (!selectedImageModelId) {
+                            toast.error(t2.selectImageModelFirst);
+                            setIsImageModelDialogOpen(true);
+                            return;
+                          }
+                          setConfirmingAngleVariationsForShot(shotNumber);
+                        }}
                         disabled={
                           generatingAngleVariationsForShot === shotNumber ||
-                          splittingShot === shotNumber ||
-                          !selectedImageModelId
+                          splittingShot === shotNumber
                         }
                         title={
                           !selectedImageModelId
@@ -3790,17 +4016,21 @@ export function VerticalDramaStoryboardPanel({
                               size="sm"
                               variant="outline"
                               className="w-fit gap-1.5 text-xs"
-                              onClick={() =>
+                              onClick={() => {
+                                if (!selectedVideoModelId) {
+                                  toast.error(t2.selectVideoModelFirst);
+                                  setIsVideoModelDialogOpen(true);
+                                  return;
+                                }
                                 setConfirmingRegenerateVideoForClip(
                                   clip.clipNumber
-                                )
-                              }
+                                );
+                              }}
                               disabled={
                                 !clip.prompt?.trim() ||
                                 generatingVideoClipForClip.has(
                                   clip.clipNumber
-                                ) ||
-                                !selectedVideoModelId
+                                )
                               }
                               title={
                                 !selectedVideoModelId
@@ -4044,8 +4274,12 @@ export function VerticalDramaStoryboardPanel({
                         overrideLocationKey
                       );
                     const rosterLocation = effectiveLocationKey
-                      ? episodeLocations.find(
-                          loc => loc.locationKey === effectiveLocationKey
+                      ? resolveStoryboardLocationRoster(
+                          episodeLocations,
+                          effectiveLocationKey,
+                          overrideLocationKey
+                            ? undefined
+                            : matchingLocation?.location_name
                         )
                       : undefined;
                     const displayName = overrideLocationKey
@@ -4244,6 +4478,28 @@ export function VerticalDramaStoryboardPanel({
                         "พรอมต์ภาพเริ่มต้น",
                         "Start-frame image prompt"
                       )}
+                      familyBadge={
+                        frame?.promptMode?.mode ? (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 px-1.5 py-0 text-[9px]"
+                            title={`${imagePromptModeFullLabel(
+                              frame.promptMode.mode,
+                              t2
+                            )}${
+                              frame.promptMode.imageModelId
+                                ? ` — ${frame.promptMode.imageModelId}`
+                                : ""
+                            }`}
+                            data-testid={`vd-storyboard-image-prompt-${shotNumber}-engine`}
+                          >
+                            {imagePromptModeShortLabel(
+                              frame.promptMode.mode,
+                              t2
+                            )}
+                          </Badge>
+                        ) : undefined
+                      }
                       prompt={frame?.imagePrompt ?? ""}
                       emptyLabel={t(
                         locale,
@@ -4271,13 +4527,26 @@ export function VerticalDramaStoryboardPanel({
                           ? () =>
                               onEditStartFramePrompt(
                                 shotNumber,
-                                frame?.imagePrompt ?? ""
+                                frame?.imagePrompt ?? "",
+                                asset?.url || asset?.thumbnailUrl
                               )
                           : undefined
                       }
                       testIdPrefix={`vd-storyboard-image-prompt-${shotNumber}`}
                       maxChars={VD_IMAGE_PROMPT_MAX}
                     />
+                  ) : null}
+
+                  {usedVisionByShot[shotNumber] && frame ? (
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <Badge
+                        variant="outline"
+                        className="gap-1 px-1.5 py-0 text-[9px]"
+                      >
+                        <Sparkles aria-hidden="true" className="h-2.5 w-2.5" />
+                        {t2.usedVisionNote}
+                      </Badge>
+                    </div>
                   ) : null}
 
                   {/* Speaker-aware sub-shots (2026-07-10): looped over
@@ -4316,6 +4585,23 @@ export function VerticalDramaStoryboardPanel({
                               ? `${clip.durationSeconds}${t2.videoClipDurationLabel}`
                               : undefined
                           }
+                          familyBadge={
+                            clip?.promptModelTarget ? (
+                              <Badge
+                                variant="outline"
+                                className="gap-1 px-1.5 py-0 text-[9px]"
+                                title={`${t2.videoPromptModelFamilyBadgeTitle}: ${
+                                  clip.promptModelTarget.modelName ??
+                                  clip.promptModelTarget.modelId
+                                }`}
+                                data-testid={`vd-storyboard-video-prompt-${clipKey}-model-family`}
+                              >
+                                {videoPromptModelFamilyLabel(
+                                  clip.promptModelTarget.family
+                                )}
+                              </Badge>
+                            ) : undefined
+                          }
                           prompt={clip?.prompt ?? ""}
                           emptyLabel={t(
                             locale,
@@ -4348,13 +4634,44 @@ export function VerticalDramaStoryboardPanel({
                                     shotNumber,
                                     clipKey,
                                     clip?.subShotNumber,
-                                    clip?.prompt ?? ""
+                                    clip?.prompt ?? "",
+                                    asset?.url || asset?.thumbnailUrl
                                   )
                               : undefined
                           }
                           testIdPrefix={`vd-storyboard-video-prompt-${clipKey}`}
                           maxChars={VD_VIDEO_PROMPT_MAX}
                         />
+
+                        {/* Model-family mismatch warning
+                          (planning/vd-video-prompt-model-family-quality/plan.md)
+                          — the clip's video prompt was shaped for a
+                          different model family than the one currently
+                          selected (the user likely switched models after
+                          generating this prompt). Hidden for legacy clips
+                          with no `promptModelTarget` and while no video
+                          model is selected. */}
+                        {clip?.promptModelTarget &&
+                        currentVideoPromptModelFamily &&
+                        currentVideoPromptModelFamily !==
+                          clip.promptModelTarget.family ? (
+                          <p
+                            className="text-[11px] text-amber-600 dark:text-amber-400"
+                            data-testid={`vd-storyboard-video-prompt-${clipKey}-model-mismatch`}
+                          >
+                            {vdCopyWithParams(
+                              t2.videoPromptModelMismatchWarning,
+                              {
+                                generated: videoPromptModelFamilyLabel(
+                                  clip.promptModelTarget.family
+                                ),
+                                current: videoPromptModelFamilyLabel(
+                                  currentVideoPromptModelFamily
+                                ),
+                              }
+                            )}
+                          </p>
+                        ) : null}
 
                         {/* Native audio direction (task #36) — read-only muted
                           line under the video prompt box; the actual append onto
@@ -4391,15 +4708,19 @@ export function VerticalDramaStoryboardPanel({
                               size="sm"
                               variant="outline"
                               className="w-fit gap-1.5 text-xs"
-                              onClick={() =>
-                                onGenerateShotVideoPrompt(shotNumber)
-                              }
+                              onClick={() => {
+                                if (!selectedVideoModelId) {
+                                  toast.error(t2.selectVideoModelFirst);
+                                  setIsVideoModelDialogOpen(true);
+                                  return;
+                                }
+                                onGenerateShotVideoPrompt(shotNumber);
+                              }}
                               disabled={
                                 !asset?.url ||
                                 generatingShotVideoPromptForShot.has(
                                   shotNumber
-                                ) ||
-                                !selectedVideoModelId
+                                )
                               }
                               title={
                                 !asset?.url
@@ -4570,15 +4891,19 @@ export function VerticalDramaStoryboardPanel({
                                 size="sm"
                                 variant="outline"
                                 className="w-fit gap-1.5 text-xs"
-                                onClick={() =>
-                                  onGenerateVideoClip(clip.clipNumber)
-                                }
+                                onClick={() => {
+                                  if (!selectedVideoModelId) {
+                                    toast.error(t2.selectVideoModelFirst);
+                                    setIsVideoModelDialogOpen(true);
+                                    return;
+                                  }
+                                  onGenerateVideoClip(clip.clipNumber);
+                                }}
                                 disabled={
                                   !clip.prompt?.trim() ||
                                   generatingVideoClipForClip.has(
                                     clip.clipNumber
-                                  ) ||
-                                  !selectedVideoModelId
+                                  )
                                 }
                                 title={
                                   !selectedVideoModelId
@@ -5619,10 +5944,12 @@ function formatShotNumberRanges(shotNumbers: number[]): string {
  * Phase 2, whose backend/DB/reconciliation is already live and untouched
  * here). One row per `storyboard.distinct_locations[]` group, cross-
  * referenced against the durable per-series location roster
- * (`trpc.verticalDramaLocations.list`) by `location_key` so an already-
- * approved reference thumbnail shows immediately. Deliberately much
- * simpler than `VerticalDramaCharacterStockPanel.tsx` — no variant/twin/
- * voice concepts, a single inline card, no separate tab/panel.
+ * (`trpc.verticalDramaLocations.list`) by exact `location_key`, then by the
+ * same bounded normalized-name/one-parenthetical fallback used for legacy
+ * storyboard data, so an already-approved reference thumbnail shows
+ * immediately. Deliberately much simpler than
+ * `VerticalDramaCharacterStockPanel.tsx` — no variant/twin/voice concepts,
+ * a single inline card, no separate tab/panel.
  *
  * A standalone component (not an inline closure inside
  * `VerticalDramaStoryboardPanel`'s render body) because it owns its own
@@ -5694,20 +6021,7 @@ function VerticalDramaLocationsBibleCard({
   const utils = trpc.useUtils();
   const listQuery = trpc.verticalDramaLocations.list.useQuery({ seriesId });
 
-  /** `locationKey` -> roster row essentials, resolved once per fetch. */
-  const rosterByKey = useMemo(() => {
-    const map = new Map<
-      string,
-      { locationId: string; primaryReferenceUrl?: string }
-    >();
-    for (const row of listQuery.data?.locations ?? []) {
-      map.set(row.locationKey, {
-        locationId: row.locationId,
-        primaryReferenceUrl: row.primaryReferenceUrl,
-      });
-    }
-    return map;
-  }, [listQuery.data]);
+  const locationRoster = listQuery.data?.locations ?? [];
 
   const invalidate = () =>
     void utils.verticalDramaLocations.list.invalidate({ seriesId });
@@ -5999,7 +6313,11 @@ function VerticalDramaLocationsBibleCard({
           const locationKey = group.location_key;
           const locationName = group.location_name;
           if (!locationKey || !locationName) return null;
-          const roster = rosterByKey.get(locationKey);
+          const roster = resolveStoryboardLocationRoster(
+            locationRoster,
+            locationKey,
+            locationName
+          );
           const thumbnailUrl = roster?.primaryReferenceUrl;
           const candidate = candidateByKey[locationKey];
           const preview = previewByKey[locationKey];
@@ -6011,7 +6329,7 @@ function VerticalDramaLocationsBibleCard({
 
           return (
             <div
-              key={locationKey || index}
+              key={`${locationKey || "location"}-${index}`}
               className="flex flex-col gap-2 rounded-md border border-border/60 bg-background/40 p-2 sm:flex-row sm:items-start"
               data-testid={`vd-location-bible-row-${locationKey}`}
             >
@@ -6136,7 +6454,7 @@ function VerticalDramaLocationsBibleCard({
                         onClick={() =>
                           handleGenerate(roster.locationId, locationKey)
                         }
-                        disabled={isRendering || !selectedImageModelId}
+                        disabled={isRendering}
                         title={
                           selectedImageModelId
                             ? undefined
@@ -7276,6 +7594,7 @@ function InlineEditablePromptBox({
   t: t2,
   title,
   titleBadge,
+  familyBadge,
   prompt,
   emptyLabel,
   isEditing,
@@ -7298,6 +7617,13 @@ function InlineEditablePromptBox({
    *  duration display 1:1. Absent for every existing caller today, so
    *  nothing renders unless a caller opts in. */
   titleBadge?: string;
+  /** Optional badge rendered right after `titleBadge`
+   *  (planning/vd-video-prompt-model-family-quality/plan.md) — a
+   *  caller-built node (e.g. an outline `Badge`) rather than a plain string
+   *  like `titleBadge`, since this one carries its own tooltip + testid (the
+   *  storyboard video-prompt card's model-family badge). Callers that don't
+   *  pass it render nothing, same as every other optional prop here. */
+  familyBadge?: ReactNode;
   prompt: string;
   emptyLabel: string;
   isEditing: boolean;
@@ -7335,6 +7661,7 @@ function InlineEditablePromptBox({
               {titleBadge}
             </Badge>
           ) : null}
+          {familyBadge}
         </div>
         <div className="flex items-center gap-1">
           {!isEditing && prompt ? (
@@ -7395,6 +7722,7 @@ function InlineEditablePromptBox({
             value={draft}
             onChange={e => onDraftChange(e.target.value)}
             rows={4}
+            maxLength={maxChars}
             className="text-xs"
             autoFocus
             data-testid={`${testIdPrefix}-textarea`}

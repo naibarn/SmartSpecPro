@@ -26,8 +26,12 @@ import { resolveSkillDirCandidates, resolveSkillManifestPath } from "./skillFile
 import { hasEnoughCredits, deductCredits, calculateCreditsForLLM } from "./creditService";
 import { mediaGenerationLimiter } from "./rateLimiter";
 import { debugError } from "../_core/logger";
+import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import { selectBestLlmModel } from "./intelligentModelSelector";
 import {
   executeJsonPlanningCallWithRetry,
+  executeVisionAwareJsonCallWithRetry,
+  type VisionAwareImageInput,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
@@ -58,6 +62,13 @@ import {
 import {
   type VerticalDramaPromptLanguage,
   VERTICAL_DRAMA_PROMPT_LANGUAGE_ENGLISH_NAMES,
+  // Gap-5 fix (recorded, 2026-07-22) — the canonical PERSISTED per-frame
+  // shape, used ONLY to type `projectStartFramePlan`'s new
+  // `previousFramesByShotNumber` carry-over param (see
+  // `VerticalDramaStartFramePlanFrame` below) — the caller passes REAL
+  // persisted frames (which can carry any of that type's fields), not just
+  // this file's own narrower `StartFrameRenderPlanProjection` shape.
+  type VerticalDramaStartFramePlan,
 } from "@shared/verticalDramaSeries/contracts";
 // Preset visual identity flow-through (spec §8.2.2 flow-through rule,
 // section-15 change D, Wave-4A completing the "start frames" leg of the
@@ -67,6 +78,17 @@ import {
 // identity object directly, so this file never needs the router's bible-
 // reading logic.
 import type { VerticalDramaPresetVisualIdentity } from "@shared/verticalDramaSeries/presetVisualIdentity";
+// Two-mode start-frame image prompt switch
+// (`planning/vd-start-frame-prompt-modes/plan.md`) — pure/shared family
+// resolver + skill-folder map + persisted stamp type, mirroring how
+// `videoPromptModelFamily.ts` is consumed by the video-prompt-pack sibling
+// generator.
+import {
+  type ImagePromptModelFamily,
+  type VdImagePromptMode,
+  type VdImagePromptModeStamp,
+  VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS,
+} from "@shared/verticalDramaSeries/imagePromptModelFamily";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -228,6 +250,15 @@ export const startFrameRenderPlanOutputSchema = z
 export type StartFrameRenderPlanOutput = z.infer<typeof startFrameRenderPlanOutputSchema>;
 
 /**
+ * The canonical PERSISTED per-frame shape (`VerticalDramaStartFramePlan
+ * .frames[number]` from `@shared/verticalDramaSeries/contracts`) — exported
+ * here purely so `projectStartFramePlan`'s `previousFramesByShotNumber`
+ * param (gap-5 fix, recorded 2026-07-22) has a name callers can import
+ * without reaching into `contracts.ts`'s array-indexing directly.
+ */
+export type VerticalDramaStartFramePlanFrame = VerticalDramaStartFramePlan["frames"][number];
+
+/**
  * Typed projection matching `VerticalDramaStartFramePlan` from
  * `@shared/verticalDramaSeries` — this is the shape persisted into
  * `verticalDramaEpisodes.startFramePlan` and used as the stage payload.
@@ -244,6 +275,28 @@ export interface StartFrameRenderPlanProjection {
     canonicalShotSummary?: string;
     /** See `VerticalDramaStartFramePlan.frames[].productRefsCustomized` in `@shared/verticalDramaSeries`. */
     productRefsCustomized?: boolean;
+    /**
+     * Gap-5 fix (recorded, 2026-07-22) — these four fields were never
+     * settable by this projection before this fix (this type simply didn't
+     * declare them), so every plan regeneration silently wiped them even
+     * though they are pure per-frame user/durable state this projection has
+     * no way to re-derive from the raw skill output on its own. Now
+     * settable ONLY via `projectStartFramePlan`'s new
+     * `previousFramesByShotNumber` carry-over param — see that function's
+     * own doc comment for the full merge contract. Mirror
+     * `VerticalDramaStartFramePlan.frames[]`'s identically-named fields in
+     * `@shared/verticalDramaSeries/contracts` exactly (same shape) — see
+     * those fields' own doc comments for what each one means/how it's set.
+     */
+    approvedMediaAssetId?: string;
+    locationKey?: string;
+    angleGrid?: {
+      pendingTaskId?: string;
+      imageUrl?: string;
+      mediaTaskId?: string;
+      dismissedIndexes?: number[];
+    };
+    angleGridAssetIds?: number[];
   }>;
 }
 
@@ -282,6 +335,48 @@ export function projectStartFramePlan(
   shotCharacterIdsByShotNumber?: Map<number, string[]>,
   /** Exact active-Overview shot summary used as the skill's canonical visual beat. */
   canonicalShotSummaryByShotNumber?: Map<number, string>,
+  /**
+   * Gap-5 fix (recorded, 2026-07-22) — the PRIOR persisted frame state,
+   * keyed by shot number, so a plan REGENERATION can carry over per-frame
+   * user/durable state this projection has no way to re-derive from the raw
+   * skill output: `approvedMediaAssetId` (the durable link to the APPROVED
+   * rendered image — costs real money to redo), `locationKey` (a manual
+   * per-shot location override), `angleGrid`/`angleGridAssetIds` (durable
+   * multi-angle picker state), and `productReferenceAssetIds` +
+   * `productRefsCustomized` (needed to satisfy the pipeline's OWN
+   * documented contract — `verticalDramaEpisodePipeline.ts`'s
+   * `resolveFrameProductReferenceAssetIds` call reads `productRefsCustomized`
+   * off the projected frame to decide whether auto-resolution may refill
+   * `productReferenceAssetIds`; that flag could never survive a regen
+   * before this fix, since this function always hardcoded a fresh
+   * `productReferenceAssetIds: []` and never set `productRefsCustomized` at
+   * all — so a user's explicit "no product images" choice was silently
+   * overwritten on every regen).
+   *
+   * `canonicalShotSummary` is the ONE field where the PROJECTION's own
+   * freshly-resolved value (from `canonicalShotSummaryByShotNumber` above)
+   * wins over the carried-over one when it supplies one — the projection's
+   * source is the CURRENT Overview-page summary, strictly more up to date
+   * than whatever a prior regen happened to capture.
+   *
+   * Deliberately never carries over `imagePrompt`/`negativePrompt`
+   * (replacing them is the whole point of regenerating) or `promptMode`
+   * (correct by design — the new prompt comes from THIS legacy batch skill,
+   * a different engine than the one that may have stamped the prior
+   * `promptMode`, so the engine badge must clear AND the render-time
+   * preset-identity append — gated on `!frame.promptMode` — must resume for
+   * this frame).
+   *
+   * Pure/no-IO (same purity contract as the rest of this function) —
+   * the caller (`verticalDramaEpisodePipeline.ts`'s
+   * `generateRealStartFramePlan`) builds this map from the episode's own
+   * pre-existing `startFramePlan.frames` before regenerating.
+   * `undefined`/omitted (every caller before this fix) preserves today's
+   * projection byte-identically — every `previous?.x` access below is then
+   * always `undefined`, so every conditional spread is always empty and
+   * `productReferenceAssetIds` falls back to `[]`, exactly as before.
+   */
+  previousFramesByShotNumber?: Map<number, VerticalDramaStartFramePlanFrame>,
 ): StartFrameRenderPlanProjection {
   const summary = raw.render_plan_summary as Record<string, unknown>;
   const selectedImageModelId =
@@ -302,6 +397,14 @@ export function projectStartFramePlan(
             : (r.reference_assets ?? [])
                 .map((ref) => ref.character_id)
                 .filter((id): id is string => typeof id === "string" && id.length > 0);
+        // Gap-5 fix — this shot's PRIOR persisted frame, when the caller
+        // supplied one; `undefined` for a shot the prior plan never had
+        // (e.g. the new plan has more shots than the old one), which
+        // correctly leaves every carry-over field below unset for that
+        // shot, same as the no-previous-frames-at-all case.
+        const previous = previousFramesByShotNumber?.get(r.shot_number);
+        const canonicalShotSummary =
+          canonicalShotSummaryByShotNumber?.get(r.shot_number) ?? previous?.canonicalShotSummary;
         // `r.prompt` is now the FINAL text as-authored by the
         // `vertical-drama-shot-start-frame-render` skill — no code-side
         // identity-lock append (vertical-drama-skill-first-architecture
@@ -316,10 +419,21 @@ export function projectStartFramePlan(
           imagePrompt: r.prompt,
           negativePrompt: r.negative_prompt ?? "",
           requiredCharacterRefs,
-          productReferenceAssetIds: [],
-          ...(canonicalShotSummaryByShotNumber?.get(r.shot_number)
-            ? { canonicalShotSummary: canonicalShotSummaryByShotNumber.get(r.shot_number) }
+          productReferenceAssetIds: previous?.productReferenceAssetIds ?? [],
+          ...(canonicalShotSummary ? { canonicalShotSummary } : {}),
+          ...(previous?.productRefsCustomized !== undefined
+            ? { productRefsCustomized: previous.productRefsCustomized }
             : {}),
+          ...(previous?.approvedMediaAssetId !== undefined
+            ? { approvedMediaAssetId: previous.approvedMediaAssetId }
+            : {}),
+          ...(previous?.locationKey !== undefined ? { locationKey: previous.locationKey } : {}),
+          ...(previous?.angleGrid !== undefined ? { angleGrid: previous.angleGrid } : {}),
+          ...(previous?.angleGridAssetIds !== undefined
+            ? { angleGridAssetIds: previous.angleGridAssetIds }
+            : {}),
+          // promptMode is DELIBERATELY never carried over — see this
+          // function's own param doc comment above.
         };
       }),
   };
@@ -423,6 +537,16 @@ export interface GenerateStartFrameRenderPlanParams {
    * matching active breakdown item for this episode yet.
    */
   episodePlanContext?: string;
+  /**
+   * Gap-5 fix (recorded, 2026-07-22) — threaded straight through to
+   * `projectStartFramePlan`'s identically-named param; see that function's
+   * own doc comment for the full carry-over contract. The caller
+   * (`verticalDramaEpisodePipeline.ts`'s `generateRealStartFramePlan`)
+   * builds this from the episode's own PRE-regen `startFramePlan.frames`.
+   * Optional/omitted (every caller before this fix) preserves today's
+   * byte-identical projection.
+   */
+  previousFramesByShotNumber?: Map<number, VerticalDramaStartFramePlanFrame>;
 }
 
 /**
@@ -883,6 +1007,7 @@ export async function generateStartFrameRenderPlan(
     params.selectedImageModelId ?? "dry-run-image-model",
     shotCharacterIdsByShotNumber,
     canonicalShotSummaryByShotNumber,
+    params.previousFramesByShotNumber,
   );
 
   return {
@@ -1010,20 +1135,210 @@ function loadShotStartFramePromptSystemPrompt(): string {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Two-mode start-frame image prompt switch                                   */
+/* (`planning/vd-start-frame-prompt-modes/plan.md`) — two NEW skill loaders,   */
+/* next to the legacy one above, each resolving its folder name via the       */
+/* single-source-of-truth `VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS` map so the      */
+/* loader and the real-file gate test can never silently drift apart. The     */
+/* pre-existing `vertical-drama-shot-start-frame-prompt` skill (loaded above)  */
+/* remains the legacy engine for every caller that never resolves a mode      */
+/* (`generateShotReferenceFramePrompt`'s supplementary reference frames, and   */
+/* any pre-existing caller of `generateStartFrameShotPrompt` that predates     */
+/* this feature) — see `selectShotStartFramePromptSystemPrompt` below for the  */
+/* single dispatch point between all three.                                   */
+/* -------------------------------------------------------------------------- */
+
+let cachedPolicySafeRewriteSystemPrompt: string | null = null;
+
+/** Read the `vertical-drama-shot-synopsis-image-prompt` skill's markdown body verbatim (mode `policy_safe_rewrite`). */
+function loadPolicySafeRewriteSystemPrompt(): string {
+  if (cachedPolicySafeRewriteSystemPrompt) return cachedPolicySafeRewriteSystemPrompt;
+
+  const folder = VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS.policy_safe_rewrite;
+  for (const dir of resolveSkillDirCandidates(path.join("skills", folder))) {
+    const manifestPath = resolveSkillManifestPath(dir);
+    if (manifestPath && fs.existsSync(manifestPath)) {
+      const raw = fs.readFileSync(manifestPath, "utf-8");
+      const { content } = parseSkillFile(raw);
+      if (content && content.trim().length > 0) {
+        cachedPolicySafeRewriteSystemPrompt = content;
+        return cachedPolicySafeRewriteSystemPrompt;
+      }
+    }
+  }
+
+  throw new Error(`Could not locate skill.md for "${folder}" under any known skills directory`);
+}
+
+let cachedCinematicNarrativeSystemPrompt: string | null = null;
+
+/** Read the `vertical-drama-cinematic-narrative-image-prompt` skill's markdown body verbatim (mode `cinematic_narrative`). */
+function loadCinematicNarrativeSystemPrompt(): string {
+  if (cachedCinematicNarrativeSystemPrompt) return cachedCinematicNarrativeSystemPrompt;
+
+  const folder = VD_IMAGE_PROMPT_MODE_SKILL_FOLDERS.cinematic_narrative;
+  for (const dir of resolveSkillDirCandidates(path.join("skills", folder))) {
+    const manifestPath = resolveSkillManifestPath(dir);
+    if (manifestPath && fs.existsSync(manifestPath)) {
+      const raw = fs.readFileSync(manifestPath, "utf-8");
+      const { content } = parseSkillFile(raw);
+      if (content && content.trim().length > 0) {
+        cachedCinematicNarrativeSystemPrompt = content;
+        return cachedCinematicNarrativeSystemPrompt;
+      }
+    }
+  }
+
+  throw new Error(`Could not locate skill.md for "${folder}" under any known skills directory`);
+}
+
+/**
+ * Single dispatch point choosing which skill authors a shot's start-frame
+ * prompt: `referenceFrameMode: true` ALWAYS forces the legacy skill
+ * regardless of `imagePromptMode` (Phase 6a's supplementary reference frames
+ * are an unrelated feature that predates the mode switch and must stay on
+ * its established engine); an absent `imagePromptMode` also falls back to
+ * the legacy skill (byte-identical behavior for any caller that never
+ * resolves a mode). Otherwise loads the mode's own skill.
+ */
+function selectShotStartFramePromptSystemPrompt(params: {
+  imagePromptMode?: VdImagePromptMode;
+  referenceFrameMode?: boolean;
+}): string {
+  if (params.referenceFrameMode || !params.imagePromptMode) {
+    return loadShotStartFramePromptSystemPrompt();
+  }
+  return params.imagePromptMode === "policy_safe_rewrite"
+    ? loadPolicySafeRewriteSystemPrompt()
+    : loadCinematicNarrativeSystemPrompt();
+}
+
 /**
  * Single-frame output schema — deliberately NOT `.length(9)` / no
  * `start_frame_requests[]` array, so this can never be confused with
  * `startFrameRenderPlanOutputSchema` above.
+ *
+ * The extra fields below (`safety_adjustments`, `analysis_summary`,
+ * `continuity_notes`, `video_readiness_notes`, `quality_score`,
+ * `quality_flags`) are the two NEW modes' director's-notes output —
+ * `policy_safe_rewrite` returns `safety_adjustments` at the top level;
+ * `cinematic_narrative` returns the rest, nested under `analysis_summary`
+ * for its own `safety_adjustments`. Every extra is display/audit only, NEVER
+ * required by the renderer or the reference-mapping validator, and each is
+ * wrapped in `.catch(undefined)` (VD weak-model JSON failure class): a
+ * malformed shape for ONE extra degrades that one field to "absent" instead
+ * of failing the WHOLE response — `prompt`/`negative_prompt` (the fields the
+ * renderer and every pre-existing caller depend on) must never be blocked by
+ * a model that got a display-only field wrong. Legacy calls (no mode) never
+ * populate any of these — absent, matching today's behavior exactly.
+ *
+ * Every array extra is typed `z.array(z.unknown())` (NOT `z.array(z.string())`)
+ * so a SINGLE wrong-typed element (e.g. a model returning `42` inside
+ * `safety_adjustments`) never sinks the WHOLE array via `.catch()` — the
+ * per-element `typeof === "string"` filter lives downstream in
+ * `normalizeImagePromptStringArrayExtra`, which already tolerates this.
  */
+const startFrameShotPromptAnalysisSummarySchema = z
+  .object({
+    story_meaning: z.string().optional(),
+    primary_emotion: z.string().optional(),
+    secondary_emotion: z.string().optional(),
+    relationship_direction: z.string().optional(),
+    decisive_moment: z.string().optional(),
+    visual_priority: z.string().optional(),
+    safety_adjustments: z.array(z.unknown()).optional().catch(undefined),
+  })
+  .passthrough();
+
 const startFrameShotPromptOutputSchema = z
   .object({
     contract_version: z.literal(1).optional(),
     prompt: z.string().min(1),
     negative_prompt: z.string().optional().default(""),
+    safety_adjustments: z.array(z.unknown()).optional().catch(undefined),
+    analysis_summary: startFrameShotPromptAnalysisSummarySchema.optional().catch(undefined),
+    continuity_notes: z.array(z.unknown()).optional().catch(undefined),
+    video_readiness_notes: z.array(z.unknown()).optional().catch(undefined),
+    quality_score: z.number().optional().catch(undefined),
+    quality_flags: z.array(z.unknown()).optional().catch(undefined),
   })
   .passthrough();
 
 export type StartFrameShotPromptOutput = z.infer<typeof startFrameShotPromptOutputSchema>;
+
+/* -------------------------------------------------------------------------- */
+/* Lenient extras normalization — trims/caps whatever the two new modes       */
+/* returned into the small display-only subset `startFramePlan.frames[]`      */
+/* persists, mirroring `normalizeFrameAnalysis`'s (video-prompt path) exact    */
+/* "typeof check -> trim -> slice -> filter" convention.                      */
+/* -------------------------------------------------------------------------- */
+
+const VD_IMAGE_PROMPT_EXTRA_ARRAY_MAX = 12;
+const VD_IMAGE_PROMPT_EXTRA_STRING_MAX = 300;
+
+/** Trim + cap-length every string entry, drop non-strings/blanks, cap array length. Returns `undefined` for an empty/absent result (never `[]`). */
+function normalizeImagePromptStringArrayExtra(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const normalized = value
+    .filter((v): v is string => typeof v === "string")
+    .map(v => v.trim().slice(0, VD_IMAGE_PROMPT_EXTRA_STRING_MAX))
+    .filter(v => v.length > 0)
+    .slice(0, VD_IMAGE_PROMPT_EXTRA_ARRAY_MAX);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function normalizeImagePromptStringExtra(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim().slice(0, VD_IMAGE_PROMPT_EXTRA_STRING_MAX);
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+/**
+ * `policy_safe_rewrite` returns `safety_adjustments` at the top level;
+ * `cinematic_narrative` nests it under `analysis_summary.safety_adjustments`
+ * — the two modes never populate both, so whichever is present wins.
+ */
+function normalizeStartFrameShotPromptSafetyAdjustments(
+  data: StartFrameShotPromptOutput,
+): string[] | undefined {
+  return (
+    normalizeImagePromptStringArrayExtra(data.safety_adjustments) ??
+    normalizeImagePromptStringArrayExtra(data.analysis_summary?.safety_adjustments)
+  );
+}
+
+/** `cinematic_narrative`-only director's-notes subset persisted onto a frame (see `VerticalDramaStartFramePlan.frames[].promptAnalysis`'s doc comment for exactly which fields and why). */
+function normalizeStartFrameShotPromptAnalysis(
+  data: StartFrameShotPromptOutput,
+): { storyMeaning?: string; primaryEmotion?: string; decisiveMoment?: string; qualityScore?: number; qualityFlags?: string[] } | undefined {
+  const summary = data.analysis_summary;
+  const storyMeaning = normalizeImagePromptStringExtra(summary?.story_meaning);
+  const primaryEmotion = normalizeImagePromptStringExtra(summary?.primary_emotion);
+  const decisiveMoment = normalizeImagePromptStringExtra(summary?.decisive_moment);
+  const qualityScore =
+    typeof data.quality_score === "number" && Number.isFinite(data.quality_score)
+      ? data.quality_score
+      : undefined;
+  const qualityFlags = normalizeImagePromptStringArrayExtra(data.quality_flags);
+
+  if (
+    !storyMeaning &&
+    !primaryEmotion &&
+    !decisiveMoment &&
+    qualityScore === undefined &&
+    !qualityFlags
+  ) {
+    return undefined;
+  }
+  return {
+    ...(storyMeaning ? { storyMeaning } : {}),
+    ...(primaryEmotion ? { primaryEmotion } : {}),
+    ...(decisiveMoment ? { decisiveMoment } : {}),
+    ...(qualityScore !== undefined ? { qualityScore } : {}),
+    ...(qualityFlags ? { qualityFlags } : {}),
+  };
+}
 
 export interface GenerateStartFrameShotPromptCharacterManifestEntry {
   /**
@@ -1131,6 +1446,75 @@ export interface GenerateStartFrameShotPromptParams {
    */
   referenceFrameMode?: boolean;
   idempotencyKey?: string;
+  /**
+   * Whether to attach the shot's existing reference image (`imageUrl`) to the LLM call as a
+   * vision input when supported by the model family (`openai` / `anthropic` / `gemini`).
+   * Defaults to true when omitted. When false, vision images are not sent.
+   */
+  attachShotImage?: boolean;
+  /**
+   * Optional start frame image URL of the current shot to attach when `attachShotImage` is true.
+   */
+  imageUrl?: string;
+  /**
+   * Optional additional reference image inputs (e.g., character portraits, user-attached images)
+   * to attach when `attachShotImage` is true.
+   */
+  additionalImageUrls?: VisionAwareImageInput[];
+  /**
+   * Two-mode start-frame image prompt switch
+   * (`planning/vd-start-frame-prompt-modes/plan.md`) — which skill authors
+   * this shot's prompt. Absent -> the legacy `vertical-drama-shot-start-
+   * frame-prompt` skill, byte-identical to every pre-existing caller
+   * (`generateShotReferenceFramePrompt`, and any caller that predates this
+   * feature). `referenceFrameMode: true` ALWAYS forces the legacy skill
+   * regardless of this field — see `selectShotStartFramePromptSystemPrompt`.
+   */
+  imagePromptMode?: VdImagePromptMode;
+  /**
+   * Only meaningful alongside `imagePromptMode` — whether the caller's mode
+   * came from an explicit per-sub-episode user choice or the auto-resolved
+   * family default, so the returned `frameStamp` can record it without this
+   * function re-deriving something only the caller (the router) knows.
+   */
+  imagePromptModeResolvedFrom?: "user" | "auto";
+  /** The family `imageModelId`/`imageModelName` belong to — threaded into the `TARGET IMAGE MODEL` fact line and persisted on `frameStamp`. */
+  imageModelFamily?: ImagePromptModelFamily;
+  imageModelName?: string;
+  imageModelId?: string;
+  /**
+   * Character portrait references for `cinematic_narrative` mode's vision
+   * attachment + `character_reference_manifest` grounding — MUST be in the
+   * same order as `characterReferenceManifest` (index N's label is derived
+   * from this array's Nth entry, 1-based) so the "Image N" labels the model
+   * SEES match the "Image N" indices the prompt TEXT claims. Ignored by
+   * every other mode (mode 1 attaches images exactly as it does today — the
+   * shot's own current image + `additionalImageUrls` only).
+   */
+  characterReferenceImages?: { url: string; label: string }[];
+  /** Location reference image for `cinematic_narrative` mode's vision attachment. Ignored by every other mode. */
+  locationReferenceImage?: { url: string; label: string };
+  /**
+   * Series preset visual-identity image-prompt fragments (spec §8.2.2 flow-
+   * through rule) — for the two NEW modes ONLY, threaded in as a
+   * `SERIES VISUAL IDENTITY` fact so the skill weaves them into its own
+   * prose (NO CODE-SIDE PROMPT APPENDING — see this file's
+   * `appendPresetVisualIdentityFragmentsToImagePrompt` doc comment for the
+   * legacy code-append this replaces for stamped frames). Ignored by the
+   * legacy skill (mode absent) — that path keeps its existing render-time
+   * code append untouched.
+   */
+  presetVisualIdentityFragments?: { positive: string[]; negative: string[] };
+  /**
+   * Product tie-in facts (spec §13) — for the two NEW modes ONLY, threaded
+   * in as a `PRODUCT TIE-IN` fact (a DIFFERENT, mode-specific fact label
+   * from the pre-existing `productLock` above, which every mode — including
+   * legacy — still receives unchanged) so the skill authors the placement
+   * directive itself instead of a code-side append. Reuses the exact
+   * `productName`/`productDescription` wording `productLock` already
+   * carries — no new resolution needed.
+   */
+  productTieIn?: { active: boolean; productName?: string | null; productDescription?: string | null } | null;
 }
 
 export function buildStartFrameShotPromptUserPrompt(
@@ -1161,6 +1545,20 @@ export function buildStartFrameShotPromptUserPrompt(
   const requiredCharacterCount =
     params.requiredCharacterRefs?.length ?? params.characterReferenceManifest.length;
 
+  // Two-mode start-frame image prompt switch
+  // (`planning/vd-start-frame-prompt-modes/plan.md`) — `SERIES VISUAL
+  // IDENTITY` / `PRODUCT TIE-IN` / `frame_analysis_inputs` are new-mode-only
+  // facts (the legacy skill's contract never expects them, and
+  // `referenceFrameMode` always forces the legacy skill regardless of
+  // `imagePromptMode` — see `selectShotStartFramePromptSystemPrompt`).
+  const isNewImagePromptMode = Boolean(params.imagePromptMode) && !params.referenceFrameMode;
+  const imageModelLabel = params.imageModelName
+    ? `${params.imageModelName} (${params.imageModelId ?? ""})`
+    : (params.imageModelId ?? "unknown");
+  const presetVisualIdentityFragmentsPresent =
+    (params.presetVisualIdentityFragments?.positive?.length ?? 0) > 0 ||
+    (params.presetVisualIdentityFragments?.negative?.length ?? 0) > 0;
+
   return [
     `contract_version: 1`,
     `shot_number: ${params.shotNumber}`,
@@ -1183,6 +1581,18 @@ export function buildStartFrameShotPromptUserPrompt(
       : `character_reference_manifest: (none)`,
     characterIdentityMapBlock ?? null,
     buildTargetAudienceRegionInstruction(params.targetAudienceRegion),
+    // Two-mode start-frame image prompt switch — a purely FACTUAL model
+    // announcement (skill-first architecture: neither skill's contract
+    // requires this fact by name, but mode 1's own doc explicitly reasons
+    // about "the caller's image model", so this is threaded whenever known,
+    // for every mode INCLUDING legacy). `null` (filtered out entirely, same
+    // convention as every other conditional fact in this builder) when the
+    // caller never resolved a model family, so a call without it — every
+    // caller that predates this feature — produces the exact same prompt as
+    // before this field existed (byte-identical regression guard).
+    params.imageModelFamily
+      ? `TARGET IMAGE MODEL: family=${params.imageModelFamily} model="${imageModelLabel}"`
+      : null,
     params.productLock
       ? `product_lock: active=${params.productLock.active}${
           params.productLock.active
@@ -1190,6 +1600,25 @@ export function buildStartFrameShotPromptUserPrompt(
             : ""
         }`
       : `product_lock: active=false`,
+    // Two-mode start-frame image prompt switch — the two NEW skills' own §7
+    // / §13 "SERIES VISUAL IDENTITY" sections are the ONLY place these
+    // fragments enter the prompt (NO CODE-SIDE PROMPT APPENDING); the legacy
+    // skill's contract never expects this fact, so it is gated on
+    // `isNewImagePromptMode` in addition to the fragments existing at all.
+    isNewImagePromptMode && presetVisualIdentityFragmentsPresent
+      ? `SERIES VISUAL IDENTITY (weave into your own prose; nothing downstream appends these): positive=[${(params.presetVisualIdentityFragments?.positive ?? []).join(", ")}] negative=[${(params.presetVisualIdentityFragments?.negative ?? []).join(", ")}]`
+      : null,
+    // Two-mode start-frame image prompt switch — the two NEW skills' own §7
+    // / §14 "PRODUCT TIE-IN" sections author the placement directive
+    // themselves from these facts (NO CODE-SIDE PROMPT APPENDING); reuses
+    // the exact `productName`/`productDescription` wording `product_lock`
+    // above already carries — this is a DIFFERENT, mode-specific fact label
+    // the two new skills' contracts look for by name, never emitted for the
+    // legacy skill (which already has everything it needs from
+    // `product_lock` alone).
+    isNewImagePromptMode && params.productTieIn?.active
+      ? `PRODUCT TIE-IN: product_name="${params.productTieIn.productName ?? ""}" product_description="${params.productTieIn.productDescription ?? ""}"`
+      : null,
     // Phase 1 of `planning/polished-toasting-gadget.md` (location visual
     // bible) — additive; `null` (filtered out entirely, same convention as
     // `characterIdentityMapBlock` above) when `location` is absent, so a
@@ -1248,6 +1677,15 @@ export function buildStartFrameShotPromptUserPrompt(
     requiredCharacterCount >= 2
       ? `framing_override: ${widenedMultiCharacterFramingToken(requiredCharacterCount)} (${requiredCharacterCount} required characters must ALL be visible — do not isolate one in a close-up)`
       : null,
+    // Two-mode start-frame image prompt switch — `cinematic_narrative`-only:
+    // a FACT (not an instruction) telling the skill the portraits + location
+    // image it needs to interpret are attached below as vision inputs — see
+    // `buildStartFrameShotPromptVisionImages`'s mode-2 branch for the actual
+    // attachment. `null` (filtered out entirely) for every other mode,
+    // including legacy, which never attaches these images at all.
+    isNewImagePromptMode && params.imagePromptMode === "cinematic_narrative"
+      ? `frame_analysis_inputs: character portraits and the location image are ATTACHED as images below`
+      : null,
     // Shared-field prompt-language fix — same field/default/wording
     // convention as `verticalDramaVideoMotionPromptGeneration.ts`'s
     // `buildShotVideoPromptUserPrompt` (the video single-shot sibling of this
@@ -1284,6 +1722,112 @@ export function buildStartFrameShotPromptUserPrompt(
  * Credits are still deducted (the LLM call itself succeeded and consumed
  * tokens; only the returned prompt is discarded).
  */
+async function resolveStartFrameShotPromptModel(
+  seriesId: number,
+  attachShotImage?: boolean,
+  hasImage?: boolean,
+): Promise<{ model: string; hasVision: boolean }> {
+  const configuredModel = await resolveStartFramePlanModel(seriesId);
+  if (attachShotImage === false || !hasImage) {
+    return { model: configuredModel, hasVision: false };
+  }
+  try {
+    const rows = await loadEnabledLlmModelRows();
+    if (rows.length > 0) {
+      const configuredRow = rows.find(r => r.modelId === configuredModel || r.providerModelId === configuredModel || (r.legacyModelAliases && r.legacyModelAliases.includes(configuredModel)));
+      if (configuredRow?.supportsVision === true) {
+        return { model: configuredModel, hasVision: true };
+      }
+      const visionModel = selectBestLlmModel(
+        { supportsVision: true, supportsStructuredOutputs: true },
+        rows,
+      );
+      if (visionModel) return { model: visionModel, hasVision: true };
+    }
+  } catch {
+    // Fall through to configured model
+  }
+  return { model: configuredModel, hasVision: false };
+}
+
+/**
+ * Cap on the AUTOMATIC vision attachments `cinematic_narrative` mode adds
+ * (the shot's own current image + character portraits + the location image)
+ * — bounds per-call vision cost to a fixed, predictable ceiling regardless
+ * of how many characters a shot requires. Caller-supplied
+ * `additionalImageUrls` (Phase 6a's user-attached extras) are NOT subject to
+ * this cap — they are appended afterward unconditionally, same as before
+ * this mode existed.
+ */
+const VD_START_FRAME_SHOT_PROMPT_MAX_AUTO_ATTACHED_IMAGES = 6;
+/** Of that budget, at most this many are character portraits. */
+const VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS = 4;
+
+/**
+ * Build the vision images attached to a start-frame shot-prompt LLM call.
+ * Mode 1 (`policy_safe_rewrite`) / legacy (no mode) attach images exactly as
+ * before this feature: the shot's own current image (`images[0]`,
+ * unlabeled) then the caller's `additionalImageUrls`.
+ *
+ * `cinematic_narrative` mode ADDITIONALLY inserts the character portraits
+ * (in `character_reference_manifest` index order, labeled `"Image N
+ * reference: <name>"` — N matches the manifest's own 1-based index, NOT
+ * shifted by the shot's own image slot, so the label the model SEES lines
+ * up exactly with the "Image N" claim the prompt TEXT makes) and then the
+ * location image (labeled `"Location reference: <name>"`), between
+ * `images[0]` and `additionalImageUrls` — see
+ * `GenerateStartFrameShotPromptParams.characterReferenceImages`'s doc
+ * comment. Portraits are capped at `VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS`;
+ * when a shot's manifest exceeds that, only the first portraits (in
+ * manifest order) are attached and a warning is logged — the mapping
+ * validator downstream still fail-closes on any "Image N" claim the prompt
+ * makes for a portrait that never actually got attached.
+ */
+export function buildStartFrameShotPromptVisionImages(
+  imageUrl?: string,
+  additionalImageUrls?: VisionAwareImageInput[],
+  cinematicNarrativeVisionInputs?: {
+    characterReferenceImages?: readonly { url: string; label: string }[];
+    locationReferenceImage?: { url: string; label: string };
+  },
+): VisionAwareImageInput[] {
+  const images: VisionAwareImageInput[] = [];
+  if (imageUrl) {
+    images.push({ url: imageUrl });
+  }
+  if (cinematicNarrativeVisionInputs) {
+    const portraits = cinematicNarrativeVisionInputs.characterReferenceImages ?? [];
+    const portraitsToAttach = portraits.slice(0, VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS);
+    if (portraits.length > portraitsToAttach.length) {
+      console.warn(
+        "[vd_shot_start_frame_prompt] cinematic_narrative mode: character portrait count exceeds the vision-attachment cap — attaching only the first portraits in manifest order",
+        {
+          totalPortraits: portraits.length,
+          attached: portraitsToAttach.length,
+          cap: VD_START_FRAME_SHOT_PROMPT_MAX_PORTRAITS,
+        },
+      );
+    }
+    portraitsToAttach.forEach((portrait, idx) => {
+      images.push({ url: portrait.url, label: `Image ${idx + 1} reference: ${portrait.label}` });
+    });
+    if (cinematicNarrativeVisionInputs.locationReferenceImage) {
+      images.push({
+        url: cinematicNarrativeVisionInputs.locationReferenceImage.url,
+        label: `Location reference: ${cinematicNarrativeVisionInputs.locationReferenceImage.label}`,
+      });
+    }
+  }
+  // Final safety clamp on the AUTOMATIC portion only — see this function's
+  // doc comment. A no-op for mode 1 / legacy calls (`imageUrl` alone never
+  // comes anywhere near this cap).
+  const cappedAutoImages = images.slice(0, VD_START_FRAME_SHOT_PROMPT_MAX_AUTO_ATTACHED_IMAGES);
+  if (additionalImageUrls && additionalImageUrls.length > 0) {
+    cappedAutoImages.push(...additionalImageUrls);
+  }
+  return cappedAutoImages;
+}
+
 export async function generateStartFrameShotPrompt(
   params: GenerateStartFrameShotPromptParams,
 ): Promise<{
@@ -1291,6 +1835,21 @@ export async function generateStartFrameShotPrompt(
   negativePrompt: string;
   creditsUsed: number;
   model: string;
+  usedVision: boolean;
+  /** Present iff a mode was actually used (absent for a legacy-skill call — mode omitted, or `referenceFrameMode` forced legacy). */
+  usedMode?: VdImagePromptMode;
+  /** Ready to persist verbatim onto `startFramePlan.frames[].promptMode` — see that field's doc comment. Present iff `usedMode` is present. */
+  frameStamp?: VdImagePromptModeStamp;
+  /** Normalized `"original → rewritten"` pairs from whichever mode returned them. */
+  safetyAdjustments?: string[];
+  /** `cinematic_narrative`-only normalized director's-notes subset — see `VerticalDramaStartFramePlan.frames[].promptAnalysis`. */
+  promptAnalysis?: {
+    storyMeaning?: string;
+    primaryEmotion?: string;
+    decisiveMoment?: string;
+    qualityScore?: number;
+    qualityFlags?: string[];
+  };
 }> {
   const rateLimitKey = `user:${params.userId}`;
   if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
@@ -1302,19 +1861,65 @@ export async function generateStartFrameShotPrompt(
     throw new InsufficientCreditsError();
   }
 
-  const model = await resolveStartFramePlanModel(params.seriesId);
-  const systemPrompt = loadShotStartFramePromptSystemPrompt();
-  const userPrompt = buildStartFrameShotPromptUserPrompt(params);
+  // Two-mode start-frame image prompt switch — `cinematic_narrative` is
+  // explicitly image-grounded (D3, `planning/vd-start-frame-prompt-modes/
+  // plan.md`): it wants vision even when the shot has no existing image yet,
+  // as long as character portraits/a location image are available to attach.
+  // `referenceFrameMode` never combines with a mode in practice (only
+  // `generateShotReferenceFramePrompt` sets it, and that caller never sets
+  // `imagePromptMode`), but is excluded here too for logical correctness —
+  // the legacy skill this mode forces never asks for these vision inputs.
+  const isCinematicNarrativeMode =
+    params.imagePromptMode === "cinematic_narrative" && !params.referenceFrameMode;
+  const hasModeTwoVisionInputs =
+    isCinematicNarrativeMode &&
+    Boolean(params.characterReferenceImages?.length || params.locationReferenceImage);
+  const wantsVision =
+    Boolean(params.imageUrl) || (hasModeTwoVisionInputs && params.attachShotImage !== false);
 
-  const { data: validatedData, response } = await executeJsonPlanningCallWithRetry({
+  const resolvedModel = await resolveStartFrameShotPromptModel(
+    params.seriesId,
+    params.attachShotImage,
+    wantsVision,
+  );
+  const model = resolvedModel.model;
+  const hasVision = resolvedModel.hasVision;
+
+  if (!hasVision && wantsVision && params.attachShotImage !== false) {
+    console.warn(
+      "[vd_shot_start_frame_prompt] generated WITHOUT vision (no vision-capable model enabled) — model relied on text prompt proxy only",
+      { seriesId: params.seriesId, episodeId: params.episodeId, shotNumber: params.shotNumber },
+    );
+  }
+
+  const systemPrompt = selectShotStartFramePromptSystemPrompt({
+    imagePromptMode: params.imagePromptMode,
+    referenceFrameMode: params.referenceFrameMode,
+  });
+  const userPrompt = buildStartFrameShotPromptUserPrompt(params);
+  const images = buildStartFrameShotPromptVisionImages(
+    params.imageUrl,
+    params.additionalImageUrls,
+    hasModeTwoVisionInputs
+      ? {
+          characterReferenceImages: params.characterReferenceImages,
+          locationReferenceImage: params.locationReferenceImage,
+        }
+      : undefined,
+  );
+
+  const { data: validatedData, response } = await executeVisionAwareJsonCallWithRetry<
+    z.infer<typeof startFrameShotPromptOutputSchema>
+  >({
     model,
     systemPrompt,
-    userPrompt,
-    temperature: 0.7,
+    userPromptText: userPrompt,
+    hasVision,
+    images,
     userId: params.userId,
-    maxTokens: 3000,
     schema: startFrameShotPromptOutputSchema,
-    label: `Start-frame shot prompt (shot ${params.shotNumber})`,
+    firstAttemptMaxTokens: 3000,
+    retryMaxTokens: 4000,
   });
 
   const usage = response.usage;
@@ -1348,6 +1953,12 @@ export async function generateStartFrameShotPrompt(
   // otherwise this is a no-op on every call.
   let outputPrompt = validatedData.prompt;
   let outputNegativePrompt = validatedData.negative_prompt ?? "";
+  // Two-mode start-frame image prompt switch — tracks whichever raw LLM
+  // response actually ended up authoring `outputPrompt`/`outputNegativePrompt`,
+  // so the extras normalization below (`safetyAdjustments`/`promptAnalysis`)
+  // reflects what was ACTUALLY persisted, not a response the child-safety
+  // net discarded in favor of `params.currentPrompt`.
+  let finalData: StartFrameShotPromptOutput | undefined = validatedData;
   const inputHadChildSafetyDirective = CHILD_SAFETY_DIRECTIVE_MARKER.test(
     params.currentPrompt,
   );
@@ -1362,6 +1973,7 @@ export async function generateStartFrameShotPrompt(
     );
     outputPrompt = params.currentPrompt;
     outputNegativePrompt = params.currentNegativePrompt;
+    finalData = undefined;
   }
 
   // Reference Mapping Validator + one corrective retry (`planning/
@@ -1394,15 +2006,18 @@ export async function generateStartFrameShotPrompt(
       referenceMappingReferences,
       referenceMappingMismatches,
     )}`;
-    const retry = await executeJsonPlanningCallWithRetry({
+    const retry = await executeVisionAwareJsonCallWithRetry<
+      z.infer<typeof startFrameShotPromptOutputSchema>
+    >({
       model,
       systemPrompt,
-      userPrompt: correctiveUserPrompt,
-      temperature: 0.7,
+      userPromptText: correctiveUserPrompt,
+      hasVision,
+      images,
       userId: params.userId,
-      maxTokens: 3000,
       schema: startFrameShotPromptOutputSchema,
-      label: `Start-frame shot prompt (shot ${params.shotNumber}, reference-mapping retry)`,
+      firstAttemptMaxTokens: 3000,
+      retryMaxTokens: 4000,
     });
     const retryUsage = retry.response.usage;
     const retryCreditsUsed = calculateCreditsForLLM(
@@ -1430,12 +2045,14 @@ export async function generateStartFrameShotPrompt(
 
     outputPrompt = retry.data.prompt;
     outputNegativePrompt = retry.data.negative_prompt ?? "";
+    finalData = retry.data;
     if (
       inputHadChildSafetyDirective &&
       !CHILD_SAFETY_DIRECTIVE_MARKER.test(outputPrompt)
     ) {
       outputPrompt = params.currentPrompt;
       outputNegativePrompt = params.currentNegativePrompt;
+      finalData = undefined;
     }
 
     referenceMappingMismatches = findCharacterImageIndexMappingMismatches(
@@ -1452,10 +2069,39 @@ export async function generateStartFrameShotPrompt(
     }
   }
 
+  // Two-mode start-frame image prompt switch — `usedMode` mirrors
+  // `params.imagePromptMode` UNLESS `referenceFrameMode` forced the legacy
+  // skill (see `selectShotStartFramePromptSystemPrompt`), in which case no
+  // mode was actually used. `frameStamp` is built here (not by the caller)
+  // so the router can persist it verbatim without re-deriving anything.
+  const usedMode: VdImagePromptMode | undefined = params.referenceFrameMode
+    ? undefined
+    : params.imagePromptMode;
+  const frameStamp: VdImagePromptModeStamp | undefined = usedMode
+    ? {
+        mode: usedMode,
+        resolvedFrom: params.imagePromptModeResolvedFrom ?? "auto",
+        imageModelFamily: params.imageModelFamily ?? "other",
+        ...(params.imageModelId ? { imageModelId: params.imageModelId } : {}),
+        generatedAt: new Date().toISOString(),
+      }
+    : undefined;
+  const safetyAdjustments = finalData
+    ? normalizeStartFrameShotPromptSafetyAdjustments(finalData)
+    : undefined;
+  const promptAnalysis = finalData
+    ? normalizeStartFrameShotPromptAnalysis(finalData)
+    : undefined;
+
   return {
     prompt: outputPrompt,
     negativePrompt: outputNegativePrompt,
     creditsUsed,
     model,
+    usedVision: hasVision,
+    ...(usedMode ? { usedMode } : {}),
+    ...(frameStamp ? { frameStamp } : {}),
+    ...(safetyAdjustments ? { safetyAdjustments } : {}),
+    ...(promptAnalysis ? { promptAnalysis } : {}),
   };
 }

@@ -29,6 +29,7 @@ const mockUseTenantFeatureFlag = vi.fn();
 const mockSeriesListQuery = vi.fn();
 const mockGetSeriesQuery = vi.fn();
 const mockGetSeriesMemoryQuery = vi.fn();
+const mockPlanningModelsQuery = vi.fn();
 const mockCarryOverMutate = vi.fn();
 const mockSpecialEditionMutate = vi.fn();
 const mockUploadMutate = vi.fn();
@@ -56,6 +57,9 @@ vi.mock("@/lib/trpc", () => ({
       list: { useQuery: () => mockSeriesListQuery() },
       get: { useQuery: () => mockGetSeriesQuery() },
       getSeriesMemory: { useQuery: () => mockGetSeriesMemoryQuery() },
+      listQualityPlanningModels: {
+        useQuery: () => mockPlanningModelsQuery(),
+      },
       proposeSeasonCarryOver: {
         useMutation: (opts: { onError?: (err: unknown) => void } = {}) => ({
           mutate: (input: unknown) => {
@@ -209,6 +213,7 @@ beforeEach(() => {
     isLoading: false,
   });
   mockGetSeriesQuery.mockReturnValue({ data: { series: parentSeriesRow }, isLoading: false });
+  mockPlanningModelsQuery.mockReturnValue({ data: [], isLoading: false });
   mockGetSeriesMemoryQuery.mockReturnValue({
     data: {
       memory: { episodes: [] },
@@ -371,6 +376,65 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
       ?.querySelector("input") as HTMLInputElement;
     expect(genreInput).toBeDisabled();
     expect(genreInput.value).toBe(parentSeriesRow.genre);
+  });
+
+  it("basics-only synthesis forwards the parent lineage snapshot before the series exists", () => {
+    renderWizard();
+    switchToSequelAndPickParent();
+
+    const button = screen.getByRole("button", {
+      name: /ให้ AI สร้างทั้งหมดให้/,
+    });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedPresetIds: [],
+        userPremise: undefined,
+        genreHint: parentSeriesRow.genre,
+        toneHint: parentSeriesRow.tone,
+        lineageContext: expect.objectContaining({
+          parentSeriesId: 16,
+          parentTitle: parentSeriesRow.title,
+          createMode: "sequel",
+          priorSeasonSummary: parentSeriesRow.memory.compactSummary,
+        }),
+      }),
+    );
+  });
+
+  it("premise synthesis still forwards the parent lineage snapshot", () => {
+    renderWizard();
+    switchToSequelAndPickParent();
+
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        /อยากได้เรื่องเกี่ยวกับอะไร แนวไหน เกิดที่ไหน/,
+      ),
+      {
+        target: {
+          value: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน",
+        },
+      },
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /ให้ AI สร้างภาคต่อจากเรื่องเดิม \+ โจทย์/,
+      }),
+    );
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPremise: "เพิ่มความหวาน ความหึง และให้วิญญาณแม่มาเข้าฝัน",
+        lineageContext: expect.objectContaining({
+          parentSeriesId: 16,
+          parentTitle: parentSeriesRow.title,
+          createMode: "sequel",
+          priorSeasonSummary: parentSeriesRow.memory.compactSummary,
+        }),
+      }),
+    );
   });
 
   it("clicking the propose CTA calls `proposeSeasonCarryOver` with the chosen parent", () => {
